@@ -1,0 +1,44 @@
+.login-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background-color: white;
+    position: relative;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 400px;
+    background-color: white;
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.1);
+}
+
+.login-button {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    font-weight: 600;
+    color: white;
+    background-image: linear-gradient(to right, #3b82f6, #8b5cf6);
+    border: none;
+    border-radius: 9999px;
+    transition: all .3s ease-in-out;
+}
+.login-button:hover {
+    background-image: linear-gradient(to right, #2563eb, #7c3aed);
+    box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4);
+}
+
+.placeholder-transparent::placeholder {
+    color: rgba(107, 114, 128, 0.4);
+}
+
+.placeholder-transparent:focus::placeholder {
+    color: transparent;
+}
+
+.logo-nelson-clipped {
+    clip-path: inset(0 0 22% 0);
+}
