@@ -686,41 +686,7 @@ function RPGLegend({ layersRef }) {
   );
 }
 
-// Barre horizontale en bas pour les CALQUES uniquement
-function BottomLayersBar({ layersRef }) {
-  const map = useMap();
-  const [, forceUpdate] = useState();
 
-  const toggleLayer = (key) => {
-    const layer = layersRef.current[key];
-    if (!layer) return;
-    if (map.hasLayer(layer)) map.removeLayer(layer);
-    else layer.addTo(map);
-    forceUpdate({});
-  };
-
-  const isActive = (key) => {
-    return layersRef.current[key] && map.hasLayer(layersRef.current[key]);
-  };
-
-  // On ne garde que les overlays (zIndex > 0)
-  const overlayKeys = Object.keys(LAYERS).filter(k => LAYERS[k].zIndex > 0);
-
-  return (
-    <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-white border-t border-gray-300 p-2 flex items-center justify-center gap-4 overflow-x-auto shadow-[0_-4px_15px_rgba(0,0,0,0.1)] h-16 no-print">
-      {overlayKeys.map(key => (
-        <button
-          key={key}
-          onClick={() => toggleLayer(key)}
-          className={`px-5 py-2.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 shadow-sm ${isActive(key) ? 'bg-blue-600 text-white border border-blue-700' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'}`}
-        >
-          <div className={`w-3 h-3 rounded-full border border-white/50 ${isActive(key) ? 'bg-white' : 'bg-gray-400'}`}></div>
-          {LAYERS[key].name}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 // Contrôle standard en bas à droite pour les FONDS DE CARTE
 function BasemapControl({ layersRef }) {
