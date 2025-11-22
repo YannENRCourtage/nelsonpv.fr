@@ -583,11 +583,11 @@ const LAYERS = {
 
   // ========== CALQUES OVERLAY ==========
   // Cadastre & Bâtiments
-  cadastre: { name: "Cadastre (Parcelles)", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=CADASTRALPARCELS.PARCELS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 10, opacity: 0.5 },
+  cadastre: { name: 'Cadastre', url: 'https://apicarto.ign.fr/api/cadastre/parcelle?geom={x},{y},{z}', attrib: '© IGN', isOverlay: true, zIndex: 1, opacity: 0.75 },
   batiments: { name: "Bâtiments", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=BUILDINGS.BUILDINGS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 11 },
 
   // Agriculture et occupation du sol
-  rpg: { name: "RPG - Parcelles agricoles", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=LANDUSE.AGRICULTURE2023&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 26, opacity: 0.6 },
+  rpg: { name: 'Parcelles agricoles', url: 'https://wxs.ign.fr/agriviz/geoportail/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=LANDUSE.AGRICULTURE2020&STYLE=normal&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png', attrib: '© IGN', isOverlay: true, zIndex: 2, opacity: 0.7 },
 
   // Hydrographie
   hydro: { name: "Hydrographie", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=HYDROGRAPHY.HYDROGRAPHY&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 12 },
@@ -632,7 +632,7 @@ function PLULegend({ layersRef }) {
 
   return (
     <div
-      className="absolute bottom-[350px] left-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
+      className="absolute bottom-[365px] left-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
       style={{ userSelect: 'none' }}
     >
       <div className="flex justify-between items-center mb-2">
@@ -644,6 +644,43 @@ function PLULegend({ layersRef }) {
         <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#F48FB1] border border-gray-300"></div><span>Zone AU (À urb.)</span></div>
         <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#8BC34A] border border-gray-300"></div><span>Zone A (Agricole)</span></div>
         <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#4CAF50] border border-gray-300"></div><span>Zone N (Naturelle)</span></div>
+      </div>
+    </div>
+  );
+}
+
+// ====================================================================
+// LÉGENDE RPG (Parcelles agricoles)
+// ====================================================================
+function RPGLegend({ layersRef }) {
+  const map = useMap();
+  const [showLegend, setShowLegend] = useState(false);
+
+  useEffect(() => {
+    const checkRPGLayer = () => {
+      const rpgLayer = layersRef.current['rpg'];
+      setShowLegend(rpgLayer && map.hasLayer(rpgLayer));
+    };
+    checkRPGLayer();
+    const interval = setInterval(checkRPGLayer, 500);
+    return () => clearInterval(interval);
+  }, [map, layersRef]);
+
+  if (!showLegend) return null;
+
+  return (
+    <div
+      className="absolute bottom-[365px] left-[220px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
+      style={{ userSelect: 'none' }}
+    >
+      <div className="flex justify-between items-center mb-2">
+        <h4 className="font-bold text-xs text-gray-900">Légende RPG</h4>
+        <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded"><XIcon className="h-3 w-3" /></button>
+      </div>
+      <div className="space-y-1.5 text-[10px]">
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#FFEB3B] border border-gray-300"></div><span>Cultures annuelles</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#8BC34A] border border-gray-300"></div><span>Prairies</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#4CAF50] border border-gray-300"></div><span>Vergers / Vignes</span></div>
       </div>
     </div>
   );
@@ -696,14 +733,17 @@ function BasemapControl({ layersRef }) {
     const container = L.DomUtil.create('div', 'leaflet-control-layers leaflet-control-layers-expanded custom-basemap-panel no-print');
     container.style.padding = '10px';
     container.style.backgroundColor = 'white';
+    container.style.borderRadius = '8px';
+    container.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+    container.style.minWidth = '180px'; // Élargir un peu
 
     const title = document.createElement('div');
-    title.innerText = 'Fonds de carte';
-    title.className = 'font-bold text-xs mb-2 text-gray-700 uppercase tracking-wider border-b pb-1';
+    title.innerText = 'fonds de carte'; // Minuscule
+    title.className = 'font-bold text-xs mb-3 text-gray-700 border-b pb-2 uppercase tracking-wider';
     container.appendChild(title);
 
     const list = document.createElement('div');
-    list.className = 'space-y-1';
+    list.className = 'space-y-2';
     container.appendChild(list);
 
     const Control = L.Control.extend({ onAdd: () => container });
@@ -716,15 +756,17 @@ function BasemapControl({ layersRef }) {
       Object.keys(LAYERS).forEach(key => {
         if (LAYERS[key].zIndex === 0) {
           const label = document.createElement('label');
-          label.className = 'flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded text-sm';
+          label.className = 'flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-1.5 rounded text-sm transition-colors';
 
           const input = document.createElement('input');
           input.type = 'radio';
           input.name = 'basemap';
           input.checked = map.hasLayer(layersRef.current[key]);
+          input.className = 'accent-blue-600 w-4 h-4 mr-2'; // Ajout de mr-2 pour l'espace
 
           const span = document.createElement('span');
           span.innerText = LAYERS[key].name;
+          span.className = 'text-gray-700 font-medium';
 
           label.appendChild(input);
           label.appendChild(span);
@@ -1018,6 +1060,13 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [hoverPoint, setHoverPoint] = useState(null);
+  const [layerName, setLayerName] = useState("Nouveau profil"); // Moved up
+
+  // Update layerName when profile changes
+  useEffect(() => {
+    if (profile?.name) setLayerName(profile.name);
+    else setLayerName("profil altimetrique");
+  }, [profile]);
 
   // Effect 1: Map Polyline & Hover Marker
   useEffect(() => {
@@ -1056,7 +1105,6 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
 
   if (!profile) return null;
   const { data, stats, minAlt, maxAlt } = profile; // Destructure stats, minAlt, maxAlt
-  const [layerName, setLayerName] = useState(profile.name || "Nouveau profil"); // Add layerName state
 
   const handleCloseProfile = () => { setProfile(null); };
 
@@ -1290,6 +1338,7 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
         <BottomLayersBar layersRef={layersRef} />
         <BasemapControl layersRef={layersRef} />
         <PLULegend layersRef={layersRef} />
+        <RPGLegend layersRef={layersRef} />
         <SearchField onAddressFound={onAddressFound} />
         <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
           <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '80px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
