@@ -12,6 +12,7 @@ import {
   useMapEvents,
   useMap,
   ScaleControl,
+  TileLayer,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -595,6 +596,9 @@ const LAYERS = {
 // ====================================================================
 // LÉGENDE PLU/PLUi
 // ====================================================================
+// ====================================================================
+// LÉGENDE PLU/PLUi
+// ====================================================================
 function PLULegend({ layersRef }) {
   const map = useMap();
   const [showLegend, setShowLegend] = useState(false);
@@ -617,120 +621,80 @@ function PLULegend({ layersRef }) {
 
   return (
     <div
-      className="absolute bottom-24 right-3 z-[995] bg-white/95 backdrop-blur-sm p-4 rounded-lg shadow-xl border border-gray-300 max-w-xs"
+      className="absolute bottom-[180px] left-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
       style={{ userSelect: 'none' }}
     >
-      <div className="flex justify-between items-center mb-3">
-        <h4 className="font-bold text-base text-gray-900">Légende PLU / PLUi</h4>
-        <button
-          onClick={() => setShowLegend(false)}
-          className="p-1.5 hover:bg-gray-200 rounded-md transition-colors"
-          title="Fermer la légende"
-        >
-          <XIcon className="h-4 w-4 text-gray-600" />
-        </button>
+      <div className="flex justify-between items-center mb-2">
+        <h4 className="font-bold text-xs text-gray-900">Légende PLU</h4>
+        <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded"><XIcon className="h-3 w-3" /></button>
       </div>
-
-      <div className="space-y-2.5 text-sm">
-        {/* Zones urbaines */}
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-6 rounded border border-gray-300 shadow-sm" style={{ backgroundColor: '#E91E63' }}></div>
-          <span className="font-medium">Zone urbaine (U)</span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-6 rounded border border-gray-300 shadow-sm" style={{ backgroundColor: '#F48FB1' }}></div>
-          <span className="font-medium">Zone à urbaniser (AU)</span>
-        </div>
-
-        {/* Zones agricoles et naturelles */}
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-6 rounded border border-gray-300 shadow-sm" style={{ backgroundColor: '#8BC34A' }}></div>
-          <span className="font-medium">Zone agricole (A)</span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-6 rounded border border-gray-300 shadow-sm" style={{ backgroundColor: '#4CAF50' }}></div>
-          <span className="font-medium">Zone naturelle et forestière (N)</span>
-        </div>
-
-        {/* Zones spéciales */}
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-6 rounded border border-gray-300 shadow-sm" style={{ backgroundColor: '#FFC107' }}></div>
-          <span className="font-medium">Zone d'activités économiques</span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-6 rounded border border-gray-300 shadow-sm" style={{ backgroundColor: '#2196F3' }}></div>
-          <span className="font-medium">Zone d'équipements publics</span>
-        </div>
-      </div>
-
-      <div className="text-xs text-gray-600 mt-4 pt-3 border-t border-gray-200">
-        Plus d'informations : <a href="https://www.geoportail-urbanisme.gouv.fr" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">geoportail-urbanisme.gouv.fr</a>
+      <div className="space-y-1.5 text-[10px]">
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#E91E63] border border-gray-300"></div><span>Zone U (Urbaine)</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#F48FB1] border border-gray-300"></div><span>Zone AU (À urb.)</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#8BC34A] border border-gray-300"></div><span>Zone A (Agricole)</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#4CAF50] border border-gray-300"></div><span>Zone N (Naturelle)</span></div>
       </div>
     </div>
   );
 }
 
-
 function BasemapSwitcher({ layersRef }) {
   const map = useMap();
-  const boxRef = useRef(null);
-  useEffect(() => {
-    const box = L.control({ position: "bottomright" });
-    box.onAdd = () => {
-      const div = L.DomUtil.create("div", "leaflet-control leaflet-bar bg-card text-card-foreground p-2 rounded-lg shadow-lg max-w-xs");
-      L.DomEvent.disableClickPropagation(div); L.DomEvent.disableScrollPropagation(div);
-      div.innerHTML = `<div class="grid gap-1"><h4 class="font-semibold text-sm mb-1">Fonds de carte</h4><div id="bm-list" class="space-y-1"></div><hr class="my-1 border-border" /><h4 class="font-semibold text-sm mb-1">Calques</h4><div id="ov-list" class="space-y-1"></div></div>`;
-      boxRef.current = div; return div;
-    };
-    box.addTo(map);
-    const renderContent = () => {
-      const root = boxRef.current; if (!root) return;
-      const bmList = root.querySelector('#bm-list'); const ovList = root.querySelector('#ov-list');
-      if (bmList) {
-        bmList.innerHTML = '';
-        Object.keys(LAYERS).forEach(key => {
-          if (!LAYERS[key].isOverlay) {
-            const checked = map.hasLayer(layersRef.current[key]) ? 'checked' : '';
-            const label = document.createElement('label');
-            label.className = "flex items-center gap-2 cursor-pointer text-sm hover:bg-accent/50 p-0.5 rounded";
-            label.innerHTML = `<input type="radio" name="bm" value="${key}" ${checked} class="accent-primary" /><span>${LAYERS[key].name}</span>`;
-            label.querySelector('input').addEventListener('change', () => {
-              Object.keys(layersRef.current).forEach(k => {
-                if (!LAYERS[k].isOverlay && layersRef.current[k]) {
-                  if (k === key) { if (!map.hasLayer(layersRef.current[k])) layersRef.current[k].addTo(map); }
-                  else { if (map.hasLayer(layersRef.current[k])) map.removeLayer(layersRef.current[k]); }
-                }
-              });
-            });
-            bmList.appendChild(label);
-          }
-        });
-      }
-      if (ovList) {
-        ovList.innerHTML = '';
-        Object.keys(LAYERS).forEach(key => {
-          if (LAYERS[key].isOverlay) {
-            const checked = map.hasLayer(layersRef.current[key]) ? 'checked' : '';
-            const label = document.createElement('label');
-            label.className = "flex items-center gap-2 cursor-pointer text-sm hover:bg-accent/50 p-0.5 rounded";
-            label.innerHTML = `<input type="checkbox" name="ov" value="${key}" ${checked} class="accent-primary rounded" /><span>${LAYERS[key].name}</span>`;
-            label.querySelector('input').addEventListener('change', (e) => {
-              const layer = layersRef.current[key];
-              if (e.target.checked) { if (!map.hasLayer(layer)) layer.addTo(map); }
-              else { if (map.hasLayer(layer)) map.removeLayer(layer); }
-            });
-            ovList.appendChild(label);
-          }
-        });
-      }
-    };
-    renderContent();
-    return () => { if (map && boxRef.current) boxRef.current.remove(); };
-  }, [map, layersRef]);
-  return null;
+  const [, forceUpdate] = useState();
+
+  const toggleLayer = (key) => {
+    const layer = layersRef.current[key];
+    if (!layer) return;
+
+    // Si c'est un fond de carte (zIndex 0), on désactive les autres fonds
+    if (LAYERS[key].zIndex === 0) {
+      Object.keys(LAYERS).forEach(k => {
+        if (LAYERS[k].zIndex === 0 && layersRef.current[k] && map.hasLayer(layersRef.current[k])) {
+          map.removeLayer(layersRef.current[k]);
+        }
+      });
+      layer.addTo(map);
+    } else {
+      // Toggle overlay
+      if (map.hasLayer(layer)) map.removeLayer(layer);
+      else layer.addTo(map);
+    }
+    forceUpdate({});
+  };
+
+  const isActive = (key) => {
+    return layersRef.current[key] && map.hasLayer(layersRef.current[key]);
+  };
+
+  return (
+    <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-white border-t border-gray-200 p-2 flex items-center gap-4 overflow-x-auto shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+      <div className="flex items-center gap-2 pr-4 border-r border-gray-200">
+        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Fonds</span>
+        {Object.keys(LAYERS).filter(k => LAYERS[k].zIndex === 0).map(key => (
+          <button
+            key={key}
+            onClick={() => toggleLayer(key)}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${isActive(key) ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+          >
+            {LAYERS[key].name}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Calques</span>
+        {Object.keys(LAYERS).filter(k => LAYERS[k].zIndex > 0).map(key => (
+          <button
+            key={key}
+            onClick={() => toggleLayer(key)}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 ${isActive(key) ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+          >
+            <div className={`w-2 h-2 rounded-full ${isActive(key) ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+            {LAYERS[key].name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function LayersBootstrap({ layersRef }) {
@@ -787,15 +751,42 @@ function MapTargetInfo({ targetPos, setTargetPos }) {
       setLoading(true);
 
       try {
-        const [altRes, addrRes, parcRes] = await Promise.allSettled([
-          fetch(`https://wxs.ign.fr/${VOTRE_CLE_IGN}/alti/rest/elevation.json?lon=${targetPos.lng}&lat=${targetPos.lat}&zonly=true`).then(r => r.json()),
+        // Tentative 1 : API IGN
+        let alt = 'N/A';
+        try {
+          const ignRes = await fetch(`https://wxs.ign.fr/${VOTRE_CLE_IGN}/alti/rest/elevation.json?lon=${targetPos.lng}&lat=${targetPos.lat}&zonly=true`);
+          if (ignRes.ok) {
+            const data = await ignRes.json();
+            if (data.elevations && data.elevations.length > 0) {
+              alt = `${data.elevations[0].z.toFixed(1)} m`;
+            }
+          } else {
+            throw new Error("IGN Error");
+          }
+        } catch (ignError) {
+          // Tentative 2 : Open-Elevation (Fallback)
+          console.warn("IGN Alti failed, trying Open-Elevation...", ignError);
+          try {
+            const openRes = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${targetPos.lat},${targetPos.lng}`);
+            if (openRes.ok) {
+              const data = await openRes.json();
+              if (data.results && data.results.length > 0) {
+                alt = `${data.results[0].elevation.toFixed(1)} m`;
+              }
+            }
+          } catch (openError) {
+            console.error("All elevation APIs failed", openError);
+          }
+        }
+
+        const [addrRes, parcRes] = await Promise.allSettled([
           fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${targetPos.lng}&lat=${targetPos.lat}`).then(r => r.json()),
           fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom={"type":"Point","coordinates":[${targetPos.lng},${targetPos.lat}]}`).then(r => r.json())
         ]);
 
         setInfo(prev => ({
           ...prev,
-          alt: altRes.status === 'fulfilled' && altRes.value.elevations ? `${altRes.value.elevations[0].z.toFixed(1)} m` : 'N/A',
+          alt: alt,
           address: addrRes.status === 'fulfilled' && addrRes.value.features?.[0] ? addrRes.value.features[0].properties.label : 'N/A',
           parcel: parcRes.status === 'fulfilled' && parcRes.value.features?.[0] ? `${parcRes.value.features[0].properties.section} ${parcRes.value.features[0].properties.numero}` : 'N/A'
         }));
@@ -831,7 +822,6 @@ function MapTargetInfo({ targetPos, setTargetPos }) {
         <span>⛰️ {info.alt}</span>
         <span>🏷️ {info.parcel}</span>
       </div>
-      <div className="text-[10px] text-gray-400 text-center italic mt-1">Clic droit sur la carte pour déplacer la cible</div>
     </div>
   );
 }

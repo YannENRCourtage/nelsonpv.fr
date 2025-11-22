@@ -22,7 +22,7 @@ function SymbolBtn({ icon, label, type, emoji, onSelect, isSelected }) {
   return (
     <button
       type="button"
-      onClick={() => onSelect({ type, label, emoji })}
+      onClick={(e) => { e.preventDefault(); onSelect({ type, label, emoji }); }}
       className={cn(
         "flex flex-col items-center justify-center gap-2 rounded-lg border bg-white p-4 text-sm font-medium shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5",
         isSelected && "ring-2 ring-blue-500 border-blue-500"
@@ -52,9 +52,9 @@ function SymbolsPanel({ onSymbolSelect, selectedSymbol }) {
       <h3 className="mb-4 text-lg font-semibold">Symboles</h3>
       <div className="grid grid-cols-2 gap-3">
         {symbols.map((s) => (
-          <SymbolBtn 
-            key={s.type} 
-            {...s} 
+          <SymbolBtn
+            key={s.type}
+            {...s}
             onSelect={onSymbolSelect}
             isSelected={selectedSymbol?.type === s.type}
           />
@@ -177,7 +177,7 @@ export default function ProjectEditor() {
   const handleSymbolSelect = (symbol) => {
     setSymbolToPlace(prev => prev?.type === symbol.type ? null : symbol);
   };
-  
+
   const handleBuildingSelect = (building) => {
     window.dispatchEvent(new CustomEvent("map:place-building", { detail: { building } }));
   };
@@ -236,11 +236,11 @@ export default function ProjectEditor() {
             <div className="col-span-3"><label className="text-sm font-medium">Prénom</label><Input value={p.firstName || ''} onChange={e => updateProject({ firstName: e.target.value })} className="mt-1" placeholder="Prénom" /></div>
             <div className="col-span-3"><label className="text-sm font-medium">Téléphone</label><Input value={p.phone || ''} onChange={e => updateProject({ phone: e.target.value })} className="mt-1" placeholder="Téléphone" /></div>
             <div className="col-span-3"><label className="text-sm font-medium">Email</label><Input value={p.email || ''} onChange={e => updateProject({ email: e.target.value })} className="mt-1" placeholder="Email" /></div>
-            
+
             <div className="col-span-12 flex gap-4 items-end">
-                <div className="flex-grow-[3]"><label className="text-sm font-medium">Adresse du projet</label><Input value={p.address || ''} onChange={e => updateProject({ address: e.target.value })} className="mt-1" placeholder="Adresse du projet" /></div>
-                <div className="flex-grow-[1]"><label className="text-sm font-medium">Code postal</label><Input value={p.zip || ''} onChange={e => updateProject({ zip: e.target.value })} className="mt-1" placeholder="Code postal" /></div>
-                <div className="flex-grow-[2]"><label className="text-sm font-medium">Ville</label><Input value={p.city || ''} onChange={e => updateProject({ city: e.target.value })} className="mt-1" placeholder="Ville" /></div>
+              <div className="flex-grow-[3]"><label className="text-sm font-medium">Adresse du projet</label><Input value={p.address || ''} onChange={e => updateProject({ address: e.target.value })} className="mt-1" placeholder="Adresse du projet" /></div>
+              <div className="flex-grow-[1]"><label className="text-sm font-medium">Code postal</label><Input value={p.zip || ''} onChange={e => updateProject({ zip: e.target.value })} className="mt-1" placeholder="Code postal" /></div>
+              <div className="flex-grow-[2]"><label className="text-sm font-medium">Ville</label><Input value={p.city || ''} onChange={e => updateProject({ city: e.target.value })} className="mt-1" placeholder="Ville" /></div>
             </div>
 
             <div className="col-span-3"><label className="text-sm font-medium">Coordonnées GPS</label><Input value={p.gps || ''} onChange={e => updateProject({ gps: e.target.value })} className="mt-1" placeholder="Ex: 45.24, 4.36" /></div>
@@ -259,9 +259,9 @@ export default function ProjectEditor() {
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-9 relative">
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden h-full">
-            <MapEditor 
-              style={{ height: `${mapHeight}px` }} 
-              onAddressFound={handleAddressFound} 
+            <MapEditor
+              style={{ height: `${mapHeight}px` }}
+              onAddressFound={handleAddressFound}
               onAddressSearched={handleAddressSearched}
               project={project}
               symbolToPlace={symbolToPlace}
@@ -326,14 +326,14 @@ export default function ProjectEditor() {
                   <>
                     <img src={photo.id} className="h-full w-full object-cover" alt={photo.name || `photo-${i + 1}`} />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                        <Button size="sm" onClick={() => placePhotoOnMap(photo, i)} className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 h-auto">
-                            <MapIcon size={14} className="mr-1" />
-                            Placer
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => deletePhoto(photo.id)} className="text-xs px-2 py-1 h-auto">
-                            <X size={14} className="mr-1" />
-                            Suppr.
-                        </Button>
+                      <Button size="sm" onClick={() => placePhotoOnMap(photo, i)} className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 h-auto">
+                        <MapIcon size={14} className="mr-1" />
+                        Placer
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => deletePhoto(photo.id)} className="text-xs px-2 py-1 h-auto">
+                        <X size={14} className="mr-1" />
+                        Suppr.
+                      </Button>
                     </div>
                     <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] p-1 truncate">{photo.name}</div>
                     <div className="absolute top-1 left-1 bg-blue-600 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs font-bold">{i + 1}</div>
