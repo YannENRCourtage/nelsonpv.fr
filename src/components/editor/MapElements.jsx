@@ -1386,6 +1386,7 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
   const [rectangleStart, setRectangleStart] = useState(null);
   const [photoToPlace, setPhotoToPlace] = useState(null);
   const [targetPos, setTargetPos] = useState(null);
+  const [map, setMap] = useState(null); // State for map instance
   const layersRef = useRef({});
 
   useEffect(() => {
