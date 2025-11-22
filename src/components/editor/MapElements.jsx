@@ -670,7 +670,7 @@ function RPGLegend({ layersRef }) {
 
   return (
     <div
-      className="absolute bottom-[365px] left-[220px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
+      className="absolute bottom-[400px] left-[220px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px] hide-on-capture"
       style={{ userSelect: 'none' }}
     >
       <div className="flex justify-between items-center mb-2">
@@ -730,7 +730,7 @@ function BasemapControl({ layersRef }) {
   useEffect(() => {
     if (!map || !layersRef.current) return;
 
-    const container = L.DomUtil.create('div', 'leaflet-control-layers leaflet-control-layers-expanded custom-basemap-panel no-print');
+    const container = L.DomUtil.create('div', 'leaflet-control-layers leaflet-control-layers-expanded custom-basemap-panel no-print hide-on-capture');
     container.style.padding = '10px';
     container.style.backgroundColor = 'white';
     container.style.borderRadius = '8px';
@@ -1331,39 +1331,202 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
   }, [symbolToPlace, photoToPlace]);
 
   return (
-    <div className="relative h-full w-full" style={style}>
-      <MapContainer center={[44.8378, -0.5792]} zoom={15} style={{ height: "100%", width: "100%" }} doubleClickZoom={false} zoomControl={false} className={mode === 'delete' ? 'cursor-pointer' : (symbolToPlace || photoToPlace ? 'cursor-crosshair' : 'cursor-default')}>
-        <MapDrawingTools mode={mode} setMode={setMode} />
-        <LayersBootstrap layersRef={layersRef} />
-        <BottomLayersBar layersRef={layersRef} />
-        <BasemapControl layersRef={layersRef} />
-        <PLULegend layersRef={layersRef} />
-        <RPGLegend layersRef={layersRef} />
-        <SearchField onAddressFound={onAddressFound} />
-        <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
-          <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '80px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
-            <div className="flex flex-col items-start gap-2">
-              {/* Info Box above minimap */}
-              <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} />
-              {/* Minimap */}
-              <MiniMap />
-              {/* Scale bar */}
-              <ScaleControl position="bottomleft" metric={true} imperial={false} />
-            </div>
-          </div>
+    // Composant pour récupérer l'instance de la carte
+    function MapInstance({ setMap }) {
+      const map = useMap();
+      useEffect(() => {
+        setMap(map);
+      }, [map, setMap]);
+      return null;
+    }
+
+// ====================================================================
+// PEGMAN CONTROL (Street View)
+// ====================================================================
+function PegmanControl() {
+    const map = useMap();
+    const [isDragging, setIsDragging] = useState(false);
+
+    const handleDragStart = (e) => {
+      e.dataTransfer.effectAllowed = 'move';
+      // Créer une image fantôme transparente pour éviter le carré blanc par défaut
+      const img = new Image();
+      img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+      e.dataTransfer.setDragImage(img, 0, 0);
+
+      setIsDragging(true);
+
+      // Afficher la couche de couverture Street View
+      const coverageLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=svv&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        pane: 'overlayPane',
+        zIndex: 100
+      });
+      coverageLayer.addTo(map);
+      map._streetViewLayer = coverageLayer;
+    };
+
+    const handleDragEnd = (e) => {
+      setIsDragging(false);
+      if (map._streetViewLayer) {
+        map.removeLayer(map._streetViewLayer);
+        delete map._streetViewLayer;
+      }
+
+      // Calculer la position du drop
+      const dropPoint = map.mouseEventToContainerPoint(e);
+      const latlng = map.containerPointToLatLng(dropPoint);
+
+      // Ouvrir Street View
+      const streetViewUrl = `https://www.google.com/maps?layer=c&cbll=${latlng.lat},${latlng.lng}`;
+
+      // Créer une popup personnalisée
+      const popupContent = document.createElement('div');
+      popupContent.style.width = '600px';
+      popupContent.style.height = '400px';
+      popupContent.innerHTML = `<iframe width="100%" height="100%" frameborder="0" style="border:0" src="${streetViewUrl}&output=embed" allowfullscreen></iframe>`;
+
+      L.popup({ maxWidth: 620, minWidth: 600, className: 'street-view-popup' })
+        .setLatLng(latlng)
+        .setContent(popupContent)
+        .openOn(map);
+    };
+
+    return (
+      <div
+        className="leaflet-bottom leaflet-right hide-on-capture"
+        style={{ bottom: '130px', right: '10px', pointerEvents: 'auto', zIndex: 1000, position: 'absolute' }}
+      >
+        <div
+          draggable="true"
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          className="cursor-grab active:cursor-grabbing hover:scale-110 transition-transform shadow-md bg-white rounded-sm p-1"
+          title="Faites glisser pour Street View"
+        >
+          <svg viewBox="0 0 24 24" width="40" height="40" fill="#FBC02D">
+            <path d="M12 2C10.34 2 9 3.34 9 5C9 6.66 10.34 8 12 8C13.66 8 15 6.66 15 5C15 3.34 13.66 2 12 2ZM16 10H8C6.9 10 6 10.9 6 12V20C6 21.1 6.9 22 8 22H10V16H14V22H16C17.1 22 18 21.1 18 20V12C18 10.9 17.1 10 16 10Z" stroke="#F57F17" strokeWidth="1" />
+          </svg>
         </div>
-        <EditLayer {...{ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, symbolToPlace, setSymbolToPlace, setPointInfo, setAltimetryProfile, rectangleStart, setRectangleStart, photoToPlace, setPhotoToPlace, targetPos, setTargetPos }} />
-        <MapEvents
-          project={project}
-          onAddressFound={onAddressFound}
-          onAddressSearched={onAddressSearched}
-          setPhotoToPlace={setPhotoToPlace}
-          setFeatures={setFeatures}
-          onRightClick={(latlng) => setTargetPos(latlng)}
-        />
-        <PointInfoPanel pointInfo={pointInfo} setPointInfo={setPointInfo} />
-        <AltimetryProfile profile={altimetryProfile} setProfile={setAltimetryProfile} setFeatures={setFeatures} features={features} />
-      </MapContainer>
-    </div>
-  );
-}
+      </div>
+    );
+  }
+
+  // Barre horizontale en bas pour les CALQUES uniquement (Hors MapContainer)
+  function BottomLayersBar({ layersRef, map }) {
+    const [, forceUpdate] = useState();
+
+    const toggleLayer = (key) => {
+      if (!map || !layersRef.current[key]) return;
+      const layer = layersRef.current[key];
+      if (map.hasLayer(layer)) map.removeLayer(layer);
+      else layer.addTo(map);
+      forceUpdate({});
+    };
+
+    const isActive = (key) => {
+      return map && layersRef.current[key] && map.hasLayer(layersRef.current[key]);
+    };
+
+    // On ne garde que les overlays (zIndex > 0)
+    const overlayKeys = Object.keys(LAYERS).filter(k => LAYERS[k].zIndex > 0);
+
+    return (
+      <div className="h-[70px] bg-white border-t border-gray-300 p-2 flex items-center justify-center gap-4 overflow-x-auto shadow-[0_-4px_15px_rgba(0,0,0,0.1)] no-print z-[1000]">
+        {overlayKeys.map(key => (
+          <button
+            key={key}
+            onClick={() => toggleLayer(key)}
+            className={`px-5 py-2.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 shadow-sm ${isActive(key) ? 'bg-blue-600 text-white border border-blue-700' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'}`}
+          >
+            <div className={`w-3 h-3 rounded-full border border-white/50 ${isActive(key) ? 'bg-white' : 'bg-gray-400'}`}></div>
+            {LAYERS[key].name}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  export default function MapElements({ style = {}, project, onAddressFound, onAddressSearched, setSymbolToPlace, symbolToPlace, setPhotos, photos }) {
+    const [mode, setMode] = useState(null);
+    const [temp, setTemp] = useState([]);
+    const [features, setFeatures] = useState([]);
+    const [selectedId, setSelectedId] = useState(null);
+    const [askTextAt, setAskTextAt] = useState(null);
+    const [pointInfo, setPointInfo] = useState(null);
+    const [altimetryProfile, setAltimetryProfile] = useState(null);
+    const [rectangleStart, setRectangleStart] = useState(null);
+    const [photoToPlace, setPhotoToPlace] = useState(null);
+    const [targetPos, setTargetPos] = useState(null);
+    const [map, setMap] = useState(null); // State for map instance
+    const layersRef = useRef({});
+
+    useEffect(() => {
+      const h = (e) => {
+        if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+        const k = e.key.toLowerCase();
+        if (k === "l") setMode((m) => (m === "line" ? null : "line"));
+        if (k === "p") setMode((m) => (m === "polygon" ? null : "polygon"));
+        if (k === "d") setMode((m) => (m === "delete" ? null : "delete"));
+        if (k === "a") setMode((m) => (m === "altimetry" ? null : "altimetry"));
+        if (k === "b") setMode((m) => (m === "rectangle" ? null : "rectangle"));
+        if (k === "z") setMode((m) => (m === "azimuth" ? null : "azimuth"));
+        // Street view is now drag and drop, key shortcut removed or kept? Kept for now.
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, []);
+
+    useEffect(() => {
+      if (mode !== 'line' && mode !== 'polygon' && mode !== 'altimetry' && mode !== 'azimuth') setTemp([]);
+      if (mode !== 'text') setAskTextAt(null); if (mode !== 'symbol') setSymbolToPlace(null); if (mode !== 'rectangle') setRectangleStart(null); if (mode !== 'photo') setPhotoToPlace(null);
+    }, [mode, setSymbolToPlace]);
+
+    useEffect(() => {
+      if (symbolToPlace) setMode('symbol'); else if (photoToPlace) setMode('photo'); else if (mode === 'symbol' || mode === 'photo') setMode(null);
+    }, [symbolToPlace, photoToPlace]);
+
+    return (
+      <div className="relative h-full w-full flex flex-col" style={style}>
+        <div className="flex-grow relative">
+          <MapContainer center={[44.8378, -0.5792]} zoom={15} style={{ height: "100%", width: "100%" }} doubleClickZoom={false} zoomControl={false} className={mode === 'delete' ? 'cursor-pointer' : (symbolToPlace || photoToPlace ? 'cursor-crosshair' : 'cursor-default')}>
+            <MapInstance setMap={setMap} />
+            <MapDrawingTools mode={mode} setMode={setMode} />
+            <LayersBootstrap layersRef={layersRef} />
+
+            {/* Controls inside map */}
+            <BasemapControl layersRef={layersRef} />
+            <PLULegend layersRef={layersRef} />
+            <RPGLegend layersRef={layersRef} />
+            <PegmanControl />
+
+            <SearchField onAddressFound={onAddressFound} />
+            <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
+              <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '80px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
+                <div className="flex flex-col items-start gap-2">
+                  <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} />
+                  <MiniMap />
+                  <ScaleControl position="bottomleft" metric={true} imperial={false} />
+                </div>
+              </div>
+            </div>
+            <EditLayer {...{ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, symbolToPlace, setSymbolToPlace, setPointInfo, setAltimetryProfile, rectangleStart, setRectangleStart, photoToPlace, setPhotoToPlace, targetPos, setTargetPos }} />
+            <MapEvents
+              project={project}
+              onAddressFound={onAddressFound}
+              onAddressSearched={onAddressSearched}
+              setPhotoToPlace={setPhotoToPlace}
+              setFeatures={setFeatures}
+              onRightClick={(latlng) => setTargetPos(latlng)}
+            />
+            <PointInfoPanel pointInfo={pointInfo} setPointInfo={setPointInfo} />
+            <AltimetryProfile profile={altimetryProfile} setProfile={setAltimetryProfile} setFeatures={setFeatures} features={features} />
+          </MapContainer>
+        </div>
+
+        {/* Bottom Bar outside map */}
+        <BottomLayersBar layersRef={layersRef} map={map} />
+      </div>
+    );
+  }
