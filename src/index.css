@@ -81,7 +81,7 @@ body,
 }
 
 .app-header {
-  @apply bg-background/80 backdrop-blur-sm border-b sticky top-0 z-[1000] h-[65px] px-6;
+  @apply bg-background/80 backdrop-blur-sm border-b sticky top-0 z-[10000] h-[65px] px-6;
 }
 
 .app-header__container {

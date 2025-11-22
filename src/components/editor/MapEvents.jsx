@@ -26,9 +26,16 @@ function asDivIcon(emoji) {
   });
 }
 
-export default function MapEvents({ map }) {
+export default function MapEvents({ map, onRightClick }) {
   useEffect(() => {
     if (!map) return;
+
+    // Gestion du clic droit
+    if (onRightClick) {
+      map.on("contextmenu", (e) => {
+        onRightClick(e.latlng);
+      });
+    }
 
     /** Drag & drop depuis la colonne de droite */
     function onDragOver(ev) {

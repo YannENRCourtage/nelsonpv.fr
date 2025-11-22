@@ -145,14 +145,10 @@ const rotationIcon = L.divIcon({
   iconAnchor: [12, 12],
 });
 const targetIcon = L.divIcon({
-  html: `<div class="relative flex items-center justify-center w-8 h-8">
-             <div class="absolute w-full h-0.5 bg-red-500"></div>
-             <div class="absolute h-full w-0.5 bg-red-500"></div>
-             <div class="absolute w-4 h-4 border-2 border-red-500 rounded-full"></div>
-           </div>`,
+  html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#f97316" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 drop-shadow-md"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3" fill="#ffffff"></circle></svg>`,
   className: 'bg-transparent border-none',
   iconSize: [32, 32],
-  iconAnchor: [16, 16],
+  iconAnchor: [16, 32], // Pointe en bas au centre
 });
 const pegmanIcon = L.divIcon({
   html: `<div class="text-4xl filter drop-shadow-lg cursor-grab active:cursor-grabbing">🏃</div>`, // Using emoji as placeholder for Pegman
@@ -516,22 +512,42 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
         />
       )}
 
-      {/* Street View Pegman */}
+      {/* Street View Pegman & Coverage */}
       {mode === 'streetview' && (
-        <Marker
-          position={map.getCenter()}
-          icon={pegmanIcon}
-          draggable={true}
-          eventHandlers={{
-            dragend: (e) => {
-              const { lat, lng } = e.target.getLatLng();
-              window.open(`https://www.google.com/maps?layer=c&cbll=${lat},${lng}`, '_blank');
-              setMode(null);
-            }
-          }}
-        >
-          <Tooltip permanent direction="top">Déplacez-moi sur une route !</Tooltip>
-        </Marker>
+        <>
+          <TileLayer
+            url="https://mt1.google.com/vt/lyrs=h,svv&x={x}&y={y}&z={z}"
+            maxZoom={20}
+            zIndex={1000}
+            opacity={1}
+          />
+          <Marker
+            position={map.getCenter()}
+            icon={pegmanIcon}
+            draggable={true}
+            eventHandlers={{
+              dragend: (e) => {
+                const { lat, lng } = e.target.getLatLng();
+                // Ouvrir une popup centrée
+                const width = 800;
+                const height = 600;
+                const left = (window.screen.width - width) / 2;
+                const top = (window.screen.height - height) / 2;
+                window.open(
+                  `https://www.google.com/maps?layer=c&cbll=${lat},${lng}`,
+                  'StreetView',
+                  `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes,status=yes`
+                );
+                setMode(null);
+              }
+            }}
+            zIndexOffset={1000}
+          >
+            <Tooltip permanent direction="top" offset={[0, -20]} className="font-bold">
+              Déplacez-moi sur une route bleue !
+            </Tooltip>
+          </Marker>
+        </>
       )}
 
       {askTextAt && <TextInputPopup at={askTextAt} onCancel={() => { setAskTextAt(null); setMode(null); }} onSubmit={(val) => { const id = crypto.randomUUID(); setFeatures((arr) => [...arr, { id, type: "text", at: askTextAt, value: val }]); setAskTextAt(null); setMode(null); }} />}
@@ -1264,7 +1280,14 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
           </div>
         </div>
         <EditLayer {...{ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, symbolToPlace, setSymbolToPlace, setPointInfo, setAltimetryProfile, rectangleStart, setRectangleStart, photoToPlace, setPhotoToPlace, targetPos, setTargetPos }} />
-        <MapEvents project={project} onAddressFound={onAddressFound} onAddressSearched={onAddressSearched} setPhotoToPlace={setPhotoToPlace} setFeatures={setFeatures} />
+        <MapEvents
+          project={project}
+          onAddressFound={onAddressFound}
+          onAddressSearched={onAddressSearched}
+          setPhotoToPlace={setPhotoToPlace}
+          setFeatures={setFeatures}
+          onRightClick={(latlng) => setTargetPos(latlng)}
+        />
         <PointInfoPanel pointInfo={pointInfo} setPointInfo={setPointInfo} />
         <AltimetryProfile profile={altimetryProfile} setProfile={setAltimetryProfile} setFeatures={setFeatures} features={features} />
       </MapContainer>
