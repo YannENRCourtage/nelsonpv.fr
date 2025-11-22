@@ -235,8 +235,8 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 
   const handleAltimetry = async (line) => {
     if (VOTRE_CLE_IGN === "VOTRE_CLE_API_IGN_A_METTRE_ICI") {
-        toast({ ...destructiveToastStyle, title: "Clé API manquante", description: "Veuillez configurer votre clé API IGN dans MapElements.jsx pour utiliser l'altimétrie." });
-        return;
+      toast({ ...destructiveToastStyle, title: "Clé API manquante", description: "Veuillez configurer votre clé API IGN dans MapElements.jsx pour utiliser l'altimétrie." });
+      return;
     }
     const totalDist = polylineLength(line);
     const samples = Math.min(100, Math.max(10, Math.round(totalDist / 5)));
@@ -432,9 +432,9 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
         const shapeEventHandlers = { ...baseEventHandlers, mousedown: (e) => { L.DomEvent.stop(e); if (mode || draggingRef.current) return; draggingRef.current = { type: 'drag', featureId: f.id, startLatLng: e.latlng }; } };
 
         if (f.type === "line") return <Polyline key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#2563eb", weight: 3, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatDistance(polylineLength(f.coords))}</Tooltip></Polyline>;
-        
+
         if (f.type === "polygon") return <Polygon key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#16a34a", weight: 2, fillColor: "#16a34a", fillOpacity: 0.25, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatArea(polygonArea(f.coords))}</Tooltip></Polygon>;
-        
+
         if (f.type === "rectangle") {
           const center = centroid(f.coords);
           if (!center) return null;
@@ -544,16 +544,53 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 // LISTE DES CALQUES
 // ====================================================================
 const LAYERS = {
-  // Basemaps
+  // ========== FONDS DE CARTE ==========
   googleSat: { name: "Satellite Google", url: "https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0 },
   esriSat: { name: "Satellite Esri", url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attrib: 'Tiles © Esri', zIndex: 0 },
   osm: { name: "Plan OSM", url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attrib: '© OpenStreetMap contributors', zIndex: 0 },
+  ignPlan: { name: "IGN - Plan IGN", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0 },
+  ignPhotos1950: { name: "IGN - Photos aériennes 1950-1965", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS.1950-1965&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0 },
+  ignOrtho2019: { name: "IGN - Orthophotos 2019", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS2019&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0 },
+  ignOrtho2020: { name: "IGN - Orthophotos 2020", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS2020&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0 },
+  ignEtatMajor: { name: "IGN - Carte État-Major (1820-1866)", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.ETATMAJOR40&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0 },
+  ignCassini: { name: "IGN - Carte de Cassini (XVIIIe)", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.CASSINI&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0 },
 
-  // Overlays
-  cadastre: { name: "Cadastre (Parcelles)", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=CADASTRALPARCELS.PARCELS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: 'Parcellaire © IGN', isOverlay: true, zIndex: 10, opacity: 0.5 },
-  batiments: { name: "Bâtiments", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=BUILDINGS.BUILDINGS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: 'Bâtiments © IGN', isOverlay: true, zIndex: 11 },
-  hydro: { name: "Hydrographie", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=HYDROGRAPHY.HYDROGRAPHY&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: 'Hydro © IGN', isOverlay: true, zIndex: 12 },
-  courbes: { name: "Courbes de niveau", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ELEVATION.LEVEL&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: 'Courbes de niveau © IGN', isOverlay: true, zIndex: 13, opacity: 0.7 },
+  // ========== CALQUES OVERLAY ==========
+  // Cadastre & Bâtiments
+  cadastre: { name: "Cadastre (Parcelles)", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=CADASTRALPARCELS.PARCELS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 10, opacity: 0.5 },
+  batiments: { name: "Bâtiments", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=BUILDINGS.BUILDINGS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 11 },
+
+  // Altimétrie
+  courbes: { name: "Courbes de niveau", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ELEVATION.LEVEL&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 13, opacity: 0.7 },
+  reliefOmbre: { name: "Relief ombré", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ELEVATION.SLOPES&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 14, opacity: 0.6 },
+
+  // Environnement et zones protégées
+  foretsPubliques: { name: "Forêts publiques", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=FORETS.PUBLIQUES&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 20, opacity: 0.6 },
+  parcsNationaux: { name: "Parcs nationaux", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=PROTECTEDAREAS.PN&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 21, opacity: 0.5 },
+  parcsRegionaux: { name: "Parcs naturels régionaux", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=PROTECTEDAREAS.PNR&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 22, opacity: 0.5 },
+  reservesNaturelles: { name: "Réserves naturelles", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=PROTECTEDAREAS.RN&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 23, opacity: 0.5 },
+  znieff1: { name: "ZNIEFF type 1", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=PROTECTEDAREAS.ZNIEFF1&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 24, opacity: 0.5 },
+  znieff2: { name: "ZNIEFF type 2", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=PROTECTEDAREAS.ZNIEFF2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 25, opacity: 0.5 },
+
+  // Agriculture et occupation du sol
+  rpg: { name: "RPG - Parcelles agricoles", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=LANDUSE.AGRICULTURE2023&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 26, opacity: 0.6 },
+  corineLandCover: { name: "Corine Land Cover  2018", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=LANDCOVER.CLC18&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 27, opacity: 0.6 },
+
+  // Hydrographie
+  hydro: { name: "Hydrographie", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=HYDROGRAPHY.HYDROGRAPHY&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 12 },
+
+  // Transport
+  routes: { name: "Routes", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=TRANSPORTNETWORKS.ROADS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 30, opacity: 0.7 },
+  voiesFerrees: { name: "Voies ferrées", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=TRANSPORTNETWORKS.RAILWAYS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 31, opacity: 0.7 },
+
+  // Limites administratives
+  communes: { name: "Limites communales", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ADMINEXPRESS-COG-CARTO.LATEST&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 32, opacity: 0.5 },
+
+  // Urbanisme
+  plu: { name: "PLU / PLUi", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=LANDUSE.AGRICULTURE2023&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN / GPU', isOverlay: true, zIndex: 33, opacity: 0.5 },
+
+  // Risques
+  zonesInondables: { name: "Zones inondables", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=LANDCOVER.CLC18&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 34, opacity: 0.5 },
 };
 // ====================================================================
 // FIN DE LA LISTE DES CALQUES
@@ -664,7 +701,7 @@ function MapTargetInfo({ targetPos, setTargetPos }) {
 
   useEffect(() => {
     if (!targetPos) return;
-    
+
     // Le check "Clé IGN?" est retiré.
     // Affiche "..." pendant le chargement, puis "N/A" si la clé est manquante/invalide.
 
@@ -750,7 +787,7 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
     const handleCaptureRequest = async (e) => {
       const { slotIndex } = e.detail;
       if (map) {
-        
+
         const canvas = await html2canvas(map.getContainer(), {
           useCORS: true, logging: false,
 
@@ -765,12 +802,12 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
               '.leaflet-control-container .leaflet-bottom-right' // Sélecteur de calques
             );
             controlsToHide.forEach(c => c.style.display = 'none');
-            
+
             // --- FIX POUR LE DÉCALAGE ---
             const leafletPane = doc.querySelector('.leaflet-pane.leaflet-map-pane');
             if (leafletPane) {
               const transform = leafletPane.style.transform;
-              
+
               // Appliquer la *même* transformation à tous les autres panneaux (marqueurs, SVG, popups)
               const panesToTransform = doc.querySelectorAll(
                 '.leaflet-marker-pane, .leaflet-tooltip-pane, .leaflet-popup-pane, .leaflet-shadow-pane, .leaflet-overlay-pane'
@@ -778,11 +815,11 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
               panesToTransform.forEach(pane => {
                 pane.style.transform = transform;
               });
-              
+
               // Appliquer aussi au panneau SVG (qui contient les lignes, polygones, etc.)
               const svgPane = doc.querySelector('.leaflet-pane > svg');
-              if(svgPane) {
-                  svgPane.style.transform = transform;
+              if (svgPane) {
+                svgPane.style.transform = transform;
               }
             }
           }
@@ -791,7 +828,7 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
           // ====================================================================
 
         });
-        
+
         // L'événement de retour est "map:capture-done"
         const dataUrl = canvas.toDataURL('image/png');
         window.dispatchEvent(new CustomEvent("map:capture-done", { detail: { slotIndex, dataUrl } }));
@@ -802,18 +839,18 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
       if (project?.address) { const fullAddress = `${project.address}, ${project.zip} ${project.city}`; const event = new CustomEvent('geosearch/search', { detail: { query: fullAddress, keepPopupOpen: false } }); map.getContainer().dispatchEvent(event); }
     };
     const handlePlacePhoto = (e) => { setPhotoToPlace(e.detail); };
-    
+
     // Correction du nom de l'événement écouté
-    window.addEventListener("map:capture-request", handleCaptureRequest); 
+    window.addEventListener("map:capture-request", handleCaptureRequest);
     window.addEventListener("map:goto-project-address", goToProjectAddress);
     window.addEventListener("map:place-photo", handlePlacePhoto);
-    
+
     // L'événement de retour "map:capture-done" est géré dans ProjectMap.jsx
-    
-    return () => { 
-      window.removeEventListener("map:capture-request", handleCaptureRequest); 
-      window.removeEventListener("map:goto-project-address", goToProjectAddress); 
-      window.removeEventListener("map:place-photo", handlePlacePhoto); 
+
+    return () => {
+      window.removeEventListener("map:capture-request", handleCaptureRequest);
+      window.removeEventListener("map:goto-project-address", goToProjectAddress);
+      window.removeEventListener("map:place-photo", handlePlacePhoto);
     };
   }, [map, project, onAddressFound, setPhotoToPlace]);
 
@@ -828,9 +865,9 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
 function PointInfoPanel({ pointInfo, setPointInfo }) {
   useEffect(() => {
     if (!pointInfo || pointInfo.address !== 'Chargement...') return;
-    
+
     // Le check "Clé IGN?" est retiré.
-    
+
     const { latlng } = pointInfo;
     const fetches = [
       fetch(`https://wxs.ign.fr/${VOTRE_CLE_IGN}/alti/rest/elevation.json?lon=${latlng.lng}&lat=${latlng.lat}&zonly=true`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ altitude: `${data.elevations[0].z.toFixed(1)} m` })).catch(() => ({ altitude: 'N/A' })),
