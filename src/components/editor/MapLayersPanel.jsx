@@ -91,6 +91,38 @@ const baseLayers = {
         attribution: 'IGN-F/Géoportail',
         maxZoom: 18,
     },
+    // Photos historiques et orthophotos
+    ign_ortho_1950: {
+        name: 'IGN - Photos aériennes 1950-1965',
+        url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS.1950-1965&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+        attribution: 'IGN-F/Géoportail',
+        maxZoom: 18,
+    },
+    ign_ortho_2019: {
+        name: 'IGN - Orthophotos 2019',
+        url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS2019&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+        attribution: 'IGN-F/Géoportail',
+        maxZoom: 19,
+    },
+    ign_ortho_2020: {
+        name: 'IGN - Orthophotos 2020',
+        url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS2020&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+        attribution: 'IGN-F/Géoportail',
+        maxZoom: 19,
+    },
+    // Cartes historiques
+    ign_etat_major: {
+        name: 'IGN - Carte État-Major 1:40000 (1820-1866)',
+        url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.ETATMAJOR40&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+        attribution: 'IGN-F/Géoportail',
+        maxZoom: 15,
+    },
+    ign_cassini: {
+        name: 'IGN - Carte de Cassini (XVIIIe siècle)',
+        url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.CASSINI&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+        attribution: 'IGN-F/Géoportail',
+        maxZoom: 15,
+    },
     // CartoDB variants
     cartodb_positron: {
         name: 'CartoDB Positron (Light)',
@@ -147,9 +179,80 @@ const overlayCategories = {
     'Réseau électrique ENEDIS': {
         layers: {
             'Postes HTA/BT': {
-                url: '/postes-de-distribution-publique-postes-htabt.geojson',
+                url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/postes-electriques-de-distribution-publique-postes-htabt/exports/geojson?limit=-1',
                 attribution: 'ENEDIS',
-                type: 'geojson',
+                type: 'geojson-api',
+                style: { color: '#FFA500', weight: 1 },
+                minZoom: 10,
+            },
+            'Postes Sources': {
+                url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/positions-geographiques-des-postes-sources-et-postes-de-repartition-hta-hta/exports/geojson?limit=-1',
+                attribution: 'ENEDIS',
+                type: 'geojson-api',
+                style: { color: '#DC143C', weight: 2 },
+                minZoom: 8,
+            },
+            'Lignes HTA': {
+                url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-moyenne-tension-hta/exports/geojson',
+                attribution: 'ENEDIS',
+                type: 'geojson-api-lazy',
+                style: { color: '#FF8C00', weight: 3, opacity: 0.7 },
+                minZoom: 13,
+            },
+            'Lignes BT': {
+                url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-basse-tension-bt/exports/geojson',
+                attribution: 'ENEDIS',
+                type: 'geojson-api-lazy',
+                style: { color: '#4169E1', weight: 2, opacity: 0.6 },
+                minZoom: 15,
+            },
+        },
+    },
+    'Environnement et zones protégées': {
+        layers: {
+            'Forêts publiques': {
+                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=FORETS.PUBLIQUES&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+                attribution: 'IGN-F/Géoportail',
+                type: 'tile',
+            },
+            'Parcs nationaux': {
+                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=PROTECTEDAREAS.PN&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+                attribution: 'IGN-F/Géoportail',
+                type: 'tile',
+            },
+            'Parcs naturels régionaux': {
+                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=PROTECTEDAREAS.PNR&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+                attribution: 'IGN-F/Géoportail',
+                type: 'tile',
+            },
+            'Réserves naturelles': {
+                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=PROTECTEDAREAS.RN&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+                attribution: 'IGN-F/Géoportail',
+                type: 'tile',
+            },
+            'ZNIEFF type 1': {
+                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=PROTECTEDAREAS.ZNIEFF1&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+                attribution: 'IGN-F/Géoportail',
+                type: 'tile',
+            },
+            'ZNIEFF type 2': {
+                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=PROTECTEDAREAS.ZNIEFF2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+                attribution: 'IGN-F/Géoportail',
+                type: 'tile',
+            },
+        },
+    },
+    'Agriculture et occupation du sol': {
+        layers: {
+            'RPG (Parcelles agricoles)': {
+                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=LANDUSE.AGRICULTURE.LATEST&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+                attribution: 'IGN-F/Géoportail',
+                type: 'tile',
+            },
+            'Corine Land Cover 2018': {
+                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=LANDCOVER.CLC18&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+                attribution: 'IGN-F/Géoportail',
+                type: 'tile',
             },
         },
     },
@@ -244,9 +347,12 @@ const MapLayersPanel = ({ map }) => {
         const newGeoJsonLayers = {};
         Object.entries(overlayCategories).forEach(([categoryName, category]) => {
             Object.entries(category.layers).forEach(([layerName, layerConfig]) => {
-                if (layerConfig.type === 'geojson') {
+                // GeoJSON layers (local, API, or lazy) - initialize as null
+                if (layerConfig.type === 'geojson' || layerConfig.type === 'geojson-api' || layerConfig.type === 'geojson-api-lazy') {
                     newGeoJsonLayers[layerName] = null;
-                } else {
+                }
+                // Tile layers (WMTS) - create immediately
+                else if (layerConfig.type === 'tile') {
                     const tileLayer = L.tileLayer(layerConfig.url, {
                         attribution: layerConfig.attribution,
                         maxZoom: 20,
@@ -286,7 +392,23 @@ const MapLayersPanel = ({ map }) => {
                     }
                 }
                 if (layerConfig) {
-                    if (layerConfig.type === 'geojson') {
+                    // Check zoom level for layers with minZoom
+                    if (layerConfig.minZoom && map.getZoom() < layerConfig.minZoom && checked) {
+                        alert(`Veuillez zoomer au niveau ${layerConfig.minZoom} ou plus pour afficher cette couche`);
+                        return prev; // Don't activate
+                    }
+
+                    // Type: tile (WMTS layers)
+                    if (layerConfig.type === 'tile') {
+                        if (checked && leafletOverlayLayers[layerName]) {
+                            leafletOverlayLayers[layerName].addTo(map);
+                        } else if (!checked && leafletOverlayLayers[layerName]) {
+                            map.removeLayer(leafletOverlayLayers[layerName]);
+                        }
+                    }
+
+                    // Type: geojson (local file - postes HTA/BT)
+                    else if (layerConfig.type === 'geojson') {
                         if (checked) {
                             if (!geoJsonLayers[layerName]) {
                                 setLoadingLayers(prev => ({ ...prev, [layerName]: true }));
@@ -327,7 +449,7 @@ const MapLayersPanel = ({ map }) => {
                                                 if (feature.properties) {
                                                     const props = feature.properties;
                                                     let popupContent = '<div style="font-family: sans-serif;">';
-                                                    popupContent += '<h4 style="margin: 0 0 8px 0; color: #FF6B00; font-size: 16px; font-weight: bold;">⚡ Poste ENEDIS</h4>';
+                                                    popupContent += '<h4 style="margin: 0 0 8px 0; color: #FF6B00; font-size: 16px; font-weight: bold;">⚡ Poste HTA/BT</h4>';
                                                     if (props.nom_poste) popupContent += `<p style="margin: 4px 0;"><strong>Nom:</strong> ${props.nom_poste}</p>`;
                                                     if (props.type_poste) popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.type_poste}</p>`;
                                                     if (props.puissance) popupContent += `<p style="margin: 4px 0;"><strong>Puissance:</strong> ${props.puissance}</p>`;
@@ -339,9 +461,7 @@ const MapLayersPanel = ({ map }) => {
                                                         }
                                                     });
                                                     popupContent += '</div>';
-                                                    layer.bindPopup(popupContent, {
-                                                        maxWidth: 300
-                                                    });
+                                                    layer.bindPopup(popupContent, { maxWidth: 300 });
                                                 }
                                             }
                                         });
@@ -352,7 +472,7 @@ const MapLayersPanel = ({ map }) => {
                                     })
                                     .catch(error => {
                                         console.error('Erreur lors du chargement du GeoJSON:', error);
-                                        alert('Impossible de charger les postes ENEDIS. Assurez-vous que le fichier postes-de-distribution-publique-postes-htabt.geojson est dans le dossier /public/');
+                                        alert('Impossible de charger les postes HTA/BT. Assurez-vous que le fichier est dans le dossier /public/');
                                         setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
                                     });
                             } else {
@@ -363,11 +483,117 @@ const MapLayersPanel = ({ map }) => {
                                 map.removeLayer(geoJsonLayers[layerName]);
                             }
                         }
-                    } else {
-                        if (checked && leafletOverlayLayers[layerName]) {
-                            leafletOverlayLayers[layerName].addTo(map);
-                        } else if (!checked && leafletOverlayLayers[layerName]) {
-                            map.removeLayer(leafletOverlayLayers[layerName]);
+                    }
+
+                    // Type: geojson-api (ENEDIS postes sources - direct)
+                    else if (layerConfig.type === 'geojson-api') {
+                        if (checked) {
+                            if (!geoJsonLayers[layerName]) {
+                                setLoadingLayers(prev => ({ ...prev, [layerName]: true }));
+                                fetch(layerConfig.url)
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        const markerClusterGroup = L.markerClusterGroup({
+                                            chunkedLoading: true,
+                                            maxClusterRadius: 60,
+                                            iconCreateFunction: function (cluster) {
+                                                const count = cluster.getChildCount();
+                                                return L.divIcon({
+                                                    html: `<div style="background: #DC143C; color:white; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">${count}</div>`,
+                                                    className: '',
+                                                    iconSize: L.point(35, 35)
+                                                });
+                                            }
+                                        });
+                                        const geoJsonLayer = L.geoJSON(data, {
+                                            pointToLayer: (feature, latlng) => {
+                                                return L.circleMarker(latlng, {
+                                                    radius: 8,
+                                                    fillColor: "#DC143C",
+                                                    color: "#8B0000",
+                                                    weight: 2,
+                                                    opacity: 1,
+                                                    fillOpacity: 0.8
+                                                });
+                                            },
+                                            onEachFeature: (feature, layer) => {
+                                                if (feature.properties) {
+                                                    const props = feature.properties;
+                                                    let popupContent = '<div style="font-family: sans-serif;">';
+                                                    popupContent += '<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 17px; font-weight: bold;">🏭 Poste Source</h4>';
+                                                    if (props.nom_poste || props.libelle_poste) popupContent += `<p style="margin: 4px 0;"><strong>Nom:</strong> ${props.nom_poste || props.libelle_poste}</p>`;
+                                                    if (props.nom_commune) popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.nom_commune}</p>`;
+                                                    if (props.nom_departement) popupContent += `<p style="margin: 4px 0;"><strong>Département:</strong> ${props.nom_departement}</p>`;
+                                                    if (props.nom_region) popupContent += `<p style="margin: 4px 0;"><strong>Région:</strong> ${props.nom_region}</p>`;
+                                                    popupContent += '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">';
+                                                    popupContent += '<p style="margin: 4px 0;"><a href="https://www.capareseau.fr/" target="_blank" style="color: #DC143C; font-weight: bold;">🔗 Voir capacités sur Caparéseau.fr</a></p>';
+                                                    popupContent += '</div>';
+                                                    layer.bindPopup(popupContent, { maxWidth: 320 });
+                                                }
+                                            }
+                                        });
+                                        markerClusterGroup.addLayer(geoJsonLayer);
+                                        markerClusterGroup.addTo(map);
+                                        setGeoJsonLayers(prev => ({ ...prev, [layerName]: markerClusterGroup }));
+                                        setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
+                                    })
+                                    .catch(error => {
+                                        console.error('Erreur chargement postes sources:', error);
+                                        alert('Impossible de charger les postes sources ENEDIS depuis l\'API');
+                                        setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
+                                    });
+                            } else {
+                                geoJsonLayers[layerName].addTo(map);
+                            }
+                        } else {
+                            if (geoJsonLayers[layerName]) {
+                                map.removeLayer(geoJsonLayers[layerName]);
+                            }
+                        }
+                    }
+
+                    // Type: geojson-api-lazy (Lignes HTA/BT - lazy loading)
+                    else if (layerConfig.type === 'geojson-api-lazy') {
+                        if (checked) {
+                            if (!geoJsonLayers[layerName]) {
+                                setLoadingLayers(prev => ({ ...prev, [layerName]: true }));
+                                const bounds = map.getBounds();
+                                const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
+                                const apiUrl = `${layerConfig.url}?bbox=${bbox}&limit=5000`;
+
+                                fetch(apiUrl)
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        const geoJsonLayer = L.geoJSON(data, {
+                                            style: layerConfig.style || { color: '#FF8C00', weight: 2 },
+                                            onEachFeature: (feature, layer) => {
+                                                if (feature.properties) {
+                                                    const props = feature.properties;
+                                                    let popupContent = '<div style="font-family: sans-serif; font-size: 13px;">';
+                                                    popupContent += `<h4 style="margin: 0 0 6px 0; color: ${layerConfig.style.color}; font-size: 15px;">⚡ Ligne ${layerName}</h4>`;
+                                                    if (props.lib_ligne) popupContent += `<p style="margin: 3px 0;"><strong>Ligne:</strong> ${props.lib_ligne}</p>`;
+                                                    if (props.nom_commune) popupContent += `<p style="margin: 3px 0;"><strong>Commune:</strong> ${props.nom_commune}</p>`;
+                                                    popupContent += '</div>';
+                                                    layer.bindPopup(popupContent, { maxWidth: 250 });
+                                                }
+                                            }
+                                        });
+                                        geoJsonLayer.addTo(map);
+                                        setGeoJsonLayers(prev => ({ ...prev, [layerName]: geoJsonLayer }));
+                                        setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
+                                    })
+                                    .catch(error => {
+                                        console.error(`Erreur chargement ${layerName}:`, error);
+                                        alert(`Impossible de charger ${layerName} depuis l'API ENEDIS`);
+                                        setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
+                                    });
+                            } else {
+                                geoJsonLayers[layerName].addTo(map);
+                            }
+                        } else {
+                            if (geoJsonLayers[layerName]) {
+                                map.removeLayer(geoJsonLayers[layerName]);
+                            }
                         }
                     }
                 }
