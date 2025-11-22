@@ -1356,7 +1356,7 @@ function PegmanControl() {
 
   return (
     <div
-      className="leaflet-bottom leaflet-right hide-on-capture"
+      className="leaflet-bottom leaflet-right hide-on-capture no-print"
       style={{ bottom: '130px', right: '10px', pointerEvents: 'auto', zIndex: 1000, position: 'absolute' }}
     >
       <div
