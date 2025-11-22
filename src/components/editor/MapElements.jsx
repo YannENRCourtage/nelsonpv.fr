@@ -296,7 +296,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
           if (pente > maxPente) maxPente = pente;
         }
       }
-      return { distance: Math.round(p.dist), altitude: p.alt || 0 };
+      return { distance: Math.round(p.dist), altitude: p.alt || 0, lat: p.lat, lng: p.lng };
     });
 
     const penteMoyenne = totalDist > 0 ? ((denivelePos + deniveleNeg) / totalDist) * 100 : 0;
@@ -632,7 +632,7 @@ function PLULegend({ layersRef }) {
 
   return (
     <div
-      className="absolute bottom-[200px] left-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
+      className="absolute bottom-[350px] left-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
       style={{ userSelect: 'none' }}
     >
       <div className="flex justify-between items-center mb-2">
@@ -670,14 +670,14 @@ function BottomLayersBar({ layersRef }) {
   const overlayKeys = Object.keys(LAYERS).filter(k => LAYERS[k].zIndex > 0);
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-white border-t border-gray-200 p-2 flex items-center justify-center gap-4 overflow-x-auto shadow-[0_-2px_10px_rgba(0,0,0,0.1)] h-14">
+    <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-white border-t border-gray-300 p-2 flex items-center justify-center gap-4 overflow-x-auto shadow-[0_-4px_15px_rgba(0,0,0,0.1)] h-16 no-print">
       {overlayKeys.map(key => (
         <button
           key={key}
           onClick={() => toggleLayer(key)}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${isActive(key) ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+          className={`px-5 py-2.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 shadow-sm ${isActive(key) ? 'bg-blue-600 text-white border border-blue-700' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'}`}
         >
-          <div className={`w-3 h-3 rounded-full ${isActive(key) ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+          <div className={`w-3 h-3 rounded-full border border-white/50 ${isActive(key) ? 'bg-white' : 'bg-gray-400'}`}></div>
           {LAYERS[key].name}
         </button>
       ))}
@@ -693,11 +693,9 @@ function BasemapControl({ layersRef }) {
   useEffect(() => {
     if (!map || !layersRef.current) return;
 
-    const container = L.DomUtil.create('div', 'leaflet-control-layers leaflet-control-layers-expanded custom-basemap-panel');
-    container.style.padding = '8px';
+    const container = L.DomUtil.create('div', 'leaflet-control-layers leaflet-control-layers-expanded custom-basemap-panel no-print');
+    container.style.padding = '10px';
     container.style.backgroundColor = 'white';
-    container.style.borderRadius = '4px';
-    container.style.boxShadow = '0 1px 5px rgba(0,0,0,0.4)';
 
     const title = document.createElement('div');
     title.innerText = 'Fonds de carte';
@@ -1015,34 +1013,36 @@ function PointInfoPanel({ pointInfo, setPointInfo }) {
 
 function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
   const map = useMap();
-  const [layerName, setLayerName] = useState("profil altimetrique");
   const chartRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [hoverPoint, setHoverPoint] = useState(null);
 
-  // Effect 1: Map Polyline
+  // Effect 1: Map Polyline & Hover Marker
   useEffect(() => {
     if (!map || !profile?.line) return;
     const polyline = L.polyline(profile.line, { color: "#007bff", weight: 3, opacity: 0.8, dashArray: '5, 5' }).addTo(map);
-    return () => { map.removeLayer(polyline); };
-  }, [map, profile]);
 
-  // Dragging Handlers (Moved up)
+    let marker = null;
+    if (hoverPoint) {
+      marker = L.circleMarker([hoverPoint.lat, hoverPoint.lng], { radius: 6, color: 'red', fillColor: 'yellow', fillOpacity: 1, weight: 2 }).addTo(map);
+    }
+
+    return () => {
+      map.removeLayer(polyline);
+      if (marker) map.removeLayer(marker);
+    };
+  }, [map, profile, hoverPoint]);
+
+  // Dragging Handlers
   const handleMouseMove = (e) => {
     if (isDragging) {
-      setPosition({
-        x: e.clientX - dragOffset.x,
-        y: e.clientY - dragOffset.y
-      });
+      setPosition({ x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y });
     }
   };
+  const handleMouseUp = () => { setIsDragging(false); };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  // Effect 2: Dragging Listeners (Moved up)
   useEffect(() => {
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
@@ -1052,116 +1052,88 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
         window.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isDragging, dragOffset]); // Dependencies kept same as original
+  }, [isDragging, dragOffset]);
 
-  // Conditional Return
   if (!profile) return null;
+  const { data, stats, minAlt, maxAlt } = profile; // Destructure stats, minAlt, maxAlt
+  const [layerName, setLayerName] = useState(profile.name || "Nouveau profil"); // Add layerName state
 
-  // Data extraction
-  const { data, stats } = profile;
-  const minAlt = Math.min(...data.map(p => p.altitude));
-  const maxAlt = Math.max(...data.map(p => p.altitude));
-
-  // Other handlers
-  const handleCloseProfile = () => {
-    setProfile(null);
-    toast({ ...toastStyle, title: "Profil altimétrique fermé", description: "Les informations du profil altimétrique ne sont plus affichées." });
-  };
-
-  const handleExportCSV = () => {
-    let csv = "Distance (m),Altitude (m)\n";
-    data.forEach(point => {
-      csv += `${point.distance},${point.altitude}\n`;
-    });
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${layerName.replace(/\s+/g, '_')}_donnees.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast({ ...toastStyle, title: "Export CSV réussi !", description: "Les données ont été exportées." });
-  };
-
-  const handleSaveProfile = () => {
-    const id = crypto.randomUUID();
-    const newFeature = {
-      id,
-      type: "altimetryProfile",
-      name: layerName,
-      coords: profile.line,
-      profileData: data,
-      stats: stats
-    };
-
-    setFeatures(fs => [...fs, newFeature]);
-    toast({
-      ...toastStyle,
-      title: "Profil enregistré !",
-      description: `Le profil "${layerName}" a été ajouté à la carte.`
-    });
-    setProfile(null);
-  };
-
-  const handleZoomToProfile = () => {
-    if (profile?.line && map) {
-      const bounds = L.latLngBounds(profile.line);
-      map.fitBounds(bounds, { padding: [50, 50] });
-      toast({ ...toastStyle, title: "Zoom ajusté", description: "La carte est centrée sur le profil." });
-    }
-  };
+  const handleCloseProfile = () => { setProfile(null); };
 
   const handleMouseDown = (e) => {
     setIsDragging(true);
     const rect = e.currentTarget.getBoundingClientRect();
-    setDragOffset({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
+    setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   };
 
-  const dialogStyle = isDragging ? {
-    position: 'fixed',
-    left: `${position.x}px`,
-    top: `${position.y}px`,
-    transform: 'none'
-  } : {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    transform: 'translate(-50%, -50%)'
+  const dialogStyle = isDragging ? { position: 'fixed', left: `${position.x}px`, top: `${position.y}px`, transform: 'none' } : { position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)' };
+
+  // Handlers for new buttons
+  const handleZoomToProfile = () => {
+    if (profile?.line && map) {
+      const bounds = L.latLngBounds(profile.line);
+      map.fitBounds(bounds);
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (!data || data.length === 0) return;
+    const csvContent = "data:text/csv;charset=utf-8,"
+      + "Distance (m),Altitude (m)\n"
+      + data.map(p => `${p.distance.toFixed(1)},${p.altitude.toFixed(1)}`).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `${layerName.replace(/\s/g, '_')}_profil_altimetrique.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ ...toastStyle, title: "Export CSV", description: "Le profil altimétrique a été exporté en CSV." });
+  };
+
+  const handleSaveProfile = () => {
+    if (!profile) return;
+    const newFeature = {
+      id: crypto.randomUUID(),
+      type: "altimetryProfile",
+      name: layerName,
+      line: profile.line,
+      data: profile.data,
+      stats: profile.stats,
+      minAlt: profile.minAlt,
+      maxAlt: profile.maxAlt,
+    };
+    setFeatures(prev => [...prev, newFeature]);
+    setProfile(null); // Close the profile panel after saving
+    toast({ ...toastStyle, title: "Profil enregistré", description: `Le profil "${layerName}" a été ajouté à la carte.` });
   };
 
   return (
-    <div
-      className="z-[1000] bg-white rounded-lg shadow-2xl border w-[600px]"
-      style={dialogStyle}
-    >
-      <div
-        className="flex justify-between items-center p-4 border-b cursor-move bg-gradient-to-r from-blue-500 to-blue-600"
-        onMouseDown={handleMouseDown}
-      >
-        <h4 className="font-bold text-lg text-white">📊 PROFIL ALTIMÉTRIQUE</h4>
-        <button
-          onClick={handleCloseProfile}
-          className="p-1 text-white hover:bg-blue-700 rounded transition-colors"
-        >
-          <XIcon size={20} />
-        </button>
+    <div className="z-[1000] bg-white rounded-lg shadow-2xl border w-[600px]" style={dialogStyle}>
+      <div className="flex justify-between items-center p-3 border-b cursor-move bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-lg" onMouseDown={handleMouseDown}>
+        <h4 className="font-bold text-base text-white">📊 PROFIL ALTIMÉTRIQUE</h4>
+        <button onClick={handleCloseProfile} className="p-1 text-white hover:bg-blue-700 rounded transition-colors"><XIcon size={18} /></button>
       </div>
       <div className="p-4">
-        <div ref={chartRef} className="h-[220px] w-full mb-4 bg-gray-50 rounded-lg p-2">
+        <div ref={chartRef} className="h-[250px] w-full bg-white">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
+            <AreaChart
+              data={data}
+              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+              onMouseMove={(e) => {
+                if (e.activePayload && e.activePayload[0]) {
+                  const point = e.activePayload[0].payload;
+                  setHoverPoint(point);
+                }
+              }}
+              onMouseLeave={() => setHoverPoint(null)}
+            >
               <defs>
                 <linearGradient id="colorAltitude" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
                   <stop offset="95%" stopColor="#10b981" stopOpacity={0.1} />
-                </linearGradient>
-              </defs>
+                </linearGradient >
+              </defs >
               <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
               <XAxis
                 dataKey="distance"
@@ -1187,9 +1159,9 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
                 fill="url(#colorAltitude)"
                 strokeWidth={2}
               />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+            </AreaChart >
+          </ResponsiveContainer >
+        </div >
 
         <div className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm text-gray-700 mb-4 bg-blue-50 p-3 rounded-lg">
           <div className="flex flex-col">
@@ -1267,8 +1239,8 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
             </Button>
           </div>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }
 
@@ -1319,8 +1291,8 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
         <BasemapControl layersRef={layersRef} />
         <PLULegend layersRef={layersRef} />
         <SearchField onAddressFound={onAddressFound} />
-        <div className="leaflet-bottom leaflet-left" style={{ pointerEvents: 'none' }}>
-          <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '33px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
+        <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
+          <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '80px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
             <div className="flex flex-col items-start gap-2">
               {/* Info Box above minimap */}
               <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} />

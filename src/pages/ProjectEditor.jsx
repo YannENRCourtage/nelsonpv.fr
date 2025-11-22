@@ -292,7 +292,13 @@ export default function ProjectEditor() {
                 <div key={i} className="group relative w-full overflow-hidden rounded-xl border bg-gray-100 aspect-video">
                   {c ? (
                     <>
-                      <img src={c} alt={`capture-${i + 1}`} className="h-full w-full object-cover" />
+                      <img
+                        src={c}
+                        alt={`capture-${i + 1}`}
+                        className="h-full w-full object-cover cursor-pointer transition-transform hover:scale-105"
+                        onClick={() => window.open(c, '_blank')}
+                        title="Cliquer pour agrandir"
+                      />
                       <button onClick={() => deleteCapture(i)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <X size={14} />
                       </button>
