@@ -231,10 +231,6 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
   });
 
   const handleAltimetry = async (line) => {
-    if (VOTRE_CLE_IGN === "VOTRE_CLE_API_IGN_A_METTRE_ICI") {
-      toast({ ...destructiveToastStyle, title: "Clé API manquante", description: "Veuillez configurer votre clé API IGN dans MapElements.jsx pour utiliser l'altimétrie." });
-      return;
-    }
     const totalDist = polylineLength(line);
     const samples = Math.min(100, Math.max(10, Math.round(totalDist / 5)));
     const points = [];
@@ -254,39 +250,57 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       }
     }
 
-    const lons = points.map(p => p.lng).join('|');
-    const lats = points.map(p => p.lat).join('|');
-
+    // Tentative 1 : API IGN
     try {
+      const lons = points.map(p => p.lng).join('|');
+      const lats = points.map(p => p.lat).join('|');
+
       const res = await fetch(`https://wxs.ign.fr/${VOTRE_CLE_IGN}/alti/rest/elevation.json?lon=${lons}&lat=${lats}&zonly=true`);
-      if (!res.ok) throw new Error('Failed to fetch elevation data');
+      if (!res.ok) throw new Error('IGN failed');
       const data = await res.json();
 
-      let denivelePos = 0;
-      let deniveleNeg = 0;
-      let maxPente = 0;
-
-      const profileData = data.elevations.map((elev, i) => {
-        points[i].alt = elev.z;
-        if (i > 0) {
-          const diff = points[i].alt - points[i - 1].alt;
-          if (diff > 0) denivelePos += diff;
-          else deniveleNeg += Math.abs(diff);
-          const dist = points[i].dist - points[i - 1].dist;
-          if (dist > 0) {
-            const pente = Math.abs(diff / dist) * 100;
-            if (pente > maxPente) maxPente = pente;
-          }
+      if (data.elevations) {
+        data.elevations.forEach((elev, i) => { if (points[i]) points[i].alt = elev.z; });
+      }
+    } catch (ignError) {
+      console.warn("IGN Alti failed, trying Open-Elevation...", ignError);
+      // Tentative 2 : Open-Elevation
+      try {
+        const locations = points.map(p => `${p.lat},${p.lng}`).join('|');
+        const res = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${locations}`);
+        if (!res.ok) throw new Error('Open-Elevation failed');
+        const data = await res.json();
+        if (data.results) {
+          data.results.forEach((r, i) => { if (points[i]) points[i].alt = r.elevation; });
         }
-        return { distance: Math.round(points[i].dist), altitude: elev.z };
-      });
-
-      const penteMoyenne = totalDist > 0 ? ((denivelePos + deniveleNeg) / totalDist) * 100 : 0;
-      setAltimetryProfile({ data: profileData, line, stats: { distance: totalDist, denivelePos, deniveleNeg, penteMoyenne, maxPente } });
-    } catch (error) {
-      console.error("Altimetry error:", error);
-      toast({ ...destructiveToastStyle, title: "Erreur de profil altimétrique", description: "Impossible de récupérer les données d'altitude. (Vérifiez votre clé API IGN et le domaine autorisé).", duration: 7000 });
+      } catch (openError) {
+        console.error("All altimetry APIs failed", openError);
+        toast({ ...destructiveToastStyle, title: "Erreur Altimétrie", description: "Impossible de récupérer les altitudes." });
+        return;
+      }
     }
+
+    // Calcul des stats
+    let denivelePos = 0;
+    let deniveleNeg = 0;
+    let maxPente = 0;
+
+    const profileData = points.map((p, i) => {
+      if (i > 0 && p.alt !== null && points[i - 1].alt !== null) {
+        const diff = p.alt - points[i - 1].alt;
+        if (diff > 0) denivelePos += diff;
+        else deniveleNeg += Math.abs(diff);
+        const dist = p.dist - points[i - 1].dist;
+        if (dist > 0) {
+          const pente = Math.abs(diff / dist) * 100;
+          if (pente > maxPente) maxPente = pente;
+        }
+      }
+      return { distance: Math.round(p.dist), altitude: p.alt || 0 };
+    });
+
+    const penteMoyenne = totalDist > 0 ? ((denivelePos + deniveleNeg) / totalDist) * 100 : 0;
+    setAltimetryProfile({ data: profileData, line, stats: { distance: totalDist, denivelePos, deniveleNeg, penteMoyenne, maxPente } });
   };
 
   const showPointInfo = (latlng) => {
@@ -609,10 +623,7 @@ function PLULegend({ layersRef }) {
       setShowLegend(pluLayer && map.hasLayer(pluLayer));
     };
 
-    // Check initially
     checkPLULayer();
-
-    // Check on map layer changes
     const interval = setInterval(checkPLULayer, 500);
     return () => clearInterval(interval);
   }, [map, layersRef]);
@@ -621,7 +632,7 @@ function PLULegend({ layersRef }) {
 
   return (
     <div
-      className="absolute bottom-[180px] left-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
+      className="absolute bottom-[200px] left-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
       style={{ userSelect: 'none' }}
     >
       <div className="flex justify-between items-center mb-2">
@@ -638,27 +649,16 @@ function PLULegend({ layersRef }) {
   );
 }
 
-function BasemapSwitcher({ layersRef }) {
+// Barre horizontale en bas pour les CALQUES uniquement
+function BottomLayersBar({ layersRef }) {
   const map = useMap();
   const [, forceUpdate] = useState();
 
   const toggleLayer = (key) => {
     const layer = layersRef.current[key];
     if (!layer) return;
-
-    // Si c'est un fond de carte (zIndex 0), on désactive les autres fonds
-    if (LAYERS[key].zIndex === 0) {
-      Object.keys(LAYERS).forEach(k => {
-        if (LAYERS[k].zIndex === 0 && layersRef.current[k] && map.hasLayer(layersRef.current[k])) {
-          map.removeLayer(layersRef.current[k]);
-        }
-      });
-      layer.addTo(map);
-    } else {
-      // Toggle overlay
-      if (map.hasLayer(layer)) map.removeLayer(layer);
-      else layer.addTo(map);
-    }
+    if (map.hasLayer(layer)) map.removeLayer(layer);
+    else layer.addTo(map);
     forceUpdate({});
   };
 
@@ -666,35 +666,96 @@ function BasemapSwitcher({ layersRef }) {
     return layersRef.current[key] && map.hasLayer(layersRef.current[key]);
   };
 
+  // On ne garde que les overlays (zIndex > 0)
+  const overlayKeys = Object.keys(LAYERS).filter(k => LAYERS[k].zIndex > 0);
+
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-white border-t border-gray-200 p-2 flex items-center gap-4 overflow-x-auto shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
-      <div className="flex items-center gap-2 pr-4 border-r border-gray-200">
-        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Fonds</span>
-        {Object.keys(LAYERS).filter(k => LAYERS[k].zIndex === 0).map(key => (
-          <button
-            key={key}
-            onClick={() => toggleLayer(key)}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${isActive(key) ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-          >
-            {LAYERS[key].name}
-          </button>
-        ))}
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Calques</span>
-        {Object.keys(LAYERS).filter(k => LAYERS[k].zIndex > 0).map(key => (
-          <button
-            key={key}
-            onClick={() => toggleLayer(key)}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 ${isActive(key) ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-          >
-            <div className={`w-2 h-2 rounded-full ${isActive(key) ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
-            {LAYERS[key].name}
-          </button>
-        ))}
-      </div>
+    <div className="absolute bottom-0 left-0 right-0 z-[1000] bg-white border-t border-gray-200 p-2 flex items-center justify-center gap-4 overflow-x-auto shadow-[0_-2px_10px_rgba(0,0,0,0.1)] h-14">
+      {overlayKeys.map(key => (
+        <button
+          key={key}
+          onClick={() => toggleLayer(key)}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2 ${isActive(key) ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+        >
+          <div className={`w-3 h-3 rounded-full ${isActive(key) ? 'bg-blue-500' : 'bg-gray-300'}`}></div>
+          {LAYERS[key].name}
+        </button>
+      ))}
     </div>
   );
+}
+
+// Contrôle standard en bas à droite pour les FONDS DE CARTE
+function BasemapControl({ layersRef }) {
+  const map = useMap();
+  const boxRef = useRef(null);
+
+  useEffect(() => {
+    if (!map || !layersRef.current) return;
+
+    const container = L.DomUtil.create('div', 'leaflet-control-layers leaflet-control-layers-expanded custom-basemap-panel');
+    container.style.padding = '8px';
+    container.style.backgroundColor = 'white';
+    container.style.borderRadius = '4px';
+    container.style.boxShadow = '0 1px 5px rgba(0,0,0,0.4)';
+
+    const title = document.createElement('div');
+    title.innerText = 'Fonds de carte';
+    title.className = 'font-bold text-xs mb-2 text-gray-700 uppercase tracking-wider border-b pb-1';
+    container.appendChild(title);
+
+    const list = document.createElement('div');
+    list.className = 'space-y-1';
+    container.appendChild(list);
+
+    const Control = L.Control.extend({ onAdd: () => container });
+    const ctrl = new Control({ position: 'bottomright' });
+    ctrl.addTo(map);
+    boxRef.current = ctrl;
+
+    const updateList = () => {
+      list.innerHTML = '';
+      Object.keys(LAYERS).forEach(key => {
+        if (LAYERS[key].zIndex === 0) {
+          const label = document.createElement('label');
+          label.className = 'flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded text-sm';
+
+          const input = document.createElement('input');
+          input.type = 'radio';
+          input.name = 'basemap';
+          input.checked = map.hasLayer(layersRef.current[key]);
+
+          const span = document.createElement('span');
+          span.innerText = LAYERS[key].name;
+
+          label.appendChild(input);
+          label.appendChild(span);
+
+          input.addEventListener('change', () => {
+            if (input.checked) {
+              Object.keys(LAYERS).forEach(k => {
+                if (LAYERS[k].zIndex === 0 && layersRef.current[k] && map.hasLayer(layersRef.current[k])) {
+                  map.removeLayer(layersRef.current[k]);
+                }
+              });
+              layersRef.current[key].addTo(map);
+              updateList(); // Refresh checks
+            }
+          });
+          list.appendChild(label);
+        }
+      });
+    };
+
+    updateList();
+    map.on('layeradd layerremove', updateList);
+
+    return () => {
+      if (map && boxRef.current) boxRef.current.remove();
+      map.off('layeradd layerremove', updateList);
+    };
+  }, [map, layersRef]);
+  return null;
 }
 
 function LayersBootstrap({ layersRef }) {
@@ -1254,7 +1315,8 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
       <MapContainer center={[44.8378, -0.5792]} zoom={15} style={{ height: "100%", width: "100%" }} doubleClickZoom={false} zoomControl={false} className={mode === 'delete' ? 'cursor-pointer' : (symbolToPlace || photoToPlace ? 'cursor-crosshair' : 'cursor-default')}>
         <MapDrawingTools mode={mode} setMode={setMode} />
         <LayersBootstrap layersRef={layersRef} />
-        <BasemapSwitcher layersRef={layersRef} />
+        <BottomLayersBar layersRef={layersRef} />
+        <BasemapControl layersRef={layersRef} />
         <PLULegend layersRef={layersRef} />
         <SearchField onAddressFound={onAddressFound} />
         <div className="leaflet-bottom leaflet-left" style={{ pointerEvents: 'none' }}>
