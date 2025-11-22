@@ -26,7 +26,7 @@ const baseLayers = {
     },
     // Google variants
     google_satellite: {
-        name: 'Google Satellite',
+        name: 'Google Earth',
         url: 'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
         attribution: 'Google',
         maxZoom: 22,
@@ -47,7 +47,7 @@ const baseLayers = {
         subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
     },
     google_streets: {
-        name: 'Google Streets',
+        name: 'Google Maps',
         url: 'https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
         attribution: 'Google',
         maxZoom: 22,

@@ -13,7 +13,7 @@ export default function MapDrawingTools({ mode, setMode }) {
 
   return (
     <div
-      className="absolute left-3 top-3 z-[1000]"
+      className="absolute left-3 top-3 z-[990]"
       style={{ userSelect: "none" }}
     >
       <button
@@ -29,9 +29,9 @@ export default function MapDrawingTools({ mode, setMode }) {
         type="button"
         className={`${btnBase} ${mode === "polygon" ? btnActive : ""}`}
         onClick={() => toggle("polygon")}
-        title="Surface / Polygone (P)"
+        title="Surface (P)"
       >
-        Surface / Polygone
+        Surface
       </button>
 
       <button

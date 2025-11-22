@@ -576,6 +576,88 @@ const LAYERS = {
 // ====================================================================
 
 
+// ====================================================================
+// LÉGENDE PLU/PLUi
+// ====================================================================
+function PLULegend({ layersRef }) {
+  const map = useMap();
+  const [showLegend, setShowLegend] = useState(false);
+
+  useEffect(() => {
+    const checkPLULayer = () => {
+      const pluLayer = layersRef.current['plu'];
+      setShowLegend(pluLayer && map.hasLayer(pluLayer));
+    };
+
+    // Check initially
+    checkPLULayer();
+
+    // Check on map layer changes
+    const interval = setInterval(checkPLULayer, 500);
+    return () => clearInterval(interval);
+  }, [map, layersRef]);
+
+  if (!showLegend) return null;
+
+  return (
+    <div
+      className="absolute bottom-24 right-3 z-[995] bg-white/95 backdrop-blur-sm p-4 rounded-lg shadow-xl border border-gray-300 max-w-xs"
+      style={{ userSelect: 'none' }}
+    >
+      <div className="flex justify-between items-center mb-3">
+        <h4 className="font-bold text-base text-gray-900">Légende PLU / PLUi</h4>
+        <button
+          onClick={() => setShowLegend(false)}
+          className="p-1.5 hover:bg-gray-200 rounded-md transition-colors"
+          title="Fermer la légende"
+        >
+          <XIcon className="h-4 w-4 text-gray-600" />
+        </button>
+      </div>
+
+      <div className="space-y-2.5 text-sm">
+        {/* Zones urbaines */}
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 rounded border border-gray-300 shadow-sm" style={{ backgroundColor: '#E91E63' }}></div>
+          <span className="font-medium">Zone urbaine (U)</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 rounded border border-gray-300 shadow-sm" style={{ backgroundColor: '#F48FB1' }}></div>
+          <span className="font-medium">Zone à urbaniser (AU)</span>
+        </div>
+
+        {/* Zones agricoles et naturelles */}
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 rounded border border-gray-300 shadow-sm" style={{ backgroundColor: '#8BC34A' }}></div>
+          <span className="font-medium">Zone agricole (A)</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 rounded border border-gray-300 shadow-sm" style={{ backgroundColor: '#4CAF50' }}></div>
+          <span className="font-medium">Zone naturelle et forestière (N)</span>
+        </div>
+
+        {/* Zones spéciales */}
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 rounded border border-gray-300 shadow-sm" style={{ backgroundColor: '#FFC107' }}></div>
+          <span className="font-medium">Zone d'activités économiques</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 rounded border border-gray-300 shadow-sm" style={{ backgroundColor: '#2196F3' }}></div>
+          <span className="font-medium">Zone d'équipements publics</span>
+        </div>
+      </div>
+
+      <div className="text-xs text-gray-600 mt-4 pt-3 border-t border-gray-200">
+        Plus d'informations : <a href="https://www.geoportail-urbanisme.gouv.fr" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">geoportail-urbanisme.gouv.fr</a>
+      </div>
+    </div>
+  );
+}
+
+
 function BasemapSwitcher({ layersRef }) {
   const map = useMap();
   const boxRef = useRef(null);
@@ -1167,6 +1249,7 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
         <MapDrawingTools mode={mode} setMode={setMode} />
         <LayersBootstrap layersRef={layersRef} />
         <BasemapSwitcher layersRef={layersRef} />
+        <PLULegend layersRef={layersRef} />
         <SearchField onAddressFound={onAddressFound} />
         <div className="leaflet-bottom leaflet-left" style={{ pointerEvents: 'none' }}>
           <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '33px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
