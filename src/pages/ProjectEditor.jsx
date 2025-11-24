@@ -129,28 +129,49 @@ export default function ProjectEditor() {
   };
 
   const captureTab = async (slotIndex) => {
-    // Find the active tab container
-    const tabContainer = document.querySelector(`[data-tab="${activeTab}"]`);
-    if (!tabContainer) return;
+    // For map tab, use the map capture event
+    if (activeTab === 'map') {
+      window.dispatchEvent(new CustomEvent("map:capture-request", { detail: { slotIndex } }));
+      return;
+    }
+
+    // For other tabs, try to capture the visible content
+    // Note: iframes from other domains cannot be captured due to CORS
+    const tabContainer = document.querySelector('.aspect-video');
+    if (!tabContainer) {
+      toast({ title: "Erreur", description: "Impossible de capturer cet onglet.", variant: "destructive" });
+      return;
+    }
 
     try {
-      const canvas = await html2canvas(tabContainer, {
-        useCORS: true,
-        logging: false,
-        scale: 1,
-        width: tabContainer.offsetWidth,
-        height: tabContainer.offsetHeight
-      });
+      // Create a canvas with a message for iframe tabs
+      const canvas = document.createElement('canvas');
+      canvas.width = 800;
+      canvas.height = 450;
+      const ctx = canvas.getContext('2d');
+
+      // Fill with white background
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Add text
+      ctx.fillStyle = '#333';
+      ctx.font = '20px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(`Capture de l'onglet: ${activeTab}`, canvas.width / 2, canvas.height / 2 - 20);
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#666';
+      ctx.fillText('(Les iframes ne peuvent pas \u00eatre captur\u00e9es pour des raisons de s\u00e9curit\u00e9)', canvas.width / 2, canvas.height / 2 + 20);
 
       const dataUrl = canvas.toDataURL('image/png');
       const next = [...captures];
       next[slotIndex] = dataUrl;
       setCaptures(next);
       updateProject({ captures: next });
-      toast({ title: "Capture réussie !", description: `La vue a été enregistrée dans l'emplacement ${slotIndex + 1}.` });
+      toast({ title: "Information", description: "Capture cr\u00e9\u00e9e (contenu iframe non capturable)", variant: "default" });
     } catch (error) {
       console.error('Capture error:', error);
-      toast({ title: "Erreur", description: "La capture a échoué.", variant: "destructive" });
+      toast({ title: "Erreur", description: "La capture a \u00e9chou\u00e9.", variant: "destructive" });
     }
   };
 
@@ -336,8 +357,8 @@ export default function ProjectEditor() {
             </button>
           </div>
 
-          <div className="rounded-2xl bg-white shadow-sm overflow-hidden aspect-video relative">
-            <div data-tab="map" style={{ display: activeTab === 'map' ? 'block' : 'none', width: '100%', height: '100%' }}>
+          <div className="rounded-2xl bg-white shadow-sm overflow-hidden aspect-video">
+            {activeTab === 'map' ? (
               <MapEditor
                 onAddressFound={handleAddressFound}
                 onAddressSearched={handleAddressSearched}
@@ -347,39 +368,34 @@ export default function ProjectEditor() {
                 photos={photos}
                 setPhotos={setPhotos}
               />
-            </div>
-            <div data-tab="streetview" style={{ display: activeTab === 'streetview' ? 'block' : 'none', width: '100%', height: '100%' }}>
+            ) : activeTab === 'streetview' ? (
               <StreetViewTab project={project} />
-            </div>
-            <div data-tab="owners" style={{ display: activeTab === 'owners' ? 'block' : 'none', width: '100%', height: '100%' }}>
+            ) : activeTab === 'owners' ? (
               <iframe
                 src="https://proprietaires.cadastre.io/"
                 className="w-full h-full border-0"
-                title="Propriétaires Cadastre"
+                title="Propri\u00e9taires Cadastre"
                 allow="geolocation"
               />
-            </div>
-            <div data-tab="itinerary" style={{ display: activeTab === 'itinerary' ? 'block' : 'none', width: '100%', height: '100%' }}>
+            ) : activeTab === 'itinerary' ? (
               <iframe
                 src="https://map.project-osrm.org/?hl=fr#6/44.5000/2.0000"
                 className="w-full h-full border-0"
-                title="OSRM Itinéraire"
+                title="OSRM Itin\u00e9raire"
                 allow="geolocation"
               />
-            </div>
-            <div data-tab="capareseau" style={{ display: activeTab === 'capareseau' ? 'block' : 'none', width: '100%', height: '100%' }}>
+            ) : activeTab === 'capareseau' ? (
               <iframe
                 src="https://www.capareseau.fr/"
                 className="w-full h-full border-0"
-                title="Caparéseau"
+                title="Capar\u00e9seau"
                 allow="geolocation"
               />
-            </div>
-            <div data-tab="geoportail" style={{ display: activeTab === 'geoportail' ? 'block' : 'none', width: '100%', height: '100%' }}>
+            ) : activeTab === 'geoportail' ? (
               <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-center p-8">
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Géoportail de l'Urbanisme</h3>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">G\u00e9oportail de l'Urbanisme</h3>
                 <p className="text-gray-600 mb-6 max-w-md">
-                  Ce site ne permet pas l'affichage direct dans l'application pour des raisons de sécurité.
+                  Ce site ne permet pas l'affichage direct dans l'application pour des raisons de s\u00e9curit\u00e9.
                   Veuillez cliquer ci-dessous pour l'ouvrir dans un nouvel onglet.
                 </p>
                 <a
@@ -388,19 +404,18 @@ export default function ProjectEditor() {
                   rel="noopener noreferrer"
                   className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Ouvrir Géoportail Urbanisme
+                  Ouvrir G\u00e9oportail Urbanisme
                   <ExternalLink className="ml-2 h-4 w-4" />
                 </a>
               </div>
-            </div>
-            <div data-tab="enedis" style={{ display: activeTab === 'enedis' ? 'block' : 'none', width: '100%', height: '100%' }}>
+            ) : activeTab === 'enedis' ? (
               <iframe
                 src="https://data.enedis.fr/pages/cartographie-des-reseaux-contenu/"
                 className="w-full h-full border-0"
                 title="Cartographie Enedis"
                 allow="geolocation"
               />
-            </div>
+            ) : null}
           </div>
           {activeTab === 'map' && (
             <Button onClick={goToProjectAddress} className="absolute top-14 right-3 z-[1000] bg-white text-gray-800 hover:bg-gray-100 shadow-md">

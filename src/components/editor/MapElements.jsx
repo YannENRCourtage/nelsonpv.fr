@@ -845,18 +845,19 @@ function LayersBootstrap({ layersRef }) {
       if (layerDef.isSeparator) return; // Skip separators
       if (!layerDef.url) return;
 
-      if (layerDef.url.includes("WMS")) {
+      // Check if it's a WMS layer by checking for 'layers' property (not just URL)
+      if (layerDef.layers) {
         // WMS layers
         layersRef.current[key] = L.tileLayer.wms(layerDef.url, {
-          layers: layerDef.layers, // WMS specific
-          format: 'image/png',
-          transparent: true,
+          layers: layerDef.layers,
+          format: layerDef.format || 'image/png',
+          transparent: layerDef.transparent !== false,
           attribution: layerDef.attribution,
           maxZoom: layerDef.maxZoom || 20,
           opacity: layerDef.opacity || 1.0,
         });
       } else {
-        // TileLayer (WMTS or standard XYZ)
+        // TileLayer (WMTS or standard XYZ or WMS with embedded params)
         layersRef.current[key] = L.tileLayer(layerDef.url, {
           attribution: layerDef.attrib || layerDef.attribution,
           maxZoom: layerDef.maxZoom || 22,
