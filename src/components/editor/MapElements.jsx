@@ -250,20 +250,20 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       }
     }
 
-    // Tentative 1 : API IGN
+    // Utiliser l'API Géoportail (nouvelle version sans clé)
     try {
       const lons = points.map(p => p.lng).join('|');
       const lats = points.map(p => p.lat).join('|');
 
-      const res = await fetch(`https://wxs.ign.fr/${VOTRE_CLE_IGN}/alti/rest/elevation.json?lon=${lons}&lat=${lats}&zonly=true`);
-      if (!res.ok) throw new Error('IGN failed');
+      const res = await fetch(`https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json?lon=${lons}&lat=${lats}&resource=ign_rge_alti_wld&zonly=false`);
+      if (!res.ok) throw new Error('Géoportail failed');
       const data = await res.json();
 
       if (data.elevations) {
         data.elevations.forEach((elev, i) => { if (points[i]) points[i].alt = elev.z; });
       }
-    } catch (ignError) {
-      console.warn("IGN Alti failed, trying Open-Elevation...", ignError);
+    } catch (geoError) {
+      console.warn("Géoportail Alti failed, trying Open-Elevation...", geoError);
       // Tentative 2 : Open-Elevation
       try {
         const locations = points.map(p => `${p.lat},${p.lng}`).join('|');
@@ -1134,7 +1134,6 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
     <div className="z-[1000] bg-white rounded-lg shadow-2xl border w-[600px]" style={dialogStyle}>
       <div className="flex justify-between items-center p-3 border-b cursor-move bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-lg" onMouseDown={handleMouseDown}>
         <h4 className="font-bold text-base text-white">📊 PROFIL ALTIMÉTRIQUE</h4>
-        <button onClick={(e) => { e.stopPropagation(); handleCloseProfile(); }} className="p-1 text-white hover:bg-blue-700 rounded transition-colors"><XIcon size={18} /></button>
       </div>
       <div className="p-4">
         <div ref={chartRef} className="h-[150px] w-full bg-white">
