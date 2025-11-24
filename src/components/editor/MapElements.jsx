@@ -626,32 +626,21 @@ const LAYERS = {
 
   // Urbanisme
   plu: {
-    name: "PLU / PLUi",
-    url: "https://www.geoportail-urbanisme.gouv.fr/api/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=document_urbanisme&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=256&WIDTH=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}",
-    attribution: "Geoportail Urbanisme",
-    maxZoom: 20,
-    opacity: 0.7
-  },
-  geology: {
-    name: "Carte Géologique",
-    url: "https://geoservices.brgm.fr/geologie?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=SCAN_H_GEOL50&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=256&WIDTH=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}",
-    attribution: "BRGM",
-    maxZoom: 20,
-    opacity: 0.6
+    url: "https://data.geopf.fr/wms-r/wms?",
+    layers: "LANDUSE.AGRICULTURE2020",
+    format: "image/png",
+    transparent: true,
+    attribution: "IGN",
+    isOverlay: true
   },
   flood: {
-    name: "Zones Inondables",
-    url: "https://www.georisques.gouv.fr/services/db/risques_naturels/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=AZI_GASPAR&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=256&WIDTH=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}",
-    attribution: "Géorisques",
-    maxZoom: 20,
+    url: "https://wxs.ign.fr/environnement/geoportail/r/wms?",
+    layers: "ALEA_INONDATION",
+    format: "image/png",
+    transparent: true,
+    attribution: "IGN",
+    isOverlay: true,
     opacity: 0.6
-  },
-  natura2000: {
-    name: "Natura 2000",
-    url: "https://inpn.mnhn.fr/inpn-web-services/wms/natura2000?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=sic,zps&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=256&WIDTH=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}",
-    attribution: "INPN",
-    maxZoom: 20,
-    opacity: 0.5
   },
   "ZNIEFF 1": {
     url: "https://ws.carmencarto.fr/WMS/119/fxx_inpn?",
@@ -1020,15 +1009,15 @@ function MapTargetInfo({ targetPos, setTargetPos }) {
   };
 
   return (
-    <div className="bg-white/90 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-gray-200 text-xs min-w-[220px] max-w-[280px] z-[1000]">
-      <div className="flex justify-between items-center mb-2">
+    <div className="bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-lg border border-gray-200 text-xs min-w-[220px] max-w-[280px] z-[1000]">
+      <div className="flex justify-between items-center mb-1">
         <span className="font-bold text-blue-600 cursor-pointer hover:bg-blue-50 p-1 rounded transition-colors flex items-center gap-1" onClick={copyCoords} title="Copier les coordonnées">
           {info.lat.toFixed(5)}, {info.lng.toFixed(5)} <Copy size={12} />
         </span>
         <span className="text-gray-500">{loading ? '...' : ''}</span>
       </div>
 
-      <div className="flex items-start gap-2 mb-2 cursor-pointer hover:bg-gray-50 p-1 rounded transition-colors group" onClick={() => copyToClipboard(info.address)} title="Copier l'adresse">
+      <div className="flex items-start gap-2 mb-1 cursor-pointer hover:bg-gray-50 p-1 rounded transition-colors group" onClick={() => copyToClipboard(info.address)} title="Copier l'adresse">
         <div className="mt-0.5">📍</div>
         <div className="flex-1">
           <div className="font-medium text-gray-900">{addressParts.line1}</div>
@@ -1037,7 +1026,7 @@ function MapTargetInfo({ targetPos, setTargetPos }) {
         <Copy size={12} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5" />
       </div>
 
-      <div className="flex justify-between items-center border-t pt-2 text-gray-600">
+      <div className="flex justify-between items-center border-t pt-1 text-gray-600">
         <span className="flex items-center gap-1" title="Altitude">⛰️ {info.alt}</span>
         <span className="flex items-center gap-1" title="Parcelle">🏷️ {info.parcel}</span>
       </div>
@@ -1251,7 +1240,7 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
   };
 
   return (
-    <div className="z-[5000] bg-white rounded-lg shadow-2xl border w-[600px]" style={dialogStyle}>
+    <div className="fixed z-[9999] bg-white rounded-lg shadow-2xl border w-[600px]" style={dialogStyle}>
       <div className="flex justify-between items-center p-3 border-b cursor-move bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-lg" onMouseDown={handleMouseDown}>
         <h4 className="font-bold text-base text-white">📊 PROFIL ALTIMÉTRIQUE</h4>
         <div className="flex items-center gap-2">
