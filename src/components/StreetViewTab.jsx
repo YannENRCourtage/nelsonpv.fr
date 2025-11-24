@@ -61,14 +61,22 @@ function StreetViewCoverageLayer() {
     const map = useMap();
 
     useEffect(() => {
-        // Add Street View coverage layer (blue lines)
+        // Add Street View coverage layer (blue lines) with higher opacity
         const coverageLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=svv&x={x}&y={y}&z={z}', {
             maxZoom: 20,
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
             pane: 'overlayPane',
-            zIndex: 100
+            zIndex: 100,
+            opacity: 1.0  // Full opacity to ensure visibility
         });
+
+        // Force immediate load
         coverageLayer.addTo(map);
+
+        // Force redraw
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 100);
 
         // Handle clicks on the map to open Street View in new tab
         const handleMapClick = (e) => {
