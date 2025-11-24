@@ -1263,67 +1263,6 @@ function MapInstance({ setMap }) {
   return null;
 }
 
-// ====================================================================
-// PEGMAN CONTROL (Street View)
-// ====================================================================
-function PegmanControl() {
-  const map = useMap();
-  const [isDragging, setIsDragging] = useState(false);
-
-  const handleDragStart = (e) => {
-    e.dataTransfer.effectAllowed = 'move';
-    // Image fantôme transparente
-    const img = new Image();
-    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-    e.dataTransfer.setDragImage(img, 0, 0);
-
-    setIsDragging(true);
-
-    // Afficher la couche de couverture Street View (lignes bleues)
-    const coverageLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=svv&x={x}&y={y}&z={z}', {
-      maxZoom: 20,
-      subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-      pane: 'overlayPane',
-      zIndex: 100
-    });
-    coverageLayer.addTo(map);
-    map._streetViewLayer = coverageLayer;
-  };
-
-  const handleDragEnd = (e) => {
-    setIsDragging(false);
-    if (map._streetViewLayer) {
-      map.removeLayer(map._streetViewLayer);
-      delete map._streetViewLayer;
-    }
-
-    // Calculer la position du drop
-    const dropPoint = map.mouseEventToContainerPoint(e);
-    const latlng = map.containerPointToLatLng(dropPoint);
-
-    // Émettre un événement pour créer l'onglet Street View
-    window.dispatchEvent(new CustomEvent('pegman:dropped', {
-      detail: { lat: latlng.lat, lng: latlng.lng }
-    }));
-  };
-
-  return (
-    <div
-      className="leaflet-bottom leaflet-right hide-on-capture no-print"
-      style={{ bottom: '85px', right: '10px', pointerEvents: 'auto', zIndex: 1000, position: 'absolute' }}
-    >
-      <div
-        draggable="true"
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        className="cursor-grab active:cursor-grabbing hover:scale-110 transition-transform"
-        title="Faites glisser pour Street View"
-      >
-        <img src="/pegman.png" alt="Street View" className="w-10 h-10 drop-shadow-md" />
-      </div>
-    </div>
-  );
-}
 
 // Barre horizontale en bas pour les CALQUES uniquement (Hors MapContainer)
 function BottomLayersBar({ layersRef, map }) {
@@ -1424,11 +1363,10 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
           <BasemapControl layersRef={layersRef} />
           <PLULegend layersRef={layersRef} />
           <RPGLegend layersRef={layersRef} />
-          <PegmanControl />
 
           <SearchField onAddressFound={onAddressFound} />
           <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
-            <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '40px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
+            <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '30px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
               <div className="flex flex-col items-start gap-2">
                 <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} />
                 <MiniMap />

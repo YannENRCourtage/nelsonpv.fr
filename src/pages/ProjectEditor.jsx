@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Building, X, FolderHeart as HomeIcon, Map as MapIcon } from 'lucide-react';
 import MapEditor from "../components/MapEditor";
+import StreetViewTab from "../components/StreetViewTab";
 import ChatBox from "../components/editor/ChatBox.jsx";
 import { Button } from "@/components/ui/button";
 import {
@@ -84,17 +85,6 @@ export default function ProjectEditor() {
     }
   }, [projectId, projects, setProject]);
 
-  // Listen for Pegman drop event
-  useEffect(() => {
-    const handlePegmanDrop = (e) => {
-      const { lat, lng } = e.detail;
-      const url = `https://www.google.com/maps?layer=c&cbll=${lat},${lng}&output=embed`;
-      setStreetViewUrl(url);
-      setActiveTab('streetview');
-    };
-    window.addEventListener('pegman:dropped', handlePegmanDrop);
-    return () => window.removeEventListener('pegman:dropped', handlePegmanDrop);
-  }, []);
 
   const projectUsers = Object.values(allUsers).filter(u => u.role !== 'admin');
 
@@ -256,23 +246,22 @@ export default function ProjectEditor() {
             <button
               onClick={() => setActiveTab('map')}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'map'
-                  ? 'bg-white text-blue-600 border-b-2 border-blue-600'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
             >
               Carte
             </button>
-            {streetViewUrl && (
-              <button
-                onClick={() => setActiveTab('streetview')}
-                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'streetview'
-                    ? 'bg-white text-blue-600 border-b-2 border-blue-600'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-              >
-                Street View
-              </button>
-            )}
+            {/* Removed conditional rendering of Street View tab button as per instruction 3 */}
+            <button
+              onClick={() => setActiveTab('streetview')}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'streetview'
+                ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+            >
+              Street View
+            </button>
           </div>
 
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden aspect-video">
@@ -287,12 +276,7 @@ export default function ProjectEditor() {
                 setPhotos={setPhotos}
               />
             ) : (
-              <iframe
-                src={streetViewUrl}
-                className="w-full h-full border-0"
-                title="Street View"
-                allowFullScreen
-              />
+              <StreetViewTab project={project} />
             )}
           </div>
           {activeTab === 'map' && (
