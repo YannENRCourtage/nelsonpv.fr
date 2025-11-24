@@ -1125,7 +1125,7 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
         <button onClick={handleCloseProfile} className="p-1 text-white hover:bg-blue-700 rounded transition-colors"><XIcon size={18} /></button>
       </div>
       <div className="p-4">
-        <div ref={chartRef} className="h-[250px] w-full bg-white">
+        <div ref={chartRef} className="h-[150px] w-full bg-white">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={data}
@@ -1173,84 +1173,27 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
           </ResponsiveContainer >
         </div >
 
-        <div className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm text-gray-700 mb-4 bg-blue-50 p-3 rounded-lg">
-          <div className="flex flex-col">
-            <span className="text-xs text-gray-500">Distance totale</span>
-            <strong className="text-base text-blue-700">{stats.distance.toFixed(0)} m</strong>
+        {/* Simplified stats on single line */}
+        <div className="flex gap-4 text-sm text-gray-700 bg-blue-50 p-2 rounded-lg justify-around">
+          <div className="flex flex-col items-center">
+            <span className="text-xs text-gray-500">Distance</span>
+            <strong className="text-sm text-blue-700">{stats.distance.toFixed(0)} m</strong>
           </div>
-          <div className="flex flex-col">
-            <span className="text-xs text-gray-500">Dénivelé +</span>
-            <strong className="text-base text-green-600">+{stats.denivelePos.toFixed(1)} m</strong>
+          <div className="flex flex-col items-center">
+            <span className="text-xs text-gray-500">Dénivelé moy.</span>
+            <strong className="text-sm text-purple-600">{((stats.denivelePos + stats.deniveleNeg) / 2).toFixed(1)} m</strong>
           </div>
-          <div className="flex flex-col">
-            <span className="text-xs text-gray-500">Dénivelé -</span>
-            <strong className="text-base text-red-600">-{stats.deniveleNeg.toFixed(1)} m</strong>
-          </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col items-center">
             <span className="text-xs text-gray-500">Pente moy.</span>
-            <strong className="text-base">{stats.penteMoyenne.toFixed(1)} %</strong>
+            <strong className="text-sm">{stats.penteMoyenne.toFixed(1)} %</strong>
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col items-center">
             <span className="text-xs text-gray-500">Pente max</span>
-            <strong className="text-base text-orange-600">{stats.maxPente.toFixed(1)} %</strong>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs text-gray-500">Amplitude</span>
-            <strong className="text-base">{(maxAlt - minAlt).toFixed(1)} m</strong>
+            <strong className="text-sm text-orange-600">{stats.maxPente.toFixed(1)} %</strong>
           </div>
         </div>
-
-        <div className="space-y-3 mb-4">
-          <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Nom du profil</label>
-            <Input
-              value={layerName}
-              onChange={(e) => setLayerName(e.target.value)}
-              placeholder="profil altimetrique"
-              className="w-full"
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-between gap-2">
-          <Button
-            variant="outline"
-            onClick={handleZoomToProfile}
-            className="border-blue-500 text-blue-600 hover:bg-blue-50"
-            size="sm"
-          >
-            🔍 Zoom
-          </Button>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleExportCSV}
-              className="border-gray-300 hover:bg-gray-50"
-              size="sm"
-            >
-              📄 CSV
-            </Button>
-            {/* Export PNG temporairement désactivé
-            <Button
-              variant="outline"
-              onClick={handleExportPNG}
-              className="border-teal-500 text-teal-600 hover:bg-teal-50"
-              size="sm"
-            >
-              <Download size={16} className="mr-1" /> PNG
-            </Button>
-            */}
-            <Button
-              className="bg-teal-500 hover:bg-teal-600 text-white"
-              onClick={handleSaveProfile}
-              size="sm"
-            >
-              <Save size={16} className="mr-1" /> Enregistrer
-            </Button>
-          </div>
-        </div>
-      </div >
-    </div >
+      </div>
+    </div>
   );
 }
 
