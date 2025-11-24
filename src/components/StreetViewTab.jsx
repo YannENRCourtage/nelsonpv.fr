@@ -1,9 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, useMap, ScaleControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import MiniMap from './editor/MiniMap';
-import MapTargetInfo from './editor/MapTargetInfo';
 
 function StreetViewCoverageLayer() {
     const map = useMap();
@@ -55,8 +53,6 @@ function StreetViewCoverageLayer() {
 }
 
 export default function StreetViewTab({ project }) {
-    const [targetPos, setTargetPos] = useState(null);
-
     // Set initial center based on project GPS
     const getInitialCenter = () => {
         if (project?.gps) {
@@ -87,16 +83,8 @@ export default function StreetViewTab({ project }) {
                 {/* Street View coverage layer */}
                 <StreetViewCoverageLayer />
 
-                {/* Bottom-left controls */}
-                <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
-                    <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '30px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
-                        <div className="flex flex-col items-start gap-2">
-                            <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} />
-                            <MiniMap />
-                            <ScaleControl position="bottomleft" metric={true} imperial={false} />
-                        </div>
-                    </div>
-                </div>
+                {/* Scale control */}
+                <ScaleControl position="bottomleft" metric={true} imperial={false} />
             </MapContainer>
         </div>
     );
