@@ -684,76 +684,6 @@ const LAYERS = {
     transparent: true,
     attribution: "INPN",
     isOverlay: true
-  },
-  "Réseau HTA (Aérien)": {
-    url: "https://geobretagne.fr/geoserver/enedis/wms?",
-    layers: "reseau_hta",
-    format: "image/png",
-    transparent: true,
-    attribution: "Enedis",
-    isOverlay: true
-  },
-  "Réseau HTA (Souterrain)": {
-    url: "https://geobretagne.fr/geoserver/enedis/wms?",
-    layers: "reseau_souterrain_hta",
-    format: "image/png",
-    transparent: true,
-    attribution: "Enedis",
-    isOverlay: true
-  },
-  "Réseau BT (Aérien)": {
-    url: "https://geobretagne.fr/geoserver/enedis/wms?",
-    layers: "reseau_bt",
-    format: "image/png",
-    transparent: true,
-    attribution: "Enedis",
-    isOverlay: true
-  },
-  "Réseau BT (Souterrain)": {
-    url: "https://geobretagne.fr/geoserver/enedis/wms?",
-    layers: "reseau_souterrain_bt",
-    format: "image/png",
-    transparent: true,
-    attribution: "Enedis",
-    isOverlay: true
-  },
-  "Postes HTA/BT": {
-    url: "https://geobretagne.fr/geoserver/enedis/wms?",
-    layers: "poste_electrique",
-    format: "image/png",
-    transparent: true,
-    attribution: "Enedis",
-    isOverlay: true
-  },
-  "Postes Source": {
-    url: "https://geobretagne.fr/geoserver/enedis/wms?",
-    layers: "poste_source",
-    format: "image/png",
-    transparent: true,
-    attribution: "Enedis",
-    isOverlay: true
-  },
-  "Poteaux Électriques": {
-    url: "https://geobretagne.fr/geoserver/enedis/wms?",
-    layers: "poteau_electrique",
-    format: "image/png",
-    transparent: true,
-    attribution: "Enedis",
-    isOverlay: true
-  },
-  cassini: {
-    name: "Carte de Cassini",
-    url: "https://wxs.ign.fr/cartes/geoportail/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=GEOGRAPHICALGRIDSYSTEMS.CASSINI&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=256&WIDTH=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}",
-    attribution: "IGN",
-    maxZoom: 20,
-    opacity: 0.8
-  },
-  etat_major: {
-    name: "Carte État-Major",
-    url: "https://wxs.ign.fr/cartes/geoportail/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=GEOGRAPHICALGRIDSYSTEMS.ETATMAJOR40&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=256&WIDTH=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}",
-    attribution: "IGN",
-    maxZoom: 20,
-    opacity: 0.8
   }
 };
 // ====================================================================
@@ -761,9 +691,6 @@ const LAYERS = {
 // ====================================================================
 
 
-// ====================================================================
-// LÉGENDE PLU/PLUi
-// ====================================================================
 // ====================================================================
 // LÉGENDE PLU/PLUi
 // ====================================================================
@@ -1057,25 +984,62 @@ function MapTargetInfo({ targetPos, setTargetPos }) {
     return () => clearTimeout(timeoutId);
   }, [targetPos, VOTRE_CLE_IGN]);
 
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copié !", description: text });
+  };
+
+  const formatAddress = (addr) => {
+    if (!addr) return { line1: "Adresse non trouvée", line2: "" };
+    // Try splitting by comma first
+    let parts = addr.split(',');
+    if (parts.length > 1) {
+      return {
+        line1: parts[0].trim(),
+        line2: parts.slice(1).join(',').trim()
+      };
+    }
+    // If no comma, try splitting by the first number that follows text (rough heuristic for French addresses)
+    // e.g. "Les Loges 36230 Sarzay" -> "Les Loges", "36230 Sarzay"
+    const match = addr.match(/^(.+?)(\d{5}.+)$/);
+    if (match) {
+      return {
+        line1: match[1].trim(),
+        line2: match[2].trim()
+      };
+    }
+
+    return { line1: addr, line2: "" };
+  };
+
+  const addressParts = formatAddress(info.address);
+
   const copyCoords = () => {
     const text = `${info.lat.toFixed(6)}, ${info.lng.toFixed(6)}`;
     navigator.clipboard.writeText(text).then(() => toast({ ...toastStyle, title: "Coordonnées copiées", description: text }));
   };
 
-  if (!targetPos) return null;
-
   return (
-    <div className="bg-white/90 backdrop-blur-sm p-2 rounded-md shadow-md border border-gray-200 text-xs space-y-1 min-w-[200px] max-w-[250px]">
-      <div className="flex justify-between items-center">
-        <span className="font-bold text-blue-600 cursor-pointer hover:underline" onClick={copyCoords} title="Copier">
-          {info.lat.toFixed(5)}, {info.lng.toFixed(5)} <Copy size={10} className="inline ml-0.5" />
+    <div className="bg-white/90 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-gray-200 text-xs min-w-[220px] max-w-[280px] z-[1000]">
+      <div className="flex justify-between items-center mb-2">
+        <span className="font-bold text-blue-600 cursor-pointer hover:bg-blue-50 p-1 rounded transition-colors flex items-center gap-1" onClick={copyCoords} title="Copier les coordonnées">
+          {info.lat.toFixed(5)}, {info.lng.toFixed(5)} <Copy size={12} />
         </span>
         <span className="text-gray-500">{loading ? '...' : ''}</span>
       </div>
-      <div className="truncate" title={info.address}>📍 {info.address}</div>
-      <div className="flex justify-between">
-        <span>⛰️ {info.alt}</span>
-        <span>🏷️ {info.parcel}</span>
+
+      <div className="flex items-start gap-2 mb-2 cursor-pointer hover:bg-gray-50 p-1 rounded transition-colors group" onClick={() => copyToClipboard(info.address)} title="Copier l'adresse">
+        <div className="mt-0.5">📍</div>
+        <div className="flex-1">
+          <div className="font-medium text-gray-900">{addressParts.line1}</div>
+          {addressParts.line2 && <div className="text-gray-600">{addressParts.line2}</div>}
+        </div>
+        <Copy size={12} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5" />
+      </div>
+
+      <div className="flex justify-between items-center border-t pt-2 text-gray-600">
+        <span className="flex items-center gap-1" title="Altitude">⛰️ {info.alt}</span>
+        <span className="flex items-center gap-1" title="Parcelle">🏷️ {info.parcel}</span>
       </div>
     </div>
   );
@@ -1410,7 +1374,7 @@ function BottomLayersBar({ layersRef, map }) {
             : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
             }`}
         >
-          {LAYERS[key].name}
+          {LAYERS[key].name || key}
         </button>
       ))}
     </div>
@@ -1503,6 +1467,8 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
             onRightClick={(latlng) => setTargetPos(latlng)}
           />
           <PointInfoPanel pointInfo={pointInfo} setPointInfo={setPointInfo} />
+          {/* AltimetryProfile must be outside MapContainer or have high z-index and fixed positioning if inside. 
+              Here it is inside, so we rely on its fixed positioning style. */}
           <AltimetryProfile profile={altimetryProfile} setProfile={setAltimetryProfile} setFeatures={setFeatures} features={features} />
         </MapContainer>
       </div>

@@ -298,6 +298,15 @@ export default function ProjectEditor() {
             >
               Geoportail Urba
             </button>
+            <button
+              onClick={(e) => { e.preventDefault(); setActiveTab('enedis'); }}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'enedis'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+            >
+              Enedis
+            </button>
           </div>
 
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden aspect-video">
@@ -314,28 +323,12 @@ export default function ProjectEditor() {
             ) : activeTab === 'streetview' ? (
               <StreetViewTab project={project} />
             ) : activeTab === 'owners' ? (
-              <div className="relative w-full h-full">
-                <iframe
-                  src="https://proprietaires.cadastre.io/"
-                  className="w-full h-full border-0"
-                  title="Propriétaires Cadastre"
-                  allow="geolocation"
-                />
-                <div className="absolute top-4 right-4 bg-white p-4 rounded-lg shadow-lg z-10 max-w-xs">
-                  <h4 className="font-semibold text-sm mb-2">Info Société</h4>
-                  <p className="text-xs text-gray-600 mb-3">
-                    Pour voir les détails d'une société (SIREN), copiez le numéro et cliquez ci-dessous :
-                  </p>
-                  <a
-                    href="https://www.pappers.fr/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block w-full text-center px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
-                  >
-                    Rechercher sur Pappers.fr
-                  </a>
-                </div>
-              </div>
+              <iframe
+                src="https://proprietaires.cadastre.io/"
+                className="w-full h-full border-0"
+                title="Propriétaires Cadastre"
+                allow="geolocation"
+              />
             ) : activeTab === 'itinerary' ? (
               <iframe
                 src="https://map.project-osrm.org/?hl=fr#6/44.5000/2.0000"
@@ -367,6 +360,13 @@ export default function ProjectEditor() {
                   <ExternalLink className="ml-2 h-4 w-4" />
                 </a>
               </div>
+            ) : activeTab === 'enedis' ? (
+              <iframe
+                src="https://data.enedis.fr/pages/cartographie-des-reseaux-contenu/"
+                className="w-full h-full border-0"
+                title="Cartographie Enedis"
+                allow="geolocation"
+              />
             ) : null}
           </div>
           {activeTab === 'map' && (
