@@ -1,0 +1,1850 @@
+<?xml version='1.0' encoding="UTF-8" standalone="no" ?>
+<WMS_Capabilities version="1.3.0"  xmlns="http://www.opengis.net/wms"   xmlns:sld="http://www.opengis.net/sld"   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"   xmlns:ms="http://mapserver.gis.umn.edu/mapserver"   xmlns:inspire_common="http://inspire.ec.europa.eu/schemas/common/1.0"   xmlns:inspire_vs="http://inspire.ec.europa.eu/schemas/inspire_vs/1.0"   xsi:schemaLocation="http://www.opengis.net/wms http://schemas.opengis.net/wms/1.3.0/capabilities_1_3_0.xsd  http://www.opengis.net/sld http://schemas.opengis.net/sld/1.1.0/sld_capabilities.xsd  http://inspire.ec.europa.eu/schemas/inspire_vs/1.0  http://inspire.ec.europa.eu/schemas/inspire_vs/1.0/inspire_vs.xsd http://mapserver.gis.umn.edu/mapserver http://ws.carmencarto.fr/WMS/119/fxx_inpn?language=fre&amp;service=WMS&amp;version=1.3.0&amp;request=GetSchemaExtension">
+
+<!-- MapServer version 7.0.0 OUTPUT=PNG OUTPUT=JPEG SUPPORTS=PROJ SUPPORTS=AGG SUPPORTS=FREETYPE SUPPORTS=CAIRO SUPPORTS=ICONV SUPPORTS=WMS_SERVER SUPPORTS=WMS_CLIENT SUPPORTS=WFS_SERVER SUPPORTS=WFS_CLIENT SUPPORTS=WCS_SERVER SUPPORTS=GEOS INPUT=JPEG INPUT=POSTGIS INPUT=OGR INPUT=GDAL INPUT=SHAPEFILE -->
+
+<Service>
+  <Name>WMS</Name>
+  <Title>MNHN - INPN - Metropole</Title>
+  <KeywordList>
+      <Keyword vocabulary="ISO">infoMapAccessService</Keyword>
+      <Keyword vocabulary="ISO">WMS 1.1.1</Keyword>
+      <Keyword vocabulary="ISO">WMS 1.3.0</Keyword>
+      <Keyword vocabulary="ISO">SLD 1.1.0</Keyword>
+  </KeywordList>
+  <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?"/>
+  <ContactInformation>
+    <ContactPersonPrimary>
+      <ContactPerson>SIG</ContactPerson>
+      <ContactOrganization>Muséum national d Histoire naturelle</ContactOrganization>
+    </ContactPersonPrimary>
+      <ContactPosition>GIS officer</ContactPosition>
+    <ContactAddress>
+        <AddressType>postal</AddressType>
+        <Address>36, rue Geoffroy St-Hilaire - CP 41</Address>
+        <City>Paris</City>
+        <StateOrProvince></StateOrProvince>
+        <PostCode>75005</PostCode>
+        <Country>France</Country>
+    </ContactAddress>
+      <ContactVoiceTelephone>01 40 79 35 79</ContactVoiceTelephone>
+      <ContactFacsimileTelephone></ContactFacsimileTelephone>
+  <ContactElectronicMailAddress>sig_spn@mnhn.fr</ContactElectronicMailAddress>
+  </ContactInformation>
+  <Fees></Fees>
+  <AccessConstraints>Aucun obstacle technique</AccessConstraints>
+  <MaxWidth>10000</MaxWidth>
+  <MaxHeight>10000</MaxHeight>
+</Service>
+
+<Capability>
+  <Request>
+    <GetCapabilities>
+      <Format>text/xml</Format>
+      <DCPType>
+        <HTTP>
+          <Get><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?language=fre&amp;"/></Get>
+          <Post><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?language=fre&amp;"/></Post>
+        </HTTP>
+      </DCPType>
+    </GetCapabilities>
+    <GetMap>
+      <Format>image/png</Format>
+      <Format>image/gif</Format>
+      <Format>image/jpeg</Format>
+      <Format>image/png; mode=8bit</Format>
+      <Format>application/x-pdf</Format>
+      <Format>image/svg+xml</Format>
+      <Format>image/tiff</Format>
+      <DCPType>
+        <HTTP>
+          <Get><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?language=fre&amp;"/></Get>
+          <Post><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?language=fre&amp;"/></Post>
+        </HTTP>
+      </DCPType>
+    </GetMap>
+    <GetFeatureInfo>
+      <Format>text/plain</Format>
+      <Format>application/vnd.ogc.gml</Format>
+      <DCPType>
+        <HTTP>
+          <Get><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?language=fre&amp;"/></Get>
+          <Post><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?language=fre&amp;"/></Post>
+        </HTTP>
+      </DCPType>
+    </GetFeatureInfo>
+    <sld:DescribeLayer>
+      <Format>text/xml</Format>
+      <DCPType>
+        <HTTP>
+          <Get><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?language=fre&amp;"/></Get>
+          <Post><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?language=fre&amp;"/></Post>
+        </HTTP>
+      </DCPType>
+    </sld:DescribeLayer>
+    <sld:GetLegendGraphic>
+      <Format>image/png</Format>
+      <Format>image/gif</Format>
+      <Format>image/jpeg</Format>
+      <Format>image/png; mode=8bit</Format>
+      <DCPType>
+        <HTTP>
+          <Get><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?language=fre&amp;"/></Get>
+          <Post><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?language=fre&amp;"/></Post>
+        </HTTP>
+      </DCPType>
+    </sld:GetLegendGraphic>
+    <ms:GetStyles>
+      <Format>text/xml</Format>
+      <DCPType>
+        <HTTP>
+          <Get><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?language=fre&amp;"/></Get>
+          <Post><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?language=fre&amp;"/></Post>
+        </HTTP>
+      </DCPType>
+    </ms:GetStyles>
+  </Request>
+  <Exception>
+    <Format>XML</Format>
+    <Format>INIMAGE</Format>
+    <Format>BLANK</Format>
+  </Exception>
+  <sld:UserDefinedSymbolization SupportSLD="1" UserLayer="0" UserStyle="1" RemoteWFS="0" InlineFeature="0" RemoteWCS="0"/>
+  <inspire_vs:ExtendedCapabilities>
+    <inspire_common:MetadataUrl xsi:type="inspire_common:resourceLocatorType">
+      <inspire_common:URL>http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/deb6dedb-e35e-43b5-b5f5-8ba098ddfb73</inspire_common:URL>
+      <inspire_common:MediaType>text/html</inspire_common:MediaType>
+    </inspire_common:MetadataUrl>
+    <inspire_common:SupportedLanguages>
+      <inspire_common:DefaultLanguage><inspire_common:Language>fre</inspire_common:Language></inspire_common:DefaultLanguage>
+    </inspire_common:SupportedLanguages>
+    <inspire_common:ResponseLanguage><inspire_common:Language>fre</inspire_common:Language></inspire_common:ResponseLanguage>
+  </inspire_vs:ExtendedCapabilities>
+  <Layer>
+    <Name>MNHN___INPN___Metropole</Name>
+    <Title>MNHN - INPN - Metropole</Title>
+    <Abstract>MNHN___INPN___Metropole</Abstract>
+    <KeywordList>
+        <Keyword vocabulary="ISO">infoMapAccessService</Keyword>
+        <Keyword vocabulary="ISO">WMS 1.1.1</Keyword>
+        <Keyword vocabulary="ISO">WMS 1.3.0</Keyword>
+        <Keyword vocabulary="ISO">SLD 1.1.0</Keyword>
+    </KeywordList>
+    <CRS>EPSG:2154</CRS>
+    <EX_GeographicBoundingBox>
+        <westBoundLongitude>-5.58548</westBoundLongitude>
+        <eastBoundLongitude>10.755</eastBoundLongitude>
+        <southBoundLatitude>40.9208</southBoundLatitude>
+        <northBoundLatitude>51.4462</northBoundLatitude>
+    </EX_GeographicBoundingBox>
+    <BoundingBox CRS="EPSG:2154"
+                minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+    <Style>
+       <Name>inspire_common:DEFAULT</Name>
+       <Title>MNHN - INPN - Metropole</Title>
+       <LegendURL width="120" height="120">
+          <Format>image/png</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=MNHN___INPN___Metropole"/>
+       </LegendURL>
+    </Style>
+    <MinScaleDenominator>50</MinScaleDenominator>
+    <MaxScaleDenominator>1e+07</MaxScaleDenominator>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Sites_d_importance_communautaire_JOUE__ZSC_SIC_</Name>
+        <Title>Sites d&#39;importance communautaire JOUE (ZSC,SIC)</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//1de93f78-4641-4223-bccb-84bdb2700f3d</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/1de93f78-4641-4223-bccb-84bdb2700f3d"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Sites_d_importance_communautaire_JOUE__ZSC_SIC_</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Sites_d_importance_communautaire_JOUE__ZSC_SIC_"/>
+          </LegendURL>
+        </Style>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>ZICO</Name>
+        <Title>Zone Importante pour la Conservation des Oiseaux</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>CRS:84</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="CRS:84"
+                    minx="-5.58548" miny="40.9208" maxx="10.755" maxy="51.4462" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//51656df6-5ced-4d57-9c0f-636441ee8c2b</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/51656df6-5ced-4d57-9c0f-636441ee8c2b"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>ZICO</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=ZICO"/>
+          </LegendURL>
+        </Style>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Zones_de_protection_speciale</Name>
+        <Title>Zones de protection spéciale</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:4258</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//FA60A2FB-E9FB-4637-B835-DDB13D4D8062</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/FA60A2FB-E9FB-4637-B835-DDB13D4D8062"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Zones_de_protection_speciale</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Zones_de_protection_speciale"/>
+          </LegendURL>
+        </Style>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Sites_d_importance_communautaire</Name>
+        <Title>Sites d&#39;importance communautaire</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:4258</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//EC389F13-669A-4611-942C-C187E7F523E2</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/EC389F13-669A-4611-942C-C187E7F523E2"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Sites_d_importance_communautaire</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Sites_d_importance_communautaire"/>
+          </LegendURL>
+        </Style>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Znieff2_mer</Name>
+        <Title>Znieff2 mer</Title>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Znieff2_mer</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Znieff2_mer"/>
+          </LegendURL>
+        </Style>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Znieff1_mer</Name>
+        <Title>Znieff1 mer</Title>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Znieff1_mer</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Znieff1_mer"/>
+          </LegendURL>
+        </Style>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Znieff2</Name>
+        <Title>Znieff2</Title>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:4258</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Znieff2</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Znieff2"/>
+          </LegendURL>
+        </Style>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Znieff1</Name>
+        <Title>Znieff1</Title>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Znieff1</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Znieff1"/>
+          </LegendURL>
+        </Style>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Bien_du_patrimoine_mondial_de_l_UNESCO</Name>
+        <Title>Biens du patrimoine mondial de l&#39;UNESCO</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>CRS:84</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:4326</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="CRS:84"
+                    minx="-5.58548" miny="40.9208" maxx="10.755" maxy="51.4462" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//9a0acb6e-17e2-4e0b-be6c-fa53c8384b8a</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/9a0acb6e-17e2-4e0b-be6c-fa53c8384b8a"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Bien_du_patrimoine_mondial_de_l_UNESCO</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Bien_du_patrimoine_mondial_de_l_UNESCO"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1e+07</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Reserves_de_la_biosphere</Name>
+        <Title>Réserves de biosphère</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:4326</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//A4416114-D220-49A5-A1F8-B6C4C18043BC</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/A4416114-D220-49A5-A1F8-B6C4C18043BC"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Reserves_de_la_biosphere</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Reserves_de_la_biosphere"/>
+          </LegendURL>
+        </Style>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Terrains_du_Conservatoire_du_Littoral</Name>
+        <Title>Terrains du Conservatoire du Littoral</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:32630</CRS>
+        <CRS>EPSG:32631</CRS>
+        <CRS>EPSG:32632</CRS>
+        <CRS>EPSG:4807</CRS>
+        <CRS>EPSG:27582</CRS>
+        <CRS>EPSG:27572</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:27591</CRS>
+        <CRS>EPSG:27561</CRS>
+        <CRS>EPSG:27592</CRS>
+        <CRS>EPSG:27562</CRS>
+        <CRS>EPSG:27593</CRS>
+        <CRS>EPSG:27563</CRS>
+        <CRS>EPSG:27594</CRS>
+        <CRS>EPSG:27564</CRS>
+        <CRS>EPSG:27581</CRS>
+        <CRS>EPSG:27571</CRS>
+        <CRS>EPSG:27583</CRS>
+        <CRS>EPSG:27573</CRS>
+        <CRS>EPSG:27584</CRS>
+        <CRS>EPSG:27574</CRS>
+        <CRS>EPSG:4171</CRS>
+        <CRS>EPSG:3942</CRS>
+        <CRS>EPSG:3943</CRS>
+        <CRS>EPSG:3944</CRS>
+        <CRS>EPSG:3945</CRS>
+        <CRS>EPSG:3946</CRS>
+        <CRS>EPSG:3947</CRS>
+        <CRS>EPSG:3948</CRS>
+        <CRS>EPSG:3949</CRS>
+        <CRS>EPSG:3950</CRS>
+        <CRS>EPSG:23030</CRS>
+        <CRS>EPSG:23031</CRS>
+        <CRS>EPSG:23032</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:3035</CRS>
+        <CRS>EPSG:3034</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:32630"
+                    minx="319189" miny="4.53057e+06" maxx="1.54686e+06" maxy="5.76336e+06" />
+        <BoundingBox CRS="EPSG:32631"
+                    minx="-102184" miny="4.55443e+06" maxx="1.04339e+06" maxy="5.70198e+06" />
+        <BoundingBox CRS="EPSG:32632"
+                    minx="-605872" miny="4.53505e+06" maxx="622595" maxy="5.76871e+06" />
+        <BoundingBox CRS="EPSG:4807"
+                    minx="40.9208" miny="-7.92162" maxx="51.4463" maxy="8.41818" />
+        <BoundingBox CRS="EPSG:27582"
+                    minx="45089.5" miny="1.56816e+06" maxx="1.19904e+06" maxy="2.72214e+06" />
+        <BoundingBox CRS="EPSG:27572"
+                    minx="45089.5" miny="1.56816e+06" maxx="1.19904e+06" maxy="2.72214e+06" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <BoundingBox CRS="EPSG:27591"
+                    minx="46582" miny="-733244" maxx="1.20229e+06" maxy="422764" />
+        <BoundingBox CRS="EPSG:27561"
+                    minx="46582" miny="-733244" maxx="1.20229e+06" maxy="422764" />
+        <BoundingBox CRS="EPSG:27592"
+                    minx="45089.5" miny="-431845" maxx="1.19904e+06" maxy="722140" />
+        <BoundingBox CRS="EPSG:27562"
+                    minx="45089.5" miny="-431845" maxx="1.19904e+06" maxy="722140" />
+        <BoundingBox CRS="EPSG:27593"
+                    minx="42256" miny="-131960" maxx="1.197e+06" maxy="1.0225e+06" />
+        <BoundingBox CRS="EPSG:27563"
+                    minx="42256" miny="-131960" maxx="1.197e+06" maxy="1.0225e+06" />
+        <BoundingBox CRS="EPSG:27594"
+                    minx="-560443" miny="68220.4" maxx="596582" maxy="1.22471e+06" />
+        <BoundingBox CRS="EPSG:27564"
+                    minx="-560443" miny="68220.4" maxx="596582" maxy="1.22471e+06" />
+        <BoundingBox CRS="EPSG:27581"
+                    minx="46582" miny="266756" maxx="1.20229e+06" maxy="1.42276e+06" />
+        <BoundingBox CRS="EPSG:27571"
+                    minx="46582" miny="266756" maxx="1.20229e+06" maxy="1.42276e+06" />
+        <BoundingBox CRS="EPSG:27583"
+                    minx="42256" miny="2.86804e+06" maxx="1.197e+06" maxy="4.0225e+06" />
+        <BoundingBox CRS="EPSG:27573"
+                    minx="42256" miny="2.86804e+06" maxx="1.197e+06" maxy="4.0225e+06" />
+        <BoundingBox CRS="EPSG:27584"
+                    minx="-560443" miny="4.06822e+06" maxx="596582" maxy="5.22471e+06" />
+        <BoundingBox CRS="EPSG:27574"
+                    minx="-560443" miny="4.06822e+06" maxx="596582" maxy="5.22471e+06" />
+        <BoundingBox CRS="EPSG:4171"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3942"
+                    minx="1.09223e+06" miny="1.10505e+06" maxx="2.2486e+06" maxy="2.25498e+06" />
+        <BoundingBox CRS="EPSG:3943"
+                    minx="1.094e+06" miny="1.99443e+06" maxx="2.247e+06" maxy="3.14247e+06" />
+        <BoundingBox CRS="EPSG:3944"
+                    minx="1.09554e+06" miny="2.88371e+06" maxx="2.2456e+06" maxy="4.03025e+06" />
+        <BoundingBox CRS="EPSG:3945"
+                    minx="1.09688e+06" miny="3.77288e+06" maxx="2.24439e+06" maxy="4.91829e+06" />
+        <BoundingBox CRS="EPSG:3946"
+                    minx="1.09801e+06" miny="4.66189e+06" maxx="2.24336e+06" maxy="5.80653e+06" />
+        <BoundingBox CRS="EPSG:3947"
+                    minx="1.09804e+06" miny="5.5505e+06" maxx="2.24333e+06" maxy="6.69521e+06" />
+        <BoundingBox CRS="EPSG:3948"
+                    minx="1.09693e+06" miny="6.43868e+06" maxx="2.24433e+06" maxy="7.5843e+06" />
+        <BoundingBox CRS="EPSG:3949"
+                    minx="1.09566e+06" miny="7.32661e+06" maxx="2.24548e+06" maxy="8.47348e+06" />
+        <BoundingBox CRS="EPSG:3950"
+                    minx="1.09423e+06" miny="8.21428e+06" maxx="2.24677e+06" maxy="9.36271e+06" />
+        <BoundingBox CRS="EPSG:23030"
+                    minx="319290" miny="4.53077e+06" maxx="1.54697e+06" maxy="5.76358e+06" />
+        <BoundingBox CRS="EPSG:23031"
+                    minx="-102096" miny="4.55463e+06" maxx="1.04349e+06" maxy="5.70219e+06" />
+        <BoundingBox CRS="EPSG:23032"
+                    minx="-605798" miny="4.53524e+06" maxx="622679" maxy="5.76892e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3035"
+                    minx="1.98538e+06" miny="3.13426e+06" maxx="3.23171e+06" maxy="4.37376e+06" />
+        <BoundingBox CRS="EPSG:3034"
+                    minx="1.61075e+06" miny="2.84244e+06" maxx="2.81964e+06" maxy="4.05095e+06" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//3e79098c-6875-4442-a3e0-d1465471bddf</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/3e79098c-6875-4442-a3e0-d1465471bddf"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Terrains_du_Conservatoire_du_Littoral</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Terrains_du_Conservatoire_du_Littoral"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1e+07</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Parc_naturel_marin</Name>
+        <Title>Parcs naturels marins</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:32630</CRS>
+        <CRS>EPSG:32631</CRS>
+        <CRS>EPSG:32632</CRS>
+        <CRS>EPSG:4807</CRS>
+        <CRS>EPSG:27582</CRS>
+        <CRS>EPSG:27572</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:27591</CRS>
+        <CRS>EPSG:27561</CRS>
+        <CRS>EPSG:27592</CRS>
+        <CRS>EPSG:27562</CRS>
+        <CRS>EPSG:27593</CRS>
+        <CRS>EPSG:27563</CRS>
+        <CRS>EPSG:27594</CRS>
+        <CRS>EPSG:27564</CRS>
+        <CRS>EPSG:27581</CRS>
+        <CRS>EPSG:27571</CRS>
+        <CRS>EPSG:27583</CRS>
+        <CRS>EPSG:27573</CRS>
+        <CRS>EPSG:27584</CRS>
+        <CRS>EPSG:27574</CRS>
+        <CRS>EPSG:4171</CRS>
+        <CRS>EPSG:3942</CRS>
+        <CRS>EPSG:3943</CRS>
+        <CRS>EPSG:3944</CRS>
+        <CRS>EPSG:3945</CRS>
+        <CRS>EPSG:3946</CRS>
+        <CRS>EPSG:3947</CRS>
+        <CRS>EPSG:3948</CRS>
+        <CRS>EPSG:3949</CRS>
+        <CRS>EPSG:3950</CRS>
+        <CRS>EPSG:23030</CRS>
+        <CRS>EPSG:23031</CRS>
+        <CRS>EPSG:23032</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:3035</CRS>
+        <CRS>EPSG:3034</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:32630"
+                    minx="319189" miny="4.53057e+06" maxx="1.54686e+06" maxy="5.76336e+06" />
+        <BoundingBox CRS="EPSG:32631"
+                    minx="-102184" miny="4.55443e+06" maxx="1.04339e+06" maxy="5.70198e+06" />
+        <BoundingBox CRS="EPSG:32632"
+                    minx="-605872" miny="4.53505e+06" maxx="622595" maxy="5.76871e+06" />
+        <BoundingBox CRS="EPSG:4807"
+                    minx="40.9208" miny="-7.92162" maxx="51.4463" maxy="8.41818" />
+        <BoundingBox CRS="EPSG:27582"
+                    minx="45089.5" miny="1.56816e+06" maxx="1.19904e+06" maxy="2.72214e+06" />
+        <BoundingBox CRS="EPSG:27572"
+                    minx="45089.5" miny="1.56816e+06" maxx="1.19904e+06" maxy="2.72214e+06" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <BoundingBox CRS="EPSG:27591"
+                    minx="46582" miny="-733244" maxx="1.20229e+06" maxy="422764" />
+        <BoundingBox CRS="EPSG:27561"
+                    minx="46582" miny="-733244" maxx="1.20229e+06" maxy="422764" />
+        <BoundingBox CRS="EPSG:27592"
+                    minx="45089.5" miny="-431845" maxx="1.19904e+06" maxy="722140" />
+        <BoundingBox CRS="EPSG:27562"
+                    minx="45089.5" miny="-431845" maxx="1.19904e+06" maxy="722140" />
+        <BoundingBox CRS="EPSG:27593"
+                    minx="42256" miny="-131960" maxx="1.197e+06" maxy="1.0225e+06" />
+        <BoundingBox CRS="EPSG:27563"
+                    minx="42256" miny="-131960" maxx="1.197e+06" maxy="1.0225e+06" />
+        <BoundingBox CRS="EPSG:27594"
+                    minx="-560443" miny="68220.4" maxx="596582" maxy="1.22471e+06" />
+        <BoundingBox CRS="EPSG:27564"
+                    minx="-560443" miny="68220.4" maxx="596582" maxy="1.22471e+06" />
+        <BoundingBox CRS="EPSG:27581"
+                    minx="46582" miny="266756" maxx="1.20229e+06" maxy="1.42276e+06" />
+        <BoundingBox CRS="EPSG:27571"
+                    minx="46582" miny="266756" maxx="1.20229e+06" maxy="1.42276e+06" />
+        <BoundingBox CRS="EPSG:27583"
+                    minx="42256" miny="2.86804e+06" maxx="1.197e+06" maxy="4.0225e+06" />
+        <BoundingBox CRS="EPSG:27573"
+                    minx="42256" miny="2.86804e+06" maxx="1.197e+06" maxy="4.0225e+06" />
+        <BoundingBox CRS="EPSG:27584"
+                    minx="-560443" miny="4.06822e+06" maxx="596582" maxy="5.22471e+06" />
+        <BoundingBox CRS="EPSG:27574"
+                    minx="-560443" miny="4.06822e+06" maxx="596582" maxy="5.22471e+06" />
+        <BoundingBox CRS="EPSG:4171"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3942"
+                    minx="1.09223e+06" miny="1.10505e+06" maxx="2.2486e+06" maxy="2.25498e+06" />
+        <BoundingBox CRS="EPSG:3943"
+                    minx="1.094e+06" miny="1.99443e+06" maxx="2.247e+06" maxy="3.14247e+06" />
+        <BoundingBox CRS="EPSG:3944"
+                    minx="1.09554e+06" miny="2.88371e+06" maxx="2.2456e+06" maxy="4.03025e+06" />
+        <BoundingBox CRS="EPSG:3945"
+                    minx="1.09688e+06" miny="3.77288e+06" maxx="2.24439e+06" maxy="4.91829e+06" />
+        <BoundingBox CRS="EPSG:3946"
+                    minx="1.09801e+06" miny="4.66189e+06" maxx="2.24336e+06" maxy="5.80653e+06" />
+        <BoundingBox CRS="EPSG:3947"
+                    minx="1.09804e+06" miny="5.5505e+06" maxx="2.24333e+06" maxy="6.69521e+06" />
+        <BoundingBox CRS="EPSG:3948"
+                    minx="1.09693e+06" miny="6.43868e+06" maxx="2.24433e+06" maxy="7.5843e+06" />
+        <BoundingBox CRS="EPSG:3949"
+                    minx="1.09566e+06" miny="7.32661e+06" maxx="2.24548e+06" maxy="8.47348e+06" />
+        <BoundingBox CRS="EPSG:3950"
+                    minx="1.09423e+06" miny="8.21428e+06" maxx="2.24677e+06" maxy="9.36271e+06" />
+        <BoundingBox CRS="EPSG:23030"
+                    minx="319290" miny="4.53077e+06" maxx="1.54697e+06" maxy="5.76358e+06" />
+        <BoundingBox CRS="EPSG:23031"
+                    minx="-102096" miny="4.55463e+06" maxx="1.04349e+06" maxy="5.70219e+06" />
+        <BoundingBox CRS="EPSG:23032"
+                    minx="-605798" miny="4.53524e+06" maxx="622679" maxy="5.76892e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3035"
+                    minx="1.98538e+06" miny="3.13426e+06" maxx="3.23171e+06" maxy="4.37376e+06" />
+        <BoundingBox CRS="EPSG:3034"
+                    minx="1.61075e+06" miny="2.84244e+06" maxx="2.81964e+06" maxy="4.05095e+06" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//193b1776-420f-44eb-86c8-4144fda4b0ba</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/193b1776-420f-44eb-86c8-4144fda4b0ba"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Parc_naturel_marin</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Parc_naturel_marin"/>
+          </LegendURL>
+        </Style>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Parcs_nationaux</Name>
+        <Title>Parcs nationaux</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:3950</CRS>
+        <CRS>EPSG:3949</CRS>
+        <CRS>EPSG:3948</CRS>
+        <CRS>EPSG:3947</CRS>
+        <CRS>EPSG:3946</CRS>
+        <CRS>EPSG:3945</CRS>
+        <CRS>EPSG:3944</CRS>
+        <CRS>EPSG:3943</CRS>
+        <CRS>EPSG:3942</CRS>
+        <CRS>EPSG:4171</CRS>
+        <CRS>EPSG:27574</CRS>
+        <CRS>EPSG:27584</CRS>
+        <CRS>EPSG:27573</CRS>
+        <CRS>EPSG:27583</CRS>
+        <CRS>EPSG:27571</CRS>
+        <CRS>EPSG:27581</CRS>
+        <CRS>EPSG:27564</CRS>
+        <CRS>EPSG:27563</CRS>
+        <CRS>EPSG:27562</CRS>
+        <CRS>EPSG:27561</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:27572</CRS>
+        <CRS>EPSG:27582</CRS>
+        <CRS>EPSG:32632</CRS>
+        <CRS>EPSG:32631</CRS>
+        <CRS>EPSG:32630</CRS>
+        <CRS>EPSG:4326</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3950"
+                    minx="1.09423e+06" miny="8.21428e+06" maxx="2.24677e+06" maxy="9.36271e+06" />
+        <BoundingBox CRS="EPSG:3949"
+                    minx="1.09566e+06" miny="7.32661e+06" maxx="2.24548e+06" maxy="8.47348e+06" />
+        <BoundingBox CRS="EPSG:3948"
+                    minx="1.09693e+06" miny="6.43868e+06" maxx="2.24433e+06" maxy="7.5843e+06" />
+        <BoundingBox CRS="EPSG:3947"
+                    minx="1.09804e+06" miny="5.5505e+06" maxx="2.24333e+06" maxy="6.69521e+06" />
+        <BoundingBox CRS="EPSG:3946"
+                    minx="1.09801e+06" miny="4.66189e+06" maxx="2.24336e+06" maxy="5.80653e+06" />
+        <BoundingBox CRS="EPSG:3945"
+                    minx="1.09688e+06" miny="3.77288e+06" maxx="2.24439e+06" maxy="4.91829e+06" />
+        <BoundingBox CRS="EPSG:3944"
+                    minx="1.09554e+06" miny="2.88371e+06" maxx="2.2456e+06" maxy="4.03025e+06" />
+        <BoundingBox CRS="EPSG:3943"
+                    minx="1.094e+06" miny="1.99443e+06" maxx="2.247e+06" maxy="3.14247e+06" />
+        <BoundingBox CRS="EPSG:3942"
+                    minx="1.09223e+06" miny="1.10505e+06" maxx="2.2486e+06" maxy="2.25498e+06" />
+        <BoundingBox CRS="EPSG:4171"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:27574"
+                    minx="-560443" miny="4.06822e+06" maxx="596582" maxy="5.22471e+06" />
+        <BoundingBox CRS="EPSG:27584"
+                    minx="-560443" miny="4.06822e+06" maxx="596582" maxy="5.22471e+06" />
+        <BoundingBox CRS="EPSG:27573"
+                    minx="42256" miny="2.86804e+06" maxx="1.197e+06" maxy="4.0225e+06" />
+        <BoundingBox CRS="EPSG:27583"
+                    minx="42256" miny="2.86804e+06" maxx="1.197e+06" maxy="4.0225e+06" />
+        <BoundingBox CRS="EPSG:27571"
+                    minx="46582" miny="266756" maxx="1.20229e+06" maxy="1.42276e+06" />
+        <BoundingBox CRS="EPSG:27581"
+                    minx="46582" miny="266756" maxx="1.20229e+06" maxy="1.42276e+06" />
+        <BoundingBox CRS="EPSG:27564"
+                    minx="-560443" miny="68220.4" maxx="596582" maxy="1.22471e+06" />
+        <BoundingBox CRS="EPSG:27563"
+                    minx="42256" miny="-131960" maxx="1.197e+06" maxy="1.0225e+06" />
+        <BoundingBox CRS="EPSG:27562"
+                    minx="45089.5" miny="-431845" maxx="1.19904e+06" maxy="722140" />
+        <BoundingBox CRS="EPSG:27561"
+                    minx="46582" miny="-733244" maxx="1.20229e+06" maxy="422764" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <BoundingBox CRS="EPSG:27572"
+                    minx="45089.5" miny="1.56816e+06" maxx="1.19904e+06" maxy="2.72214e+06" />
+        <BoundingBox CRS="EPSG:27582"
+                    minx="45089.5" miny="1.56816e+06" maxx="1.19904e+06" maxy="2.72214e+06" />
+        <BoundingBox CRS="EPSG:32632"
+                    minx="-605872" miny="4.53505e+06" maxx="622595" maxy="5.76871e+06" />
+        <BoundingBox CRS="EPSG:32631"
+                    minx="-102184" miny="4.55443e+06" maxx="1.04339e+06" maxy="5.70198e+06" />
+        <BoundingBox CRS="EPSG:32630"
+                    minx="319189" miny="4.53057e+06" maxx="1.54686e+06" maxy="5.76336e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//195455A0-351A-4A11-8CC2-CD6ED1471326</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/195455A0-351A-4A11-8CC2-CD6ED1471326"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Parcs_nationaux</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Parcs_nationaux"/>
+          </LegendURL>
+        </Style>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Reserves_Integrales_de_Parcs_Nationaux</Name>
+        <Title>Réserves Intégrales de Parcs Nationaux</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>CRS:84</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:4326</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <BoundingBox CRS="CRS:84"
+                    minx="-5.58548" miny="40.9208" maxx="10.755" maxy="51.4462" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//eb8dc12e-a7a9-4464-be52-a52f0df59ca8</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/eb8dc12e-a7a9-4464-be52-a52f0df59ca8"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Reserves_Integrales_de_Parcs_Nationaux</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Reserves_Integrales_de_Parcs_Nationaux"/>
+          </LegendURL>
+        </Style>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Arretes_de_protection_de_biotope</Name>
+        <Title>Arrêtés de protection de biotope</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:3950</CRS>
+        <CRS>EPSG:3949</CRS>
+        <CRS>EPSG:3948</CRS>
+        <CRS>EPSG:3947</CRS>
+        <CRS>EPSG:3946</CRS>
+        <CRS>EPSG:3945</CRS>
+        <CRS>EPSG:3944</CRS>
+        <CRS>EPSG:3943</CRS>
+        <CRS>EPSG:3942</CRS>
+        <CRS>EPSG:4171</CRS>
+        <CRS>EPSG:27574</CRS>
+        <CRS>EPSG:27584</CRS>
+        <CRS>EPSG:27573</CRS>
+        <CRS>EPSG:27583</CRS>
+        <CRS>EPSG:27571</CRS>
+        <CRS>EPSG:27581</CRS>
+        <CRS>EPSG:27564</CRS>
+        <CRS>EPSG:27563</CRS>
+        <CRS>EPSG:27562</CRS>
+        <CRS>EPSG:27561</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:27572</CRS>
+        <CRS>EPSG:27582</CRS>
+        <CRS>EPSG:32632</CRS>
+        <CRS>EPSG:32631</CRS>
+        <CRS>EPSG:32630</CRS>
+        <CRS>EPSG:4326</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3950"
+                    minx="1.09423e+06" miny="8.21428e+06" maxx="2.24677e+06" maxy="9.36271e+06" />
+        <BoundingBox CRS="EPSG:3949"
+                    minx="1.09566e+06" miny="7.32661e+06" maxx="2.24548e+06" maxy="8.47348e+06" />
+        <BoundingBox CRS="EPSG:3948"
+                    minx="1.09693e+06" miny="6.43868e+06" maxx="2.24433e+06" maxy="7.5843e+06" />
+        <BoundingBox CRS="EPSG:3947"
+                    minx="1.09804e+06" miny="5.5505e+06" maxx="2.24333e+06" maxy="6.69521e+06" />
+        <BoundingBox CRS="EPSG:3946"
+                    minx="1.09801e+06" miny="4.66189e+06" maxx="2.24336e+06" maxy="5.80653e+06" />
+        <BoundingBox CRS="EPSG:3945"
+                    minx="1.09688e+06" miny="3.77288e+06" maxx="2.24439e+06" maxy="4.91829e+06" />
+        <BoundingBox CRS="EPSG:3944"
+                    minx="1.09554e+06" miny="2.88371e+06" maxx="2.2456e+06" maxy="4.03025e+06" />
+        <BoundingBox CRS="EPSG:3943"
+                    minx="1.094e+06" miny="1.99443e+06" maxx="2.247e+06" maxy="3.14247e+06" />
+        <BoundingBox CRS="EPSG:3942"
+                    minx="1.09223e+06" miny="1.10505e+06" maxx="2.2486e+06" maxy="2.25498e+06" />
+        <BoundingBox CRS="EPSG:4171"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:27574"
+                    minx="-560443" miny="4.06822e+06" maxx="596582" maxy="5.22471e+06" />
+        <BoundingBox CRS="EPSG:27584"
+                    minx="-560443" miny="4.06822e+06" maxx="596582" maxy="5.22471e+06" />
+        <BoundingBox CRS="EPSG:27573"
+                    minx="42256" miny="2.86804e+06" maxx="1.197e+06" maxy="4.0225e+06" />
+        <BoundingBox CRS="EPSG:27583"
+                    minx="42256" miny="2.86804e+06" maxx="1.197e+06" maxy="4.0225e+06" />
+        <BoundingBox CRS="EPSG:27571"
+                    minx="46582" miny="266756" maxx="1.20229e+06" maxy="1.42276e+06" />
+        <BoundingBox CRS="EPSG:27581"
+                    minx="46582" miny="266756" maxx="1.20229e+06" maxy="1.42276e+06" />
+        <BoundingBox CRS="EPSG:27564"
+                    minx="-560443" miny="68220.4" maxx="596582" maxy="1.22471e+06" />
+        <BoundingBox CRS="EPSG:27563"
+                    minx="42256" miny="-131960" maxx="1.197e+06" maxy="1.0225e+06" />
+        <BoundingBox CRS="EPSG:27562"
+                    minx="45089.5" miny="-431845" maxx="1.19904e+06" maxy="722140" />
+        <BoundingBox CRS="EPSG:27561"
+                    minx="46582" miny="-733244" maxx="1.20229e+06" maxy="422764" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <BoundingBox CRS="EPSG:27572"
+                    minx="45089.5" miny="1.56816e+06" maxx="1.19904e+06" maxy="2.72214e+06" />
+        <BoundingBox CRS="EPSG:27582"
+                    minx="45089.5" miny="1.56816e+06" maxx="1.19904e+06" maxy="2.72214e+06" />
+        <BoundingBox CRS="EPSG:32632"
+                    minx="-605872" miny="4.53505e+06" maxx="622595" maxy="5.76871e+06" />
+        <BoundingBox CRS="EPSG:32631"
+                    minx="-102184" miny="4.55443e+06" maxx="1.04339e+06" maxy="5.70198e+06" />
+        <BoundingBox CRS="EPSG:32630"
+                    minx="319189" miny="4.53057e+06" maxx="1.54686e+06" maxy="5.76336e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//e9fa856d-cb94-42c0-9822-8bea799199ac</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/e9fa856d-cb94-42c0-9822-8bea799199ac"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Arretes_de_protection_de_biotope</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Arretes_de_protection_de_biotope"/>
+          </LegendURL>
+        </Style>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Reserves_biologiques</Name>
+        <Title>Réserves biologiques</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//70A57A14-6427-48DE-9335-9BD1D8978EB9</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/70A57A14-6427-48DE-9335-9BD1D8978EB9"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Reserves_biologiques</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Reserves_biologiques"/>
+          </LegendURL>
+        </Style>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Parcs_naturels_regionaux</Name>
+        <Title>Parcs naturels régionaux</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:32630</CRS>
+        <CRS>EPSG:32631</CRS>
+        <CRS>EPSG:32632</CRS>
+        <CRS>EPSG:27582</CRS>
+        <CRS>EPSG:27572</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:27561</CRS>
+        <CRS>EPSG:27562</CRS>
+        <CRS>EPSG:27563</CRS>
+        <CRS>EPSG:27564</CRS>
+        <CRS>EPSG:27581</CRS>
+        <CRS>EPSG:27571</CRS>
+        <CRS>EPSG:27583</CRS>
+        <CRS>EPSG:27573</CRS>
+        <CRS>EPSG:27584</CRS>
+        <CRS>EPSG:27574</CRS>
+        <CRS>EPSG:4171</CRS>
+        <CRS>EPSG:3942</CRS>
+        <CRS>EPSG:3943</CRS>
+        <CRS>EPSG:3944</CRS>
+        <CRS>EPSG:3945</CRS>
+        <CRS>EPSG:3946</CRS>
+        <CRS>EPSG:3947</CRS>
+        <CRS>EPSG:3948</CRS>
+        <CRS>EPSG:3949</CRS>
+        <CRS>EPSG:3950</CRS>
+        <CRS>EPSG:4258</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:32630"
+                    minx="319189" miny="4.53057e+06" maxx="1.54686e+06" maxy="5.76336e+06" />
+        <BoundingBox CRS="EPSG:32631"
+                    minx="-102184" miny="4.55443e+06" maxx="1.04339e+06" maxy="5.70198e+06" />
+        <BoundingBox CRS="EPSG:32632"
+                    minx="-605872" miny="4.53505e+06" maxx="622595" maxy="5.76871e+06" />
+        <BoundingBox CRS="EPSG:27582"
+                    minx="45089.5" miny="1.56816e+06" maxx="1.19904e+06" maxy="2.72214e+06" />
+        <BoundingBox CRS="EPSG:27572"
+                    minx="45089.5" miny="1.56816e+06" maxx="1.19904e+06" maxy="2.72214e+06" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <BoundingBox CRS="EPSG:27561"
+                    minx="46582" miny="-733244" maxx="1.20229e+06" maxy="422764" />
+        <BoundingBox CRS="EPSG:27562"
+                    minx="45089.5" miny="-431845" maxx="1.19904e+06" maxy="722140" />
+        <BoundingBox CRS="EPSG:27563"
+                    minx="42256" miny="-131960" maxx="1.197e+06" maxy="1.0225e+06" />
+        <BoundingBox CRS="EPSG:27564"
+                    minx="-560443" miny="68220.4" maxx="596582" maxy="1.22471e+06" />
+        <BoundingBox CRS="EPSG:27581"
+                    minx="46582" miny="266756" maxx="1.20229e+06" maxy="1.42276e+06" />
+        <BoundingBox CRS="EPSG:27571"
+                    minx="46582" miny="266756" maxx="1.20229e+06" maxy="1.42276e+06" />
+        <BoundingBox CRS="EPSG:27583"
+                    minx="42256" miny="2.86804e+06" maxx="1.197e+06" maxy="4.0225e+06" />
+        <BoundingBox CRS="EPSG:27573"
+                    minx="42256" miny="2.86804e+06" maxx="1.197e+06" maxy="4.0225e+06" />
+        <BoundingBox CRS="EPSG:27584"
+                    minx="-560443" miny="4.06822e+06" maxx="596582" maxy="5.22471e+06" />
+        <BoundingBox CRS="EPSG:27574"
+                    minx="-560443" miny="4.06822e+06" maxx="596582" maxy="5.22471e+06" />
+        <BoundingBox CRS="EPSG:4171"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3942"
+                    minx="1.09223e+06" miny="1.10505e+06" maxx="2.2486e+06" maxy="2.25498e+06" />
+        <BoundingBox CRS="EPSG:3943"
+                    minx="1.094e+06" miny="1.99443e+06" maxx="2.247e+06" maxy="3.14247e+06" />
+        <BoundingBox CRS="EPSG:3944"
+                    minx="1.09554e+06" miny="2.88371e+06" maxx="2.2456e+06" maxy="4.03025e+06" />
+        <BoundingBox CRS="EPSG:3945"
+                    minx="1.09688e+06" miny="3.77288e+06" maxx="2.24439e+06" maxy="4.91829e+06" />
+        <BoundingBox CRS="EPSG:3946"
+                    minx="1.09801e+06" miny="4.66189e+06" maxx="2.24336e+06" maxy="5.80653e+06" />
+        <BoundingBox CRS="EPSG:3947"
+                    minx="1.09804e+06" miny="5.5505e+06" maxx="2.24333e+06" maxy="6.69521e+06" />
+        <BoundingBox CRS="EPSG:3948"
+                    minx="1.09693e+06" miny="6.43868e+06" maxx="2.24433e+06" maxy="7.5843e+06" />
+        <BoundingBox CRS="EPSG:3949"
+                    minx="1.09566e+06" miny="7.32661e+06" maxx="2.24548e+06" maxy="8.47348e+06" />
+        <BoundingBox CRS="EPSG:3950"
+                    minx="1.09423e+06" miny="8.21428e+06" maxx="2.24677e+06" maxy="9.36271e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//c3afed90-37c1-40ed-a6ae-7160c05db508</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/c3afed90-37c1-40ed-a6ae-7160c05db508"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Parcs_naturels_regionaux</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Parcs_naturels_regionaux"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>ospar</Name>
+        <Title>Zone marine protégée de la convention OSPAR</Title>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:3942</CRS>
+        <CRS>EPSG:3943</CRS>
+        <CRS>EPSG:3944</CRS>
+        <CRS>EPSG:3945</CRS>
+        <CRS>EPSG:3946</CRS>
+        <CRS>EPSG:3947</CRS>
+        <CRS>EPSG:3948</CRS>
+        <CRS>EPSG:3949</CRS>
+        <CRS>EPSG:27571</CRS>
+        <CRS>EPSG:27573</CRS>
+        <CRS>EPSG:27574</CRS>
+        <CRS>EPSG:27581</CRS>
+        <CRS>EPSG:27583</CRS>
+        <CRS>EPSG:27584</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3942"
+                    minx="1.09223e+06" miny="1.10505e+06" maxx="2.2486e+06" maxy="2.25498e+06" />
+        <BoundingBox CRS="EPSG:3943"
+                    minx="1.094e+06" miny="1.99443e+06" maxx="2.247e+06" maxy="3.14247e+06" />
+        <BoundingBox CRS="EPSG:3944"
+                    minx="1.09554e+06" miny="2.88371e+06" maxx="2.2456e+06" maxy="4.03025e+06" />
+        <BoundingBox CRS="EPSG:3945"
+                    minx="1.09688e+06" miny="3.77288e+06" maxx="2.24439e+06" maxy="4.91829e+06" />
+        <BoundingBox CRS="EPSG:3946"
+                    minx="1.09801e+06" miny="4.66189e+06" maxx="2.24336e+06" maxy="5.80653e+06" />
+        <BoundingBox CRS="EPSG:3947"
+                    minx="1.09804e+06" miny="5.5505e+06" maxx="2.24333e+06" maxy="6.69521e+06" />
+        <BoundingBox CRS="EPSG:3948"
+                    minx="1.09693e+06" miny="6.43868e+06" maxx="2.24433e+06" maxy="7.5843e+06" />
+        <BoundingBox CRS="EPSG:3949"
+                    minx="1.09566e+06" miny="7.32661e+06" maxx="2.24548e+06" maxy="8.47348e+06" />
+        <BoundingBox CRS="EPSG:27571"
+                    minx="46582" miny="266756" maxx="1.20229e+06" maxy="1.42276e+06" />
+        <BoundingBox CRS="EPSG:27573"
+                    minx="42256" miny="2.86804e+06" maxx="1.197e+06" maxy="4.0225e+06" />
+        <BoundingBox CRS="EPSG:27574"
+                    minx="-560443" miny="4.06822e+06" maxx="596582" maxy="5.22471e+06" />
+        <BoundingBox CRS="EPSG:27581"
+                    minx="46582" miny="266756" maxx="1.20229e+06" maxy="1.42276e+06" />
+        <BoundingBox CRS="EPSG:27583"
+                    minx="42256" miny="2.86804e+06" maxx="1.197e+06" maxy="4.0225e+06" />
+        <BoundingBox CRS="EPSG:27584"
+                    minx="-560443" miny="4.06822e+06" maxx="596582" maxy="5.22471e+06" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>ospar</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=ospar"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Arretes_de_protection_de_geotope</Name>
+        <Title>Arrêtés de protection de géotope</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:27572</CRS>
+        <CRS>EPSG:27582</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:27572"
+                    minx="45089.5" miny="1.56816e+06" maxx="1.19904e+06" maxy="2.72214e+06" />
+        <BoundingBox CRS="EPSG:27582"
+                    minx="45089.5" miny="1.56816e+06" maxx="1.19904e+06" maxy="2.72214e+06" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//265f1a0e-7b0e-488e-aaf8-c555b8aef80a</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/265f1a0e-7b0e-488e-aaf8-c555b8aef80a"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Arretes_de_protection_de_geotope</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Arretes_de_protection_de_geotope"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Reserves_naturelles_regionales</Name>
+        <Title>Réserves naturelles régionales</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//bece4847-5f6d-4dc8-9f24-13e2a1b36d53</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/bece4847-5f6d-4dc8-9f24-13e2a1b36d53"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Reserves_naturelles_regionales</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Reserves_naturelles_regionales"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Geoparcs</Name>
+        <Title>Géoparcs</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:27572</CRS>
+        <CRS>EPSG:27582</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:27572"
+                    minx="45089.5" miny="1.56816e+06" maxx="1.19904e+06" maxy="2.72214e+06" />
+        <BoundingBox CRS="EPSG:27582"
+                    minx="45089.5" miny="1.56816e+06" maxx="1.19904e+06" maxy="2.72214e+06" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//2bcf82a9-a3b9-49cd-950a-d6285a5c5a34</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/2bcf82a9-a3b9-49cd-950a-d6285a5c5a34"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Geoparcs</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Geoparcs"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Arretes_de_protection_d_habitats_naturels</Name>
+        <Title>Arrêtés de protection d&#39;habitats naturels</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:27572</CRS>
+        <CRS>EPSG:27582</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:27572"
+                    minx="45089.5" miny="1.56816e+06" maxx="1.19904e+06" maxy="2.72214e+06" />
+        <BoundingBox CRS="EPSG:27582"
+                    minx="45089.5" miny="1.56816e+06" maxx="1.19904e+06" maxy="2.72214e+06" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//9b8e6bb7-8da7-46b8-a76b-c2db097dbe6a</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/9b8e6bb7-8da7-46b8-a76b-c2db097dbe6a"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Arretes_de_protection_d_habitats_naturels</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Arretes_de_protection_d_habitats_naturels"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>INPG</Name>
+        <Title>Inventaire du patrimoine géologique</Title>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>INPG</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=INPG"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>ASPIM</Name>
+        <Title>Aire Spécialement Protégée d&#39;Intérêt méditerranéen de la convention de Barcelone (ASPIM)</Title>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4326</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>ASPIM</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=ASPIM"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Sites_Ramsar</Name>
+        <Title>Sites Ramsar</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//1DB87106-328F-4718-90B1-E0B3FE875B0C</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/1DB87106-328F-4718-90B1-E0B3FE875B0C"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Sites_Ramsar</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Sites_Ramsar"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Reserves_naturelles_de_Corse</Name>
+        <Title>Reserves naturelles de Corse</Title>
+        <CRS>EPSG:2154</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Reserves_naturelles_de_Corse</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Reserves_naturelles_de_Corse"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Perimetre_de_protection_dune_reserve_naturelle_nationale</Name>
+        <Title>Périmètre de protection d&#39;une réserve naturelle nationale</Title>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Perimetre_de_protection_dune_reserve_naturelle_nationale</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Perimetre_de_protection_dune_reserve_naturelle_nationale"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Perimetre_de_protection_dune_reserve_naturelle_regionale</Name>
+        <Title>Périmètre de protection d&#39;une réserve naturelle régionale</Title>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Perimetre_de_protection_dune_reserve_naturelle_regionale</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Perimetre_de_protection_dune_reserve_naturelle_regionale"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Reserves_nationales_de_chasse_et_faune_sauvage</Name>
+        <Title>Réserves nationales de chasse et faune sauvage</Title>
+        <KeywordList>
+        </KeywordList>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4258</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Identifier authority="Geonetwork">http://metadata.carmencarto.fr/geonetwork/119//7691AB04-9A22-445A-938D-BD7F11ABE9A2</Identifier>
+        <MetadataURL type="TC211">
+          <Format>text/html</Format>
+          <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://metadata.carmencarto.fr/geonetwork/119/catalog.search#/metadata/7691AB04-9A22-445A-938D-BD7F11ABE9A2"/>
+        </MetadataURL>
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Reserves_nationales_de_chasse_et_faune_sauvage</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Reserves_nationales_de_chasse_et_faune_sauvage"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>CEN_MU</Name>
+        <Title>Terrains gérés par des Conservatoires d&#39;espaces naturels</Title>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>CRS:84</CRS>
+        <CRS>EPSG:4258</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <BoundingBox CRS="CRS:84"
+                    minx="-5.58548" miny="40.9208" maxx="10.755" maxy="51.4462" />
+        <BoundingBox CRS="EPSG:4258"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>CEN_MU</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=CEN_MU"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Arrete_listes_de_sites_dinteret_geologique</Name>
+        <Title>Arrêté listes de sites d&#39;intérêt géologique</Title>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Arrete_listes_de_sites_dinteret_geologique</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Arrete_listes_de_sites_dinteret_geologique"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Zone_de_protection_renforcee</Name>
+        <Title>Zone de protection renforcée</Title>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Zone_de_protection_renforcee</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Zone_de_protection_renforcee"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Reserves_Naturelles_Nationales</Name>
+        <Title>Réserves Naturelles Nationales</Title>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:3857</CRS>
+        <CRS>EPSG:4326</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Reserves_Naturelles_Nationales</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Reserves_Naturelles_Nationales"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Espaces_naturels_sensibles</Name>
+        <Title>Espaces naturels sensibles (couche en construction)</Title>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Espaces_naturels_sensibles</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Espaces_naturels_sensibles"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+    <Layer queryable="1" opaque="0" cascaded="0">
+        <Name>Terrains_acquis_des_Conservatoires_des_espaces_naturels</Name>
+        <Title>Terrains acquis des Conservatoires des espaces naturels</Title>
+        <CRS>EPSG:2154</CRS>
+        <CRS>EPSG:4326</CRS>
+        <CRS>EPSG:3857</CRS>
+        <EX_GeographicBoundingBox>
+            <westBoundLongitude>-5.58548</westBoundLongitude>
+            <eastBoundLongitude>10.755</eastBoundLongitude>
+            <southBoundLatitude>40.9208</southBoundLatitude>
+            <northBoundLatitude>51.4462</northBoundLatitude>
+        </EX_GeographicBoundingBox>
+        <BoundingBox CRS="EPSG:2154"
+                    minx="99038.3" miny="6.00684e+06" maxx="1.24244e+06" maxy="7.15024e+06" />
+        <BoundingBox CRS="EPSG:4326"
+                    minx="40.9208" miny="-5.58548" maxx="51.4462" maxy="10.755" />
+        <BoundingBox CRS="EPSG:3857"
+                    minx="-621773" miny="5.00066e+06" maxx="1.19724e+06" maxy="6.70061e+06" />
+        <Style>
+          <Name>inspire_common:DEFAULT</Name>
+          <Title>Terrains_acquis_des_Conservatoires_des_espaces_naturels</Title>
+          <LegendURL width="120" height="120">
+             <Format>image/png</Format>
+             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://ws.carmencarto.fr/WMS/119/fxx_inpn?&amp;service=WMS&amp;version=1.3.0&amp;request=GetLegendGraphic&amp;format=image/png&amp;sld_version=1.1.0&amp;layer=Terrains_acquis_des_Conservatoires_des_espaces_naturels"/>
+          </LegendURL>
+        </Style>
+        <MinScaleDenominator>50</MinScaleDenominator>
+        <MaxScaleDenominator>1.2e+08</MaxScaleDenominator>
+    </Layer>
+  </Layer>
+</Capability>
+</WMS_Capabilities>

@@ -314,12 +314,28 @@ export default function ProjectEditor() {
             ) : activeTab === 'streetview' ? (
               <StreetViewTab project={project} />
             ) : activeTab === 'owners' ? (
-              <iframe
-                src="https://proprietaires.cadastre.io/"
-                className="w-full h-full border-0"
-                title="Propriétaires Cadastre"
-                allow="geolocation"
-              />
+              <div className="relative w-full h-full">
+                <iframe
+                  src="https://proprietaires.cadastre.io/"
+                  className="w-full h-full border-0"
+                  title="Propriétaires Cadastre"
+                  allow="geolocation"
+                />
+                <div className="absolute top-4 right-4 bg-white p-4 rounded-lg shadow-lg z-10 max-w-xs">
+                  <h4 className="font-semibold text-sm mb-2">Info Société</h4>
+                  <p className="text-xs text-gray-600 mb-3">
+                    Pour voir les détails d'une société (SIREN), copiez le numéro et cliquez ci-dessous :
+                  </p>
+                  <a
+                    href="https://www.pappers.fr/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full text-center px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                  >
+                    Rechercher sur Pappers.fr
+                  </a>
+                </div>
+              </div>
             ) : activeTab === 'itinerary' ? (
               <iframe
                 src="https://map.project-osrm.org/?hl=fr#6/44.5000/2.0000"

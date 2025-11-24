@@ -352,7 +352,14 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
           const center = bounds.getCenter();
           const width = haversine({ lat: bounds.getSouth(), lng: bounds.getWest() }, { lat: bounds.getSouth(), lng: bounds.getEast() });
           const height = haversine({ lat: bounds.getSouth(), lng: bounds.getWest() }, { lat: bounds.getNorth(), lng: bounds.getWest() });
-          setFeatures((arr) => [...arr, { id, type: "rectangle", bounds: [bounds.getSouthWest(), bounds.getNorthEast()], center, width, height, angle: 0 }]);
+          // Store as polygon coords for consistent rendering
+          const coords = [
+            bounds.getSouthWest(),
+            bounds.getNorthWest(),
+            bounds.getNorthEast(),
+            bounds.getSouthEast()
+          ];
+          setFeatures((arr) => [...arr, { id, type: "rectangle", coords, center, width, height, angle: 0 }]);
           setRectangleStart(null);
           // setMode(null); // Keep mode active for multiple rectangles
         }
@@ -646,12 +653,93 @@ const LAYERS = {
     maxZoom: 20,
     opacity: 0.5
   },
-  forests: {
-    name: "Forêts Publiques",
-    url: "https://wxs.ign.fr/cartovecto/geoportail/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=FORETS.PUBLIQUES&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=256&WIDTH=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}",
-    attribution: "IGN",
-    maxZoom: 20,
-    opacity: 0.6
+  "ZNIEFF 1": {
+    url: "https://ws.carmencarto.fr/WMS/119/fxx_inpn?",
+    layers: "Znieff1",
+    format: "image/png",
+    transparent: true,
+    attribution: "INPN",
+    isOverlay: true
+  },
+  "ZNIEFF 2": {
+    url: "https://ws.carmencarto.fr/WMS/119/fxx_inpn?",
+    layers: "Znieff2",
+    format: "image/png",
+    transparent: true,
+    attribution: "INPN",
+    isOverlay: true
+  },
+  "Natura 2000 Oiseaux": {
+    url: "https://ws.carmencarto.fr/WMS/119/fxx_inpn?",
+    layers: "Zones_de_protection_speciale",
+    format: "image/png",
+    transparent: true,
+    attribution: "INPN",
+    isOverlay: true
+  },
+  "Natura 2000 Habitat": {
+    url: "https://ws.carmencarto.fr/WMS/119/fxx_inpn?",
+    layers: "Sites_d_importance_communautaire",
+    format: "image/png",
+    transparent: true,
+    attribution: "INPN",
+    isOverlay: true
+  },
+  "Réseau HTA (Aérien)": {
+    url: "https://geobretagne.fr/geoserver/enedis/wms?",
+    layers: "reseau_hta",
+    format: "image/png",
+    transparent: true,
+    attribution: "Enedis",
+    isOverlay: true
+  },
+  "Réseau HTA (Souterrain)": {
+    url: "https://geobretagne.fr/geoserver/enedis/wms?",
+    layers: "reseau_souterrain_hta",
+    format: "image/png",
+    transparent: true,
+    attribution: "Enedis",
+    isOverlay: true
+  },
+  "Réseau BT (Aérien)": {
+    url: "https://geobretagne.fr/geoserver/enedis/wms?",
+    layers: "reseau_bt",
+    format: "image/png",
+    transparent: true,
+    attribution: "Enedis",
+    isOverlay: true
+  },
+  "Réseau BT (Souterrain)": {
+    url: "https://geobretagne.fr/geoserver/enedis/wms?",
+    layers: "reseau_souterrain_bt",
+    format: "image/png",
+    transparent: true,
+    attribution: "Enedis",
+    isOverlay: true
+  },
+  "Postes HTA/BT": {
+    url: "https://geobretagne.fr/geoserver/enedis/wms?",
+    layers: "poste_electrique",
+    format: "image/png",
+    transparent: true,
+    attribution: "Enedis",
+    isOverlay: true
+  },
+  "Postes Source": {
+    url: "https://geobretagne.fr/geoserver/enedis/wms?",
+    layers: "poste_source",
+    format: "image/png",
+    transparent: true,
+    attribution: "Enedis",
+    isOverlay: true
+  },
+  "Poteaux Électriques": {
+    url: "https://geobretagne.fr/geoserver/enedis/wms?",
+    layers: "poteau_electrique",
+    format: "image/png",
+    transparent: true,
+    attribution: "Enedis",
+    isOverlay: true
   },
   cassini: {
     name: "Carte de Cassini",
@@ -1032,26 +1120,6 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
             // Cacher les contrôles ayant la classe "hide-on-capture"
             const controlsToHide = doc.querySelectorAll('.hide-on-capture');
             controlsToHide.forEach(c => c.style.display = 'none');
-
-            // --- FIX POUR LE DÉCALAGE ---
-            const leafletPane = doc.querySelector('.leaflet-pane.leaflet-map-pane');
-            if (leafletPane) {
-              const transform = leafletPane.style.transform;
-
-              // Appliquer la *même* transformation à tous les autres panneaux (marqueurs, SVG, popups)
-              const panesToTransform = doc.querySelectorAll(
-                '.leaflet-marker-pane, .leaflet-tooltip-pane, .leaflet-popup-pane, .leaflet-shadow-pane, .leaflet-overlay-pane'
-              );
-              panesToTransform.forEach(pane => {
-                pane.style.transform = transform;
-              });
-
-              // Appliquer aussi au panneau SVG (qui contient les lignes, polygones, etc.)
-              const svgPane = doc.querySelector('.leaflet-pane > svg');
-              if (svgPane) {
-                svgPane.style.transform = transform;
-              }
-            }
           }
           // ====================================================================
           // FIN DE LA MODIFICATION
@@ -1332,20 +1400,16 @@ function BottomLayersBar({ layersRef, map }) {
   const overlayKeys = Object.keys(LAYERS).filter(k => LAYERS[k].isOverlay || (LAYERS[k].url && LAYERS[k].url.includes("WMS")));
 
   return (
-    <div className="absolute bottom-[30px] left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-lg flex flex-wrap justify-center gap-2 z-[1000] max-w-[95vw]">
+    <div className="bg-white border-t border-gray-200 p-2 flex flex-wrap justify-center gap-2 z-[1000] w-full">
       {overlayKeys.map(key => (
         <button
           key={key}
           onClick={() => toggleLayer(key)}
-          className={`flex items-center px-2 py-1 rounded text-xs font-medium transition-colors border ${isActive(key)
-            ? "bg-blue-600 text-white border-blue-600"
-            : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+          className={`px-3 py-1.5 rounded text-xs font-medium transition-colors shadow-sm border ${isActive(key)
+            ? 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700'
+            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
             }`}
         >
-          <div
-            className={`w-2 h-2 rounded-full mr-1.5 ${isActive(key) ? "bg-white" : "bg-slate-400"
-              }`}
-          />
           {LAYERS[key].name}
         </button>
       ))}
@@ -1393,11 +1457,12 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
   }, [symbolToPlace, photoToPlace]);
 
   return (
-    <div className="relative h-full w-full flex flex-col" style={style}>
-      <div className="flex-grow relative">
+    <div className="relative h-full w-full flex flex-col">
+      <div className="flex-1 relative min-h-0">
         <MapContainer
-          center={[44.8378, -0.5792]}
-          zoom={15}
+          ref={setMap}
+          center={[46.603354, 1.888334]}
+          zoom={6}
           style={{ height: "100%", width: "100%" }}
           doubleClickZoom={false}
           zoomControl={false}
