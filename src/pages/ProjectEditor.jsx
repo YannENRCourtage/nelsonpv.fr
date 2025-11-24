@@ -271,6 +271,15 @@ export default function ProjectEditor() {
             >
               Propriétaires
             </button>
+            <button
+              onClick={(e) => { e.preventDefault(); setActiveTab('mappy'); }}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'mappy'
+                ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+            >
+              Mappy
+            </button>
           </div>
 
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden aspect-video">
@@ -286,11 +295,18 @@ export default function ProjectEditor() {
               />
             ) : activeTab === 'streetview' ? (
               <StreetViewTab project={project} />
-            ) : (
+            ) : activeTab === 'owners' ? (
               <iframe
                 src="https://proprietaires.cadastre.io/"
                 className="w-full h-full border-0"
                 title="Propriétaires Cadastre"
+                allow="geolocation"
+              />
+            ) : (
+              <iframe
+                src="https://fr.mappy.com/itineraire"
+                className="w-full h-full border-0"
+                title="Mappy Itinéraire"
                 allow="geolocation"
               />
             )}
