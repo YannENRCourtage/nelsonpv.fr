@@ -6,10 +6,10 @@ const btnBase =
 const btnActive =
   "ring-2 ring-offset-1 ring-blue-500 border-blue-500 !bg-blue-50";
 
-export default function MapDrawingTools({ mode, toggle }) {
-  const btnBase = "flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md";
-  const btnActive = "bg-blue-600 text-white";
-  const btnInactive = "bg-white text-gray-700 hover:bg-gray-50";
+export default function MapDrawingTools({ mode, setMode }) {
+  const toggle = (tool) => {
+    setMode(mode === tool ? null : tool);
+  };
 
   const handleClick = (e, newMode) => {
     e.preventDefault();
@@ -17,54 +17,57 @@ export default function MapDrawingTools({ mode, toggle }) {
   };
 
   return (
-    <div className="flex flex-wrap gap-2 mb-4 hide-on-capture">
+    <div
+      className="absolute left-3 top-3 z-[990] hide-on-capture"
+      style={{ userSelect: "none" }}
+    >
       <button
         type="button"
-        className={`${btnBase} ${mode === "line" ? btnActive : btnInactive}`}
+        className={`${btnBase} ${mode === "line" ? btnActive : ""}`}
         onClick={(e) => handleClick(e, "line")}
         title="Distance (L)"
       >
-        <Ruler className="h-4 w-4" />
+        <Ruler className="h-4 w-4 mr-2" />
         Distance
       </button>
 
       <button
         type="button"
-        className={`${btnBase} ${mode === "polygon" ? btnActive : btnInactive}`}
+        className={`${btnBase} ${mode === "polygon" ? btnActive : ""}`}
         onClick={(e) => handleClick(e, "polygon")}
         title="Surface (P)"
       >
-        <Pentagon className="h-4 w-4" />
+        <Pentagon className="h-4 w-4 mr-2" />
         Surface
       </button>
 
       <button
         type="button"
-        className={`${btnBase} ${mode === "rectangle" ? btnActive : btnInactive}`}
+        className={`${btnBase} ${mode === "rectangle" ? btnActive : ""}`}
         onClick={(e) => handleClick(e, "rectangle")}
         title="Rectangle / Bâtiment (B)"
       >
-        <Square className="h-4 w-4" />
+        <Square className="h-4 w-4 mr-2" />
         Rectangle
       </button>
 
       <button
         type="button"
-        className={`${btnBase} ${mode === "altimetry" ? btnActive : btnInactive}`}
+        className={`${btnBase} ${mode === "altimetry" ? btnActive : ""}`}
         onClick={(e) => handleClick(e, "altimetry")}
         title="Profil altimétrique (A)"
       >
-        <Mountain className="h-4 w-4" />
+        <Mountain className="h-4 w-4 mr-2" />
         Profil Alti
       </button>
 
       <button
         type="button"
-        className={`${btnBase} ${mode === "azimuth" ? btnActive : btnInactive}`}
+        className={`${btnBase} ${mode === "azimuth" ? btnActive : ""}`}
         onClick={(e) => handleClick(e, "azimuth")}
         title="Mesurer un azimut (Z)"
       >
-        <RotateCw className="h-4 w-4" />
+        <RotateCw className="h-4 w-4 mr-2" />
         Azimut
       </button>
 
@@ -72,11 +75,11 @@ export default function MapDrawingTools({ mode, toggle }) {
 
       <button
         type="button"
-        className={`${btnBase} bg-red-600 text-white hover:bg-red-700`}
+        className={`${btnBase} ${mode === "delete" ? "ring-2 ring-offset-1 ring-red-500 border-red-500 !bg-red-50" : ""}`}
         onClick={(e) => handleClick(e, "delete")}
-        title="Supprimer un tracé (Suppr)"
+        title="Supprimer un élément (D)"
       >
-        <Trash2 className="h-4 w-4" />
+        <Trash2 className="h-4 w-4 mr-2 text-red-600" />
         Supprimer
       </button>
     </div>
