@@ -127,20 +127,12 @@ export default function StreetViewTab({ project }) {
                 doubleClickZoom={false}
                 zoomControl={false}
             >
-                {/* Google Maps satellite base layer */}
+                {/* Google Maps hybrid layer (satellite + labels) */}
                 <TileLayer
-                    url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+                    url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
                     attribution='&copy; <a href="https://www.google.com/maps">Google Maps</a>'
                     maxZoom={20}
                     subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
-                />
-
-                {/* Road labels overlay (blue roads) */}
-                <TileLayer
-                    url="https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}"
-                    maxZoom={20}
-                    subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
-                    zIndex={50}
                 />
 
                 {/* Street View coverage layer */}
