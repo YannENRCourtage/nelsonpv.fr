@@ -231,6 +231,12 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
   });
 
   const handleAltimetry = async (line) => {
+    // If profile is already open, close it
+    if (altimetryProfile) {
+      setAltimetryProfile(null);
+      return;
+    }
+
     const totalDist = polylineLength(line);
     const samples = Math.min(100, Math.max(10, Math.round(totalDist / 5)));
     const points = [];
