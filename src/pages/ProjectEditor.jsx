@@ -272,13 +272,13 @@ export default function ProjectEditor() {
               Propriétaires
             </button>
             <button
-              onClick={(e) => { e.preventDefault(); setActiveTab('mappy'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'mappy'
+              onClick={(e) => { e.preventDefault(); setActiveTab('itinerary'); }}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'itinerary'
                 ? 'bg-white text-blue-600 border-b-2 border-b-white -mb-[2px] z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
             >
-              Mappy
+              Itinéraire
             </button>
           </div>
 
@@ -304,9 +304,9 @@ export default function ProjectEditor() {
               />
             ) : (
               <iframe
-                src="https://fr.mappy.com/itineraire"
+                src="https://www.google.fr/maps/dir/"
                 className="w-full h-full border-0"
-                title="Mappy Itinéraire"
+                title="Google Maps Itinéraire"
                 allow="geolocation"
               />
             )}
