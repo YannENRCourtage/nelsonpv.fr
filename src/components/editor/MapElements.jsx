@@ -640,7 +640,7 @@ function PLULegend({ layersRef }) {
 
   return (
     <div
-      className="absolute bottom-[365px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
+      className="absolute bottom-[230px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
       style={{ userSelect: 'none' }}
     >
       <div className="flex justify-between items-center mb-2">
@@ -678,7 +678,7 @@ function RPGLegend({ layersRef }) {
 
   return (
     <div
-      className="absolute bottom-[180px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
+      className="absolute bottom-[340px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
       style={{ userSelect: 'none' }}
     >
       <div className="flex justify-between items-center mb-2">
@@ -709,7 +709,9 @@ function BasemapControl({ layersRef }) {
     container.style.backgroundColor = 'white';
     container.style.borderRadius = '8px';
     container.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
-    container.style.minWidth = '180px'; // Élargir un peu
+    container.style.minWidth = '180px';
+    container.style.maxHeight = '200px';
+    container.style.overflowY = 'auto';
 
     const title = document.createElement('div');
     title.innerText = 'fonds de carte'; // Minuscule
