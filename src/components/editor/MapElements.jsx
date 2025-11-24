@@ -710,7 +710,7 @@ function BasemapControl({ layersRef }) {
     container.style.borderRadius = '8px';
     container.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
     container.style.minWidth = '180px';
-    container.style.maxHeight = '200px';
+    container.style.maxHeight = '250px';
     container.style.overflowY = 'auto';
 
     const title = document.createElement('div');
