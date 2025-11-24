@@ -577,9 +577,9 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 const LAYERS = {
   // ========== FONDS DE CARTE ==========
   geoportailSat: { name: "Géoportail", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0 },
-  google: { name: "Google", url: "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0 },
   googleSat: { name: "Google Satellite", url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0 },
-  esriSat: { name: "Esri Satellite", url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attrib: '© Esri', zIndex: 0 },
+  _separator1: { isSeparator: true },
+  google: { name: "Google", url: "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0 },
   ignPlan: { name: "IGN - Plan IGN", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0 },
   osm: { name: "Plan OSM", url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attrib: '© OpenStreetMap contributors', zIndex: 0 },
 
@@ -634,7 +634,7 @@ function PLULegend({ layersRef }) {
 
   return (
     <div
-      className="absolute bottom-[365px] left-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
+      className="absolute bottom-[365px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
       style={{ userSelect: 'none' }}
     >
       <div className="flex justify-between items-center mb-2">
@@ -672,7 +672,7 @@ function RPGLegend({ layersRef }) {
 
   return (
     <div
-      className="absolute bottom-[400px] left-[220px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px] hide-on-capture"
+      className="absolute bottom-[180px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
       style={{ userSelect: 'none' }}
     >
       <div className="flex justify-between items-center mb-2">
@@ -680,16 +680,16 @@ function RPGLegend({ layersRef }) {
         <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded"><XIcon className="h-3 w-3" /></button>
       </div>
       <div className="space-y-1.5 text-[10px]">
-        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#FFEB3B] border border-gray-300"></div><span>Cultures annuelles</span></div>
-        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#8BC34A] border border-gray-300"></div><span>Prairies</span></div>
-        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#4CAF50] border border-gray-300"></div><span>Vergers / Vignes</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#FFD700] border border-gray-300"></div><span>Prairies</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#90EE90] border border-gray-300"></div><span>Vergers / vignes</span></div>
       </div>
     </div>
   );
 }
 
-
-
+// ====================================================================
+// CONTRÔLE DES FONDS DE CARTE
+// ====================================================================
 // Contrôle standard en bas à droite pour les FONDS DE CARTE
 function BasemapControl({ layersRef }) {
   const map = useMap();
