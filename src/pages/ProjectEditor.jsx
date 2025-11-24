@@ -23,7 +23,7 @@ function SymbolBtn({ icon, label, type, emoji, onSelect, isSelected }) {
   return (
     <button
       type="button"
-      onClick={(e) => { e.preventDefault(); onSelect({ type, label, emoji }); }}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSelect({ type, label, emoji }); }}
       className={cn(
         "flex flex-col items-center justify-center gap-2 rounded-lg border bg-white p-4 text-sm font-medium shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5",
         isSelected && "ring-2 ring-blue-500 border-blue-500"
@@ -245,9 +245,9 @@ export default function ProjectEditor() {
           <div className="flex gap-2 mb-2">
             <button
               onClick={(e) => { e.preventDefault(); setActiveTab('map'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'map'
-                ? 'bg-white text-blue-600 border-b-2 border-blue-600'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'map'
+                ? 'bg-white text-blue-600 border-b-2 border-b-white -mb-[2px] z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
             >
               Carte
@@ -255,27 +255,27 @@ export default function ProjectEditor() {
             {/* Removed conditional rendering of Street View tab button as per instruction 3 */}
             <button
               onClick={(e) => { e.preventDefault(); setActiveTab('streetview'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'streetview'
-                ? 'bg-white text-blue-600 border-b-2 border-blue-600'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'streetview'
+                ? 'bg-white text-blue-600 border-b-2 border-b-white -mb-[2px] z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
             >
               Street View
             </button>
             <button
               onClick={(e) => { e.preventDefault(); setActiveTab('owners'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'owners'
-                ? 'bg-white text-blue-600 border-b-2 border-blue-600'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'owners'
+                ? 'bg-white text-blue-600 border-b-2 border-b-white -mb-[2px] z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
             >
               Propriétaires
             </button>
             <button
               onClick={(e) => { e.preventDefault(); setActiveTab('mappy'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'mappy'
-                ? 'bg-white text-blue-600 border-b-2 border-blue-600'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'mappy'
+                ? 'bg-white text-blue-600 border-b-2 border-b-white -mb-[2px] z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
             >
               Mappy

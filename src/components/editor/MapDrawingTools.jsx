@@ -13,6 +13,7 @@ export default function MapDrawingTools({ mode, setMode }) {
 
   const handleClick = (e, newMode) => {
     e.preventDefault();
+    e.stopPropagation();
     toggle(newMode);
   };
 

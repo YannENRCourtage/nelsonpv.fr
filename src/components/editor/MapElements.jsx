@@ -221,6 +221,7 @@ function ContextMenu({ position, onAddText, onClose, onShowInfo, onSetTarget }) 
 function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, symbolToPlace, setSymbolToPlace, setPointInfo, setAltimetryProfile, rectangleStart, setRectangleStart, photoToPlace, setPhotoToPlace, targetPos, setTargetPos }) {
   const [mousePos, setMousePos] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
+  const [ignoreNextClick, setIgnoreNextClick] = useState(false);
   const draggingRef = useRef(null);
   const map = useMap();
 
@@ -320,31 +321,40 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 
   useMapEvents({
     click(e) {
+      if (ignoreNextClick) {
+        setIgnoreNextClick(false);
+        return;
+      }
       if (contextMenu) setContextMenu(null);
       if (draggingRef.current && draggingRef.current.type === 'rotate') return;
       if (mode === 'delete') return;
-      if (photoToPlace) {
+      if (mode === "text") {
+        setAskTextAt(e.latlng);
+        setMode(null);
+      } else if (mode === "symbol" && symbolToPlace) {
         const id = crypto.randomUUID();
-        setFeatures(fs => [...fs, { id, type: 'photo', photoId: photoToPlace.id, number: photoToPlace.number, at: e.latlng }]);
-        setPhotoToPlace(null); setMode(null);
-      } else if (symbolToPlace) {
-        const id = crypto.randomUUID();
-        let number = null;
-        if (symbolToPlace.type === 'building') {
-          const buildingCount = features.filter(f => f.symbolType === 'building').length;
-          number = buildingCount + 1;
+        setFeatures((arr) => [...arr, { id, type: "symbol", at: e.latlng, ...symbolToPlace }]);
+        if (!e.originalEvent.shiftKey) {
+          setSymbolToPlace(null);
+          setMode(null);
         }
-        setFeatures(fs => [...fs, { id, type: 'symbol', symbolType: symbolToPlace.type, label: symbolToPlace.label, at: e.latlng, emoji: symbolToPlace.emoji, number }]);
-        setSymbolToPlace(null); setMode(null);
+      } else if (mode === "photo" && photoToPlace) {
+        const id = crypto.randomUUID();
+        setFeatures((arr) => [...arr, { id, type: "photo", at: e.latlng, photoId: photoToPlace.id, number: photoToPlace.number }]);
+        setPhotoToPlace(null);
+        setMode(null);
       } else if (mode === "rectangle") {
-        if (!rectangleStart) setRectangleStart(e.latlng);
-        else {
+        if (!rectangleStart) {
+          setRectangleStart(e.latlng);
+        } else {
+          const bounds = L.latLngBounds(rectangleStart, e.latlng);
           const id = crypto.randomUUID();
-          const b = L.latLngBounds(rectangleStart, e.latlng);
-          const ne = b.getNorthEast(); const sw = b.getSouthWest();
-          const nw = L.latLng(ne.lat, sw.lng); const se = L.latLng(sw.lat, ne.lng);
-          setFeatures(arr => [...arr, { id, type: "rectangle", coords: [nw, ne, se, sw], angle: 0 }]);
-          setRectangleStart(null); setMode(null);
+          const center = bounds.getCenter();
+          const width = haversine({ lat: bounds.getSouth(), lng: bounds.getWest() }, { lat: bounds.getSouth(), lng: bounds.getEast() });
+          const height = haversine({ lat: bounds.getSouth(), lng: bounds.getWest() }, { lat: bounds.getNorth(), lng: bounds.getWest() });
+          setFeatures((arr) => [...arr, { id, type: "rectangle", bounds: [bounds.getSouthWest(), bounds.getNorthEast()], center, width, height, angle: 0 }]);
+          setRectangleStart(null);
+          // setMode(null); // Keep mode active for multiple rectangles
         }
       } else if (mode === "line" || mode === "polygon" || mode === "altimetry" || mode === "azimuth") {
         if (mode === "line" || mode === "azimuth") {
