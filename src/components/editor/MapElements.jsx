@@ -618,7 +618,55 @@ const LAYERS = {
   communes: { name: "Limites communales", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ADMINEXPRESS-COG-CARTO.LATEST&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 32, opacity: 0.5 },
 
   // Urbanisme
-  plu: { name: "PLU / PLUi", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=LANDUSE.AGRICULTURE2023&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN / GPU', isOverlay: true, zIndex: 33, opacity: 0.5 },
+  plu: {
+    name: "PLU / PLUi",
+    url: "https://www.geoportail-urbanisme.gouv.fr/api/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=document_urbanisme&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=256&WIDTH=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}",
+    attribution: "Geoportail Urbanisme",
+    maxZoom: 20,
+    opacity: 0.7
+  },
+  geology: {
+    name: "Carte Géologique",
+    url: "https://geoservices.brgm.fr/geologie?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=SCAN_H_GEOL50&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=256&WIDTH=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}",
+    attribution: "BRGM",
+    maxZoom: 20,
+    opacity: 0.6
+  },
+  flood: {
+    name: "Zones Inondables",
+    url: "https://www.georisques.gouv.fr/services/db/risques_naturels/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=AZI_GASPAR&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=256&WIDTH=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}",
+    attribution: "Géorisques",
+    maxZoom: 20,
+    opacity: 0.6
+  },
+  natura2000: {
+    name: "Natura 2000",
+    url: "https://inpn.mnhn.fr/inpn-web-services/wms/natura2000?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=sic,zps&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=256&WIDTH=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}",
+    attribution: "INPN",
+    maxZoom: 20,
+    opacity: 0.5
+  },
+  forests: {
+    name: "Forêts Publiques",
+    url: "https://wxs.ign.fr/cartovecto/geoportail/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=FORETS.PUBLIQUES&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=256&WIDTH=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}",
+    attribution: "IGN",
+    maxZoom: 20,
+    opacity: 0.6
+  },
+  cassini: {
+    name: "Carte de Cassini",
+    url: "https://wxs.ign.fr/cartes/geoportail/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=GEOGRAPHICALGRIDSYSTEMS.CASSINI&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=256&WIDTH=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}",
+    attribution: "IGN",
+    maxZoom: 20,
+    opacity: 0.8
+  },
+  etat_major: {
+    name: "Carte État-Major",
+    url: "https://wxs.ign.fr/cartes/geoportail/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=GEOGRAPHICALGRIDSYSTEMS.ETATMAJOR40&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=256&WIDTH=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}",
+    attribution: "IGN",
+    maxZoom: 20,
+    opacity: 0.8
+  }
 };
 // ====================================================================
 // FIN DE LA LISTE DES CALQUES
@@ -798,8 +846,29 @@ function LayersBootstrap({ layersRef }) {
   const map = useMap();
   useEffect(() => {
     Object.keys(LAYERS).forEach(key => {
-      const { url, attrib, subdomains, zIndex, opacity } = LAYERS[key];
-      layersRef.current[key] = L.tileLayer(url, { attribution: attrib, maxZoom: 22, subdomains: subdomains || ['a', 'b', 'c'], zIndex: zIndex || 0, opacity: opacity || 1.0 });
+      const layerDef = LAYERS[key];
+      if (layerDef.isSeparator) return; // Skip separators
+
+      if (layerDef.url.includes("WMS")) {
+        // WMS layers
+        layersRef.current[key] = L.tileLayer.wms(layerDef.url, {
+          layers: layerDef.layers, // WMS specific
+          format: 'image/png',
+          transparent: true,
+          attribution: layerDef.attribution,
+          maxZoom: layerDef.maxZoom || 20,
+          opacity: layerDef.opacity || 1.0,
+        });
+      } else {
+        // TileLayer (WMTS or standard XYZ)
+        layersRef.current[key] = L.tileLayer(layerDef.url, {
+          attribution: layerDef.attrib || layerDef.attribution,
+          maxZoom: layerDef.maxZoom || 22,
+          subdomains: layerDef.subdomains || ['a', 'b', 'c'],
+          zIndex: layerDef.zIndex || 0,
+          opacity: layerDef.opacity || 1.0
+        });
+      }
     });
     if (layersRef.current.googleSat && !map.hasLayer(layersRef.current.googleSat)) layersRef.current.googleSat.addTo(map);
     // Cadastre NOT added by default as requested
@@ -1149,9 +1218,15 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
   };
 
   return (
-    <div className="z-[1000] bg-white rounded-lg shadow-2xl border w-[600px]" style={dialogStyle}>
+    <div className="z-[5000] bg-white rounded-lg shadow-2xl border w-[600px]" style={dialogStyle}>
       <div className="flex justify-between items-center p-3 border-b cursor-move bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-lg" onMouseDown={handleMouseDown}>
         <h4 className="font-bold text-base text-white">📊 PROFIL ALTIMÉTRIQUE</h4>
+        <div className="flex items-center gap-2">
+          <button onClick={handleZoomToProfile} className="p-1 text-white hover:bg-blue-700 rounded-full transition-colors" title="Zoomer sur le profil"><Maximize size={16} /></button>
+          <button onClick={handleExportCSV} className="p-1 text-white hover:bg-blue-700 rounded-full transition-colors" title="Exporter en CSV"><Download size={16} /></button>
+          <button onClick={handleSaveProfile} className="p-1 text-white hover:bg-blue-700 rounded-full transition-colors" title="Enregistrer le profil"><Save size={16} /></button>
+          <button onClick={handleCloseProfile} className="p-1 text-white hover:bg-blue-700 rounded-full transition-colors" title="Fermer"><XIcon size={16} /></button>
+        </div>
       </div>
       <div className="p-4">
         <div ref={chartRef} className="h-[150px] w-full bg-white">
@@ -1253,17 +1328,23 @@ function BottomLayersBar({ layersRef, map }) {
   };
 
   // On ne garde que les overlays (zIndex > 0)
-  const overlayKeys = Object.keys(LAYERS).filter(k => LAYERS[k].zIndex > 0);
+  const overlayKeys = Object.keys(LAYERS).filter(k => LAYERS[k].isOverlay || LAYERS[k].url.includes("WMS"));
 
   return (
-    <div className="h-[70px] bg-white border-t border-gray-300 p-2 flex items-center justify-center gap-0 overflow-x-auto shadow-[0_-4px_15px_rgba(0,0,0,0.1)] no-print z-[1000]">
+    <div className="absolute bottom-[30px] left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-lg flex flex-wrap justify-center gap-2 z-[1000] max-w-[95vw]">
       {overlayKeys.map(key => (
         <button
           key={key}
           onClick={() => toggleLayer(key)}
-          className={`px-2 py-1.5 rounded-md text-[11px] font-medium transition-all whitespace-nowrap flex items-center gap-1 shadow-sm ${isActive(key) ? 'bg-blue-600 text-white border border-blue-700' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'}`}
+          className={`flex items-center px-2 py-1 rounded text-xs font-medium transition-colors border ${isActive(key)
+            ? "bg-blue-600 text-white border-blue-600"
+            : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+            }`}
         >
-          <div className={`w-2 h-2 rounded-full border border-white/50 ${isActive(key) ? 'bg-white' : 'bg-gray-400'}`}></div>
+          <div
+            className={`w-2 h-2 rounded-full mr-1.5 ${isActive(key) ? "bg-white" : "bg-slate-400"
+              }`}
+          />
           {LAYERS[key].name}
         </button>
       ))}
