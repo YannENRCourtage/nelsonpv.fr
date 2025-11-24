@@ -1312,7 +1312,7 @@ function PegmanControl() {
   return (
     <div
       className="leaflet-bottom leaflet-right hide-on-capture no-print"
-      style={{ bottom: '20px', right: '10px', pointerEvents: 'auto', zIndex: 1000, position: 'absolute' }}
+      style={{ bottom: '85px', right: '10px', pointerEvents: 'auto', zIndex: 1000, position: 'absolute' }}
     >
       <div
         draggable="true"
@@ -1347,14 +1347,14 @@ function BottomLayersBar({ layersRef, map }) {
   const overlayKeys = Object.keys(LAYERS).filter(k => LAYERS[k].zIndex > 0);
 
   return (
-    <div className="h-[70px] bg-white border-t border-gray-300 p-2 flex items-center justify-center gap-4 overflow-x-auto shadow-[0_-4px_15px_rgba(0,0,0,0.1)] no-print z-[1000]">
+    <div className="h-[70px] bg-white border-t border-gray-300 p-2 flex items-center justify-center gap-1 overflow-x-auto shadow-[0_-4px_15px_rgba(0,0,0,0.1)] no-print z-[1000]">
       {overlayKeys.map(key => (
         <button
           key={key}
           onClick={() => toggleLayer(key)}
-          className={`px-5 py-2.5 rounded-md text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 shadow-sm ${isActive(key) ? 'bg-blue-600 text-white border border-blue-700' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'}`}
+          className={`px-3 py-2 rounded-md text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 shadow-sm ${isActive(key) ? 'bg-blue-600 text-white border border-blue-700' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'}`}
         >
-          <div className={`w-3 h-3 rounded-full border border-white/50 ${isActive(key) ? 'bg-white' : 'bg-gray-400'}`}></div>
+          <div className={`w-2.5 h-2.5 rounded-full border border-white/50 ${isActive(key) ? 'bg-white' : 'bg-gray-400'}`}></div>
           {LAYERS[key].name}
         </button>
       ))}
@@ -1404,7 +1404,20 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
   return (
     <div className="relative h-full w-full flex flex-col" style={style}>
       <div className="flex-grow relative">
-        <MapContainer center={[44.8378, -0.5792]} zoom={15} style={{ height: "100%", width: "100%" }} doubleClickZoom={false} zoomControl={false} className={mode === 'delete' ? 'cursor-pointer' : (symbolToPlace || photoToPlace ? 'cursor-crosshair' : 'cursor-default')}>
+        <MapContainer
+          center={[44.8378, -0.5792]}
+          zoom={15}
+          style={{ height: "100%", width: "100%" }}
+          doubleClickZoom={false}
+          zoomControl={false}
+          className={mode === 'delete' ? 'cursor-pointer' : (symbolToPlace || photoToPlace ? 'cursor-crosshair' : 'cursor-default')}
+          placeholder={<div className="h-full w-full bg-gray-100 animate-pulse" />}
+        >
+          {/* Enable Drop on Map */}
+          <div
+            style={{ position: 'absolute', inset: 0, zIndex: 400, pointerEvents: 'none' }}
+            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+          />
           <MapInstance setMap={setMap} />
           <MapDrawingTools mode={mode} setMode={setMode} />
           <LayersBootstrap layersRef={layersRef} />
@@ -1417,7 +1430,7 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
 
           <SearchField onAddressFound={onAddressFound} />
           <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
-            <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '80px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
+            <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '40px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
               <div className="flex flex-col items-start gap-2">
                 <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} />
                 <MiniMap />

@@ -1,5 +1,5 @@
 import React from "react";
-import { Trash2, Mountain, Square, RotateCw } from "lucide-react";
+import { Trash2, Mountain, Square, RotateCw, Ruler, Pentagon } from "lucide-react";
 
 const btnBase =
   "flex items-center justify-center w-[140px] mb-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 shadow hover:bg-slate-50 focus:outline-none";
@@ -20,9 +20,10 @@ export default function MapDrawingTools({ mode, setMode }) {
         type="button"
         className={`${btnBase} ${mode === "line" ? btnActive : ""}`}
         onClick={() => toggle("line")}
-        title="Ligne / Distance (L)"
+        title="Distance (L)"
       >
-        Ligne / Distance
+        <Ruler className="h-4 w-4 mr-2" />
+        Distance
       </button>
 
       <button
@@ -31,6 +32,7 @@ export default function MapDrawingTools({ mode, setMode }) {
         onClick={() => toggle("polygon")}
         title="Surface (P)"
       >
+        <Pentagon className="h-4 w-4 mr-2" />
         Surface
       </button>
 
