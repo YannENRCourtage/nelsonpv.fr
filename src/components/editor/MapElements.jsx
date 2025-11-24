@@ -929,12 +929,8 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
           // MODIFICATION ICI : CORRECTION DU BUG DE DÉCALAGE + GESTION DES CONTRÔLES
           // ====================================================================
           onclone: (doc) => {
-            // Cacher les contrôles que vous ne voulez pas voir
-            const controlsToHide = doc.querySelectorAll(
-              '.leaflet-control-container .leaflet-top-left, ' + // Outils de dessin
-              '.leaflet-control-container .leaflet-top-right, ' + // Barre de recherche
-              '.leaflet-control-container .leaflet-bottom-right' // Sélecteur de calques
-            );
+            // Cacher les contrôles ayant la classe "hide-on-capture"
+            const controlsToHide = doc.querySelectorAll('.hide-on-capture');
             controlsToHide.forEach(c => c.style.display = 'none');
 
             // --- FIX POUR LE DÉCALAGE ---
@@ -1323,7 +1319,7 @@ function PegmanControl() {
   return (
     <div
       className="leaflet-bottom leaflet-right hide-on-capture no-print"
-      style={{ bottom: '130px', right: '10px', pointerEvents: 'auto', zIndex: 1000, position: 'absolute' }}
+      style={{ bottom: '350px', right: '10px', pointerEvents: 'auto', zIndex: 1000, position: 'absolute' }}
     >
       <div
         draggable="true"

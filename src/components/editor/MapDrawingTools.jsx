@@ -13,7 +13,7 @@ export default function MapDrawingTools({ mode, setMode }) {
 
   return (
     <div
-      className="absolute left-3 top-3 z-[990]"
+      className="absolute left-3 top-3 z-[990] hide-on-capture"
       style={{ userSelect: "none" }}
     >
       <button

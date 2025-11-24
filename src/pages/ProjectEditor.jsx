@@ -71,8 +71,6 @@ export default function ProjectEditor() {
   const [captures, setCaptures] = useState([null, null, null, null]);
   const [photos, setPhotos] = useState([]);
   const fileRef = useRef(null);
-  const rightColumnRef = useRef(null);
-  const [mapHeight, setMapHeight] = useState(800);
   const [symbolToPlace, setSymbolToPlace] = useState(null);
 
   useEffect(() => {
@@ -90,25 +88,6 @@ export default function ProjectEditor() {
     if (project?.captures) setCaptures(project.captures);
     if (project?.photos) setPhotos(project.photos);
   }, [project]);
-
-  useEffect(() => {
-    const resizeObserver = new ResizeObserver(entries => {
-      for (let entry of entries) {
-        setMapHeight(entry.contentRect.height);
-      }
-    });
-
-    const currentRef = rightColumnRef.current;
-    if (currentRef) {
-      resizeObserver.observe(currentRef);
-    }
-
-    return () => {
-      if (currentRef) {
-        resizeObserver.unobserve(currentRef);
-      }
-    };
-  }, []);
 
   const handlePickPhotos = (e) => {
     const files = Array.from(e.target.files || []);
@@ -258,9 +237,8 @@ export default function ProjectEditor() {
 
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-9 relative">
-          <div className="rounded-2xl bg-white shadow-sm overflow-hidden h-full">
+          <div className="rounded-2xl bg-white shadow-sm overflow-hidden aspect-video">
             <MapEditor
-              style={{ height: `${mapHeight}px` }}
               onAddressFound={handleAddressFound}
               onAddressSearched={handleAddressSearched}
               project={project}
@@ -276,7 +254,7 @@ export default function ProjectEditor() {
           </Button>
         </div>
 
-        <aside className="col-span-3 flex flex-col gap-6" ref={rightColumnRef}>
+        <aside className="col-span-3 flex flex-col gap-6">
           <SymbolsPanel onSymbolSelect={handleSymbolSelect} selectedSymbol={symbolToPlace} />
           <PredefinedBuildingsPanel onBuildingSelect={handleBuildingSelect} />
           <div className="rounded-2xl bg-white p-4 shadow-sm">
