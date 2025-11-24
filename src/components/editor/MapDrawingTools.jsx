@@ -64,15 +64,7 @@ export default function MapDrawingTools({ mode, setMode }) {
         Azimut
       </button>
 
-      <button
-        type="button"
-        className={`${btnBase} ${mode === "streetview" ? btnActive : ""}`}
-        onClick={() => toggle("streetview")}
-        title="Street View (S)"
-      >
-        <div className="h-4 w-4 mr-2 bg-yellow-400 rounded-full border border-black flex items-center justify-center text-[10px] font-bold">P</div>
-        Street View
-      </button>
+
 
       <button
         type="button"

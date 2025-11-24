@@ -1266,21 +1266,24 @@ function MapInstance({ setMap }) {
 // ====================================================================
 // PEGMAN CONTROL (Street View)
 // ====================================================================
+// ====================================================================
+// PEGMAN CONTROL (Street View)
+// ====================================================================
 function PegmanControl() {
   const map = useMap();
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDragStart = (e) => {
     e.dataTransfer.effectAllowed = 'move';
-    // Créer une image fantôme transparente pour éviter le carré blanc par défaut
+    // Image fantôme transparente
     const img = new Image();
     img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
     e.dataTransfer.setDragImage(img, 0, 0);
 
     setIsDragging(true);
 
-    // Afficher la couche de couverture Street View
-    const coverageLayer = L.tileLayer('https://{s}.google.com/vt/lyrs=svv&x={x}&y={y}&z={z}', {
+    // Afficher la couche de couverture Street View (lignes bleues)
+    const coverageLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=svv&x={x}&y={y}&z={z}', {
       maxZoom: 20,
       subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
       pane: 'overlayPane',
@@ -1301,36 +1304,24 @@ function PegmanControl() {
     const dropPoint = map.mouseEventToContainerPoint(e);
     const latlng = map.containerPointToLatLng(dropPoint);
 
-    // Ouvrir Street View
+    // Ouvrir Google Maps Street View dans un nouvel onglet
     const streetViewUrl = `https://www.google.com/maps?layer=c&cbll=${latlng.lat},${latlng.lng}`;
-
-    // Créer une popup personnalisée
-    const popupContent = document.createElement('div');
-    popupContent.style.width = '600px';
-    popupContent.style.height = '400px';
-    popupContent.innerHTML = `<iframe width="100%" height="100%" frameborder="0" style="border:0" src="${streetViewUrl}&output=embed" allowfullscreen></iframe>`;
-
-    L.popup({ maxWidth: 620, minWidth: 600, className: 'street-view-popup' })
-      .setLatLng(latlng)
-      .setContent(popupContent)
-      .openOn(map);
+    window.open(streetViewUrl, '_blank');
   };
 
   return (
     <div
       className="leaflet-bottom leaflet-right hide-on-capture no-print"
-      style={{ bottom: '350px', right: '10px', pointerEvents: 'auto', zIndex: 1000, position: 'absolute' }}
+      style={{ bottom: '20px', right: '10px', pointerEvents: 'auto', zIndex: 1000, position: 'absolute' }}
     >
       <div
         draggable="true"
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        className="cursor-grab active:cursor-grabbing hover:scale-110 transition-transform shadow-md bg-white rounded-sm p-1"
+        className="cursor-grab active:cursor-grabbing hover:scale-110 transition-transform"
         title="Faites glisser pour Street View"
       >
-        <svg viewBox="0 0 24 24" width="40" height="40" fill="#FBC02D">
-          <path d="M12 2C10.34 2 9 3.34 9 5C9 6.66 10.34 8 12 8C13.66 8 15 6.66 15 5C15 3.34 13.66 2 12 2ZM16 10H8C6.9 10 6 10.9 6 12V20C6 21.1 6.9 22 8 22H10V16H14V22H16C17.1 22 18 21.1 18 20V12C18 10.9 17.1 10 16 10Z" stroke="#F57F17" strokeWidth="1" />
-        </svg>
+        <img src="/pegman.png" alt="Street View" className="w-10 h-10 drop-shadow-md" />
       </div>
     </div>
   );
