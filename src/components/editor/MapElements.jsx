@@ -1174,7 +1174,7 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
         </div >
 
         {/* Simplified stats on single line */}
-        <div className="flex gap-4 text-sm text-gray-700 bg-blue-50 p-2 rounded-lg justify-around">
+        <div className="flex gap-4 text-sm text-gray-700 bg-blue-50 p-2 rounded-lg justify-around mt-3">
           <div className="flex flex-col items-center">
             <span className="text-xs text-gray-500">Distance</span>
             <strong className="text-sm text-blue-700">{stats.distance.toFixed(0)} m</strong>

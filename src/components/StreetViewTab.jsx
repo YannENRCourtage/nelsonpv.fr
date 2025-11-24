@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, useMap, ScaleControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+
 // Standalone MiniMap component for StreetViewTab
 function MiniMap() {
     const parentMap = useMap();
@@ -25,10 +26,9 @@ function MiniMap() {
             touchZoom: false
         });
 
-        // Use Google Maps tiles for minimap
-        L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-            maxZoom: 20,
-            subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+        // Use same basemap as Carte tab (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
         }).addTo(miniMap);
 
         const viewBox = L.rectangle(parentMap.getBounds(), {
@@ -135,12 +135,20 @@ export default function StreetViewTab({ project }) {
                     subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
                 />
 
+                {/* Road labels overlay (blue roads) */}
+                <TileLayer
+                    url="https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}"
+                    maxZoom={20}
+                    subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
+                    zIndex={50}
+                />
+
                 {/* Street View coverage layer */}
                 <StreetViewCoverageLayer />
 
-                {/* Bottom-left controls */}
+                {/* Bottom-left controls - raised by 5mm (approximately 19px) */}
                 <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
-                    <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '10px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
+                    <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '29px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
                         <div className="flex flex-col items-start gap-2">
                             <MiniMap />
                             <ScaleControl position="bottomleft" metric={true} imperial={false} />
