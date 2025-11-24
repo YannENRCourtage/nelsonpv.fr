@@ -383,198 +383,199 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       }
     },
     mouseup() { if (draggingRef.current) draggingRef.current = null; },
-    dblclick() {
+    dblclick(e) {
       if (mode === "line" && temp.length >= 2) {
         const id = crypto.randomUUID();
         setFeatures((arr) => [...arr, { id, type: "line", coords: temp.slice() }]);
         setTemp([]);
-      }
-      if (mode === "polygon" && temp.length >= 3) {
+      } else if (mode === "polygon" && temp.length >= 3) {
         const id = crypto.randomUUID();
         setFeatures((arr) => [...arr, { id, type: "polygon", coords: temp.slice() }]);
         setTemp([]);
-      }
-      if (mode === "altimetry" && temp.length >= 2) {
+      } else if (mode === "altimetry" && temp.length >= 2) {
         handleAltimetry(temp.slice());
         setTemp([]);
         setMode(null);
-      }
-      if (mode === "azimuth") {
+      } else if (mode === "azimuth") {
         // Azimuth is usually 2 points. If double click, just finish.
         setTemp([]);
         setMode(null);
+      } else if (!mode) {
+        // If no mode is active, move the "Lieu Projet" marker
+        setTargetPos(e.latlng);
       }
     },
+  },
     keydown(e) {
-      if (e.originalEvent.key === "Escape") {
-        setTemp([]); setAskTextAt(null); setSymbolToPlace(null); setPhotoToPlace(null); setMode(null); setContextMenu(null); setPointInfo(null); setAltimetryProfile(null); setRectangleStart(null);
-      }
-      if (e.originalEvent.key === "Enter") {
-        if (mode === "line" && temp.length >= 2) {
-          const id = crypto.randomUUID();
-          setFeatures((arr) => [...arr, { id, type: "line", coords: temp.slice() }]);
-          setTemp([]);
-        }
-        if (mode === "polygon" && temp.length >= 3) {
-          const id = crypto.randomUUID();
-          setFeatures((arr) => [...arr, { id, type: "polygon", coords: temp.slice() }]);
-          setTemp([]);
-        }
-        if (mode === "altimetry" && temp.length >= 2) {
-          handleAltimetry(temp.slice());
-          setTemp([]);
-          setMode(null);
-        }
-        if (mode === "azimuth") {
-          setTemp([]);
-          setMode(null);
-        }
-      }
-      if (e.originalEvent.key.toLowerCase() === "r" && temp.length > 0) setTemp((t) => t.slice(0, -1));
-    },
+    if(e.originalEvent.key === "Escape") {
+    setTemp([]); setAskTextAt(null); setSymbolToPlace(null); setPhotoToPlace(null); setMode(null); setContextMenu(null); setPointInfo(null); setAltimetryProfile(null); setRectangleStart(null);
+  }
+  if (e.originalEvent.key === "Enter") {
+    if (mode === "line" && temp.length >= 2) {
+      const id = crypto.randomUUID();
+      setFeatures((arr) => [...arr, { id, type: "line", coords: temp.slice() }]);
+      setTemp([]);
+    }
+    if (mode === "polygon" && temp.length >= 3) {
+      const id = crypto.randomUUID();
+      setFeatures((arr) => [...arr, { id, type: "polygon", coords: temp.slice() }]);
+      setTemp([]);
+    }
+    if (mode === "altimetry" && temp.length >= 2) {
+      handleAltimetry(temp.slice());
+      setTemp([]);
+      setMode(null);
+    }
+    if (mode === "azimuth") {
+      setTemp([]);
+      setMode(null);
+    }
+  }
+  if (e.originalEvent.key.toLowerCase() === "r" && temp.length > 0) setTemp((t) => t.slice(0, -1));
+},
   });
 
-  const tempLineCoords = mousePos && temp.length >= 1 ? [...temp, mousePos] : temp;
-  const tempPolyCoords = mousePos && temp.length >= 1 ? [...temp, mousePos] : temp;
-  const tempRectBounds = rectangleStart && mousePos ? L.latLngBounds(rectangleStart, mousePos) : null;
+const tempLineCoords = mousePos && temp.length >= 1 ? [...temp, mousePos] : temp;
+const tempPolyCoords = mousePos && temp.length >= 1 ? [...temp, mousePos] : temp;
+const tempRectBounds = rectangleStart && mousePos ? L.latLngBounds(rectangleStart, mousePos) : null;
 
-  return (
-    <LayerGroup>
-      {features.map((f) => {
-        const isSelected = selectedId === f.id;
-        const baseEventHandlers = {
-          click: (e) => { L.DomEvent.stop(e); if (mode === 'delete') setFeatures(fs => fs.filter(item => item.id !== f.id)); else setSelectedId(f.id); },
-          contextmenu: (e) => { L.DomEvent.stop(e); if (mode || draggingRef.current) return; draggingRef.current = { type: 'drag', featureId: f.id, startLatLng: e.latlng }; }
-        };
-        const shapeEventHandlers = { ...baseEventHandlers, mousedown: (e) => { L.DomEvent.stop(e); if (mode || draggingRef.current) return; draggingRef.current = { type: 'drag', featureId: f.id, startLatLng: e.latlng }; } };
+return (
+  <LayerGroup>
+    {features.map((f) => {
+      const isSelected = selectedId === f.id;
+      const baseEventHandlers = {
+        click: (e) => { L.DomEvent.stop(e); if (mode === 'delete') setFeatures(fs => fs.filter(item => item.id !== f.id)); else setSelectedId(f.id); },
+        contextmenu: (e) => { L.DomEvent.stop(e); if (mode || draggingRef.current) return; draggingRef.current = { type: 'drag', featureId: f.id, startLatLng: e.latlng }; }
+      };
+      const shapeEventHandlers = { ...baseEventHandlers, mousedown: (e) => { L.DomEvent.stop(e); if (mode || draggingRef.current) return; draggingRef.current = { type: 'drag', featureId: f.id, startLatLng: e.latlng }; } };
 
-        if (f.type === "line") return <Polyline key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#2563eb", weight: 3, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatDistance(polylineLength(f.coords))}</Tooltip></Polyline>;
+      if (f.type === "line") return <Polyline key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#2563eb", weight: 3, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatDistance(polylineLength(f.coords))}</Tooltip></Polyline>;
 
-        if (f.type === "polygon") return <Polygon key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#16a34a", weight: 2, fillColor: "#16a34a", fillOpacity: 0.25, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatArea(polygonArea(f.coords))}</Tooltip></Polygon>;
+      if (f.type === "polygon") return <Polygon key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#16a34a", weight: 2, fillColor: "#16a34a", fillOpacity: 0.25, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatArea(polygonArea(f.coords))}</Tooltip></Polygon>;
 
-        if (f.type === "rectangle") {
-          const center = centroid(f.coords);
-          if (!center) return null;
-          const centerPt = map.latLngToLayerPoint(center);
-          const angleRad = toRad(f.angle || 0);
-          const rotatedCoords = f.coords.map(c => {
-            const point = map.latLngToLayerPoint(c);
-            const rotated = L.point(centerPt.x + (point.x - centerPt.x) * Math.cos(angleRad) - (point.y - centerPt.y) * Math.sin(angleRad), centerPt.y + (point.x - centerPt.x) * Math.sin(angleRad) + (point.y - centerPt.y) * Math.cos(angleRad));
-            return map.layerPointToLatLng(rotated);
-          });
-          const width = haversine(rotatedCoords[0], rotatedCoords[1]);
-          const height = haversine(rotatedCoords[1], rotatedCoords[2]);
-          const area = width * height;
-          const rotatedCenter = centroid(rotatedCoords);
-          let rotationHandlePos;
-          const handleBasePt = map.latLngToLayerPoint(f.coords[1]);
-          const handleRotated = L.point(centerPt.x + (handleBasePt.x - centerPt.x) * Math.cos(angleRad) - (handleBasePt.y - centerPt.y) * Math.sin(angleRad), centerPt.y + (handleBasePt.x - centerPt.x) * Math.sin(angleRad) + (handleBasePt.y - centerPt.y) * Math.cos(angleRad));
-          const offset = L.point(0, -20 / map.getZoom());
-          const angle = f.angle || 0;
-          const rotatedOffset = L.point(offset.x * Math.cos(toRad(angle)) - offset.y * Math.sin(toRad(angle)), offset.x * Math.sin(toRad(angle)) + offset.y * Math.cos(toRad(angle)));
-          rotationHandlePos = map.layerPointToLatLng(handleRotated.add(rotatedOffset));
+      if (f.type === "rectangle") {
+        const center = centroid(f.coords);
+        if (!center) return null;
+        const centerPt = map.latLngToLayerPoint(center);
+        const angleRad = toRad(f.angle || 0);
+        const rotatedCoords = f.coords.map(c => {
+          const point = map.latLngToLayerPoint(c);
+          const rotated = L.point(centerPt.x + (point.x - centerPt.x) * Math.cos(angleRad) - (point.y - centerPt.y) * Math.sin(angleRad), centerPt.y + (point.x - centerPt.x) * Math.sin(angleRad) + (point.y - centerPt.y) * Math.cos(angleRad));
+          return map.layerPointToLatLng(rotated);
+        });
+        const width = haversine(rotatedCoords[0], rotatedCoords[1]);
+        const height = haversine(rotatedCoords[1], rotatedCoords[2]);
+        const area = width * height;
+        const rotatedCenter = centroid(rotatedCoords);
+        let rotationHandlePos;
+        const handleBasePt = map.latLngToLayerPoint(f.coords[1]);
+        const handleRotated = L.point(centerPt.x + (handleBasePt.x - centerPt.x) * Math.cos(angleRad) - (handleBasePt.y - centerPt.y) * Math.sin(angleRad), centerPt.y + (handleBasePt.x - centerPt.x) * Math.sin(angleRad) + (handleBasePt.y - centerPt.y) * Math.cos(angleRad));
+        const offset = L.point(0, -20 / map.getZoom());
+        const angle = f.angle || 0;
+        const rotatedOffset = L.point(offset.x * Math.cos(toRad(angle)) - offset.y * Math.sin(toRad(angle)), offset.x * Math.sin(toRad(angle)) + offset.y * Math.cos(toRad(angle)));
+        rotationHandlePos = map.layerPointToLatLng(handleRotated.add(rotatedOffset));
 
-          return (
-            <Fragment key={f.id}>
-              <Polygon positions={rotatedCoords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#f59e0b", weight: 2, fillColor: "#f59e0b", fillOpacity: 0.2, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers} />
-              {rotatedCenter && <Marker position={rotatedCenter} opacity={0}><Tooltip permanent direction="center" className="measure-label">{f.buildingName && `${f.buildingName} - `} {formatDistance(width)} × {formatDistance(height)} ({formatArea(area)})</Tooltip></Marker>}
-              {isSelected && rotationHandlePos && <Marker position={rotationHandlePos} icon={rotationIcon} draggable={true} eventHandlers={{ dragstart: (e) => { L.DomEvent.stop(e); draggingRef.current = { type: 'rotate', featureId: f.id, center: center }; }, drag: (e) => { if (draggingRef.current?.type !== 'rotate') return; const centerPt = map.latLngToLayerPoint(draggingRef.current.center); const mousePt = map.latLngToLayerPoint(e.latlng); const newAngle = Math.atan2(mousePt.y - centerPt.y, mousePt.x - centerPt.x) * (180 / Math.PI) - 90; setFeatures(fs => fs.map(feat => feat.id === f.id ? { ...feat, angle: newAngle } : feat)); }, dragend: () => { draggingRef.current = null; } }} />}
-            </Fragment>
-          );
-        }
-        if (f.type === "text") return <Marker key={f.id} position={f.at} icon={textIcon(f.value)} draggable={false} eventHandlers={baseEventHandlers} />;
-        if (f.type === 'symbol' || f.type === 'photo') return <Marker key={f.id} position={f.at} icon={f.type === 'symbol' ? symbolIcon(f.emoji, f.number) : photoIcon(f.number)} draggable={false} eventHandlers={baseEventHandlers}><Tooltip>{f.type === 'symbol' ? f.label : `Photo ${f.number}`}</Tooltip></Marker>;
-        return null;
-      })}
+        return (
+          <Fragment key={f.id}>
+            <Polygon positions={rotatedCoords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#f59e0b", weight: 2, fillColor: "#f59e0b", fillOpacity: 0.2, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers} />
+            {rotatedCenter && <Marker position={rotatedCenter} opacity={0}><Tooltip permanent direction="center" className="measure-label">{f.buildingName && `${f.buildingName} - `} {formatDistance(width)} × {formatDistance(height)} ({formatArea(area)})</Tooltip></Marker>}
+            {isSelected && rotationHandlePos && <Marker position={rotationHandlePos} icon={rotationIcon} draggable={true} eventHandlers={{ dragstart: (e) => { L.DomEvent.stop(e); draggingRef.current = { type: 'rotate', featureId: f.id, center: center }; }, drag: (e) => { if (draggingRef.current?.type !== 'rotate') return; const centerPt = map.latLngToLayerPoint(draggingRef.current.center); const mousePt = map.latLngToLayerPoint(e.latlng); const newAngle = Math.atan2(mousePt.y - centerPt.y, mousePt.x - centerPt.x) * (180 / Math.PI) - 90; setFeatures(fs => fs.map(feat => feat.id === f.id ? { ...feat, angle: newAngle } : feat)); }, dragend: () => { draggingRef.current = null; } }} />}
+          </Fragment>
+        );
+      }
+      if (f.type === "text") return <Marker key={f.id} position={f.at} icon={textIcon(f.value)} draggable={false} eventHandlers={baseEventHandlers} />;
+      if (f.type === 'symbol' || f.type === 'photo') return <Marker key={f.id} position={f.at} icon={f.type === 'symbol' ? symbolIcon(f.emoji, f.number) : photoIcon(f.number)} draggable={false} eventHandlers={baseEventHandlers}><Tooltip>{f.type === 'symbol' ? f.label : `Photo ${f.number}`}</Tooltip></Marker>;
+      return null;
+    })}
 
-      {(mode === "line" || mode === "altimetry") && temp.length >= 1 && (
-        <Fragment>
-          <Polyline positions={tempLineCoords} pathOptions={{ color: mode === "altimetry" ? "#8b5cf6" : "#2563eb", weight: 3, dashArray: '5, 5' }} />
-          {tempLineCoords.length >= 2 && midpointOfLine(tempLineCoords) && <Marker position={midpointOfLine(tempLineCoords)} opacity={0}><Tooltip permanent direction="center" className="measure-label">{formatDistance(polylineLength(tempLineCoords))}</Tooltip></Marker>}
-        </Fragment>
-      )}
-      {mode === "azimuth" && temp.length >= 1 && (
-        <Fragment>
-          <Polyline positions={tempLineCoords} pathOptions={{ color: "#f97316", weight: 3, dashArray: '5, 5' }} />
-          {tempLineCoords.length >= 2 && (
-            <Marker position={tempLineCoords[tempLineCoords.length - 1]} opacity={0}>
-              <Tooltip permanent direction="right" className="measure-label text-lg font-bold">
-                {calculateCustomAzimuth(tempLineCoords[0], tempLineCoords[tempLineCoords.length - 1]).toFixed(1)}°
-              </Tooltip>
-            </Marker>
-          )}
-        </Fragment>
-      )}
-      {mode === "polygon" && temp.length >= 1 && (
-        <Fragment>
-          <Polygon positions={tempPolyCoords} pathOptions={{ color: "#16a34a", weight: 2, fillColor: "#16a34a", fillOpacity: 0.2, dashArray: '5, 5' }} />
-          {tempPolyCoords.length >= 3 && centroid(tempPolyCoords) && <Marker position={centroid(tempPolyCoords)} opacity={0}><Tooltip permanent direction="center" className="measure-label">{formatArea(polygonArea(tempPolyCoords))}</Tooltip></Marker>}
-        </Fragment>
-      )}
-      {mode === "rectangle" && tempRectBounds && (
-        <Fragment>
-          <Rectangle bounds={tempRectBounds} pathOptions={{ color: "#f59e0b", weight: 2, fillColor: "#f59e0b", fillOpacity: 0.2, dashArray: '5, 5' }} />
-          {(() => {
-            const ne = tempRectBounds.getNorthEast(); const sw = tempRectBounds.getSouthWest(); const nw = L.latLng(ne.lat, sw.lng); const width = haversine(nw, ne); const height = haversine(nw, sw); const center = tempRectBounds.getCenter();
-            return <Marker position={center} opacity={0}><Tooltip permanent direction="center" className="measure-label">{formatDistance(width)} × {formatDistance(height)}</Tooltip></Marker>;
-          })()}
-        </Fragment>
-      )}
-
-      {/* Target Marker for InfoBox */}
-      {targetPos && (
-        <Marker
-          position={targetPos}
-          icon={targetIcon}
-          draggable={true}
-          eventHandlers={{
-            dragend: (e) => setTargetPos(e.target.getLatLng())
-          }}
-        />
-      )}
-
-      {/* Street View Pegman & Coverage */}
-      {mode === 'streetview' && (
-        <>
-          <TileLayer
-            url="https://mt1.google.com/vt/lyrs=h,svv&x={x}&y={y}&z={z}"
-            maxZoom={20}
-            zIndex={1000}
-            opacity={1}
-          />
-          <Marker
-            position={map.getCenter()}
-            icon={pegmanIcon}
-            draggable={true}
-            eventHandlers={{
-              dragend: (e) => {
-                const { lat, lng } = e.target.getLatLng();
-                // Ouvrir une popup centrée
-                const width = 800;
-                const height = 600;
-                const left = (window.screen.width - width) / 2;
-                const top = (window.screen.height - height) / 2;
-                window.open(
-                  `https://www.google.com/maps?layer=c&cbll=${lat},${lng}`,
-                  'StreetView',
-                  `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes,status=yes`
-                );
-                setMode(null);
-              }
-            }}
-            zIndexOffset={1000}
-          >
-            <Tooltip permanent direction="top" offset={[0, -20]} className="font-bold">
-              Déplacez-moi sur une route bleue !
+    {(mode === "line" || mode === "altimetry") && temp.length >= 1 && (
+      <Fragment>
+        <Polyline positions={tempLineCoords} pathOptions={{ color: mode === "altimetry" ? "#8b5cf6" : "#2563eb", weight: 3, dashArray: '5, 5' }} />
+        {tempLineCoords.length >= 2 && midpointOfLine(tempLineCoords) && <Marker position={midpointOfLine(tempLineCoords)} opacity={0}><Tooltip permanent direction="center" className="measure-label">{formatDistance(polylineLength(tempLineCoords))}</Tooltip></Marker>}
+      </Fragment>
+    )}
+    {mode === "azimuth" && temp.length >= 1 && (
+      <Fragment>
+        <Polyline positions={tempLineCoords} pathOptions={{ color: "#f97316", weight: 3, dashArray: '5, 5' }} />
+        {tempLineCoords.length >= 2 && (
+          <Marker position={tempLineCoords[tempLineCoords.length - 1]} opacity={0}>
+            <Tooltip permanent direction="right" className="measure-label text-lg font-bold">
+              {calculateCustomAzimuth(tempLineCoords[0], tempLineCoords[tempLineCoords.length - 1]).toFixed(1)}°
             </Tooltip>
           </Marker>
-        </>
-      )}
+        )}
+      </Fragment>
+    )}
+    {mode === "polygon" && temp.length >= 1 && (
+      <Fragment>
+        <Polygon positions={tempPolyCoords} pathOptions={{ color: "#16a34a", weight: 2, fillColor: "#16a34a", fillOpacity: 0.2, dashArray: '5, 5' }} />
+        {tempPolyCoords.length >= 3 && centroid(tempPolyCoords) && <Marker position={centroid(tempPolyCoords)} opacity={0}><Tooltip permanent direction="center" className="measure-label">{formatArea(polygonArea(tempPolyCoords))}</Tooltip></Marker>}
+      </Fragment>
+    )}
+    {mode === "rectangle" && tempRectBounds && (
+      <Fragment>
+        <Rectangle bounds={tempRectBounds} pathOptions={{ color: "#f59e0b", weight: 2, fillColor: "#f59e0b", fillOpacity: 0.2, dashArray: '5, 5' }} />
+        {(() => {
+          const ne = tempRectBounds.getNorthEast(); const sw = tempRectBounds.getSouthWest(); const nw = L.latLng(ne.lat, sw.lng); const width = haversine(nw, ne); const height = haversine(nw, sw); const center = tempRectBounds.getCenter();
+          return <Marker position={center} opacity={0}><Tooltip permanent direction="center" className="measure-label">{formatDistance(width)} × {formatDistance(height)}</Tooltip></Marker>;
+        })()}
+      </Fragment>
+    )}
 
-      {askTextAt && <TextInputPopup at={askTextAt} onCancel={() => { setAskTextAt(null); setMode(null); }} onSubmit={(val) => { const id = crypto.randomUUID(); setFeatures((arr) => [...arr, { id, type: "text", at: askTextAt, value: val }]); setAskTextAt(null); setMode(null); }} />}
-      {contextMenu && <ContextMenu position={contextMenu.position} onAddText={() => { setAskTextAt(contextMenu.position); setContextMenu(null); }} onShowInfo={() => { showPointInfo(contextMenu.position); setContextMenu(null); }} onSetTarget={() => { setTargetPos(contextMenu.position); setContextMenu(null); }} onClose={() => setContextMenu(null)} />}
-    </LayerGroup>
-  );
+    {/* Target Marker for InfoBox */}
+    {targetPos && (
+      <Marker
+        position={targetPos}
+        icon={targetIcon}
+        draggable={true}
+        eventHandlers={{
+          dragend: (e) => setTargetPos(e.target.getLatLng())
+        }}
+      />
+    )}
+
+    {/* Street View Pegman & Coverage */}
+    {mode === 'streetview' && (
+      <>
+        <TileLayer
+          url="https://mt1.google.com/vt/lyrs=h,svv&x={x}&y={y}&z={z}"
+          maxZoom={20}
+          zIndex={1000}
+          opacity={1}
+        />
+        <Marker
+          position={map.getCenter()}
+          icon={pegmanIcon}
+          draggable={true}
+          eventHandlers={{
+            dragend: (e) => {
+              const { lat, lng } = e.target.getLatLng();
+              // Ouvrir une popup centrée
+              const width = 800;
+              const height = 600;
+              const left = (window.screen.width - width) / 2;
+              const top = (window.screen.height - height) / 2;
+              window.open(
+                `https://www.google.com/maps?layer=c&cbll=${lat},${lng}`,
+                'StreetView',
+                `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes,status=yes`
+              );
+              setMode(null);
+            }
+          }}
+          zIndexOffset={1000}
+        >
+          <Tooltip permanent direction="top" offset={[0, -20]} className="font-bold">
+            Déplacez-moi sur une route bleue !
+          </Tooltip>
+        </Marker>
+      </>
+    )}
+
+    {askTextAt && <TextInputPopup at={askTextAt} onCancel={() => { setAskTextAt(null); setMode(null); }} onSubmit={(val) => { const id = crypto.randomUUID(); setFeatures((arr) => [...arr, { id, type: "text", at: askTextAt, value: val }]); setAskTextAt(null); setMode(null); }} />}
+    {contextMenu && <ContextMenu position={contextMenu.position} onAddText={() => { setAskTextAt(contextMenu.position); setContextMenu(null); }} onShowInfo={() => { showPointInfo(contextMenu.position); setContextMenu(null); }} onSetTarget={() => { setTargetPos(contextMenu.position); setContextMenu(null); }} onClose={() => setContextMenu(null)} />}
+  </LayerGroup>
+);
 }
 
 // ====================================================================
