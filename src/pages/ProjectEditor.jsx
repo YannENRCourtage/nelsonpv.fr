@@ -72,6 +72,8 @@ export default function ProjectEditor() {
   const [photos, setPhotos] = useState([]);
   const fileRef = useRef(null);
   const [symbolToPlace, setSymbolToPlace] = useState(null);
+  const [activeTab, setActiveTab] = useState('map');
+  const [streetViewUrl, setStreetViewUrl] = useState('');
 
   useEffect(() => {
     const foundProject = projects.find(p => p.id === projectId);
@@ -81,6 +83,18 @@ export default function ProjectEditor() {
       setProject({ id: `proj_${Date.now()}`, name: '', status: 'Nouveau', createdAt: new Date().toISOString() });
     }
   }, [projectId, projects, setProject]);
+
+  // Listen for Pegman drop event
+  useEffect(() => {
+    const handlePegmanDrop = (e) => {
+      const { lat, lng } = e.detail;
+      const url = `https://www.google.com/maps?layer=c&cbll=${lat},${lng}&output=embed`;
+      setStreetViewUrl(url);
+      setActiveTab('streetview');
+    };
+    window.addEventListener('pegman:dropped', handlePegmanDrop);
+    return () => window.removeEventListener('pegman:dropped', handlePegmanDrop);
+  }, []);
 
   const projectUsers = Object.values(allUsers).filter(u => u.role !== 'admin');
 
@@ -237,21 +251,56 @@ export default function ProjectEditor() {
 
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-9 relative">
-          <div className="rounded-2xl bg-white shadow-sm overflow-hidden aspect-video">
-            <MapEditor
-              onAddressFound={handleAddressFound}
-              onAddressSearched={handleAddressSearched}
-              project={project}
-              symbolToPlace={symbolToPlace}
-              setSymbolToPlace={setSymbolToPlace}
-              photos={photos}
-              setPhotos={setPhotos}
-            />
+          {/* Tab Bar */}
+          <div className="flex gap-2 mb-2">
+            <button
+              onClick={() => setActiveTab('map')}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'map'
+                  ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+            >
+              Carte
+            </button>
+            {streetViewUrl && (
+              <button
+                onClick={() => setActiveTab('streetview')}
+                className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'streetview'
+                    ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+              >
+                Street View
+              </button>
+            )}
           </div>
-          <Button onClick={goToProjectAddress} className="absolute top-3 right-3 z-[1000] bg-white text-gray-800 hover:bg-gray-100 shadow-md">
-            <HomeIcon size={16} className="mr-2" />
-            Adresse Projet
-          </Button>
+
+          <div className="rounded-2xl bg-white shadow-sm overflow-hidden aspect-video">
+            {activeTab === 'map' ? (
+              <MapEditor
+                onAddressFound={handleAddressFound}
+                onAddressSearched={handleAddressSearched}
+                project={project}
+                symbolToPlace={symbolToPlace}
+                setSymbolToPlace={setSymbolToPlace}
+                photos={photos}
+                setPhotos={setPhotos}
+              />
+            ) : (
+              <iframe
+                src={streetViewUrl}
+                className="w-full h-full border-0"
+                title="Street View"
+                allowFullScreen
+              />
+            )}
+          </div>
+          {activeTab === 'map' && (
+            <Button onClick={goToProjectAddress} className="absolute top-14 right-3 z-[1000] bg-white text-gray-800 hover:bg-gray-100 shadow-md">
+              <HomeIcon size={16} className="mr-2" />
+              Adresse Projet
+            </Button>
+          )}
         </div>
 
         <aside className="col-span-3 flex flex-col gap-6">

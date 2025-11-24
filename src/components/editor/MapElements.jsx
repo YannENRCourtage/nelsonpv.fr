@@ -1266,9 +1266,6 @@ function MapInstance({ setMap }) {
 // ====================================================================
 // PEGMAN CONTROL (Street View)
 // ====================================================================
-// ====================================================================
-// PEGMAN CONTROL (Street View)
-// ====================================================================
 function PegmanControl() {
   const map = useMap();
   const [isDragging, setIsDragging] = useState(false);
@@ -1304,9 +1301,10 @@ function PegmanControl() {
     const dropPoint = map.mouseEventToContainerPoint(e);
     const latlng = map.containerPointToLatLng(dropPoint);
 
-    // Ouvrir Google Maps Street View dans un nouvel onglet
-    const streetViewUrl = `https://www.google.com/maps?layer=c&cbll=${latlng.lat},${latlng.lng}`;
-    window.open(streetViewUrl, '_blank');
+    // Émettre un événement pour créer l'onglet Street View
+    window.dispatchEvent(new CustomEvent('pegman:dropped', {
+      detail: { lat: latlng.lat, lng: latlng.lng }
+    }));
   };
 
   return (
@@ -1347,14 +1345,14 @@ function BottomLayersBar({ layersRef, map }) {
   const overlayKeys = Object.keys(LAYERS).filter(k => LAYERS[k].zIndex > 0);
 
   return (
-    <div className="h-[70px] bg-white border-t border-gray-300 p-2 flex items-center justify-center gap-1 overflow-x-auto shadow-[0_-4px_15px_rgba(0,0,0,0.1)] no-print z-[1000]">
+    <div className="h-[70px] bg-white border-t border-gray-300 p-2 flex items-center justify-center gap-0 overflow-x-auto shadow-[0_-4px_15px_rgba(0,0,0,0.1)] no-print z-[1000]">
       {overlayKeys.map(key => (
         <button
           key={key}
           onClick={() => toggleLayer(key)}
-          className={`px-3 py-2 rounded-md text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1.5 shadow-sm ${isActive(key) ? 'bg-blue-600 text-white border border-blue-700' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'}`}
+          className={`px-2 py-1.5 rounded-md text-[11px] font-medium transition-all whitespace-nowrap flex items-center gap-1 shadow-sm ${isActive(key) ? 'bg-blue-600 text-white border border-blue-700' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'}`}
         >
-          <div className={`w-2.5 h-2.5 rounded-full border border-white/50 ${isActive(key) ? 'bg-white' : 'bg-gray-400'}`}></div>
+          <div className={`w-2 h-2 rounded-full border border-white/50 ${isActive(key) ? 'bg-white' : 'bg-gray-400'}`}></div>
           {LAYERS[key].name}
         </button>
       ))}
