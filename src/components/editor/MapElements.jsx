@@ -627,11 +627,14 @@ const LAYERS = {
   // Urbanisme
   plu: {
     name: "PLU / PLUi",
-    url: "https://www.geoportail-urbanisme.gouv.fr/api/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=document_urbanisme&STYLES=&FORMAT=image/png&TRANSPARENT=true&HEIGHT=256&WIDTH=256&CRS=EPSG:3857&BBOX={bbox-epsg-3857}",
-    attribution: "Geoportail Urbanisme",
+    url: "https://wxs.ign.fr/essentiels/geoportail/r/wms?",
+    layers: "LANDUSE.AGRICULTURE2020",
+    format: "image/png",
+    transparent: true,
+    attribution: "IGN",
+    isOverlay: true,
     maxZoom: 20,
-    opacity: 0.7,
-    isOverlay: true
+    opacity: 0.7
   },
   "ZNIEFF 1": {
     url: "https://ws.carmencarto.fr/WMS/119/fxx_inpn?",

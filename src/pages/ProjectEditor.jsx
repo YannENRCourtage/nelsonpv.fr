@@ -135,8 +135,7 @@ export default function ProjectEditor() {
       return;
     }
 
-    // For other tabs, try to capture the visible content
-    // Note: iframes from other domains cannot be captured due to CORS
+    // For other tabs, capture what's visible
     const tabContainer = document.querySelector('.aspect-video');
     if (!tabContainer) {
       toast({ title: "Erreur", description: "Impossible de capturer cet onglet.", variant: "destructive" });
@@ -144,34 +143,46 @@ export default function ProjectEditor() {
     }
 
     try {
-      // Create a canvas with a message for iframe tabs
-      const canvas = document.createElement('canvas');
-      canvas.width = 800;
-      canvas.height = 450;
-      const ctx = canvas.getContext('2d');
-
-      // Fill with white background
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Add text
-      ctx.fillStyle = '#333';
-      ctx.font = '20px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(`Capture de l'onglet: ${activeTab}`, canvas.width / 2, canvas.height / 2 - 20);
-      ctx.font = '14px Arial';
-      ctx.fillStyle = '#666';
-      ctx.fillText('(Les iframes ne peuvent pas \u00eatre captur\u00e9es pour des raisons de s\u00e9curit\u00e9)', canvas.width / 2, canvas.height / 2 + 20);
+      // Use html2canvas to capture the visible content
+      const canvas = await html2canvas(tabContainer, {
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        scale: 1,
+        width: tabContainer.offsetWidth,
+        height: tabContainer.offsetHeight,
+        backgroundColor: '#ffffff'
+      });
 
       const dataUrl = canvas.toDataURL('image/png');
       const next = [...captures];
       next[slotIndex] = dataUrl;
       setCaptures(next);
       updateProject({ captures: next });
-      toast({ title: "Information", description: "Capture cr\u00e9\u00e9e (contenu iframe non capturable)", variant: "default" });
+      toast({ title: "Capture réussie !", description: `La vue a été enregistrée dans l'emplacement ${slotIndex + 1}.` });
     } catch (error) {
       console.error('Capture error:', error);
-      toast({ title: "Erreur", description: "La capture a \u00e9chou\u00e9.", variant: "destructive" });
+      // Fallback: create a placeholder image
+      const canvas = document.createElement('canvas');
+      canvas.width = 800;
+      canvas.height = 450;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#333';
+      ctx.font = '20px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(`Capture de l'onglet: ${activeTab}`, canvas.width / 2, canvas.height / 2 - 20);
+      ctx.font = '14px Arial';
+      ctx.fillStyle = '#666';
+      ctx.fillText('(Contenu non capturable - limitation technique)', canvas.width / 2, canvas.height / 2 + 20);
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const next = [...captures];
+      next[slotIndex] = dataUrl;
+      setCaptures(next);
+      updateProject({ captures: next });
+      toast({ title: "Information", description: "Capture créée (contenu iframe limité)", variant: "default" });
     }
   };
 
