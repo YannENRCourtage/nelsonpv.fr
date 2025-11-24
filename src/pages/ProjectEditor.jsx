@@ -322,7 +322,7 @@ export default function ProjectEditor() {
               />
             ) : activeTab === 'itinerary' ? (
               <iframe
-                src="https://map.project-osrm.org/"
+                src="https://map.project-osrm.org/?hl=fr#6/44.5000/2.0000"
                 className="w-full h-full border-0"
                 title="OSRM Itinéraire"
                 allow="geolocation"

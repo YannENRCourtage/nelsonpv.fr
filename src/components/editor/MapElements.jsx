@@ -848,6 +848,7 @@ function LayersBootstrap({ layersRef }) {
     Object.keys(LAYERS).forEach(key => {
       const layerDef = LAYERS[key];
       if (layerDef.isSeparator) return; // Skip separators
+      if (!layerDef.url) return;
 
       if (layerDef.url.includes("WMS")) {
         // WMS layers
@@ -1328,7 +1329,7 @@ function BottomLayersBar({ layersRef, map }) {
   };
 
   // On ne garde que les overlays (zIndex > 0)
-  const overlayKeys = Object.keys(LAYERS).filter(k => LAYERS[k].isOverlay || LAYERS[k].url.includes("WMS"));
+  const overlayKeys = Object.keys(LAYERS).filter(k => LAYERS[k].isOverlay || (LAYERS[k].url && LAYERS[k].url.includes("WMS")));
 
   return (
     <div className="absolute bottom-[30px] left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-lg flex flex-wrap justify-center gap-2 z-[1000] max-w-[95vw]">
