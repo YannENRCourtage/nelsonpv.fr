@@ -1,7 +1,61 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, useMap, ScaleControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
+// Standalone MiniMap component for StreetViewTab
+function MiniMap() {
+    const parentMap = useMap();
+    const miniMapRef = useRef(null);
+    const miniMapContainerRef = useRef(null);
+
+    useEffect(() => {
+        if (!miniMapContainerRef.current || miniMapRef.current) return;
+
+        const miniMap = L.map(miniMapContainerRef.current, {
+            center: parentMap.getCenter(),
+            zoom: parentMap.getZoom() - 4,
+            zoomControl: false,
+            attributionControl: false,
+            dragging: false,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            boxZoom: false,
+            keyboard: false,
+            touchZoom: false
+        });
+
+        // Use Google Maps tiles for minimap
+        L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+        }).addTo(miniMap);
+
+        const viewBox = L.rectangle(parentMap.getBounds(), {
+            color: '#ff0000',
+            weight: 2,
+            fillOpacity: 0.1
+        }).addTo(miniMap);
+
+        const updateMiniMap = () => {
+            miniMap.setView(parentMap.getCenter(), parentMap.getZoom() - 4);
+            viewBox.setBounds(parentMap.getBounds());
+        };
+
+        parentMap.on('move', updateMiniMap);
+        parentMap.on('zoom', updateMiniMap);
+        miniMapRef.current = miniMap;
+
+        return () => {
+            parentMap.off('move', updateMiniMap);
+            parentMap.off('zoom', updateMiniMap);
+            miniMap.remove();
+            miniMapRef.current = null;
+        };
+    }, [parentMap]);
+
+    return <div ref={miniMapContainerRef} className="w-40 h-32 border-2 border-border rounded-lg shadow-lg overflow-hidden bg-card" />;
+}
 
 function StreetViewCoverageLayer() {
     const map = useMap();
@@ -73,18 +127,26 @@ export default function StreetViewTab({ project }) {
                 doubleClickZoom={false}
                 zoomControl={false}
             >
-                {/* Satellite base layer */}
+                {/* Google Maps satellite base layer */}
                 <TileLayer
-                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                    attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
+                    url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+                    attribution='&copy; <a href="https://www.google.com/maps">Google Maps</a>'
                     maxZoom={20}
+                    subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
                 />
 
                 {/* Street View coverage layer */}
                 <StreetViewCoverageLayer />
 
-                {/* Scale control */}
-                <ScaleControl position="bottomleft" metric={true} imperial={false} />
+                {/* Bottom-left controls */}
+                <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
+                    <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '10px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
+                        <div className="flex flex-col items-start gap-2">
+                            <MiniMap />
+                            <ScaleControl position="bottomleft" metric={true} imperial={false} />
+                        </div>
+                    </div>
+                </div>
             </MapContainer>
         </div>
     );

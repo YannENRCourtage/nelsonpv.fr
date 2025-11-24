@@ -1122,7 +1122,7 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
     <div className="z-[1000] bg-white rounded-lg shadow-2xl border w-[600px]" style={dialogStyle}>
       <div className="flex justify-between items-center p-3 border-b cursor-move bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-lg" onMouseDown={handleMouseDown}>
         <h4 className="font-bold text-base text-white">📊 PROFIL ALTIMÉTRIQUE</h4>
-        <button onClick={handleCloseProfile} className="p-1 text-white hover:bg-blue-700 rounded transition-colors"><XIcon size={18} /></button>
+        <button onClick={(e) => { e.stopPropagation(); handleCloseProfile(); }} className="p-1 text-white hover:bg-blue-700 rounded transition-colors"><XIcon size={18} /></button>
       </div>
       <div className="p-4">
         <div ref={chartRef} className="h-[150px] w-full bg-white">
