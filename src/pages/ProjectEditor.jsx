@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Building, X, FolderHeart as HomeIcon, Map as MapIcon } from 'lucide-react';
+import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Building, X, FolderHeart as HomeIcon, Map as MapIcon, ExternalLink } from 'lucide-react';
 import MapEditor from "../components/MapEditor";
 import StreetViewTab from "../components/StreetViewTab";
 import ChatBox from "../components/editor/ChatBox.jsx";
@@ -334,14 +334,24 @@ export default function ProjectEditor() {
                 title="Caparéseau"
                 allow="geolocation"
               />
-            ) : (
-              <iframe
-                src="https://www.geoportail-urbanisme.gouv.fr/"
-                className="w-full h-full border-0"
-                title="Geoportail Urbanisme"
-                allow="geolocation"
-              />
-            )}
+            ) : activeTab === 'geoportail' ? (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-center p-8">
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">Géoportail de l'Urbanisme</h3>
+                <p className="text-gray-600 mb-6 max-w-md">
+                  Ce site ne permet pas l'affichage direct dans l'application pour des raisons de sécurité.
+                  Veuillez cliquer ci-dessous pour l'ouvrir dans un nouvel onglet.
+                </p>
+                <a
+                  href="https://www.geoportail-urbanisme.gouv.fr/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Ouvrir Géoportail Urbanisme
+                  <ExternalLink className="ml-2 h-4 w-4" />
+                </a>
+              </div>
+            ) : null}
           </div>
           {activeTab === 'map' && (
             <Button onClick={goToProjectAddress} className="absolute top-14 right-3 z-[1000] bg-white text-gray-800 hover:bg-gray-100 shadow-md">
