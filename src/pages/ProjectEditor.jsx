@@ -246,7 +246,7 @@ export default function ProjectEditor() {
             <button
               onClick={(e) => { e.preventDefault(); setActiveTab('map'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'map'
-                ? 'bg-white text-blue-600 border-b-2 border-b-white -mb-[2px] z-10'
+                ? 'bg-white text-blue-600 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
             >
@@ -256,7 +256,7 @@ export default function ProjectEditor() {
             <button
               onClick={(e) => { e.preventDefault(); setActiveTab('streetview'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'streetview'
-                ? 'bg-white text-blue-600 border-b-2 border-b-white -mb-[2px] z-10'
+                ? 'bg-white text-blue-600 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
             >
@@ -265,7 +265,7 @@ export default function ProjectEditor() {
             <button
               onClick={(e) => { e.preventDefault(); setActiveTab('owners'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'owners'
-                ? 'bg-white text-blue-600 border-b-2 border-b-white -mb-[2px] z-10'
+                ? 'bg-white text-blue-600 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
             >
@@ -274,11 +274,29 @@ export default function ProjectEditor() {
             <button
               onClick={(e) => { e.preventDefault(); setActiveTab('itinerary'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'itinerary'
-                ? 'bg-white text-blue-600 border-b-2 border-b-white -mb-[2px] z-10'
+                ? 'bg-white text-blue-600 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
             >
               Itinéraire
+            </button>
+            <button
+              onClick={(e) => { e.preventDefault(); setActiveTab('capareseau'); }}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'capareseau'
+                ? 'bg-white text-blue-600 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+            >
+              Caparéseau
+            </button>
+            <button
+              onClick={(e) => { e.preventDefault(); setActiveTab('geoportail'); }}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'geoportail'
+                ? 'bg-white text-blue-600 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+            >
+              Geoportail Urba
             </button>
           </div>
 
@@ -302,11 +320,25 @@ export default function ProjectEditor() {
                 title="Propriétaires Cadastre"
                 allow="geolocation"
               />
+            ) : activeTab === 'itinerary' ? (
+              <iframe
+                src="https://map.project-osrm.org/"
+                className="w-full h-full border-0"
+                title="OSRM Itinéraire"
+                allow="geolocation"
+              />
+            ) : activeTab === 'capareseau' ? (
+              <iframe
+                src="https://www.capareseau.fr/"
+                className="w-full h-full border-0"
+                title="Caparéseau"
+                allow="geolocation"
+              />
             ) : (
               <iframe
-                src="https://www.google.fr/maps/dir/"
+                src="https://www.geoportail-urbanisme.gouv.fr/"
                 className="w-full h-full border-0"
-                title="Google Maps Itinéraire"
+                title="Geoportail Urbanisme"
                 allow="geolocation"
               />
             )}
