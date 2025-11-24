@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Building, X, FolderHeart as HomeIcon, Map as MapIcon, ExternalLink } from 'lucide-react';
+import html2canvas from 'html2canvas';
 import MapEditor from "../components/MapEditor";
 import StreetViewTab from "../components/StreetViewTab";
 import ChatBox from "../components/editor/ChatBox.jsx";
@@ -69,7 +70,7 @@ export default function ProjectEditor() {
   const { projectId } = useParams();
   const { projects, setProject, project, updateProject, saveProjectToLS } = useProjects();
   const { users: allUsers } = useAuth();
-  const [captures, setCaptures] = useState([null, null, null, null]);
+  const [captures, setCaptures] = useState([null, null, null, null, null, null]);
   const [photos, setPhotos] = useState([]);
   const fileRef = useRef(null);
   const [symbolToPlace, setSymbolToPlace] = useState(null);
@@ -121,9 +122,35 @@ export default function ProjectEditor() {
   const captureNow = () => {
     const emptySlot = captures.findIndex(c => c === null);
     if (emptySlot !== -1) {
-      window.dispatchEvent(new CustomEvent("map:capture-request", { detail: { slotIndex: emptySlot } }));
+      captureTab(emptySlot);
     } else {
-      window.dispatchEvent(new CustomEvent("map:capture-request", { detail: { slotIndex: 0 } }));
+      captureTab(0); // Replace first if all full
+    }
+  };
+
+  const captureTab = async (slotIndex) => {
+    // Find the active tab container
+    const tabContainer = document.querySelector(`[data-tab="${activeTab}"]`);
+    if (!tabContainer) return;
+
+    try {
+      const canvas = await html2canvas(tabContainer, {
+        useCORS: true,
+        logging: false,
+        scale: 1,
+        width: tabContainer.offsetWidth,
+        height: tabContainer.offsetHeight
+      });
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const next = [...captures];
+      next[slotIndex] = dataUrl;
+      setCaptures(next);
+      updateProject({ captures: next });
+      toast({ title: "Capture réussie !", description: `La vue a été enregistrée dans l'emplacement ${slotIndex + 1}.` });
+    } catch (error) {
+      console.error('Capture error:', error);
+      toast({ title: "Erreur", description: "La capture a échoué.", variant: "destructive" });
     }
   };
 
@@ -309,8 +336,8 @@ export default function ProjectEditor() {
             </button>
           </div>
 
-          <div className="rounded-2xl bg-white shadow-sm overflow-hidden aspect-video">
-            {activeTab === 'map' ? (
+          <div className="rounded-2xl bg-white shadow-sm overflow-hidden aspect-video relative">
+            <div data-tab="map" style={{ display: activeTab === 'map' ? 'block' : 'none', width: '100%', height: '100%' }}>
               <MapEditor
                 onAddressFound={handleAddressFound}
                 onAddressSearched={handleAddressSearched}
@@ -320,30 +347,35 @@ export default function ProjectEditor() {
                 photos={photos}
                 setPhotos={setPhotos}
               />
-            ) : activeTab === 'streetview' ? (
+            </div>
+            <div data-tab="streetview" style={{ display: activeTab === 'streetview' ? 'block' : 'none', width: '100%', height: '100%' }}>
               <StreetViewTab project={project} />
-            ) : activeTab === 'owners' ? (
+            </div>
+            <div data-tab="owners" style={{ display: activeTab === 'owners' ? 'block' : 'none', width: '100%', height: '100%' }}>
               <iframe
                 src="https://proprietaires.cadastre.io/"
                 className="w-full h-full border-0"
                 title="Propriétaires Cadastre"
                 allow="geolocation"
               />
-            ) : activeTab === 'itinerary' ? (
+            </div>
+            <div data-tab="itinerary" style={{ display: activeTab === 'itinerary' ? 'block' : 'none', width: '100%', height: '100%' }}>
               <iframe
                 src="https://map.project-osrm.org/?hl=fr#6/44.5000/2.0000"
                 className="w-full h-full border-0"
                 title="OSRM Itinéraire"
                 allow="geolocation"
               />
-            ) : activeTab === 'capareseau' ? (
+            </div>
+            <div data-tab="capareseau" style={{ display: activeTab === 'capareseau' ? 'block' : 'none', width: '100%', height: '100%' }}>
               <iframe
                 src="https://www.capareseau.fr/"
                 className="w-full h-full border-0"
                 title="Caparéseau"
                 allow="geolocation"
               />
-            ) : activeTab === 'geoportail' ? (
+            </div>
+            <div data-tab="geoportail" style={{ display: activeTab === 'geoportail' ? 'block' : 'none', width: '100%', height: '100%' }}>
               <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-center p-8">
                 <h3 className="text-xl font-semibold text-gray-800 mb-2">Géoportail de l'Urbanisme</h3>
                 <p className="text-gray-600 mb-6 max-w-md">
@@ -360,14 +392,15 @@ export default function ProjectEditor() {
                   <ExternalLink className="ml-2 h-4 w-4" />
                 </a>
               </div>
-            ) : activeTab === 'enedis' ? (
+            </div>
+            <div data-tab="enedis" style={{ display: activeTab === 'enedis' ? 'block' : 'none', width: '100%', height: '100%' }}>
               <iframe
                 src="https://data.enedis.fr/pages/cartographie-des-reseaux-contenu/"
                 className="w-full h-full border-0"
                 title="Cartographie Enedis"
                 allow="geolocation"
               />
-            ) : null}
+            </div>
           </div>
           {activeTab === 'map' && (
             <Button onClick={goToProjectAddress} className="absolute top-14 right-3 z-[1000] bg-white text-gray-800 hover:bg-gray-100 shadow-md">
@@ -388,7 +421,7 @@ export default function ProjectEditor() {
                 Prendre une capture
               </Button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2">
               {captures.map((c, i) => (
                 <div key={i} className="group relative w-full overflow-hidden rounded-xl border bg-gray-100 aspect-video">
                   {c ? (
