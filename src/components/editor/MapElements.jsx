@@ -711,7 +711,7 @@ function BasemapControl({ layersRef }) {
     container.appendChild(title);
 
     const list = document.createElement('div');
-    list.className = 'space-y-2';
+    list.className = 'space-y-1';
     container.appendChild(list);
 
     const Control = L.Control.extend({ onAdd: () => container });
@@ -722,7 +722,17 @@ function BasemapControl({ layersRef }) {
     const updateList = () => {
       list.innerHTML = '';
       Object.keys(LAYERS).forEach(key => {
-        if (LAYERS[key].zIndex === 0) {
+        const layer = LAYERS[key];
+
+        // Handle separator
+        if (layer.isSeparator) {
+          const separator = document.createElement('hr');
+          separator.className = 'my-2 border-gray-300';
+          list.appendChild(separator);
+          return;
+        }
+
+        if (layer.zIndex === 0) {
           const label = document.createElement('label');
           label.className = 'flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-1.5 rounded text-sm transition-colors';
 
@@ -730,10 +740,10 @@ function BasemapControl({ layersRef }) {
           input.type = 'radio';
           input.name = 'basemap';
           input.checked = map.hasLayer(layersRef.current[key]);
-          input.className = 'accent-blue-600 w-4 h-4 mr-2'; // Ajout de mr-2 pour l'espace
+          input.className = 'accent-blue-600 w-4 h-4 mr-2';
 
           const span = document.createElement('span');
-          span.innerText = LAYERS[key].name;
+          span.innerText = layer.name;
           span.className = 'text-gray-700 font-medium';
 
           label.appendChild(input);
@@ -747,7 +757,7 @@ function BasemapControl({ layersRef }) {
                 }
               });
               layersRef.current[key].addTo(map);
-              updateList(); // Refresh checks
+              updateList();
             }
           });
           list.appendChild(label);

@@ -12,8 +12,8 @@ function simplifyAddress(label) {
     if (toRemove.test(part)) return false;
     // Remove larger administrative names (often in capitals)
     if (part === part.toUpperCase() && part.length > 3 && !part.match(/\d/)) {
-        const lowerPart = part.toLowerCase();
-        if (lowerPart.includes('france') || lowerPart.includes('metropolitan')) return false;
+      const lowerPart = part.toLowerCase();
+      if (lowerPart.includes('france') || lowerPart.includes('metropolitan')) return false;
     }
     return true;
   });
@@ -29,7 +29,7 @@ function simplifyAddress(label) {
   if (filteredParts.length > 3) {
     return filteredParts.slice(0, 3).join(', ');
   }
-  
+
   return filteredParts.join(', ');
 }
 
@@ -42,7 +42,7 @@ export default function SearchField({ onAddressFound }) {
 
     const provider = new OpenStreetMapProvider({
       params: {
-        'accept-language': 'fr', 
+        'accept-language': 'fr',
         countrycodes: 'fr',
       },
     });
@@ -63,7 +63,14 @@ export default function SearchField({ onAddressFound }) {
 
     try {
       map.addControl(searchControl);
-    } catch {}
+      // Add hide-on-capture class to search control
+      setTimeout(() => {
+        const searchContainer = document.querySelector('.leaflet-control-geosearch');
+        if (searchContainer) {
+          searchContainer.classList.add('hide-on-capture');
+        }
+      }, 100);
+    } catch { }
 
     const handler = (e) => {
       try {
@@ -72,7 +79,7 @@ export default function SearchField({ onAddressFound }) {
           map.setView([lat, lng], Math.max(map.getZoom(), 18), { animate: true });
           onAddressFound?.({ lat, lng, label: simplifyAddress(label) });
         }
-      } catch {}
+      } catch { }
     };
 
     map.on("geosearch/showlocation", handler);
@@ -81,7 +88,7 @@ export default function SearchField({ onAddressFound }) {
       try {
         map.off("geosearch/showlocation", handler);
         map.removeControl(searchControl);
-      } catch {}
+      } catch { }
     };
   }, [map, onAddressFound]);
 
