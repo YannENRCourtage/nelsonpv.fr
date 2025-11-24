@@ -59,7 +59,6 @@ function MiniMap() {
 
 function StreetViewCoverageLayer() {
     const map = useMap();
-    const [streetViewUrl, setStreetViewUrl] = useState(null);
 
     useEffect(() => {
         // Add Street View coverage layer (blue lines)
@@ -71,11 +70,11 @@ function StreetViewCoverageLayer() {
         });
         coverageLayer.addTo(map);
 
-        // Handle clicks on the map to open Street View
+        // Handle clicks on the map to open Street View in new tab
         const handleMapClick = (e) => {
             const { lat, lng } = e.latlng;
-            const url = `https://www.google.com/maps?layer=c&cbll=${lat},${lng}&output=embed`;
-            setStreetViewUrl(url);
+            const streetViewUrl = `https://www.google.com/maps?layer=c&cbll=${lat},${lng}`;
+            window.open(streetViewUrl, '_blank');
         };
 
         map.on('click', handleMapClick);
@@ -85,23 +84,6 @@ function StreetViewCoverageLayer() {
             map.off('click', handleMapClick);
         };
     }, [map]);
-
-    // Display Street View popup when URL is set
-    useEffect(() => {
-        if (streetViewUrl && map) {
-            const popupContent = document.createElement('div');
-            popupContent.style.width = '600px';
-            popupContent.style.height = '400px';
-            popupContent.innerHTML = `<iframe width="100%" height="100%" frameborder="0" style="border:0" src="${streetViewUrl}" allowfullscreen></iframe>`;
-
-            const popup = L.popup({ maxWidth: 620, minWidth: 600, className: 'street-view-popup' })
-                .setLatLng(map.getCenter())
-                .setContent(popupContent)
-                .openOn(map);
-
-            popup.on('remove', () => setStreetViewUrl(null));
-        }
-    }, [streetViewUrl, map]);
 
     return null;
 }
