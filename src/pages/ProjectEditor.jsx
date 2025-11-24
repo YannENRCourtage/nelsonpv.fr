@@ -246,7 +246,7 @@ export default function ProjectEditor() {
             <button
               onClick={(e) => { e.preventDefault(); setActiveTab('map'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'map'
-                ? 'bg-white text-blue-600 border-b-0 z-10'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
             >
@@ -256,7 +256,7 @@ export default function ProjectEditor() {
             <button
               onClick={(e) => { e.preventDefault(); setActiveTab('streetview'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'streetview'
-                ? 'bg-white text-blue-600 border-b-0 z-10'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
             >
@@ -265,7 +265,7 @@ export default function ProjectEditor() {
             <button
               onClick={(e) => { e.preventDefault(); setActiveTab('owners'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'owners'
-                ? 'bg-white text-blue-600 border-b-0 z-10'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
             >
@@ -274,7 +274,7 @@ export default function ProjectEditor() {
             <button
               onClick={(e) => { e.preventDefault(); setActiveTab('itinerary'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'itinerary'
-                ? 'bg-white text-blue-600 border-b-0 z-10'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
             >
@@ -283,7 +283,7 @@ export default function ProjectEditor() {
             <button
               onClick={(e) => { e.preventDefault(); setActiveTab('capareseau'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'capareseau'
-                ? 'bg-white text-blue-600 border-b-0 z-10'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
             >
@@ -292,7 +292,7 @@ export default function ProjectEditor() {
             <button
               onClick={(e) => { e.preventDefault(); setActiveTab('geoportail'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'geoportail'
-                ? 'bg-white text-blue-600 border-b-0 z-10'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
             >
