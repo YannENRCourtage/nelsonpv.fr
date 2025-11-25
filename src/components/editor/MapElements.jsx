@@ -1304,14 +1304,14 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
         </div >
 
         {/* Simplified stats on single line */}
-        <div className="flex gap-4 text-sm text-gray-700 bg-blue-50 p-2 rounded-lg justify-around mt-3">
+        <div className="flex gap-4 text-sm text-gray-700 bg-blue-50 p-2 rounded-lg justify-around mt-6">
           <div className="flex flex-col items-center">
             <span className="text-xs text-gray-500">Distance</span>
             <strong className="text-sm text-blue-700">{stats.distance.toFixed(0)} m</strong>
           </div>
           <div className="flex flex-col items-center">
-            <span className="text-xs text-gray-500">Dénivelé moy.</span>
-            <strong className="text-sm text-purple-600">{((stats.denivelePos + stats.deniveleNeg) / 2).toFixed(1)} m</strong>
+            <span className="text-xs text-gray-500">Dénivelé total</span>
+            <strong className="text-sm text-purple-600">{(stats.denivelePos + stats.deniveleNeg).toFixed(1)} m</strong>
           </div>
           <div className="flex flex-col items-center">
             <span className="text-xs text-gray-500">Pente moy.</span>
