@@ -329,20 +329,23 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       if (contextMenu) setContextMenu(null);
       if (draggingRef.current && draggingRef.current.type === 'rotate') return;
       if (mode === 'delete') return;
-      if (mode === "text") {
-        setAskTextAt(e.latlng);
-        setMode(null);
-      } else if (mode === "symbol" && symbolToPlace) {
+      if (photoToPlace) {
         const id = crypto.randomUUID();
-        setFeatures((arr) => [...arr, { id, type: "symbol", at: e.latlng, ...symbolToPlace }]);
-        if (!e.originalEvent.shiftKey) {
-          setSymbolToPlace(null);
-          setMode(null);
-        }
-      } else if (mode === "photo" && photoToPlace) {
-        const id = crypto.randomUUID();
-        setFeatures((arr) => [...arr, { id, type: "photo", at: e.latlng, photoId: photoToPlace.id, number: photoToPlace.number }]);
+        setFeatures(fs => [...fs, { id, type: 'photo', photoId: photoToPlace.id, number: photoToPlace.number, at: e.latlng }]);
         setPhotoToPlace(null);
+        setMode(null);
+      } else if (symbolToPlace) {
+        const id = crypto.randomUUID();
+        let number = null;
+        if (symbolToPlace.type === 'building') {
+          const buildingCount = features.filter(f => f.symbolType === 'building').length;
+          number = buildingCount + 1;
+        }
+        setFeatures(fs => [...fs, { id, type: 'symbol', symbolType: symbolToPlace.type, label: symbolToPlace.label, at: e.latlng, emoji: symbolToPlace.emoji, number }]);
+        setSymbolToPlace(null);
+        setMode(null);
+      } else if (mode === "text") {
+        setAskTextAt(e.latlng);
         setMode(null);
       } else if (mode === "rectangle") {
         if (!rectangleStart) {

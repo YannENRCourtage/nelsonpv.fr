@@ -37,6 +37,49 @@ function SymbolBtn({ icon, label, type, emoji, onSelect, isSelected }) {
   );
 }
 
+// Wrapper ENEDIS pour afficher directement la carte
+function EnedisMapWrapper() {
+  const iframeRef = useRef(null);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    // Essayer de scroller l'iframe après chargement (peut ne pas fonctionner avec CORS)
+    const handleLoad = () => {
+      try {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.scrollTo(0, 350);
+        }
+      } catch (e) {
+        console.log('Cannot scroll iframe due to CORS');
+      }
+    };
+
+    iframe.addEventListener('load', handleLoad);
+    return () => iframe.removeEventListener('load', handleLoad);
+  }, []);
+
+  return (
+    <div className="w-full h-full relative overflow-hidden">
+      {/* Masquer le header avec un overlay */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[300px] bg-white z-10"
+        style={{ pointerEvents: 'none' }}
+      />
+      <iframe
+        ref={iframeRef}
+        src="https://data.enedis.fr/pages/cartographie-des-reseaux-contenu/"
+        className="w-full border-0"
+        style={{ height: 'calc(100% + 300px)', marginTop: '-300px' }}
+        title="Cartographie Enedis"
+        allow="geolocation"
+      />
+    </div>
+  );
+}
+
+
 
 
 function SymbolsPanel({ onSymbolSelect, selectedSymbol }) {
@@ -402,12 +445,7 @@ export default function ProjectEditor() {
                 setPhotos={setPhotos}
               />
             ) : activeTab === 'enedis' ? (
-              <iframe
-                src="https://data.enedis.fr/pages/cartographie-des-reseaux/"
-                className="w-full h-full border-0"
-                title="Cartographie Enedis"
-                allow="geolocation"
-              />
+              <EnedisMapWrapper />
             ) : activeTab === 'streetview' ? (
               <StreetViewTab project={project} />
             ) : activeTab === 'owners' ? (
