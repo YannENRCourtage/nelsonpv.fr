@@ -64,14 +64,14 @@ function EnedisMapWrapper() {
     <div className="w-full h-full relative overflow-hidden">
       {/* Masquer le header avec un overlay */}
       <div
-        className="absolute top-0 left-0 right-0 h-[300px] bg-white z-10"
+        className="absolute top-0 left-0 right-0 h-[200px] bg-white z-10"
         style={{ pointerEvents: 'none' }}
       />
       <iframe
         ref={iframeRef}
         src="https://data.enedis.fr/pages/cartographie-des-reseaux-contenu/"
         className="w-full border-0"
-        style={{ height: 'calc(100% + 300px)', marginTop: '-300px' }}
+        style={{ height: 'calc(100% + 200px)', marginTop: '-200px' }}
         title="Cartographie Enedis"
         allow="geolocation"
       />
