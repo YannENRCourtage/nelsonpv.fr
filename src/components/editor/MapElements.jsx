@@ -125,10 +125,10 @@ const textIcon = (txt) => L.divIcon({
   html: txt ? L.Util.escapeHTML(txt) : "",
 });
 const symbolIcon = (emoji, number = null) => L.divIcon({
-  html: `<div style="display: flex; flex-direction: column; align-items: center; position: relative; width: 40px; height: 48px;">
-           <div style="background-color: white; border-radius: 9999px; padding: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 2px solid #e2e8f0; font-size: 20px; line-height: 1; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">${emoji}</div>
-           ${number ? `<span style="position: absolute; top: -4px; right: -4px; background-color: #2563eb; color: white; font-size: 10px; font-weight: bold; border-radius: 9999px; height: 16px; width: 16px; display: flex; align-items: center; justify-content: center;">${number}</span>` : ''}
-           <div style="width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 8px solid white; margin-top: -2px;"></div>
+  html: `<div class="flex flex-col items-center cursor-grab relative">
+           <div class="bg-white rounded-full p-2 shadow-lg border-2 border-border text-xl">${emoji}</div>
+           ${number ? `<span class="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">${number}</span>` : ''}
+           <div class="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-white -mt-1"></div>
          </div>`,
   className: 'bg-transparent border-none',
   iconSize: [40, 48],
@@ -258,34 +258,22 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       }
     }
 
-    // Utiliser l'API Géoportail (nouvelle version sans clé)
+    // Utiliser l'API Géoportail Essentiels (sans clé)
     try {
       const lons = points.map(p => p.lng).join('|');
       const lats = points.map(p => p.lat).join('|');
 
-      const res = await fetch(`https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json?lon=${lons}&lat=${lats}&resource=ign_rge_alti_wld&zonly=false`);
-      if (!res.ok) throw new Error('Géoportail failed');
+      const res = await fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${lons}&lat=${lats}&zonly=true`);
+      if (!res.ok) throw new Error('Altitude API failed');
       const data = await res.json();
 
       if (data.elevations) {
         data.elevations.forEach((elev, i) => { if (points[i]) points[i].alt = elev.z; });
       }
-    } catch (geoError) {
-      console.warn("Géoportail Alti failed, trying Open-Elevation...", geoError);
-      // Tentative 2 : Open-Elevation
-      try {
-        const locations = points.map(p => `${p.lat},${p.lng}`).join('|');
-        const res = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${locations}`);
-        if (!res.ok) throw new Error('Open-Elevation failed');
-        const data = await res.json();
-        if (data.results) {
-          data.results.forEach((r, i) => { if (points[i]) points[i].alt = r.elevation; });
-        }
-      } catch (openError) {
-        console.error("All altimetry APIs failed", openError);
-        toast({ ...destructiveToastStyle, title: "Erreur Altimétrie", description: "Impossible de récupérer les altitudes." });
-        return;
-      }
+    } catch (error) {
+      console.error("Altimetry error:", error);
+      toast({ ...destructiveToastStyle, title: "Erreur Altimétrie", description: "Impossible de récupérer les altitudes." });
+      return;
     }
 
     // Calcul des stats
@@ -938,17 +926,14 @@ function MapTargetInfo({ targetPos, setTargetPos }) {
         // Lancer toutes les requêtes en parallèle pour optimiser la vitesse
         const [altRes, addrRes, parcRes] = await Promise.allSettled([
           // Altitude : API Géoportail gratuite (nouvelle version sans clé)
-          fetch(`https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json?lon=${targetPos.lng}&lat=${targetPos.lat}&resource=ign_rge_alti_wld&zonly=true`)
-            .then(r => r.json())
-            .catch(() => null),
+          fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${targetPos.lng}&lat=${targetPos.lat}&zonly=true`)
+            .then(r => r.json()),
           // Adresse : API Adresse
           fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${targetPos.lng}&lat=${targetPos.lat}`)
-            .then(r => r.json())
-            .catch(() => null),
+            .then(r => r.json()),
           // Parcelle cadastrale : API Carto IGN
           fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom={"type":"Point","coordinates":[${targetPos.lng},${targetPos.lat}]}`)
             .then(r => r.json())
-            .catch(() => null)
         ]);
 
         // Traiter l'altitude
@@ -978,7 +963,7 @@ function MapTargetInfo({ targetPos, setTargetPos }) {
     // Debounce
     const timeoutId = setTimeout(updateInfo, 300);
     return () => clearTimeout(timeoutId);
-  }, [targetPos, VOTRE_CLE_IGN]);
+  }, [targetPos]);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -1128,12 +1113,12 @@ function PointInfoPanel({ pointInfo, setPointInfo }) {
 
     const { latlng } = pointInfo;
     const fetches = [
-      fetch(`https://wxs.ign.fr/${VOTRE_CLE_IGN}/alti/rest/elevation.json?lon=${latlng.lng}&lat=${latlng.lat}&zonly=true`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ altitude: `${data.elevations[0].z.toFixed(1)} m` })).catch(() => ({ altitude: 'N/A' })),
+      fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${latlng.lng}&lat=${latlng.lat}&zonly=true`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ altitude: `${data.elevations[0].z.toFixed(1)} m` })).catch(() => ({ altitude: 'N/A' })),
       fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${latlng.lng}&lat=${latlng.lat}`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ address: data.features[0]?.properties.label || 'Non trouvée' })).catch(() => ({ address: 'N/A' })),
       fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom={"type":"Point","coordinates":[${latlng.lng},${latlng.lat}]}`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ parcel: data.features[0]?.properties.libelle || 'Non trouvée' })).catch(() => ({ parcel: 'N/A' }))
     ];
     Promise.all(fetches).then(results => { const newInfo = results.reduce((acc, current) => ({ ...acc, ...current }), {}); setPointInfo(prev => ({ ...prev, ...newInfo })); });
-  }, [pointInfo, setPointInfo, VOTRE_CLE_IGN]);
+  }, [pointInfo, setPointInfo]);
   if (!pointInfo) return null;
   return (
     <div className="absolute bottom-10 left-3 z-[1000] bg-card/95 text-card-foreground p-3 rounded-lg shadow-xl border border-border w-72 text-sm">

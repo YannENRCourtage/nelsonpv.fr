@@ -1,0 +1,115 @@
+// src/components/SymbolsPanel.jsx
+import React from "react";
+
+import {
+  MapPin,
+  DoorOpen,
+  Home,
+  Flame,
+  Zap,
+  Plug,
+  Users,
+  Ruler,
+}
+
+from "lucide-react";
+
+// ⚠️ IMPORTANT : on conserve ces icônes, on ne les change pas.
+const SYMBOLS=[ {
+  key: "project", label: "Lieu Projet", Icon: MapPin
+}
+
+,
+{
+key: "access", label: "Accès", Icon: DoorOpen
+}
+
+,
+{
+key: "house", label: "Maison", Icon: Home
+}
+
+,
+{
+key: "sdis", label: "SDIS", Icon: Flame
+}
+
+,
+{
+key: "transfo", label: "Transfo", Icon: Zap
+}
+
+,
+{
+key: "pdl", label: "PDL", Icon: Plug
+}
+
+,
+{
+key: "neighbor", label: "Voisin", Icon: Users
+}
+
+,
+{
+key: "measure", label: "Ligne/Mesure", Icon: Ruler
+}
+
+,
+];
+
+function handleDragStart(e, symbolKey) {
+  // Envoie simple (compatible partout)
+  e.dataTransfer.setData("text/plain", symbolKey);
+
+  // Envoie JSON (si tu préfères parser côté carte)
+  const payload= {
+    type: "symbol", symbol: symbolKey
+  }
+
+  ;
+  e.dataTransfer.setData("application/json", JSON.stringify(payload));
+
+  e.dataTransfer.effectAllowed="copy";
+}
+
+export default function SymbolsPanel() {
+  return (<div className="pe_symbols" > <div className="pe_symbolsHeader" > <span>Symboles</span> <span className="pe_hint" >Glisse & dépose sur la carte →</span> </div> {
+      /* Grille 2 colonnes (gérée par ton CSS .pe_symbolsGrid) */
+    }
+
+    <div className="pe_symbolsGrid" > {
+      SYMBOLS.map(({
+          key, label, Icon
+
+        })=> (<button key= {
+          key
+        }
+
+        type="button"
+        className="pe_symbolBtn"
+
+        title= {
+          label
+        }
+
+        draggable onDragStart= {
+          (e)=> handleDragStart(e, key)
+        }
+
+        > <Icon size= {
+          26
+        }
+
+        strokeWidth= {
+          2.25
+        }
+
+        /> <span> {
+          label
+        }
+
+        </span> </button>))
+  }
+
+  </div> </div>);
+}

@@ -37,48 +37,7 @@ function SymbolBtn({ icon, label, type, emoji, onSelect, isSelected }) {
   );
 }
 
-// Wrapper component for ENEDIS iframe to auto-scroll to map
-function EnedisMapWrapper() {
-  const iframeRef = useRef(null);
 
-  useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-
-    const handleLoad = () => {
-      try {
-        // Try to scroll the iframe content (will fail due to CORS, but worth a try)
-        if (iframe.contentWindow) {
-          iframe.contentWindow.scrollTo(0, 300); // Scroll down 300px
-        }
-      } catch (e) {
-        // Expected to fail due to CORS
-        console.log('Cannot access iframe content due to CORS');
-      }
-    };
-
-    iframe.addEventListener('load', handleLoad);
-    return () => iframe.removeEventListener('load', handleLoad);
-  }, []);
-
-  return (
-    <div className="w-full h-full relative">
-      {/* Overlay to hide the header - positioned absolutely */}
-      <div
-        className="absolute top-0 left-0 right-0 h-[270px] bg-white z-10"
-        style={{ pointerEvents: 'none' }}
-      />
-      <iframe
-        ref={iframeRef}
-        src="https://data.enedis.fr/pages/cartographie-des-reseaux/"
-        className="w-full h-full border-0"
-        title="Cartographie Enedis"
-        allow="geolocation"
-        style={{ marginTop: '-270px' }}
-      />
-    </div>
-  );
-}
 
 function SymbolsPanel({ onSymbolSelect, selectedSymbol }) {
   const symbols = [
@@ -374,7 +333,7 @@ export default function ProjectEditor() {
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-9 relative">
           {/* Tab Bar */}
-          <div className="flex gap-2 mb-2">
+          <div className="flex gap-2 border-b border-gray-700">
             <button
               onClick={(e) => { e.preventDefault(); setActiveTab('map'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'map'
@@ -384,7 +343,15 @@ export default function ProjectEditor() {
             >
               Carte
             </button>
-            {/* Removed conditional rendering of Street View tab button as per instruction 3 */}
+            <button
+              onClick={(e) => { e.preventDefault(); setActiveTab('enedis'); }}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'enedis'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+            >
+              Enedis
+            </button>
             <button
               onClick={(e) => { e.preventDefault(); setActiveTab('streetview'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'streetview'
@@ -421,15 +388,6 @@ export default function ProjectEditor() {
             >
               Caparéseau
             </button>
-            <button
-              onClick={(e) => { e.preventDefault(); setActiveTab('enedis'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'enedis'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-            >
-              Enedis
-            </button>
           </div>
 
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden aspect-video">
@@ -442,6 +400,13 @@ export default function ProjectEditor() {
                 setSymbolToPlace={setSymbolToPlace}
                 photos={photos}
                 setPhotos={setPhotos}
+              />
+            ) : activeTab === 'enedis' ? (
+              <iframe
+                src="https://data.enedis.fr/pages/cartographie-des-reseaux/"
+                className="w-full h-full border-0"
+                title="Cartographie Enedis"
+                allow="geolocation"
               />
             ) : activeTab === 'streetview' ? (
               <StreetViewTab project={project} />
@@ -466,8 +431,6 @@ export default function ProjectEditor() {
                 title="Capar\u00e9seau"
                 allow="geolocation"
               />
-            ) : activeTab === 'enedis' ? (
-              <EnedisMapWrapper />
             ) : null}
           </div>
           {activeTab === 'map' && (

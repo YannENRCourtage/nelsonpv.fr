@@ -291,9 +291,13 @@ const overlayCategories = {
     'Urbanisme': {
         layers: {
             'PLU/PLUi': {
-                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=LANDUSE.AGRICULTURE2019&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
-                attribution: 'IGN-F/Géoportail',
-                type: 'tile',
+                url: 'https://data.geopf.fr/wms-r/gpu?',
+                layers: 'GPU.ZONAGE',
+                format: 'image/png',
+                transparent: true,
+                attribution: 'IGN-F/Géoportail de l\'Urbanisme',
+                type: 'wms',
+                opacity: 0.7,
             },
         },
     },
@@ -360,6 +364,18 @@ const MapLayersPanel = ({ map }) => {
                     });
                     newOverlayLayers[layerName] = tileLayer;
                 }
+                // WMS layers - create immediately with WMS params
+                else if (layerConfig.type === 'wms') {
+                    const wmsLayer = L.tileLayer.wms(layerConfig.url, {
+                        layers: layerConfig.layers,
+                        format: layerConfig.format || 'image/png',
+                        transparent: layerConfig.transparent !== false,
+                        attribution: layerConfig.attribution,
+                        maxZoom: layerConfig.maxZoom || 20,
+                        opacity: layerConfig.opacity || 1.0,
+                    });
+                    newOverlayLayers[layerName] = wmsLayer;
+                }
             });
         });
         setLeafletOverlayLayers(newOverlayLayers);
@@ -400,6 +416,15 @@ const MapLayersPanel = ({ map }) => {
 
                     // Type: tile (WMTS layers)
                     if (layerConfig.type === 'tile') {
+                        if (checked && leafletOverlayLayers[layerName]) {
+                            leafletOverlayLayers[layerName].addTo(map);
+                        } else if (!checked && leafletOverlayLayers[layerName]) {
+                            map.removeLayer(leafletOverlayLayers[layerName]);
+                        }
+                    }
+
+                    // Type: wms (WMS layers like PLU)
+                    else if (layerConfig.type === 'wms') {
                         if (checked && leafletOverlayLayers[layerName]) {
                             leafletOverlayLayers[layerName].addTo(map);
                         } else if (!checked && leafletOverlayLayers[layerName]) {
