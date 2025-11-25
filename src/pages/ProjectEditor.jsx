@@ -37,6 +37,49 @@ function SymbolBtn({ icon, label, type, emoji, onSelect, isSelected }) {
   );
 }
 
+// Wrapper component for ENEDIS iframe to auto-scroll to map
+function EnedisMapWrapper() {
+  const iframeRef = useRef(null);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const handleLoad = () => {
+      try {
+        // Try to scroll the iframe content (will fail due to CORS, but worth a try)
+        if (iframe.contentWindow) {
+          iframe.contentWindow.scrollTo(0, 300); // Scroll down 300px
+        }
+      } catch (e) {
+        // Expected to fail due to CORS
+        console.log('Cannot access iframe content due to CORS');
+      }
+    };
+
+    iframe.addEventListener('load', handleLoad);
+    return () => iframe.removeEventListener('load', handleLoad);
+  }, []);
+
+  return (
+    <div className="w-full h-full relative">
+      {/* Overlay to hide the header - positioned absolutely */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[270px] bg-white z-10"
+        style={{ pointerEvents: 'none' }}
+      />
+      <iframe
+        ref={iframeRef}
+        src="https://data.enedis.fr/pages/cartographie-des-reseaux/"
+        className="w-full h-full border-0"
+        title="Cartographie Enedis"
+        allow="geolocation"
+        style={{ marginTop: '-270px' }}
+      />
+    </div>
+  );
+}
+
 function SymbolsPanel({ onSymbolSelect, selectedSymbol }) {
   const symbols = [
     { type: "project", label: "Lieu Projet", icon: <MapPin className="h-6 w-6 text-red-500" />, emoji: "📍" },
@@ -128,6 +171,48 @@ export default function ProjectEditor() {
     }
   };
 
+  const captureWithDisplayMedia = async (slotIndex) => {
+    try {
+      toast({ title: "Capture d'écran requise", description: "Veuillez sélectionner 'Cet onglet' ou la fenêtre entière pour capturer le contenu externe.", duration: 5000 });
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: "never" },
+        audio: false,
+        preferCurrentTab: true
+      });
+
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      await new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          video.play().then(resolve);
+        };
+      });
+
+      // Petit délai pour s'assurer que le rendu est complet
+      await new Promise(r => setTimeout(r, 300));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+
+      // Arrêter le stream immédiatement
+      stream.getTracks().forEach(track => track.stop());
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const next = [...captures];
+      next[slotIndex] = dataUrl;
+      setCaptures(next);
+      updateProject({ captures: next });
+      toast({ title: "Capture réussie !", description: `La vue a été enregistrée dans l'emplacement ${slotIndex + 1}.` });
+
+    } catch (err) {
+      console.error("Capture annulée ou échouée", err);
+      // Fallback silencieux ou notification
+    }
+  };
+
   const captureTab = async (slotIndex) => {
     // For map tab, use the map capture event
     if (activeTab === 'map') {
@@ -135,7 +220,14 @@ export default function ProjectEditor() {
       return;
     }
 
-    // For other tabs, capture what's visible
+    // Liste des onglets utilisant des iframes externes
+    const iframeTabs = ['owners', 'itinerary', 'capareseau', 'geoportail', 'enedis'];
+    if (iframeTabs.includes(activeTab)) {
+      await captureWithDisplayMedia(slotIndex);
+      return;
+    }
+
+    // For other tabs (StreetView, etc.), capture what's visible
     const tabContainer = document.querySelector('.aspect-video');
     if (!tabContainer) {
       toast({ title: "Erreur", description: "Impossible de capturer cet onglet.", variant: "destructive" });
@@ -162,27 +254,8 @@ export default function ProjectEditor() {
       toast({ title: "Capture réussie !", description: `La vue a été enregistrée dans l'emplacement ${slotIndex + 1}.` });
     } catch (error) {
       console.error('Capture error:', error);
-      // Fallback: create a placeholder image
-      const canvas = document.createElement('canvas');
-      canvas.width = 800;
-      canvas.height = 450;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#333';
-      ctx.font = '20px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(`Capture de l'onglet: ${activeTab}`, canvas.width / 2, canvas.height / 2 - 20);
-      ctx.font = '14px Arial';
-      ctx.fillStyle = '#666';
-      ctx.fillText('(Contenu non capturable - limitation technique)', canvas.width / 2, canvas.height / 2 + 20);
-
-      const dataUrl = canvas.toDataURL('image/png');
-      const next = [...captures];
-      next[slotIndex] = dataUrl;
-      setCaptures(next);
-      updateProject({ captures: next });
-      toast({ title: "Information", description: "Capture créée (contenu iframe limité)", variant: "default" });
+      // Fallback to display media if html2canvas fails
+      await captureWithDisplayMedia(slotIndex);
     }
   };
 
@@ -349,15 +422,6 @@ export default function ProjectEditor() {
               Caparéseau
             </button>
             <button
-              onClick={(e) => { e.preventDefault(); setActiveTab('geoportail'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'geoportail'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-            >
-              Geoportail Urba
-            </button>
-            <button
               onClick={(e) => { e.preventDefault(); setActiveTab('enedis'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'enedis'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
@@ -402,30 +466,8 @@ export default function ProjectEditor() {
                 title="Capar\u00e9seau"
                 allow="geolocation"
               />
-            ) : activeTab === 'geoportail' ? (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-center p-8">
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">G\u00e9oportail de l'Urbanisme</h3>
-                <p className="text-gray-600 mb-6 max-w-md">
-                  Ce site ne permet pas l'affichage direct dans l'application pour des raisons de s\u00e9curit\u00e9.
-                  Veuillez cliquer ci-dessous pour l'ouvrir dans un nouvel onglet.
-                </p>
-                <a
-                  href="https://www.geoportail-urbanisme.gouv.fr/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Ouvrir G\u00e9oportail Urbanisme
-                  <ExternalLink className="ml-2 h-4 w-4" />
-                </a>
-              </div>
             ) : activeTab === 'enedis' ? (
-              <iframe
-                src="https://data.enedis.fr/pages/cartographie-des-reseaux-contenu/"
-                className="w-full h-full border-0"
-                title="Cartographie Enedis"
-                allow="geolocation"
-              />
+              <EnedisMapWrapper />
             ) : null}
           </div>
           {activeTab === 'map' && (

@@ -13,6 +13,7 @@ import {
   useMap,
   ScaleControl,
   TileLayer,
+  CircleMarker,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -124,10 +125,10 @@ const textIcon = (txt) => L.divIcon({
   html: txt ? L.Util.escapeHTML(txt) : "",
 });
 const symbolIcon = (emoji, number = null) => L.divIcon({
-  html: `<div class="flex flex-col items-center cursor-grab relative">
-           <div class="bg-white rounded-full p-2 shadow-lg border-2 border-border text-xl">${emoji}</div>
-           ${number ? `<span class="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">${number}</span>` : ''}
-           <div class="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-white -mt-1"></div>
+  html: `<div style="display: flex; flex-direction: column; align-items: center; position: relative; width: 40px; height: 48px;">
+           <div style="background-color: white; border-radius: 9999px; padding: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 2px solid #e2e8f0; font-size: 20px; line-height: 1; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">${emoji}</div>
+           ${number ? `<span style="position: absolute; top: -4px; right: -4px; background-color: #2563eb; color: white; font-size: 10px; font-weight: bold; border-radius: 9999px; height: 16px; width: 16px; display: flex; align-items: center; justify-content: center;">${number}</span>` : ''}
+           <div style="width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 8px solid white; margin-top: -2px;"></div>
          </div>`,
   className: 'bg-transparent border-none',
   iconSize: [40, 48],
@@ -311,8 +312,15 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
     const minAlt = altitudes.length > 0 ? Math.min(...altitudes) : 0;
     const maxAlt = altitudes.length > 0 ? Math.max(...altitudes) : 0;
 
+    // Correction: Dénivelé total = Différence absolue entre altitude fin et début
+    const startAlt = points.length > 0 ? points[0].alt : 0;
+    const endAlt = points.length > 0 ? points[points.length - 1].alt : 0;
+    const deniveleTotal = Math.abs(endAlt - startAlt);
+
     const penteMoyenne = totalDist > 0 ? ((denivelePos + deniveleNeg) / totalDist) * 100 : 0;
-    setAltimetryProfile({ data: profileData, line, stats: { distance: totalDist, denivelePos, deniveleNeg, penteMoyenne, maxPente }, minAlt, maxAlt });
+
+    // On passe deniveleTotal à la place de denivelePos + deniveleNeg pour l'affichage "Dénivelé total"
+    setAltimetryProfile({ data: profileData, line, stats: { distance: totalDist, denivelePos, deniveleNeg, deniveleTotal, penteMoyenne, maxPente }, minAlt, maxAlt });
   };
 
   const showPointInfo = (latlng) => {
@@ -617,7 +625,7 @@ const LAYERS = {
   batiments: { name: "Bâtiments", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=BUILDINGS.BUILDINGS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 11 },
 
   // Agriculture et occupation du sol
-  rpg: { name: 'Parcelles agricoles', url: 'https://wxs.ign.fr/agriviz/geoportail/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=LANDUSE.AGRICULTURE2020&STYLE=normal&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png', attrib: '© IGN', isOverlay: true, zIndex: 2, opacity: 0.7 },
+  rpg: { name: 'Parcelles agricoles', url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=LANDUSE.AGRICULTURE.LATEST&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', attrib: '© IGN', isOverlay: true, zIndex: 2, opacity: 0.7 },
 
   // Hydrographie
   hydro: { name: "Hydrographie", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=HYDROGRAPHY.HYDROGRAPHY&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 12 },
@@ -863,6 +871,9 @@ function LayersBootstrap({ layersRef }) {
           attribution: layerDef.attribution,
           maxZoom: layerDef.maxZoom || 20,
           opacity: layerDef.opacity || 1.0,
+          zIndex: layerDef.zIndex || 10,
+          pane: 'overlayPane',
+          interactive: false
         });
       } else {
         // TileLayer (WMTS or standard XYZ or WMS with embedded params)
@@ -871,7 +882,9 @@ function LayersBootstrap({ layersRef }) {
           maxZoom: layerDef.maxZoom || 22,
           subdomains: layerDef.subdomains || ['a', 'b', 'c'],
           zIndex: layerDef.zIndex || 0,
-          opacity: layerDef.opacity || 1.0
+          opacity: layerDef.opacity || 1.0,
+          pane: layerDef.isOverlay ? 'overlayPane' : 'tilePane',
+          interactive: layerDef.isOverlay ? false : true
         });
       }
     });
@@ -922,45 +935,39 @@ function MapTargetInfo({ targetPos, setTargetPos }) {
       setLoading(true);
 
       try {
-        // Tentative 1 : API IGN
-        let alt = 'N/A';
-        try {
-          const ignRes = await fetch(`https://wxs.ign.fr/${VOTRE_CLE_IGN}/alti/rest/elevation.json?lon=${targetPos.lng}&lat=${targetPos.lat}&zonly=true`);
-          if (ignRes.ok) {
-            const data = await ignRes.json();
-            if (data.elevations && data.elevations.length > 0) {
-              alt = `${data.elevations[0].z.toFixed(1)} m`;
-            }
-          } else {
-            throw new Error("IGN Error");
-          }
-        } catch (ignError) {
-          // Tentative 2 : Open-Elevation (Fallback)
-          console.warn("IGN Alti failed, trying Open-Elevation...", ignError);
-          try {
-            const openRes = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${targetPos.lat},${targetPos.lng}`);
-            if (openRes.ok) {
-              const data = await openRes.json();
-              if (data.results && data.results.length > 0) {
-                alt = `${data.results[0].elevation.toFixed(1)} m`;
-              }
-            }
-          } catch (openError) {
-            console.error("All elevation APIs failed", openError);
-          }
-        }
-
-        const [addrRes, parcRes] = await Promise.allSettled([
-          fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${targetPos.lng}&lat=${targetPos.lat}`).then(r => r.json()),
-          fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom={"type":"Point","coordinates":[${targetPos.lng},${targetPos.lat}]}`).then(r => r.json())
+        // Lancer toutes les requêtes en parallèle pour optimiser la vitesse
+        const [altRes, addrRes, parcRes] = await Promise.allSettled([
+          // Altitude : API Géoportail gratuite (nouvelle version sans clé)
+          fetch(`https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json?lon=${targetPos.lng}&lat=${targetPos.lat}&resource=ign_rge_alti_wld&zonly=true`)
+            .then(r => r.json())
+            .catch(() => null),
+          // Adresse : API Adresse
+          fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${targetPos.lng}&lat=${targetPos.lat}`)
+            .then(r => r.json())
+            .catch(() => null),
+          // Parcelle cadastrale : API Carto IGN
+          fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom={"type":"Point","coordinates":[${targetPos.lng},${targetPos.lat}]}`)
+            .then(r => r.json())
+            .catch(() => null)
         ]);
 
-        setInfo(prev => ({
-          ...prev,
-          alt: alt,
-          address: addrRes.status === 'fulfilled' && addrRes.value.features?.[0] ? addrRes.value.features[0].properties.label : 'N/A',
-          parcel: parcRes.status === 'fulfilled' && parcRes.value.features?.[0] ? `${parcRes.value.features[0].properties.section} ${parcRes.value.features[0].properties.numero}` : 'N/A'
-        }));
+        // Traiter l'altitude
+        let alt = 'N/A';
+        if (altRes.status === 'fulfilled' && altRes.value?.elevations?.[0]?.z != null) {
+          alt = `${altRes.value.elevations[0].z.toFixed(1)} m`;
+        }
+
+        // Traiter l'adresse
+        const address = addrRes.status === 'fulfilled' && addrRes.value?.features?.[0]
+          ? addrRes.value.features[0].properties.label
+          : 'N/A';
+
+        // Traiter la parcelle
+        const parcel = parcRes.status === 'fulfilled' && parcRes.value?.features?.[0]
+          ? `${parcRes.value.features[0].properties.section} ${parcRes.value.features[0].properties.numero}`
+          : 'N/A';
+
+        setInfo(prev => ({ ...prev, alt, address, parcel }));
       } catch (e) {
         console.error("Info fetch error", e);
       } finally {
@@ -1311,7 +1318,7 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
           </div>
           <div className="flex flex-col items-center">
             <span className="text-xs text-gray-500">Dénivelé total</span>
-            <strong className="text-sm text-purple-600">{(stats.denivelePos + stats.deniveleNeg).toFixed(1)} m</strong>
+            <span className="font-bold text-purple-600">{stats.deniveleTotal !== undefined ? stats.deniveleTotal.toFixed(1) : (stats.denivelePos + stats.deniveleNeg).toFixed(1)} m</span>
           </div>
           <div className="flex flex-col items-center">
             <span className="text-xs text-gray-500">Pente moy.</span>
