@@ -1192,6 +1192,10 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
   const handleCloseProfile = () => { setProfile(null); };
 
   const handleMouseDown = (e) => {
+    // Don't start dragging if clicking on a button or its children
+    if (e.target.closest('button')) {
+      return;
+    }
     setIsDragging(true);
     const rect = e.currentTarget.getBoundingClientRect();
     setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
@@ -1244,10 +1248,10 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
       <div className="flex justify-between items-center p-3 border-b cursor-move bg-gradient-to-r from-blue-500 to-blue-600 rounded-t-lg" onMouseDown={handleMouseDown}>
         <h4 className="font-bold text-base text-white">📊 PROFIL ALTIMÉTRIQUE</h4>
         <div className="flex items-center gap-2">
-          <button onClick={handleZoomToProfile} className="p-1 text-white hover:bg-blue-700 rounded-full transition-colors" title="Zoomer sur le profil"><Maximize size={16} /></button>
-          <button onClick={handleExportCSV} className="p-1 text-white hover:bg-blue-700 rounded-full transition-colors" title="Exporter en CSV"><Download size={16} /></button>
-          <button onClick={handleSaveProfile} className="p-1 text-white hover:bg-blue-700 rounded-full transition-colors" title="Enregistrer le profil"><Save size={16} /></button>
-          <button onClick={handleCloseProfile} className="p-1 text-white hover:bg-blue-700 rounded-full transition-colors" title="Fermer"><XIcon size={16} /></button>
+          <button onClick={(e) => { e.stopPropagation(); handleZoomToProfile(); }} className="p-1 text-white hover:bg-blue-700 rounded-full transition-colors" title="Zoomer sur le profil"><Maximize size={16} /></button>
+          <button onClick={(e) => { e.stopPropagation(); handleExportCSV(); }} className="p-1 text-white hover:bg-blue-700 rounded-full transition-colors" title="Exporter en CSV"><Download size={16} /></button>
+          <button onClick={(e) => { e.stopPropagation(); handleSaveProfile(); }} className="p-1 text-white hover:bg-blue-700 rounded-full transition-colors" title="Enregistrer le profil"><Save size={16} /></button>
+          <button onClick={(e) => { e.stopPropagation(); handleCloseProfile(); }} className="p-1 text-white hover:bg-blue-700 rounded-full transition-colors" title="Fermer"><XIcon size={16} /></button>
         </div>
       </div>
       <div className="p-4">
