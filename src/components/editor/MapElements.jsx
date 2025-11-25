@@ -22,7 +22,7 @@ import html2canvas from "html2canvas";
 import SearchField from "./SearchField.jsx";
 import { toast } from "@/components/ui/use-toast.js";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer } from 'recharts';
-import { X as XIcon, Download, Save, Copy, RotateCw, MapPin } from 'lucide-react';
+import { X as XIcon, Download, Save, Copy, RotateCw, MapPin, Maximize } from 'lucide-react';
 import { mapData } from "@/lib/nomenclature.js";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
@@ -218,7 +218,7 @@ function ContextMenu({ position, onAddText, onClose, onShowInfo, onSetTarget }) 
   );
 }
 
-function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, symbolToPlace, setSymbolToPlace, setPointInfo, setAltimetryProfile, rectangleStart, setRectangleStart, photoToPlace, setPhotoToPlace, targetPos, setTargetPos }) {
+function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, photoToPlace, setPhotoToPlace, targetPos, setTargetPos }) {
   const [mousePos, setMousePos] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [ignoreNextClick, setIgnoreNextClick] = useState(false);
@@ -306,8 +306,13 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       return { distance: Math.round(p.dist), altitude: p.alt || 0, lat: p.lat, lng: p.lng };
     });
 
+    // Calculate min and max altitudes
+    const altitudes = profileData.map(p => p.altitude).filter(alt => alt !== null && alt !== undefined);
+    const minAlt = altitudes.length > 0 ? Math.min(...altitudes) : 0;
+    const maxAlt = altitudes.length > 0 ? Math.max(...altitudes) : 0;
+
     const penteMoyenne = totalDist > 0 ? ((denivelePos + deniveleNeg) / totalDist) * 100 : 0;
-    setAltimetryProfile({ data: profileData, line, stats: { distance: totalDist, denivelePos, deniveleNeg, penteMoyenne, maxPente } });
+    setAltimetryProfile({ data: profileData, line, stats: { distance: totalDist, denivelePos, deniveleNeg, penteMoyenne, maxPente }, minAlt, maxAlt });
   };
 
   const showPointInfo = (latlng) => {
@@ -1402,7 +1407,7 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
 
   useEffect(() => {
     if (symbolToPlace) setMode('symbol'); else if (photoToPlace) setMode('photo'); else if (mode === 'symbol' || mode === 'photo') setMode(null);
-  }, [symbolToPlace, photoToPlace]);
+  }, [symbolToPlace, photoToPlace, mode, setMode]);
 
   return (
     <div className="relative h-full w-full flex flex-col">
@@ -1441,7 +1446,7 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
               </div>
             </div>
           </div>
-          <EditLayer {...{ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, symbolToPlace, setSymbolToPlace, setPointInfo, setAltimetryProfile, rectangleStart, setRectangleStart, photoToPlace, setPhotoToPlace, targetPos, setTargetPos }} />
+          <EditLayer {...{ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, photoToPlace, setPhotoToPlace, targetPos, setTargetPos }} />
           <MapEvents
             project={project}
             onAddressFound={onAddressFound}
