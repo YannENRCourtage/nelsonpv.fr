@@ -632,11 +632,11 @@ const LAYERS = {
   // Urbanisme
   plu: {
     name: "PLU / PLUi",
-    url: "https://wxs.ign.fr/essentiels/geoportail/r/wms?",
-    layers: "LANDUSE.AGRICULTURE2020",
+    url: "https://data.geopf.fr/wms-r/gpu?",
+    layers: "GPU.ZONAGE",
     format: "image/png",
     transparent: true,
-    attribution: "IGN",
+    attribution: "IGN - Géoportail de l'Urbanisme",
     isOverlay: true,
     maxZoom: 20,
     opacity: 0.7
@@ -701,7 +701,7 @@ function PLULegend({ layersRef }) {
 
   return (
     <div
-      className="absolute bottom-[287px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
+      className="absolute bottom-[290px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
       style={{ userSelect: 'none' }}
     >
       <div className="flex justify-between items-center mb-2">
