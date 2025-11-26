@@ -62,16 +62,10 @@ function EnedisMapWrapper() {
 
   return (
     <div className="w-full h-full relative overflow-hidden">
-      {/* Masquer le header avec un overlay */}
-      <div
-        className="absolute top-0 left-0 right-0 h-[200px] bg-white z-10"
-        style={{ pointerEvents: 'none' }}
-      />
       <iframe
         ref={iframeRef}
         src="https://data.enedis.fr/pages/cartographie-des-reseaux-contenu/"
-        className="w-full border-0"
-        style={{ height: 'calc(100% + 200px)', marginTop: '-200px' }}
+        className="w-full h-full border-0"
         title="Cartographie Enedis"
         allow="geolocation"
       />
@@ -115,7 +109,7 @@ export default function ProjectEditor() {
   const { projectId } = useParams();
   const { projects, setProject, project, updateProject, saveProjectToLS } = useProjects();
   const { users: allUsers } = useAuth();
-  const [captures, setCaptures] = useState([null, null, null, null, null, null]);
+  const [captures, setCaptures] = useState([null, null, null, null]);
   const [photos, setPhotos] = useState([]);
   const fileRef = useRef(null);
   const [symbolToPlace, setSymbolToPlace] = useState(null);
