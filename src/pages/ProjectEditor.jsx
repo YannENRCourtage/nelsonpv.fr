@@ -428,7 +428,8 @@ export default function ProjectEditor() {
           </div>
 
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden aspect-video">
-            {activeTab === 'map' ? (
+            {/* Onglet Carte */}
+            <div className={activeTab === 'map' ? 'w-full h-full' : 'hidden'}>
               <MapEditor
                 onAddressFound={handleAddressFound}
                 onAddressSearched={handleAddressSearched}
@@ -438,32 +439,47 @@ export default function ProjectEditor() {
                 photos={photos}
                 setPhotos={setPhotos}
               />
-            ) : activeTab === 'enedis' ? (
+            </div>
+
+            {/* Onglet ENEDIS */}
+            <div className={activeTab === 'enedis' ? 'w-full h-full' : 'hidden'}>
               <EnedisMapWrapper />
-            ) : activeTab === 'streetview' ? (
+            </div>
+
+            {/* Onglet Street View */}
+            <div className={activeTab === 'streetview' ? 'w-full h-full' : 'hidden'}>
               <StreetViewTab project={project} />
-            ) : activeTab === 'owners' ? (
+            </div>
+
+            {/* Onglet Propriétaires */}
+            <div className={activeTab === 'owners' ? 'w-full h-full' : 'hidden'}>
               <iframe
                 src="https://proprietaires.cadastre.io/"
                 className="w-full h-full border-0"
-                title="Propri\u00e9taires Cadastre"
+                title="Propriétaires Cadastre"
                 allow="geolocation"
               />
-            ) : activeTab === 'itinerary' ? (
+            </div>
+
+            {/* Onglet Itinéraire */}
+            <div className={activeTab === 'itinerary' ? 'w-full h-full' : 'hidden'}>
               <iframe
                 src="https://map.project-osrm.org/?hl=fr#6/44.5000/2.0000"
                 className="w-full h-full border-0"
-                title="OSRM Itin\u00e9raire"
+                title="OSRM Itinéraire"
                 allow="geolocation"
               />
-            ) : activeTab === 'capareseau' ? (
+            </div>
+
+            {/* Onglet Caparéseau */}
+            <div className={activeTab === 'capareseau' ? 'w-full h-full' : 'hidden'}>
               <iframe
                 src="https://www.capareseau.fr/"
                 className="w-full h-full border-0"
-                title="Capar\u00e9seau"
+                title="Caparéseau"
                 allow="geolocation"
               />
-            ) : null}
+            </div>
           </div>
           {activeTab === 'map' && (
             <Button onClick={goToProjectAddress} className="absolute top-14 right-3 z-[1000] bg-white text-gray-800 hover:bg-gray-100 shadow-md">
