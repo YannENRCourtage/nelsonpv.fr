@@ -1453,7 +1453,7 @@ function BottomLayersBar({ layersRef, map }) {
     forceUpdate({});
   };
 
-  const is Active = (key) => {
+  const isActive = (key) => {
     return map && layersRef.current[key] && map.hasLayer(layersRef.current[key]);
   };
 
