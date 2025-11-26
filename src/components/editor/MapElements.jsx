@@ -742,6 +742,45 @@ const LAYERS = {
     zIndex: 27,
     opacity: 0.6,
     note: "Données de ventes immobilières 5 dernières années"
+  },
+
+  // ========== RÉSEAUX ÉLECTRIQUES (Agence ORÉ) ==========
+  _separator_ore: { isSeparator: true },
+  postesHTA: {
+    name: "Postes HTA/BT",
+    url: "https://opendata.agenceore.fr/api/explore/v2.1/catalog/datasets/postes-de-distribution-publique-postes-hta-bt/exports/geojson",
+    attrib: '© Agence ORE',
+    isOverlay: true,
+    zIndex: 40,
+    opacity: 0.8,
+    note: "Postes de distribution publique"
+  },
+  postesSourceRepartition: {
+    name: "Postes Source/Répartition",
+    url: "https://opendata.agenceore.fr/api/explore/v2.1/catalog/datasets/postes-source-et-postes-de-repartition-hta-hta/exports/geojson",
+    attrib: '© Agence ORE',
+    isOverlay: true,
+    zIndex: 41,
+    opacity: 0.8,
+    note: "Postes source HTB/HTA et répartition HTA/HTA"
+  },
+  lignesBTSouterraines: {
+    name: "Lignes BT souterraines",
+    url: "https://opendata.agenceore.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-basse-tension-bt/exports/geojson",
+    attrib: '© Agence ORE',
+    isOverlay: true,
+    zIndex: 42,
+    opacity: 0.7,
+    note: "Lignes électriques souterraines BT"
+  },
+  lignesBTAeriennes: {
+    name: "Lignes BT aériennes",
+    url: "https://opendata.agenceore.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-basse-tension-bt/exports/geojson",
+    attrib: '© Agence ORE',
+    isOverlay: true,
+    zIndex: 43,
+    opacity: 0.7,
+    note: "Lignes électriques aériennes BT"
   }
 };
 // ====================================================================
@@ -1414,7 +1453,7 @@ function BottomLayersBar({ layersRef, map }) {
     forceUpdate({});
   };
 
-  const isActive = (key) => {
+  const is Active = (key) => {
     return map && layersRef.current[key] && map.hasLayer(layersRef.current[key]);
   };
 
@@ -1422,7 +1461,7 @@ function BottomLayersBar({ layersRef, map }) {
   const overlayKeys = Object.keys(LAYERS).filter(k => LAYERS[k].isOverlay || (LAYERS[k].url && LAYERS[k].url.includes("WMS")));
 
   return (
-    <div className="bg-white border-t border-gray-200 p-2 flex flex-wrap justify-center gap-2 z-[1000] w-full">
+    <div className="bg-white border-t border-gray-200 p-2 flex flex-wrap justify-center gap-2 z-[1000] w-full max-h-32 overflow-y-auto">
       {overlayKeys.map(key => (
         <button
           key={key}
