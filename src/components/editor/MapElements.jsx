@@ -258,21 +258,32 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       }
     }
 
-    // Utiliser l'API Géoportail Essentiels (sans clé)
+    // Utiliser l'API Géoportail Essentiels (sans clé) - Par lots de 50 points maximum
     try {
-      const lons = points.map(p => p.lng).join('|');
-      const lats = points.map(p => p.lat).join('|');
+      const BATCH_SIZE = 50; // Limite de sécurité pour l'API
 
-      const res = await fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${lons}&lat=${lats}&zonly=false`);
-      if (!res.ok) throw new Error('Altitude API failed');
-      const data = await res.json();
+      for (let i = 0; i < points.length; i += BATCH_SIZE) {
+        const batch = points.slice(i, i + BATCH_SIZE);
+        const lons = batch.map(p => p.lng).join('|');
+        const lats = batch.map(p => p.lat).join('|');
 
-      if (data.elevations) {
-        data.elevations.forEach((elev, i) => { if (points[i]) points[i].alt = elev.z; });
+        const res = await fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${lons}&lat=${lats}&zonly=false`);
+        if (!res.ok) {
+          console.warn(`Batch ${i / BATCH_SIZE + 1} failed, status: ${res.status}`);
+          throw new Error('Altitude API failed');
+        }
+        const data = await res.json();
+
+        if (data.elevations) {
+          data.elevations.forEach((elev, j) => {
+            const pointIndex = i + j;
+            if (points[pointIndex]) points[pointIndex].alt = elev.z;
+          });
+        }
       }
     } catch (error) {
       console.error("Altimetry error:", error);
-      toast({ ...destructiveToastStyle, title: "Erreur Altimétrie", description: "Impossible de récupérer les altitudes." });
+      toast({ ...toastStyle, title: "Erreur Altimétrie", description: "Impossible de récupérer les altitudes. Veuillez réessayer." });
       return;
     }
 
