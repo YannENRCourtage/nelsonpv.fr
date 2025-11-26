@@ -258,38 +258,54 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       }
     }
 
-    // Utiliser l'API Géoportail Essentiels (sans clé) - Par lots de 20 points maximum
+    // Utiliser Open-Elevation API (gratuit, sans clé, fiable)
+    // https://open-elevation.com/
     try {
-      const BATCH_SIZE = 20; // Limite stricte pour éviter les erreurs 414 (URI trop longue)
+      const BATCH_SIZE = 100; // Open-Elevation accepte jusqu'à 1000 points par requête
 
       for (let i = 0; i < points.length; i += BATCH_SIZE) {
         const batch = points.slice(i, i + BATCH_SIZE);
-        const lons = batch.map(p => p.lng).join('|');
-        const lats = batch.map(p => p.lat).join('|');
 
-        const res = await fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${lons}&lat=${lats}&zonly=false`);
+        // Formatage pour Open-Elevation API
+        const locations = batch.map(p => ({
+          latitude: p.lat,
+          longitude: p.lng
+        }));
+
+        const res = await fetch('https://api.open-elevation.com/api/v1/lookup', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ locations })
+        });
+
         if (!res.ok) {
           console.error(`Batch ${i / BATCH_SIZE + 1} failed, status: ${res.status}`);
           // Continue avec les autres batches même si un échoue
           continue;
         }
+
         const data = await res.json();
 
-        if (data.elevations) {
-          data.elevations.forEach((elev, j) => {
+        if (data.results) {
+          data.results.forEach((result, j) => {
             const pointIndex = i + j;
-            if (points[pointIndex]) points[pointIndex].alt = elev.z;
+            if (points[pointIndex] && result.elevation !== undefined) {
+              points[pointIndex].alt = result.elevation;
+            }
           });
         }
 
         // Petit délai entre les requêtes pour éviter le rate limiting
         if (i + BATCH_SIZE < points.length) {
-          await new Promise(r => setTimeout(r, 100));
+          await new Promise(r => setTimeout(r, 200));
         }
       }
     } catch (error) {
       console.error("Altimetry error:", error);
-      toast({ ...toastStyle, title: "Erreur Altimétrie", description: "Erreur lors de la récupération des altitudes. Certaines données peuvent manquer." });
+      toast({ ...toastStyle, title: "Erreur Altimétrie", description: "Impossible de récupérer les altitudes. Vérifiez votre connexion." });
       // Ne pas retourner, continuer avec les données disponibles
     }
 
