@@ -879,7 +879,7 @@ function LayersBootstrap({ layersRef }) {
         });
       }
     });
-    if (layersRef.current.googleSat && !map.hasLayer(layersRef.current.googleSat)) layersRef.current.googleSat.addTo(map);
+    if (layersRef.current.geoportailSat && !map.hasLayer(layersRef.current.geoportailSat)) layersRef.current.geoportailSat.addTo(map);
     // Cadastre NOT added by default as requested
     return () => { Object.values(layersRef.current).forEach((l) => { if (l && map.hasLayer(l)) map.removeLayer(l) }); };
   }, [map, layersRef]);

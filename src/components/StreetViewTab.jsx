@@ -102,42 +102,33 @@ export default function StreetViewTab({ project }) {
         if (project?.gps) {
             const [lat, lng] = project.gps.split(',').map(Number);
             if (!isNaN(lat) && !isNaN(lng)) {
-                return [lat, lng];
+                return { lat, lng };
             }
         }
-        return [44.8378, -0.5792]; // Default center
+        return { lat: 44.8378, lng: -0.5792 }; // Default center
     };
 
+    const center = getInitialCenter();
+
     return (
-        <div className="relative h-full w-full">
-            <MapContainer
-                center={getInitialCenter()}
-                zoom={15}
-                style={{ height: "100%", width: "100%" }}
-                doubleClickZoom={false}
-                zoomControl={false}
+        <div className="relative h-full w-full flex flex-col items-center justify-center bg-gray-100">
+            <div className="text-center mb-4">
+                <h3 className="text-xl font-bold text-gray-800">Street View</h3>
+                <p className="text-sm text-gray-600 mt-2">
+                    Cliquez sur le bouton ci-dessous pour ouvrir Google Street View
+                </p>
+            </div>
+            <a
+                href={`https://www.google.com/maps?layer=c&cbll=${center.lat},${center.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition-colors"
             >
-                {/* Google Maps hybrid layer (satellite + labels) */}
-                <TileLayer
-                    url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-                    attribution='&copy; <a href="https://www.google.com/maps">Google Maps</a>'
-                    maxZoom={20}
-                    subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
-                />
-
-                {/* Street View coverage layer */}
-                <StreetViewCoverageLayer />
-
-                {/* Bottom-left controls - raised by 5mm (approximately 19px) */}
-                <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
-                    <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '29px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
-                        <div className="flex flex-col items-start gap-2">
-                            <MiniMap />
-                            <ScaleControl position="bottomleft" metric={true} imperial={false} />
-                        </div>
-                    </div>
-                </div>
-            </MapContainer>
+                Ouvrir Street View
+            </a>
+            <p className="text-xs text-gray-500 mt-4">
+                Position: {center.lat.toFixed(5)}, {center.lng.toFixed(5)}
+            </p>
         </div>
     );
 }

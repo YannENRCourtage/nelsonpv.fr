@@ -495,7 +495,12 @@ export default function ProjectEditor() {
           <div className="rounded-2xl bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Capturer la vue</h3>
-              <Button onClick={captureNow} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+              <Button
+                onClick={captureNow}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={activeTab !== 'map'}
+                title={activeTab !== 'map' ? "Captures disponibles uniquement sur l'onglet Carte" : "Prendre une capture"}
+              >
                 <Camera size={16} className="mr-2" />
                 Prendre une capture
               </Button>
