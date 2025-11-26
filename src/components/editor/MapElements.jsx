@@ -258,44 +258,49 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       }
     }
 
-    // Utiliser l'API IGN Altimétrie (comme Géoportail)
-    // Stratégie: requêtes par lots (batch) de 20 points avec formatage strict pour éviter erreur 414
+    // Utiliser Open-Elevation API (gratuit, sans clé, fiable)
     try {
-      const BATCH_SIZE = 20;
+      const BATCH_SIZE = 50; // Open-Elevation supporte bien des lots moyens
       const totalPoints = points.length;
       let successCount = 0;
 
       for (let i = 0; i < points.length; i += BATCH_SIZE) {
         const batch = points.slice(i, i + BATCH_SIZE);
 
-        // Formatage strict pour réduire la longueur de l'URL
-        const lons = batch.map(p => p.lng.toFixed(6)).join('|');
-        const lats = batch.map(p => p.lat.toFixed(6)).join('|');
+        const locations = batch.map(p => ({
+          latitude: p.lat,
+          longitude: p.lng
+        }));
 
         try {
-          const res = await fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${lons}&lat=${lats}&zonly=false`);
+          const res = await fetch('https://api.open-elevation.com/api/v1/lookup', {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ locations })
+          });
 
           if (res.ok) {
             const data = await res.json();
-            if (data.elevations) {
-              data.elevations.forEach((elev, j) => {
+            if (data.results) {
+              data.results.forEach((result, j) => {
                 const pointIndex = i + j;
-                if (points[pointIndex]) {
-                  points[pointIndex].alt = elev.z;
+                if (points[pointIndex] && result.elevation !== undefined) {
+                  points[pointIndex].alt = result.elevation;
                   successCount++;
                 }
               });
             }
-          } else {
-            console.warn(`Batch ${i / BATCH_SIZE} failed: ${res.status}`);
           }
 
-          // Petit délai entre les requêtes pour éviter le rate limiting
+          // Délai entre les requêtes
           if (i + BATCH_SIZE < points.length) {
-            await new Promise(r => setTimeout(r, 100));
+            await new Promise(r => setTimeout(r, 300));
           }
         } catch (err) {
-          console.warn(`Batch ${i / BATCH_SIZE} error:`, err);
+          console.warn(`Batch ${Math.floor(i / BATCH_SIZE) + 1} error:`, err);
         }
       }
 
@@ -503,9 +508,9 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
         };
         const shapeEventHandlers = { ...baseEventHandlers, mousedown: (e) => { L.DomEvent.stop(e); if (mode || draggingRef.current) return; draggingRef.current = { type: 'drag', featureId: f.id, startLatLng: e.latlng }; } };
 
-        if (f.type === "line") return <Polyline key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#2563eb", weight: 3, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatDistance(polylineLength(f.coords))}</Tooltip></Polyline>;
+        if (f.type === "line") return <Polyline key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#2563eb", weight: 3, className: mode ? '' : 'cursor-grab' }}><Tooltip permanent direction="center" className="measure-label">{formatDistance(polylineLength(f.coords))}</Tooltip></Polyline>;
 
-        if (f.type === "polygon") return <Polygon key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#16a34a", weight: 2, fillColor: "#16a34a", fillOpacity: 0.25, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatArea(polygonArea(f.coords))}</Tooltip></Polygon>;
+        if (f.type === "polygon") return <Polygon key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#16a34a", weight: 2, fillColor: "#16a34a", fillOpacity: 0.25, className: mode ? '' : 'cursor-grab' }}><Tooltip permanent direction="center" className="measure-label">{formatArea(polygonArea(f.coords))}</Tooltip></Polygon>;
 
         if (f.type === "rectangle") {
           const center = centroid(f.coords);
@@ -698,13 +703,45 @@ const LAYERS = {
     attribution: "INPN",
     isOverlay: true
   },
-  "Natura 2000 Habitat": {
+  "Natura 2000 - SIC": {
     url: "https://ws.carmencarto.fr/WMS/119/fxx_inpn?",
     layers: "Sites_d_importance_communautaire",
     format: "image/png",
     transparent: true,
     attribution: "INPN",
     isOverlay: true
+  },
+
+  // ========== CALQUES RÉGLEMENTAIRES (Zones climatiques) ==========
+  _separator_reglementaire: { isSeparator: true },
+  zoneNeige: {
+    name: "Zones de neige (NF EN 1991-1-3)",
+    url: "https://wxs.ign.fr/static/vectortiles/styles/PLAN.IGN/standard.json",
+    attrib: '© IGN - Zones neige réglementaires',
+    isOverlay: true,
+    zIndex: 25,
+    opacity: 0.5,
+    note: "Carte indicative - Consultez les normes officielles"
+  },
+  zoneVent: {
+    name: "Zones de vent (EN 1991-1-4)",
+    url: "https://wxs.ign.fr/static/vectortiles/styles/PLAN.IGN/standard.json",
+    attrib: '© IGN - Zones vent réglementaires',
+    isOverlay: true,
+    zIndex: 26,
+    opacity: 0.5,
+    note: "Carte indicative - Consultez les normes officielles"
+  },
+
+  // ========== VALEURS FONCIÈRES (DVF) ==========
+  valeursFoncieres: {
+    name: "Valeurs foncières (DVF)",
+    url: "https://wxs.ign.fr/static/vectortiles/styles/PLAN.IGN/standard.json",
+    attrib: '© data.gouv.fr - DVF',
+    isOverlay: true,
+    zIndex: 27,
+    opacity: 0.6,
+    note: "Données de ventes immobilières 5 dernières années"
   }
 };
 // ====================================================================
@@ -1149,7 +1186,7 @@ function PointInfoPanel({ pointInfo, setPointInfo }) {
 
     const { latlng } = pointInfo;
     const fetches = [
-      fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${latlng.lng.toFixed(6)}&lat=${latlng.lat.toFixed(6)}&zonly=false`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ altitude: `${data.elevations[0].z.toFixed(1)} m` })).catch(() => ({ altitude: 'N/A' })),
+      fetch('https://api.open-elevation.com/api/v1/lookup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ locations: [{ latitude: latlng.lat, longitude: latlng.lng }] }) }).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ altitude: `${data.results[0].elevation.toFixed(1)} m` })).catch(() => ({ altitude: 'N/A' })),
       fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${latlng.lng}&lat=${latlng.lat}`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ address: data.features[0]?.properties.label || 'Non trouvée' })).catch(() => ({ address: 'N/A' })),
       fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom={"type":"Point","coordinates":[${latlng.lng},${latlng.lat}]}`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ parcel: data.features[0]?.properties.libelle || 'Non trouvée' })).catch(() => ({ parcel: 'N/A' }))
     ];
