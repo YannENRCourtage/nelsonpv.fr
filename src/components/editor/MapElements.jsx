@@ -258,54 +258,39 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       }
     }
 
-    // Utiliser API IGN Altimétrie (précision Géoportail)
-    // Requêtes point par point pour précision maximale
+    // Utiliser API IGN Altimétrie via POST (plus robuste pour les lots)
     try {
-      const totalPoints = points.length;
-      let successCount = 0;
+      const lons = points.map(p => p.lng.toFixed(6)).join('|');
+      const lats = points.map(p => p.lat.toFixed(6)).join('|');
 
-      // Traiter par petits lots de 5 pour limiter les requêtes concurrentes
-      const CONCURRENT_BATCH = 5;
+      // Nouvelle tentative propre sans zonly pour garantir le format
+      const res = await fetch('https://wxs.ign.fr/essentiels/alti/rest/elevation.json', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `lon=${lons}&lat=${lats}&zonly=false`
+      });
 
-      for (let i = 0; i < points.length; i += CONCURRENT_BATCH) {
-        const batchEnd = Math.min(i + CONCURRENT_BATCH, points.length);
-        const batchPromises = [];
-
-        for (let j = i; j < batchEnd; j++) {
-          const p = points[j];
-          const promise = fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${p.lng}&lat=${p.lat}&zonly=false`)
-            .then(res => res.ok ? res.json() : null)
-            .then(data => {
-              if (data?.elevations?.[0]) {
-                points[j].alt = data.elevations[0].z;
-                return true;
-              }
-              return false;
-            })
-            .catch(() => false);
-
-          batchPromises.push(promise);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.elevations) {
+          data.elevations.forEach((elev, i) => {
+            if (points[i]) {
+              points[i].alt = elev.z;
+            }
+          });
+        } else {
+          throw new Error("Format de réponse IGN invalide");
         }
-
-        const results = await Promise.all(batchPromises);
-        successCount += results.filter(r => r).length;
-
-        // Petit délai pour respecter le rate limit IGN (5 req/s)
-        if (batchEnd < points.length) {
-          await new Promise(r => setTimeout(r, 200));
-        }
-      }
-
-      console.log(`Altitude IGN: ${successCount}/${totalPoints} points récupérés`);
-
-      if (successCount === 0) {
-        toast({ ...toastStyle, title: "Erreur Altimétrie", description: "Impossible de récupérer les altitudes. Vérifiez votre connexion." });
-        return;
+      } else {
+        throw new Error(`Erreur HTTP ${res.status}`);
       }
 
     } catch (error) {
       console.error("Altimetry error:", error);
-      toast({ ...toastStyle, title: "Erreur Altimétrie", description: "Erreur lors de la récupération des altitudes." });
+      // Fallback silencieux ou toast
+      toast({ ...toastStyle, title: "Erreur Altimétrie", description: "Impossible de récupérer les altitudes (IGN)." });
       return;
     }
 
@@ -636,12 +621,12 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 // ====================================================================
 const LAYERS = {
   // ========== FONDS DE CARTE ==========
-  geoportailSat: { name: "Géoportail", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0 },
-  googleSat: { name: "Google Satellite", url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0 },
+  geoportailSat: { name: "Géoportail", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0, maxNativeZoom: 19, maxZoom: 21 },
+  googleSat: { name: "Google Satellite", url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0, maxZoom: 21 },
   _separator1: { isSeparator: true },
-  google: { name: "Google", url: "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0 },
-  ignPlan: { name: "IGN - Plan IGN", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0 },
-  osm: { name: "Plan OSM", url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attrib: '© OpenStreetMap contributors', zIndex: 0 },
+  google: { name: "Google", url: "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0, maxZoom: 21 },
+  ignPlan: { name: "IGN - Plan IGN", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0, maxNativeZoom: 18, maxZoom: 21 },
+  osm: { name: "Plan OSM", url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attrib: '© OpenStreetMap contributors', zIndex: 0, maxZoom: 19 },
 
   // ========== CALQUES OVERLAY ==========
   // Cadastre & Bâtiments
@@ -707,42 +692,46 @@ const LAYERS = {
   },
 
   // ========== RÉSEAUX ÉLECTRIQUES (Agence ORÉ) ==========
-  _separator_ore: { isSeparator: true },
-  postesHTA: {
-    name: "Postes HTA/BT",
-    url: "https://opendata.agenceore.fr/api/explore/v2.1/catalog/datasets/postes-de-distribution-publique-postes-hta-bt/exports/geojson",
-    attrib: '© Agence ORE',
+  _separator_enedis: { isSeparator: true },
+  postesHTABT: {
+    name: "Postes HTA/BT (ENEDIS)",
+    url: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/position-geographique-des-posteaux-electriques-hta-et-bt/exports/geojson?limit=-1",
+    attrib: '© ENEDIS',
     isOverlay: true,
     zIndex: 40,
-    opacity: 0.8,
-    note: "Postes de distribution publique"
-  },
-  postesSourceRepartition: {
-    name: "Postes Source/Répartition",
-    url: "https://opendata.agenceore.fr/api/explore/v2.1/catalog/datasets/postes-source-et-postes-de-repartition-hta-hta/exports/geojson",
-    attrib: '© Agence ORE',
-    isOverlay: true,
-    zIndex: 41,
-    opacity: 0.8,
-    note: "Postes source HTB/HTA et répartition HTA/HTA"
+    opacity: 0.8
   },
   lignesBTSouterraines: {
-    name: "Lignes BT souterraines",
-    url: "https://opendata.agenceore.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-basse-tension-bt/exports/geojson",
-    attrib: '© Agence ORE',
+    name: "Lignes BT souterraines (ENEDIS)",
+    url: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-basse-tension-bt/exports/geojson?limit=-1",
+    attrib: '© ENEDIS',
     isOverlay: true,
     zIndex: 42,
-    opacity: 0.7,
-    note: "Lignes électriques souterraines BT"
+    opacity: 0.7
   },
   lignesBTAeriennes: {
-    name: "Lignes BT aériennes",
-    url: "https://opendata.agenceore.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-basse-tension-bt/exports/geojson",
-    attrib: '© Agence ORE',
+    name: "Lignes BT aériennes (ENEDIS)",
+    url: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-basse-tension-bt/exports/geojson?limit=-1",
+    attrib: '© ENEDIS',
     isOverlay: true,
     zIndex: 43,
-    opacity: 0.7,
-    note: "Lignes électriques aériennes BT"
+    opacity: 0.7
+  },
+  lignesHTASouterraines: {
+    name: "Lignes HTA souterraines (ENEDIS)",
+    url: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-moyenne-tension-hta/exports/geojson?limit=-1",
+    attrib: '© ENEDIS',
+    isOverlay: true,
+    zIndex: 44,
+    opacity: 0.7
+  },
+  lignesHTAAeriennes: {
+    name: "Lignes HTA aériennes (ENEDIS)",
+    url: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-moyenne-tension-hta/exports/geojson?limit=-1",
+    attrib: '© ENEDIS',
+    isOverlay: true,
+    zIndex: 45,
+    opacity: 0.7
   }
 };
 // ====================================================================
