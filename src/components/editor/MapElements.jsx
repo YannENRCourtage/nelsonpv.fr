@@ -258,39 +258,55 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       }
     }
 
-    // Utiliser API IGN Altimétrie via POST (plus robuste pour les lots)
+    // Utiliser API IGN Altimétrie via GET (méthode éprouvée)
+    // Requêtes par lots de 50 points pour éviter les erreurs 414 (URI Too Long) et 429 (Rate Limit)
     try {
-      const lons = points.map(p => p.lng.toFixed(6)).join('|');
-      const lats = points.map(p => p.lat.toFixed(6)).join('|');
+      const BATCH_SIZE = 50;
+      const totalPoints = points.length;
+      let successCount = 0;
 
-      // Nouvelle tentative propre sans zonly pour garantir le format
-      const res = await fetch('https://wxs.ign.fr/essentiels/alti/rest/elevation.json', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: `lon=${lons}&lat=${lats}&zonly=false`
-      });
+      for (let i = 0; i < points.length; i += BATCH_SIZE) {
+        const batch = points.slice(i, i + BATCH_SIZE);
+        const lons = batch.map(p => p.lng.toFixed(6)).join('|');
+        const lats = batch.map(p => p.lat.toFixed(6)).join('|');
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.elevations) {
-          data.elevations.forEach((elev, i) => {
-            if (points[i]) {
-              points[i].alt = elev.z;
+        try {
+          const res = await fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${lons}&lat=${lats}&zonly=false`);
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.elevations) {
+              data.elevations.forEach((elev, j) => {
+                const pointIndex = i + j;
+                if (points[pointIndex]) {
+                  points[pointIndex].alt = elev.z;
+                  successCount++;
+                }
+              });
             }
-          });
-        } else {
-          throw new Error("Format de réponse IGN invalide");
+          } else {
+            console.warn(`Batch ${Math.floor(i / BATCH_SIZE) + 1} failed: ${res.status}`);
+          }
+
+          // Délai de sécurité entre les requêtes
+          if (i + BATCH_SIZE < points.length) {
+            await new Promise(r => setTimeout(r, 200));
+          }
+        } catch (err) {
+          console.warn(`Batch ${Math.floor(i / BATCH_SIZE) + 1} error:`, err);
         }
-      } else {
-        throw new Error(`Erreur HTTP ${res.status}`);
+      }
+
+      console.log(`Altitude IGN: ${successCount}/${totalPoints} points récupérés`);
+
+      if (successCount === 0) {
+        toast({ ...toastStyle, title: "Erreur Altimétrie", description: "Impossible de récupérer les altitudes. Vérifiez votre connexion." });
+        return;
       }
 
     } catch (error) {
       console.error("Altimetry error:", error);
-      // Fallback silencieux ou toast
-      toast({ ...toastStyle, title: "Erreur Altimétrie", description: "Impossible de récupérer les altitudes (IGN)." });
+      toast({ ...toastStyle, title: "Erreur Altimétrie", description: "Erreur lors de la récupération des altitudes." });
       return;
     }
 
@@ -649,7 +665,7 @@ const LAYERS = {
   // Urbanisme
   plu: {
     name: "PLU / PLUi",
-    url: "https://data.geopf.fr/wms-r/gpu?",
+    url: "https://wxs-gpu.mongeoportail.ign.fr/externe/i9ytmrb6tgtq5yk4i6330i5d/wms/v?",
     layers: "GPU.ZONAGE",
     format: "image/png",
     transparent: true,
@@ -691,47 +707,105 @@ const LAYERS = {
     isOverlay: true
   },
 
-  // ========== RÉSEAUX ÉLECTRIQUES (Agence ORÉ) ==========
-  _separator_enedis: { isSeparator: true },
+  // ========== ÉNERGIES RENOUVELABLES (Portail EnR) ==========
+  _separator_enr: { isSeparator: true },
+  irradiationSolaire: {
+    name: "Irradiation Solaire",
+    url: "https://data.geopf.fr/wms-r/wms?",
+    layers: "SOLAR.IRRADIATION.ANNUAL",
+    format: "image/png",
+    transparent: true,
+    attribution: "IGN - Portail EnR",
+    isOverlay: true,
+    opacity: 0.6
+  },
+  potentielSolaireToiture: {
+    name: "Potentiel Solaire Toiture",
+    url: "https://data.geopf.fr/wms-r/wms?",
+    layers: "SOLAR.POTENTIAL.ROOF",
+    format: "image/png",
+    transparent: true,
+    attribution: "IGN - Portail EnR",
+    isOverlay: true,
+    opacity: 0.6
+  },
+
+  // ========== CONSOMMATION ÉLECTRIQUE (ENEDIS) ==========
+  _separator_conso: { isSeparator: true },
+  consoResidentielle: {
+    name: "Conso. Résidentielle (ENEDIS)",
+    // URL API pour chargement dynamique
+    apiUrl: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/consommation-electrique-annuelle-residentielle-par-adresse/exports/geojson",
+    attrib: '© ENEDIS',
+    isOverlay: true,
+    zIndex: 50,
+    opacity: 0.8,
+    isDynamic: true,
+    color: "#3b82f6" // Bleu
+  },
+  consoEntreprise: {
+    name: "Conso. Entreprise (ENEDIS)",
+    // URL API pour chargement dynamique
+    apiUrl: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/consommation-electrique-annuelle-des-entreprises-par-adresse/exports/geojson",
+    attrib: '© ENEDIS',
+    isOverlay: true,
+    zIndex: 51,
+    opacity: 0.8,
+    isDynamic: true,
+    color: "#f59e0b" // Orange
+  },
+
+  // ========== RÉSEAUX ÉLECTRIQUES (ENEDIS - Dynamique) ==========
+  _separator_enedis_network: { isSeparator: true },
   postesHTABT: {
     name: "Postes HTA/BT (ENEDIS)",
-    url: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/position-geographique-des-posteaux-electriques-hta-et-bt/exports/geojson?limit=-1",
+    apiUrl: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/position-geographique-des-posteaux-electriques-hta-et-bt/exports/geojson",
     attrib: '© ENEDIS',
     isOverlay: true,
     zIndex: 40,
-    opacity: 0.8
+    opacity: 0.8,
+    isDynamic: true,
+    color: "#10b981" // Vert
   },
   lignesBTSouterraines: {
     name: "Lignes BT souterraines (ENEDIS)",
-    url: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-basse-tension-bt/exports/geojson?limit=-1",
+    apiUrl: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-basse-tension-bt/exports/geojson",
     attrib: '© ENEDIS',
     isOverlay: true,
     zIndex: 42,
-    opacity: 0.7
+    opacity: 0.7,
+    isDynamic: true,
+    color: "#6366f1" // Indigo
   },
   lignesBTAeriennes: {
     name: "Lignes BT aériennes (ENEDIS)",
-    url: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-basse-tension-bt/exports/geojson?limit=-1",
+    apiUrl: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-basse-tension-bt/exports/geojson",
     attrib: '© ENEDIS',
     isOverlay: true,
     zIndex: 43,
-    opacity: 0.7
+    opacity: 0.7,
+    isDynamic: true,
+    color: "#8b5cf6" // Violet
   },
   lignesHTASouterraines: {
     name: "Lignes HTA souterraines (ENEDIS)",
-    url: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-moyenne-tension-hta/exports/geojson?limit=-1",
+    apiUrl: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-moyenne-tension-hta/exports/geojson",
     attrib: '© ENEDIS',
     isOverlay: true,
     zIndex: 44,
-    opacity: 0.7
+    opacity: 0.7,
+    isDynamic: true,
+    color: "#ef4444" // Rouge
   },
   lignesHTAAeriennes: {
     name: "Lignes HTA aériennes (ENEDIS)",
-    url: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-moyenne-tension-hta/exports/geojson?limit=-1",
+    apiUrl: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-moyenne-tension-hta/exports/geojson",
     attrib: '© ENEDIS',
     isOverlay: true,
     zIndex: 45,
-    opacity: 0.7
+    opacity: 0.7,
+    isDynamic: true,
+    color: "#ec4899" // Rose
   }
 };
 // ====================================================================
@@ -910,12 +984,9 @@ function LayersBootstrap({ layersRef }) {
   useEffect(() => {
     Object.keys(LAYERS).forEach(key => {
       const layerDef = LAYERS[key];
-      if (layerDef.isSeparator) return; // Skip separators
-      if (!layerDef.url) return;
+      if (layerDef.isSeparator || layerDef.isDynamic) return; // Skip separators and dynamic layers here
 
-      // Check if it's a WMS layer by checking for 'layers' property (not just URL)
-      if (layerDef.layers) {
-        // WMS layers
+      if (layerDef.layers) { // WMS layers
         layersRef.current[key] = L.tileLayer.wms(layerDef.url, {
           layers: layerDef.layers,
           format: layerDef.format || 'image/png',
@@ -927,8 +998,7 @@ function LayersBootstrap({ layersRef }) {
           pane: 'overlayPane',
           interactive: false
         });
-      } else {
-        // TileLayer (WMTS or standard XYZ or WMS with embedded params)
+      } else if (layerDef.url) { // TileLayer (WMTS or standard XYZ)
         layersRef.current[key] = L.tileLayer(layerDef.url, {
           attribution: layerDef.attrib || layerDef.attribution,
           maxZoom: layerDef.maxZoom || 22,
@@ -940,10 +1010,19 @@ function LayersBootstrap({ layersRef }) {
         });
       }
     });
-    if (layersRef.current.geoportailSat && !map.hasLayer(layersRef.current.geoportailSat)) layersRef.current.geoportailSat.addTo(map);
-    // Cadastre NOT added by default as requested
-    return () => { Object.values(layersRef.current).forEach((l) => { if (l && map.hasLayer(l)) map.removeLayer(l) }); };
+
+    // Add default basemap
+    if (layersRef.current.geoportailSat && !map.hasLayer(layersRef.current.geoportailSat)) {
+      layersRef.current.geoportailSat.addTo(map);
+    }
+
+    return () => {
+      Object.values(layersRef.current).forEach((l) => {
+        if (l && map.hasLayer(l)) map.removeLayer(l);
+      });
+    };
   }, [map, layersRef]);
+
   return null;
 }
 
