@@ -259,36 +259,45 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
     }
 
     // Utiliser l'API IGN Altimétrie (comme Géoportail)
-    // Stratégie: requêtes individuelles pour éviter erreur 414
+    // Stratégie: requêtes par lots (batch) de 20 points avec formatage strict pour éviter erreur 414
     try {
+      const BATCH_SIZE = 20;
       const totalPoints = points.length;
       let successCount = 0;
 
-      for (let i = 0; i < points.length; i++) {
-        const p = points[i];
+      for (let i = 0; i < points.length; i += BATCH_SIZE) {
+        const batch = points.slice(i, i + BATCH_SIZE);
+
+        // Formatage strict pour réduire la longueur de l'URL
+        const lons = batch.map(p => p.lng.toFixed(6)).join('|');
+        const lats = batch.map(p => p.lat.toFixed(6)).join('|');
 
         try {
-          const res = await fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${p.lng}&lat=${p.lat}&zonly=false`);
+          const res = await fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${lons}&lat=${lats}&zonly=false`);
 
           if (res.ok) {
             const data = await res.json();
-            if (data.elevations && data.elevations[0]) {
-              points[i].alt = data.elevations[0].z;
-              successCount++;
+            if (data.elevations) {
+              data.elevations.forEach((elev, j) => {
+                const pointIndex = i + j;
+                if (points[pointIndex]) {
+                  points[pointIndex].alt = elev.z;
+                  successCount++;
+                }
+              });
             }
+          } else {
+            console.warn(`Batch ${i / BATCH_SIZE} failed: ${res.status}`);
           }
 
-          // Petit délai pour éviter le rate limiting (seulement tous les 5 points)
-          if (i % 5 === 0 && i > 0) {
-            await new Promise(r => setTimeout(r, 50));
+          // Petit délai entre les requêtes pour éviter le rate limiting
+          if (i + BATCH_SIZE < points.length) {
+            await new Promise(r => setTimeout(r, 100));
           }
         } catch (err) {
-          console.warn(`Point ${i} altitude failed:`, err);
-          // Continue avec le point suivant
+          console.warn(`Batch ${i / BATCH_SIZE} error:`, err);
         }
       }
-
-      console.log(`Altitude: ${successCount}/${totalPoints} points récupérés`);
 
       if (successCount === 0) {
         toast({ ...toastStyle, title: "Erreur Altimétrie", description: "Impossible de récupérer les altitudes. Vérifiez votre connexion." });
@@ -1140,7 +1149,7 @@ function PointInfoPanel({ pointInfo, setPointInfo }) {
 
     const { latlng } = pointInfo;
     const fetches = [
-      fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${latlng.lng}&lat=${latlng.lat}&zonly=false`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ altitude: `${data.elevations[0].z.toFixed(1)} m` })).catch(() => ({ altitude: 'N/A' })),
+      fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${latlng.lng.toFixed(6)}&lat=${latlng.lat.toFixed(6)}&zonly=false`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ altitude: `${data.elevations[0].z.toFixed(1)} m` })).catch(() => ({ altitude: 'N/A' })),
       fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${latlng.lng}&lat=${latlng.lat}`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ address: data.features[0]?.properties.label || 'Non trouvée' })).catch(() => ({ address: 'N/A' })),
       fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom={"type":"Point","coordinates":[${latlng.lng},${latlng.lat}]}`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ parcel: data.features[0]?.properties.libelle || 'Non trouvée' })).catch(() => ({ parcel: 'N/A' }))
     ];
