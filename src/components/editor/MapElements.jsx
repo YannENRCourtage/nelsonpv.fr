@@ -258,55 +258,47 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       }
     }
 
-    // Utiliser Open-Elevation API (gratuit, sans clé, fiable)
-    // https://open-elevation.com/
+    // Utiliser l'API IGN Altimétrie (comme Géoportail)
+    // Stratégie: requêtes individuelles pour éviter erreur 414
     try {
-      const BATCH_SIZE = 100; // Open-Elevation accepte jusqu'à 1000 points par requête
+      const totalPoints = points.length;
+      let successCount = 0;
 
-      for (let i = 0; i < points.length; i += BATCH_SIZE) {
-        const batch = points.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i];
 
-        // Formatage pour Open-Elevation API
-        const locations = batch.map(p => ({
-          latitude: p.lat,
-          longitude: p.lng
-        }));
+        try {
+          const res = await fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${p.lng}&lat=${p.lat}&zonly=false`);
 
-        const res = await fetch('https://api.open-elevation.com/api/v1/lookup', {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ locations })
-        });
-
-        if (!res.ok) {
-          console.error(`Batch ${i / BATCH_SIZE + 1} failed, status: ${res.status}`);
-          // Continue avec les autres batches même si un échoue
-          continue;
-        }
-
-        const data = await res.json();
-
-        if (data.results) {
-          data.results.forEach((result, j) => {
-            const pointIndex = i + j;
-            if (points[pointIndex] && result.elevation !== undefined) {
-              points[pointIndex].alt = result.elevation;
+          if (res.ok) {
+            const data = await res.json();
+            if (data.elevations && data.elevations[0]) {
+              points[i].alt = data.elevations[0].z;
+              successCount++;
             }
-          });
-        }
+          }
 
-        // Petit délai entre les requêtes pour éviter le rate limiting
-        if (i + BATCH_SIZE < points.length) {
-          await new Promise(r => setTimeout(r, 200));
+          // Petit délai pour éviter le rate limiting (seulement tous les 5 points)
+          if (i % 5 === 0 && i > 0) {
+            await new Promise(r => setTimeout(r, 50));
+          }
+        } catch (err) {
+          console.warn(`Point ${i} altitude failed:`, err);
+          // Continue avec le point suivant
         }
       }
+
+      console.log(`Altitude: ${successCount}/${totalPoints} points récupérés`);
+
+      if (successCount === 0) {
+        toast({ ...toastStyle, title: "Erreur Altimétrie", description: "Impossible de récupérer les altitudes. Vérifiez votre connexion." });
+        return;
+      }
+
     } catch (error) {
       console.error("Altimetry error:", error);
-      toast({ ...toastStyle, title: "Erreur Altimétrie", description: "Impossible de récupérer les altitudes. Vérifiez votre connexion." });
-      // Ne pas retourner, continuer avec les données disponibles
+      toast({ ...toastStyle, title: "Erreur Altimétrie", description: "Erreur lors de la récupération des altitudes." });
+      return;
     }
 
     // Calcul des stats
