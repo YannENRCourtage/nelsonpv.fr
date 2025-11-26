@@ -258,51 +258,45 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       }
     }
 
-    // Utiliser Open-Elevation API (gratuit, sans clé, fiable)
+    // Utiliser API IGN Altimétrie (précision Géoportail)
+    // Requêtes point par point pour précision maximale
     try {
-      const BATCH_SIZE = 50; // Open-Elevation supporte bien des lots moyens
       const totalPoints = points.length;
       let successCount = 0;
 
-      for (let i = 0; i < points.length; i += BATCH_SIZE) {
-        const batch = points.slice(i, i + BATCH_SIZE);
+      // Traiter par petits lots de 5 pour limiter les requêtes concurrentes
+      const CONCURRENT_BATCH = 5;
 
-        const locations = batch.map(p => ({
-          latitude: p.lat,
-          longitude: p.lng
-        }));
+      for (let i = 0; i < points.length; i += CONCURRENT_BATCH) {
+        const batchEnd = Math.min(i + CONCURRENT_BATCH, points.length);
+        const batchPromises = [];
 
-        try {
-          const res = await fetch('https://api.open-elevation.com/api/v1/lookup', {
-            method: 'POST',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ locations })
-          });
+        for (let j = i; j < batchEnd; j++) {
+          const p = points[j];
+          const promise = fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${p.lng}&lat=${p.lat}&zonly=false`)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              if (data?.elevations?.[0]) {
+                points[j].alt = data.elevations[0].z;
+                return true;
+              }
+              return false;
+            })
+            .catch(() => false);
 
-          if (res.ok) {
-            const data = await res.json();
-            if (data.results) {
-              data.results.forEach((result, j) => {
-                const pointIndex = i + j;
-                if (points[pointIndex] && result.elevation !== undefined) {
-                  points[pointIndex].alt = result.elevation;
-                  successCount++;
-                }
-              });
-            }
-          }
+          batchPromises.push(promise);
+        }
 
-          // Délai entre les requêtes
-          if (i + BATCH_SIZE < points.length) {
-            await new Promise(r => setTimeout(r, 300));
-          }
-        } catch (err) {
-          console.warn(`Batch ${Math.floor(i / BATCH_SIZE) + 1} error:`, err);
+        const results = await Promise.all(batchPromises);
+        successCount += results.filter(r => r).length;
+
+        // Petit délai pour respecter le rate limit IGN (5 req/s)
+        if (batchEnd < points.length) {
+          await new Promise(r => setTimeout(r, 200));
         }
       }
+
+      console.log(`Altitude IGN: ${successCount}/${totalPoints} points récupérés`);
 
       if (successCount === 0) {
         toast({ ...toastStyle, title: "Erreur Altimétrie", description: "Impossible de récupérer les altitudes. Vérifiez votre connexion." });
@@ -710,38 +704,6 @@ const LAYERS = {
     transparent: true,
     attribution: "INPN",
     isOverlay: true
-  },
-
-  // ========== CALQUES RÉGLEMENTAIRES (Zones climatiques) ==========
-  _separator_reglementaire: { isSeparator: true },
-  zoneNeige: {
-    name: "Zones de neige (NF EN 1991-1-3)",
-    url: "https://wxs.ign.fr/static/vectortiles/styles/PLAN.IGN/standard.json",
-    attrib: '© IGN - Zones neige réglementaires',
-    isOverlay: true,
-    zIndex: 25,
-    opacity: 0.5,
-    note: "Carte indicative - Consultez les normes officielles"
-  },
-  zoneVent: {
-    name: "Zones de vent (EN 1991-1-4)",
-    url: "https://wxs.ign.fr/static/vectortiles/styles/PLAN.IGN/standard.json",
-    attrib: '© IGN - Zones vent réglementaires',
-    isOverlay: true,
-    zIndex: 26,
-    opacity: 0.5,
-    note: "Carte indicative - Consultez les normes officielles"
-  },
-
-  // ========== VALEURS FONCIÈRES (DVF) ==========
-  valeursFoncieres: {
-    name: "Valeurs foncières (DVF)",
-    url: "https://wxs.ign.fr/static/vectortiles/styles/PLAN.IGN/standard.json",
-    attrib: '© data.gouv.fr - DVF',
-    isOverlay: true,
-    zIndex: 27,
-    opacity: 0.6,
-    note: "Données de ventes immobilières 5 dernières années"
   },
 
   // ========== RÉSEAUX ÉLECTRIQUES (Agence ORÉ) ==========
@@ -1225,7 +1187,7 @@ function PointInfoPanel({ pointInfo, setPointInfo }) {
 
     const { latlng } = pointInfo;
     const fetches = [
-      fetch('https://api.open-elevation.com/api/v1/lookup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ locations: [{ latitude: latlng.lat, longitude: latlng.lng }] }) }).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ altitude: `${data.results[0].elevation.toFixed(1)} m` })).catch(() => ({ altitude: 'N/A' })),
+      fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${latlng.lng}&lat=${latlng.lat}&zonly=false`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ altitude: `${data.elevations[0].z.toFixed(1)} m` })).catch(() => ({ altitude: 'N/A' })),
       fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${latlng.lng}&lat=${latlng.lat}`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ address: data.features[0]?.properties.label || 'Non trouvée' })).catch(() => ({ address: 'N/A' })),
       fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom={"type":"Point","coordinates":[${latlng.lng},${latlng.lat}]}`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ parcel: data.features[0]?.properties.libelle || 'Non trouvée' })).catch(() => ({ parcel: 'N/A' }))
     ];
