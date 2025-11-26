@@ -258,9 +258,9 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       }
     }
 
-    // Utiliser l'API Géoportail Essentiels (sans clé) - Par lots de 50 points maximum
+    // Utiliser l'API Géoportail Essentiels (sans clé) - Par lots de 20 points maximum
     try {
-      const BATCH_SIZE = 50; // Limite de sécurité pour l'API
+      const BATCH_SIZE = 20; // Limite stricte pour éviter les erreurs 414 (URI trop longue)
 
       for (let i = 0; i < points.length; i += BATCH_SIZE) {
         const batch = points.slice(i, i + BATCH_SIZE);
@@ -269,8 +269,9 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 
         const res = await fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${lons}&lat=${lats}&zonly=false`);
         if (!res.ok) {
-          console.warn(`Batch ${i / BATCH_SIZE + 1} failed, status: ${res.status}`);
-          throw new Error('Altitude API failed');
+          console.error(`Batch ${i / BATCH_SIZE + 1} failed, status: ${res.status}`);
+          // Continue avec les autres batches même si un échoue
+          continue;
         }
         const data = await res.json();
 
@@ -280,11 +281,16 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
             if (points[pointIndex]) points[pointIndex].alt = elev.z;
           });
         }
+
+        // Petit délai entre les requêtes pour éviter le rate limiting
+        if (i + BATCH_SIZE < points.length) {
+          await new Promise(r => setTimeout(r, 100));
+        }
       }
     } catch (error) {
       console.error("Altimetry error:", error);
-      toast({ ...toastStyle, title: "Erreur Altimétrie", description: "Impossible de récupérer les altitudes. Veuillez réessayer." });
-      return;
+      toast({ ...toastStyle, title: "Erreur Altimétrie", description: "Erreur lors de la récupération des altitudes. Certaines données peuvent manquer." });
+      // Ne pas retourner, continuer avec les données disponibles
     }
 
     // Calcul des stats
@@ -973,8 +979,8 @@ function MapTargetInfo({ targetPos, setTargetPos }) {
       }
     };
 
-    // Debounce
-    const timeoutId = setTimeout(updateInfo, 300);
+    // Debounce réduit pour réactivité
+    const timeoutId = setTimeout(updateInfo, 100);
     return () => clearTimeout(timeoutId);
   }, [targetPos]);
 
