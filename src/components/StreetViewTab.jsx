@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 
 
 // Standalone MiniMap component for StreetViewTab
-function MiniMap() {
+function MiniMap({ activeTab }) {
     const parentMap = useMap();
     const miniMapRef = useRef(null);
     const miniMapContainerRef = useRef(null);
@@ -53,6 +53,14 @@ function MiniMap() {
             miniMapRef.current = null;
         };
     }, [parentMap]);
+
+    useEffect(() => {
+        if (activeTab === 'streetview' && miniMapRef.current) {
+            setTimeout(() => {
+                miniMapRef.current.invalidateSize();
+            }, 300);
+        }
+    }, [activeTab]);
 
     return <div ref={miniMapContainerRef} className="w-40 h-32 border-2 border-border rounded-lg shadow-lg overflow-hidden bg-card" />;
 }
@@ -140,7 +148,7 @@ export default function StreetViewTab({ project, activeTab }) {
                 <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
                     <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '29px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
                         <div className="flex flex-col items-start gap-2">
-                            <MiniMap />
+                            <MiniMap activeTab={activeTab} />
                             <ScaleControl position="bottomleft" metric={true} imperial={false} />
                         </div>
                     </div>
