@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import { prisma } from '../../src/lib/prisma.js'
 
 export default async function handler(req, res) {
     // CORS headers
