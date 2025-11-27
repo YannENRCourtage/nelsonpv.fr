@@ -68,6 +68,9 @@ export default function SearchField({ onAddressFound }) {
         const searchContainer = document.querySelector('.leaflet-control-geosearch');
         if (searchContainer) {
           searchContainer.classList.add('hide-on-capture');
+          // Also hide the form inside if needed
+          const form = searchContainer.querySelector('form');
+          if (form) form.classList.add('hide-on-capture');
         }
       }, 100);
     } catch { }

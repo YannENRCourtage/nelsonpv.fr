@@ -533,6 +533,8 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
           return (
             <Fragment key={f.id}>
               <Polygon positions={rotatedCoords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#f59e0b", weight: 2, fillColor: "#f59e0b", fillOpacity: 0.2, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers} />
+              {/* Ligne de dimension explicite pour la capture */}
+              <Polyline positions={[rotatedCoords[0], rotatedCoords[1], rotatedCoords[2], rotatedCoords[3], rotatedCoords[0]]} pathOptions={{ color: "#f59e0b", weight: 2, opacity: 1, fill: false }} />
               {rotatedCenter && <Marker position={rotatedCenter} opacity={0}><Tooltip permanent direction="center" className="measure-label">{f.buildingName && `${f.buildingName} - `} {formatDistance(width)} × {formatDistance(height)} ({formatArea(area)})</Tooltip></Marker>}
               {isSelected && rotationHandlePos && <Marker position={rotationHandlePos} icon={rotationIcon} draggable={true} eventHandlers={{ dragstart: (e) => { L.DomEvent.stop(e); draggingRef.current = { type: 'rotate', featureId: f.id, center: center }; }, drag: (e) => { if (draggingRef.current?.type !== 'rotate') return; const centerPt = map.latLngToLayerPoint(draggingRef.current.center); const mousePt = map.latLngToLayerPoint(e.latlng); const newAngle = Math.atan2(mousePt.y - centerPt.y, mousePt.x - centerPt.x) * (180 / Math.PI) - 90; setFeatures(fs => fs.map(feat => feat.id === f.id ? { ...feat, angle: newAngle } : feat)); }, dragend: () => { draggingRef.current = null; } }} />}
             </Fragment>
@@ -698,7 +700,7 @@ const LAYERS = {
     attribution: "INPN",
     isOverlay: true
   },
-  "Natura 2000 - SIC": {
+  "Natura 2000 Habitat": {
     url: "https://ws.carmencarto.fr/WMS/119/fxx_inpn?",
     layers: "Sites_d_importance_communautaire",
     format: "image/png",
