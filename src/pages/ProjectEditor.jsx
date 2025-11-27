@@ -113,7 +113,18 @@ function SymbolsPanel({ onSymbolSelect, selectedSymbol }) {
 
 export default function ProjectEditor() {
   const { projectId } = useParams();
-  const { projects, setProject, project, updateProject, saveProjectToLS } = useProjects();
+  const { projects, setProject, project, updateProject, saveProject } = useProjects();
+
+  // ...
+
+  // Auto-save on unmount or periodic?
+  // Actually, ClientForm handles auto-save.
+  // But here we might have explicit save calls.
+
+  // ...
+
+  // If there are explicit calls:
+  // saveProject();
   const { users: allUsers } = useAuth();
   const [captures, setCaptures] = useState([null, null, null, null]);
   const [photos, setPhotos] = useState([]);
@@ -304,16 +315,16 @@ export default function ProjectEditor() {
   };
 
   useEffect(() => {
-    const handleSave = (e) => {
+    const handleSaveShortcut = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        saveProjectToLS();
+        saveProject();
         toast({ title: "Projet sauvegardé !", description: "Vos modifications ont été enregistrées." });
       }
     };
-    window.addEventListener('keydown', handleSave);
-    return () => window.removeEventListener('keydown', handleSave);
-  }, [saveProjectToLS]);
+    window.addEventListener('keydown', handleSaveShortcut);
+    return () => window.removeEventListener('keydown', handleSaveShortcut);
+  }, [saveProject]);
 
   const p = project || {};
 

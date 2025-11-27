@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useMemo, useState, useCallback } from "react";
+import React, { createContext, useContext, useMemo, useState, useCallback, useEffect } from "react";
+import { apiService } from "../services/api";
 
 /** Clef LS commune (liste projets) */
 const LS_KEY = "nelson:projects:v1";
 
 /* Utils LS */
-function loadAllProjects() {
+function loadAllProjectsFromLS() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -12,7 +13,8 @@ function loadAllProjects() {
     return [];
   }
 }
-function saveAllProjects(list) {
+
+function saveAllProjectsToLS(list) {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(list));
     window.dispatchEvent(new Event('storage'));
@@ -27,8 +29,10 @@ const ProjectContext = createContext({
   project: null,
   setProject: () => { },
   updateProject: () => { },
-  saveProjectToLS: () => { },
-  loadAllProjects,
+  saveProject: () => { },
+  loadAllProjects: loadAllProjectsFromLS,
+  loading: false,
+  error: null
 });
 
 /**
@@ -37,13 +41,48 @@ const ProjectContext = createContext({
  * - page Client & Projet  => project + updateProject
  */
 export function ProjectProvider({ children }) {
-  const [projects, setProjects] = useState(() => loadAllProjects());
+  const [projects, setProjects] = useState(() => loadAllProjectsFromLS());
   const [project, _setProject] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  /** Setter sécurisé :
-   *  - si on passe une fonction -> on laisse faire (API React)
-   *  - si on passe un objet -> on MERGE avec l’état courant (et pas de remplacement sauvage)
-   */
+  // Charger les projets depuis l'API au montage
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setLoading(true);
+      try {
+        const apiProjects = await apiService.getProjects();
+        if (Array.isArray(apiProjects)) {
+          setProjects(apiProjects);
+          // Sync LS pour backup
+          saveAllProjectsToLS(apiProjects);
+        }
+      } catch (err) {
+        console.error("Failed to fetch projects from API:", err);
+        setError(err);
+        // Fallback sur LS (déjà chargé par useState)
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProjects();
+  }, []);
+
+  // Écouter les changements du localStorage (sync entre onglets)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const local = loadAllProjectsFromLS();
+      setProjects(local);
+    };
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('projectsUpdated', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('projectsUpdated', handleStorageChange);
+    };
+  }, []);
+
+  /** Setter sécurisé */
   const setProject = useCallback((next) => {
     if (typeof next === "function") {
       _setProject((prev) => next(prev));
@@ -57,16 +96,40 @@ export function ProjectProvider({ children }) {
     _setProject((prev) => ({ ...(prev || {}), ...(patch || {}) }));
   }, []);
 
-  /** Sauvegarde locale */
-  const saveProjectToLS = useCallback(() => {
+  /** Sauvegarde (API + LS backup) */
+  const saveProject = useCallback(async () => {
     if (!project || !project.id) return;
-    const all = loadAllProjects();
+
+    // 1. Sauvegarde optimiste dans LS
+    const all = loadAllProjectsFromLS();
     const idx = all.findIndex((x) => x.id === project.id);
     const updatedProject = { ...project };
     if (idx >= 0) all[idx] = updatedProject;
     else all.push(updatedProject);
-    saveAllProjects(all);
+    saveAllProjectsToLS(all);
     setProjects(all);
+
+    // 2. Sauvegarde API
+    try {
+      // Vérifier si le projet existe déjà (via GET ou liste)
+      // Pour simplifier, on tente un GET. Si 404 -> CREATE, sinon UPDATE
+      // Note: On pourrait optimiser en vérifiant la liste 'projects' mais elle peut être stale
+      try {
+        await apiService.getProject(project.id);
+        // Si pas d'erreur, il existe -> UPDATE
+        await apiService.updateProject(project.id, project);
+      } catch (e) {
+        // Si erreur (ex: 404), on suppose qu'il n'existe pas -> CREATE
+        await apiService.createProject(project);
+      }
+
+      // Optionnel: Recharger la liste pour être sûr
+      // const refreshed = await apiService.getProjects();
+      // setProjects(refreshed);
+    } catch (err) {
+      console.error("API Save failed:", err);
+      // Pas grave, on a le backup LS
+    }
   }, [project]);
 
   const value = useMemo(
@@ -74,12 +137,15 @@ export function ProjectProvider({ children }) {
       projects,
       setProjects,
       project,
-      setProject,      // <- safe setter (merge)
-      updateProject,   // <- patch helper
-      saveProjectToLS,
-      loadAllProjects,
+      setProject,
+      updateProject,
+      saveProject, // Nouvelle méthode unifiée
+      saveProjectToLS: saveProject, // Alias pour compatibilité
+      loadAllProjects: loadAllProjectsFromLS,
+      loading,
+      error
     }),
-    [projects, project, setProject, updateProject, saveProjectToLS]
+    [projects, project, setProject, updateProject, saveProject, loading, error]
   );
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
@@ -90,6 +156,6 @@ export function useProjects() {
   return useContext(ProjectContext);
 }
 export function useProject() {
-  const { project, updateProject, saveProjectToLS, setProject } = useContext(ProjectContext);
-  return { project, updateProject, saveProjectToLS, setProject };
+  const { project, updateProject, saveProject, setProject } = useContext(ProjectContext);
+  return { project, updateProject, saveProject, saveProjectToLS: saveProject, setProject };
 }

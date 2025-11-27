@@ -2,22 +2,8 @@ import React, { useEffect, useCallback } from 'react';
 import { useProject } from '../../contexts/ProjectContext.jsx';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 
-const LS_KEY_PREFIX = "nelson:projects:v1";
-
-function saveProjectToLS(projectToSave) {
-  if (!projectToSave || !projectToSave.id) return;
-  try {
-    const all = JSON.parse(localStorage.getItem(LS_KEY_PREFIX) || '[]');
-    const i = all.findIndex(p => p.id === projectToSave.id);
-    if (i > -1) all[i] = projectToSave; else all.push(projectToSave);
-    localStorage.setItem(LS_KEY_PREFIX, JSON.stringify(all));
-  } catch (e) {
-    console.error("Failed to save project to localStorage", e);
-  }
-}
-
 export default function ClientForm() {
-  const { project, setProject, updateProject } = useProject();
+  const { project, setProject, updateProject, saveProject } = useProject();
   const { user } = useAuth();
 
   useEffect(() => {
@@ -33,10 +19,11 @@ export default function ClientForm() {
       t = setTimeout(() => fn(...args), delay);
     };
   };
-  const debouncedSave = useCallback(debounce(saveProjectToLS, 500), []);
+  // Utiliser saveProject du contexte au lieu de la fonction locale
+  const debouncedSave = useCallback(debounce(saveProject, 1000), [saveProject]);
 
   useEffect(() => {
-    if (project) debouncedSave(project);
+    if (project) debouncedSave();
   }, [project, debouncedSave]);
 
   const handleChange = (key, value) => {
