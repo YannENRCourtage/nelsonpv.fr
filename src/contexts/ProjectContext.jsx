@@ -52,10 +52,33 @@ export function ProjectProvider({ children }) {
       setLoading(true);
       try {
         const apiProjects = await apiService.getProjects();
+        const localProjects = loadAllProjectsFromLS();
+
         if (Array.isArray(apiProjects)) {
-          setProjects(apiProjects);
-          // Sync LS pour backup
-          saveAllProjectsToLS(apiProjects);
+          // MIGRATION : Vérifier s'il y a des projets locaux qui ne sont pas dans l'API
+          // (Cas du premier lancement après déploiement ou données hors ligne)
+          const missingInApi = localProjects.filter(lp => !apiProjects.find(ap => ap.id === lp.id));
+
+          if (missingInApi.length > 0) {
+            console.log("Migration : Envoi des projets locaux vers l'API...", missingInApi);
+            // On les envoie un par un
+            for (const p of missingInApi) {
+              try {
+                // On s'assure que l'ID est présent, sinon l'API le générera (mais on veut garder l'ID local si possible)
+                await apiService.createProject(p);
+              } catch (e) {
+                console.error("Erreur migration projet:", p.id, e);
+              }
+            }
+            // On recharge la liste définitive depuis l'API
+            const updatedApiProjects = await apiService.getProjects();
+            setProjects(updatedApiProjects);
+            saveAllProjectsToLS(updatedApiProjects);
+          } else {
+            // Pas de migration nécessaire, on prend la vérité serveur
+            setProjects(apiProjects);
+            saveAllProjectsToLS(apiProjects);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch projects from API:", err);
