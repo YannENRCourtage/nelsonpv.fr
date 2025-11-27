@@ -176,7 +176,7 @@ function Header() {
   const navigate = useNavigate();
   const isProjectPage = useMatch("/project/:projectId/edit");
   const { project, saveProject } = useProject();
-  const { project, saveProject } = useProject();
+
 
   const handleLogout = async () => {
     try {
