@@ -57,7 +57,7 @@ function MiniMap() {
     return <div ref={miniMapContainerRef} className="w-40 h-32 border-2 border-border rounded-lg shadow-lg overflow-hidden bg-card" />;
 }
 
-function StreetViewCoverageLayer() {
+function StreetViewCoverageLayer({ activeTab }) {
     const map = useMap();
 
     useEffect(() => {
@@ -93,10 +93,18 @@ function StreetViewCoverageLayer() {
         };
     }, [map]);
 
+    useEffect(() => {
+        if (activeTab === 'streetview') {
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 200);
+        }
+    }, [map, activeTab]);
+
     return null;
 }
 
-export default function StreetViewTab({ project }) {
+export default function StreetViewTab({ project, activeTab }) {
     // Set initial center based on project GPS
     const getInitialCenter = () => {
         if (project?.gps) {
@@ -126,7 +134,7 @@ export default function StreetViewTab({ project }) {
                 />
 
                 {/* Street View coverage layer */}
-                <StreetViewCoverageLayer />
+                <StreetViewCoverageLayer activeTab={activeTab} />
 
                 {/* Bottom-left controls - raised by 5mm (approximately 19px) */}
                 <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>

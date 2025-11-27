@@ -466,7 +466,7 @@ export default function ProjectEditor() {
 
             {/* Onglet Street View */}
             <div className={activeTab === 'streetview' ? 'w-full h-full' : 'hidden'}>
-              <StreetViewTab project={project} />
+              <StreetViewTab project={project} activeTab={activeTab} />
             </div>
 
             {/* Onglet Propriétaires */}
