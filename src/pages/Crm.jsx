@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useProjects } from '@/contexts/ProjectContext.jsx';
 import {
   LayoutDashboard, Users, TrendingUp, CheckSquare, Calendar, FileText,
   Plus, Search, Euro, Settings, LogOut, X, Edit, Trash2, Save, Phone,
   Mail, Building, MapPin, Tag, Clock, CheckCircle2, AlertCircle,
-  ChevronLeft, ChevronRight, BarChart3, PieChart, Activity
+  ChevronLeft, ChevronRight, BarChart3, PieChart, Activity, FolderHeart, MapPin as MapIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 
 export default function Crm() {
+  const navigate = useNavigate();
+  const { projects } = useProjects();
   // État pour gérer l'onglet actif
   const [activeTab, setActiveTab] = useState('dashboard');
   const [currentUser] = useState({
@@ -206,6 +210,7 @@ export default function Crm() {
   const navItems = [
     { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
     { id: 'contacts', label: 'Contacts', icon: Users },
+    { id: 'projects', label: 'Projets', icon: FolderHeart },
     { id: 'opportunities', label: 'Opportunités', icon: TrendingUp },
     { id: 'tasks', label: 'Tâches', icon: CheckSquare },
     { id: 'calendar', label: 'Calendrier', icon: Calendar },
@@ -736,6 +741,98 @@ export default function Crm() {
       </div>
     );
   };
+
+  // Rendu de la liste des Projets
+  const renderProjects = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Projets</h2>
+          <p className="text-slate-500">Gérez les projets de construction et location de toitures</p>
+        </div>
+        <Button
+          onClick={() => navigate('/project/new/edit')}
+          className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Nouveau Projet
+        </Button>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="p-4 border-b border-slate-200">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Rechercher..."
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Nom Projet</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Client</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Utilisateur</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Code Postal</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Ville</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Type</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Tél</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Email</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">GPS</th>
+                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {projects.filter(p =>
+                (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (p.city || '').toLowerCase().includes(searchTerm.toLowerCase())
+              ).map((project) => (
+                <tr key={project.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-4 font-medium text-slate-900">{project.projectSize || project.name || 'Sans nom'}</td>
+                  <td className="px-6 py-4 text-slate-600">{project.name} {project.firstName}</td>
+                  <td className="px-6 py-4 text-slate-600">{project.user || '-'}</td>
+                  <td className="px-6 py-4 text-slate-600">{project.zip || '-'}</td>
+                  <td className="px-6 py-4 text-slate-600">{project.city || '-'}</td>
+                  <td className="px-6 py-4">
+                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                      {project.type || 'Construction'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-slate-600 text-sm">{project.phone || '-'}</td>
+                  <td className="px-6 py-4 text-slate-600 text-sm">{project.email || '-'}</td>
+                  <td className="px-6 py-4 text-slate-600 text-xs font-mono">{project.gps || '-'}</td>
+                  <td className="px-6 py-4 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate(`/project/${project.id}/edit`)}
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    >
+                      Ouvrir
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+              {projects.length === 0 && (
+                <tr>
+                  <td colSpan="10" className="px-6 py-8 text-center text-slate-500">
+                    Aucun projet trouvé. Créez votre premier projet !
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 
   // Rendu des Rapports
   const renderReports = () => {
@@ -1275,6 +1372,7 @@ export default function Crm() {
           {/* Content */}
           {activeTab === 'dashboard' && renderDashboard()}
           {activeTab === 'contacts' && renderContacts()}
+          {activeTab === 'projects' && renderProjects()}
           {activeTab === 'opportunities' && renderOpportunities()}
           {activeTab === 'tasks' && renderTasks()}
           {activeTab === 'calendar' && renderCalendar()}

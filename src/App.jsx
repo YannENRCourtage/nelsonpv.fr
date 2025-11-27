@@ -46,7 +46,7 @@ function AppContent() {
             </PrivateRoute>
           }
         >
-          <Route index element={<Dashboard />} />
+          <Route index element={<Navigate to="/crm" replace />} />
           <Route
             path="crm"
             element={
@@ -95,11 +95,11 @@ export default function App() {
   return (
     <AuthProvider>
       {/* Removed ThemeProvider */}
-        <ProjectProvider>
-          <DevErrorBoundary>
-            <AppContent />
-          </DevErrorBoundary>
-        </ProjectProvider>
+      <ProjectProvider>
+        <DevErrorBoundary>
+          <AppContent />
+        </DevErrorBoundary>
+      </ProjectProvider>
       {/* Removed ThemeProvider */}
     </AuthProvider>
   );

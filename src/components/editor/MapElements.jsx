@@ -1382,7 +1382,7 @@ function BottomLayersBar({ layersRef, map }) {
         <button
           key={key}
           onClick={() => toggleLayer(key)}
-          className={`px-2 py-1 rounded text-[11px] font-medium transition-colors shadow-sm border whitespace-nowrap ${isActive(key)
+          className={`px-2 py-1 rounded text-[12px] font-medium transition-colors shadow-sm border whitespace-nowrap ${isActive(key)
             ? 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700'
             : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
             }`}
