@@ -258,8 +258,8 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       }
     }
 
-    // Utiliser API IGN Altimétrie via GET (méthode éprouvée)
-    // Requêtes par lots de 50 points pour éviter les erreurs 414 (URI Too Long) et 429 (Rate Limit)
+    // Utiliser API IGN Altimétrie via GET (Géoplateforme data.geopf.fr)
+    // Documentation: https://geoservices.ign.fr/documentation/services/api-et-services-ogc/calcul-altimetrique-rest
     try {
       const BATCH_SIZE = 50;
       const totalPoints = points.length;
@@ -271,7 +271,8 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
         const lats = batch.map(p => p.lat.toFixed(6)).join('|');
 
         try {
-          const res = await fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${lons}&lat=${lats}&zonly=false`);
+          // Nouvelle URL Géoplateforme
+          const res = await fetch(`https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json?resource=ign_rge_alti_wld&lon=${lons}&lat=${lats}&zonly=false`);
 
           if (res.ok) {
             const data = await res.json();
@@ -1255,7 +1256,7 @@ function PointInfoPanel({ pointInfo, setPointInfo }) {
 
     const { latlng } = pointInfo;
     const fetches = [
-      fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${latlng.lng}&lat=${latlng.lat}&zonly=false`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ altitude: `${data.elevations[0].z.toFixed(1)} m` })).catch(() => ({ altitude: 'N/A' })),
+      fetch(`https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json?resource=ign_rge_alti_wld&lon=${latlng.lng}&lat=${latlng.lat}&zonly=false`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ altitude: `${data.elevations[0].z.toFixed(1)} m` })).catch(() => ({ altitude: 'N/A' })),
       fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${latlng.lng}&lat=${latlng.lat}`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ address: data.features[0]?.properties.label || 'Non trouvée' })).catch(() => ({ address: 'N/A' })),
       fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom={"type":"Point","coordinates":[${latlng.lng},${latlng.lat}]}`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ parcel: data.features[0]?.properties.libelle || 'Non trouvée' })).catch(() => ({ parcel: 'N/A' }))
     ];

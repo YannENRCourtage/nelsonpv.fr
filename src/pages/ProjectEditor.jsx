@@ -24,7 +24,12 @@ function SymbolBtn({ icon, label, type, emoji, onSelect, isSelected }) {
   return (
     <button
       type="button"
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSelect({ type, label, emoji }); }}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.currentTarget.blur(); // Prevent auto-scroll on focus
+        onSelect({ type, label, emoji });
+      }}
       className={cn(
         "flex flex-col items-center justify-center gap-2 rounded-lg border bg-white p-4 text-sm font-medium shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5",
         isSelected && "ring-2 ring-blue-500 border-blue-500"
@@ -372,7 +377,8 @@ export default function ProjectEditor() {
           {/* Tab Bar */}
           <div className="flex gap-2 border-b border-gray-700">
             <button
-              onClick={(e) => { e.preventDefault(); setActiveTab('map'); }}
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setActiveTab('map'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'map'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -381,7 +387,8 @@ export default function ProjectEditor() {
               Carte
             </button>
             <button
-              onClick={(e) => { e.preventDefault(); setActiveTab('enedis'); }}
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setActiveTab('enedis'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'enedis'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -390,7 +397,8 @@ export default function ProjectEditor() {
               Enedis
             </button>
             <button
-              onClick={(e) => { e.preventDefault(); setActiveTab('streetview'); }}
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setActiveTab('streetview'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'streetview'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -399,7 +407,8 @@ export default function ProjectEditor() {
               Street View
             </button>
             <button
-              onClick={(e) => { e.preventDefault(); setActiveTab('owners'); }}
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setActiveTab('owners'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'owners'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -408,7 +417,8 @@ export default function ProjectEditor() {
               Propriétaires
             </button>
             <button
-              onClick={(e) => { e.preventDefault(); setActiveTab('itinerary'); }}
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setActiveTab('itinerary'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'itinerary'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -417,7 +427,8 @@ export default function ProjectEditor() {
               Itinéraire
             </button>
             <button
-              onClick={(e) => { e.preventDefault(); setActiveTab('capareseau'); }}
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setActiveTab('capareseau'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'capareseau'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -482,7 +493,7 @@ export default function ProjectEditor() {
             </div>
           </div>
           {activeTab === 'map' && (
-            <Button onClick={goToProjectAddress} className="absolute top-14 right-3 z-[1000] bg-white text-gray-800 hover:bg-gray-100 shadow-md">
+            <Button type="button" onClick={goToProjectAddress} className="absolute top-14 right-3 z-[1000] bg-white text-gray-800 hover:bg-gray-100 shadow-md">
               <HomeIcon size={16} className="mr-2" />
               Adresse Projet
             </Button>
@@ -496,7 +507,8 @@ export default function ProjectEditor() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Capturer la vue</h3>
               <Button
-                onClick={captureNow}
+                type="button"
+                onClick={(e) => { e.currentTarget.blur(); captureNow(); }}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={activeTab !== 'map'}
                 title={activeTab !== 'map' ? "Captures disponibles uniquement sur l'onglet Carte" : "Prendre une capture"}
@@ -517,7 +529,7 @@ export default function ProjectEditor() {
                         onClick={() => window.open(c, '_blank')}
                         title="Cliquer pour agrandir"
                       />
-                      <button onClick={() => deleteCapture(i)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button type="button" onClick={() => deleteCapture(i)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <X size={14} />
                       </button>
                     </>
@@ -535,7 +547,7 @@ export default function ProjectEditor() {
             <h3 className="text-lg font-semibold">Photos</h3>
             <p className="text-sm text-gray-500">Jusqu’à 16 photos. Cliquez sur "Placer" pour les positionner sur la carte.</p>
           </div>
-          <Button onClick={() => fileRef.current?.click()} className="bg-orange-500 hover:bg-orange-600 text-white">
+          <Button type="button" onClick={() => fileRef.current?.click()} className="bg-orange-500 hover:bg-orange-600 text-white">
             <ImagePlus size={16} className="mr-2" />
             Charger des photos
           </Button>
@@ -550,11 +562,11 @@ export default function ProjectEditor() {
                   <>
                     <img src={photo.id} className="h-full w-full object-cover" alt={photo.name || `photo-${i + 1}`} />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                      <Button size="sm" onClick={() => placePhotoOnMap(photo, i)} className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 h-auto">
+                      <Button type="button" size="sm" onClick={() => placePhotoOnMap(photo, i)} className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 h-auto">
                         <MapIcon size={14} className="mr-1" />
                         Placer
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={() => deletePhoto(photo.id)} className="text-xs px-2 py-1 h-auto">
+                      <Button type="button" size="sm" variant="destructive" onClick={() => deletePhoto(photo.id)} className="text-xs px-2 py-1 h-auto">
                         <X size={14} className="mr-1" />
                         Suppr.
                       </Button>
