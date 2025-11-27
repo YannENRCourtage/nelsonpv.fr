@@ -176,7 +176,16 @@ function Header() {
   const navigate = useNavigate();
   const isProjectPage = useMatch("/project/:projectId/edit");
   const { project, saveProject } = useProject();
-  const location = useLocation();
+  const { project, saveProject } = useProject();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
+  };
 
   // ...
 
