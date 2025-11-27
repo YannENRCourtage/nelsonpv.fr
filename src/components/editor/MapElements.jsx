@@ -1382,7 +1382,7 @@ function BottomLayersBar({ layersRef, map }) {
         <button
           key={key}
           onClick={() => toggleLayer(key)}
-          className={`px-3 py-1.5 rounded text-xs font-medium transition-colors shadow-sm border ${isActive(key)
+          className={`px-2 py-1 rounded text-[10px] font-medium transition-colors shadow-sm border whitespace-nowrap ${isActive(key)
             ? 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700'
             : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
             }`}
@@ -1439,7 +1439,7 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
       <div className="flex-1 relative min-h-0">
         <MapContainer
           ref={setMap}
-          center={[46.603354, 1.888334]}
+          center={[44.82633, -0.67180]}
           zoom={6}
           style={{ height: "100%", width: "100%" }}
           doubleClickZoom={false}
