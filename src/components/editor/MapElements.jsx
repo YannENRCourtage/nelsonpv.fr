@@ -1043,7 +1043,7 @@ function MiniMap() {
   return <div ref={miniMapContainerRef} className="w-40 h-32 border-2 border-border rounded-lg shadow-lg overflow-hidden bg-card" />;
 }
 
-function MapTargetInfo({ targetPos, setTargetPos }) {
+function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
   const map = useMap();
   const [info, setInfo] = useState({ lat: 0, lng: 0, alt: '...', address: '...', parcel: '...' });
   const [loading, setLoading] = useState(false);
@@ -1056,6 +1056,19 @@ function MapTargetInfo({ targetPos, setTargetPos }) {
   }, [map, targetPos, setTargetPos]);
 
   useEffect(() => {
+    if (hoverInfo) {
+      // Si on a des infos de survol (depuis le profil alti), on les affiche directement
+      setInfo(prev => ({
+        ...prev,
+        lat: hoverInfo.lat,
+        lng: hoverInfo.lng,
+        alt: `${hoverInfo.altitude.toFixed(1)} m`,
+        address: 'Point du profil', // Ou laisser l'ancienne adresse si on veut
+        parcel: '...'
+      }));
+      return;
+    }
+
     if (!targetPos) return;
 
     // Le check "Clé IGN?" est retiré.
@@ -1105,7 +1118,7 @@ function MapTargetInfo({ targetPos, setTargetPos }) {
     // Debounce réduit pour réactivité
     const timeoutId = setTimeout(updateInfo, 100);
     return () => clearTimeout(timeoutId);
-  }, [targetPos]);
+  }, [targetPos, hoverInfo]);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -1148,7 +1161,7 @@ function MapTargetInfo({ targetPos, setTargetPos }) {
         <span className="font-bold text-blue-600 cursor-pointer hover:bg-blue-50 p-1 rounded transition-colors flex items-center gap-1" onClick={copyCoords} title="Copier les coordonnées">
           {info.lat.toFixed(5)}, {info.lng.toFixed(5)} <Copy size={12} />
         </span>
-        <span className="text-gray-500">{loading ? '...' : ''}</span>
+        <span className="text-gray-500">{loading && !hoverInfo ? '...' : ''}</span>
       </div>
 
       <div className="flex items-start gap-2 mb-1 cursor-pointer hover:bg-gray-50 p-1 rounded transition-colors group" onClick={() => copyToClipboard(info.address)} title="Copier l'adresse">
@@ -1270,7 +1283,7 @@ function PointInfoPanel({ pointInfo, setPointInfo }) {
   );
 }
 
-function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
+function AltimetryProfile({ profile, setProfile, setFeatures, features, setHoverInfo }) {
   const map = useMap();
   const chartRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -1293,13 +1306,21 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
     let marker = null;
     if (hoverPoint) {
       marker = L.circleMarker([hoverPoint.lat, hoverPoint.lng], { radius: 6, color: 'red', fillColor: 'yellow', fillOpacity: 1, weight: 2 }).addTo(map);
+      // Update global hover info
+      if (setHoverInfo) {
+        setHoverInfo(hoverPoint);
+      }
+    } else {
+      if (setHoverInfo) {
+        setHoverInfo(null);
+      }
     }
 
     return () => {
       map.removeLayer(polyline);
       if (marker) map.removeLayer(marker);
     };
-  }, [map, profile, hoverPoint]);
+  }, [map, profile, hoverPoint, setHoverInfo]);
 
   // Dragging Handlers
   const handleMouseMove = (e) => {
@@ -1323,7 +1344,7 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
   if (!profile) return null;
   const { data, stats, minAlt, maxAlt } = profile; // Destructure stats, minAlt, maxAlt
 
-  const handleCloseProfile = () => { setProfile(null); };
+  const handleCloseProfile = () => { setProfile(null); if (setHoverInfo) setHoverInfo(null); };
 
   const handleMouseDown = (e) => {
     // Don't start dragging if clicking on a button or its children
@@ -1374,6 +1395,7 @@ function AltimetryProfile({ profile, setProfile, setFeatures, features }) {
     };
     setFeatures(prev => [...prev, newFeature]);
     setProfile(null); // Close the profile panel after saving
+    if (setHoverInfo) setHoverInfo(null);
     toast({ ...toastStyle, title: "Profil enregistré", description: `Le profil "${layerName}" a été ajouté à la carte.` });
   };
 
@@ -1520,6 +1542,7 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
   const [photoToPlace, setPhotoToPlace] = useState(null);
   const [targetPos, setTargetPos] = useState(null);
   const [map, setMap] = useState(null); // State for map instance
+  const [hoverInfo, setHoverInfo] = useState(null); // New state for shared hover info
   const layersRef = useRef({});
 
   useEffect(() => {
@@ -1578,7 +1601,7 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
           <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
             <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '30px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
               <div className="flex flex-col items-start gap-2">
-                <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} />
+                <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} hoverInfo={hoverInfo} />
                 <MiniMap />
                 <ScaleControl position="bottomleft" metric={true} imperial={false} />
               </div>
@@ -1596,7 +1619,7 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
           <PointInfoPanel pointInfo={pointInfo} setPointInfo={setPointInfo} />
           {/* AltimetryProfile must be outside MapContainer or have high z-index and fixed positioning if inside. 
               Here it is inside, so we rely on its fixed positioning style. */}
-          <AltimetryProfile profile={altimetryProfile} setProfile={setAltimetryProfile} setFeatures={setFeatures} features={features} />
+          <AltimetryProfile profile={altimetryProfile} setProfile={setAltimetryProfile} setFeatures={setFeatures} features={features} setHoverInfo={setHoverInfo} />
         </MapContainer>
       </div>
 
