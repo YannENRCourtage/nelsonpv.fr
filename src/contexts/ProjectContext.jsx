@@ -16,6 +16,7 @@ function saveAllProjects(list) {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(list));
     window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('projectsUpdated'));
   } catch { }
 }
 

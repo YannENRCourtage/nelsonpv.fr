@@ -56,6 +56,47 @@ export default function Crm() {
     setContacts(projectContacts);
   }, [projects]);
 
+  // Forcer le rechargement des projets depuis localStorage au mount
+  React.useEffect(() => {
+    const loadProjectsFromStorage = () => {
+      try {
+        const raw = localStorage.getItem('nelson:projects:v1');
+        const loadedProjects = raw ? JSON.parse(raw) : [];
+        const projectContacts = loadedProjects.map(project => ({
+          id: project.id,
+          name: `${project.name || ''} ${project.firstName || ''}`.trim() || 'Sans nom',
+          company: project.projectSize || 'N/A',
+          email: project.email || '',
+          phone: project.phone || '',
+          city: project.city || '',
+          status: project.status || 'Nouveau',
+          color: project.status === 'Terminé' ? 'bg-green-500' : project.status === 'En cours' ? 'bg-blue-500' : 'bg-yellow-500',
+          projectId: project.id,
+          hasProject: true
+        }));
+        setContacts(projectContacts);
+      } catch (e) {
+        console.error('Error loading projects:', e);
+      }
+    };
+
+    // Charger au montage
+    loadProjectsFromStorage();
+
+    // Écouter les changements du localStorage
+    const handleStorageChange = () => {
+      loadProjectsFromStorage();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('projectsUpdated', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('projectsUpdated', handleStorageChange);
+    };
+  }, []);
+
   // État pour gérer les opportunités
   const [opportunities, setOpportunities] = useState([
     {
