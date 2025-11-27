@@ -663,15 +663,15 @@ const LAYERS = {
   communes: { name: "Limites communales", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ADMINEXPRESS-COG-CARTO.LATEST&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 32, opacity: 0.5 },
 
   // Urbanisme
-  plu: {
-    name: "PLU / PLUi",
-    url: "https://wxs-gpu.mongeoportail.ign.fr/externe/i9ytmrb6tgtq5yk4i6330i5d/wms/v?",
-    layers: "GPU.ZONAGE",
+  // Urbanisme
+  zoneInondable: {
+    name: "Zone Inondable",
+    url: "https://georisques.gouv.fr/services/di_fxx_2020?",
+    layers: "PPRN_ZONE_INOND_FXX",
     format: "image/png",
     transparent: true,
-    attribution: "IGN - Géoportail de l'Urbanisme",
+    attribution: "Géorisques",
     isOverlay: true,
-    maxZoom: 20,
     opacity: 0.7
   },
   "ZNIEFF 1": {
@@ -705,107 +705,6 @@ const LAYERS = {
     transparent: true,
     attribution: "INPN",
     isOverlay: true
-  },
-
-  // ========== ÉNERGIES RENOUVELABLES (Portail EnR) ==========
-  _separator_enr: { isSeparator: true },
-  irradiationSolaire: {
-    name: "Irradiation Solaire",
-    url: "https://data.geopf.fr/wms-r/wms?",
-    layers: "SOLAR.IRRADIATION.ANNUAL",
-    format: "image/png",
-    transparent: true,
-    attribution: "IGN - Portail EnR",
-    isOverlay: true,
-    opacity: 0.6
-  },
-  potentielSolaireToiture: {
-    name: "Potentiel Solaire Toiture",
-    url: "https://data.geopf.fr/wms-r/wms?",
-    layers: "SOLAR.POTENTIAL.ROOF",
-    format: "image/png",
-    transparent: true,
-    attribution: "IGN - Portail EnR",
-    isOverlay: true,
-    opacity: 0.6
-  },
-
-  // ========== CONSOMMATION ÉLECTRIQUE (ENEDIS) ==========
-  _separator_conso: { isSeparator: true },
-  consoResidentielle: {
-    name: "Conso. Résidentielle (ENEDIS)",
-    // URL API pour chargement dynamique
-    apiUrl: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/consommation-electrique-annuelle-residentielle-par-adresse/exports/geojson",
-    attrib: '© ENEDIS',
-    isOverlay: true,
-    zIndex: 50,
-    opacity: 0.8,
-    isDynamic: true,
-    color: "#3b82f6" // Bleu
-  },
-  consoEntreprise: {
-    name: "Conso. Entreprise (ENEDIS)",
-    // URL API pour chargement dynamique
-    apiUrl: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/consommation-electrique-annuelle-des-entreprises-par-adresse/exports/geojson",
-    attrib: '© ENEDIS',
-    isOverlay: true,
-    zIndex: 51,
-    opacity: 0.8,
-    isDynamic: true,
-    color: "#f59e0b" // Orange
-  },
-
-  // ========== RÉSEAUX ÉLECTRIQUES (ENEDIS - Dynamique) ==========
-  _separator_enedis_network: { isSeparator: true },
-  postesHTABT: {
-    name: "Postes HTA/BT (ENEDIS)",
-    apiUrl: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/position-geographique-des-posteaux-electriques-hta-et-bt/exports/geojson",
-    attrib: '© ENEDIS',
-    isOverlay: true,
-    zIndex: 40,
-    opacity: 0.8,
-    isDynamic: true,
-    color: "#10b981" // Vert
-  },
-  lignesBTSouterraines: {
-    name: "Lignes BT souterraines (ENEDIS)",
-    apiUrl: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-basse-tension-bt/exports/geojson",
-    attrib: '© ENEDIS',
-    isOverlay: true,
-    zIndex: 42,
-    opacity: 0.7,
-    isDynamic: true,
-    color: "#6366f1" // Indigo
-  },
-  lignesBTAeriennes: {
-    name: "Lignes BT aériennes (ENEDIS)",
-    apiUrl: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-basse-tension-bt/exports/geojson",
-    attrib: '© ENEDIS',
-    isOverlay: true,
-    zIndex: 43,
-    opacity: 0.7,
-    isDynamic: true,
-    color: "#8b5cf6" // Violet
-  },
-  lignesHTASouterraines: {
-    name: "Lignes HTA souterraines (ENEDIS)",
-    apiUrl: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-moyenne-tension-hta/exports/geojson",
-    attrib: '© ENEDIS',
-    isOverlay: true,
-    zIndex: 44,
-    opacity: 0.7,
-    isDynamic: true,
-    color: "#ef4444" // Rouge
-  },
-  lignesHTAAeriennes: {
-    name: "Lignes HTA aériennes (ENEDIS)",
-    apiUrl: "https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-moyenne-tension-hta/exports/geojson",
-    attrib: '© ENEDIS',
-    isOverlay: true,
-    zIndex: 45,
-    opacity: 0.7,
-    isDynamic: true,
-    color: "#ec4899" // Rose
   }
 };
 // ====================================================================
@@ -813,44 +712,7 @@ const LAYERS = {
 // ====================================================================
 
 
-// ====================================================================
-// LÉGENDE PLU/PLUi
-// ====================================================================
-function PLULegend({ layersRef }) {
-  const map = useMap();
-  const [showLegend, setShowLegend] = useState(false);
 
-  useEffect(() => {
-    const checkPLULayer = () => {
-      const pluLayer = layersRef.current['plu'];
-      setShowLegend(pluLayer && map.hasLayer(pluLayer));
-    };
-
-    checkPLULayer();
-    const interval = setInterval(checkPLULayer, 500);
-    return () => clearInterval(interval);
-  }, [map, layersRef]);
-
-  if (!showLegend) return null;
-
-  return (
-    <div
-      className="absolute bottom-[290px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
-      style={{ userSelect: 'none' }}
-    >
-      <div className="flex justify-between items-center mb-2">
-        <h4 className="font-bold text-xs text-gray-900">Légende PLU</h4>
-        <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded"><XIcon className="h-3 w-3" /></button>
-      </div>
-      <div className="space-y-1.5 text-[10px]">
-        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#E91E63] border border-gray-300"></div><span>Zone U (Urbaine)</span></div>
-        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#F48FB1] border border-gray-300"></div><span>Zone AU (À urb.)</span></div>
-        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#8BC34A] border border-gray-300"></div><span>Zone A (Agricole)</span></div>
-        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#4CAF50] border border-gray-300"></div><span>Zone N (Naturelle)</span></div>
-      </div>
-    </div>
-  );
-}
 
 // ====================================================================
 // LÉGENDE RPG (Parcelles agricoles)
@@ -1081,7 +943,7 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
       try {
         // Lancer toutes les requêtes en parallèle pour optimiser la vitesse
         const [altRes, addrRes, parcRes] = await Promise.allSettled([
-          fetch(`https://wxs.ign.fr/essentiels/alti/rest/elevation.json?lon=${targetPos.lng}&lat=${targetPos.lat}&zonly=false`)
+          fetch(`https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json?resource=ign_rge_alti_wld&lon=${targetPos.lng}&lat=${targetPos.lat}&zonly=false`)
             .then(r => r.json()),
           // Adresse : API Adresse
           fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${targetPos.lng}&lat=${targetPos.lat}`)
@@ -1594,7 +1456,7 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
 
           {/* Controls inside map */}
           <BasemapControl layersRef={layersRef} />
-          <PLULegend layersRef={layersRef} />
+
           <RPGLegend layersRef={layersRef} />
 
           <SearchField onAddressFound={onAddressFound} />
