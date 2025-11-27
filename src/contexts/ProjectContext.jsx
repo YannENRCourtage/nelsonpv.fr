@@ -61,19 +61,27 @@ export function ProjectProvider({ children }) {
 
           if (missingInApi.length > 0) {
             console.log("Migration : Envoi des projets locaux vers l'API...", missingInApi);
+            let successCount = 0;
             // On les envoie un par un
             for (const p of missingInApi) {
               try {
                 // On s'assure que l'ID est présent, sinon l'API le générera (mais on veut garder l'ID local si possible)
                 await apiService.createProject(p);
+                successCount++;
               } catch (e) {
                 console.error("Erreur migration projet:", p.id, e);
               }
             }
-            // On recharge la liste définitive depuis l'API
-            const updatedApiProjects = await apiService.getProjects();
-            setProjects(updatedApiProjects);
-            saveAllProjectsToLS(updatedApiProjects);
+
+            // On recharge la liste définitive depuis l'API SEULEMENT si tout a réussi
+            if (successCount === missingInApi.length) {
+              const updatedApiProjects = await apiService.getProjects();
+              setProjects(updatedApiProjects);
+              saveAllProjectsToLS(updatedApiProjects);
+            } else {
+              console.warn("Migration incomplète. Conservation du cache local pour éviter la perte de données.");
+              // On ne fait rien, on garde les données locales chargées au démarrage
+            }
           } else {
             // Pas de migration nécessaire, on prend la vérité serveur
             setProjects(apiProjects);
