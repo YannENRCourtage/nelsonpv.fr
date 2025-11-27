@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjects } from '@/contexts/ProjectContext.jsx';
+import { generatePdfForProject } from '@/components/AppLayout.jsx';
 import {
   LayoutDashboard, Users, TrendingUp, CheckSquare, Calendar, FileText,
   Plus, Search, Euro, Settings, LogOut, X, Edit, Trash2, Save, Phone,
   Mail, Building, MapPin, Tag, Clock, CheckCircle2, AlertCircle,
-  ChevronLeft, ChevronRight, BarChart3, PieChart, Activity, FolderHeart, MapPin as MapIcon
+  ChevronLeft, ChevronRight, BarChart3, PieChart, Activity, FolderHeart, MapPin as MapIcon, FileDown, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 
@@ -21,42 +22,39 @@ export default function Crm() {
     color: 'bg-gradient-to-br from-blue-500 to-purple-600'
   });
 
-  // État pour gérer les contacts
-  const [contacts, setContacts] = useState([
-    {
-      id: 1,
-      name: 'Jean Solaire',
-      company: 'Solar Corp',
-      email: 'jean@solarcorp.fr',
-      phone: '+33 6 12 34 56 78',
-      city: 'Paris',
-      status: 'Client',
-      color: 'bg-green-500',
-      projects: ['Toiture 500m²', 'Extension PV']
-    },
-    {
-      id: 2,
-      name: 'Marie Vert',
-      company: 'Eco Bâtiment',
-      email: 'marie@ecobat.fr',
-      phone: '+33 6 98 76 54 32',
-      city: 'Lyon',
-      status: 'Prospect',
-      color: 'bg-yellow-500',
-      projects: ['PV 100kWc']
-    },
-    {
-      id: 3,
-      name: 'Paul Avenir',
-      company: 'Futur Energie',
-      email: 'paul@futur.fr',
-      phone: '+33 6 45 67 89 01',
-      city: 'Marseille',
-      status: 'Prospect',
-      color: 'bg-blue-500',
-      projects: ['Étude faisabilité']
-    },
-  ]);
+  // Synchroniser les contacts depuis les projets
+  const [contacts, setContacts] = useState(() => {
+    const projectContacts = projects.map(project => ({
+      id: project.id,
+      name: `${project.name || ''} ${project.firstName || ''}`.trim() || 'Sans nom',
+      company: project.projectSize || 'N/A',
+      email: project.email || '',
+      phone: project.phone || '',
+      city: project.city || '',
+      status: project.status || 'Nouveau',
+      color: project.status === 'Terminé' ? 'bg-green-500' : project.status === 'En cours' ? 'bg-blue-500' : 'bg-yellow-500',
+      projectId: project.id,
+      hasProject: true
+    }));
+    return projectContacts;
+  });
+
+  // Mettre à jour les contacts quand les projets changent
+  React.useEffect(() => {
+    const projectContacts = projects.map(project => ({
+      id: project.id,
+      name: `${project.name || ''} ${project.firstName || ''}`.trim() || 'Sans nom',
+      company: project.projectSize || 'N/A',
+      email: project.email || '',
+      phone: project.phone || '',
+      city: project.city || '',
+      status: project.status || 'Nouveau',
+      color: project.status === 'Terminé' ? 'bg-green-500' : project.status === 'En cours' ? 'bg-blue-500' : 'bg-yellow-500',
+      projectId: project.id,
+      hasProject: true
+    }));
+    setContacts(projectContacts);
+  }, [projects]);
 
   // État pour gérer les opportunités
   const [opportunities, setOpportunities] = useState([
@@ -488,23 +486,35 @@ export default function Crm() {
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${contact.status === 'Client' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${contact.status === 'Client' ? 'bg-green-100 text-green-700' : contact.status === 'En cours' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'
                 }`}>
                 {contact.status}
               </span>
-              <span className="text-xs text-slate-500">{contact.projects.length} projet(s)</span>
             </div>
 
-            {contact.projects.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-slate-100">
-                <p className="text-xs font-semibold text-slate-700 mb-2">Projets liés:</p>
-                <div className="flex flex-wrap gap-1">
-                  {contact.projects.map((project, idx) => (
-                    <span key={idx} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-md">
-                      {project}
-                    </span>
-                  ))}
-                </div>
+            {contact.hasProject && contact.projectId && (
+              <div className="mt-4 pt-4 border-t border-slate-100 flex gap-2">
+                <Button
+                  onClick={() => navigate(`/project/${contact.projectId}/edit`)}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                  size="sm"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Ouvrir le projet
+                </Button>
+                <Button
+                  onClick={() => {
+                    const project = projects.find(p => p.id === contact.projectId);
+                    if (project) {
+                      generatePdfForProject(project);
+                    }
+                  }}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-sm"
+                  size="sm"
+                >
+                  <FileDown className="w-4 h-4 mr-2" />
+                  Télécharger PDF
+                </Button>
               </div>
             )}
           </div>
