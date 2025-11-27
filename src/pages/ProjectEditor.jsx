@@ -35,6 +35,7 @@ function SymbolBtn({ icon, label, type, emoji, onSelect, isSelected }) {
         isSelected && "ring-2 ring-blue-500 border-blue-500"
       )}
       title={label}
+      tabIndex={-1}
     >
       {icon}
       <span>{label}</span>
@@ -383,6 +384,7 @@ export default function ProjectEditor() {
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
+              tabIndex={-1}
             >
               Carte
             </button>
@@ -393,6 +395,7 @@ export default function ProjectEditor() {
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
+              tabIndex={-1}
             >
               Enedis
             </button>
@@ -403,6 +406,7 @@ export default function ProjectEditor() {
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
+              tabIndex={-1}
             >
               Street View
             </button>
@@ -413,6 +417,7 @@ export default function ProjectEditor() {
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
+              tabIndex={-1}
             >
               Propriétaires
             </button>
@@ -423,6 +428,7 @@ export default function ProjectEditor() {
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
+              tabIndex={-1}
             >
               Itinéraire
             </button>
@@ -433,6 +439,7 @@ export default function ProjectEditor() {
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
+              tabIndex={-1}
             >
               Caparéseau
             </button>
@@ -512,6 +519,7 @@ export default function ProjectEditor() {
                 className="bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={activeTab !== 'map'}
                 title={activeTab !== 'map' ? "Captures disponibles uniquement sur l'onglet Carte" : "Prendre une capture"}
+                tabIndex={-1}
               >
                 <Camera size={16} className="mr-2" />
                 Prendre une capture

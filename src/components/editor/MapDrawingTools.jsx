@@ -28,6 +28,7 @@ export default function MapDrawingTools({ mode, setMode }) {
         className={`${btnBase} ${mode === "line" ? btnActive : ""}`}
         onClick={(e) => handleClick(e, "line")}
         title="Distance (L)"
+        tabIndex={-1}
       >
         <Ruler className="h-4 w-4 mr-2" />
         Distance
@@ -38,6 +39,7 @@ export default function MapDrawingTools({ mode, setMode }) {
         className={`${btnBase} ${mode === "polygon" ? btnActive : ""}`}
         onClick={(e) => handleClick(e, "polygon")}
         title="Surface (P)"
+        tabIndex={-1}
       >
         <Pentagon className="h-4 w-4 mr-2" />
         Surface
@@ -48,6 +50,7 @@ export default function MapDrawingTools({ mode, setMode }) {
         className={`${btnBase} ${mode === "rectangle" ? btnActive : ""}`}
         onClick={(e) => handleClick(e, "rectangle")}
         title="Rectangle / Bâtiment (B)"
+        tabIndex={-1}
       >
         <Square className="h-4 w-4 mr-2" />
         Rectangle
@@ -58,6 +61,7 @@ export default function MapDrawingTools({ mode, setMode }) {
         className={`${btnBase} ${mode === "altimetry" ? btnActive : ""}`}
         onClick={(e) => handleClick(e, "altimetry")}
         title="Profil altimétrique (A)"
+        tabIndex={-1}
       >
         <Mountain className="h-4 w-4 mr-2" />
         Profil Alti
@@ -68,6 +72,7 @@ export default function MapDrawingTools({ mode, setMode }) {
         className={`${btnBase} ${mode === "azimuth" ? btnActive : ""}`}
         onClick={(e) => handleClick(e, "azimuth")}
         title="Mesurer un azimut (Z)"
+        tabIndex={-1}
       >
         <RotateCw className="h-4 w-4 mr-2" />
         Azimut
@@ -80,6 +85,7 @@ export default function MapDrawingTools({ mode, setMode }) {
         className={`${btnBase} ${mode === "delete" ? "ring-2 ring-offset-1 ring-red-500 border-red-500 !bg-red-50" : ""}`}
         onClick={(e) => handleClick(e, "delete")}
         title="Supprimer un élément (D)"
+        tabIndex={-1}
       >
         <Trash2 className="h-4 w-4 mr-2 text-red-600" />
         Supprimer
