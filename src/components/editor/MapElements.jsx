@@ -504,9 +504,9 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
         };
         const shapeEventHandlers = { ...baseEventHandlers, mousedown: (e) => { L.DomEvent.stop(e); if (mode || draggingRef.current) return; draggingRef.current = { type: 'drag', featureId: f.id, startLatLng: e.latlng }; } };
 
-        if (f.type === "line") return <Polyline key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#2563eb", weight: 3, className: mode ? '' : 'cursor-grab' }}><Tooltip permanent direction="center" className="measure-label">{formatDistance(polylineLength(f.coords))}</Tooltip></Polyline>;
+        if (f.type === "line") return <Polyline key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#2563eb", weight: 3, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatDistance(polylineLength(f.coords))}</Tooltip></Polyline>;
 
-        if (f.type === "polygon") return <Polygon key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#16a34a", weight: 2, fillColor: "#16a34a", fillOpacity: 0.25, className: mode ? '' : 'cursor-grab' }}><Tooltip permanent direction="center" className="measure-label">{formatArea(polygonArea(f.coords))}</Tooltip></Polygon>;
+        if (f.type === "polygon") return <Polygon key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#16a34a", weight: 2, fillColor: "#16a34a", fillOpacity: 0.25, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatArea(polygonArea(f.coords))}</Tooltip></Polygon>;
 
         if (f.type === "rectangle") {
           const center = centroid(f.coords);
@@ -666,11 +666,11 @@ const LAYERS = {
   // Urbanisme
   zoneInondable: {
     name: "Zone Inondable",
-    url: "https://georisques.gouv.fr/services/di_fxx_2020?",
-    layers: "PPRN_ZONE_INOND_FXX",
+    url: "https://mapsref.brgm.fr/wxs/georisques/risques?",
+    layers: "PPRN_ZONE_INOND",
     format: "image/png",
     transparent: true,
-    attribution: "Géorisques",
+    attribution: "Géorisques / BRGM",
     isOverlay: true,
     opacity: 0.7
   },
