@@ -1377,12 +1377,12 @@ function BottomLayersBar({ layersRef, map }) {
   const overlayKeys = Object.keys(LAYERS).filter(k => LAYERS[k].isOverlay || (LAYERS[k].url && LAYERS[k].url.includes("WMS")));
 
   return (
-    <div className="bg-white border-t border-gray-200 p-2 flex flex-wrap justify-center gap-2 z-[1000] w-full max-h-32 overflow-y-auto">
+    <div className="bg-white border-t border-gray-200 p-2 flex flex-wrap justify-center gap-1 z-[1000] w-full max-h-32 overflow-y-auto">
       {overlayKeys.map(key => (
         <button
           key={key}
           onClick={() => toggleLayer(key)}
-          className={`px-2 py-1 rounded text-[10px] font-medium transition-colors shadow-sm border whitespace-nowrap ${isActive(key)
+          className={`px-2 py-1 rounded text-[11px] font-medium transition-colors shadow-sm border whitespace-nowrap ${isActive(key)
             ? 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700'
             : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
             }`}
