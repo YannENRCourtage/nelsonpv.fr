@@ -1439,7 +1439,7 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
       <div className="flex-1 relative min-h-0">
         <MapContainer
           ref={setMap}
-          center={[44.82633, -0.67180]}
+          center={[44.82619, -0.67201]}
           zoom={6}
           style={{ height: "100%", width: "100%" }}
           doubleClickZoom={false}
