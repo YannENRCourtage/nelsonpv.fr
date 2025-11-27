@@ -134,6 +134,7 @@ export default function Crm() {
   const [editingOpportunity, setEditingOpportunity] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   // Données KPI pour le dashboard
   const kpis = [
