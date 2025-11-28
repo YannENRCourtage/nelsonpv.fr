@@ -56,10 +56,110 @@ model User {
   lastName    String
   phone       String?
   role        String   @default("user") // "admin" ou "user"
-  pageAccess  Json     @default("{\"crm\":true,\"monday\":false,\"administration\":false}")
+  pageAccess  Json     @default("{\"crm\":true,\"monday\":false,\"administration\":false,\"suivi\":false}")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@map("users")
 }
+
+model Board {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  icon         String?
+  order        Int      @default(0)
+  groups       Json     @default("[]") // Groupes de lignes pliables [{id, name, isCollapsed}]
+  columns      Json     @default("[]") // Configuration des colonnes [{id, title, width, type, options}]
+  gutterWidth  Int      @default(56)
+  accessRights Json     @default("{}") // { userId: boolean }
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  rows         BoardRow[]
+  comments     BoardComment[]
+  attachments  BoardAttachment[]
+
+  @@map("boards")
+}
+
+model BoardRow {
+  id          String   @id @default(cuid())
+  boardId     String
+  board       Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  
+  groupId     String   // ID du groupe auquel appartient la ligne
+  order       Int      // Ordre dans le groupe
+  data        Json     @default("{}") // Données des cellules {columnId: value}
+  selected    Boolean  @default(false) // Pour actions en masse
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  comments    BoardComment[]
+  attachments BoardAttachment[]
+
+  @@map("board_rows")
+  @@index([boardId])
+  @@index([groupId])
+}
+
+model BoardComment {
+  id        String   @id @default(cuid())
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  rowId     String
+  row       BoardRow @relation(fields: [rowId], references: [id], onDelete: Cascade)
+  
+  userId    String   // Auteur du commentaire
+  userName  String   // Stockage dénormalisé pour affichage rapide
+  content   String   @db.Text
+  mentions  Json     @default("[]") // Liste des userIds mentionnés [@userId1, @userId2]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("board_comments")
+  @@index([boardId])
+  @@index([rowId])
+  @@index([userId])
+}
+
+model BoardAttachment {
+  id          String   @id @default(cuid())
+  boardId     String
+  board       Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  rowId       String
+  row         BoardRow @relation(fields: [rowId], references: [id], onDelete: Cascade)
+  
+  fileName    String
+  fileSize    Int
+  fileType    String
+  fileData    String   @db.Text // Base64 encodé (max 5MB)
+  
+  uploadedBy  String   // userId
+  uploadedByName String // Stockage dénormalisé
+  createdAt   DateTime @default(now())
+
+  @@map("board_attachments")
+  @@index([boardId])
+  @@index([rowId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // "mention", "comment", "assignment", "row_update"
+  title     String
+  message   String
+  link      String?  // Lien vers la ressource concernée
+  read      Boolean  @default(false)
+  data      Json?    // Données supplémentaires
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
 

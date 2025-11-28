@@ -154,9 +154,10 @@ export function ProjectProvider({ children }) {
         await apiService.createProject(project);
       }
 
-      // Optionnel: Recharger la liste pour être sûr
-      // const refreshed = await apiService.getProjects();
-      // setProjects(refreshed);
+      // Recharger la liste pour être sûr que l'affichage est synchronisé
+      const refreshed = await apiService.getProjects();
+      setProjects(refreshed);
+      saveAllProjectsToLS(refreshed);
     } catch (err) {
       console.error("API Save failed:", err);
       // Pas grave, on a le backup LS

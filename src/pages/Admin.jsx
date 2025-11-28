@@ -27,7 +27,7 @@ export default function Admin() {
     lastName: '',
     phone: '',
     role: 'user',
-    pageAccess: { crm: true, monday: false, administration: false }
+    pageAccess: { crm: true, monday: false, administration: false, suivi: false }
   });
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -80,7 +80,7 @@ export default function Admin() {
       role: user.role,
       pageAccess: typeof user.pageAccess === 'object'
         ? user.pageAccess
-        : JSON.parse(user.pageAccess || '{"crm":true,"monday":false,"administration":false}')
+        : JSON.parse(user.pageAccess || '{"crm":true,"monday":false,"administration":false,"suivi":false}')
     });
     setShowUserModal(true);
   };
@@ -320,8 +320,8 @@ export default function Admin() {
                         </td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${user.role === 'admin'
-                              ? 'bg-purple-100 text-purple-700'
-                              : 'bg-blue-100 text-blue-700'
+                            ? 'bg-purple-100 text-purple-700'
+                            : 'bg-blue-100 text-blue-700'
                             }`}>
                             {user.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
                           </span>
@@ -490,6 +490,20 @@ export default function Admin() {
                     <div className="flex-1">
                       <div className="font-medium text-slate-900">Monday</div>
                       <div className="text-sm text-slate-500">Accès au module Monday</div>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
+                    <Checkbox
+                      checked={formData.pageAccess.suivi}
+                      onCheckedChange={(checked) => setFormData({
+                        ...formData,
+                        pageAccess: { ...formData.pageAccess, suivi: !!checked }
+                      })}
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium text-slate-900">Suivi de dossiers</div>
+                      <div className="text-sm text-slate-500">Accès au module de suivi des dossiers</div>
                     </div>
                   </label>
 
