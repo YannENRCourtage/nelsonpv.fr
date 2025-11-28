@@ -64,7 +64,44 @@ class ApiService {
     async getContacts() {
         return this.request('/contacts')
     }
+
+    // Users
+    async getUsers() {
+        return this.request('/users')
+    }
+
+    async getUser(id) {
+        return this.request(`/users/${id}`)
+    }
+
+    async createUser(data) {
+        return this.request('/users', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async updateUser(id, data) {
+        return this.request(`/users/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async deleteUser(id) {
+        return this.request(`/users/${id}`, {
+            method: 'DELETE',
+        })
+    }
+
+    async updateUserPassword(id, newPassword) {
+        return this.request(`/users/${id}/password`, {
+            method: 'PUT',
+            body: JSON.stringify({ newPassword }),
+        })
+    }
 }
 
 export const apiService = new ApiService()
 export default apiService
+

@@ -56,7 +56,7 @@ function AppContent() {
             }
           />
           <Route
-            path="monday"
+            path="administration"
             element={
               <PrivateRoute page="admin">
                 <Admin />

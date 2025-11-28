@@ -232,7 +232,7 @@ function Header() {
             <NavLink to="/" end className={({ isActive }) => isActive ? 'nav-link active projects' : 'nav-link projects'}>Projets</NavLink>
             <NavLink to="/crm" className={({ isActive }) => isActive ? 'nav-link active crm' : 'nav-link crm'}>CRM</NavLink>
             {user?.role === 'admin' && (
-              <NavLink to="/monday" className={({ isActive }) => isActive ? 'nav-link active admin' : 'nav-link admin'}>Monday</NavLink>
+              <NavLink to="/administration" className={({ isActive }) => isActive ? 'nav-link active admin' : 'nav-link admin'}>Administration</NavLink>
             )}
           </nav>
         </div>
@@ -253,7 +253,7 @@ function Header() {
             <span className="text-sm text-gray-600 dark:text-gray-300">Bonjour, {user?.name || 'Utilisateur'}</span>
           )}
           {user?.role === 'admin' && !isProjectPage && (
-            <Button variant="ghost" size="icon" onClick={() => navigate('/monday', { state: { openUserManagement: true } })} className="rounded-full">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/administration', { state: { openUserManagement: true } })} className="rounded-full">
               <Users className="h-5 w-5" />
             </Button>
           )}
