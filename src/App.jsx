@@ -59,7 +59,7 @@ function AppContent() {
           <Route
             path="suivi"
             element={
-              <PrivateRoute page="suivi">
+              <PrivateRoute>
                 <SuiviDossiers />
               </PrivateRoute>
             }
