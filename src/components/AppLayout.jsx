@@ -231,7 +231,7 @@ function Header() {
           <nav className="app-header__nav">
             <NavLink to="/" end className={({ isActive }) => isActive ? 'nav-link active projects' : 'nav-link projects'}>Projets</NavLink>
             <NavLink to="/crm" className={({ isActive }) => isActive ? 'nav-link active crm' : 'nav-link crm'}>CRM</NavLink>
-            <NavLink to="/suivi" className={({ isActive }) => isActive ? 'nav-link active suivi' : 'nav-link suivi'}>Suivi de dossiers</NavLink>
+            <NavLink to="/project/new/edit" className={({ isActive }) => isActive ? 'nav-link active editeur' : 'nav-link editeur'}>Editeur de projet</NavLink>
             {user?.role === 'admin' && (
               <NavLink to="/administration" className={({ isActive }) => isActive ? 'nav-link active admin' : 'nav-link admin'}>Administration</NavLink>
             )}

@@ -6,7 +6,6 @@ import ProjectEditor from './pages/ProjectEditor.jsx';
 import Login from './pages/Login.jsx';
 import AppLayout from './components/AppLayout.jsx';
 import Crm from './pages/Crm.jsx';
-import SuiviDossiers from './pages/SuiviDossiers.jsx';
 import Admin from './pages/Admin.jsx';
 import { Toaster } from './components/ui/toaster.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
@@ -56,14 +55,7 @@ function AppContent() {
               </PrivateRoute>
             }
           />
-          <Route
-            path="suivi"
-            element={
-              <PrivateRoute>
-                <SuiviDossiers />
-              </PrivateRoute>
-            }
-          />
+
           <Route
             path="administration"
             element={

@@ -27,7 +27,7 @@ export default function Admin() {
     lastName: '',
     phone: '',
     role: 'user',
-    pageAccess: { crm: true, monday: false, administration: false, suivi: false }
+    pageAccess: { crm: true, monday: false, administration: false, editeur: false }
   });
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -80,7 +80,7 @@ export default function Admin() {
       role: user.role,
       pageAccess: typeof user.pageAccess === 'object'
         ? user.pageAccess
-        : JSON.parse(user.pageAccess || '{"crm":true,"monday":false,"administration":false,"suivi":false}')
+        : JSON.parse(user.pageAccess || '{"crm":true,"monday":false,"administration":false,"editeur":false}')
     });
     setShowUserModal(true);
   };
@@ -495,15 +495,15 @@ export default function Admin() {
 
                   <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
                     <Checkbox
-                      checked={formData.pageAccess.suivi}
+                      checked={formData.pageAccess.editeur}
                       onCheckedChange={(checked) => setFormData({
                         ...formData,
-                        pageAccess: { ...formData.pageAccess, suivi: !!checked }
+                        pageAccess: { ...formData.pageAccess, editeur: !!checked }
                       })}
                     />
                     <div className="flex-1">
-                      <div className="font-medium text-slate-900">Suivi de dossiers</div>
-                      <div className="text-sm text-slate-500">Accès au module de suivi des dossiers</div>
+                      <div className="font-medium text-slate-900">Editeur de projet</div>
+                      <div className="text-sm text-slate-500">Accès à l'éditeur de projet</div>
                     </div>
                   </label>
 
