@@ -101,68 +101,6 @@ class ApiService {
         })
     }
 
-    // Boards
-    async getBoards() {
-        return this.request('/boards')
-    }
-
-    async getBoard(id) {
-        return this.request(`/boards/${id}`)
-    }
-
-    async createBoard(data) {
-        return this.request('/boards', {
-            method: 'POST',
-            body: JSON.stringify(data),
-        })
-    }
-
-    async updateBoard(id, data) {
-        return this.request(`/boards/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify(data),
-        })
-    }
-
-    async deleteBoard(id) {
-        return this.request(`/boards/${id}`, {
-            method: 'DELETE',
-        })
-    }
-
-    // Board Rows
-    async createRow(boardId, data) {
-        return this.request(`/boards/${boardId}/rows`, {
-            method: 'POST',
-            body: JSON.stringify(data),
-        })
-    }
-
-    async updateRow(boardId, rowId, data) {
-        return this.request(`/boards/${boardId}/rows`, {
-            method: 'PUT',
-            body: JSON.stringify({ rowId, ...data }),
-        })
-    }
-
-    async deleteRow(boardId, rowId) {
-        return this.request(`/boards/${boardId}/rows?rowId=${rowId}`, {
-            method: 'DELETE',
-        })
-    }
-
-    // Comments
-    async getComments(boardId, rowId) {
-        return this.request(`/boards/${boardId}/comments?rowId=${rowId}`)
-    }
-
-    async createComment(boardId, data) {
-        return this.request(`/boards/${boardId}/comments`, {
-            method: 'POST',
-            body: JSON.stringify(data),
-        })
-    }
-
     // Notifications
     async getNotifications(userId) {
         return this.request(`/notifications?userId=${userId}`)
