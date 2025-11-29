@@ -423,6 +423,17 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
+              onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setActiveTab('nv65'); }}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'nv65'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+              tabIndex={-1}
+            >
+              ZN / ZV
+            </button>
+            <button
+              type="button"
               onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setActiveTab('owners'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'owners'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
@@ -478,6 +489,16 @@ export default function ProjectEditor() {
             {/* Onglet Street View */}
             <div className={activeTab === 'streetview' ? 'w-full h-full' : 'hidden'}>
               <StreetViewTab project={project} activeTab={activeTab} />
+            </div>
+
+            {/* Onglet ZN / ZV (Neige et Vent) */}
+            <div className={activeTab === 'nv65' ? 'w-full h-full' : 'hidden'}>
+              <iframe
+                src="https://nv65.nmoreaux.com/"
+                className="w-full h-full border-0"
+                title="Zones Neige et Vent NV65"
+                allow="geolocation"
+              />
             </div>
 
             {/* Onglet Propriétaires */}
