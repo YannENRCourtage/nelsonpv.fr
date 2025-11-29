@@ -1101,11 +1101,15 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
       if (project?.address) { const fullAddress = `${project.address}, ${project.zip} ${project.city}`; const event = new CustomEvent('geosearch/search', { detail: { query: fullAddress, keepPopupOpen: false } }); map.getContainer().dispatchEvent(event); }
     };
     const handlePlacePhoto = (e) => { setPhotoToPlace(e.detail); };
+    const handleZoomIn = () => { map.zoomIn(); };
+    const handleZoomOut = () => { map.zoomOut(); };
 
     // Correction du nom de l'événement écouté
     window.addEventListener("map:capture-request", handleCaptureRequest);
     window.addEventListener("map:goto-project-address", goToProjectAddress);
     window.addEventListener("map:place-photo", handlePlacePhoto);
+    window.addEventListener("map:zoom-in", handleZoomIn);
+    window.addEventListener("map:zoom-out", handleZoomOut);
 
     // L'événement de retour "map:capture-done" est géré dans ProjectMap.jsx
 
@@ -1113,6 +1117,8 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
       window.removeEventListener("map:capture-request", handleCaptureRequest);
       window.removeEventListener("map:goto-project-address", goToProjectAddress);
       window.removeEventListener("map:place-photo", handlePlacePhoto);
+      window.removeEventListener("map:zoom-in", handleZoomIn);
+      window.removeEventListener("map:zoom-out", handleZoomOut);
     };
   }, [map, project, onAddressFound, setPhotoToPlace]);
 

@@ -531,12 +531,6 @@ export default function ProjectEditor() {
               />
             </div>
           </div>
-          {activeTab === 'map' && (
-            <Button type="button" onClick={goToProjectAddress} className="absolute top-14 right-3 z-[1000] bg-white text-gray-800 hover:bg-gray-100 shadow-md">
-              <HomeIcon size={16} className="mr-2" />
-              Adresse Projet
-            </Button>
-          )}
         </div>
 
         <aside className="col-span-3 flex flex-col gap-6">

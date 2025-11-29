@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, useMap, ScaleControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import SearchField from './editor/SearchField.jsx';
+import { Button } from './ui/button.jsx';
+import { FolderHeart as HomeIcon } from 'lucide-react';
 
 
 // Standalone MiniMap component for StreetViewTab
@@ -112,6 +115,37 @@ function StreetViewCoverageLayer({ activeTab }) {
     return null;
 }
 
+function ProjectAddressButton({ project }) {
+    const map = useMap();
+
+    const goToProjectAddress = () => {
+        if (project?.gps) {
+            const [lat, lng] = project.gps.split(',').map(Number);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                map.setView([lat, lng], 18, { animate: true });
+                return;
+            }
+        }
+        // Fallback to address search if no GPS
+        if (project?.address) {
+            const fullAddress = `${project.address}, ${project.zip} ${project.city}`;
+            const event = new CustomEvent('geosearch/search', { detail: { query: fullAddress, keepPopupOpen: false } });
+            map.getContainer().dispatchEvent(event);
+        }
+    };
+
+    return (
+        <Button
+            type="button"
+            onClick={goToProjectAddress}
+            className="absolute top-3 right-3 z-[1000] bg-white text-gray-800 hover:bg-gray-100 shadow-md"
+        >
+            <HomeIcon size={16} className="mr-2" />
+            Adresse Projet
+        </Button>
+    );
+}
+
 export default function StreetViewTab({ project, activeTab }) {
     // Set initial center based on project GPS
     const getInitialCenter = () => {
@@ -143,6 +177,12 @@ export default function StreetViewTab({ project, activeTab }) {
 
                 {/* Street View coverage layer */}
                 <StreetViewCoverageLayer activeTab={activeTab} />
+
+                {/* Search Field */}
+                <SearchField />
+
+                {/* Project Address Button */}
+                <ProjectAddressButton project={project} />
 
                 {/* Bottom-left controls - raised by 5mm (approximately 19px) */}
                 <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
