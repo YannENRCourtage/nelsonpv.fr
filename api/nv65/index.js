@@ -24,9 +24,9 @@ export default async function handler(req, res) {
         const html = await response.text();
 
         // Parser le HTML pour extraire les zones
-        // Recherche des patterns "Région NV65 Neige: XX" et "Région NV65 Vent: X"
-        const snowMatch = html.match(/Région NV65 Neige\s*[:：]\s*([A-Za-z0-9]+)/i);
-        const windMatch = html.match(/Région NV65 Vent\s*[:：]\s*([0-9]+)/i);
+        // La structure HTML est : <h4>Région NV65 Neige</h4><div class="circle">A2</div>
+        const snowMatch = html.match(/Région NV65 Neige<\/h4>\s*<div class="circle">([A-Za-z0-9]+)<\/div>/i);
+        const windMatch = html.match(/Région NV65 Vent<\/h4>\s*<div class="circle">([0-9]+)<\/div>/i);
 
         const snowZone = snowMatch ? snowMatch[1].trim() : 'N/A';
         const windZone = windMatch ? windMatch[1].trim() : 'N/A';
