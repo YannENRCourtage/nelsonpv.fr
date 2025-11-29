@@ -229,7 +229,6 @@ function Header() {
             <img src="https://horizons-cdn.hostinger.com/350bc103-daf8-48b5-9a02-076489f36a7d/338201d787e373b4c0b156cb07a5b792.png" alt="NELSON par ENR Courtage" />
           </Link>
           <nav className="app-header__nav">
-            <NavLink to="/" end className={({ isActive }) => isActive ? 'nav-link active projects' : 'nav-link projects'}>Projets</NavLink>
             <NavLink to="/crm" className={({ isActive }) => isActive ? 'nav-link active crm' : 'nav-link crm'}>CRM</NavLink>
             <NavLink to="/project/new/edit" className={({ isActive }) => isActive ? 'nav-link active editeur' : 'nav-link editeur'}>Editeur de projet</NavLink>
             {user?.role === 'admin' && (
