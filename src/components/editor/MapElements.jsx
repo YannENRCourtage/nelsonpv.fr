@@ -907,9 +907,9 @@ function MiniMap() {
   return <div ref={miniMapContainerRef} className="w-40 h-32 border-2 border-border rounded-lg shadow-lg overflow-hidden bg-card" />;
 }
 
-function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
+function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, project }) {
   const map = useMap();
-  const [info, setInfo] = useState({ lat: 0, lng: 0, alt: '...', address: '...', parcel: '...' });
+  const [info, setInfo] = useState({ lat: 0, lng: 0, alt: '...', address: '...', parcel: '...', snowZone: '...', windZone: '...' });
   const [loading, setLoading] = useState(false);
 
   // Initialize target at center if not set
@@ -939,12 +939,12 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
     // Affiche "..." pendant le chargement, puis "N/A" si la clé est manquante/invalide.
 
     const updateInfo = async () => {
-      setInfo(prev => ({ ...prev, lat: targetPos.lat, lng: targetPos.lng, alt: '...', address: '...', parcel: '...' }));
+      setInfo(prev => ({ ...prev, lat: targetPos.lat, lng: targetPos.lng, alt: '...', address: '...', parcel: '...', snowZone: '...', windZone: '...' }));
       setLoading(true);
 
       try {
         // Lancer toutes les requêtes en parallèle pour optimiser la vitesse
-        const [altRes, addrRes, parcRes] = await Promise.allSettled([
+        const [altRes, addrRes, parcRes, nv65Res] = await Promise.allSettled([
           fetch(`https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json?resource=ign_rge_alti_wld&lon=${targetPos.lng}&lat=${targetPos.lat}&zonly=false`)
             .then(r => r.json()),
           // Adresse : API Adresse
@@ -952,7 +952,11 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
             .then(r => r.json()),
           // Parcelle cadastrale : API Carto IGN
           fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom={"type":"Point","coordinates":[${targetPos.lng},${targetPos.lat}]}`)
-            .then(r => r.json())
+            .then(r => r.json()),
+          // Zones NV65 : API proxy
+          project?.zip
+            ? fetch(`/api/nv65?cp=${project.zip}`).then(r => r.json())
+            : Promise.resolve({ snowZone: 'N/A', windZone: 'N/A' })
         ]);
 
         // Traiter l'altitude
@@ -971,7 +975,12 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
           ? `${parcRes.value.features[0].properties.section} ${parcRes.value.features[0].properties.numero}`
           : 'N/A';
 
-        setInfo(prev => ({ ...prev, alt, address, parcel }));
+        // Traiter les zones NV65
+        const { snowZone, windZone } = nv65Res.status === 'fulfilled' && nv65Res.value
+          ? nv65Res.value
+          : { snowZone: 'N/A', windZone: 'N/A' };
+
+        setInfo(prev => ({ ...prev, alt, address, parcel, snowZone, windZone }));
       } catch (e) {
         console.error("Info fetch error", e);
       } finally {
@@ -1040,6 +1049,10 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
       <div className="flex justify-between items-center border-t pt-1 text-gray-600">
         <span className="flex items-center gap-1" title="Altitude">⛰️ {info.alt}</span>
         <span className="flex items-center gap-1" title="Parcelle">🏷️ {info.parcel}</span>
+      </div>
+      <div className="flex justify-between items-center border-t pt-1 text-gray-600">
+        <span className="flex items-center gap-1" title="Zone neige NV65">❄️ {info.snowZone}</span>
+        <span className="flex items-center gap-1" title="Zone vent NV65">💨 {info.windZone}</span>
       </div>
     </div>
   );
@@ -1465,7 +1478,7 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
           <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
             <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '30px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
               <div className="flex flex-col items-start gap-2">
-                <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} hoverInfo={hoverInfo} />
+                <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} hoverInfo={hoverInfo} project={project} />
                 <MiniMap />
                 <ScaleControl position="bottomleft" metric={true} imperial={false} />
               </div>
