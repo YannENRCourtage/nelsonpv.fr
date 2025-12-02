@@ -904,7 +904,7 @@ function MiniMap() {
     miniMapRef.current = miniMap;
     return () => { parentMap.off('move', updateMiniMap); parentMap.off('zoom', updateMiniMap); miniMap.remove(); miniMapRef.current = null; };
   }, [parentMap]);
-  return <div ref={miniMapContainerRef} className="w-40 h-32 border-2 border-border rounded-lg shadow-lg overflow-hidden bg-card" />;
+  return <div ref={miniMapContainerRef} className="w-40 h-32 border-2 border-border rounded-lg shadow-lg overflow-hidden bg-card hide-on-capture" />;
 }
 
 function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
