@@ -640,7 +640,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 // ====================================================================
 const LAYERS = {
   // ========== FONDS DE CARTE ==========
-  geoportailSat: { name: "Géoportail", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0, maxNativeZoom: 20, maxZoom: 22 },
+  geoportailSat: { name: "Géoportail", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0, maxNativeZoom: 19, maxZoom: 22 },
   googleSat: { name: "Google Satellite", url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0, maxZoom: 22 },
   google: { name: "Google", url: "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0, maxZoom: 22 },
   ignPlan: { name: "IGN - Plan IGN", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0, maxNativeZoom: 18, maxZoom: 22 },
@@ -677,32 +677,32 @@ const LAYERS = {
     opacity: 0.7
   },
   "ZNIEFF 1": {
-    url: "https://ws.carmencarto.fr/WMS/119/fxx_inpn?",
-    layers: "Znieff1",
+    url: "https://data.geopf.fr/wms-v/ows?SERVICE=WMS&",
+    layers: "PROTECTEDAREAS.ZNIEFF1",
     format: "image/png",
     transparent: true,
     attribution: "INPN",
     isOverlay: true
   },
   "ZNIEFF 2": {
-    url: "https://ws.carmencarto.fr/WMS/119/fxx_inpn?",
-    layers: "Znieff2",
+    url: "https://data.geopf.fr/wms-v/ows?SERVICE=WMS&",
+    layers: "PROTECTEDAREAS.ZNIEFF2",
     format: "image/png",
     transparent: true,
     attribution: "INPN",
     isOverlay: true
   },
   "Natura 2000 Oiseaux": {
-    url: "https://ws.carmencarto.fr/WMS/119/fxx_inpn?",
-    layers: "Zones_de_protection_speciale",
+    url: "https://data.geopf.fr/wms-v/ows?SERVICE=WMS&",
+    layers: "PROTECTEDAREAS.ZPS",
     format: "image/png",
     transparent: true,
     attribution: "INPN",
     isOverlay: true
   },
   "Natura 2000 Habitat": {
-    url: "https://ws.carmencarto.fr/WMS/119/fxx_inpn?",
-    layers: "Sites_d_importance_communautaire",
+    url: "https://data.geopf.fr/wms-v/ows?SERVICE=WMS&",
+    layers: "PROTECTEDAREAS.SIC",
     format: "image/png",
     transparent: true,
     attribution: "INPN",
@@ -1076,6 +1076,7 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
 
         const canvas = await html2canvas(map.getContainer(), {
           useCORS: true, logging: false,
+          scrollX: 0, scrollY: 0, // Fix pour le décalage des éléments
 
           // ====================================================================
           // MODIFICATION ICI : CORRECTION DU BUG DE DÉCALAGE + GESTION DES CONTRÔLES
@@ -1083,7 +1084,31 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
           onclone: (doc) => {
             // Cacher les contrôles ayant la classe "hide-on-capture"
             const controlsToHide = doc.querySelectorAll('.hide-on-capture');
-            controlsToHide.forEach(c => c.style.display = 'none');
+            controlsToHide.forEach(c => {
+              c.style.display = 'none !important';
+              c.style.visibility = 'hidden !important';
+              c.style.opacity = '0 !important';
+            });
+
+            // Cacher spécifiquement la barre de recherche (leaflet-geosearch)
+            // On cible plus large pour être sûr de l'avoir
+            const searchControls = doc.querySelectorAll('.leaflet-control-geosearch, .geosearch, form.leaflet-control');
+            searchControls.forEach(c => c.style.display = 'none !important');
+
+            // Cacher aussi les inputs de type text dans la map (souvent la barre de recherche)
+            const inputs = doc.querySelectorAll('.leaflet-control-container input[type="text"]');
+            inputs.forEach(i => {
+              const parent = i.closest('.leaflet-control');
+              if (parent) parent.style.display = 'none !important';
+            });
+
+            // Cacher les contrôles de dessin (leaflet-draw ou custom)
+            const drawControls = doc.querySelectorAll('.leaflet-draw, .leaflet-draw-toolbar');
+            drawControls.forEach(c => c.style.display = 'none !important');
+
+            // Cacher les contrôles de zoom par défaut s'ils existent
+            const zoomControls = doc.querySelectorAll('.leaflet-control-zoom');
+            zoomControls.forEach(c => c.style.display = 'none !important');
           }
           // ====================================================================
           // FIN DE LA MODIFICATION
@@ -1450,6 +1475,7 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
           style={{ height: "100%", width: "100%" }}
           doubleClickZoom={false}
           zoomControl={false}
+          preferCanvas={true}
           className={mode === 'delete' ? 'cursor-pointer' : (symbolToPlace || photoToPlace ? 'cursor-crosshair' : 'cursor-default')}
           placeholder={<div className="h-full w-full bg-gray-100 animate-pulse" />}
         >

@@ -29,7 +29,7 @@ function MapControls({ project }) {
   };
 
   return (
-    <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2">
+    <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2 items-end hide-on-capture">
       <Button
         type="button"
         onClick={goToProjectAddress}
@@ -39,21 +39,23 @@ function MapControls({ project }) {
         Adresse Projet
       </Button>
 
-      {/* Boutons Zoom */}
-      <div className="flex flex-col gap-0 shadow-md rounded-md overflow-hidden">
+      {/* Boutons Zoom style Leaflet */}
+      <div className="flex flex-col bg-white rounded-md shadow-md border-2 border-black/20 overflow-hidden w-[34px]">
         <button
           type="button"
           onClick={handleZoomIn}
-          className="bg-white text-gray-800 hover:bg-gray-100 w-10 h-10 flex items-center justify-center font-bold text-xl border-b border-gray-200"
+          className="w-full h-[30px] flex items-center justify-center text-black hover:bg-[#f4f4f4] font-bold text-xl border-b border-[#ccc] outline-none"
           title="Zoomer"
+          style={{ lineHeight: '30px' }}
         >
           +
         </button>
         <button
           type="button"
           onClick={handleZoomOut}
-          className="bg-white text-gray-800 hover:bg-gray-100 w-10 h-10 flex items-center justify-center font-bold text-xl"
+          className="w-full h-[30px] flex items-center justify-center text-black hover:bg-[#f4f4f4] font-bold text-xl outline-none"
           title="Dézoomer"
+          style={{ lineHeight: '30px' }}
         >
           −
         </button>

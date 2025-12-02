@@ -28,8 +28,44 @@ export default async function handler(req, res) {
                 const project = await prisma.project.create({
                     data: req.body
                 })
+
+                // Create or update contact from project data
+                try {
+                    const contactData = {
+                        name: `${req.body.name || ''} ${req.body.firstName || ''}`.trim() || 'Sans nom',
+                        company: req.body.projectSize || 'N/A',
+                        email: req.body.email || '',
+                        phone: req.body.phone || '',
+                        city: req.body.city || '',
+                        status: req.body.status || 'Nouveau',
+                        color: req.body.status === 'Terminé' ? 'bg-green-500' :
+                            req.body.status === 'En cours' ? 'bg-blue-500' : 'bg-yellow-500',
+                        projectId: project.id
+                    }
+
+                    // Check if contact with this projectId already exists
+                    const existingContact = await prisma.contact.findFirst({
+                        where: { projectId: project.id }
+                    })
+
+                    if (existingContact) {
+                        await prisma.contact.update({
+                            where: { id: existingContact.id },
+                            data: contactData
+                        })
+                    } else {
+                        await prisma.contact.create({
+                            data: contactData
+                        })
+                    }
+                } catch (contactError) {
+                    console.error('Error creating/updating contact:', contactError)
+                    // Don't fail the project creation if contact fails
+                }
+
                 return res.status(201).json(project)
             }
+
 
             default:
                 return res.status(405).json({ error: 'Method not allowed' })

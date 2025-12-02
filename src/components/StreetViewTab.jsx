@@ -146,6 +146,45 @@ function ProjectAddressButton({ project }) {
     );
 }
 
+function CustomZoomControl() {
+    const map = useMap();
+
+    const handleZoomIn = (e) => {
+        e.preventDefault();
+        map.zoomIn();
+    };
+
+    const handleZoomOut = (e) => {
+        e.preventDefault();
+        map.zoomOut();
+    };
+
+    return (
+        <div className="absolute top-16 right-3 z-[1000] flex flex-col gap-2 items-end">
+            <div className="flex flex-col bg-white rounded-md shadow-md border-2 border-black/20 overflow-hidden w-[34px]">
+                <button
+                    type="button"
+                    onClick={handleZoomIn}
+                    className="w-full h-[30px] flex items-center justify-center text-black hover:bg-[#f4f4f4] font-bold text-xl border-b border-[#ccc] outline-none"
+                    title="Zoomer"
+                    style={{ lineHeight: '30px' }}
+                >
+                    +
+                </button>
+                <button
+                    type="button"
+                    onClick={handleZoomOut}
+                    className="w-full h-[30px] flex items-center justify-center text-black hover:bg-[#f4f4f4] font-bold text-xl outline-none"
+                    title="Dézoomer"
+                    style={{ lineHeight: '30px' }}
+                >
+                    −
+                </button>
+            </div>
+        </div>
+    );
+}
+
 export default function StreetViewTab({ project, activeTab }) {
     // Set initial center based on project GPS
     const getInitialCenter = () => {
@@ -165,7 +204,7 @@ export default function StreetViewTab({ project, activeTab }) {
                 zoom={15}
                 style={{ height: "100%", width: "100%" }}
                 doubleClickZoom={false}
-                zoomControl={true}
+                zoomControl={false}
             >
                 {/* Google Maps hybrid layer (satellite + labels) */}
                 <TileLayer
@@ -181,8 +220,11 @@ export default function StreetViewTab({ project, activeTab }) {
                 {/* Search Field */}
                 <SearchField />
 
-                {/* Project Address Button */}
-                <ProjectAddressButton project={project} />
+                {/* Project Address Button - Removed */}
+                {/* <ProjectAddressButton project={project} /> */}
+
+                {/* Custom Zoom Control - Removed */}
+                {/* <CustomZoomControl /> */}
 
                 {/* Bottom-left controls - raised by 5mm (approximately 19px) */}
                 <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>

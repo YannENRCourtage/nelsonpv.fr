@@ -27,7 +27,7 @@ function SymbolBtn({ icon, label, type, emoji, onSelect, isSelected }) {
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        e.currentTarget.blur(); // Prevent auto-scroll on focus
+        // e.currentTarget.blur(); // Removed to prevent scroll jump
         onSelect({ type, label, emoji });
       }}
       className={cn(
@@ -234,7 +234,7 @@ export default function ProjectEditor() {
     }
 
     // Liste des onglets utilisant des iframes externes
-    const iframeTabs = ['owners', 'itinerary', 'capareseau', 'geoportail', 'enedis'];
+    const iframeTabs = ['owners', 'capareseau', 'terravisu', 'itinerary', 'geoportail', 'enedis'];
     if (iframeTabs.includes(activeTab)) {
       await captureWithDisplayMedia(slotIndex);
       return;
@@ -385,12 +385,12 @@ export default function ProjectEditor() {
       </div>
 
       <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-9 relative">
+        <div className="col-span-9 relative flex flex-col">
           {/* Tab Bar */}
           <div className="flex gap-2 border-b border-gray-700">
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setActiveTab('map'); }}
+              onClick={(e) => { e.preventDefault(); setActiveTab('map'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'map'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -401,7 +401,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setActiveTab('enedis'); }}
+              onClick={(e) => { e.preventDefault(); setActiveTab('enedis'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'enedis'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -412,7 +412,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setActiveTab('streetview'); }}
+              onClick={(e) => { e.preventDefault(); setActiveTab('streetview'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'streetview'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -423,7 +423,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setActiveTab('nv65'); }}
+              onClick={(e) => { e.preventDefault(); setActiveTab('nv65'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'nv65'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -434,7 +434,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setActiveTab('owners'); }}
+              onClick={(e) => { e.preventDefault(); setActiveTab('owners'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'owners'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -445,18 +445,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setActiveTab('itinerary'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'itinerary'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              Itinéraire
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.currentTarget.blur(); setActiveTab('capareseau'); }}
+              onClick={(e) => { e.preventDefault(); setActiveTab('capareseau'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'capareseau'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -465,9 +454,31 @@ export default function ProjectEditor() {
             >
               Caparéseau
             </button>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); setActiveTab('terravisu'); }}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'terravisu'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+              tabIndex={-1}
+            >
+              TERRAVISU
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); setActiveTab('itinerary'); }}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'itinerary'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+              tabIndex={-1}
+            >
+              Itinéraire
+            </button>
           </div>
 
-          <div className="rounded-2xl bg-white shadow-sm overflow-hidden aspect-video">
+          <div className="rounded-2xl bg-white shadow-sm overflow-hidden flex-1">
             {/* Onglet Carte */}
             <div className={activeTab === 'map' ? 'w-full h-full' : 'hidden'}>
               <MapEditor
@@ -511,6 +522,26 @@ export default function ProjectEditor() {
               />
             </div>
 
+            {/* Onglet Caparéseau */}
+            <div className={activeTab === 'capareseau' ? 'w-full h-full' : 'hidden'}>
+              <iframe
+                src="https://www.capareseau.fr/"
+                className="w-full h-full border-0"
+                title="Caparéseau"
+                allow="geolocation"
+              />
+            </div>
+
+            {/* Onglet TERRAVISU */}
+            <div className={activeTab === 'terravisu' ? 'w-full h-full' : 'hidden'}>
+              <iframe
+                src="https://demo-terravisu-territoires.makina-corpus.com/view/politiquespubliques#map=5.53%2F46.412%2F2.394&layers=cd68490d52c923f94830011da39cff36&basemap=8"
+                className="w-full h-full border-0"
+                title="TERRAVISU"
+                allow="geolocation"
+              />
+            </div>
+
             {/* Onglet Itinéraire */}
             <div className={activeTab === 'itinerary' ? 'w-full h-full' : 'hidden'}>
               <iframe
@@ -521,15 +552,6 @@ export default function ProjectEditor() {
               />
             </div>
 
-            {/* Onglet Caparéseau */}
-            <div className={activeTab === 'capareseau' ? 'w-full h-full' : 'hidden'}>
-              <iframe
-                src="https://www.capareseau.fr/"
-                className="w-full h-full border-0"
-                title="Caparéseau"
-                allow="geolocation"
-              />
-            </div>
           </div>
         </div>
 
@@ -541,7 +563,7 @@ export default function ProjectEditor() {
               <h3 className="text-lg font-semibold">Capturer la vue</h3>
               <Button
                 type="button"
-                onClick={(e) => { e.currentTarget.blur(); captureNow(); }}
+                onClick={(e) => { captureNow(); }}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={activeTab !== 'map'}
                 title={activeTab !== 'map' ? "Captures disponibles uniquement sur l'onglet Carte" : "Prendre une capture"}
@@ -616,6 +638,6 @@ export default function ProjectEditor() {
           })}
         </div>
       </div>
-    </div>
+    </div >
   );
 }

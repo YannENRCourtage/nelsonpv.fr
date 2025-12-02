@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjects } from '@/contexts/ProjectContext.jsx';
 import { generatePdfForProject } from '@/components/AppLayout.jsx';
+import { apiService } from '@/services/api.js';
+import { toast } from '@/components/ui/use-toast.js';
 import {
   LayoutDashboard, Users, TrendingUp, CheckSquare, Calendar, FileText,
   Plus, Search, Euro, Settings, LogOut, X, Edit, Trash2, Save, Phone,
@@ -22,39 +24,42 @@ export default function Crm() {
     color: 'bg-gradient-to-br from-blue-500 to-purple-600'
   });
 
-  // Synchroniser les contacts depuis les projets
-  const [contacts, setContacts] = useState(() => {
-    const projectContacts = projects.map(project => ({
-      id: project.id,
-      name: `${project.name || ''} ${project.firstName || ''}`.trim() || 'Sans nom',
-      company: project.projectSize || 'N/A',
-      email: project.email || '',
-      phone: project.phone || '',
-      city: project.city || '',
-      status: project.status || 'Nouveau',
-      color: project.status === 'Terminé' ? 'bg-green-500' : project.status === 'En cours' ? 'bg-blue-500' : 'bg-yellow-500',
-      projectId: project.id,
-      hasProject: true
-    }));
-    return projectContacts;
-  });
+  // Fetch contacts from API
+  const [contacts, setContacts] = useState([]);
+  const [loadingContacts, setLoadingContacts] = useState(true);
 
-  // Mettre à jour les contacts quand les projets changent
+  // Fetch contacts from API on mount
   React.useEffect(() => {
-    const projectContacts = projects.map(project => ({
-      id: project.id,
-      name: `${project.name || ''} ${project.firstName || ''}`.trim() || 'Sans nom',
-      company: project.projectSize || 'N/A',
-      email: project.email || '',
-      phone: project.phone || '',
-      city: project.city || '',
-      status: project.status || 'Nouveau',
-      color: project.status === 'Terminé' ? 'bg-green-500' : project.status === 'En cours' ? 'bg-blue-500' : 'bg-yellow-500',
-      projectId: project.id,
-      hasProject: true
-    }));
-    setContacts(projectContacts);
-  }, [projects]);
+    const fetchContacts = async () => {
+      setLoadingContacts(true);
+      try {
+        const apiContacts = await apiService.getContacts();
+        setContacts(apiContacts || []);
+      } catch (error) {
+        console.error('Failed to fetch contacts:', error);
+        // Fallback to empty array if API fails
+        setContacts([]);
+      } finally {
+        setLoadingContacts(false);
+      }
+    };
+    fetchContacts();
+  }, []);
+
+  // Refresh contacts when projects are updated
+  React.useEffect(() => {
+    const handleProjectsUpdated = async () => {
+      try {
+        const apiContacts = await apiService.getContacts();
+        setContacts(apiContacts || []);
+      } catch (error) {
+        console.error('Failed to refresh contacts:', error);
+      }
+    };
+
+    window.addEventListener('projectsUpdated', handleProjectsUpdated);
+    return () => window.removeEventListener('projectsUpdated', handleProjectsUpdated);
+  }, []);
 
 
 
@@ -239,18 +244,33 @@ export default function Crm() {
     setShowContactModal(true);
   };
 
-  const handleSaveContact = () => {
-    if (editingContact.id && contacts.find(c => c.id === editingContact.id)) {
-      setContacts(contacts.map(c => c.id === editingContact.id ? editingContact : c));
-    } else {
-      setContacts([...contacts, editingContact]);
+  const handleSaveContact = async () => {
+    try {
+      if (editingContact.id && contacts.find(c => c.id === editingContact.id)) {
+        // Update existing contact
+        await apiService.updateContact(editingContact.id, editingContact);
+        setContacts(contacts.map(c => c.id === editingContact.id ? editingContact : c));
+      } else {
+        // Create new contact
+        const newContact = await apiService.createContact(editingContact);
+        setContacts([...contacts, newContact]);
+      }
+      setShowContactModal(false);
+      setEditingContact(null);
+    } catch (error) {
+      console.error('Failed to save contact:', error);
+      toast({ title: "Erreur", description: "Impossible de sauvegarder le contact.", variant: "destructive" });
     }
-    setShowContactModal(false);
-    setEditingContact(null);
   };
 
-  const handleDeleteContact = (id) => {
-    setContacts(contacts.filter(c => c.id !== id));
+  const handleDeleteContact = async (id) => {
+    try {
+      await apiService.deleteContact(id);
+      setContacts(contacts.filter(c => c.id !== id));
+    } catch (error) {
+      console.error('Failed to delete contact:', error);
+      toast({ title: "Erreur", description: "Impossible de supprimer le contact.", variant: "destructive" });
+    }
   };
 
   // Fonctions de gestion des opportunités

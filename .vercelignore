@@ -1,0 +1,6 @@
+node_modules
+.env*.local
+*.xlsx
+*.geojson
+postes-de-distribution-publique-postes-htabt.json
+postes-de-distribution-publique-postes-htabt@opendata-greenalp-agenceore.json

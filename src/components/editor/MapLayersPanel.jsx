@@ -83,7 +83,8 @@ const baseLayers = {
         name: 'IGN-F/Géoportail - Satellite',
         url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
         attribution: 'IGN-F/Géoportail',
-        maxZoom: 21,
+        maxNativeZoom: 19,
+        maxZoom: 22,
     },
     ign_scan25: {
         name: 'IGN-F - Cartes topographiques',
@@ -627,7 +628,7 @@ const MapLayersPanel = ({ map }) => {
         });
     };
     return (
-        <Card className="absolute bottom-4 right-4 z-[1000] w-80 max-h-[80vh] overflow-y-auto rounded-2xl shadow-lg bg-white/95 backdrop-blur-sm">
+        <Card className="absolute bottom-4 right-4 z-[1000] w-80 max-h-[80vh] overflow-y-auto rounded-2xl shadow-lg bg-white/95 backdrop-blur-sm hide-on-capture">
             <CardHeader className="flex flex-row items-center justify-between pb-2 sticky top-0 bg-white/95 backdrop-blur-sm z-10">
                 <CardTitle className="text-lg font-semibold">Fonds de carte & Calques</CardTitle>
                 <LayersIcon size={20} className="text-gray-600" />

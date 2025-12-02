@@ -34,8 +34,45 @@ export default async function handler(req, res) {
                     where: { id },
                     data: req.body
                 })
+
+                // Update or create contact from project data
+                try {
+                    const contactData = {
+                        name: `${req.body.name || ''} ${req.body.firstName || ''}`.trim() || 'Sans nom',
+                        company: req.body.projectSize || 'N/A',
+                        email: req.body.email || '',
+                        phone: req.body.phone || '',
+                        city: req.body.city || '',
+                        status: req.body.status || 'Nouveau',
+                        color: req.body.status === 'Terminé' ? 'bg-green-500' :
+                            req.body.status === 'En cours' ? 'bg-blue-500' : 'bg-yellow-500',
+                        projectId: id
+                    }
+
+                    // Find existing contact by projectId
+                    const existingContact = await prisma.contact.findFirst({
+                        where: { projectId: id }
+                    })
+
+                    if (existingContact) {
+                        await prisma.contact.update({
+                            where: { id: existingContact.id },
+                            data: contactData
+                        })
+                    } else {
+                        // Create new contact if it doesn't exist
+                        await prisma.contact.create({
+                            data: contactData
+                        })
+                    }
+                } catch (contactError) {
+                    console.error('Error updating contact:', contactError)
+                    // Don't fail the project update if contact fails
+                }
+
                 return res.status(200).json(project)
             }
+
 
             case 'DELETE': {
                 await prisma.project.delete({

@@ -65,6 +65,31 @@ class ApiService {
         return this.request('/contacts')
     }
 
+    async getContact(id) {
+        return this.request(`/contacts/${id}`)
+    }
+
+    async createContact(data) {
+        return this.request('/contacts', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async updateContact(id, data) {
+        return this.request(`/contacts/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        })
+    }
+
+    async deleteContact(id) {
+        return this.request(`/contacts/${id}`, {
+            method: 'DELETE',
+        })
+    }
+
+
     // Users
     async getUsers() {
         return this.request('/users')

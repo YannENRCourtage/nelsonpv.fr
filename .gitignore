@@ -1,2 +1,4 @@
 node_modules
 public/postes-de-distribution-publique-postes-htabt.geojson
+.vercel
+.env*.local
