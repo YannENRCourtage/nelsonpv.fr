@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import bcrypt from 'bcryptjs';
 import { apiService } from '../services/api.js';
 
 const AuthContext = createContext(null);
