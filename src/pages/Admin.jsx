@@ -67,7 +67,7 @@ export default function Admin() {
       lastName: '',
       phone: '',
       role: 'user',
-      pageAccess: { crm: true, monday: false, administration: false }
+      pageAccess: { crm: false, administration: false, editeur: true }
     });
     setShowUserModal(true);
   };
@@ -83,7 +83,7 @@ export default function Admin() {
       role: user.role,
       pageAccess: typeof user.pageAccess === 'object'
         ? user.pageAccess
-        : JSON.parse(user.pageAccess || '{"crm":true,"monday":false,"administration":false,"editeur":false}')
+        : JSON.parse(user.pageAccess || '{"crm":false,"administration":false,"editeur":true}')
     });
     setShowUserModal(true);
   };
@@ -334,13 +334,13 @@ export default function Admin() {
                             {access.crm && (
                               <span className="px-2 py-1 rounded bg-green-100 text-green-700 text-xs font-medium">CRM</span>
                             )}
-                            {access.monday && (
-                              <span className="px-2 py-1 rounded bg-orange-100 text-orange-700 text-xs font-medium">Monday</span>
+                            {access.editeur && (
+                              <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-medium">Éditeur</span>
                             )}
                             {access.administration && (
                               <span className="px-2 py-1 rounded bg-red-100 text-red-700 text-xs font-medium">Admin</span>
                             )}
-                            {!access.crm && !access.monday && !access.administration && (
+                            {!access.crm && !access.editeur && !access.administration && (
                               <span className="text-slate-400 text-xs">Aucun</span>
                             )}
                           </div>
@@ -478,12 +478,14 @@ export default function Admin() {
                 <label className="block text-sm font-medium text-slate-700 mb-3">Droits d'accès</label>
                 <div className="space-y-2">
                   <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
-                    <Checkbox
-                      checked={formData.pageAccess.crm}
-                      onCheckedChange={(checked) => setFormData({
+                    <input
+                      type="checkbox"
+                      checked={formData.pageAccess.crm || false}
+                      onChange={(e) => setFormData({
                         ...formData,
-                        pageAccess: { ...formData.pageAccess, crm: !!checked }
+                        pageAccess: { ...formData.pageAccess, crm: e.target.checked }
                       })}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                     />
                     <div className="flex-1">
                       <div className="font-medium text-slate-900">CRM</div>
@@ -492,40 +494,30 @@ export default function Admin() {
                   </label>
 
                   <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
-                    <Checkbox
-                      checked={formData.pageAccess.monday}
-                      onCheckedChange={(checked) => setFormData({
+                    <input
+                      type="checkbox"
+                      checked={formData.pageAccess.editeur || false}
+                      onChange={(e) => setFormData({
                         ...formData,
-                        pageAccess: { ...formData.pageAccess, monday: !!checked }
+                        pageAccess: { ...formData.pageAccess, editeur: e.target.checked }
                       })}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                     />
                     <div className="flex-1">
-                      <div className="font-medium text-slate-900">Monday</div>
-                      <div className="text-sm text-slate-500">Accès au module Monday</div>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
-                    <Checkbox
-                      checked={formData.pageAccess.editeur}
-                      onCheckedChange={(checked) => setFormData({
-                        ...formData,
-                        pageAccess: { ...formData.pageAccess, editeur: !!checked }
-                      })}
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium text-slate-900">Editeur de projet</div>
+                      <div className="font-medium text-slate-900">Éditeur de projet</div>
                       <div className="text-sm text-slate-500">Accès à l'éditeur de projet</div>
                     </div>
                   </label>
 
                   <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
-                    <Checkbox
-                      checked={formData.pageAccess.administration}
-                      onCheckedChange={(checked) => setFormData({
+                    <input
+                      type="checkbox"
+                      checked={formData.pageAccess.administration || false}
+                      onChange={(e) => setFormData({
                         ...formData,
-                        pageAccess: { ...formData.pageAccess, administration: !!checked }
+                        pageAccess: { ...formData.pageAccess, administration: e.target.checked }
                       })}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                     />
                     <div className="flex-1">
                       <div className="font-medium text-slate-900">Administration</div>

@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import bcrypt from 'bcryptjs';
+import { apiService } from '../services/api.js';
 
 const AuthContext = createContext(null);
 
@@ -26,17 +28,17 @@ const defaultUsers = {
 };
 
 function loadUsers() {
-    try {
-        const storedUsers = localStorage.getItem(LS_USERS_KEY);
-        if (storedUsers) {
-            return JSON.parse(storedUsers);
-        }
-    } catch (e) {
-        console.error("Failed to load users from localStorage", e);
+  try {
+    const storedUsers = localStorage.getItem(LS_USERS_KEY);
+    if (storedUsers) {
+      return JSON.parse(storedUsers);
     }
-    // Set default users if none are stored
-    localStorage.setItem(LS_USERS_KEY, JSON.stringify(defaultUsers));
-    return defaultUsers;
+  } catch (e) {
+    console.error("Failed to load users from localStorage", e);
+  }
+  // Set default users if none are stored
+  localStorage.setItem(LS_USERS_KEY, JSON.stringify(defaultUsers));
+  return defaultUsers;
 }
 
 
@@ -62,7 +64,29 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = (email, password) => {
+  const login = async (email, password) => {
+    try {
+      // Try API authentication first
+      const response = await fetch(`${apiService.baseURL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+        setIsAuthenticated(true);
+        sessionStorage.setItem('user', JSON.stringify(userData));
+        return userData;
+      }
+    } catch (error) {
+      console.log('API auth failed, trying fallback localStorage auth');
+    }
+
+    // Fallback to localStorage (for backwards compatibility)
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         const allUsers = loadUsers();
@@ -73,8 +97,8 @@ export const AuthProvider = ({ children }) => {
           setIsAuthenticated(true);
           try {
             sessionStorage.setItem('user', JSON.stringify(userData));
-          } catch(e) {
-             console.error("Failed to write auth status to sessionStorage", e);
+          } catch (e) {
+            console.error("Failed to write auth status to sessionStorage", e);
           }
           resolve(userData);
         } else {
@@ -87,16 +111,16 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
-     try {
-        sessionStorage.removeItem('user');
-     } catch(e) {
-        console.error("Failed to remove auth status from sessionStorage", e);
-     }
+    try {
+      sessionStorage.removeItem('user');
+    } catch (e) {
+      console.error("Failed to remove auth status from sessionStorage", e);
+    }
   };
-  
+
   const updateUserList = (newUsers) => {
-      setUsers(newUsers);
-      localStorage.setItem(LS_USERS_KEY, JSON.stringify(newUsers));
+    setUsers(newUsers);
+    localStorage.setItem(LS_USERS_KEY, JSON.stringify(newUsers));
   }
 
   const value = {
