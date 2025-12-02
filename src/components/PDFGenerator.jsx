@@ -123,10 +123,6 @@ const PDFGenerator = ({ project }) => {
               <span style={valueStyle}>{formatProjectName()}</span>
             </div>
             <div style={fieldStyle}>
-              <span style={labelStyle}>Type de projet :</span>
-              <span style={valueStyle}>{p.projectType || 'N/A'}</span>
-            </div>
-            <div style={fieldStyle}>
               <span style={labelStyle}>Client :</span>
               <span style={valueStyle}>{formatClientName()}</span>
             </div>
@@ -145,10 +141,6 @@ const PDFGenerator = ({ project }) => {
             <div style={fieldStyle}>
               <span style={labelStyle}>Téléphone client :</span>
               <span style={valueStyle}>{p.phone || 'N/A'}</span>
-            </div>
-            <div style={fieldStyle}>
-              <span style={labelStyle}>Parcelle cadastrale :</span>
-              <span style={valueStyle}>{p.parcel || 'N/A'}</span>
             </div>
             <div style={fieldStyle}>
               <span style={labelStyle}>GPS :</span>
