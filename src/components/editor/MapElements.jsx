@@ -1082,33 +1082,79 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
           // MODIFICATION ICI : CORRECTION DU BUG DE DÉCALAGE + GESTION DES CONTRÔLES
           // ====================================================================
           onclone: (doc) => {
-            // Cacher les contrôles ayant la classe "hide-on-capture"
+            // 1. Cacher TOUS les éléments ayant la classe "hide-on-capture"
             const controlsToHide = doc.querySelectorAll('.hide-on-capture');
             controlsToHide.forEach(c => {
-              c.style.display = 'none !important';
-              c.style.visibility = 'hidden !important';
-              c.style.opacity = '0 !important';
+              c.style.display = 'none';
+              c.style.visibility = 'hidden';
+              c.style.opacity = '0';
+              c.style.width = '0';
+              c.style.height = '0';
+              c.style.overflow = 'hidden';
             });
 
-            // Cacher spécifiquement la barre de recherche (leaflet-geosearch)
-            // On cible plus large pour être sûr de l'avoir
-            const searchControls = doc.querySelectorAll('.leaflet-control-geosearch, .geosearch, form.leaflet-control');
-            searchControls.forEach(c => c.style.display = 'none !important');
+            // 2. Cacher spécifiquement la barre de recherche (multiples sélecteurs pour couvrir tous les cas)
+            const searchSelectors = [
+              '.leaflet-control-geosearch',
+              '.geosearch',
+              'form.leaflet-control',
+              '.leaflet-control-container form',
+              '.leaflet-top.leaflet-center',
+              '[class*="geosearch"]'
+            ];
+            searchSelectors.forEach(selector => {
+              const elements = doc.querySelectorAll(selector);
+              elements.forEach(el => {
+                el.style.display = 'none';
+                el.style.visibility = 'hidden';
+              });
+            });
 
-            // Cacher aussi les inputs de type text dans la map (souvent la barre de recherche)
-            const inputs = doc.querySelectorAll('.leaflet-control-container input[type="text"]');
+            // 3. Cacher tous les inputs de type text dans les contrôles Leaflet
+            const inputs = doc.querySelectorAll('.leaflet-control-container input[type="text"], .leaflet-control input');
             inputs.forEach(i => {
+              i.style.display = 'none';
               const parent = i.closest('.leaflet-control');
-              if (parent) parent.style.display = 'none !important';
+              if (parent) {
+                parent.style.display = 'none';
+                parent.style.visibility = 'hidden';
+              }
             });
 
-            // Cacher les contrôles de dessin (leaflet-draw ou custom)
-            const drawControls = doc.querySelectorAll('.leaflet-draw, .leaflet-draw-toolbar');
-            drawControls.forEach(c => c.style.display = 'none !important');
+            // 4. Cacher les contrôles de dessin (à gauche en haut)
+            const drawingSelectors = [
+              '.leaflet-draw',
+              '.leaflet-draw-toolbar',
+              'div[class*="Drawing"]',
+              '.leaflet-top.leaflet-left > div:first-child'
+            ];
+            drawingSelectors.forEach(selector => {
+              const elements = doc.querySelectorAll(selector);
+              elements.forEach(el => {
+                el.style.display = 'none';
+                el.style.visibility = 'hidden';
+              });
+            });
 
-            // Cacher les contrôles de zoom par défaut s'ils existent
+            // 5. Cacher les contrôles de zoom par défaut
             const zoomControls = doc.querySelectorAll('.leaflet-control-zoom');
-            zoomControls.forEach(c => c.style.display = 'none !important');
+            zoomControls.forEach(c => {
+              c.style.display = 'none';
+              c.style.visibility = 'hidden';
+            });
+
+            // 6. Forcer le masquage de tout ce qui est dans leaflet-top leaflet-left (boutons de tracé)
+            const topLeft = doc.querySelector('.leaflet-top.leaflet-left');
+            if (topLeft) {
+              // Cacher tous les enfants directs sauf ce qui doit rester visible
+              Array.from(topLeft.children).forEach(child => {
+                // Ne pas cacher l'échelle ou d'autres éléments importants
+                if (!child.classList.contains('leaflet-control-scale')) {
+                  child.style.display = 'none';
+                  child.style.visibility = 'hidden';
+                }
+              });
+            }
           }
           // ====================================================================
           // FIN DE LA MODIFICATION
