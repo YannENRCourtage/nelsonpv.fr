@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test API NELSON</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        button { margin: 10px 5px; padding: 10px 20px; cursor: pointer; }
+        .result { margin: 20px 0; padding: 15px; border-radius: 5px; white-space: pre-wrap; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        input { padding: 8px; margin: 5px; width: 300px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test API NELSON - Diagnostic</h1>
+    
+    <div>
+        <h3>1. Test de connexion</h3>
+        <input type="email" id="email" placeholder="Email" value="n.bachevalier@enr-courtage.fr">
+        <input type="password" id="password" placeholder="Mot de passe" value="Nicolas30000">
+        <button onclick="testLogin()">🔐 Tester la connexion</button>
+    </div>
+
+    <div>
+        <h3>2. Test de récupération des utilisateurs</h3>
+        <button onclick="testGetUsers()">👥 Liste des utilisateurs</button>
+    </div>
+
+    <div>
+        <h3>3. Test de suppression d'utilisateur</h3>
+        <input type="text" id="userId" placeholder="ID utilisateur" value="cmiob7uwn0000l2tdo5chnfkh">
+        <button onclick="testDeleteUser()">🗑️ Supprimer</button>
+    </div>
+
+    <div id="result"></div>
+
+    <script>
+        const API_URL = window.location.origin + '/api';
+
+        function showResult(message, isError = false) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `<div class="${isError ? 'error' : 'success'}">${message}</div>`;
+        }
+
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            showResult('Test de connexion en cours...');
+
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(`✅ CONNEXION RÉUSSIE!\n\n${JSON.stringify(data, null, 2)}`);
+                } else {
+                    showResult(`❌ ÉCHEC DE CONNEXION\nStatut: ${response.status}\nErreur: ${JSON.stringify(data, null, 2)}`, true);
+                }
+            } catch (error) {
+                showResult(`❌ ERREUR RÉSEAU\n${error.message}`, true);
+            }
+        }
+
+        async function testGetUsers() {
+            showResult('Récupération des utilisateurs...');
+
+            try {
+                const response = await fetch(`${API_URL}/users`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(`✅ UTILISATEURS RÉCUPÉRÉS (${data.length})\n\n${JSON.stringify(data, null, 2)}`);
+                } else {
+                    showResult(`❌ ÉCHEC\nStatut: ${response.status}\n${JSON.stringify(data, null, 2)}`, true);
+                }
+            } catch (error) {
+                showResult(`❌ ERREUR\n${error.message}`, true);
+            }
+        }
+
+        async function testDeleteUser() {
+            const userId = document.getElementById('userId').value;
+            
+            if (!confirm(`Voulez-vous vraiment supprimer l'utilisateur ${userId} ?`)) {
+                return;
+            }
+
+            showResult('Suppression en cours...');
+
+            try {
+                const response = await fetch(`${API_URL}/users/${userId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.status === 204 || response.ok) {
+                    showResult(`✅ UTILISATEUR SUPPRIMÉ`);
+                } else {
+                    const data = await response.json();
+                    showResult(`❌ ÉCHEC DE SUPPRESSION\nStatut: ${response.status}\n${JSON.stringify(data, null, 2)}`, true);
+                }
+            } catch (error) {
+                showResult(`❌ ERREUR\n${error.message}`, true);
+            }
+        }
+    </script>
+</body>
+</html>
