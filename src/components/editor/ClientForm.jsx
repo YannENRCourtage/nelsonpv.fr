@@ -29,11 +29,19 @@ export default function ClientForm() {
   const handleChange = (key, value) => {
     updateProject({ [key]: value });
   };
+
   const handleNestedChange = (parentKey, childKey, value) => {
     setProject((prev) => ({
       ...(prev || {}),
       [parentKey]: { ...(prev?.[parentKey] || {}), [childKey]: value }
     }));
+  };
+
+  // Prevent auto-scroll on focus
+  const preventAutoScroll = (e) => {
+    e.preventDefault();
+    const scrollY = window.scrollY;
+    window.scrollTo(0, scrollY);
   };
 
   const p = project || {};
@@ -49,7 +57,7 @@ export default function ClientForm() {
         <div className="pe_clientStatus">
           <div className="pe_field">
             <label>Statut</label>
-            <select value={p.status || 'En cours'} onChange={(e) => handleChange('status', e.target.value)}>
+            <select value={p.status || 'En cours'} onChange={(e) => handleChange('status', e.target.value)} onFocus={preventAutoScroll}>
               <option>En cours</option>
               <option>Terminé</option>
               <option>Annulé</option>
@@ -67,6 +75,7 @@ export default function ClientForm() {
               placeholder="Nom"
               value={client.lastName || ''}
               onChange={(e) => handleNestedChange('client', 'lastName', e.target.value)}
+              onFocus={preventAutoScroll}
             />
           </div>
           <div className="pe_field">
@@ -75,6 +84,7 @@ export default function ClientForm() {
               placeholder="Prénom"
               value={client.firstName || ''}
               onChange={(e) => handleNestedChange('client', 'firstName', e.target.value)}
+              onFocus={preventAutoScroll}
             />
           </div>
           <div className="pe_field">
@@ -83,6 +93,7 @@ export default function ClientForm() {
               placeholder="Téléphone"
               value={client.phone || ''}
               onChange={(e) => handleNestedChange('client', 'phone', e.target.value)}
+              onFocus={preventAutoScroll}
             />
           </div>
           <div className="pe_field">
@@ -91,6 +102,7 @@ export default function ClientForm() {
               placeholder="Email"
               value={client.email || ''}
               onChange={(e) => handleNestedChange('client', 'email', e.target.value)}
+              onFocus={preventAutoScroll}
             />
           </div>
         </div>
@@ -105,6 +117,7 @@ export default function ClientForm() {
               placeholder="Ex: BARBERIS"
               value={p.name || ''}
               onChange={(e) => handleChange('name', e.target.value)}
+              onFocus={preventAutoScroll}
             />
           </div>
           <div className="pe_field">
@@ -113,6 +126,7 @@ export default function ClientForm() {
               placeholder="Ex: Construction"
               value={p.projectType || ''}
               onChange={(e) => handleChange('projectType', e.target.value)}
+              onFocus={preventAutoScroll}
             />
           </div>
         </div>
@@ -123,6 +137,7 @@ export default function ClientForm() {
             placeholder="Adresse du projet"
             value={p.address || ''}
             onChange={(e) => handleChange('address', e.target.value)}
+            onFocus={preventAutoScroll}
           />
         </div>
 
@@ -133,6 +148,7 @@ export default function ClientForm() {
               placeholder="Code postal"
               value={p.zip || ''}
               onChange={(e) => handleChange('zip', e.target.value)}
+              onFocus={preventAutoScroll}
             />
           </div>
           <div className="pe_field">
@@ -141,6 +157,7 @@ export default function ClientForm() {
               placeholder="Ville"
               value={p.city || ''}
               onChange={(e) => handleChange('city', e.target.value)}
+              onFocus={preventAutoScroll}
             />
           </div>
           <div className="pe_field">
@@ -149,6 +166,7 @@ export default function ClientForm() {
               placeholder="Ex: 24205 / AR / 0008"
               value={p.parcel || ''}
               onChange={(e) => handleChange('parcel', e.target.value)}
+              onFocus={preventAutoScroll}
             />
           </div>
           <div className="pe_field">
@@ -157,6 +175,7 @@ export default function ClientForm() {
               placeholder="Ex: 44.83188, -0.571036"
               value={p.gps || ''}
               onChange={(e) => handleChange('gps', e.target.value)}
+              onFocus={preventAutoScroll}
             />
           </div>
           <div className="pe_field">
@@ -165,6 +184,7 @@ export default function ClientForm() {
               placeholder="Ex: 87.94 m"
               value={p.altitude || ''}
               onChange={(e) => handleChange('altitude', e.target.value)}
+              onFocus={preventAutoScroll}
             />
           </div>
           <div className="pe_field">
@@ -173,6 +193,7 @@ export default function ClientForm() {
               placeholder="Ex: S8.8 46x29.7m"
               value={p.buildingType || ''}
               onChange={(e) => handleChange('buildingType', e.target.value)}
+              onFocus={preventAutoScroll}
             />
           </div>
         </div>
@@ -185,6 +206,7 @@ export default function ClientForm() {
             rows={4}
             value={p.comments || ''}
             onChange={(e) => handleChange('comments', e.target.value)}
+            onFocus={preventAutoScroll}
           />
         </div>
 
