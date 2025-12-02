@@ -126,6 +126,13 @@ class ApiService {
         })
     }
 
+    async updateUserPassword(id, newPassword) {
+        return this.request(`/users/${id}/password`, {
+            method: 'PUT',
+            body: JSON.stringify({ newPassword }),
+        })
+    }
+
     // Notifications
     async getNotifications(userId) {
         return this.request(`/notifications?userId=${userId}`)
