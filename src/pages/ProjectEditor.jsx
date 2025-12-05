@@ -234,7 +234,7 @@ export default function ProjectEditor() {
     }
 
     // Liste des onglets utilisant des iframes externes
-    const iframeTabs = ['owners', 'capareseau', 'terravisu', 'geoportail', 'enedis', 'dvf', 'urbiexplore'];
+    const iframeTabs = ['owners', 'capareseau', 'terravisu', 'geoportail', 'enedis', 'dvf'];
     if (iframeTabs.includes(activeTab)) {
       await captureWithDisplayMedia(slotIndex);
       return;
@@ -390,7 +390,7 @@ export default function ProjectEditor() {
           <div className="flex gap-2 border-b border-gray-700">
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); setActiveTab('map'); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('map'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'map'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -401,7 +401,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); setActiveTab('enedis'); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('enedis'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'enedis'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -412,7 +412,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); setActiveTab('streetview'); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('streetview'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'streetview'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -423,7 +423,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); setActiveTab('nv65'); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('nv65'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'nv65'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -434,18 +434,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); setActiveTab('urbiexplore'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'urbiexplore'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              Urbi Explore
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); setActiveTab('owners'); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('owners'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'owners'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -456,7 +445,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); setActiveTab('capareseau'); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('capareseau'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'capareseau'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -467,7 +456,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); setActiveTab('terravisu'); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('terravisu'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'terravisu'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -478,7 +467,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); setActiveTab('dvf'); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('dvf'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'dvf'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -523,15 +512,6 @@ export default function ProjectEditor() {
               />
             </div>
 
-            {/* Onglet Urbi Explore */}
-            <div className={activeTab === 'urbiexplore' ? 'w-full h-full' : 'hidden'}>
-              <iframe
-                src="https://urbi-explore.fr/multithemes"
-                className="w-full h-full border-0"
-                title="Urbi Explore"
-                allow="geolocation"
-              />
-            </div>
 
             {/* Onglet Propriétaires */}
             <div className={activeTab === 'owners' ? 'w-full h-full' : 'hidden'}>
@@ -542,6 +522,7 @@ export default function ProjectEditor() {
                 allow="geolocation"
               />
             </div>
+
 
             {/* Onglet Caparéseau */}
             <div className={activeTab === 'capareseau' ? 'w-full h-full' : 'hidden'}>
