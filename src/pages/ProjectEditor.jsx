@@ -27,8 +27,9 @@ function SymbolBtn({ icon, label, type, emoji, onSelect, isSelected }) {
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        // e.currentTarget.blur(); // Removed to prevent scroll jump
+        const scrollY = window.scrollY;
         onSelect({ type, label, emoji });
+        setTimeout(() => window.scrollTo(0, scrollY), 0);
       }}
       className={cn(
         "flex flex-col items-center justify-center gap-2 rounded-lg border bg-white p-4 text-sm font-medium shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5",
@@ -360,22 +361,22 @@ export default function ProjectEditor() {
           </div>
 
           <div className="grid grid-cols-12 gap-4">
-            <div className="col-span-3"><label className="text-sm font-medium">Nom*</label><Input value={p.name || ''} onChange={e => updateProject({ name: e.target.value })} className="mt-1" placeholder="Nom" /></div>
-            <div className="col-span-3"><label className="text-sm font-medium">Prénom</label><Input value={p.firstName || ''} onChange={e => updateProject({ firstName: e.target.value })} className="mt-1" placeholder="Prénom" /></div>
-            <div className="col-span-3"><label className="text-sm font-medium">Téléphone</label><Input value={p.phone || ''} onChange={e => updateProject({ phone: e.target.value })} className="mt-1" placeholder="Téléphone" /></div>
-            <div className="col-span-3"><label className="text-sm font-medium">Email</label><Input value={p.email || ''} onChange={e => updateProject({ email: e.target.value })} className="mt-1" placeholder="Email" /></div>
+            <div className="col-span-3"><label className="text-sm font-medium">Nom*</label><Input value={p.name || ''} onChange={e => updateProject({ name: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Nom" /></div>
+            <div className="col-span-3"><label className="text-sm font-medium">Prénom</label><Input value={p.firstName || ''} onChange={e => updateProject({ firstName: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Prénom" /></div>
+            <div className="col-span-3"><label className="text-sm font-medium">Téléphone</label><Input value={p.phone || ''} onChange={e => updateProject({ phone: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Téléphone" /></div>
+            <div className="col-span-3"><label className="text-sm font-medium">Email</label><Input value={p.email || ''} onChange={e => updateProject({ email: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Email" /></div>
 
             <div className="col-span-12 flex gap-4 items-end">
-              <div className="flex-grow-[3]"><label className="text-sm font-medium">Adresse du projet</label><Input value={p.address || ''} onChange={e => updateProject({ address: e.target.value })} className="mt-1" placeholder="Adresse du projet" /></div>
-              <div className="flex-grow-[1]"><label className="text-sm font-medium">Code postal</label><Input value={p.zip || ''} onChange={e => updateProject({ zip: e.target.value })} className="mt-1" placeholder="Code postal" /></div>
-              <div className="flex-grow-[2]"><label className="text-sm font-medium">Ville</label><Input value={p.city || ''} onChange={e => updateProject({ city: e.target.value })} className="mt-1" placeholder="Ville" /></div>
+              <div className="flex-grow-[3]"><label className="text-sm font-medium">Adresse du projet</label><Input value={p.address || ''} onChange={e => updateProject({ address: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Adresse du projet" /></div>
+              <div className="flex-grow-[1]"><label className="text-sm font-medium">Code postal</label><Input value={p.zip || ''} onChange={e => updateProject({ zip: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Code postal" /></div>
+              <div className="flex-grow-[2]"><label className="text-sm font-medium">Ville</label><Input value={p.city || ''} onChange={e => updateProject({ city: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Ville" /></div>
             </div>
 
-            <div className="col-span-3"><label className="text-sm font-medium">Coordonnées GPS</label><Input value={p.gps || ''} onChange={e => updateProject({ gps: e.target.value })} className="mt-1" placeholder="Ex: 45.24, 4.36" /></div>
-            <div className="col-span-3"><label className="text-sm font-medium">Type de projet</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background"><option>Construction</option><option>Rénovation</option></select></div>
-            <div className="col-span-6"><label className="text-sm font-medium">Projet</label><Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} className="mt-1" placeholder="Ex: 150m² ou 9kWc" /></div>
+            <div className="col-span-3"><label className="text-sm font-medium">Coordonnées GPS</label><Input value={p.gps || ''} onChange={e => updateProject({ gps: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Ex: 45.24, 4.36" /></div>
+            <div className="col-span-3"><label className="text-sm font-medium">Type de projet</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background"><option>Construction</option><option>Rénovation</option></select></div>
+            <div className="col-span-6"><label className="text-sm font-medium">Projet</label><Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Ex: 150m² ou 9kWc" /></div>
 
-            <div className="col-span-12"><label className="text-sm font-medium">Commentaires</label><textarea value={p.comments || ''} onChange={e => updateProject({ comments: e.target.value })} className="mt-1 h-24 w-full rounded-lg border px-3 py-2" placeholder="Commentaires" /></div>
+            <div className="col-span-12"><label className="text-sm font-medium">Commentaires</label><textarea value={p.comments || ''} onChange={e => updateProject({ comments: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1 h-24 w-full rounded-lg border px-3 py-2" placeholder="Commentaires" /></div>
           </div>
         </section>
 
