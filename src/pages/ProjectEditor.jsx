@@ -526,7 +526,7 @@ export default function ProjectEditor() {
             {/* Onglet Urbi Explore */}
             <div className={activeTab === 'urbiexplore' ? 'w-full h-full' : 'hidden'}>
               <iframe
-                src="https://urbi-explore.fr/zm"
+                src="https://urbi-explore.fr/multithemes"
                 className="w-full h-full border-0"
                 title="Urbi Explore"
                 allow="geolocation"
