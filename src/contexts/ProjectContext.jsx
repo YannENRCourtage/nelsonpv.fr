@@ -154,6 +154,35 @@ export function ProjectProvider({ children }) {
         await apiService.createProject(project);
       }
 
+      // 3. Créer/Mettre à jour le contact dans le CRM
+      try {
+        // Créer un contact à partir des données du projet
+        const contactData = {
+          name: [project.firstName, project.name].filter(Boolean).join(' ').trim() || 'Client sans nom',
+          company: null, // Optionnel
+          email: project.email || null,
+          phone: project.phone || null,
+          city: project.city || null,
+          status: project.status || 'Nouveau',
+          projectId: project.id,
+        };
+
+        // Vérifier si un contact existe déjà pour ce projet
+        const allContacts = await apiService.getContacts();
+        const existingContact = allContacts.find(c => c.projectId === project.id);
+
+        if (existingContact) {
+          // Mettre à jour le contact existant
+          await apiService.updateContact(existingContact.id, contactData);
+        } else {
+          // Créer un nouveau contact
+          await apiService.createContact(contactData);
+        }
+      } catch (contactError) {
+        console.error("Erreur lors de la sauvegarde du contact dans le CRM:", contactError);
+        // On ne bloque pas si l'enregistrement du contact échoue
+      }
+
       // Recharger la liste pour être sûr que l'affichage est synchronisé
       const refreshed = await apiService.getProjects();
       setProjects(refreshed);

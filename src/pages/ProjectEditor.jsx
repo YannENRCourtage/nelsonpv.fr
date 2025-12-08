@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Building, X, FolderHeart as HomeIcon, Map as MapIcon, ExternalLink } from 'lucide-react';
+import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Building, X, FolderHeart as HomeIcon, Map as MapIcon, ExternalLink, RotateCcw } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import MapEditor from "../components/MapEditor";
 import StreetViewTab from "../components/StreetViewTab";
@@ -303,6 +303,49 @@ export default function ProjectEditor() {
     updateProject({ gps: `${y}, ${x}` });
   };
 
+  const handleReset = () => {
+    // Confirm with user
+    if (!window.confirm('Êtes-vous sûr de vouloir tout réinitialiser ? Toutes les données non sauvegardées seront perdues.')) {
+      return;
+    }
+
+    // Create a new empty project
+    const newProject = {
+      id: `proj_${Date.now()}`,
+      name: '',
+      firstName: '',
+      email: '',
+      phone: '',
+      address: '',
+      zip: '',
+      city: '',
+      gps: '',
+      type: 'Construction',
+      status: 'Nouveau',
+      user: project?.user || '',
+      projectSize: '',
+      comments: '',
+      captures: [null, null, null, null],
+      photos: [],
+      features: null,
+      createdAt: new Date().toISOString()
+    };
+
+    // Reset all state
+    setProject(newProject);
+    setCaptures([null, null, null, null]);
+    setPhotos([]);
+    setSymbolToPlace(null);
+
+    // Reset the map
+    window.dispatchEvent(new CustomEvent('map:reset'));
+
+    toast({
+      title: "Réinitialisation effectuée",
+      description: "Tous les champs et la carte ont été réinitialisés."
+    });
+  };
+
   const handleSymbolSelect = (symbol) => {
     setSymbolToPlace(prev => prev?.type === symbol.type ? null : symbol);
   };
@@ -334,8 +377,19 @@ export default function ProjectEditor() {
       <div className="grid grid-cols-12 gap-6 mb-6">
         <section className="col-span-9 rounded-2xl bg-white p-6 shadow-sm">
           <div className="flex justify-between items-start mb-4">
-            <div>
+            <div className="flex items-center gap-3">
               <h2 className="text-xl font-semibold">Client & Projet</h2>
+              <Button
+                type="button"
+                onClick={handleReset}
+                variant="outline"
+                size="sm"
+                className="text-gray-600 hover:text-red-600 hover:border-red-600"
+                title="Réinitialiser tous les champs et la carte"
+              >
+                <RotateCcw size={16} className="mr-2" />
+                Remise à zéro
+              </Button>
             </div>
             <div className="flex gap-4">
               <Select value={p.user} onValueChange={(v) => updateProject({ user: v })}>

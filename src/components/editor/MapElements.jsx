@@ -1511,6 +1511,31 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
     if (symbolToPlace) setMode('symbol'); else if (photoToPlace) setMode('photo'); else if (mode === 'symbol' || mode === 'photo') setMode(null);
   }, [symbolToPlace, photoToPlace, mode, setMode]);
 
+  // Listen for map reset event
+  useEffect(() => {
+    const handleMapReset = () => {
+      // Clear all features
+      setFeatures([]);
+      setTemp([]);
+      setSelectedId(null);
+      setAskTextAt(null);
+      setPointInfo(null);
+      setAltimetryProfile(null);
+      setRectangleStart(null);
+      setPhotoToPlace(null);
+      setMode(null);
+      setTargetPos(null);
+
+      // Reset map view to default if map is available
+      if (map) {
+        map.setView([44.82619, -0.67201], 6);
+      }
+    };
+
+    window.addEventListener('map:reset', handleMapReset);
+    return () => window.removeEventListener('map:reset', handleMapReset);
+  }, [map]);
+
   return (
     <div className="relative h-full w-full flex flex-col">
       <div className="flex-1 relative min-h-0">
