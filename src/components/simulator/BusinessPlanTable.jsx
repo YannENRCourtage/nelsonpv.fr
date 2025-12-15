@@ -11,8 +11,15 @@ export default function BusinessPlanTable({ businessPlan }) {
     }
 
     const formatCurrency = (value) => {
+        // Handle undefined or null safely
+        if (value === undefined || value === null || isNaN(value)) return '0';
         return value.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     };
+
+    // Check if Prime is active (if > 0 in any year, or just first year)
+    // Actually primeAutoconso in businessPlan logic is populated if active.
+    // If it's 0 everywhere, we hide the row.
+    const hasPrime = businessPlan.some(year => year.primeAutoconso > 0);
 
     return (
         <div className="bg-white rounded-lg shadow-md p-6">
@@ -21,7 +28,7 @@ export default function BusinessPlanTable({ businessPlan }) {
                 <h2 className="text-xl font-bold text-gray-800">Business Plan (20 ans)</h2>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto mb-4">
                 <table className="w-full text-sm border-collapse">
                     <thead>
                         <tr className="bg-gray-100 border-b-2 border-gray-300">
@@ -49,21 +56,23 @@ export default function BusinessPlanTable({ businessPlan }) {
                             ))}
                         </tr>
                         <tr className="border-b border-gray-200 hover:bg-gray-50">
-                            <td className="p-2 sticky left-0 bg-white">Vente Surplus 7%</td>
+                            <td className="p-2 sticky left-0 bg-white">Vente Surplus (Tb)</td>
                             {businessPlan.map((year) => (
                                 <td key={year.annee} className="text-right p-2 text-blue-700">
                                     {formatCurrency(year.venteSurplus)}
                                 </td>
                             ))}
                         </tr>
-                        <tr className="border-b border-gray-200 hover:bg-gray-50">
-                            <td className="p-2 sticky left-0 bg-white">Prime à l'autoconsommation</td>
-                            {businessPlan.map((year) => (
-                                <td key={year.annee} className="text-right p-2 text-blue-700">
-                                    {formatCurrency(year.primeAutoconso)}
-                                </td>
-                            ))}
-                        </tr>
+                        {hasPrime && (
+                            <tr className="border-b border-gray-200 hover:bg-gray-50">
+                                <td className="p-2 sticky left-0 bg-white">Prime à l'autoconsommation</td>
+                                {businessPlan.map((year) => (
+                                    <td key={year.annee} className="text-right p-2 text-blue-700">
+                                        {formatCurrency(year.primeAutoconso)}
+                                    </td>
+                                ))}
+                            </tr>
+                        )}
                         <tr className="bg-blue-100 border-b-2 border-blue-300 font-semibold">
                             <td className="p-2 sticky left-0 bg-blue-100">Total CA</td>
                             {businessPlan.map((year) => (
@@ -112,10 +121,10 @@ export default function BusinessPlanTable({ businessPlan }) {
                             ))}
                         </tr>
                         <tr className="border-b border-gray-200 hover:bg-gray-50">
-                            <td className="p-2 sticky left-0 bg-white">D3X2</td>
+                            <td className="p-2 sticky left-0 bg-white">Divers</td>
                             {businessPlan.map((year) => (
                                 <td key={year.annee} className="text-right p-2 text-red-700">
-                                    {formatCurrency(year.d3x2)}
+                                    {formatCurrency(year.divers)}
                                 </td>
                             ))}
                         </tr>
@@ -210,8 +219,20 @@ export default function BusinessPlanTable({ businessPlan }) {
                                 </td>
                             ))}
                         </tr>
+                        <tr className="bg-white border-t-2 border-gray-300 font-bold">
+                            <td className="p-2 sticky left-0 bg-white">DSCR</td>
+                            {businessPlan.map((year) => (
+                                <td key={year.annee} className="text-right p-2 text-gray-800">
+                                    {year.dscr.toFixed(2)}
+                                </td>
+                            ))}
+                        </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <div className="text-xs text-gray-500 italic mt-2 text-center">
+                Hypothèses : Inflation maintenance: 1%/an. Inflation CA Tb: 1%/an. Inflation CA ACC: 2%/an. Inflation Assurance: 2%/an. Inflation Divers: 2%/an. Inflation IFER: 1%/an.
             </div>
         </div>
     );

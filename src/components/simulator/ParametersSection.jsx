@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Settings, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
+import { Switch } from '@/components/ui/switch';
 import TariffDetailsModal from './TariffDetailsModal';
 
 export default function ParametersSection({ params, onParamsChange }) {
@@ -8,6 +9,10 @@ export default function ParametersSection({ params, onParamsChange }) {
 
     const handleChange = (field, value) => {
         onParamsChange({ ...params, [field]: parseFloat(value) || 0 });
+    };
+
+    const handleSwitchChange = (field, checked) => {
+        onParamsChange({ ...params, [field]: checked });
     };
 
     const handleSliderChange = (e) => {
@@ -123,6 +128,17 @@ export default function ParametersSection({ params, onParamsChange }) {
                             value={params.tarifACC || 0.12}
                             onChange={(e) => handleChange('tarifACC', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                        />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-4">
+                        <label className="text-sm font-medium text-gray-700">
+                            Prime à l'autoconsommation
+                        </label>
+                        <Switch
+                            checked={params.withPrime !== false} // Default true
+                            onCheckedChange={(checked) => handleSwitchChange('withPrime', checked)}
+                            disabled={params.power > 100}
                         />
                     </div>
                 </div>
