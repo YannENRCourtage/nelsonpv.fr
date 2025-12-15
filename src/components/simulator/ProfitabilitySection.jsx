@@ -30,7 +30,7 @@ export default function ProfitabilitySection({ metrics, params, onParamsChange }
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                 <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                     <label className="block text-sm font-medium text-gray-600 mb-2">
                         TRI Projet

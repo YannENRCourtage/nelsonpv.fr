@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button.jsx';
 const DEFAULT_COSTS_KEY = 'simulator_default_costs';
 
 export default function DefaultCostsModal({ costs, onSave, onClose }) {
-    const [localCosts, setLocalCosts] = useState(costs);
+    const [localCosts, setLocalCosts] = useState(costs || {});
 
     useEffect(() => {
         // Load saved defaults from localStorage

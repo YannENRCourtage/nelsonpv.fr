@@ -163,7 +163,7 @@ export function generateBusinessPlan(params, costs) {
 
         // Financement
         const interets = remainingDebt * (interestRate / 100);
-        const rembtCapital = year < 15 ? totalCost / 15 : 0; // Remboursement sur 15 ans
+        const rembtCapital = year < 20 ? totalCost / 20 : 0; // Remboursement sur 20 ans
         const annuite = rembtCapital + interets;
 
         remainingDebt = Math.max(0, remainingDebt - rembtCapital);

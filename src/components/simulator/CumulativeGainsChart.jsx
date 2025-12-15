@@ -12,7 +12,7 @@ export default function CumulativeGainsChart({ data, totalCost }) {
                 <h2 className="text-xl font-bold text-gray-800">Gains Cumulés (sur 20 ans)</h2>
             </div>
 
-            <div className="w-full h-96">
+            <div className="w-full h-[500px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                         data={data}
@@ -51,7 +51,7 @@ export default function CumulativeGainsChart({ data, totalCost }) {
                             dataKey="gainTH"
                             stroke="#ef4444"
                             strokeWidth={2}
-                            name="Gain TH Seul"
+                            name="Gain TB Seul"
                             dot={false}
                             activeDot={{ r: 6 }}
                         />
@@ -62,7 +62,7 @@ export default function CumulativeGainsChart({ data, totalCost }) {
                             dataKey="gainACC"
                             stroke="#10b981"
                             strokeWidth={2}
-                            name="Gain TH + ACC"
+                            name="Gain TB + ACC"
                             dot={false}
                             activeDot={{ r: 6 }}
                         />
