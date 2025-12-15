@@ -257,7 +257,52 @@ export function calculateTRI(businessPlan, initialInvestment) {
     return tri * 100;
 }
 
-// ... Keep calculateDRCI and calculatePaybackPeriod ...
+/**
+ * Calcule le DRCI (Délai de Récupération du Capital Investi)
+ * @param {Array} businessPlan - Business plan généré
+ * @param {number} initialInvestment - Investissement initial
+ * @returns {number} DRCI en années
+ */
+export function calculateDRCI(businessPlan, initialInvestment) {
+    let cumulativeCashFlow = 0;
+
+    for (let i = 0; i < businessPlan.length; i++) {
+        cumulativeCashFlow += businessPlan[i].resultatNet + businessPlan[i].amortissement;
+
+        if (cumulativeCashFlow >= initialInvestment) {
+            // Interpolation pour obtenir une valeur plus précise
+            const previousCumulative = cumulativeCashFlow - (businessPlan[i].resultatNet + businessPlan[i].amortissement);
+            const yearFraction = (initialInvestment - previousCumulative) / (businessPlan[i].resultatNet + businessPlan[i].amortissement);
+            return i + yearFraction;
+        }
+    }
+
+    return 20; // Si pas récupéré en 20 ans
+}
+
+/**
+ * Calcule le retour sur investissement (payback period)
+ * @param {Array} businessPlan - Business plan généré
+ * @param {number} initialInvestment - Investissement initial
+ * @param {boolean} withACC - Avec ou sans ACC
+ * @returns {number} Années pour retour sur investissement
+ */
+export function calculatePaybackPeriod(businessPlan, initialInvestment, withACC = true) {
+    let cumulative = 0;
+
+    for (let i = 0; i < businessPlan.length; i++) {
+        const yearGain = withACC ? businessPlan[i].cumulativeGainACC : businessPlan[i].cumulativeGainTH;
+
+        if (yearGain >= initialInvestment) {
+            // Interpolation
+            const previousGain = i > 0 ? (withACC ? businessPlan[i - 1].cumulativeGainACC : businessPlan[i - 1].cumulativeGainTH) : 0;
+            const yearFraction = (initialInvestment - previousGain) / (yearGain - previousGain);
+            return i + yearFraction;
+        }
+    }
+
+    return 20; // Si pas récupéré en 20 ans
+}
 
 export function calculateAllMetrics(params, costs) {
     const totalCost = calculateTotalProjectCost(costs);
