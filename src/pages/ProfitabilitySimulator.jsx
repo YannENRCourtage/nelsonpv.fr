@@ -67,17 +67,24 @@ export default function ProfitabilitySimulator() {
         setMetrics(calculated);
     }, [params, costs]);
 
-    // Auto-calculate Installation cost based on Power (500€/kWc)
+    // Auto-calculate Installation cost and Production
     useEffect(() => {
-        if (params.power > 0) {
-            setCosts(prev => {
-                const newInstallation = params.power * 500;
-                // Avoid infinite loops if value is same
-                if (prev.installation === newInstallation) return prev;
-                return { ...prev, installation: newInstallation };
-            });
+        const power = params.power || 0;
+        const productible = params.productible || 1200;
+        const newProduction = power * productible;
+        const newInstallation = power * 500;
+
+        // Update Costs
+        setCosts(prev => {
+            if (prev.installation === newInstallation) return prev;
+            return { ...prev, installation: newInstallation };
+        });
+
+        // Update Production in Params if needed
+        if (params.production !== newProduction) {
+            setParams(prev => ({ ...prev, production: newProduction }));
         }
-    }, [params.power]);
+    }, [params.power, params.productible, params.production]); // Added params.production to be safe/consistent but logic prevents loop
 
     const handleGeneratePDF = () => {
         generateSimulatorPDF({
