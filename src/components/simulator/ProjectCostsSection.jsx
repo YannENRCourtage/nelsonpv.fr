@@ -60,7 +60,7 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                                     type="number"
                                     value={costs[field.key] || 0}
                                     onChange={(e) => handleChange(field.key, e.target.value)}
-                                    className="block w-full pl-3 pr-8 py-2 text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                                    className="block w-full pl-3 pr-8 py-2 text-sm border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                                 />
                                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                     <span className="text-gray-500 sm:text-xs">
@@ -85,7 +85,7 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                                         type="number"
                                         value={costs[field.key] || 0}
                                         onChange={(e) => handleChange(field.key, e.target.value)}
-                                        className="block w-full pl-3 pr-8 py-2 text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                                        className="block w-full pl-3 pr-8 py-2 text-sm border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                                     />
                                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                         <span className="text-gray-500 sm:text-xs">€</span>

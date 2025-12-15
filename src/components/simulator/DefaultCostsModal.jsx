@@ -30,14 +30,17 @@ export default function DefaultCostsModal({ costs, onSave, onClose }) {
     };
 
     const costFields = [
-        { key: 'installation', label: 'Installation (€/kWc)' },
+        { key: 'installationRate', label: 'Installation (c€/kWc)' },
+        { key: 'charpente', label: 'Charpente' },
+        { key: 'couverture', label: 'Couverture' },
+        { key: 'fondations', label: 'Fondations' },
+        { key: 'raccordement', label: 'Raccordement' },
+        { key: 'developpement', label: 'Développement' },
         { key: 'maintenance', label: 'Maintenance (€/kWc/an)' },
-        { key: 'charpente', label: 'Charpente (€)' },
-        { key: 'couverture', label: 'Couverture (€)' },
-        { key: 'fondations', label: 'Fondations (€)' },
-        { key: 'raccordement', label: 'Raccordement (€)' },
-        { key: 'developpement', label: 'Développement (€)' },
-        { key: 'soulte', label: 'Soulte (€)' },
+        { key: 'soulte', label: 'Soulte' },
+        { key: 'bardage', label: 'Bardage' },
+        { key: 'cheneaux', label: 'Chéneaux Et Descente' },
+        { key: 'batterie', label: 'Batterie' }
     ];
 
     return (

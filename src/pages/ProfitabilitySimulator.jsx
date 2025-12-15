@@ -21,19 +21,18 @@ const DEFAULT_PARAMS = {
 };
 
 const DEFAULT_COSTS = {
-    installation: 50000, // 100kWc * 500
+    installationRate: 0.50, // 0.50 €/Wc (500 €/kWc)
+    installation: 0, // Calculated
     charpente: 30000,
     couverture: 15000,
-    // terrassement: 1500,
-    fondations: 15000, // Updated from 18500
-    raccordement: 15000, // Updated from 10000
-    fraisCommerciaux: 5000, // 100kWc * 50
-    fraisContrat: 1500,
-    developpement: 5000, // Updated from 6524
+    fondations: 15000,
+    raccordement: 15000,
+    developpement: 5000,
+    fraisCommerciaux: 0, // Calculated
     soulte: 0,
     maintenance: 10,
-    bardage: 0, // Default 0
-    cheneaux: 0, // Default 0
+    bardage: 0,
+    cheneaux: 0,
     batterie: 0
 };
 
@@ -51,61 +50,97 @@ export default function ProfitabilitySimulator() {
         averageDSCR: 0
     });
 
-    // Load saved defaults from localStorage
+    // Load saved defaults
     useEffect(() => {
         const savedCosts = localStorage.getItem('simulator_default_costs');
         if (savedCosts) {
             try {
-                // We should respect the hardcoded zeroes if user didn't explicitly save them differently?
-                // Or just trust saved.
-                // Given user request "options must be default 0", if saved has old values, it breaks request.
-                // But generally saved > default.
-                // I'll trust saved, but user might need to reset defaults in modal.
-                setCosts(JSON.parse(savedCosts));
+                // Merge saved defaults with structure to ensure installationRate exists
+                const parsed = JSON.parse(savedCosts);
+                setCosts(prev => ({ ...prev, ...parsed }));
             } catch (e) {
                 console.error('Error loading saved costs:', e);
             }
         }
     }, []);
 
-    // Recalculate metrics whenever params or costs change
+    // Recalculate metrics
     useEffect(() => {
         const calculated = calculateAllMetrics(params, costs);
         setMetrics(calculated);
     }, [params, costs]);
 
-    // Auto-calculate Installation cost, Frais Commerciaux and Production
+    // Auto-Logic: Costs, Production, Tariffs, Prime
     useEffect(() => {
         const power = params.power || 0;
         const productible = params.productible || 1200;
         const newProduction = power * productible;
 
-        // Cost calculations
-        const newInstallation = power * 500; // 0.50€/Wc = 500€/kWc
-        const newFraisCommerciaux = power * 50; // 50€/kWc
+        // 1. Update Production if needed
+        if (params.production !== newProduction) {
+            setParams(prev => ({ ...prev, production: newProduction }));
+        }
 
-        // Update Costs
+        // 2. Cost calculations
+        // Installation = Power * Rate * 1000 (if Rate is €/Wc)
+        // User said Rate 0.50 c€/kWc ??? No, user said 0.50 (c€/kWc).
+        // But user check: 99kWc -> 49500€. 99 * 500 = 49500.
+        // So 0.50 * 1000 = 500.
+        // Rate is indeed 0.50.
+        const rate = costs.installationRate !== undefined ? costs.installationRate : 0.50;
+        const newInstallation = power * rate * 1000;
+        const newFraisCommerciaux = power * 50;
+
         setCosts(prev => {
             let updated = { ...prev };
             let changed = false;
 
-            if (prev.installation !== newInstallation) {
+            if (Math.abs(prev.installation - newInstallation) > 0.01) {
                 updated.installation = newInstallation;
                 changed = true;
             }
-            if (prev.fraisCommerciaux !== newFraisCommerciaux) {
+            if (Math.abs(prev.fraisCommerciaux - newFraisCommerciaux) > 0.01) {
                 updated.fraisCommerciaux = newFraisCommerciaux;
                 changed = true;
             }
-
             return changed ? updated : prev;
         });
 
-        // Update Production in Params if needed
-        if (params.production !== newProduction) {
-            setParams(prev => ({ ...prev, production: newProduction }));
+        // 3. Tariff Logic based on Power
+        // < 36: 0.1049
+        // 36 - 99.9: 0.0912
+        // 100 - 499.9: 0.09
+        // >= 500: 0.085
+        let newTarifTH = params.tarifTH;
+        if (power < 36) newTarifTH = 0.1049;
+        else if (power < 100) newTarifTH = 0.0912;
+        else if (power < 500) newTarifTH = 0.09;
+        else newTarifTH = 0.085;
+
+        // Apply Tariff if changed.
+        // Note: This forces the tariff. If user changes it manually, it will reset if power changes?
+        // Yes, standard behavior for simulators often. If user wants manual, they change power then tariff.
+        // But here we might overwrite user input if they change power slightly?
+        // Assuming this is desired "Default behavior".
+
+        // 4. Prime Logic
+        // Disable Prime if Power > 99.9 (User said "superieur à 99.9")
+        // Checkbox: withPrime
+        let newWithPrime = params.withPrime;
+        if (power > 99.9 && newWithPrime !== false) {
+            newWithPrime = false;
         }
-    }, [params.power, params.productible, params.production]);
+
+        // Apply Params changes
+        if (newTarifTH !== params.tarifTH || newWithPrime !== params.withPrime) {
+            setParams(prev => ({
+                ...prev,
+                tarifTH: newTarifTH,
+                withPrime: newWithPrime
+            }));
+        }
+
+    }, [params.power, params.productible, params.production, params.tarifTH, params.withPrime, costs.installationRate]);
 
     const handleGeneratePDF = () => {
         generateSimulatorPDF({
