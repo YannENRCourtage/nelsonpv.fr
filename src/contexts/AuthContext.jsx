@@ -30,20 +30,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await fetch(`${apiService.baseURL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Authentification échouée');
-      }
-
-      const userData = await response.json();
+      const userData = await apiService.login(email, password);
       setUser(userData);
       setIsAuthenticated(true);
       sessionStorage.setItem('user', JSON.stringify(userData));
