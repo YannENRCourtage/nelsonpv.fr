@@ -21,15 +21,36 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { email, password } = req.body
+        // Parse body - handle different body formats
+        let body = req.body
+
+        // If body is a string, try to parse it as JSON
+        if (typeof body === 'string') {
+            try {
+                body = JSON.parse(body)
+            } catch (e) {
+                console.error('Failed to parse body string:', body)
+                return res.status(400).json({ error: 'Invalid JSON body' })
+            }
+        }
+
+        // If body is still empty, check if there's raw body data
+        if (!body || Object.keys(body).length === 0) {
+            console.error('Empty body received. req.body:', req.body, 'typeof:', typeof req.body)
+            return res.status(400).json({ error: 'Email et mot de passe requis (corps vide)' })
+        }
+
+        const { email, password } = body
 
         if (!email || !password) {
             return res.status(400).json({ error: 'Email et mot de passe requis' })
         }
 
+        console.log('Login attempt for email:', email)
+
         // Trouver l'utilisateur par email
         const user = await prisma.user.findUnique({
-            where: { email },
+            where: { email: email.toLowerCase().trim() },
             select: {
                 id: true,
                 email: true,
@@ -43,6 +64,7 @@ export default async function handler(req, res) {
         })
 
         if (!user) {
+            console.log('User not found:', email)
             return res.status(401).json({ error: 'Email ou mot de passe incorrect' })
         }
 
@@ -50,8 +72,11 @@ export default async function handler(req, res) {
         const isPasswordValid = await bcrypt.compare(password, user.password)
 
         if (!isPasswordValid) {
+            console.log('Invalid password for user:', email)
             return res.status(401).json({ error: 'Email ou mot de passe incorrect' })
         }
+
+        console.log('Login successful for user:', email)
 
         // Retourner les données utilisateur (sans le mot de passe)
         const { password: _, ...userData } = user
@@ -64,6 +89,11 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('Login Error:', error)
-        return res.status(500).json({ error: 'Internal server error', details: error.message })
+        return res.status(500).json({
+            error: 'Internal server error',
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        })
     }
 }
+
