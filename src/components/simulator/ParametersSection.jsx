@@ -116,15 +116,34 @@ export default function ParametersSection({ params, onParamsChange }) {
                 {/* Row 4: Part ACC and Prime */}
                 <div className="md:col-span-2 space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Part d'ACC: {Math.round((params.partACC || 40))}%
-                        </label>
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="block text-sm font-medium text-gray-700">
+                                Part d'ACC
+                            </label>
+                            <div className="flex items-center">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={params.partACC || 0}
+                                    onChange={(e) => {
+                                        let val = parseFloat(e.target.value);
+                                        if (isNaN(val)) val = 0;
+                                        if (val > 100) val = 100;
+                                        if (val < 0) val = 0;
+                                        onParamsChange({ ...params, partACC: val, prixAchatACC: val / 100 });
+                                    }}
+                                    className="w-16 px-2 py-1 text-right text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent mr-1"
+                                />
+                                <span className="text-sm text-gray-600">%</span>
+                            </div>
+                        </div>
                         <input
                             type="range"
                             min="0"
                             max="100"
                             step="5"
-                            value={params.partACC || 40}
+                            value={params.partACC || 0}
                             onChange={(e) => {
                                 const val = parseFloat(e.target.value);
                                 onParamsChange({ ...params, partACC: val, prixAchatACC: val / 100 });
@@ -133,7 +152,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                         />
                         <div className="flex justify-between text-xs text-gray-500 mt-1">
                             <span>0%</span>
-                            <span>{params.partACC || 40}%</span>
+                            <span>{Math.round(params.partACC || 0)}%</span>
                             <span>100%</span>
                         </div>
                     </div>

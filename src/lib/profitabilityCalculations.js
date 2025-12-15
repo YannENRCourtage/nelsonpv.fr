@@ -110,21 +110,12 @@ export function generateBusinessPlan(params, costs) {
 
         // Calcul du chiffre d'affaires
         // Vente ACC = Production * Part ACC * Tarif ACC * Inflation
-        // prixAchatACC is fraction (0.40 for 40%).
         const venteACC = production * prixAchatACC * tarifACC * inflationCAACC;
 
         // Vente Surplus = Production * (1 - Part ACC) * Tarif TH * Inflation
         const venteSurplus = production * (1 - prixAchatACC) * tarifTH * inflationCATb;
 
-        // Prime: Distribuée sur 5 ans pour > 9kWc? Or 1 shot?
-        // Simuacc image usually 5 years.
-        // User didn't specify, but standard is 5 years if > 9kWc, 1 year if <= 9kWc.
-        // Provided code had year === 0 checks previously.
-        // Let's implement standard rule properly if possible, or stick to user requirements.
-        // User only said "La prime doit pouvoir être ajoutée...".
-        // Taking a cue from previous image "Prime à l'autoconsommation" line has value in 2025.
-        // If it's distributed, it would appear in 2026 too.
-        // I will assume 5 years distribution if > 9kWc.
+        // Prime
         let primeYear = 0;
         if (primeAutoconsoTotal > 0) {
             if (power <= 9) {
@@ -133,23 +124,23 @@ export function generateBusinessPlan(params, costs) {
                 primeYear = (year < 5) ? (primeAutoconsoTotal / 5) : 0;
             }
         }
-        // Actually, user image 0 shows "Prime à l'autoconsommation" line? No, I don't see it in Image 0 (Business Plan).
-        // Wait, Image 0 is Business Plan rows.
-        // I see "Chiffre d'affaires" -> "Vente ACC", "Vente Surplus (Tb)", "Total CA".
-        // "Prime" is NOT in CA lines in Image 0?
-        // Image 2 shows "Gains Cumulés".
-        // Image 1 shows inputs.
-        // Image 3 (Simulateur_Rentabilite...pdf) shows "Prime à l'autoconsommation" in CA.
-        // I will include Prime row in BP.
 
         const totalCA = venteACC + venteSurplus + primeYear;
+
+        // Calcul du CA TH Seul (Base pour Gain TB Seul) - Hypothèse 100% Surplus
+        const venteTHSeul = production * tarifTH * inflationCATb;
+        const totalCATHSeul = venteTHSeul + primeYear; // Prime applies to both? Usually yes.
 
         // Calcul des charges d'exploitation
         const maintenance = power * maintenancePerKwc * inflationMaintenance;
         const rachatBailToit = 0;
-        const assurance = totalCost * INSURANCE_RATE * inflationAssurance;
-        const ifer = power > 100 ? power * 3.394 * inflationIFER : 0;
-        const divers = (costs.divers || 0) * inflationDivers; // Replaces d3x2. Default 0.
+        // Assurance: 115€ * Power (Year 1) then Inflation
+        const assurance = (115 * power) * inflationAssurance;
+        // IFER: 8.36€ * Power (if > 100) then Inflation
+        const ifer = power > 100 ? (8.36 * power) * inflationIFER : 0;
+        // Divers: 120€ * Power (Year 1) then Inflation
+        const divers = (120 * power) * inflationDivers;
+
         const totalCharges = maintenance + rachatBailToit + assurance + ifer + divers;
 
         // Excédent Brut d'Exploitation
@@ -178,35 +169,20 @@ export function generateBusinessPlan(params, costs) {
         const resultatNet = rai - impot;
 
         // DSCR (Couverture de la dette : (EBE - Impôt) / Annuité)
-        // CFADS approx = EBE - Impôt (tax cash out)
         const dscr = annuite > 0 ? (ebe - impot) / annuite : 0;
 
         // Conversion de la dette
         const dach = remainingDebt;
 
-        // Gains cumulés
-        // Cash Flow Libre = Résultat Net + Amortissement - Remboursement Capital
-        const cashFlow = resultatNet + amortissement - rembtCapital;
-
-        // Recalcul Gain TH Seul (Hypothèse 100% injecté)
-        // Vente Totale (Surplus method 100%)
-        // Vente Totale = Production * Tarif TH * Inflation CATb?
-        // Usually Vente Totale Tariff is Tarif TH.
-        const caTH = production * tarifTH * inflationCATb; // Use Inflation like Surplus
-        const ebeTH = caTH - totalCharges; // Assume same charges
-        const rbtTH = ebeTH - amortissement;
-        const interetsTH = interets; // Same debt
-        const raiTH = rbtTH - interetsTH;
-        const impotTH = Math.max(0, raiTH * TAX_RATE);
-        const netTH = raiTH - impotTH;
-        const cfTH = netTH + amortissement - rembtCapital;
-
+        // Gains cumulés (Basés sur le CA selon demande utilisateur)
+        // Gain TB + ACC = Cumul CA Total
+        // Gain TB Seul = Cumul CA TH Seul
         if (year === 0) {
-            cumulativeGainTH = cfTH;
-            cumulativeGainACC = cashFlow;
+            cumulativeGainTH = totalCATHSeul;
+            cumulativeGainACC = totalCA;
         } else {
-            cumulativeGainTH += cfTH;
-            cumulativeGainACC += cashFlow;
+            cumulativeGainTH += totalCATHSeul;
+            cumulativeGainACC += totalCA;
         }
 
         businessPlan.push({
@@ -219,7 +195,7 @@ export function generateBusinessPlan(params, costs) {
             rachatBailToit,
             assurance,
             ifer,
-            divers, // Renamed from d3x2
+            divers,
             totalCharges,
             ebe,
             amortissement,

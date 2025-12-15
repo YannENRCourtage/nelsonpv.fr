@@ -177,14 +177,7 @@ export default function BusinessPlanTable({ businessPlan }) {
                                 </td>
                             ))}
                         </tr>
-                        <tr className="border-b border-gray-200 hover:bg-gray-50">
-                            <td className="p-2 sticky left-0 bg-white">Rembt Capital</td>
-                            {businessPlan.map((year) => (
-                                <td key={year.annee} className="text-right p-2 text-purple-700">
-                                    {formatCurrency(year.rembtCapital)}
-                                </td>
-                            ))}
-                        </tr>
+
 
                         {/* Résultat final */}
                         <tr className="bg-indigo-100 border-b-2 border-indigo-300 font-semibold">
