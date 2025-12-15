@@ -126,7 +126,26 @@ export default function ProjectEditor() {
 
   // If there are explicit calls:
   // saveProject();
-  const { users: allUsers } = useAuth();
+  const { user: currentUser } = useAuth();
+  const [projectUsers, setProjectUsers] = useState([]);
+
+  useEffect(() => {
+    // Fetch users for the select dropdown
+    const fetchUsers = async () => {
+      try {
+        // Import dynamically to avoid circular dependencies if any, or just use the global apiService
+        const { apiService } = await import('@/services/api');
+        const data = await apiService.getUsers();
+        if (data) {
+          setProjectUsers(data.filter(u => u.role !== 'admin'));
+        }
+      } catch (error) {
+        console.error("Failed to fetch users", error);
+      }
+    };
+    fetchUsers();
+  }, []);
+
   const [captures, setCaptures] = useState([null, null, null, null]);
   const [photos, setPhotos] = useState([]);
   const fileRef = useRef(null);
@@ -142,9 +161,6 @@ export default function ProjectEditor() {
       setProject({ id: `proj_${Date.now()}`, name: '', status: 'Nouveau', createdAt: new Date().toISOString() });
     }
   }, [projectId, projects, setProject]);
-
-
-  const projectUsers = Object.values(allUsers).filter(u => u.role !== 'admin');
 
   useEffect(() => {
     if (project?.captures) setCaptures(project.captures);

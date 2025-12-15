@@ -69,15 +69,14 @@ export default function ProfitabilitySimulator() {
 
     const handleGeneratePDF = () => {
         generateSimulatorPDF({
-            params,
-            costs,
-            metrics
+            elementId: 'profitability-simulator-content',
+            fileName: `Simulateur_Rentabilite_${new Date().toISOString().split('T')[0]}.pdf`
         });
     };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="w-full px-4 sm:px-6 lg:px-8" id="profitability-simulator-content">
                 {/* Header */}
                 <div className="bg-white rounded-lg shadow-md p-6 mb-6">
                     <div className="flex justify-between items-center">
@@ -92,6 +91,7 @@ export default function ProfitabilitySimulator() {
                         <Button
                             onClick={handleGeneratePDF}
                             className="bg-blue-600 hover:bg-blue-700 text-white rounded-full"
+                            data-html2canvas-ignore="true"
                         >
                             <FileDown className="h-5 w-5 mr-2" />
                             Générer PDF
