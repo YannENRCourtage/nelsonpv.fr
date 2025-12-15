@@ -231,6 +231,7 @@ function Header() {
           <nav className="app-header__nav">
             <NavLink to="/crm" className={({ isActive }) => isActive ? 'nav-link active crm' : 'nav-link crm'}>CRM</NavLink>
             <NavLink to="/project/new/edit" className={({ isActive }) => isActive ? 'nav-link active editeur' : 'nav-link editeur'}>Editeur de projet</NavLink>
+            <NavLink to="/simulator" className={({ isActive }) => isActive ? 'nav-link active simulateur' : 'nav-link simulateur'}>Simulateur</NavLink>
           </nav>
         </div>
         <div className="flex items-center gap-4">

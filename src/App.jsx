@@ -7,6 +7,7 @@ import Login from './pages/Login.jsx';
 import AppLayout from './components/AppLayout.jsx';
 import Crm from './pages/Crm.jsx';
 import Admin from './pages/Admin.jsx';
+import ProfitabilitySimulator from './pages/ProfitabilitySimulator.jsx';
 import { Toaster } from './components/ui/toaster.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
 import { DndProvider } from 'react-dnd';
@@ -64,6 +65,7 @@ function AppContent() {
               </PrivateRoute>
             }
           />
+          <Route path="simulator" element={<ProfitabilitySimulator />} />
           <Route path="project/:projectId/edit" element={<ProjectEditor />} />
           <Route path="project/new/edit" element={<ProjectEditor />} />
         </Route>
