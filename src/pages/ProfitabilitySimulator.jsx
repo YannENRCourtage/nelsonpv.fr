@@ -67,6 +67,18 @@ export default function ProfitabilitySimulator() {
         setMetrics(calculated);
     }, [params, costs]);
 
+    // Auto-calculate Installation cost based on Power (500€/kWc)
+    useEffect(() => {
+        if (params.power > 0) {
+            setCosts(prev => {
+                const newInstallation = params.power * 500;
+                // Avoid infinite loops if value is same
+                if (prev.installation === newInstallation) return prev;
+                return { ...prev, installation: newInstallation };
+            });
+        }
+    }, [params.power]);
+
     const handleGeneratePDF = () => {
         generateSimulatorPDF({
             elementId: 'profitability-simulator-content',
@@ -114,7 +126,11 @@ export default function ProfitabilitySimulator() {
 
                 {/* Profitability Section */}
                 <div className="mb-6">
-                    <ProfitabilitySection metrics={metrics} />
+                    <ProfitabilitySection
+                        metrics={metrics}
+                        params={params}
+                        onParamsChange={setParams}
+                    />
                 </div>
 
                 {/* Cumulative Gains Chart */}
