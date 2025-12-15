@@ -7,45 +7,10 @@ export const useAuth = () => {
   return useContext(AuthContext);
 };
 
-const LS_USERS_KEY = 'nelson:users:v1';
-
-const defaultUsers = {
-  'contact@enr-courtage.fr': {
-    password: 'NELSONENR2025',
-    name: 'Admin ENR',
-    role: 'admin',
-    photoUrl: null,
-    pageAccess: { projects: true, crm: true, admin: true },
-  },
-  'yann@enr.fr': {
-    password: 'nelson',
-    name: 'Yann',
-    role: 'user',
-    photoUrl: null,
-    pageAccess: { projects: true, crm: true, admin: false },
-  },
-};
-
-function loadUsers() {
-  try {
-    const storedUsers = localStorage.getItem(LS_USERS_KEY);
-    if (storedUsers) {
-      return JSON.parse(storedUsers);
-    }
-  } catch (e) {
-    console.error("Failed to load users from localStorage", e);
-  }
-  // Set default users if none are stored
-  localStorage.setItem(LS_USERS_KEY, JSON.stringify(defaultUsers));
-  return defaultUsers;
-}
-
-
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState(loadUsers);
 
   useEffect(() => {
     try {
@@ -65,7 +30,6 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      // Try API authentication first
       const response = await fetch(`${apiService.baseURL}/auth/login`, {
         method: 'POST',
         headers: {
@@ -74,37 +38,20 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ email, password }),
       });
 
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-        setIsAuthenticated(true);
-        sessionStorage.setItem('user', JSON.stringify(userData));
-        return userData;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Authentification échouée');
       }
-    } catch (error) {
-      console.log('API auth failed, trying fallback localStorage auth');
-    }
 
-    // Fallback to localStorage (for backwards compatibility)
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const allUsers = loadUsers();
-        const potentialUser = allUsers[email];
-        if (potentialUser && potentialUser.password === password) {
-          const userData = { email, name: potentialUser.name, role: potentialUser.role, photoUrl: potentialUser.photoUrl, pageAccess: potentialUser.pageAccess };
-          setUser(userData);
-          setIsAuthenticated(true);
-          try {
-            sessionStorage.setItem('user', JSON.stringify(userData));
-          } catch (e) {
-            console.error("Failed to write auth status to sessionStorage", e);
-          }
-          resolve(userData);
-        } else {
-          reject(new Error('Email ou mot de passe incorrect'));
-        }
-      }, 500);
-    });
+      const userData = await response.json();
+      setUser(userData);
+      setIsAuthenticated(true);
+      sessionStorage.setItem('user', JSON.stringify(userData));
+      return userData;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
   const logout = () => {
@@ -117,19 +64,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const updateUserList = (newUsers) => {
-    setUsers(newUsers);
-    localStorage.setItem(LS_USERS_KEY, JSON.stringify(newUsers));
-  }
-
   const value = {
     user,
     isAuthenticated,
     loading,
     login,
     logout,
-    users,
-    updateUserList,
   };
 
   return (
