@@ -177,8 +177,9 @@ export function generateBusinessPlan(params, costs) {
         // Résultat Net
         const resultatNet = rai - impot;
 
-        // DSCR (EBE / Annuité)
-        const dscr = annuite > 0 ? ebe / annuite : 0;
+        // DSCR (Couverture de la dette : (EBE - Impôt) / Annuité)
+        // CFADS approx = EBE - Impôt (tax cash out)
+        const dscr = annuite > 0 ? (ebe - impot) / annuite : 0;
 
         // Conversion de la dette
         const dach = remainingDebt;

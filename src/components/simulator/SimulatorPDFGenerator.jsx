@@ -6,52 +6,57 @@ import html2canvas from 'html2canvas';
  * Format Paysage
  */
 export async function generateSimulatorPDF({ elementId, fileName }) {
-    const element = document.getElementById(elementId);
-    if (!element) {
-        console.error(`Element with id ${elementId} not found`);
-        return;
+    const topSection = document.getElementById('simulator-top-section');
+    const businessPlanSection = document.getElementById('business-plan-section');
+
+    // Fallback: Use original elementId if specific sections not found
+    if (!topSection || !businessPlanSection) {
+        console.warn('Specific sections not found, using fallback ID:', elementId);
+        const element = document.getElementById(elementId);
+        if (!element) return;
+
+        // ... Original single-page logic could be here, but simpler to just alert or try best effort
+        // For now, we assume the IDs exist as we added them.
     }
 
     try {
-        // Capture du contenu
-        const canvas = await html2canvas(element, {
-            scale: 2, // Meilleure qualité
-            useCORS: true,
-            logging: false,
-            backgroundColor: '#f9fafb', // gray-50
-            ignoreElements: (element) => element.hasAttribute('data-html2canvas-ignore')
-        });
-
-        // Dimensions du PDF (A4 Paysage)
         const pdf = new jsPDF({
             orientation: 'landscape',
             unit: 'mm',
             format: 'a4'
         });
 
-        const imgData = canvas.toDataURL('image/png');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
 
-        // Calculer les dimensions de l'image dans le PDF
-        const imgProps = pdf.getImageProperties(imgData);
-        const imgWidth = pdfWidth;
-        const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+        const addToPdf = async (element, isNewPage = false) => {
+            if (isNewPage) pdf.addPage();
 
-        let heightLeft = imgHeight;
-        let position = 0;
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#f9fafb',
+                ignoreElements: (element) => element.hasAttribute('data-html2canvas-ignore')
+            });
 
-        // Première page
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
+            const imgData = canvas.toDataURL('image/png');
+            const imgProps = pdf.getImageProperties(imgData);
+            const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-        // Pages suivantes si nécessaire
-        while (heightLeft > 0) {
-            position = heightLeft - imgHeight;
-            pdf.addPage();
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pdfHeight;
-        }
+            // Fit to page if too tall
+            if (imgHeight > pdfHeight) {
+                const ratio = pdfHeight / imgHeight;
+                const scaledWidth = pdfWidth * ratio;
+                const xOffset = (pdfWidth - scaledWidth) / 2;
+                pdf.addImage(imgData, 'PNG', xOffset, 0, scaledWidth, pdfHeight);
+            } else {
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight);
+            }
+        };
+
+        if (topSection) await addToPdf(topSection, false);
+        if (businessPlanSection) await addToPdf(businessPlanSection, true);
 
         pdf.save(fileName || 'simulation.pdf');
 

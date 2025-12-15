@@ -117,64 +117,66 @@ export default function ProfitabilitySimulator() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
             <div className="w-full px-4 sm:px-6 lg:px-8" id="profitability-simulator-content">
-                {/* Header */}
-                <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <h1 className="text-3xl font-bold text-teal-700 mb-2">
-                                Simulateur de Gain Producteur
-                            </h1>
-                            <p className="text-gray-600">
-                                Projetez les gains et la rentabilité de votre projet solaire.
-                            </p>
+                <div id="simulator-top-section">
+                    {/* Header */}
+                    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h1 className="text-3xl font-bold text-teal-700 mb-2">
+                                    Simulateur de Gain Producteur
+                                </h1>
+                                <p className="text-gray-600">
+                                    Projetez les gains et la rentabilité de votre projet solaire.
+                                </p>
+                            </div>
+                            <Button
+                                onClick={handleGeneratePDF}
+                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-full"
+                                data-html2canvas-ignore="true"
+                            >
+                                <FileDown className="h-5 w-5 mr-2" />
+                                Générer PDF
+                            </Button>
                         </div>
-                        <Button
-                            onClick={handleGeneratePDF}
-                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-full"
-                            data-html2canvas-ignore="true"
-                        >
-                            <FileDown className="h-5 w-5 mr-2" />
-                            Générer PDF
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Main Content Grid - Adjusted Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                    {/* Parameters Section - 1/3 width */}
-                    <div className="lg:col-span-1">
-                        <ParametersSection params={params} onParamsChange={setParams} />
                     </div>
 
-                    {/* Project Costs Section - 2/3 width */}
-                    <div className="lg:col-span-2">
-                        <ProjectCostsSection
-                            costs={costs}
-                            onCostsChange={setCosts}
+                    {/* Main Content Grid - Adjusted Layout */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                        {/* Parameters Section - 1/3 width */}
+                        <div className="lg:col-span-1">
+                            <ParametersSection params={params} onParamsChange={setParams} />
+                        </div>
+
+                        {/* Project Costs Section - 2/3 width */}
+                        <div className="lg:col-span-2">
+                            <ProjectCostsSection
+                                costs={costs}
+                                onCostsChange={setCosts}
+                                totalCost={metrics.totalCost}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Profitability Section */}
+                    <div className="mb-6">
+                        <ProfitabilitySection
+                            metrics={metrics}
+                            params={params}
+                            onParamsChange={setParams}
+                        />
+                    </div>
+
+                    {/* Cumulative Gains Chart */}
+                    <div className="mb-6">
+                        <CumulativeGainsChart
+                            data={metrics.cumulativeGains}
                             totalCost={metrics.totalCost}
                         />
                     </div>
                 </div>
 
-                {/* Profitability Section */}
-                <div className="mb-6">
-                    <ProfitabilitySection
-                        metrics={metrics}
-                        params={params}
-                        onParamsChange={setParams}
-                    />
-                </div>
-
-                {/* Cumulative Gains Chart */}
-                <div className="mb-6">
-                    <CumulativeGainsChart
-                        data={metrics.cumulativeGains}
-                        totalCost={metrics.totalCost}
-                    />
-                </div>
-
                 {/* Business Plan Table */}
-                <div className="mb-6">
+                <div id="business-plan-section" className="mb-6">
                     <BusinessPlanTable businessPlan={metrics.businessPlan} />
                 </div>
             </div>
