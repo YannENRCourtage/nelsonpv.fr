@@ -35,7 +35,6 @@ export default function DefaultCostsModal({ costs, onSave, onClose }) {
         { key: 'couverture', label: 'Couverture (€)' },
         { key: 'fondations', label: 'Fondations (€)' },
         { key: 'raccordement', label: 'Raccordement (€)' },
-        { key: 'fraisCommerciaux', label: 'Frais Commerciaux (€)' },
         { key: 'developpement', label: 'Développement (€)' },
         { key: 'soulte', label: 'Soulte (€)' },
         { key: 'maintenance', label: 'Maintenance (€/kWc/an)' },
