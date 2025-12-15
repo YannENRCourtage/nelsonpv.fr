@@ -196,6 +196,7 @@ export function generateBusinessPlan(params, costs) {
             rachatBailToit,
             assurance,
             ifer,
+            d3x2,
             totalCharges,
             ebe,
             amortissement,
@@ -206,6 +207,7 @@ export function generateBusinessPlan(params, costs) {
             rai,
             impot,
             resultatNet,
+            dach,
             dscr,
             cumulativeGainTH,
             cumulativeGainACC
