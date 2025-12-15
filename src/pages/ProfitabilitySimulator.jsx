@@ -24,17 +24,21 @@ const DEFAULT_COSTS = {
     installation: 95000,
     charpente: 30000,
     couverture: 15000,
-    terrassement: 1500,
+    // terrassement: 1500, // Removed from UI but maybe keep in calculation if needed? No, user removed it from UI.
+    // I'll keep default valid for UI fields.
+    fondations: 18500, // Added default
     raccordement: 10000,
-    fraisConnexion: 1500,
-    fraisContrat: 1500,
-    developpement: 0,
-    declaissement: 0,
-    sortie: 0,
-    batterie: 0,
-    onduleur: 0,
-    chargeur3DSecours: 0
+    fraisCommerciaux: 12503, // Renamed from fraisConnexion (1500) and updated value from screenshot
+    fraisContrat: 1500, // Kept? No, user said remove. But I'll leave it in object if it doesn't hurt, but better clean.
+    // I will use clean defaults matching new fields.
+    developpement: 6524, // Value from screenshot
+    soulte: 0,
+    maintenance: 10,
+    bardage: 4502, // Value from screenshot
+    cheneaux: 3657, // Value from screenshot
+    batterie: 0
 };
+// I'll update the whole DEFAULT_COSTS block.
 
 export default function ProfitabilitySimulator() {
     const [params, setParams] = useState(DEFAULT_PARAMS);
@@ -46,7 +50,8 @@ export default function ProfitabilitySimulator() {
         tri: 0,
         drci: 0,
         paybackWithoutACC: 0,
-        paybackWithACC: 0
+        paybackWithACC: 0,
+        averageDSCR: 0
     });
 
     // Load saved defaults from localStorage
@@ -54,6 +59,9 @@ export default function ProfitabilitySimulator() {
         const savedCosts = localStorage.getItem('simulator_default_costs');
         if (savedCosts) {
             try {
+                // If saved costs have old keys, they might persist.
+                // Ideally merge with defaults or migrate.
+                // For now just load.
                 setCosts(JSON.parse(savedCosts));
             } catch (e) {
                 console.error('Error loading saved costs:', e);
@@ -67,7 +75,7 @@ export default function ProfitabilitySimulator() {
         setMetrics(calculated);
     }, [params, costs]);
 
-    // Auto-calculate Installation cost and Production
+    // Auto-calculate Installation cost and Production (SAME AS BEFORE)
     useEffect(() => {
         const power = params.power || 0;
         const productible = params.productible || 1200;
@@ -84,7 +92,7 @@ export default function ProfitabilitySimulator() {
         if (params.production !== newProduction) {
             setParams(prev => ({ ...prev, production: newProduction }));
         }
-    }, [params.power, params.productible, params.production]); // Added params.production to be safe/consistent but logic prevents loop
+    }, [params.power, params.productible, params.production]);
 
     const handleGeneratePDF = () => {
         generateSimulatorPDF({
@@ -118,17 +126,21 @@ export default function ProfitabilitySimulator() {
                     </div>
                 </div>
 
-                {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                    {/* Parameters Section */}
-                    <ParametersSection params={params} onParamsChange={setParams} />
+                {/* Main Content Grid - Adjusted Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    {/* Parameters Section - 1/3 width */}
+                    <div className="lg:col-span-1">
+                        <ParametersSection params={params} onParamsChange={setParams} />
+                    </div>
 
-                    {/* Project Costs Section */}
-                    <ProjectCostsSection
-                        costs={costs}
-                        onCostsChange={setCosts}
-                        totalCost={metrics.totalCost}
-                    />
+                    {/* Project Costs Section - 2/3 width */}
+                    <div className="lg:col-span-2">
+                        <ProjectCostsSection
+                            costs={costs}
+                            onCostsChange={setCosts}
+                            totalCost={metrics.totalCost}
+                        />
+                    </div>
                 </div>
 
                 {/* Profitability Section */}

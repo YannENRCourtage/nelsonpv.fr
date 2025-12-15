@@ -26,14 +26,12 @@ export function calculateTotalProjectCost(costs) {
         couverture = 0,
         terrassement = 0,
         raccordement = 0,
-        fraisConnexion = 0,
-        fraisContrat = 0,
+        fraisCommerciaux = 0,
         developpement = 0,
-        declaissement = 0,
-        sortie = 0,
+        soulte = 0,
         batterie = 0,
-        onduleur = 0,
-        chargeur3DSecours = 0
+        bardage = 0,
+        cheneaux = 0
     } = costs;
 
     return (
@@ -42,14 +40,12 @@ export function calculateTotalProjectCost(costs) {
         couverture +
         terrassement +
         raccordement +
-        fraisConnexion +
-        fraisContrat +
+        fraisCommerciaux +
         developpement +
-        declaissement +
-        sortie +
+        soulte +
         batterie +
-        onduleur +
-        chargeur3DSecours
+        bardage +
+        cheneaux
     );
 }
 

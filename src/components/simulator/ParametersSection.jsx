@@ -1,23 +1,35 @@
-import React from 'react';
-import { Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { Settings, Info } from 'lucide-react';
+import { Button } from '@/components/ui/button.jsx';
+import TariffDetailsModal from './TariffDetailsModal';
 
 export default function ParametersSection({ params, onParamsChange }) {
+    const [showTariffsModal, setShowTariffsModal] = useState(false);
+
     const handleChange = (field, value) => {
         onParamsChange({ ...params, [field]: parseFloat(value) || 0 });
     };
 
     const handleSliderChange = (e) => {
-        const power = parseFloat(e.target.value);
-        handleChange('power', power);
-        // Auto-calculate estimated production
-        handleChange('estimatedProduction', power * 1200);
+        handleChange('power', e.target.value);
     };
 
     return (
         <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center gap-2 mb-6">
-                <Sparkles className="h-5 w-5 text-teal-600" />
-                <h2 className="text-xl font-bold text-gray-800">Paramètres</h2>
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                    <Settings className="h-5 w-5 text-teal-600" />
+                    <h2 className="text-xl font-bold text-gray-800">Paramètres</h2>
+                </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowTariffsModal(true)}
+                    className="text-sm"
+                >
+                    <Info className="h-4 w-4 mr-2" />
+                    Détails des tarifs
+                </Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -44,14 +56,6 @@ export default function ParametersSection({ params, onParamsChange }) {
                             value={params.productible || 1200}
                             onChange={(e) => {
                                 const prod = parseFloat(e.target.value) || 0;
-                                // update productible, and production annual
-                                // assuming I can add 'productible' to params or just calculate production.
-                                // I'll use a local handler for this input that updates production.
-                                handleChange('production', (params.power || 0) * prod);
-                                // Also store productible if needed? Or just derived?
-                                // User said "simuacc.fr" -> likely explicit field.
-                                // I'll infer it's stored in params.productible if existing, else logic.
-                                // I'll update handleChange to updating 'productible' and 'production'.
                                 onParamsChange({ ...params, productible: prod, production: (params.power || 0) * prod });
                             }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
@@ -82,13 +86,6 @@ export default function ParametersSection({ params, onParamsChange }) {
                             value={params.partACC || 40}
                             onChange={(e) => {
                                 const val = parseFloat(e.target.value);
-                                // Update partACC and derived prixAchatACC (which is usually inverse or related?)
-                                // User said "Part d'ACC: 40%". Previous code had "Prix d'ACC" field.
-                                // If Part ACC = 40%, then Surplus = 60%.
-                                // And "Prix d'ACC" in calculations was used as % of ACC? 
-                                // Line 88 of prev file: value={params.prixAchatACC || 0.85}. 
-                                // Let's assume params.partACC is the percentage (0-100).
-                                // And I should likely update prixAchatACC to val/100.
                                 onParamsChange({ ...params, partACC: val, prixAchatACC: val / 100 });
                             }}
                             className="w-full h-2 bg-teal-200 rounded-lg appearance-none cursor-pointer accent-teal-600"
@@ -105,7 +102,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Tarif TB (€/kWh)*
+                            Tarif TB (€/kWh)
                         </label>
                         <input
                             type="number"
@@ -114,7 +111,6 @@ export default function ParametersSection({ params, onParamsChange }) {
                             onChange={(e) => handleChange('tarifTH', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                         />
-                        <p className="text-xs text-blue-500 mt-1 cursor-pointer">*détails tarifs Tb</p>
                     </div>
 
                     <div>
@@ -131,6 +127,10 @@ export default function ParametersSection({ params, onParamsChange }) {
                     </div>
                 </div>
             </div>
+
+            {showTariffsModal && (
+                <TariffDetailsModal onClose={() => setShowTariffsModal(false)} />
+            )}
         </div>
     );
 }

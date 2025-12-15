@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Euro, Settings, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import DefaultCostsModal from './DefaultCostsModal';
-import TariffDetailsModal from './TariffDetailsModal';
 
 export default function ProjectCostsSection({ costs, onCostsChange, totalCost }) {
     const [showDefaultsModal, setShowDefaultsModal] = useState(false);
@@ -16,19 +15,18 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
         { key: 'installation', label: 'Installation', icon: '🔧' },
         { key: 'charpente', label: 'Charpente', icon: '🏗️' },
         { key: 'couverture', label: 'Couverture', icon: '🏠' },
-        { key: 'terrassement', label: 'Terrassement', icon: '⛏️' },
+        { key: 'fondations', label: 'Fondations', icon: '🧱' }, // Added
         { key: 'raccordement', label: 'Raccordement', icon: '🔌' },
-        { key: 'fraisConnexion', label: 'Frais Connexion', icon: '💳' },
-        { key: 'fraisContrat', label: 'Frais Contrat', icon: '📄' },
         { key: 'developpement', label: 'Développement', icon: '💡' },
-        { key: 'declaissement', label: 'Déclaissement', icon: '📋' },
-        { key: 'sortie', label: 'Sortie', icon: '🚪' },
+        { key: 'fraisCommerciaux', label: 'Frais Commerciaux', icon: '🤝' }, // Renamed/Added
+        { key: 'soulte', label: 'Soulte', icon: '💰' }, // Added
+        { key: 'maintenance', label: 'Maintenance (€/kWc/an)', icon: '🛠️' }, // Added
     ];
 
     const optionFields = [
-        { key: 'batterie', label: 'Batterie', icon: '🔋' },
-        { key: 'onduleur', label: 'Onduleur', icon: '⚡' },
-        { key: 'chargeur3DSecours', label: 'Chargeur 3D Secours', icon: '🔌' },
+        { key: 'bardage', label: 'Bardage', icon: '🏢' }, // Added
+        { key: 'cheneaux', label: 'Chéneaux Et Descente', icon: '🌧️' }, // Added
+        { key: 'batterie', label: 'Batterie', icon: '🔋' }, // Kept
     ];
 
     return (
@@ -46,16 +44,7 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                         className="text-sm"
                     >
                         <Settings className="h-4 w-4 mr-2" />
-                        Paramètres par défaut
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowTariffsModal(true)}
-                        className="text-sm"
-                    >
-                        <Info className="h-4 w-4 mr-2" />
-                        Détails des tarifs
+                        Détails coûts du projet
                     </Button>
                 </div>
             </div>
@@ -116,10 +105,6 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                     onSave={onCostsChange}
                     onClose={() => setShowDefaultsModal(false)}
                 />
-            )}
-
-            {showTariffsModal && (
-                <TariffDetailsModal onClose={() => setShowTariffsModal(false)} />
             )}
         </div>
     );

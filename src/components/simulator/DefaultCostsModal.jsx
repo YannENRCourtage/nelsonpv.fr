@@ -33,16 +33,15 @@ export default function DefaultCostsModal({ costs, onSave, onClose }) {
         { key: 'installation', label: 'Installation (€/kWc)' },
         { key: 'charpente', label: 'Charpente (€)' },
         { key: 'couverture', label: 'Couverture (€)' },
-        { key: 'terrassement', label: 'Terrassement (€)' },
+        { key: 'fondations', label: 'Fondations (€)' },
         { key: 'raccordement', label: 'Raccordement (€)' },
-        { key: 'fraisConnexion', label: 'Frais Connexion (€)' },
-        { key: 'fraisContrat', label: 'Frais Contrat (€)' },
+        { key: 'fraisCommerciaux', label: 'Frais Commerciaux (€)' },
         { key: 'developpement', label: 'Développement (€)' },
-        { key: 'declaissement', label: 'Déclaissement (€)' },
-        { key: 'sortie', label: 'Sortie (€)' },
+        { key: 'soulte', label: 'Soulte (€)' },
+        { key: 'maintenance', label: 'Maintenance (€/kWc/an)' },
+        { key: 'bardage', label: 'Bardage (€)' },
+        { key: 'cheneaux', label: 'Chéneaux Et Descente (€)' },
         { key: 'batterie', label: 'Batterie (€)' },
-        { key: 'onduleur', label: 'Onduleur (€)' },
-        { key: 'chargeur3DSecours', label: 'Chargeur 3D Secours (€)' },
     ];
 
     return (
