@@ -97,7 +97,7 @@ export default function BusinessPlanTable({ businessPlan }) {
                             ))}
                         </tr>
                         <tr className="border-b border-gray-200 hover:bg-gray-50">
-                            <td className="p-2 sticky left-0 bg-white">Rachat Bail Toit</td>
+                            <td className="p-2 sticky left-0 bg-white">Rente Bailleur</td>
                             {businessPlan.map((year) => (
                                 <td key={year.annee} className="text-right p-2 text-red-700">
                                     {formatCurrency(year.rachatBailToit)}

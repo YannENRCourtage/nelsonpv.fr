@@ -24,7 +24,7 @@ export function calculateTotalProjectCost(costs) {
         installation = 0,
         charpente = 0,
         couverture = 0,
-        terrassement = 0,
+        fondations = 0,
         raccordement = 0,
         fraisCommerciaux = 0,
         developpement = 0,
@@ -38,7 +38,7 @@ export function calculateTotalProjectCost(costs) {
         installation +
         charpente +
         couverture +
-        terrassement +
+        fondations +
         raccordement +
         fraisCommerciaux +
         developpement +
