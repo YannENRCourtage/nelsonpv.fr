@@ -1,109 +1,112 @@
 import React, { useState } from 'react';
-import { Euro, Settings, Info } from 'lucide-react';
+import { Euro, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import DefaultCostsModal from './DefaultCostsModal';
 
 export default function ProjectCostsSection({ costs, onCostsChange, totalCost }) {
-    const [showDefaultsModal, setShowDefaultsModal] = useState(false);
-    const [showTariffsModal, setShowTariffsModal] = useState(false);
+    const [showDefaultCostsModal, setShowDefaultCostsModal] = useState(false);
+
+    // Order matching simuacc.fr (Image 5)
+    const costFields = [
+        { key: 'installation', label: 'Installation', unit: '€' },
+        { key: 'charpente', label: 'Charpente', unit: '€' },
+        { key: 'couverture', label: 'Couverture', unit: '€' },
+        { key: 'fondations', label: 'Fondations', unit: '€' },
+        { key: 'raccordement', label: 'Raccordement', unit: '€' },
+        { key: 'developpement', label: 'Développement', unit: '€' },
+        { key: 'fraisCommerciaux', label: 'Frais Commerciaux', unit: '€' },
+        { key: 'soulte', label: 'Soulte', unit: '€' },
+        { key: 'maintenance', label: 'Maintenance', unit: '€/kWc/an' }
+    ];
+
+    const optionFields = [
+        { key: 'bardage', label: 'Bardage', unit: '€' },
+        { key: 'cheneaux', label: 'Chéneaux Et Descente', unit: '€' },
+        { key: 'batterie', label: 'Batterie', unit: '€' }
+    ];
 
     const handleChange = (field, value) => {
         onCostsChange({ ...costs, [field]: parseFloat(value) || 0 });
     };
 
-    const costFields = [
-        { key: 'installation', label: 'Installation', icon: '🔧' },
-        { key: 'charpente', label: 'Charpente', icon: '🏗️' },
-        { key: 'couverture', label: 'Couverture', icon: '🏠' },
-        { key: 'fondations', label: 'Fondations', icon: '🧱' }, // Added
-        { key: 'raccordement', label: 'Raccordement', icon: '🔌' },
-        { key: 'developpement', label: 'Développement', icon: '💡' },
-        { key: 'fraisCommerciaux', label: 'Frais Commerciaux', icon: '🤝' }, // Renamed/Added
-        { key: 'soulte', label: 'Soulte', icon: '💰' }, // Added
-        { key: 'maintenance', label: 'Maintenance (€/kWc/an)', icon: '🛠️' }, // Added
-    ];
-
-    const optionFields = [
-        { key: 'bardage', label: 'Bardage', icon: '🏢' }, // Added
-        { key: 'cheneaux', label: 'Chéneaux Et Descente', icon: '🌧️' }, // Added
-        { key: 'batterie', label: 'Batterie', icon: '🔋' }, // Kept
-    ];
-
     return (
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white rounded-lg shadow-md p-6 h-full flex flex-col">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
-                    <Euro className="h-5 w-5 text-blue-600" />
+                    <Euro className="h-5 w-5 text-indigo-600" />
                     <h2 className="text-xl font-bold text-gray-800">Coûts du Projet</h2>
                 </div>
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowDefaultsModal(true)}
-                        className="text-sm"
-                    >
-                        <Settings className="h-4 w-4 mr-2" />
-                        Détails coûts du projet
-                    </Button>
-                </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowDefaultCostsModal(true)}
+                    className="text-sm"
+                >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Détails coûts du projet
+                </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                {costFields.map(({ key, label, icon }) => (
-                    <div key={key}>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            {icon} {label}
-                        </label>
-                        <div className="relative">
-                            <input
-                                type="number"
-                                value={costs[key] || 0}
-                                onChange={(e) => handleChange(key, e.target.value)}
-                                className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                            <span className="absolute right-3 top-2 text-gray-400 text-sm">€</span>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            <div className="border-t pt-4 mb-6">
-                <h3 className="text-md font-semibold text-gray-700 mb-4">Options</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {optionFields.map(({ key, label, icon }) => (
-                        <div key={key}>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                {icon} {label}
+            <div className="flex-grow space-y-6">
+                {/* Main Costs Grid: 4 columns */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {costFields.map((field) => (
+                        <div key={field.key}>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                                {field.label}
                             </label>
-                            <div className="relative">
+                            <div className="relative rounded-md shadow-sm">
                                 <input
                                     type="number"
-                                    value={costs[key] || 0}
-                                    onChange={(e) => handleChange(key, e.target.value)}
-                                    className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    value={costs[field.key] || 0}
+                                    onChange={(e) => handleChange(field.key, e.target.value)}
+                                    className="block w-full pl-3 pr-8 py-2 text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                                 />
-                                <span className="absolute right-3 top-2 text-gray-400 text-sm">€</span>
+                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <span className="text-gray-500 sm:text-xs">
+                                        {field.unit === '€' ? '€' : (field.unit === '€/kWc/an' ? '' : '€')}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     ))}
                 </div>
-            </div>
 
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 border-2 border-blue-300">
-                <div className="flex justify-between items-center">
-                    <span className="text-lg font-semibold text-gray-800">Coût Total du Projet</span>
-                    <span className="text-3xl font-bold text-blue-700">
+                <div className="border-t border-gray-100 pt-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Options</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {optionFields.map((field) => (
+                            <div key={field.key}>
+                                <label className="block text-xs font-medium text-gray-500 mb-1">
+                                    {field.label}
+                                </label>
+                                <div className="relative rounded-md shadow-sm">
+                                    <input
+                                        type="number"
+                                        value={costs[field.key] || 0}
+                                        onChange={(e) => handleChange(field.key, e.target.value)}
+                                        className="block w-full pl-3 pr-8 py-2 text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                                    />
+                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                        <span className="text-gray-500 sm:text-xs">€</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="mt-8 p-4 bg-indigo-50 rounded-lg border border-indigo-100 flex justify-between items-center">
+                    <span className="text-lg font-bold text-indigo-900">Coût Total du Projet</span>
+                    <span className="text-2xl font-bold text-indigo-700">
                         {totalCost.toLocaleString('fr-FR')} €
                     </span>
                 </div>
             </div>
 
-            {showDefaultsModal && (
+            {showDefaultCostsModal && (
                 <DefaultCostsModal
-                    costs={costs}
-                    onSave={onCostsChange}
-                    onClose={() => setShowDefaultsModal(false)}
+                    onClose={() => setShowDefaultCostsModal(false)}
                 />
             )}
         </div>

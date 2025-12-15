@@ -31,16 +31,13 @@ export default function DefaultCostsModal({ costs, onSave, onClose }) {
 
     const costFields = [
         { key: 'installation', label: 'Installation (€/kWc)' },
+        { key: 'maintenance', label: 'Maintenance (€/kWc/an)' },
         { key: 'charpente', label: 'Charpente (€)' },
         { key: 'couverture', label: 'Couverture (€)' },
         { key: 'fondations', label: 'Fondations (€)' },
         { key: 'raccordement', label: 'Raccordement (€)' },
         { key: 'developpement', label: 'Développement (€)' },
         { key: 'soulte', label: 'Soulte (€)' },
-        { key: 'maintenance', label: 'Maintenance (€/kWc/an)' },
-        { key: 'bardage', label: 'Bardage (€)' },
-        { key: 'cheneaux', label: 'Chéneaux Et Descente (€)' },
-        { key: 'batterie', label: 'Batterie (€)' },
     ];
 
     return (

@@ -45,7 +45,7 @@ export default function ProfitabilitySection({ metrics, params, onParamsChange }
                         DSCR Moyen
                     </label>
                     <div className="text-3xl font-bold text-blue-700">
-                        {averageDSCR.toFixed(2)}
+                        {Math.min(averageDSCR, 9.99).toFixed(2)}
                     </div>
                 </div>
 
