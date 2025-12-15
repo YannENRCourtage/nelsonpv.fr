@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 
-const DEFAULT_COSTS_KEY = 'simulator_default_costs';
+const DEFAULT_COSTS_KEY = 'simulator_default_costs_v3';
 
 export default function DefaultCostsModal({ costs, onSave, onClose }) {
     const [localCosts, setLocalCosts] = useState(costs || {});

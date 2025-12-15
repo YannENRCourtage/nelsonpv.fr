@@ -123,7 +123,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                             type="range"
                             min="0"
                             max="100"
-                            step="1"
+                            step="5"
                             value={params.partACC || 40}
                             onChange={(e) => {
                                 const val = parseFloat(e.target.value);

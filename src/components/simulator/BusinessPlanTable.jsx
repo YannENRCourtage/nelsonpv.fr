@@ -35,7 +35,7 @@ export default function BusinessPlanTable({ businessPlan }) {
                             <th className="text-left p-2 font-semibold sticky left-0 bg-gray-100 z-10">Année</th>
                             {businessPlan.map((year) => (
                                 <th key={year.annee} className="text-center p-2 font-semibold min-w-[80px]">
-                                    {year.annee}
+                                    &nbsp;&nbsp;{year.annee}
                                 </th>
                             ))}
                         </tr>
@@ -231,7 +231,7 @@ export default function BusinessPlanTable({ businessPlan }) {
                 </table>
             </div>
 
-            <div className="text-xs text-gray-500 italic mt-2 text-center">
+            <div className="text-sm text-gray-500 italic mt-4 text-center">
                 Hypothèses : Inflation maintenance: 1%/an. Inflation CA Tb: 1%/an. Inflation CA ACC: 2%/an. Inflation Assurance: 2%/an. Inflation Divers: 2%/an. Inflation IFER: 1%/an.
             </div>
         </div>

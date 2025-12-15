@@ -14,10 +14,10 @@ const DEFAULT_PARAMS = {
     production: 120000,
     estimatedProduction: 144000,
     tarifTH: 0.12,
-    tarifACC: 0.12,
+    tarifACC: 0.14,
     turpe: 0.012,
     prixAchatACC: 0.85,
-    interestRate: 3.0
+    interestRate: 3.9
 };
 
 const DEFAULT_COSTS = {
@@ -52,7 +52,7 @@ export default function ProfitabilitySimulator() {
 
     // Load saved defaults
     useEffect(() => {
-        const savedCosts = localStorage.getItem('simulator_default_costs');
+        const savedCosts = localStorage.getItem('simulator_default_costs_v3');
         if (savedCosts) {
             try {
                 // Merge saved defaults with structure to ensure installationRate exists
