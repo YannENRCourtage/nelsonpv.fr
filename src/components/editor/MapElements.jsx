@@ -766,6 +766,190 @@ function RPGLegend({ layersRef }) {
 }
 
 // ====================================================================
+// LÉGENDE ZONE INONDABLE (PPRN)
+// ====================================================================
+function ZoneInondableLegend({ layersRef }) {
+  const map = useMap();
+  const [showLegend, setShowLegend] = useState(false);
+
+  useEffect(() => {
+    const checkLayer = () => {
+      const layer = layersRef.current['zoneInondable'];
+      setShowLegend(layer && map.hasLayer(layer));
+    };
+    checkLayer();
+    const interval = setInterval(checkLayer, 500);
+    return () => clearInterval(interval);
+  }, [map, layersRef]);
+
+  if (!showLegend) return null;
+
+  return (
+    <div
+      className="absolute bottom-[280px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[220px]"
+      style={{ userSelect: 'none' }}
+    >
+      <div className="flex justify-between items-center mb-2">
+        <h4 className="font-bold text-xs text-gray-900">Légende Zone Inondable</h4>
+        <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded"><XIcon className="h-3 w-3" /></button>
+      </div>
+      <div className="space-y-1.5 text-[10px]">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-[#FF0000] opacity-70 border border-gray-300"></div>
+          <span>Zone rouge (Aléa fort / Inconstructible)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-[#0000FF] opacity-70 border border-gray-300"></div>
+          <span>Zone bleue (Aléa moyen / Expansion)</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ====================================================================
+// LÉGENDE SDIS 17
+// ====================================================================
+function SDISLegend({ layersRef }) {
+  const map = useMap();
+  const [showLegend, setShowLegend] = useState(false);
+
+  useEffect(() => {
+    const checkLayer = () => {
+      const layer = layersRef.current['sdis17'];
+      setShowLegend(layer && map.hasLayer(layer));
+    };
+    checkLayer();
+    const interval = setInterval(checkLayer, 500);
+    return () => clearInterval(interval);
+  }, [map, layersRef]);
+
+  if (!showLegend) return null;
+
+  return (
+    <div
+      className="absolute bottom-[380px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
+      style={{ userSelect: 'none' }}
+    >
+      <div className="flex justify-between items-center mb-2">
+        <h4 className="font-bold text-xs text-gray-900">Légende SDIS 17</h4>
+        <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded"><XIcon className="h-3 w-3" /></button>
+      </div>
+      <div className="space-y-1.5 text-[10px]">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-[#EF4444] border border-[#991B1B]"></div>
+          <span>Poteau Incendie (PI)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-sm bg-[#EF4444] border border-[#991B1B]"></div>
+          <span>Bouche Incendie (BI)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-sm bg-[#3B82F6] border border-[#1E40AF]"></div>
+          <span>Réserve / Point d'eau</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ====================================================================
+// MANAGER SDIS 17 (Logique WFS + Cluster)
+// ====================================================================
+function SDISLayerManager({ layersRef }) {
+  const map = useMap();
+
+  useEffect(() => {
+    // Initialiser la couche SDIS 17 si elle n'existe pas encore
+    if (!layersRef.current['sdis17']) {
+      const layerConfig = LAYERS['sdis17'];
+
+      // Créer un groupe de clusters pour gérer les marqueurs
+      const markerClusterGroup = L.markerClusterGroup({
+        chunkedLoading: true,
+        chunkInterval: 200,
+        chunkDelay: 50,
+        maxClusterRadius: 50,
+        disableClusteringAtZoom: 17,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        iconCreateFunction: function (cluster) {
+          const count = cluster.getChildCount();
+          let size = 'small';
+          if (count > 100) size = 'large';
+          else if (count > 10) size = 'medium';
+
+          return L.divIcon({
+            html: `<div style="background-color: ${size === 'small' ? 'rgba(220, 20, 60, 0.7)' : size === 'medium' ? 'rgba(200, 10, 50, 0.7)' : 'rgba(178, 34, 34, 0.8)'}; border: 3px solid ${size === 'small' ? 'rgba(200, 10, 50, 0.9)' : size === 'medium' ? 'rgba(178, 34, 34, 0.9)' : 'rgba(139, 0, 0, 1)'}; width: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; height: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: ${size === 'small' ? '12px' : size === 'medium' ? '14px' : '16px'};"><span>${count}</span></div>`,
+            className: '',
+            iconSize: L.point(40, 40)
+          });
+        }
+      });
+
+      // Sauvegarder dans layersRef pour que le toggle fonctionne
+      layersRef.current['sdis17'] = markerClusterGroup;
+
+      // Fonction pour charger les données
+      const loadData = () => {
+        fetch(layerConfig.url)
+          .then(response => response.json())
+          .then(data => {
+            const geoJsonLayer = L.geoJSON(data, {
+              pointToLayer: (feature, latlng) => {
+                const type = feature.properties?.type_hydrant || '';
+                let html = '';
+
+                // Styling Logic based on Type
+                if (type.startsWith('PI')) {
+                  html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+                } else if (type.startsWith('BI')) {
+                  html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+                } else if (['REA', 'RENA'].includes(type) || type.includes('Reserve')) {
+                  html = `<div style="background-color: #3B82F6; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #1E40AF; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+                } else {
+                  html = `<div style="background-color: #9CA3AF; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #4B5563;"></div>`;
+                }
+
+                return L.marker(latlng, {
+                  icon: L.divIcon({
+                    className: '',
+                    html: html,
+                    iconSize: [14, 14],
+                    iconAnchor: [7, 7]
+                  })
+                });
+              },
+              onEachFeature: (feature, layer) => {
+                if (feature.properties) {
+                  const props = feature.properties;
+                  let popupContent = '<div style="font-family: sans-serif;">';
+                  popupContent += '<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 16px; font-weight: bold;">🚒 Point d\'Eau Incendie</h4>';
+                  popupContent += `<p style="margin: 4px 0;"><strong>Nom:</strong> ${props.nom || 'N/A'}</p>`;
+                  popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.type_start || props.type_hydrant || 'N/A'}</p>`;
+                  popupContent += `<p style="margin: 4px 0;"><strong>État:</strong> ${props.etat_start || 'Inconnu'}</p>`;
+                  if (props.volume) popupContent += `<p style="margin: 4px 0;"><strong>Volume:</strong> ${props.volume} m³</p>`;
+                  if (props.debit_1bar) popupContent += `<p style="margin: 4px 0;"><strong>Débit (1 bar):</strong> ${props.debit_1bar} m³/h</p>`;
+                  if (props.pression) popupContent += `<p style="margin: 4px 0;"><strong>Pression:</strong> ${props.pression} bar</p>`;
+                  popupContent += '</div>';
+                  layer.bindPopup(popupContent, { maxWidth: 300 });
+                }
+              }
+            });
+            markerClusterGroup.addLayer(geoJsonLayer);
+          })
+          .catch(err => console.error("Erreur chargement SDIS 17", err));
+      };
+
+      // Charger les données une seule fois
+      loadData();
+    }
+  }, [map, layersRef]);
+
+  return null;
+}
+
+// ====================================================================
 // CONTRÔLE DES FONDS DE CARTE
 // ====================================================================
 // Contrôle standard en bas à droite pour les FONDS DE CARTE

@@ -116,47 +116,67 @@ export function generateBusinessPlan(params, costs) {
         // Vente Surplus = Production * (1 - Part ACC) * Tarif TH * Inflation
         const venteSurplus = production * (1 - prixAchatACC) * tarifTH * inflationCATb;
 
-        // Prime
+        // Prime: Versée entièrement la première année (Hypothèse Simuacc)
         let primeYear = 0;
         if (primeAutoconsoTotal > 0) {
-            if (power <= 9) {
-                primeYear = (year === 0) ? primeAutoconsoTotal : 0;
-            } else {
-                primeYear = (year < 5) ? (primeAutoconsoTotal / 5) : 0;
-            }
+            primeYear = (year === 0) ? primeAutoconsoTotal : 0;
         }
 
         const totalCA = venteACC + venteSurplus + primeYear;
 
         // Calcul du CA TH Seul (Base pour Gain TB Seul) - Hypothèse 100% Surplus
         const venteTHSeul = production * tarifTH * inflationCATb;
-        const totalCATHSeul = venteTHSeul + primeYear; // Prime applies to both? Usually yes.
+        const totalCATHSeul = venteTHSeul + primeYear;
 
         // Calcul des charges d'exploitation
         const maintenance = power * maintenancePerKwc * inflationMaintenance;
         const rachatBailToit = 0;
-        // Assurance: 115€ * Power (Year 1) then Inflation
-        const assurance = (115 * power) * inflationAssurance;
+        // Assurance: 11.5€ * Power (Year 1) then Inflation (Simuacc: 1150 for 100kWc -> 11.5)
+        const assurance = (11.5 * power) * inflationAssurance;
         // IFER: 8.36€ * Power (if > 100) then Inflation
         const ifer = power > 100 ? (8.36 * power) * inflationIFER : 0;
-        // Divers: 120€ * Power (Year 1) then Inflation
-        const divers = (120 * power) * inflationDivers;
+        // Divers: 12€ * Power (Year 1) then Inflation (Simuacc: 1200 for 100kWc -> 12)
+        const divers = (12 * power) * inflationDivers;
 
         const totalCharges = maintenance + rachatBailToit + assurance + ifer + divers;
 
         // Excédent Brut d'Exploitation
         const ebe = totalCA - totalCharges;
 
-        // Amortissement
+        // Amortissement Comptable (Linéaire sur 20 ans)
         const amortissement = annualDepreciation;
 
         // Résultat d'exploitation
         const rbt = ebe - amortissement;
 
-        // Financement
-        const interets = remainingDebt * (interestRate / 100);
-        const rembtCapital = year < 20 ? totalCost / 20 : 0; // Remboursement sur 20 ans
-        const annuite = rembtCapital + interets;
+        // Financement (Emprunt à Annuités Constantes)
+        // Annuity = Debt * r / (1 - (1+r)^-n)
+        const annualRate = interestRate / 100;
+        let annuite = 0;
+        let interets = 0;
+        let rembtCapital = 0;
+
+        if (annualRate > 0 && totalCost > 0) {
+            // Calcul de l'annuité constante (si année 0, on la calcule)
+            // On recalcul pas à chaque boucle, c'est constant.
+            const term = 20;
+            const calculatedAnnuity = totalCost * (annualRate / (1 - Math.pow(1 + annualRate, -term)));
+
+            if (year < term) {
+                annuite = calculatedAnnuity;
+                interets = remainingDebt * annualRate;
+                rembtCapital = annuite - interets;
+            } else {
+                annuite = 0;
+                interets = 0;
+                rembtCapital = 0;
+            }
+        } else if (totalCost > 0) {
+            // Taux 0%
+            annuite = totalCost / 20;
+            rembtCapital = totalCost / 20;
+            interets = 0;
+        }
 
         remainingDebt = Math.max(0, remainingDebt - rembtCapital);
 
@@ -170,6 +190,8 @@ export function generateBusinessPlan(params, costs) {
         const resultatNet = rai - impot;
 
         // DSCR (Couverture de la dette : (EBE - Impôt) / Annuité)
+        // Simuacc seems to use EBE / Annuity or similar. User screenshot says (EBE-Impot) logic is standard.
+        // Let's stick to standard: (EBE - Tax) / Debt Service.
         const dscr = annuite > 0 ? (ebe - impot) / annuite : 0;
 
         // Conversion de la dette
@@ -186,11 +208,22 @@ export function generateBusinessPlan(params, costs) {
             cumulativeGainACC += totalCA;
         }
 
-        // Cash Flow for ROI and TRI (Resultat Net + Amort - Rembt Capital)
-        // Matches "CF = Net Result + Amort - Capital Repayment" from User TRI Definition.
-        // Matches "Cash-flow utilisé = Recettes - Charges - Dette (Annuite)" roughly (ignoring tax difference, but TRI explicit def wins).
-        const cashFlow = resultatNet + amortissement - rembtCapital;
-        cumulativeCashFlow += cashFlow;
+        // --- CALCUL DES FLUX POUR TRI/PAYBACK ---
+
+        // 1. Flux Actionnaire (Net Cash Flow to Equity)
+        // = Resultat Net + Amort - Remboursement Capital
+        const cashFlowShareholder = resultatNet + amortissement - rembtCapital;
+
+        // 2. Flux Projet (Unlevered Free Cash Flow)
+        // Pour TRI Projet, on doit exclure l'impact de la dette (intérêts et capital).
+        // On recalcule l'impôt théorique sans dette.
+        const impotTheorique = Math.max(0, rbt * TAX_RATE);
+        // Flux = EBIT * (1 - t) + Amortissement
+        //      = (rbt - impotTheorique) + amortissement
+        //      = ebe - impotTheorique
+        const cashFlowProject = ebe - impotTheorique;
+
+        cumulativeCashFlow += cashFlowProject; // On utilise le Flux Projet pour le Payback Projet
 
         businessPlan.push({
             annee: yearNumber,
@@ -217,7 +250,8 @@ export function generateBusinessPlan(params, costs) {
             dscr,
             cumulativeGainTH,
             cumulativeGainACC,
-            cashFlow,
+            cashFlow: cashFlowShareholder, // Pour compatibilité si utilisé ailleurs (tableau)
+            cashFlowProject,
             cumulativeCashFlow
         });
     }
@@ -242,17 +276,15 @@ export function calculateAverageDSCR(businessPlan) {
 }
 
 export function calculateTRI(businessPlan, initialInvestment) {
-    // Cash Flow pour TRI = Resultat Net + Amort - Rembt Capital
-    // Initial Flow = -InitialInvestment
-    const cashFlows = [-initialInvestment, ...businessPlan.map(y => y.cashFlow)];
+    // TRI PROJET: utilise les flux de trésorerie du projet (avant financement)
+    const cashFlows = [-initialInvestment, ...businessPlan.map(y => y.cashFlowProject)];
 
-    // Safety check: specific case where sum of positive flows doesn't cover investment
     const sumPositive = cashFlows.reduce((acc, val) => val > 0 ? acc + val : acc, 0);
     if (sumPositive < initialInvestment) {
         return -100;
     }
 
-    let tri = 0.1; // Initial guess 10%
+    let tri = 0.05;
     for (let i = 0; i < 1000; i++) {
         let npv = 0;
         let dnpv = 0;
@@ -266,12 +298,11 @@ export function calculateTRI(businessPlan, initialInvestment) {
 
         let newTri = tri - npv / dnpv;
 
-        // Clamp newTri to avoid explosion
-        if (newTri > 50) newTri = 50; // Max 5000%
+        // Clamp
+        if (newTri > 50) newTri = 50;
         if (newTri < -0.99) newTri = -0.99;
 
         if (Math.abs(newTri - tri) < 0.00001) return newTri * 100;
-
         tri = newTri;
     }
     return tri * 100;
