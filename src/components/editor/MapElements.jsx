@@ -18,6 +18,9 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-geosearch/dist/geosearch.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import "leaflet.markercluster";
 import MapDrawingTools from "./MapDrawingTools.jsx";
 import html2canvas from "html2canvas";
 import SearchField from "./SearchField.jsx";
@@ -663,6 +666,16 @@ const LAYERS = {
 
   // Limites administratives
   communes: { name: "Limites communales", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ADMINEXPRESS-COG-CARTO.LATEST&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 32, opacity: 0.5 },
+
+  // Sécurité
+  sdis17: {
+    name: "SDIS 17 - Points d'eau",
+    type: 'custom', // Custom type to be handled separately
+    url: 'https://geo.geoplateforme17.fr/SDIS17/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=SDIS17:view_pei&outputFormat=application/json&srsName=EPSG:4326&count=50000',
+    attribution: 'SDIS 17 / Géoplateforme17',
+    isOverlay: true,
+    zIndex: 100
+  },
 
   // Urbanisme
   // Urbanisme
@@ -1563,6 +1576,9 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
           <BasemapControl layersRef={layersRef} />
 
           <RPGLegend layersRef={layersRef} />
+          <ZoneInondableLegend layersRef={layersRef} />
+          <SDISLegend layersRef={layersRef} />
+          <SDISLayerManager layersRef={layersRef} />
 
           <SearchField onAddressFound={onAddressFound} />
           <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>

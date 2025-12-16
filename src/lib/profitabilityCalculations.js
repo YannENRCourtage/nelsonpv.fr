@@ -72,7 +72,7 @@ export function generateBusinessPlan(params, costs) {
     const startYear = new Date().getFullYear();
 
     // Paramètres de maintenance (par défaut 30 €/kWc/an si non défini, user image says 10 in previous step)
-    const maintenancePerKwc = costs.maintenance || 10;
+    const maintenancePerKwc = costs.maintenance !== undefined ? costs.maintenance : 10;
     const INSURANCE_RATE = 0.005; // 0.5% du coût total par an
     const TAX_RATE = 0.25; // 25% d'impôt sur les sociétés
     const DEPRECIATION_YEARS = 20;
@@ -96,6 +96,7 @@ export function generateBusinessPlan(params, costs) {
     let remainingDebt = totalCost;
     let cumulativeGainTH = 0;
     let cumulativeGainACC = 0;
+    let cumulativeCashFlow = 0;
 
     for (let year = 0; year < 20; year++) {
         const yearNumber = startYear + year;
@@ -185,6 +186,12 @@ export function generateBusinessPlan(params, costs) {
             cumulativeGainACC += totalCA;
         }
 
+        // Cash Flow for ROI and TRI (Resultat Net + Amort - Rembt Capital)
+        // Matches "CF = Net Result + Amort - Capital Repayment" from User TRI Definition.
+        // Matches "Cash-flow utilisé = Recettes - Charges - Dette (Annuite)" roughly (ignoring tax difference, but TRI explicit def wins).
+        const cashFlow = resultatNet + amortissement - rembtCapital;
+        cumulativeCashFlow += cashFlow;
+
         businessPlan.push({
             annee: yearNumber,
             venteACC,
@@ -209,7 +216,9 @@ export function generateBusinessPlan(params, costs) {
             dach,
             dscr,
             cumulativeGainTH,
-            cumulativeGainACC
+            cumulativeGainACC,
+            cashFlow,
+            cumulativeCashFlow
         });
     }
 
@@ -218,7 +227,7 @@ export function generateBusinessPlan(params, costs) {
 
 export function calculateCumulativeGains(businessPlan) {
     return businessPlan.map((year, index) => ({
-        annee: 2025 + index, // Correct year display
+        annee: 2025 + index,
         gainTH: year.cumulativeGainTH / 1000,
         gainACC: year.cumulativeGainACC / 1000
     }));
@@ -233,26 +242,36 @@ export function calculateAverageDSCR(businessPlan) {
 }
 
 export function calculateTRI(businessPlan, initialInvestment) {
-    // Cash Flow pour TRI = EBE - Impôt ? Ou Cash Flow aux actionnaires ?
-    // TRI Projet = Free Cash Flow to Firm (FCFF) => EBE - Impôt (sans impact dette) ?
-    // TRI Actionnaire = Free Cash Flow to Equity (FCFE) => Résultat Net + Amort - Rembt Capital
-    // Ici on calcule TRI Projet sur 20 ans
-    // Flux = EBE - Impot (sur EBE) - Investissement Initial
-    // Ou simplement Flux de trésorerie net ?
-    const cashFlows = [-initialInvestment, ...businessPlan.map(y => y.resultatNet + y.amortissement - y.rembtCapital)];
+    // Cash Flow pour TRI = Resultat Net + Amort - Rembt Capital
+    // Initial Flow = -InitialInvestment
+    const cashFlows = [-initialInvestment, ...businessPlan.map(y => y.cashFlow)];
 
-    // ... (rest of TRI calc same)
-    let tri = 0.1;
-    for (let i = 0; i < 100; i++) {
+    // Safety check: specific case where sum of positive flows doesn't cover investment
+    const sumPositive = cashFlows.reduce((acc, val) => val > 0 ? acc + val : acc, 0);
+    if (sumPositive < initialInvestment) {
+        return -100;
+    }
+
+    let tri = 0.1; // Initial guess 10%
+    for (let i = 0; i < 1000; i++) {
         let npv = 0;
         let dnpv = 0;
         for (let t = 0; t < cashFlows.length; t++) {
-            npv += cashFlows[t] / Math.pow(1 + tri, t);
-            dnpv -= t * cashFlows[t] / Math.pow(1 + tri, t + 1);
+            const disc = Math.pow(1 + tri, t);
+            npv += cashFlows[t] / disc;
+            dnpv -= t * cashFlows[t] / (disc * (1 + tri));
         }
-        if (dnpv === 0) break;
+
+        if (Math.abs(dnpv) < 0.000001) break;
+
         let newTri = tri - npv / dnpv;
-        if (Math.abs(newTri - tri) < 0.0001) return newTri * 100;
+
+        // Clamp newTri to avoid explosion
+        if (newTri > 50) newTri = 50; // Max 5000%
+        if (newTri < -0.99) newTri = -0.99;
+
+        if (Math.abs(newTri - tri) < 0.00001) return newTri * 100;
+
         tri = newTri;
     }
     return tri * 100;
@@ -271,64 +290,58 @@ export function calculateDRCI(businessPlan, initialInvestment) {
         cumulativeCashFlow += businessPlan[i].resultatNet + businessPlan[i].amortissement;
 
         if (cumulativeCashFlow >= initialInvestment) {
-            // Interpolation pour obtenir une valeur plus précise
             const previousCumulative = cumulativeCashFlow - (businessPlan[i].resultatNet + businessPlan[i].amortissement);
             const yearFraction = (initialInvestment - previousCumulative) / (businessPlan[i].resultatNet + businessPlan[i].amortissement);
             return i + yearFraction;
         }
     }
 
-    return 20; // Si pas récupéré en 20 ans
+    return 20;
 }
 
 /**
  * Calcule le retour sur investissement (payback period)
  * @param {Array} businessPlan - Business plan généré
  * @param {number} initialInvestment - Investissement initial
- * @param {boolean} withACC - Avec ou sans ACC
  * @returns {number} Années pour retour sur investissement
  */
-export function calculatePaybackPeriod(businessPlan, initialInvestment, withACC = true) {
-    let cumulative = 0;
+export function calculatePaybackPeriod(businessPlan, initialInvestment) {
+    // Updated ROI Logic: Sum(CashFlow) >= CAPEX
+    // CashFlow = Net Result + Amort - Capital Repayment.
 
     for (let i = 0; i < businessPlan.length; i++) {
-        const yearGain = withACC ? businessPlan[i].cumulativeGainACC : businessPlan[i].cumulativeGainTH;
-
-        if (yearGain >= initialInvestment) {
+        if (businessPlan[i].cumulativeCashFlow >= initialInvestment) {
             // Interpolation
-            const previousGain = i > 0 ? (withACC ? businessPlan[i - 1].cumulativeGainACC : businessPlan[i - 1].cumulativeGainTH) : 0;
-            const yearFraction = (initialInvestment - previousGain) / (yearGain - previousGain);
-            return i + yearFraction;
+            const previousCumulative = i > 0 ? businessPlan[i - 1].cumulativeCashFlow : 0;
+            const yearFlow = businessPlan[i].cashFlow;
+            const fraction = yearFlow !== 0 ? (initialInvestment - previousCumulative) / yearFlow : 0;
+            return i + fraction;
         }
     }
 
-    return 20; // Si pas récupéré en 20 ans
+    return 20.0;
 }
 
 export function calculateAllMetrics(params, costs) {
     const totalCost = calculateTotalProjectCost(costs);
+
+    // 1. Calculate Standard Business Plan (with User Params)
     const businessPlan = generateBusinessPlan(params, costs);
+
+    // 2. Calculate "No ACC" Business Plan (Hypothetical: 100% Surplus)
+    const paramsNoACC = { ...params, prixAchatACC: 0 };
+    const businessPlanNoACC = generateBusinessPlan(paramsNoACC, costs);
+
     const cumulativeGains = calculateCumulativeGains(businessPlan);
 
     const tri = calculateTRI(businessPlan, totalCost);
-    // Use calculateDRCI defined previously (assumed unchanged as not in replacement block, wait I must include it if I replace the block or ensure it's there)
-    // Actually I'm replacing generateBusinessPlan, calculateCumulativeGains, and calculateAllMetrics.
-    // I need to make sure calculateDRCI and calculatePaybackPeriod are accessible or included.
-    // Since I am doing a partial replacement, I should allow calculateDRCI/Payback to remain if `ReplacementContent` doesn't overwrite them.
-    // But `calculateAllMetrics` uses them.
-
-    // Let's redefine calculateAverageDSCR inside or export it.
     const averageDSCR = calculateAverageDSCR(businessPlan);
 
-    // Reuse existing functions for DRCI/Payback if they are outside the replacement scope.
-    // My replacement starts at line 73 and ends at 301.
-    // Lines 228-273 contain calculateDRCI and calculatePaybackPeriod.
-    // I MUST include them in the ReplacementContent or NOT replace them.
-    // To be safe, I will include the logic for calculateAverageDSCR and update calculateAllMetrics.
+    // Payback with ACC uses standard BP
+    const paybackWithACC = calculatePaybackPeriod(businessPlan, totalCost);
 
-    // I will replace `generateBusinessPlan` (lines 62-178) first.
-    // Then add `calculateAverageDSCR`.
-    // Then update `calculateAllMetrics`.
+    // Payback without ACC uses "No ACC" BP
+    const paybackWithoutACC = calculatePaybackPeriod(businessPlanNoACC, totalCost);
 
     return {
         totalCost,
@@ -336,8 +349,8 @@ export function calculateAllMetrics(params, costs) {
         cumulativeGains,
         tri,
         drci: calculateDRCI(businessPlan, totalCost),
-        paybackWithoutACC: calculatePaybackPeriod(businessPlan, totalCost, false),
-        paybackWithACC: calculatePaybackPeriod(businessPlan, totalCost, true),
-        averageDSCR // Added
+        paybackWithoutACC,
+        paybackWithACC,
+        averageDSCR
     };
 }
