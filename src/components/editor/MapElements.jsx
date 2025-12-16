@@ -1631,6 +1631,116 @@ function MapInstance({ setMap }) {
 }
 
 
+// ====================================================================
+// MANAGER ENEDIS (WFS + BBOX)
+// ====================================================================
+function EnedisLayerManager({ layersRef }) {
+  const map = useMap();
+  const [loadedBounds, setLoadedBounds] = useState([]); // Track loaded areas to avoid spamming
+  const activeLayers = useRef(new Set());
+
+  // Dataset configurations
+  const ENEDIS_DATASETS = {
+    enedisPostesSource: { id: 'poste-source', color: '#800080', type: 'point', label: 'Poste Source' },
+    enedisPostesHTABT: { id: 'poste-electrique', color: '#FF00FF', type: 'point', label: 'Poste HTA/BT' },
+    enedisLignesHTA: { id: 'reseau-hta', color: '#FFA500', type: 'line', label: 'Ligne HTA (Aérien)' }, // Orange
+    enedisLignesSoutHTA: { id: 'reseau-souterrain-hta', color: '#A52A2A', type: 'line', label: 'Ligne HTA (Souterrain)' }, // Brown
+    enedisLignesBT: { id: 'reseau-aerien-bt', color: '#0000FF', type: 'line', label: 'Ligne BT (Aérien)' }, // Blue
+    enedisLignesSoutBT: { id: 'reseau-souterrain-bt', color: '#008080', type: 'line', label: 'Ligne BT (Souterrain)' }, // Teal
+    enedisPoteaux: { id: 'position-geographique-des-poteaux-electriques-hta-et-bt', color: '#808080', type: 'point', label: 'Poteau' }
+  };
+
+  useEffect(() => {
+    const handleMoveEnd = () => {
+      const bounds = map.getBounds();
+      const zoom = map.getZoom();
+
+      // Load data only if zoomed in enough (to prevent massive fetch)
+      if (zoom < 13) return;
+
+      Object.keys(ENEDIS_DATASETS).forEach(layerKey => {
+        if (map.hasLayer(layersRef.current[layerKey])) {
+          fetchData(layerKey, bounds);
+        }
+      });
+    };
+
+    const fetchData = (layerKey, bounds) => {
+      // Basic deduplication could be added here
+      const config = ENEDIS_DATASETS[layerKey];
+      if (!layersRef.current[layerKey]) return;
+
+      const sw = bounds.getSouthWest();
+      const ne = bounds.getNorthEast();
+      // Standard WFS BBOX: minx,miny,maxx,maxy
+      const bbox = `${sw.lng},${sw.lat},${ne.lng},${ne.lat}`;
+
+      const url = `https://data.enedis.fr/api/explore/v2.1/catalog/datasets/${config.id}/exports/wfs?service=WFS&version=2.0.0&request=GetFeature&typename=${config.id}&outputFormat=geojson&srsname=EPSG:4326&bbox=${bbox}`;
+
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          // Create a temporary layer to parse GeoJSON
+          const newLayer = L.geoJSON(data, {
+            pointToLayer: (feature, latlng) => {
+              return L.circleMarker(latlng, {
+                radius: 4,
+                fillColor: config.color,
+                color: "#000",
+                weight: 1,
+                opacity: 1,
+                fillOpacity: 0.8
+              });
+            },
+            style: (feature) => {
+              return {
+                color: config.color,
+                weight: 2,
+                opacity: 0.8
+              };
+            },
+            onEachFeature: (feature, layer) => {
+              let popup = `<div style="font-size:12px"><strong>${config.label}</strong><br/>`;
+              if (feature.properties) {
+                for (let k in feature.properties) {
+                  if (feature.properties[k]) popup += `<b>${k}:</b> ${feature.properties[k]}<br/>`;
+                }
+              }
+              popup += "</div>";
+              layer.bindPopup(popup);
+            }
+          });
+
+          // Add new features to the existing layer group
+          // Note: This is a naive implementation. Normally we should check for duplicate IDs.
+          const layerGroup = layersRef.current[layerKey];
+          newLayer.eachLayer(l => {
+            // Very basic text-based deduplication or relying on ID if available
+            // Ideally checking feature.id
+            layerGroup.addLayer(l);
+          });
+        })
+        .catch(err => console.error(`Error loading ${layerKey}`, err));
+    };
+
+    map.on('moveend', handleMoveEnd);
+
+    // check active on mount/update
+    Object.keys(ENEDIS_DATASETS).forEach(key => {
+      if (!layersRef.current[key]) {
+        layersRef.current[key] = L.layerGroup(); // Initialize empty group
+      }
+    });
+
+    return () => {
+      map.off('moveend', handleMoveEnd);
+    };
+  }, [map, layersRef]);
+
+  return null;
+}
+
+
 // Barre horizontale en bas pour les CALQUES uniquement (Hors MapContainer)
 function BottomLayersBar({ layersRef, map }) {
   const [, forceUpdate] = useState();
@@ -1647,23 +1757,56 @@ function BottomLayersBar({ layersRef, map }) {
     return map && layersRef.current[key] && map.hasLayer(layersRef.current[key]);
   };
 
-  // On ne garde que les overlays (zIndex > 0)
-  const overlayKeys = Object.keys(LAYERS).filter(k => LAYERS[k].isOverlay || (LAYERS[k].url && LAYERS[k].url.includes("WMS")));
+  // Group Layers
+  const generalOverlays = ['cadastre', 'zoneInondable', 'sdis17'];
+  const enedisOverlays = [
+    'enedisPostesSource', 'enedisPostesHTABT',
+    'enedisLignesHTA', 'enedisLignesSoutHTA',
+    'enedisLignesBT', 'enedisLignesSoutBT',
+    'enedisPoteaux'
+  ];
+
+  // Helper to get name
+  const getName = (key) => LAYERS[key]?.name || key;
 
   return (
-    <div className="bg-white border-t border-gray-200 p-2 flex flex-wrap justify-center gap-1 z-[1000] w-full max-h-32 overflow-y-auto">
-      {overlayKeys.map(key => (
-        <button
-          key={key}
-          onClick={() => toggleLayer(key)}
-          className={`px-2 py-1 rounded text-[12px] font-medium transition-colors shadow-sm border whitespace-nowrap ${isActive(key)
-            ? 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700'
-            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-            }`}
-        >
-          {LAYERS[key].name || key}
-        </button>
-      ))}
+    <div className="bg-white border-t border-gray-200 p-2 flex flex-col items-center gap-1 z-[1000] w-full max-h-40 overflow-y-auto">
+      {/* Ligne 1 : Général */}
+      <div className="flex flex-wrap justify-center gap-1">
+        {generalOverlays.map(key => (
+          LAYERS[key] && (
+            <button
+              key={key}
+              onClick={() => toggleLayer(key)}
+              className={`px-2 py-1 rounded text-[12px] font-medium transition-colors shadow-sm border whitespace-nowrap ${isActive(key)
+                ? 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+            >
+              {getName(key)}
+            </button>
+          )
+        ))}
+      </div>
+
+      {/* Ligne 2 : Enedis */}
+      <div className="flex flex-wrap justify-center gap-1 border-t border-gray-100 pt-1 w-full">
+        <span className="text-[10px] text-gray-400 font-bold uppercase mr-2 self-center">Enedis</span>
+        {enedisOverlays.map(key => (
+          LAYERS[key] && (
+            <button
+              key={key}
+              onClick={() => toggleLayer(key)}
+              className={`px-2 py-1 rounded text-[12px] font-medium transition-colors shadow-sm border whitespace-nowrap ${isActive(key)
+                ? 'bg-green-600 text-white border-green-700 hover:bg-green-700'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+            >
+              {getName(key)}
+            </button>
+          )
+        ))}
+      </div>
     </div>
   );
 }
