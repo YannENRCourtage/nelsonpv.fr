@@ -669,7 +669,7 @@ const LAYERS = {
 
   // ENEDIS - Réseau électrique
   enedisHTA: {
-    name: "Lignes HTA (moyenne tension)",
+    name: "Lignes HTA",
     type: 'custom',
     url: 'https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-hta/lines?format=geojson&size=1000',
     attribution: 'ENEDIS Open Data',
@@ -919,23 +919,34 @@ function SDISLayerManager({ layersRef }) {
       // Fonction pour charger les données depuis les 3 APIs
       const loadData = () => {
         const apis = layerConfig.apis || [];
+        console.log("FETCH SDIS FROM APIS:", apis);
 
         Promise.all(apis.map(url =>
           fetch(url)
-            .then(r => r.json())
+            .then(r => {
+              console.log(`RESPONSE SDIS STATUS (${url}):`, r.status);
+              return r.json();
+            })
             .catch(err => {
               console.warn(`Erreur API SDIS ${url}`, err);
               return { type: 'FeatureCollection', features: [] };
             })
         )).then(results => {
           // Fusionner toutes les features
-          const allFeatures = results.flatMap(r => r.features || []);
+          const allFeatures = results.flatMap(r => {
+            if (!r.features) {
+              console.warn("SDIS result missing features array:", r);
+              return [];
+            }
+            return r.features;
+          });
           const mergedData = {
             type: 'FeatureCollection',
             features: allFeatures
           };
 
           console.log(`SDIS: ${allFeatures.length} points d'eau chargés depuis ${apis.length} APIs`);
+          console.log("SDIS MERGED DATA:", mergedData);
 
           const geoJsonLayer = L.geoJSON(mergedData, {
             pointToLayer: (feature, latlng) => {
@@ -999,38 +1010,46 @@ function ENEDISHTALayerManager({ layersRef }) {
   const map = useMap();
 
   useEffect(() => {
-    if (!layersRef.current['enedisHTA']) {
-      const layerConfig = LAYERS['enedisHTA'];
-      const htaGroup = L.layerGroup();
-      layersRef.current['enedisHTA'] = htaGroup;
+    const layerConfig = LAYERS['enedisHTA'];
+    const htaGroup = L.layerGroup();
+    layersRef.current['enedisHTA'] = htaGroup;
 
-      const loadData = () => {
-        fetch(layerConfig.url)
-          .then(r => r.json())
-          .then(data => {
-            console.log(`ENEDIS HTA: ${data.features?.length || 0} lignes chargées`);
-            const geoJsonLayer = L.geoJSON(data, {
-              style: (feature) => ({ color: '#f97316', weight: 2, opacity: 0.7 }),
-              onEachFeature: (feature, layer) => {
-                if (feature.properties) {
-                  const props = feature.properties;
-                  let popupContent = '<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: #f97316; font-size: 16px; font-weight: bold;">⚡ Ligne HTA</h4>';
-                  if (props.code_ligne) popupContent += `<p style="margin: 4px 0;"><strong>Code ligne:</strong> ${props.code_ligne}</p>`;
-                  if (props.libelle) popupContent += `<p style="margin: 4px 0;"><strong>Libellé:</strong> ${props.libelle}</p>`;
-                  if (props.tension) popupContent += `<p style="margin: 4px 0;"><strong>Tension:</strong> ${props.tension} V</p>`;
-                  if (props.long_calo) popupContent += `<p style="margin: 4px 0;"><strong>Longueur:</strong> ${props.long_calo} m</p>`;
-                  popupContent += '</div>';
-                  layer.bindPopup(popupContent, { maxWidth: 300 });
-                }
+    const loadData = () => {
+      console.log("FETCH ENEDIS HTA:", layerConfig.url);
+      fetch(layerConfig.url)
+        .then(r => {
+          console.log("RESPONSE ENEDIS HTA STATUS:", r.status);
+          return r.json();
+        })
+        .then(data => {
+          console.log("ENEDIS HTA DATA:", data);
+          console.log(`ENEDIS HTA: ${data.features?.length || 0} lignes chargées`);
+          if (!data.features || data.features.length === 0) {
+            console.warn("ENEDIS HTA: Aucun feature trouvé dans la réponse.");
+            return;
+          }
+          const geoJsonLayer = L.geoJSON(data, {
+            style: (feature) => ({ color: '#f97316', weight: 2, opacity: 0.7 }),
+            onEachFeature: (feature, layer) => {
+              if (feature.properties) {
+                const props = feature.properties;
+                let popupContent = '<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: #f97316; font-size: 16px; font-weight: bold;">⚡ Ligne HTA</h4>';
+                if (props.code_ligne) popupContent += `<p style="margin: 4px 0;"><strong>Code ligne:</strong> ${props.code_ligne}</p>`;
+                if (props.libelle) popupContent += `<p style="margin: 4px 0;"><strong>Libellé:</strong> ${props.libelle}</p>`;
+                if (props.tension) popupContent += `<p style="margin: 4px 0;"><strong>Tension:</strong> ${props.tension} V</p>`;
+                if (props.long_calo) popupContent += `<p style="margin: 4px 0;"><strong>Longueur:</strong> ${props.long_calo} m</p>`;
+                popupContent += '</div>';
+                layer.bindPopup(popupContent, { maxWidth: 300 });
               }
-            });
-            htaGroup.addLayer(geoJsonLayer);
-          })
-          .catch(err => console.error("Erreur chargement ENEDIS HTA", err));
-      };
-      loadData();
-    }
+            }
+          });
+          htaGroup.addLayer(geoJsonLayer);
+        })
+        .catch(err => console.error("Erreur chargement ENEDIS HTA", err));
+    };
+    loadData();
   }, [map, layersRef]);
+
   return null;
 }
 
@@ -1041,58 +1060,66 @@ function ENEDISPostesLayerManager({ layersRef }) {
   const map = useMap();
 
   useEffect(() => {
-    if (!layersRef.current['enedisPostes']) {
-      const layerConfig = LAYERS['enedisPostes'];
-      const markerClusterGroup = L.markerClusterGroup({
-        chunkedLoading: true,
-        maxClusterRadius: 50,
-        disableClusteringAtZoom: 16,
-        iconCreateFunction: function (cluster) {
-          const count = cluster.getChildCount();
-          let size = count > 50 ? 'large' : count > 10 ? 'medium' : 'small';
-          return L.divIcon({
-            html: `<div style="background-color: rgba(37, 99, 235, 0.7); border: 3px solid rgba(29, 78, 216, 0.9); width: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; height: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: ${size === 'small' ? '12px' : size === 'medium' ? '14px' : '16px'};"><span>${count}</span></div>`,
-            iconSize: L.point(40, 40)
-          });
-        }
-      });
-      layersRef.current['enedisPostes'] = markerClusterGroup;
+    const layerConfig = LAYERS['enedisPostes'];
+    const markerClusterGroup = L.markerClusterGroup({
+      chunkedLoading: true,
+      maxClusterRadius: 50,
+      disableClusteringAtZoom: 16,
+      iconCreateFunction: function (cluster) {
+        const count = cluster.getChildCount();
+        let size = count > 50 ? 'large' : count > 10 ? 'medium' : 'small';
+        return L.divIcon({
+          html: `<div style="background-color: rgba(37, 99, 235, 0.7); border: 3px solid rgba(29, 78, 216, 0.9); width: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; height: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: ${size === 'small' ? '12px' : size === 'medium' ? '14px' : '16px'};"><span>${count}</span></div>`,
+          iconSize: L.point(40, 40)
+        });
+      }
+    });
+    layersRef.current['enedisPostes'] = markerClusterGroup;
 
-      const loadData = () => {
-        fetch(layerConfig.url)
-          .then(r => r.json())
-          .then(data => {
-            console.log(`ENEDIS Postes: ${data.features?.length || 0} postes chargés`);
-            const geoJsonLayer = L.geoJSON(data, {
-              pointToLayer: (feature, latlng) => {
-                return L.marker(latlng, {
-                  icon: L.divIcon({
-                    html: `<div style="background-color: #2563eb; width: 16px; height: 16px; border-radius: 3px; border: 2px solid #1d4ed8; box-shadow: 0 1px 3px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold;">⚡</div>`,
-                    iconSize: [16, 16],
-                    iconAnchor: [8, 8]
-                  })
-                });
-              },
-              onEachFeature: (feature, layer) => {
-                if (feature.properties) {
-                  const props = feature.properties;
-                  let popupContent = '<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: #2563eb; font-size: 16px; font-weight: bold;">⚡ Poste HTA/BT</h4>';
-                  if (props.code_poste) popupContent += `<p style="margin: 4px 0;"><strong>Code poste:</strong> ${props.code_poste}</p>`;
-                  if (props.libelle) popupContent += `<p style="margin: 4px 0;"><strong>Libellé:</strong> ${props.libelle}</p>`;
-                  if (props.type_poste) popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.type_poste}</p>`;
-                  if (props.puissance) popupContent += `<p style="margin: 4px 0;"><strong>Puissance:</strong> ${props.puissance} kVA</p>`;
-                  popupContent += '</div>';
-                  layer.bindPopup(popupContent, { maxWidth: 300 });
-                }
+    const loadData = () => {
+      console.log("FETCH ENEDIS POSTES:", layerConfig.url);
+      fetch(layerConfig.url)
+        .then(r => {
+          console.log("RESPONSE ENEDIS POSTES STATUS:", r.status);
+          return r.json();
+        })
+        .then(data => {
+          console.log("ENEDIS POSTES DATA:", data);
+          console.log(`ENEDIS Postes: ${data.features?.length || 0} postes chargés`);
+          if (!data.features || data.features.length === 0) {
+            console.warn("ENEDIS Postes: Aucun feature trouvé dans la réponse.");
+            return;
+          }
+          const geoJsonLayer = L.geoJSON(data, {
+            pointToLayer: (feature, latlng) => {
+              return L.marker(latlng, {
+                icon: L.divIcon({
+                  html: `<div style="background-color: #2563eb; width: 16px; height: 16px; border-radius: 3px; border: 2px solid #1d4ed8; box-shadow: 0 1px 3px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold;">⚡</div>`,
+                  iconSize: [16, 16],
+                  iconAnchor: [8, 8]
+                })
+              });
+            },
+            onEachFeature: (feature, layer) => {
+              if (feature.properties) {
+                const props = feature.properties;
+                let popupContent = '<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: #2563eb; font-size: 16px; font-weight: bold;">⚡ Poste HTA/BT</h4>';
+                if (props.code_poste) popupContent += `<p style="margin: 4px 0;"><strong>Code poste:</strong> ${props.code_poste}</p>`;
+                if (props.libelle) popupContent += `<p style="margin: 4px 0;"><strong>Libellé:</strong> ${props.libelle}</p>`;
+                if (props.type_poste) popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.type_poste}</p>`;
+                if (props.puissance) popupContent += `<p style="margin: 4px 0;"><strong>Puissance:</strong> ${props.puissance} kVA</p>`;
+                popupContent += '</div>';
+                layer.bindPopup(popupContent, { maxWidth: 300 });
               }
-            });
-            markerClusterGroup.addLayer(geoJsonLayer);
-          })
-          .catch(err => console.error("Erreur chargement ENEDIS Postes", err));
-      };
-      loadData();
-    }
+            }
+          });
+          markerClusterGroup.addLayer(geoJsonLayer);
+        })
+        .catch(err => console.error("Erreur chargement ENEDIS Postes", err));
+    };
+    loadData();
   }, [map, layersRef]);
+
   return null;
 }
 
@@ -1965,7 +1992,6 @@ function BottomLayersBar({ layersRef, map }) {
 
       {/* Ligne 2 : Enedis */}
       <div className="flex flex-wrap justify-center gap-1 border-t border-gray-100 pt-1 w-full">
-        <span className="text-[10px] text-gray-400 font-bold uppercase mr-2 self-center">Enedis</span>
         {enedisOverlays.map(key => (
           LAYERS[key] && (
             <button
@@ -2109,14 +2135,9 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
             onRightClick={(latlng) => setTargetPos(latlng)}
           />
           <PointInfoPanel pointInfo={pointInfo} setPointInfo={setPointInfo} />
-          {/* AltimetryProfile must be outside MapContainer or have high z-index and fixed positioning if inside. 
-              Here it is inside, so we rely on its fixed positioning style. */}
           <AltimetryProfile profile={altimetryProfile} setProfile={setAltimetryProfile} setFeatures={setFeatures} features={features} setHoverInfo={setHoverInfo} />
         </MapContainer>
       </div>
-
-      {/* Bottom Bar outside map */}
-      <BottomLayersBar layersRef={layersRef} map={map} />
     </div>
   );
 }
