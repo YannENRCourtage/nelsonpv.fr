@@ -514,160 +514,6 @@ export default function ProjectEditor() {
                 photos={photos}
                 setPhotos={setPhotos}
               />
-
-              {/* Layer Toggle Buttons */}
-              <div className="p-3 bg-gray-50 border-t flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'cadastre' } }));
-                  }}
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-                >
-                  Cadastre
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'zoneInondable' } }));
-                  }}
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-                >
-                  Zone Inondable
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'batiments' } }));
-                  }}
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-                >
-                  Bâtiments
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'parcellesAgricoles' } }));
-                  }}
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-                >
-                  Parcelles agricoles
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'hydrographie' } }));
-                  }}
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-                >
-                  Hydrographie
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'routes' } }));
-                  }}
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-                >
-                  Routes
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'voiesFerrees' } }));
-                  }}
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-                >
-                  Voies ferrées
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'limitesCommunales' } }));
-                  }}
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-                >
-                  Limites communales
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'ZNIEFF 1' } }));
-                  }}
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-                >
-                  ZNIEFF 1
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'ZNIEFF 2' } }));
-                  }}
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-                >
-                  ZNIEFF 2
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'Natura 2000 Oiseaux' } }));
-                  }}
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-                >
-                  Natura 2000 Oiseaux
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'Natura 2000 Habitat' } }));
-                  }}
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-                >
-                  Natura 2000 Habitat
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'enedisHTA' } }));
-                  }}
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-                >
-                  Lignes HTA (moyenne tension)
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'enedisPostes' } }));
-                  }}
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-                >
-                  Postes HTA/BT
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'sdis' } }));
-                  }}
-                  className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-                >
-                  SDIS
-                </button>
-              </div>
             </div>
 
 
@@ -728,6 +574,160 @@ export default function ProjectEditor() {
               />
             </div>
 
+          </div>
+
+          {/* Layer Toggle Buttons - ALWAYS visible below whatever tab is active */}
+          <div className="p-3 bg-gray-50 border-t flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'cadastre' } }));
+              }}
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              Cadastre
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'zoneInondable' } }));
+              }}
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              Zone Inondable
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'batiments' } }));
+              }}
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              Bâtiments
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'parcellesAgricoles' } }));
+              }}
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              Parcelles agricoles
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'hydrographie' } }));
+              }}
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              Hydrographie
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'routes' } }));
+              }}
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              Routes
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'voiesFerrees' } }));
+              }}
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              Voies ferrées
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'limitesCommunales' } }));
+              }}
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              Limites communales
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'ZNIEFF 1' } }));
+              }}
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              ZNIEFF 1
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'ZNIEFF 2' } }));
+              }}
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              ZNIEFF 2
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'Natura 2000 Oiseaux' } }));
+              }}
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              Natura 2000 Oiseaux
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'Natura 2000 Habitat' } }));
+              }}
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              Natura 2000 Habitat
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'enedisHTA' } }));
+              }}
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              Lignes HTA (moyenne tension)
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'enedisPostes' } }));
+              }}
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              Postes HTA/BT
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'sdis' } }));
+              }}
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              SDIS
+            </button>
           </div>
         </div>
 
