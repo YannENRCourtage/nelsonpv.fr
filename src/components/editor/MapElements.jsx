@@ -712,6 +712,7 @@ const LAYERS = {
     opacity: 0.7
   },
   "ZNIEFF 1": {
+    name: "ZNIEFF 1",
     url: "https://data.geopf.fr/wms-v/ows?SERVICE=WMS&",
     layers: "PROTECTEDAREAS.ZNIEFF1",
     format: "image/png",
@@ -720,6 +721,7 @@ const LAYERS = {
     isOverlay: true
   },
   "ZNIEFF 2": {
+    name: "ZNIEFF 2",
     url: "https://data.geopf.fr/wms-v/ows?SERVICE=WMS&",
     layers: "PROTECTEDAREAS.ZNIEFF2",
     format: "image/png",
@@ -728,6 +730,7 @@ const LAYERS = {
     isOverlay: true
   },
   "Natura 2000 Oiseaux": {
+    name: "Natura 2000 Oiseaux",
     url: "https://data.geopf.fr/wms-v/ows?SERVICE=WMS&",
     layers: "PROTECTEDAREAS.ZPS",
     format: "image/png",
@@ -736,6 +739,7 @@ const LAYERS = {
     isOverlay: true
   },
   "Natura 2000 Habitat": {
+    name: "Natura 2000 Habitat",
     url: "https://data.geopf.fr/wms-v/ows?SERVICE=WMS&",
     layers: "PROTECTEDAREAS.SIC",
     format: "image/png",
@@ -1093,88 +1097,31 @@ function ENEDISPostesLayerManager({ layersRef }) {
 }
 
 // ====================================================================
-// CONTRÔLE DES CALQUES OVERLAY
+// LAYER TOGGLE LISTENER (for ProjectEditor buttons)
 // ====================================================================
-function OverlaysControl({ layersRef }) {
+function LayerToggleListener({ layersRef }) {
   const map = useMap();
-  const boxRef = useRef(null);
 
   useEffect(() => {
-    if (!map || !layersRef.current) return;
-
-    const container = L.DomUtil.create('div', 'leaflet-control-layers leaflet-control-layers-expanded custom-overlays-panel no-print hide-on-capture');
-    container.style.padding = '10px';
-    container.style.backgroundColor = 'white';
-    container.style.borderRadius = '8px';
-    container.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
-    container.style.minWidth = '220px';
-    container.style.maxHeight = '400px';
-    container.style.overflowY = 'auto';
-    container.style.marginBottom = '10px';
-
-    const title = document.createElement('div');
-    title.innerText = 'calques';
-    title.className = 'font-bold text-xs mb-3 text-gray-700 border-b pb-2 uppercase tracking-wider';
-    container.appendChild(title);
-
-    const list = document.createElement('div');
-    list.className = 'space-y-1';
-    container.appendChild(list);
-
-    const Control = L.Control.extend({ onAdd: () => container });
-    const ctrl = new Control({ position: 'bottomright' });
-    ctrl.addTo(map);
-    boxRef.current = ctrl;
-
-    const updateList = () => {
-      list.innerHTML = '';
-      Object.keys(LAYERS).forEach(key => {
-        const layer = LAYERS[key];
-        if (!layer.isOverlay) return;
-
-        const label = document.createElement('label');
-        label.className = 'flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1.5 rounded text-sm transition-colors';
-
-        const input = document.createElement('input');
-        input.type = 'checkbox';
-        input.checked = layersRef.current[key] && map.hasLayer(layersRef.current[key]);
-        input.className = 'accent-blue-600 w-4 h-4';
-
-        const span = document.createElement('span');
-        span.innerText = layer.name;
-        span.className = 'text-gray-700 text-xs';
-
-        label.appendChild(input);
-        label.appendChild(span);
-
-        input.addEventListener('change', () => {
-          if (input.checked) {
-            if (layersRef.current[key]) {
-              layersRef.current[key].addTo(map);
-            }
-          } else {
-            if (layersRef.current[key] && map.hasLayer(layersRef.current[key])) {
-              map.removeLayer(layersRef.current[key]);
-            }
-          }
-          updateList();
-        });
-
-        list.appendChild(label);
-      });
+    const handleToggleLayer = (e) => {
+      const { layerKey } = e.detail;
+      if (layersRef.current[layerKey]) {
+        if (map.hasLayer(layersRef.current[layerKey])) {
+          map.removeLayer(layersRef.current[layerKey]);
+        } else {
+          layersRef.current[layerKey].addTo(map);
+        }
+      }
     };
 
-    updateList();
-    map.on('layeradd layerremove', updateList);
-
-    return () => {
-      if (map && boxRef.current) boxRef.current.remove();
-      map.off('layeradd layerremove', updateList);
-    };
+    window.addEventListener('map:toggle-layer', handleToggleLayer);
+    return () => window.removeEventListener('map:toggle-layer', handleToggleLayer);
   }, [map, layersRef]);
 
   return null;
 }
+
+// Overlay controls removed - now handled via buttons below map in ProjectEditor.jsx
 
 // ====================================================================
 // CONTRÔLE DES FONDS DE CARTE
@@ -2038,6 +1985,9 @@ function BottomLayersBar({ layersRef, map }) {
   );
 }
 
+// Export LAYERS for use in ProjectEditor layer buttons
+export { LAYERS };
+
 export default function MapElements({ style = {}, project, onAddressFound, onAddressSearched, setSymbolToPlace, symbolToPlace, setPhotos, photos }) {
   const [mode, setMode] = useState(null);
   const [temp, setTemp] = useState([]);
@@ -2133,7 +2083,6 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
 
           {/* Controls inside map */}
           <BasemapControl layersRef={layersRef} />
-          <OverlaysControl layersRef={layersRef} />
           <RPGLegend layersRef={layersRef} />
           <ZoneInondableLegend layersRef={layersRef} />
           <SDISLegend layersRef={layersRef} />
@@ -2144,6 +2093,8 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
               <div className="flex flex-col items-start gap-2">
                 <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} hoverInfo={hoverInfo} />
                 <MiniMap />
+                {/* Event listener for layer toggle */}
+                <LayerToggleListener layersRef={layersRef} />
                 <ScaleControl position="bottomleft" metric={true} imperial={false} />
               </div>
             </div>
