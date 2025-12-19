@@ -193,19 +193,40 @@ const overlayCategories = {
                 style: { color: '#DC143C', weight: 2 },
                 minZoom: 8,
             },
-            'Lignes HTA': {
+            'Lignes aériennes HTA': {
                 url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-moyenne-tension-hta/exports/geojson',
                 attribution: 'ENEDIS',
                 type: 'geojson-api-lazy',
                 style: { color: '#FF8C00', weight: 3, opacity: 0.7 },
                 minZoom: 13,
             },
-            'Lignes BT': {
+            'Lignes aériennes BT': {
                 url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-basse-tension-bt/exports/geojson',
                 attribution: 'ENEDIS',
                 type: 'geojson-api-lazy',
                 style: { color: '#4169E1', weight: 2, opacity: 0.6 },
                 minZoom: 15,
+            },
+            'Lignes souterraines HTA': {
+                url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-moyenne-tension-hta/exports/geojson',
+                attribution: 'ENEDIS',
+                type: 'geojson-api-lazy',
+                style: { color: '#8B4513', weight: 3, opacity: 0.6, dashArray: '5, 5' },
+                minZoom: 13,
+            },
+            'Lignes souterraines BT': {
+                url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-basse-tension-bt/exports/geojson',
+                attribution: 'ENEDIS',
+                type: 'geojson-api-lazy',
+                style: { color: '#4682B4', weight: 2, opacity: 0.5, dashArray: '5, 5' },
+                minZoom: 15,
+            },
+            'Poteaux électriques': {
+                url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/position-geographique-des-poteaux-hta-et-bt/exports/geojson?limit=-1',
+                attribution: 'ENEDIS',
+                type: 'geojson-api',
+                style: { color: '#696969', weight: 1 },
+                minZoom: 14,
             },
         },
     },
@@ -289,6 +310,16 @@ const overlayCategories = {
             },
         },
     },
+    'Sécurité': {
+        layers: {
+            'SDIS 17': {
+                url: 'https://geo.geoplateforme17.fr/SDIS17/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=SDIS17:view_pei&outputFormat=application/json&srsName=EPSG:4326&count=50000',
+                attribution: 'SDIS 17 / Géoplateforme17',
+                type: 'sdis17-wfs',
+                minZoom: 12,
+            }
+        }
+    },
     'Urbanisme': {
         layers: {
             'PLU/PLUi': {
@@ -352,8 +383,8 @@ const MapLayersPanel = ({ map }) => {
         const newGeoJsonLayers = {};
         Object.entries(overlayCategories).forEach(([categoryName, category]) => {
             Object.entries(category.layers).forEach(([layerName, layerConfig]) => {
-                // GeoJSON layers (local, API, or lazy) - initialize as null
-                if (layerConfig.type === 'geojson' || layerConfig.type === 'geojson-api' || layerConfig.type === 'geojson-api-lazy') {
+                // GeoJSON layers (local, API, or lazy, or sdis17-wfs) - initialize as null
+                if (['geojson', 'geojson-api', 'geojson-api-lazy', 'sdis17-wfs'].includes(layerConfig.type)) {
                     newGeoJsonLayers[layerName] = null;
                 }
                 // Tile layers (WMTS) - create immediately
@@ -622,6 +653,76 @@ const MapLayersPanel = ({ map }) => {
                             }
                         }
                     }
+
+                    // Type: sdis17-wfs (SDIS 17 Water Points - WFS service)
+                    else if (layerConfig.type === 'sdis17-wfs') {
+                        if (checked) {
+                            if (!geoJsonLayers[layerName]) {
+                                setLoadingLayers(prev => ({ ...prev, [layerName]: true }));
+                                fetch(layerConfig.url)
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        const geoJsonLayer = L.geoJSON(data, {
+                                            pointToLayer: (feature, latlng) => {
+                                                const props = feature.properties;
+                                                // Determine marker style based on PEI type
+                                                let iconHtml = '';
+                                                let iconSize = [12, 12];
+
+                                                if (props.type_pei === 'PI' || props.nature_pei === 'POTEAU') {
+                                                    // Fire Hydrant Post - red circle
+                                                    iconHtml = '<div style="background: #DC143C; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #8B0000; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>';
+                                                } else if (props.type_pei === 'BI' || props.nature_pei === 'BOUCHE') {
+                                                    // Fire Hydrant Mouth - red square
+                                                    iconHtml = '<div style="background: #DC143C; width: 10px; height: 10px; border: 2px solid #8B0000; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>';
+                                                } else {
+                                                    // Water reserve or other - blue square
+                                                    iconHtml = '<div style="background: #4169E1; width: 10px; height: 10px; border: 2px solid #00008B; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>';
+                                                }
+
+                                                const icon = L.divIcon({
+                                                    className: '',
+                                                    html: iconHtml,
+                                                    iconSize: iconSize,
+                                                    iconAnchor: [6, 6],
+                                                });
+                                                return L.marker(latlng, { icon });
+                                            },
+                                            onEachFeature: (feature, layer) => {
+                                                if (feature.properties) {
+                                                    const props = feature.properties;
+                                                    let popupContent = '<div style="font-family: sans-serif; font-size: 13px;">';
+                                                    popupContent += '<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 15px; font-weight: bold;">🚒 Point d\'eau incendie</h4>';
+                                                    if (props.numero) popupContent += `<p style="margin: 3px 0;"><strong>N°:</strong> ${props.numero}</p>`;
+                                                    if (props.type_pei) popupContent += `<p style="margin: 3px 0;"><strong>Type:</strong> ${props.type_pei}</p>`;
+                                                    if (props.nature_pei) popupContent += `<p style="margin: 3px 0;"><strong>Nature:</strong> ${props.nature_pei}</p>`;
+                                                    if (props.diametre) popupContent += `<p style="margin: 3px 0;"><strong>Diamètre:</strong> ${props.diametre} mm</p>`;
+                                                    if (props.debit) popupContent += `<p style="margin: 3px 0;"><strong>Débit:</strong> ${props.debit} m³/h</p>`;
+                                                    if (props.adresse) popupContent += `<p style="margin: 3px 0;"><strong>Adresse:</strong> ${props.adresse}</p>`;
+                                                    if (props.commune) popupContent += `<p style="margin: 3px 0;"><strong>Commune:</strong> ${props.commune}</p>`;
+                                                    popupContent += '</div>';
+                                                    layer.bindPopup(popupContent, { maxWidth: 280 });
+                                                }
+                                            }
+                                        });
+                                        geoJsonLayer.addTo(map);
+                                        setGeoJsonLayers(prev => ({ ...prev, [layerName]: geoJsonLayer }));
+                                        setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
+                                    })
+                                    .catch(error => {
+                                        console.error(`Erreur chargement SDIS 17:`, error);
+                                        alert(`Impossible de charger les points d'eau SDIS 17`);
+                                        setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
+                                    });
+                            } else {
+                                geoJsonLayers[layerName].addTo(map);
+                            }
+                        } else {
+                            if (geoJsonLayers[layerName]) {
+                                map.removeLayer(geoJsonLayers[layerName]);
+                            }
+                        }
+                    }
                 }
             }
             return newActive;
@@ -664,20 +765,40 @@ const MapLayersPanel = ({ map }) => {
                         </h3>
                         <div className="space-y-2 ml-1">
                             {Object.entries(category.layers).map(([layerName, layerConfig]) => (
-                                <div key={layerName} className="flex items-center space-x-2">
-                                    <Switch
-                                        id={`overlay-${layerName.replace(/\s/g, '-')}`}
-                                        checked={activeOverlays[layerName] || false}
-                                        onCheckedChange={(checked) => handleOverlayToggle(layerName, checked)}
-                                        disabled={loadingLayers[layerName]}
-                                    />
-                                    <Label
-                                        htmlFor={`overlay-${layerName.replace(/\s/g, '-')}`}
-                                        className="text-sm cursor-pointer flex items-center gap-1"
-                                    >
-                                        {layerName}
-                                        {loadingLayers[layerName] && <Loader2 size={12} className="animate-spin text-blue-500" />}
-                                    </Label>
+                                <div key={layerName} className="flex flex-col space-y-1">
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id={`overlay-${layerName.replace(/\s/g, '-')}`}
+                                            checked={activeOverlays[layerName] || false}
+                                            onCheckedChange={(checked) => handleOverlayToggle(layerName, checked)}
+                                            disabled={loadingLayers[layerName]}
+                                        />
+                                        <Label
+                                            htmlFor={`overlay-${layerName.replace(/\s/g, '-')}`}
+                                            className="text-sm cursor-pointer flex items-center gap-1"
+                                        >
+                                            {layerName}
+                                            {loadingLayers[layerName] && <Loader2 size={12} className="animate-spin text-blue-500" />}
+                                        </Label>
+                                    </div>
+
+                                    {/* Legend for SDIS 17 */}
+                                    {layerName === 'SDIS 17' && activeOverlays[layerName] && (
+                                        <div className="ml-8 mt-1 p-2 bg-gray-50 rounded border text-xs">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <div className="w-3 h-3 rounded-full bg-red-500 border border-red-800"></div>
+                                                <span>Poteau Incendie (PI)</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <div className="w-3 h-3 rounded-sm bg-red-500 border border-red-800"></div>
+                                                <span>Bouche Incendie (BI)</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 rounded-sm bg-blue-500 border border-blue-800"></div>
+                                                <span>Réserve / Point d'eau</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -700,7 +821,7 @@ const MapLayersPanel = ({ map }) => {
                     </p>
                 </div>
             </CardContent>
-        </Card>
+        </Card >
     );
 };
 export default MapLayersPanel;

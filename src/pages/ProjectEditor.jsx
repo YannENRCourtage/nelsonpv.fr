@@ -44,43 +44,6 @@ function SymbolBtn({ icon, label, type, emoji, onSelect, isSelected }) {
   );
 }
 
-// Wrapper ENEDIS pour afficher directement la carte
-function EnedisMapWrapper() {
-  const iframeRef = useRef(null);
-
-  useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-
-    // Essayer de scroller l'iframe après chargement (peut ne pas fonctionner avec CORS)
-    const handleLoad = () => {
-      try {
-        if (iframe.contentWindow) {
-          iframe.contentWindow.scrollTo(0, 350);
-        }
-      } catch (e) {
-        console.log('Cannot scroll iframe due to CORS');
-      }
-    };
-
-    iframe.addEventListener('load', handleLoad);
-    return () => iframe.removeEventListener('load', handleLoad);
-  }, []);
-
-  return (
-    <div className="w-full h-full relative overflow-hidden">
-      <iframe
-        ref={iframeRef}
-        src="https://data.enedis.fr/pages/cartographie-des-reseaux-contenu/"
-        className="w-full h-full border-0"
-        title="Cartographie Enedis"
-        allow="geolocation"
-      />
-    </div>
-  );
-}
-
-
 
 
 function SymbolsPanel({ onSymbolSelect, selectedSymbol }) {
@@ -251,7 +214,7 @@ export default function ProjectEditor() {
     }
 
     // Liste des onglets utilisant des iframes externes
-    const iframeTabs = ['owners', 'capareseau', 'terravisu', 'geoportail', 'enedis', 'dvf'];
+    const iframeTabs = ['owners', 'capareseau', 'terravisu', 'geoportail', 'dvf'];
     if (iframeTabs.includes(activeTab)) {
       await captureWithDisplayMedia(slotIndex);
       return;
@@ -470,17 +433,7 @@ export default function ProjectEditor() {
             >
               Carte
             </button>
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('enedis'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'enedis'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              Enedis
-            </button>
+
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('streetview'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
@@ -563,10 +516,6 @@ export default function ProjectEditor() {
               />
             </div>
 
-            {/* Onglet ENEDIS */}
-            <div className={activeTab === 'enedis' ? 'w-full h-full' : 'hidden'}>
-              <EnedisMapWrapper />
-            </div>
 
             {/* Onglet Street View */}
             <div className={activeTab === 'streetview' ? 'w-full h-full' : 'hidden'}>
