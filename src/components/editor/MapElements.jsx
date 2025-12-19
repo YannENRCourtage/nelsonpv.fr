@@ -667,12 +667,34 @@ const LAYERS = {
   // Limites administratives
   communes: { name: "Limites communales", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ADMINEXPRESS-COG-CARTO.LATEST&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 32, opacity: 0.5 },
 
-  // Sécurité
-  sdis17: {
-    name: "SDIS 17 - Points d'eau",
-    type: 'custom', // Custom type to be handled separately
-    url: 'https://geo.geoplateforme17.fr/SDIS17/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=SDIS17:view_pei&outputFormat=application/json&srsName=EPSG:4326&count=50000',
-    attribution: 'SDIS 17 / Géoplateforme17',
+  // ENEDIS - Réseau électrique
+  enedisHTA: {
+    name: "Lignes HTA (moyenne tension)",
+    type: 'custom',
+    url: 'https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-hta/lines?format=geojson&size=1000',
+    attribution: 'ENEDIS Open Data',
+    isOverlay: true,
+    zIndex: 50
+  },
+  enedisPostes: {
+    name: "Postes HTA/BT",
+    type: 'custom',
+    url: 'https://opendata.enedis.fr/data-fair/api/v1/datasets/poste-electrique/lines?format=geojson&size=1000',
+    attribution: 'ENEDIS Open Data',
+    isOverlay: true,
+    zIndex: 51
+  },
+
+  // SDIS - Points d'eau incendie
+  sdis: {
+    name: "SDIS",
+    type: 'custom',
+    apis: [
+      'https://api.deci17-test.datakode.fr/api/v1/peis?format=geojson',
+      'https://api.deci84-test.datakode.fr/api/v1/peis?format=geojson',
+      'https://api.deci81-test.datakode.fr/api/v1/peis?format=geojson'
+    ],
+    attribution: 'SDIS 17, 81, 84 / Datakode',
     isOverlay: true,
     zIndex: 100
   },
@@ -816,7 +838,7 @@ function SDISLegend({ layersRef }) {
 
   useEffect(() => {
     const checkLayer = () => {
-      const layer = layersRef.current['sdis17'];
+      const layer = layersRef.current['sdis'];
       setShowLegend(layer && map.hasLayer(layer));
     };
     checkLayer();
@@ -860,9 +882,9 @@ function SDISLayerManager({ layersRef }) {
   const map = useMap();
 
   useEffect(() => {
-    // Initialiser la couche SDIS 17 si elle n'existe pas encore
-    if (!layersRef.current['sdis17']) {
-      const layerConfig = LAYERS['sdis17'];
+    // Initialiser la couche SDIS si elle n'existe pas encore
+    if (!layersRef.current['sdis']) {
+      const layerConfig = LAYERS['sdis'];
 
       // Créer un groupe de clusters pour gérer les marqueurs
       const markerClusterGroup = L.markerClusterGroup({
@@ -888,49 +910,173 @@ function SDISLayerManager({ layersRef }) {
       });
 
       // Sauvegarder dans layersRef pour que le toggle fonctionne
-      layersRef.current['sdis17'] = markerClusterGroup;
+      layersRef.current['sdis'] = markerClusterGroup;
 
-      // Fonction pour charger les données
+      // Fonction pour charger les données depuis les 3 APIs
+      const loadData = () => {
+        const apis = layerConfig.apis || [];
+
+        Promise.all(apis.map(url =>
+          fetch(url)
+            .then(r => r.json())
+            .catch(err => {
+              console.warn(`Erreur API SDIS ${url}`, err);
+              return { type: 'FeatureCollection', features: [] };
+            })
+        )).then(results => {
+          // Fusionner toutes les features
+          const allFeatures = results.flatMap(r => r.features || []);
+          const mergedData = {
+            type: 'FeatureCollection',
+            features: allFeatures
+          };
+
+          console.log(`SDIS: ${allFeatures.length} points d'eau chargés depuis ${apis.length} APIs`);
+
+          const geoJsonLayer = L.geoJSON(mergedData, {
+            pointToLayer: (feature, latlng) => {
+              const type = feature.properties?.type_hydrant || feature.properties?.famille_pei || '';
+              let html = '';
+
+              // Styling Logic based on Type
+              if (type.startsWith('PI') || type.includes('POTEAU')) {
+                html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+              } else if (type.startsWith('BI') || type.includes('BOUCHE')) {
+                html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+              } else if (['REA', 'RENA'].includes(type) || type.includes('Reserve') || type.includes('RESERVE')) {
+                html = `<div style="background-color: #3B82F6; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #1E40AF; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+              } else {
+                html = `<div style="background-color: #9CA3AF; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #4B5563;"></div>`;
+              }
+
+              return L.marker(latlng, {
+                icon: L.divIcon({
+                  className: '',
+                  html: html,
+                  iconSize: [14, 14],
+                  iconAnchor: [7, 7]
+                })
+              });
+            },
+            onEachFeature: (feature, layer) => {
+              if (feature.properties) {
+                const props = feature.properties;
+                let popupContent = '<div style="font-family: sans-serif;">';
+                popupContent += '<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 16px; font-weight: bold;">🚒 Point d\'Eau Incendie</h4>';
+                popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.commune || 'N/A'}</p>`;
+                popupContent += `<p style="margin: 4px 0;"><strong>Numéro:</strong> ${props.numero_long || props.nom || 'N/A'}</p>`;
+                popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.famille_pei || props.type_start || props.type_hydrant || 'N/A'}</p>`;
+                popupContent += `<p style="margin: 4px 0;"><strong>État:</strong> ${props.etat || props.etat_start || 'Inconnu'}</p>`;
+                if (props.adresse) popupContent += `<p style="margin: 4px 0;"><strong>Adresse:</strong> ${props.adresse}</p>`;
+                if (props.volume) popupContent += `<p style="margin: 4px 0;"><strong>Volume:</strong> ${props.volume} m³</p>`;
+                if (props.debit_1bar || props.debit) popupContent += `<p style="margin: 4px 0;"><strong>Débit (1 bar):</strong> ${props.debit_1bar || props.debit} m³/h</p>`;
+                if (props.pression) popupContent += `<p style="margin: 4px 0;"><strong>Pression:</strong> ${props.pression} bar</p>`;
+                popupContent += '</div>';
+                layer.bindPopup(popupContent, { maxWidth: 300 });
+              }
+            }
+          });
+          markerClusterGroup.addLayer(geoJsonLayer);
+        }).catch(err => console.error("Erreur chargement SDIS", err));
+      };
+
+      // Charger les données une seule fois
+      loadData();
+    }
+  }, [map, layersRef]);
+
+  return null;
+}
+
+// ====================================================================
+// MANAGER ENEDIS HTA (Lignes moyenne tension)
+// ====================================================================
+function ENEDISHTALayerManager({ layersRef }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!layersRef.current['enedisHTA']) {
+      const layerConfig = LAYERS['enedisHTA'];
+      const htaGroup = L.layerGroup();
+      layersRef.current['enedisHTA'] = htaGroup;
+
       const loadData = () => {
         fetch(layerConfig.url)
-          .then(response => response.json())
+          .then(r => r.json())
           .then(data => {
+            console.log(`ENEDIS HTA: ${data.features?.length || 0} lignes chargées`);
+            const geoJsonLayer = L.geoJSON(data, {
+              style: (feature) => ({ color: '#f97316', weight: 2, opacity: 0.7 }),
+              onEachFeature: (feature, layer) => {
+                if (feature.properties) {
+                  const props = feature.properties;
+                  let popupContent = '<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: #f97316; font-size: 16px; font-weight: bold;">⚡ Ligne HTA</h4>';
+                  if (props.code_ligne) popupContent += `<p style="margin: 4px 0;"><strong>Code ligne:</strong> ${props.code_ligne}</p>`;
+                  if (props.libelle) popupContent += `<p style="margin: 4px 0;"><strong>Libellé:</strong> ${props.libelle}</p>`;
+                  if (props.tension) popupContent += `<p style="margin: 4px 0;"><strong>Tension:</strong> ${props.tension} V</p>`;
+                  if (props.long_calo) popupContent += `<p style="margin: 4px 0;"><strong>Longueur:</strong> ${props.long_calo} m</p>`;
+                  popupContent += '</div>';
+                  layer.bindPopup(popupContent, { maxWidth: 300 });
+                }
+              }
+            });
+            htaGroup.addLayer(geoJsonLayer);
+          })
+          .catch(err => console.error("Erreur chargement ENEDIS HTA", err));
+      };
+      loadData();
+    }
+  }, [map, layersRef]);
+  return null;
+}
+
+// ====================================================================
+// MANAGER ENEDIS POSTES HTA/BT
+// ====================================================================
+function ENEDISPostesLayerManager({ layersRef }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!layersRef.current['enedisPostes']) {
+      const layerConfig = LAYERS['enedisPostes'];
+      const markerClusterGroup = L.markerClusterGroup({
+        chunkedLoading: true,
+        maxClusterRadius: 50,
+        disableClusteringAtZoom: 16,
+        iconCreateFunction: function (cluster) {
+          const count = cluster.getChildCount();
+          let size = count > 50 ? 'large' : count > 10 ? 'medium' : 'small';
+          return L.divIcon({
+            html: `<div style="background-color: rgba(37, 99, 235, 0.7); border: 3px solid rgba(29, 78, 216, 0.9); width: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; height: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: ${size === 'small' ? '12px' : size === 'medium' ? '14px' : '16px'};"><span>${count}</span></div>`,
+            iconSize: L.point(40, 40)
+          });
+        }
+      });
+      layersRef.current['enedisPostes'] = markerClusterGroup;
+
+      const loadData = () => {
+        fetch(layerConfig.url)
+          .then(r => r.json())
+          .then(data => {
+            console.log(`ENEDIS Postes: ${data.features?.length || 0} postes chargés`);
             const geoJsonLayer = L.geoJSON(data, {
               pointToLayer: (feature, latlng) => {
-                const type = feature.properties?.type_hydrant || '';
-                let html = '';
-
-                // Styling Logic based on Type
-                if (type.startsWith('PI')) {
-                  html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
-                } else if (type.startsWith('BI')) {
-                  html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
-                } else if (['REA', 'RENA'].includes(type) || type.includes('Reserve')) {
-                  html = `<div style="background-color: #3B82F6; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #1E40AF; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
-                } else {
-                  html = `<div style="background-color: #9CA3AF; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #4B5563;"></div>`;
-                }
-
                 return L.marker(latlng, {
                   icon: L.divIcon({
-                    className: '',
-                    html: html,
-                    iconSize: [14, 14],
-                    iconAnchor: [7, 7]
+                    html: `<div style="background-color: #2563eb; width: 16px; height: 16px; border-radius: 3px; border: 2px solid #1d4ed8; box-shadow: 0 1px 3px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold;">⚡</div>`,
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8]
                   })
                 });
               },
               onEachFeature: (feature, layer) => {
                 if (feature.properties) {
                   const props = feature.properties;
-                  let popupContent = '<div style="font-family: sans-serif;">';
-                  popupContent += '<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 16px; font-weight: bold;">🚒 Point d\'Eau Incendie</h4>';
-                  popupContent += `<p style="margin: 4px 0;"><strong>Nom:</strong> ${props.nom || 'N/A'}</p>`;
-                  popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.type_start || props.type_hydrant || 'N/A'}</p>`;
-                  popupContent += `<p style="margin: 4px 0;"><strong>État:</strong> ${props.etat_start || 'Inconnu'}</p>`;
-                  if (props.volume) popupContent += `<p style="margin: 4px 0;"><strong>Volume:</strong> ${props.volume} m³</p>`;
-                  if (props.debit_1bar) popupContent += `<p style="margin: 4px 0;"><strong>Débit (1 bar):</strong> ${props.debit_1bar} m³/h</p>`;
-                  if (props.pression) popupContent += `<p style="margin: 4px 0;"><strong>Pression:</strong> ${props.pression} bar</p>`;
+                  let popupContent = '<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: #2563eb; font-size: 16px; font-weight: bold;">⚡ Poste HTA/BT</h4>';
+                  if (props.code_poste) popupContent += `<p style="margin: 4px 0;"><strong>Code poste:</strong> ${props.code_poste}</p>`;
+                  if (props.libelle) popupContent += `<p style="margin: 4px 0;"><strong>Libellé:</strong> ${props.libelle}</p>`;
+                  if (props.type_poste) popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.type_poste}</p>`;
+                  if (props.puissance) popupContent += `<p style="margin: 4px 0;"><strong>Puissance:</strong> ${props.puissance} kVA</p>`;
                   popupContent += '</div>';
                   layer.bindPopup(popupContent, { maxWidth: 300 });
                 }
@@ -938,12 +1084,93 @@ function SDISLayerManager({ layersRef }) {
             });
             markerClusterGroup.addLayer(geoJsonLayer);
           })
-          .catch(err => console.error("Erreur chargement SDIS 17", err));
+          .catch(err => console.error("Erreur chargement ENEDIS Postes", err));
       };
-
-      // Charger les données une seule fois
       loadData();
     }
+  }, [map, layersRef]);
+  return null;
+}
+
+// ====================================================================
+// CONTRÔLE DES CALQUES OVERLAY
+// ====================================================================
+function OverlaysControl({ layersRef }) {
+  const map = useMap();
+  const boxRef = useRef(null);
+
+  useEffect(() => {
+    if (!map || !layersRef.current) return;
+
+    const container = L.DomUtil.create('div', 'leaflet-control-layers leaflet-control-layers-expanded custom-overlays-panel no-print hide-on-capture');
+    container.style.padding = '10px';
+    container.style.backgroundColor = 'white';
+    container.style.borderRadius = '8px';
+    container.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+    container.style.minWidth = '220px';
+    container.style.maxHeight = '400px';
+    container.style.overflowY = 'auto';
+    container.style.marginBottom = '10px';
+
+    const title = document.createElement('div');
+    title.innerText = 'calques';
+    title.className = 'font-bold text-xs mb-3 text-gray-700 border-b pb-2 uppercase tracking-wider';
+    container.appendChild(title);
+
+    const list = document.createElement('div');
+    list.className = 'space-y-1';
+    container.appendChild(list);
+
+    const Control = L.Control.extend({ onAdd: () => container });
+    const ctrl = new Control({ position: 'bottomright' });
+    ctrl.addTo(map);
+    boxRef.current = ctrl;
+
+    const updateList = () => {
+      list.innerHTML = '';
+      Object.keys(LAYERS).forEach(key => {
+        const layer = LAYERS[key];
+        if (!layer.isOverlay) return;
+
+        const label = document.createElement('label');
+        label.className = 'flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1.5 rounded text-sm transition-colors';
+
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.checked = layersRef.current[key] && map.hasLayer(layersRef.current[key]);
+        input.className = 'accent-blue-600 w-4 h-4';
+
+        const span = document.createElement('span');
+        span.innerText = layer.name;
+        span.className = 'text-gray-700 text-xs';
+
+        label.appendChild(input);
+        label.appendChild(span);
+
+        input.addEventListener('change', () => {
+          if (input.checked) {
+            if (layersRef.current[key]) {
+              layersRef.current[key].addTo(map);
+            }
+          } else {
+            if (layersRef.current[key] && map.hasLayer(layersRef.current[key])) {
+              map.removeLayer(layersRef.current[key]);
+            }
+          }
+          updateList();
+        });
+
+        list.appendChild(label);
+      });
+    };
+
+    updateList();
+    map.on('layeradd layerremove', updateList);
+
+    return () => {
+      if (map && boxRef.current) boxRef.current.remove();
+      map.off('layeradd layerremove', updateList);
+    };
   }, [map, layersRef]);
 
   return null;
@@ -1899,13 +2126,17 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
           <MapDrawingTools mode={mode} setMode={setMode} />
           <LayersBootstrap layersRef={layersRef} />
 
+          {/* Layer Managers */}
+          <SDISLayerManager layersRef={layersRef} />
+          <ENEDISHTALayerManager layersRef={layersRef} />
+          <ENEDISPostesLayerManager layersRef={layersRef} />
+
           {/* Controls inside map */}
           <BasemapControl layersRef={layersRef} />
-
+          <OverlaysControl layersRef={layersRef} />
           <RPGLegend layersRef={layersRef} />
           <ZoneInondableLegend layersRef={layersRef} />
           <SDISLegend layersRef={layersRef} />
-          <SDISLayerManager layersRef={layersRef} />
 
           <SearchField onAddressFound={onAddressFound} />
           <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
