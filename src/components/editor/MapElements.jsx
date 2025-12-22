@@ -168,7 +168,7 @@ function TextInputPopup({ at, onCancel, onSubmit }) {
   const [value, setValue] = useState("");
   return (
     <Marker position={at} opacity={0}>
-      <Popup autoClose={false} closeOnClick={false} closeButton={false} autoPan={true}>
+      <Popup autoClose={false} closeOnClick={false} closeButton={false} autoPan={false}>
         <form onSubmit={(e) => { e.preventDefault(); if (value.trim()) onSubmit(value.trim()); }} className="min-w-[260px] space-y-2">
           <label className="text-sm text-muted-foreground">Texte</label>
           <input autoFocus className="w-full rounded border border-input bg-background px-2 py-1 text-sm text-foreground" value={value} onChange={(e) => setValue(e.target.value)} placeholder="Saisir le texte…" />
@@ -688,9 +688,10 @@ const LAYERS = {
     name: "SDIS",
     type: 'custom',
     apis: [
-      'https://api.deci17-test.datakode.fr/api/v1/peis?format=geojson',
-      'https://api.deci84-test.datakode.fr/api/v1/peis?format=geojson',
-      'https://api.deci81-test.datakode.fr/api/v1/peis?format=geojson'
+      'https://api.deci.sdis17.fr/api/v1/peis?format=geojson',
+      'https://api.deci.sdis84.fr/api/v1/peis?format=geojson',
+      'https://api.deci.sdis81.fr/api/v1/peis?format=geojson',
+      'https://www.pigma.org/fr/dataset/datasets/7554/resource/15478/download/'
     ],
     attribution: 'SDIS 17, 81, 84 / Datakode',
     isOverlay: true,
@@ -1019,7 +1020,7 @@ function ENEDISHTALayerManager({ layersRef }) {
       const bounds = map.getBounds();
       // Data Fair / MongoDB standard: minLon, minLat, maxLon, maxLat
       const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
-      const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-hta/lines?format=geojson&size=10000&bbox=${bbox}`;
+      const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-hta/lines?format=geojson&size=1000000&bbox=${bbox}`;
 
       fetch(url)
         .then(r => r.json())
@@ -1090,7 +1091,7 @@ function ENEDISPostesLayerManager({ layersRef }) {
       const bounds = map.getBounds();
       // Data Fair / MongoDB standard: minLon, minLat, maxLon, maxLat
       const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
-      const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/poste-electrique/lines?format=geojson&size=10000&bbox=${bbox}`;
+      const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/poste-electrique/lines?format=geojson&size=1000000&bbox=${bbox}`;
 
       fetch(url)
         .then(r => r.json())

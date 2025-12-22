@@ -9,27 +9,24 @@ export default function ChatBox() {
   const { user } = useAuth();
   const { project, updateProject } = useProject(); // Utilise le contexte du projet
   const [input, setInput] = useState("");
-  
+
   // CORRIGÉ : Lit les messages depuis 'project.chatLines'
-  const lines = project?.chatLines || []; 
-  
+  const lines = project?.chatLines || [];
+
   const messagesEndRef = useRef(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(scrollToBottom, [lines]);
+  // Scroll automatique supprimé à la demande de l'utilisateur
+  // useEffect(scrollToBottom, [lines]);
 
   const send = () => {
     const t = input.trim();
     if (!t) return;
-    const newLine = { 
-        who: user?.name || "Vous", 
-        text: t, 
-        timestamp: new Date().toISOString() 
+    const newLine = {
+      who: user?.name || "Vous",
+      text: t,
+      timestamp: new Date().toISOString()
     };
-    
+
     // CORRIGÉ : Sauvegarde les messages dans l'objet projet
     updateProject({ chatLines: [...lines, newLine] });
     setInput("");
@@ -47,9 +44,9 @@ export default function ChatBox() {
       <div className="border-b px-4 py-3 font-semibold text-lg">Chat</div>
       <div className="flex-grow p-4 space-y-4 overflow-y-auto h-64">
         {lines.length === 0 && (
-            <div className="text-sm text-gray-400 text-center pt-10">
-                Aucun message.
-            </div>
+          <div className="text-sm text-gray-400 text-center pt-10">
+            Aucun message.
+          </div>
         )}
         {lines.map((l, i) => (
           <div key={i} className={`flex flex-col ${l.who === (user?.name || "Vous") ? 'items-end' : 'items-start'}`}>
