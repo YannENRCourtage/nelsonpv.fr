@@ -1017,22 +1017,23 @@ function ENEDISHTALayerManager({ layersRef }) {
       if (zoom < 13 || !map.hasLayer(htaGroup.current)) return;
 
       const bounds = map.getBounds();
-      const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
-      const url = `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/reseau-hta/records?limit=100&bbox=${bbox}`;
+      // Data Fair / MongoDB standard: minLon, minLat, maxLon, maxLat
+      const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+      const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-hta/lines?format=geojson&size=1000&bbox=${bbox}`;
 
       fetch(url)
         .then(r => r.json())
         .then(data => {
-          if (!data.results) return;
-          data.results.forEach(record => {
-            if (loadedIds.current.has(record.id)) return;
-            loadedIds.current.add(record.id);
+          if (!data.features) return;
+          data.features.forEach(feature => {
+            const featureId = feature.id || feature.properties?._id;
+            if (!featureId || loadedIds.current.has(featureId)) return;
+            loadedIds.current.add(featureId);
 
-            const feature = record.geo_shape;
-            const props = record;
             const geoJsonLayer = L.geoJSON(feature, {
               style: { color: '#f97316', weight: 2, opacity: 0.7 },
               onEachFeature: (f, layer) => {
+                const props = feature.properties || {};
                 let popupContent = '<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: #f97316; font-size: 16px; font-weight: bold;">⚡ Ligne HTA</h4>';
                 if (props.code_ligne) popupContent += `<p style="margin: 4px 0;"><strong>Code ligne:</strong> ${props.code_ligne}</p>`;
                 if (props.libelle) popupContent += `<p style="margin: 4px 0;"><strong>Libellé:</strong> ${props.libelle}</p>`;
@@ -1052,7 +1053,6 @@ function ENEDISHTALayerManager({ layersRef }) {
     };
 
     map.on('moveend', handleMove);
-    // Initial load if already visible
     fetchData();
 
     return () => {
@@ -1088,20 +1088,22 @@ function ENEDISPostesLayerManager({ layersRef }) {
       if (zoom < 13 || !map.hasLayer(clusterGroup.current)) return;
 
       const bounds = map.getBounds();
-      const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
-      const url = `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/poste-electrique/records?limit=100&bbox=${bbox}`;
+      // Data Fair / MongoDB standard: minLon, minLat, maxLon, maxLat
+      const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+      const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/poste-electrique/lines?format=geojson&size=1000&bbox=${bbox}`;
 
       fetch(url)
         .then(r => r.json())
         .then(data => {
-          if (!data.results) return;
-          data.results.forEach(record => {
-            if (loadedIds.current.has(record.id)) return;
-            loadedIds.current.add(record.id);
+          if (!data.features) return;
+          data.features.forEach(feature => {
+            const featureId = feature.id || feature.properties?._id;
+            if (!featureId || loadedIds.current.has(featureId)) return;
+            loadedIds.current.add(featureId);
 
-            const feature = record.geo_shape;
-            const props = record;
-            const latlng = [feature.geometry.coordinates[1], feature.geometry.coordinates[0]];
+            const coords = feature.geometry.coordinates;
+            const latlng = [coords[1], coords[0]];
+            const props = feature.properties || {};
 
             const marker = L.marker(latlng, {
               icon: L.divIcon({
@@ -1130,7 +1132,6 @@ function ENEDISPostesLayerManager({ layersRef }) {
     };
 
     map.on('moveend', handleMove);
-    // Initial load if already visible
     fetchData();
 
     return () => {
