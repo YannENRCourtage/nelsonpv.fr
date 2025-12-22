@@ -235,7 +235,11 @@ export default function ProjectEditor() {
         scale: 1,
         width: tabContainer.offsetWidth,
         height: tabContainer.offsetHeight,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        scrollX: 0,
+        scrollY: 0,
+        x: window.scrollX,
+        y: window.scrollY
       });
 
       const dataUrl = canvas.toDataURL('image/png');

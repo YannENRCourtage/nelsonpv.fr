@@ -171,7 +171,7 @@ function TextInputPopup({ at, onCancel, onSubmit }) {
       <Popup autoClose={false} closeOnClick={false} closeButton={false} autoPan={false}>
         <form onSubmit={(e) => { e.preventDefault(); if (value.trim()) onSubmit(value.trim()); }} className="min-w-[260px] space-y-2">
           <label className="text-sm text-muted-foreground">Texte</label>
-          <input autoFocus className="w-full rounded border border-input bg-background px-2 py-1 text-sm text-foreground" value={value} onChange={(e) => setValue(e.target.value)} placeholder="Saisir le texte…" />
+          <input className="w-full rounded border border-input bg-background px-2 py-1 text-sm text-foreground" value={value} onChange={(e) => setValue(e.target.value)} placeholder="Saisir le texte…" />
           <div className="flex gap-2 pt-1">
             <button type="submit" className="rounded bg-blue-600 px-3 py-1 text-white text-sm">OK</button>
             <button type="button" className="rounded bg-secondary px-3 py-1 text-sm text-secondary-foreground" onClick={onCancel}>Annuler</button>
