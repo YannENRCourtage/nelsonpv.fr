@@ -1014,12 +1014,12 @@ function ENEDISHTALayerManager({ layersRef }) {
 
     const fetchData = () => {
       const zoom = map.getZoom();
-      if (zoom < 13 || !map.hasLayer(htaGroup.current)) return;
+      if (zoom < 9 || !map.hasLayer(htaGroup.current)) return;
 
       const bounds = map.getBounds();
       // Data Fair / MongoDB standard: minLon, minLat, maxLon, maxLat
       const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
-      const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-hta/lines?format=geojson&size=1000&bbox=${bbox}`;
+      const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-hta/lines?format=geojson&size=10000&bbox=${bbox}`;
 
       fetch(url)
         .then(r => r.json())
@@ -1085,12 +1085,12 @@ function ENEDISPostesLayerManager({ layersRef }) {
 
     const fetchData = () => {
       const zoom = map.getZoom();
-      if (zoom < 13 || !map.hasLayer(clusterGroup.current)) return;
+      if (zoom < 9 || !map.hasLayer(clusterGroup.current)) return;
 
       const bounds = map.getBounds();
       // Data Fair / MongoDB standard: minLon, minLat, maxLon, maxLat
       const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
-      const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/poste-electrique/lines?format=geojson&size=1000&bbox=${bbox}`;
+      const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/poste-electrique/lines?format=geojson&size=10000&bbox=${bbox}`;
 
       fetch(url)
         .then(r => r.json())
