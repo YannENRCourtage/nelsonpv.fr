@@ -690,8 +690,7 @@ const LAYERS = {
     apis: [
       'https://api.deci.sdis17.fr/api/v1/peis?format=geojson',
       'https://api.deci.sdis84.fr/api/v1/peis?format=geojson',
-      'https://api.deci.sdis81.fr/api/v1/peis?format=geojson',
-      'https://www.pigma.org/fr/dataset/datasets/7554/resource/15478/download/'
+      'https://api.deci.sdis81.fr/api/v1/peis?format=geojson'
     ],
     attribution: 'SDIS 17, 81, 84 / Datakode',
     isOverlay: true,
@@ -994,8 +993,23 @@ function SDISLayerManager({ layersRef }) {
         }).catch(err => console.error("Erreur chargement SDIS", err));
       };
 
+      const handleLayerAdd = (e) => {
+        if (e.layer === markerClusterGroup) {
+          console.log("SDIS layer added - checking data");
+          if (markerClusterGroup.getLayers().length === 0) {
+            loadData();
+          }
+        }
+      };
+
+      map.on('layeradd', handleLayerAdd);
+
       // Charger les données une seule fois
       loadData();
+
+      return () => {
+        map.off('layeradd', handleLayerAdd);
+      };
     }
   }, [map, layersRef]);
 
@@ -1053,11 +1067,24 @@ function ENEDISHTALayerManager({ layersRef }) {
       fetchData();
     };
 
+    const handleLayerAdd = (e) => {
+      if (e.layer === htaGroup.current) {
+        console.log("Enedis HTA layer added - fetching data");
+        fetchData();
+      }
+    };
+
     map.on('moveend', handleMove);
-    fetchData();
+    map.on('layeradd', handleLayerAdd);
+
+    // Initial check
+    if (map.hasLayer(htaGroup.current)) {
+      fetchData();
+    }
 
     return () => {
       map.off('moveend', handleMove);
+      map.off('layeradd', handleLayerAdd);
     };
   }, [map, layersRef]);
 
@@ -1132,11 +1159,24 @@ function ENEDISPostesLayerManager({ layersRef }) {
       fetchData();
     };
 
+    const handleLayerAdd = (e) => {
+      if (e.layer === clusterGroup.current) {
+        console.log("Enedis Postes layer added - fetching data");
+        fetchData();
+      }
+    };
+
     map.on('moveend', handleMove);
-    fetchData();
+    map.on('layeradd', handleLayerAdd);
+
+    // Initial check
+    if (map.hasLayer(clusterGroup.current)) {
+      fetchData();
+    }
 
     return () => {
       map.off('moveend', handleMove);
+      map.off('layeradd', handleLayerAdd);
     };
   }, [map, layersRef]);
 
