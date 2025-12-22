@@ -1033,12 +1033,21 @@ function ENEDISHTALayerManager({ layersRef }) {
 
       const bounds = map.getBounds();
       // Data Fair / MongoDB standard: minLon, minLat, maxLon, maxLat
-      const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
-      const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-hta/lines?format=geojson&size=1000000&bbox=${bbox}`;
+      const bboxArr = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+      const bbox = bboxArr.join(',');
+      const limit = 1000000;
+      const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-hta/lines?format=geojson&size=${limit}&bbox=${bbox}`;
+
+      console.log(`[Enedis HTA] Fetching zoom=${zoom} bbox=${bbox} limit=${limit}`);
+      console.log(`[Enedis HTA] URL: ${url}`);
 
       fetch(url)
-        .then(r => r.json())
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP error ${r.status}`);
+          return r.json();
+        })
         .then(data => {
+          console.log(`[Enedis HTA] Received ${data.features?.length || 0} features`);
           if (!data.features) return;
           data.features.forEach(feature => {
             const featureId = feature.id || feature.properties?._id;
@@ -1117,13 +1126,26 @@ function ENEDISPostesLayerManager({ layersRef }) {
 
       const bounds = map.getBounds();
       // Data Fair / MongoDB standard: minLon, minLat, maxLon, maxLat
-      const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
-      const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/poste-electrique/lines?format=geojson&size=1000000&bbox=${bbox}`;
+      const bboxArr = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+      const bbox = bboxArr.join(',');
+
+      // Limit to 100,000 first as it's more likely to be accepted than 1,000,000 in a single hit
+      const limit = 1000000;
+      const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/poste-electrique/lines?format=geojson&size=${limit}&bbox=${bbox}`;
+
+      console.log(`[Enedis Postes] Fetching zoom=${zoom} bbox=${bbox} limit=${limit}`);
+      console.log(`[Enedis Postes] URL: ${url}`);
 
       fetch(url)
-        .then(r => r.json())
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP error ${r.status}`);
+          return r.json();
+        })
         .then(data => {
+          console.log(`[Enedis Postes] Received ${data.features?.length || 0} features`);
           if (!data.features) return;
+
+          const markers = [];
           data.features.forEach(feature => {
             const featureId = feature.id || feature.properties?._id;
             if (!featureId || loadedIds.current.has(featureId)) return;
@@ -1149,8 +1171,13 @@ function ENEDISPostesLayerManager({ layersRef }) {
             popupContent += '</div>';
             marker.bindPopup(popupContent, { maxWidth: 300 });
 
-            clusterGroup.current.addLayer(marker);
+            markers.push(marker);
           });
+
+          if (markers.length > 0) {
+            console.log(`[Enedis Postes] Bulk adding ${markers.length} markers to cluster group`);
+            clusterGroup.current.addLayers(markers);
+          }
         })
         .catch(err => console.error("Error loading Enedis Postes", err));
     };
