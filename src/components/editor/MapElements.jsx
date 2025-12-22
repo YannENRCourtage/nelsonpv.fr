@@ -670,17 +670,15 @@ const LAYERS = {
   // ENEDIS - Réseau électrique
   enedisHTA: {
     name: "Lignes HTA",
-    type: 'custom',
-    url: 'https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-hta/lines?format=geojson&size=1000',
-    attribution: 'ENEDIS Open Data',
+    datasetId: "reseau-hta",
+    color: "#f97316",
     isOverlay: true,
     zIndex: 50
   },
   enedisPostes: {
     name: "Postes HTA/BT",
-    type: 'custom',
-    url: 'https://opendata.enedis.fr/data-fair/api/v1/datasets/poste-electrique/lines?format=geojson&size=1000',
-    attribution: 'ENEDIS Open Data',
+    datasetId: "poste-electrique",
+    color: "#2563eb",
     isOverlay: true,
     zIndex: 51
   },
@@ -1008,116 +1006,136 @@ function SDISLayerManager({ layersRef }) {
 // ====================================================================
 function ENEDISHTALayerManager({ layersRef }) {
   const map = useMap();
+  const loadedIds = useRef(new Set());
+  const htaGroup = useRef(L.layerGroup());
 
   useEffect(() => {
-    const layerConfig = LAYERS['enedisHTA'];
-    const htaGroup = L.layerGroup();
-    layersRef.current['enedisHTA'] = htaGroup;
+    layersRef.current['enedisHTA'] = htaGroup.current;
 
-    const loadData = () => {
-      console.log("FETCH ENEDIS HTA:", layerConfig.url);
-      fetch(layerConfig.url)
-        .then(r => {
-          console.log("RESPONSE ENEDIS HTA STATUS:", r.status);
-          return r.json();
-        })
+    const fetchData = () => {
+      const zoom = map.getZoom();
+      if (zoom < 13 || !map.hasLayer(htaGroup.current)) return;
+
+      const bounds = map.getBounds();
+      const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
+      const url = `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/reseau-hta/records?limit=100&bbox=${bbox}`;
+
+      fetch(url)
+        .then(r => r.json())
         .then(data => {
-          console.log("ENEDIS HTA DATA:", data);
-          console.log(`ENEDIS HTA: ${data.features?.length || 0} lignes chargées`);
-          if (!data.features || data.features.length === 0) {
-            console.warn("ENEDIS HTA: Aucun feature trouvé dans la réponse.");
-            return;
-          }
-          const geoJsonLayer = L.geoJSON(data, {
-            style: (feature) => ({ color: '#f97316', weight: 2, opacity: 0.7 }),
-            onEachFeature: (feature, layer) => {
-              if (feature.properties) {
-                const props = feature.properties;
+          if (!data.results) return;
+          data.results.forEach(record => {
+            if (loadedIds.current.has(record.id)) return;
+            loadedIds.current.add(record.id);
+
+            const feature = record.geo_shape;
+            const props = record;
+            const geoJsonLayer = L.geoJSON(feature, {
+              style: { color: '#f97316', weight: 2, opacity: 0.7 },
+              onEachFeature: (f, layer) => {
                 let popupContent = '<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: #f97316; font-size: 16px; font-weight: bold;">⚡ Ligne HTA</h4>';
                 if (props.code_ligne) popupContent += `<p style="margin: 4px 0;"><strong>Code ligne:</strong> ${props.code_ligne}</p>`;
                 if (props.libelle) popupContent += `<p style="margin: 4px 0;"><strong>Libellé:</strong> ${props.libelle}</p>`;
                 if (props.tension) popupContent += `<p style="margin: 4px 0;"><strong>Tension:</strong> ${props.tension} V</p>`;
-                if (props.long_calo) popupContent += `<p style="margin: 4px 0;"><strong>Longueur:</strong> ${props.long_calo} m</p>`;
                 popupContent += '</div>';
                 layer.bindPopup(popupContent, { maxWidth: 300 });
               }
-            }
+            });
+            htaGroup.current.addLayer(geoJsonLayer);
           });
-          htaGroup.addLayer(geoJsonLayer);
         })
-        .catch(err => console.error("Erreur chargement ENEDIS HTA", err));
+        .catch(err => console.error("Error loading Enedis HTA", err));
     };
-    loadData();
+
+    const handleMove = () => {
+      fetchData();
+    };
+
+    map.on('moveend', handleMove);
+    // Initial load if already visible
+    fetchData();
+
+    return () => {
+      map.off('moveend', handleMove);
+    };
   }, [map, layersRef]);
 
   return null;
 }
 
-// ====================================================================
-// MANAGER ENEDIS POSTES HTA/BT
-// ====================================================================
 function ENEDISPostesLayerManager({ layersRef }) {
   const map = useMap();
+  const loadedIds = useRef(new Set());
+  const clusterGroup = useRef(L.markerClusterGroup({
+    chunkedLoading: true,
+    maxClusterRadius: 50,
+    disableClusteringAtZoom: 16,
+    iconCreateFunction: function (cluster) {
+      const count = cluster.getChildCount();
+      let size = count > 50 ? 'large' : count > 10 ? 'medium' : 'small';
+      return L.divIcon({
+        html: `<div style="background-color: rgba(37, 99, 235, 0.7); border: 3px solid rgba(29, 78, 216, 0.9); width: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; height: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: ${size === 'small' ? '12px' : size === 'medium' ? '14px' : '16px'};"><span>${count}</span></div>`,
+        iconSize: L.point(40, 40)
+      });
+    }
+  }));
 
   useEffect(() => {
-    const layerConfig = LAYERS['enedisPostes'];
-    const markerClusterGroup = L.markerClusterGroup({
-      chunkedLoading: true,
-      maxClusterRadius: 50,
-      disableClusteringAtZoom: 16,
-      iconCreateFunction: function (cluster) {
-        const count = cluster.getChildCount();
-        let size = count > 50 ? 'large' : count > 10 ? 'medium' : 'small';
-        return L.divIcon({
-          html: `<div style="background-color: rgba(37, 99, 235, 0.7); border: 3px solid rgba(29, 78, 216, 0.9); width: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; height: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: ${size === 'small' ? '12px' : size === 'medium' ? '14px' : '16px'};"><span>${count}</span></div>`,
-          iconSize: L.point(40, 40)
-        });
-      }
-    });
-    layersRef.current['enedisPostes'] = markerClusterGroup;
+    layersRef.current['enedisPostes'] = clusterGroup.current;
 
-    const loadData = () => {
-      console.log("FETCH ENEDIS POSTES:", layerConfig.url);
-      fetch(layerConfig.url)
-        .then(r => {
-          console.log("RESPONSE ENEDIS POSTES STATUS:", r.status);
-          return r.json();
-        })
+    const fetchData = () => {
+      const zoom = map.getZoom();
+      if (zoom < 13 || !map.hasLayer(clusterGroup.current)) return;
+
+      const bounds = map.getBounds();
+      const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
+      const url = `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/poste-electrique/records?limit=100&bbox=${bbox}`;
+
+      fetch(url)
+        .then(r => r.json())
         .then(data => {
-          console.log("ENEDIS POSTES DATA:", data);
-          console.log(`ENEDIS Postes: ${data.features?.length || 0} postes chargés`);
-          if (!data.features || data.features.length === 0) {
-            console.warn("ENEDIS Postes: Aucun feature trouvé dans la réponse.");
-            return;
-          }
-          const geoJsonLayer = L.geoJSON(data, {
-            pointToLayer: (feature, latlng) => {
-              return L.marker(latlng, {
-                icon: L.divIcon({
-                  html: `<div style="background-color: #2563eb; width: 16px; height: 16px; border-radius: 3px; border: 2px solid #1d4ed8; box-shadow: 0 1px 3px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold;">⚡</div>`,
-                  iconSize: [16, 16],
-                  iconAnchor: [8, 8]
-                })
-              });
-            },
-            onEachFeature: (feature, layer) => {
-              if (feature.properties) {
-                const props = feature.properties;
-                let popupContent = '<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: #2563eb; font-size: 16px; font-weight: bold;">⚡ Poste HTA/BT</h4>';
-                if (props.code_poste) popupContent += `<p style="margin: 4px 0;"><strong>Code poste:</strong> ${props.code_poste}</p>`;
-                if (props.libelle) popupContent += `<p style="margin: 4px 0;"><strong>Libellé:</strong> ${props.libelle}</p>`;
-                if (props.type_poste) popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.type_poste}</p>`;
-                if (props.puissance) popupContent += `<p style="margin: 4px 0;"><strong>Puissance:</strong> ${props.puissance} kVA</p>`;
-                popupContent += '</div>';
-                layer.bindPopup(popupContent, { maxWidth: 300 });
-              }
-            }
+          if (!data.results) return;
+          data.results.forEach(record => {
+            if (loadedIds.current.has(record.id)) return;
+            loadedIds.current.add(record.id);
+
+            const feature = record.geo_shape;
+            const props = record;
+            const latlng = [feature.geometry.coordinates[1], feature.geometry.coordinates[0]];
+
+            const marker = L.marker(latlng, {
+              icon: L.divIcon({
+                html: `<div style="background-color: #2563eb; width: 16px; height: 16px; border-radius: 3px; border: 2px solid #1d4ed8; box-shadow: 0 1px 3px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold;">⚡</div>`,
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+              })
+            });
+
+            let popupContent = '<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: #2563eb; font-size: 16px; font-weight: bold;">⚡ Poste HTA/BT</h4>';
+            if (props.code_poste) popupContent += `<p style="margin: 4px 0;"><strong>Code poste:</strong> ${props.code_poste}</p>`;
+            if (props.libelle) popupContent += `<p style="margin: 4px 0;"><strong>Libellé:</strong> ${props.libelle}</p>`;
+            if (props.type_poste) popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.type_poste}</p>`;
+            if (props.puissance) popupContent += `<p style="margin: 4px 0;"><strong>Puissance:</strong> ${props.puissance} kVA</p>`;
+            popupContent += '</div>';
+            marker.bindPopup(popupContent, { maxWidth: 300 });
+
+            clusterGroup.current.addLayer(marker);
           });
-          markerClusterGroup.addLayer(geoJsonLayer);
         })
-        .catch(err => console.error("Erreur chargement ENEDIS Postes", err));
+        .catch(err => console.error("Error loading Enedis Postes", err));
     };
-    loadData();
+
+    const handleMove = () => {
+      fetchData();
+    };
+
+    map.on('moveend', handleMove);
+    // Initial load if already visible
+    fetchData();
+
+    return () => {
+      map.off('moveend', handleMove);
+    };
   }, [map, layersRef]);
 
   return null;
@@ -1835,181 +1853,7 @@ function MapInstance({ setMap }) {
 // ====================================================================
 // MANAGER ENEDIS (WFS + BBOX)
 // ====================================================================
-function EnedisLayerManager({ layersRef }) {
-  const map = useMap();
-  const [loadedBounds, setLoadedBounds] = useState([]); // Track loaded areas to avoid spamming
-  const activeLayers = useRef(new Set());
 
-  // Dataset configurations
-  const ENEDIS_DATASETS = {
-    enedisPostesSource: { id: 'poste-source', color: '#800080', type: 'point', label: 'Poste Source' },
-    enedisPostesHTABT: { id: 'poste-electrique', color: '#FF00FF', type: 'point', label: 'Poste HTA/BT' },
-    enedisLignesHTA: { id: 'reseau-hta', color: '#FFA500', type: 'line', label: 'Ligne HTA (Aérien)' }, // Orange
-    enedisLignesSoutHTA: { id: 'reseau-souterrain-hta', color: '#A52A2A', type: 'line', label: 'Ligne HTA (Souterrain)' }, // Brown
-    enedisLignesBT: { id: 'reseau-aerien-bt', color: '#0000FF', type: 'line', label: 'Ligne BT (Aérien)' }, // Blue
-    enedisLignesSoutBT: { id: 'reseau-souterrain-bt', color: '#008080', type: 'line', label: 'Ligne BT (Souterrain)' }, // Teal
-    enedisPoteaux: { id: 'position-geographique-des-poteaux-electriques-hta-et-bt', color: '#808080', type: 'point', label: 'Poteau' }
-  };
-
-  useEffect(() => {
-    const handleMoveEnd = () => {
-      const bounds = map.getBounds();
-      const zoom = map.getZoom();
-
-      // Load data only if zoomed in enough (to prevent massive fetch)
-      if (zoom < 13) return;
-
-      Object.keys(ENEDIS_DATASETS).forEach(layerKey => {
-        if (map.hasLayer(layersRef.current[layerKey])) {
-          fetchData(layerKey, bounds);
-        }
-      });
-    };
-
-    const fetchData = (layerKey, bounds) => {
-      // Basic deduplication could be added here
-      const config = ENEDIS_DATASETS[layerKey];
-      if (!layersRef.current[layerKey]) return;
-
-      const sw = bounds.getSouthWest();
-      const ne = bounds.getNorthEast();
-      // Standard WFS BBOX: minx,miny,maxx,maxy
-      const bbox = `${sw.lng},${sw.lat},${ne.lng},${ne.lat}`;
-
-      const url = `https://data.enedis.fr/api/explore/v2.1/catalog/datasets/${config.id}/exports/wfs?service=WFS&version=2.0.0&request=GetFeature&typename=${config.id}&outputFormat=geojson&srsname=EPSG:4326&bbox=${bbox}`;
-
-      fetch(url)
-        .then(res => res.json())
-        .then(data => {
-          // Create a temporary layer to parse GeoJSON
-          const newLayer = L.geoJSON(data, {
-            pointToLayer: (feature, latlng) => {
-              return L.circleMarker(latlng, {
-                radius: 4,
-                fillColor: config.color,
-                color: "#000",
-                weight: 1,
-                opacity: 1,
-                fillOpacity: 0.8
-              });
-            },
-            style: (feature) => {
-              return {
-                color: config.color,
-                weight: 2,
-                opacity: 0.8
-              };
-            },
-            onEachFeature: (feature, layer) => {
-              let popup = `<div style="font-size:12px"><strong>${config.label}</strong><br/>`;
-              if (feature.properties) {
-                for (let k in feature.properties) {
-                  if (feature.properties[k]) popup += `<b>${k}:</b> ${feature.properties[k]}<br/>`;
-                }
-              }
-              popup += "</div>";
-              layer.bindPopup(popup);
-            }
-          });
-
-          // Add new features to the existing layer group
-          // Note: This is a naive implementation. Normally we should check for duplicate IDs.
-          const layerGroup = layersRef.current[layerKey];
-          newLayer.eachLayer(l => {
-            // Very basic text-based deduplication or relying on ID if available
-            // Ideally checking feature.id
-            layerGroup.addLayer(l);
-          });
-        })
-        .catch(err => console.error(`Error loading ${layerKey}`, err));
-    };
-
-    map.on('moveend', handleMoveEnd);
-
-    // check active on mount/update
-    Object.keys(ENEDIS_DATASETS).forEach(key => {
-      if (!layersRef.current[key]) {
-        layersRef.current[key] = L.layerGroup(); // Initialize empty group
-      }
-    });
-
-    return () => {
-      map.off('moveend', handleMoveEnd);
-    };
-  }, [map, layersRef]);
-
-  return null;
-}
-
-
-// Barre horizontale en bas pour les CALQUES uniquement (Hors MapContainer)
-function BottomLayersBar({ layersRef, map }) {
-  const [, forceUpdate] = useState();
-
-  const toggleLayer = (key) => {
-    if (!map || !layersRef.current[key]) return;
-    const layer = layersRef.current[key];
-    if (map.hasLayer(layer)) map.removeLayer(layer);
-    else layer.addTo(map);
-    forceUpdate({});
-  };
-
-  const isActive = (key) => {
-    return map && layersRef.current[key] && map.hasLayer(layersRef.current[key]);
-  };
-
-  // Group Layers
-  const generalOverlays = ['cadastre', 'zoneInondable', 'sdis17'];
-  const enedisOverlays = [
-    'enedisPostesSource', 'enedisPostesHTABT',
-    'enedisLignesHTA', 'enedisLignesSoutHTA',
-    'enedisLignesBT', 'enedisLignesSoutBT',
-    'enedisPoteaux'
-  ];
-
-  // Helper to get name
-  const getName = (key) => LAYERS[key]?.name || key;
-
-  return (
-    <div className="bg-white border-t border-gray-200 p-2 flex flex-col items-center gap-1 z-[1000] w-full max-h-40 overflow-y-auto">
-      {/* Ligne 1 : Général */}
-      <div className="flex flex-wrap justify-center gap-1">
-        {generalOverlays.map(key => (
-          LAYERS[key] && (
-            <button
-              key={key}
-              onClick={() => toggleLayer(key)}
-              className={`px-2 py-1 rounded text-[12px] font-medium transition-colors shadow-sm border whitespace-nowrap ${isActive(key)
-                ? 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-            >
-              {getName(key)}
-            </button>
-          )
-        ))}
-      </div>
-
-      {/* Ligne 2 : Enedis */}
-      <div className="flex flex-wrap justify-center gap-1 border-t border-gray-100 pt-1 w-full">
-        {enedisOverlays.map(key => (
-          LAYERS[key] && (
-            <button
-              key={key}
-              onClick={() => toggleLayer(key)}
-              className={`px-2 py-1 rounded text-[12px] font-medium transition-colors shadow-sm border whitespace-nowrap ${isActive(key)
-                ? 'bg-green-600 text-white border-green-700 hover:bg-green-700'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-            >
-              {getName(key)}
-            </button>
-          )
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // Export LAYERS for use in ProjectEditor layer buttons
 export { LAYERS };

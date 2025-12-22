@@ -14,7 +14,6 @@ export default function MapDrawingTools({ mode, setMode }) {
   const handleClick = (e, newMode) => {
     e.preventDefault();
     e.stopPropagation();
-    e.currentTarget.blur(); // Prevent auto-scroll on focus
     toggle(newMode);
   };
 

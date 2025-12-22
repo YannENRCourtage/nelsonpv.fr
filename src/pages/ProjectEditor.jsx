@@ -27,9 +27,7 @@ function SymbolBtn({ icon, label, type, emoji, onSelect, isSelected }) {
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        const scrollY = window.scrollY;
         onSelect({ type, label, emoji });
-        setTimeout(() => window.scrollTo(0, scrollY), 0);
       }}
       className={cn(
         "flex flex-col items-center justify-center gap-2 rounded-lg border bg-white p-4 text-sm font-medium shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5",
@@ -395,22 +393,22 @@ export default function ProjectEditor() {
           </div>
 
           <div className="grid grid-cols-12 gap-4">
-            <div className="col-span-3"><label className="text-sm font-medium">Nom*</label><Input value={p.name || ''} onChange={e => updateProject({ name: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Nom" /></div>
-            <div className="col-span-3"><label className="text-sm font-medium">Prénom</label><Input value={p.firstName || ''} onChange={e => updateProject({ firstName: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Prénom" /></div>
-            <div className="col-span-3"><label className="text-sm font-medium">Téléphone</label><Input value={p.phone || ''} onChange={e => updateProject({ phone: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Téléphone" /></div>
-            <div className="col-span-3"><label className="text-sm font-medium">Email</label><Input value={p.email || ''} onChange={e => updateProject({ email: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Email" /></div>
+            <div className="col-span-3"><label className="text-sm font-medium">Nom*</label><Input value={p.name || ''} onChange={e => updateProject({ name: e.target.value })} className="mt-1" placeholder="Nom" /></div>
+            <div className="col-span-3"><label className="text-sm font-medium">Prénom</label><Input value={p.firstName || ''} onChange={e => updateProject({ firstName: e.target.value })} className="mt-1" placeholder="Prénom" /></div>
+            <div className="col-span-3"><label className="text-sm font-medium">Téléphone</label><Input value={p.phone || ''} onChange={e => updateProject({ phone: e.target.value })} className="mt-1" placeholder="Téléphone" /></div>
+            <div className="col-span-3"><label className="text-sm font-medium">Email</label><Input value={p.email || ''} onChange={e => updateProject({ email: e.target.value })} className="mt-1" placeholder="Email" /></div>
 
             <div className="col-span-12 flex gap-4 items-end">
-              <div className="flex-grow-[3]"><label className="text-sm font-medium">Adresse du projet</label><Input value={p.address || ''} onChange={e => updateProject({ address: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Adresse du projet" /></div>
-              <div className="flex-grow-[1]"><label className="text-sm font-medium">Code postal</label><Input value={p.zip || ''} onChange={e => updateProject({ zip: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Code postal" /></div>
-              <div className="flex-grow-[2]"><label className="text-sm font-medium">Ville</label><Input value={p.city || ''} onChange={e => updateProject({ city: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Ville" /></div>
+              <div className="flex-grow-[3]"><label className="text-sm font-medium">Adresse du projet</label><Input value={p.address || ''} onChange={e => updateProject({ address: e.target.value })} className="mt-1" placeholder="Adresse du projet" /></div>
+              <div className="flex-grow-[1]"><label className="text-sm font-medium">Code postal</label><Input value={p.zip || ''} onChange={e => updateProject({ zip: e.target.value })} className="mt-1" placeholder="Code postal" /></div>
+              <div className="flex-grow-[2]"><label className="text-sm font-medium">Ville</label><Input value={p.city || ''} onChange={e => updateProject({ city: e.target.value })} className="mt-1" placeholder="Ville" /></div>
             </div>
 
-            <div className="col-span-3"><label className="text-sm font-medium">Coordonnées GPS</label><Input value={p.gps || ''} onChange={e => updateProject({ gps: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Ex: 45.24, 4.36" /></div>
-            <div className="col-span-3"><label className="text-sm font-medium">Type de projet</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background"><option>Construction</option><option>Rénovation</option></select></div>
-            <div className="col-span-6"><label className="text-sm font-medium">Projet</label><Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1" placeholder="Ex: 150m² ou 9kWc" /></div>
+            <div className="col-span-3"><label className="text-sm font-medium">Coordonnées GPS</label><Input value={p.gps || ''} onChange={e => updateProject({ gps: e.target.value })} className="mt-1" placeholder="Ex: 45.24, 4.36" /></div>
+            <div className="col-span-3"><label className="text-sm font-medium">Type de projet</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background"><option>Construction</option><option>Rénovation</option></select></div>
+            <div className="col-span-6"><label className="text-sm font-medium">Projet</label><Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} className="mt-1" placeholder="Ex: 150m² ou 9kWc" /></div>
 
-            <div className="col-span-12"><label className="text-sm font-medium">Commentaires</label><textarea value={p.comments || ''} onChange={e => updateProject({ comments: e.target.value })} onFocus={(e) => { const scrollY = window.scrollY; setTimeout(() => window.scrollTo(0, scrollY), 0); }} className="mt-1 h-24 w-full rounded-lg border px-3 py-2" placeholder="Commentaires" /></div>
+            <div className="col-span-12"><label className="text-sm font-medium">Commentaires</label><textarea value={p.comments || ''} onChange={e => updateProject({ comments: e.target.value })} className="mt-1 h-24 w-full rounded-lg border px-3 py-2" placeholder="Commentaires" /></div>
           </div>
         </section>
 
@@ -425,7 +423,7 @@ export default function ProjectEditor() {
           <div className="flex gap-2 border-b border-gray-700">
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('map'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('map'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'map'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -437,7 +435,7 @@ export default function ProjectEditor() {
 
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('streetview'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('streetview'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'streetview'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -448,7 +446,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('nv65'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('nv65'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'nv65'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -459,7 +457,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('owners'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('owners'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'owners'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -470,7 +468,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('capareseau'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('capareseau'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'capareseau'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -481,7 +479,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('terravisu'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('terravisu'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'terravisu'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -492,7 +490,7 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); const scrollY = window.scrollY; setActiveTab('dvf'); setTimeout(() => window.scrollTo(0, scrollY), 0); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('dvf'); }}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'dvf'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
@@ -631,7 +629,7 @@ export default function ProjectEditor() {
               <h3 className="text-lg font-semibold">Capturer la vue</h3>
               <Button
                 type="button"
-                onClick={(e) => { captureNow(); }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); captureNow(); }}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={activeTab !== 'map'}
                 title={activeTab !== 'map' ? "Captures disponibles uniquement sur l'onglet Carte" : "Prendre une capture"}
