@@ -180,11 +180,11 @@ const overlayCategories = {
     'Réseau électrique ENEDIS': {
         layers: {
             'Postes HTA/BT': {
-                url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/postes-electriques-de-distribution-publique-postes-htabt/exports/geojson?limit=-1',
+                url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/postes-electriques-de-distribution-publique-postes-htabt/exports/geojson?limit=1000000',
                 attribution: 'ENEDIS',
                 type: 'geojson-api',
                 style: { color: '#FFA500', weight: 1 },
-                minZoom: 10,
+                minZoom: 9,
             },
             'Postes Sources': {
                 url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/positions-geographiques-des-postes-sources-et-postes-de-repartition-hta-hta/exports/geojson?limit=-1',
@@ -198,7 +198,7 @@ const overlayCategories = {
                 attribution: 'ENEDIS',
                 type: 'geojson-api-lazy',
                 style: { color: '#FF8C00', weight: 3, opacity: 0.7 },
-                minZoom: 13,
+                minZoom: 9,
             },
             'Lignes aériennes BT': {
                 url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-basse-tension-bt/exports/geojson',
@@ -212,7 +212,7 @@ const overlayCategories = {
                 attribution: 'ENEDIS',
                 type: 'geojson-api-lazy',
                 style: { color: '#8B4513', weight: 3, opacity: 0.6, dashArray: '5, 5' },
-                minZoom: 13,
+                minZoom: 9,
             },
             'Lignes souterraines BT': {
                 url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-basse-tension-bt/exports/geojson',
@@ -542,7 +542,7 @@ const MapLayersPanel = ({ map }) => {
                         }
                     }
 
-                    // Type: geojson-api (ENEDIS postes sources - direct)
+                    // Type: geojson-api (ENEDIS postes - direct)
                     else if (layerConfig.type === 'geojson-api') {
                         if (checked) {
                             if (!geoJsonLayers[layerName]) {
@@ -555,8 +555,9 @@ const MapLayersPanel = ({ map }) => {
                                             maxClusterRadius: 60,
                                             iconCreateFunction: function (cluster) {
                                                 const count = cluster.getChildCount();
+                                                const color = layerConfig.style?.color || '#DC143C';
                                                 return L.divIcon({
-                                                    html: `<div style="background: #DC143C; color:white; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">${count}</div>`,
+                                                    html: `<div style="background: ${color}; color:white; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">${count}</div>`,
                                                     className: '',
                                                     iconSize: L.point(35, 35)
                                                 });
@@ -565,10 +566,10 @@ const MapLayersPanel = ({ map }) => {
                                         const geoJsonLayer = L.geoJSON(data, {
                                             pointToLayer: (feature, latlng) => {
                                                 return L.circleMarker(latlng, {
-                                                    radius: 8,
-                                                    fillColor: "#DC143C",
-                                                    color: "#8B0000",
-                                                    weight: 2,
+                                                    radius: layerName === 'Postes HTA/BT' ? 5 : 8,
+                                                    fillColor: layerConfig.style?.color || "#DC143C",
+                                                    color: "#000",
+                                                    weight: 1,
                                                     opacity: 1,
                                                     fillOpacity: 0.8
                                                 });
@@ -576,14 +577,25 @@ const MapLayersPanel = ({ map }) => {
                                             onEachFeature: (feature, layer) => {
                                                 if (feature.properties) {
                                                     const props = feature.properties;
+                                                    const color = layerConfig.style?.color || '#DC143C';
                                                     let popupContent = '<div style="font-family: sans-serif;">';
-                                                    popupContent += '<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 17px; font-weight: bold;">🏭 Poste Source</h4>';
-                                                    if (props.nom_poste || props.libelle_poste) popupContent += `<p style="margin: 4px 0;"><strong>Nom:</strong> ${props.nom_poste || props.libelle_poste}</p>`;
-                                                    if (props.nom_commune) popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.nom_commune}</p>`;
-                                                    if (props.nom_departement) popupContent += `<p style="margin: 4px 0;"><strong>Département:</strong> ${props.nom_departement}</p>`;
-                                                    if (props.nom_region) popupContent += `<p style="margin: 4px 0;"><strong>Région:</strong> ${props.nom_region}</p>`;
-                                                    popupContent += '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">';
-                                                    popupContent += '<p style="margin: 4px 0;"><a href="https://www.capareseau.fr/" target="_blank" style="color: #DC143C; font-weight: bold;">🔗 Voir capacités sur Caparéseau.fr</a></p>';
+                                                    popupContent += `<h4 style="margin: 0 0 8px 0; color: ${color}; font-size: 17px; font-weight: bold;">⚡ ${layerName}</h4>`;
+
+                                                    // Display relevant properties based on layer type
+                                                    if (layerName === 'Postes HTA/BT') {
+                                                        if (props.nom_poste) popupContent += `<p style="margin: 4px 0;"><strong>Nom:</strong> ${props.nom_poste}</p>`;
+                                                        if (props.type_poste) popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.type_poste}</p>`;
+                                                        if (props.code_commune) popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.code_commune}</p>`;
+                                                    } else {
+                                                        // Postes Sources
+                                                        if (props.nom_poste || props.libelle_poste) popupContent += `<p style="margin: 4px 0;"><strong>Nom:</strong> ${props.nom_poste || props.libelle_poste}</p>`;
+                                                        if (props.nom_commune) popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.nom_commune}</p>`;
+                                                        if (props.nom_departement) popupContent += `<p style="margin: 4px 0;"><strong>Département:</strong> ${props.nom_departement}</p>`;
+                                                        if (props.nom_region) popupContent += `<p style="margin: 4px 0;"><strong>Région:</strong> ${props.nom_region}</p>`;
+                                                        popupContent += '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">';
+                                                        popupContent += '<p style="margin: 4px 0;"><a href="https://www.capareseau.fr/" target="_blank" style="color: #DC143C; font-weight: bold;">🔗 Voir capacités sur Caparéseau.fr</a></p>';
+                                                    }
+
                                                     popupContent += '</div>';
                                                     layer.bindPopup(popupContent, { maxWidth: 320 });
                                                 }
@@ -595,8 +607,8 @@ const MapLayersPanel = ({ map }) => {
                                         setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
                                     })
                                     .catch(error => {
-                                        console.error('Erreur chargement postes sources:', error);
-                                        alert('Impossible de charger les postes sources ENEDIS depuis l\'API');
+                                        console.error(`Erreur chargement ${layerName}:`, error);
+                                        alert(`Impossible de charger les ${layerName} ENEDIS depuis l'API`);
                                         setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
                                     });
                             } else {
