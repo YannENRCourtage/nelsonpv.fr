@@ -77,24 +77,12 @@ export default function ProjectEditor() {
   const { projectId } = useParams();
   const { projects, setProject, project, updateProject, saveProject } = useProjects();
 
-  // ...
-
-  // Auto-save on unmount or periodic?
-  // Actually, ClientForm handles auto-save.
-  // But here we might have explicit save calls.
-
-  // ...
-
-  // If there are explicit calls:
-  // saveProject();
   const { user: currentUser } = useAuth();
   const [projectUsers, setProjectUsers] = useState([]);
 
   useEffect(() => {
-    // Fetch users for the select dropdown
     const fetchUsers = async () => {
       try {
-        // Import dynamically to avoid circular dependencies if any, or just use the global apiService
         const { apiService } = await import('@/services/api');
         const data = await apiService.getUsers();
         if (data) {
@@ -145,7 +133,6 @@ export default function ProjectEditor() {
     const updatedPhotos = photos.filter(p => p.id !== idToDelete);
     setPhotos(updatedPhotos);
     updateProject({ photos: updatedPhotos });
-    // Also remove from map if it exists
     window.dispatchEvent(new CustomEvent("map:delete-feature-by-prop", { detail: { prop: 'photoId', value: idToDelete } }));
   };
 
@@ -159,7 +146,7 @@ export default function ProjectEditor() {
     if (emptySlot !== -1) {
       captureTab(emptySlot);
     } else {
-      captureTab(0); // Replace first if all full
+      captureTab(0);
     }
   };
 
@@ -180,7 +167,6 @@ export default function ProjectEditor() {
         };
       });
 
-      // Petit délai pour s'assurer que le rendu est complet
       await new Promise(r => setTimeout(r, 300));
 
       const canvas = document.createElement('canvas');
@@ -189,7 +175,6 @@ export default function ProjectEditor() {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0);
 
-      // Arrêter le stream immédiatement
       stream.getTracks().forEach(track => track.stop());
 
       const dataUrl = canvas.toDataURL('image/png');
@@ -201,25 +186,21 @@ export default function ProjectEditor() {
 
     } catch (err) {
       console.error("Capture annulée ou échouée", err);
-      // Fallback silencieux ou notification
     }
   };
 
   const captureTab = async (slotIndex) => {
-    // For map tab, use the map capture event
     if (activeTab === 'map') {
       window.dispatchEvent(new CustomEvent("map:capture-request", { detail: { slotIndex } }));
       return;
     }
 
-    // Liste des onglets utilisant des iframes externes
     const iframeTabs = ['owners', 'capareseau', 'terravisu', 'geoportail', 'dvf'];
     if (iframeTabs.includes(activeTab)) {
       await captureWithDisplayMedia(slotIndex);
       return;
     }
 
-    // For other tabs (StreetView, etc.), capture what's visible
     const tabContainer = document.querySelector('.aspect-video');
     if (!tabContainer) {
       toast({ title: "Erreur", description: "Impossible de capturer cet onglet.", variant: "destructive" });
@@ -227,7 +208,6 @@ export default function ProjectEditor() {
     }
 
     try {
-      // Use html2canvas to capture the visible content
       const canvas = await html2canvas(tabContainer, {
         useCORS: true,
         allowTaint: true,
@@ -250,7 +230,6 @@ export default function ProjectEditor() {
       toast({ title: "Capture réussie !", description: `La vue a été enregistrée dans l'emplacement ${slotIndex + 1}.` });
     } catch (error) {
       console.error('Capture error:', error);
-      // Fallback to display media if html2canvas fails
       await captureWithDisplayMedia(slotIndex);
     }
   };
@@ -286,12 +265,10 @@ export default function ProjectEditor() {
   };
 
   const handleReset = () => {
-    // Confirm with user
     if (!window.confirm('Êtes-vous sûr de vouloir tout réinitialiser ? Toutes les données non sauvegardées seront perdues.')) {
       return;
     }
 
-    // Create a new empty project
     const newProject = {
       id: `proj_${Date.now()}`,
       name: '',
@@ -313,13 +290,11 @@ export default function ProjectEditor() {
       createdAt: new Date().toISOString()
     };
 
-    // Reset all state
     setProject(newProject);
     setCaptures([null, null, null, null]);
     setPhotos([]);
     setSymbolToPlace(null);
 
-    // Reset the map
     window.dispatchEvent(new CustomEvent('map:reset'));
 
     toast({
@@ -423,104 +398,21 @@ export default function ProjectEditor() {
 
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-9 relative flex flex-col">
-          {/* Tab Bar */}
           <div className="flex gap-2 border-b border-gray-700">
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('map'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'map'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              Carte
-            </button>
-
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('streetview'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'streetview'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              Street View
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('nv65'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'nv65'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              ZN / ZV
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('owners'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'owners'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              Propriétaires
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('capareseau'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'capareseau'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              Caparéseau
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('terravisu'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'terravisu'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              TERRAVISU
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('dvf'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'dvf'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              DVF
-            </button>
+            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('map'); }} className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'map' ? 'bg-blue-100 text-blue-700 border-b-0 z-10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'}`} tabIndex={-1}>Carte</button>
+            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('streetview'); }} className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'streetview' ? 'bg-blue-100 text-blue-700 border-b-0 z-10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'}`} tabIndex={-1}>Street View</button>
+            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('nv65'); }} className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'nv65' ? 'bg-blue-100 text-blue-700 border-b-0 z-10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'}`} tabIndex={-1}>ZN / ZV</button>
+            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('owners'); }} className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'owners' ? 'bg-blue-100 text-blue-700 border-b-0 z-10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'}`} tabIndex={-1}>Propriétaires</button>
+            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('capareseau'); }} className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'capareseau' ? 'bg-blue-100 text-blue-700 border-b-0 z-10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'}`} tabIndex={-1}>Caparéseau</button>
+            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('terravisu'); }} className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'terravisu' ? 'bg-blue-100 text-blue-700 border-b-0 z-10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'}`} tabIndex={-1}>TERRAVISU</button>
+            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('dvf'); }} className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'dvf' ? 'bg-blue-100 text-blue-700 border-b-0 z-10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'}`} tabIndex={-1}>DVF</button>
           </div>
 
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden flex-1">
-            {/* Onglet Carte */}
             <div className={activeTab === 'map' ? 'w-full flex flex-col h-full' : 'hidden'}>
               <div className="flex-1">
-                <MapEditor
-                  onAddressFound={handleAddressFound}
-                  onAddressSearched={handleAddressSearched}
-                  project={project}
-                  symbolToPlace={symbolToPlace}
-                  setSymbolToPlace={setSymbolToPlace}
-                  photos={photos}
-                  setPhotos={setPhotos}
-                />
+                <MapEditor onAddressFound={handleAddressFound} onAddressSearched={handleAddressSearched} project={project} symbolToPlace={symbolToPlace} setSymbolToPlace={setSymbolToPlace} photos={photos} setPhotos={setPhotos} />
               </div>
-
-              {/* Layer Toggle Buttons - Inside map tab */}
               <div className="p-3 bg-gray-50 border-t flex flex-wrap gap-2">
                 {[
                   { key: 'cadastre', label: 'Cadastre' },
@@ -539,89 +431,17 @@ export default function ProjectEditor() {
                   { key: 'enedisPostes', label: 'Postes HTA/BT' },
                   { key: 'sdis', label: 'SDIS' },
                 ].map(layer => (
-                  <button
-                    key={layer.key}
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const newActiveLayers = new Set(activeLayers);
-                      if (newActiveLayers.has(layer.key)) {
-                        newActiveLayers.delete(layer.key);
-                      } else {
-                        newActiveLayers.add(layer.key);
-                      }
-                      setActiveLayers(newActiveLayers);
-                      window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: layer.key } }));
-                    }}
-                    className={`px-3 py-1.5 text-sm border rounded transition-colors ${activeLayers.has(layer.key)
-                      ? 'bg-blue-500 text-white border-blue-600 hover:bg-blue-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                      }`}
-                  >
-                    {layer.label}
-                  </button>
+                  <button key={layer.key} type="button" onClick={(e) => { e.preventDefault(); const newActiveLayers = new Set(activeLayers); if (newActiveLayers.has(layer.key)) { newActiveLayers.delete(layer.key); } else { newActiveLayers.add(layer.key); } setActiveLayers(newActiveLayers); window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: layer.key } })); }} className={`px-3 py-1.5 text-sm border rounded transition-colors ${activeLayers.has(layer.key) ? 'bg-blue-500 text-white border-blue-600 hover:bg-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'}`}>{layer.label}</button>
                 ))}
               </div>
             </div>
 
-
-            {/* Onglet Street View */}
-            <div className={activeTab === 'streetview' ? 'w-full h-full' : 'hidden'}>
-              <StreetViewTab project={project} activeTab={activeTab} />
-            </div>
-
-            {/* Onglet ZN / ZV (Neige et Vent) */}
-            <div className={activeTab === 'nv65' ? 'w-full h-full' : 'hidden'}>
-              <iframe
-                src="https://nv65.nmoreaux.com/"
-                className="w-full h-full border-0"
-                title="Zones Neige et Vent NV65"
-                allow="geolocation"
-              />
-            </div>
-
-
-            {/* Onglet Propriétaires */}
-            <div className={activeTab === 'owners' ? 'w-full h-full' : 'hidden'}>
-              <iframe
-                src="https://proprietaires.cadastre.io/"
-                className="w-full h-full border-0"
-                title="Propriétaires Cadastre"
-                allow="geolocation"
-              />
-            </div>
-
-
-            {/* Onglet Caparéseau */}
-            <div className={activeTab === 'capareseau' ? 'w-full h-full' : 'hidden'}>
-              <iframe
-                src="https://www.capareseau.fr/"
-                className="w-full h-full border-0"
-                title="Caparéseau"
-                allow="geolocation"
-              />
-            </div>
-
-            {/* Onglet TERRAVISU */}
-            <div className={activeTab === 'terravisu' ? 'w-full h-full' : 'hidden'}>
-              <iframe
-                src="https://demo-terravisu-territoires.makina-corpus.com/view/politiquespubliques#map=5.53%2F46.412%2F2.394&layers=cd68490d52c923f94830011da39cff36&basemap=8"
-                className="w-full h-full border-0"
-                title="TERRAVISU"
-                allow="geolocation"
-              />
-            </div>
-
-            {/* Onglet DVF */}
-            <div className={activeTab === 'dvf' ? 'w-full h-full' : 'hidden'}>
-              <iframe
-                src="https://explore.data.gouv.fr/fr/immobilier?onglet=carte&filtre=tous"
-                className="w-full h-full border-0"
-                title="DVF"
-                allow="geolocation"
-              />
-            </div>
-
+            <div className={activeTab === 'streetview' ? 'w-full h-full' : 'hidden'}><StreetViewTab project={project} activeTab={activeTab} /></div>
+            <div className={activeTab === 'nv65' ? 'w-full h-full' : 'hidden'}><iframe src="https://nv65.nmoreaux.com/" className="w-full h-full border-0" title="Zones Neige et Vent NV65" allow="geolocation" /></div>
+            <div className={activeTab === 'owners' ? 'w-full h-full' : 'hidden'}><iframe src="https://proprietaires.cadastre.io/" className="w-full h-full border-0" title="Propriétaires Cadastre" allow="geolocation" /></div>
+            <div className={activeTab === 'capareseau' ? 'w-full h-full' : 'hidden'}><iframe src="https://www.capareseau.fr/" className="w-full h-full border-0" title="Caparéseau" allow="geolocation" /></div>
+            <div className={activeTab === 'terravisu' ? 'w-full h-full' : 'hidden'}><iframe src="https://demo-terravisu-territoires.makina-corpus.com/view/politiquespubliques#map=5.53%2F46.412%2F2.394&layers=cd68490d52c923f94830011da39cff36&basemap=8" className="w-full h-full border-0" title="TERRAVISU" allow="geolocation" /></div>
+            <div className={activeTab === 'dvf' ? 'w-full h-full' : 'hidden'}><iframe src="https://explore.data.gouv.fr/fr/immobilier?onglet=carte&filtre=tous" className="w-full h-full border-0" title="DVF" allow="geolocation" /></div>
           </div>
         </div>
 
@@ -631,14 +451,7 @@ export default function ProjectEditor() {
           <div className="rounded-2xl bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Capturer la vue</h3>
-              <Button
-                type="button"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); captureNow(); }}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={activeTab !== 'map'}
-                title={activeTab !== 'map' ? "Captures disponibles uniquement sur l'onglet Carte" : "Prendre une capture"}
-                tabIndex={-1}
-              >
+              <Button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); captureNow(); }} className="bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed" disabled={activeTab !== 'map'} title={activeTab !== 'map' ? "Captures disponibles uniquement sur l'onglet Carte" : "Prendre une capture"} tabIndex={-1}>
                 <Camera size={16} className="mr-2" />
                 Prendre une capture
               </Button>
@@ -646,32 +459,19 @@ export default function ProjectEditor() {
             <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2">
               {captures.map((c, i) => (
                 <div key={i} className="group relative w-full overflow-hidden rounded-xl border bg-gray-100 aspect-video">
-                  {c ? (
-                    <>
-                      <img
-                        src={c}
-                        alt={`capture-${i + 1}`}
-                        className="h-full w-full object-cover cursor-pointer transition-transform hover:scale-105"
-                        onClick={() => window.open(c, '_blank')}
-                        title="Cliquer pour agrandir"
-                      />
-                      <button type="button" onClick={() => deleteCapture(i)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <X size={14} />
-                      </button>
-                    </>
-                  ) : <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">Vide</div>}
+                  {c ? (<><img src={c} alt={`capture-${i + 1}`} className="h-full w-full object-cover cursor-pointer transition-transform hover:scale-105" onClick={() => window.open(c, '_blank')} title="Cliquer pour agrandir" /><button type="button" onClick={() => deleteCapture(i)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X size={14} /></button></>) : <div className="flex h-full w-full items-center justify-center text-xs text-gray-500">Vide</div>}
                 </div>
               ))}
             </div>
           </div>
         </aside>
-      </div >
+      </div>
 
       <div className="mt-6 rounded-2xl bg-white p-4 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold">Photos</h3>
-            <p className="text-sm text-gray-500">Jusqu’à 16 photos. Cliquez sur "Placer" pour les positionner sur la carte.</p>
+            <p className="text-sm text-gray-500">Jusqu'à 16 photos. Cliquez sur "Placer" pour les positionner sur la carte.</p>
           </div>
           <Button type="button" onClick={() => fileRef.current?.click()} className="bg-orange-500 hover:bg-orange-600 text-white">
             <ImagePlus size={16} className="mr-2" />
@@ -708,6 +508,6 @@ export default function ProjectEditor() {
           })}
         </div>
       </div>
-    </div >
+    </div>
   );
 }
