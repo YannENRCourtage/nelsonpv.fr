@@ -1129,8 +1129,8 @@ function ENEDISPostesLayerManager({ layersRef }) {
       const bboxArr = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
       const bbox = bboxArr.join(',');
 
-      // Limit to 100,000 first as it's more likely to be accepted than 1,000,000 in a single hit
-      const limit = 1000000;
+      // Limit updated to 1,200,000 as requested
+      const limit = 1200000;
       const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/poste-electrique/lines?format=geojson&size=${limit}&bbox=${bbox}`;
 
       console.log(`[Enedis Postes] Fetching zoom=${zoom} bbox=${bbox} limit=${limit}`);
@@ -1920,6 +1920,43 @@ function MapInstance({ setMap }) {
 
 
 // ====================================================================
+// INDICATEUR DE ZOOM
+// ====================================================================
+function ZoomIndicator() {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+
+  useEffect(() => {
+    const onZoom = () => setZoom(map.getZoom());
+    map.on('zoom', onZoom);
+    return () => map.off('zoom', onZoom);
+  }, [map]);
+
+  return (
+    <div className="leaflet-bottom leaflet-right no-print">
+      <div
+        className="leaflet-control"
+        style={{
+          margin: '0 5px 0 0',
+          padding: '0 5px',
+          background: 'rgba(255, 255, 255, 0.7)',
+          fontSize: '11px',
+          color: '#333',
+          lineHeight: '18px',
+          height: '18px',
+          pointerEvents: 'none',
+          display: 'inline-block',
+          verticalAlign: 'bottom',
+          marginBottom: '0px'
+        }}
+      >
+        Zoom: {zoom}
+      </div>
+    </div>
+  );
+}
+
+// ====================================================================
 // MANAGER ENEDIS (WFS + BBOX)
 // ====================================================================
 
@@ -2039,6 +2076,7 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
             </div>
           </div>
           <EditLayer {...{ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, photoToPlace, setPhotoToPlace, targetPos, setTargetPos }} />
+          <ZoomIndicator />
           <MapEvents
             project={project}
             onAddressFound={onAddressFound}
