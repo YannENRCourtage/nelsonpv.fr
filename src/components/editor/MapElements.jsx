@@ -667,20 +667,30 @@ const LAYERS = {
   // Limites administratives
   communes: { name: "Limites communales", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ADMINEXPRESS-COG-CARTO.LATEST&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 32, opacity: 0.5 },
 
-  // ENEDIS - Réseau électrique
+  // ENEDIS - Réseau électrique (Using WMS for performance with 1M points)
   enedisHTA: {
     name: "Lignes HTA",
-    datasetId: "reseau-hta",
-    color: "#f97316",
+    url: "https://geobretagne.fr/geoserver/enedis/wms",
+    layers: "reseau_hta,reseau_souterrain_hta",
+    format: "image/png",
+    transparent: true,
+    attribution: "Enedis / GéoBretagne",
     isOverlay: true,
-    zIndex: 50
+    zIndex: 50,
+    opacity: 0.8,
+    minZoom: 9
   },
   enedisPostes: {
     name: "Postes HTA/BT",
-    datasetId: "poste-electrique",
-    color: "#2563eb",
+    url: "https://geobretagne.fr/geoserver/enedis/wms",
+    layers: "poste_electrique",
+    format: "image/png",
+    transparent: true,
+    attribution: "Enedis / GéoBretagne",
     isOverlay: true,
-    zIndex: 51
+    zIndex: 51,
+    opacity: 0.9,
+    minZoom: 9
   },
 
   // SDIS - Points d'eau incendie
@@ -1016,210 +1026,7 @@ function SDISLayerManager({ layersRef }) {
   return null;
 }
 
-// ====================================================================
-// MANAGER ENEDIS HTA (Lignes moyenne tension)
-// ====================================================================
-function ENEDISHTALayerManager({ layersRef }) {
-  const map = useMap();
-  const loadedIds = useRef(new Set());
-  const htaGroup = useRef(L.layerGroup());
-
-  useEffect(() => {
-    layersRef.current['enedisHTA'] = htaGroup.current;
-
-    const fetchData = () => {
-      const zoom = map.getZoom();
-      if (zoom < 9 || !map.hasLayer(htaGroup.current)) return;
-
-      const bounds = map.getBounds();
-      const bboxArr = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
-      const bbox = bboxArr.join(',');
-      const limit = 1000000; // Limit set to 1,000,000 as requested
-
-      // Fetch both overhead and underground HTA lines
-      const datasets = ['reseau-hta', 'reseau-souterrain-hta'];
-
-      datasets.forEach(datasetId => {
-        const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/${datasetId}/lines?format=geojson&size=${limit}&bbox=${bbox}`;
-        console.log(`[Enedis HTA] Fetching ${datasetId} zoom=${zoom} bbox=${bbox} limit=${limit}`);
-
-        fetch(url)
-          .then(r => {
-            if (!r.ok) throw new Error(`HTTP error ${r.status}`);
-            return r.json();
-          })
-          .then(data => {
-            console.log(`[Enedis HTA - ${datasetId}] Received ${data.features?.length || 0} features`);
-            if (!data.features) return;
-
-            data.features.forEach(feature => {
-              const featureId = feature.id || feature.properties?._id || (feature.properties?.code_ligne + datasetId);
-              if (!featureId || loadedIds.current.has(featureId)) return;
-              loadedIds.current.add(featureId);
-
-              const color = datasetId.includes('souterrain') ? '#ea580c' : '#f97316'; // Slightly different orange for underground
-              const dashArray = datasetId.includes('souterrain') ? '5, 5' : null;
-
-              const geoJsonLayer = L.geoJSON(feature, {
-                style: { color: color, weight: 2, opacity: 0.8, dashArray: dashArray },
-                onEachFeature: (f, layer) => {
-                  const props = feature.properties || {};
-                  let popupContent = `<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: ${color}; font-size: 16px; font-weight: bold;">⚡ Ligne HTA ${datasetId.includes('souterrain') ? 'Souterraine' : 'Aérienne'}</h4>`;
-                  if (props.nom_commune) popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.nom_commune}</p>`;
-                  if (props.nom_iris) popupContent += `<p style="margin: 4px 0;"><strong>IRIS:</strong> ${props.nom_iris}</p>`;
-                  if (props.nom_departement) popupContent += `<p style="margin: 4px 0;"><strong>Département:</strong> ${props.nom_departement}</p>`;
-                  popupContent += '</div>';
-                  layer.bindPopup(popupContent, { maxWidth: 300 });
-                }
-              });
-              htaGroup.current.addLayer(geoJsonLayer);
-            });
-          })
-          .catch(err => console.error(`Error loading Enedis HTA (${datasetId})`, err));
-      });
-    };
-
-    const handleMove = () => {
-      fetchData();
-    };
-
-    const handleLayerAdd = (e) => {
-      if (e.layer === htaGroup.current) {
-        console.log("Enedis HTA layer added - fetching data");
-        fetchData();
-      }
-    };
-
-    map.on('moveend', handleMove);
-    map.on('layeradd', handleLayerAdd);
-
-    if (map.hasLayer(htaGroup.current)) {
-      fetchData();
-    }
-
-    return () => {
-      map.off('moveend', handleMove);
-      map.off('layeradd', handleLayerAdd);
-    };
-  }, [map, layersRef]);
-
-  return null;
-}
-
-function ENEDISPostesLayerManager({ layersRef }) {
-  const map = useMap();
-  const loadedIds = useRef(new Set());
-  const clusterGroup = useRef(L.markerClusterGroup({
-    chunkedLoading: true,
-    maxClusterRadius: 50,
-    disableClusteringAtZoom: 16,
-    iconCreateFunction: function (cluster) {
-      const count = cluster.getChildCount();
-      let size = count > 50 ? 'large' : count > 10 ? 'medium' : 'small';
-      return L.divIcon({
-        html: `<div style="background-color: rgba(37, 99, 235, 0.7); border: 3px solid rgba(29, 78, 216, 0.9); width: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; height: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: ${size === 'small' ? '12px' : size === 'medium' ? '14px' : '16px'};"><span>${count}</span></div>`,
-        iconSize: L.point(40, 40)
-      });
-    }
-  }));
-
-  useEffect(() => {
-    layersRef.current['enedisPostes'] = clusterGroup.current;
-
-    const fetchData = () => {
-      const zoom = map.getZoom();
-      if (zoom < 9 || !map.hasLayer(clusterGroup.current)) return;
-
-      const bounds = map.getBounds();
-      const bboxArr = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
-      const bbox = bboxArr.join(',');
-
-      // Limit set to 1,000,000 as requested
-      const limit = 1000000;
-      const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/poste-electrique/lines?format=geojson&size=${limit}&bbox=${bbox}`;
-
-      console.log(`[Enedis Postes] Fetching zoom=${zoom} bbox=${bbox} limit=${limit}`);
-
-      fetch(url)
-        .then(r => {
-          if (!r.ok) throw new Error(`HTTP error ${r.status}`);
-          return r.json();
-        })
-        .then(data => {
-          console.log(`[Enedis Postes] Received ${data.features?.length || 0} features`);
-          if (!data.features) return;
-
-          const markers = [];
-          data.features.forEach(feature => {
-            const featureId = feature.id || feature.properties?._id;
-            if (!featureId || loadedIds.current.has(featureId)) return;
-            loadedIds.current.add(featureId);
-
-            const coords = feature.geometry.coordinates;
-            let latlng;
-            if (feature.geometry.type === 'Point') {
-              latlng = [coords[1], coords[0]];
-            } else {
-              // Fallback for line geometries if any
-              const center = L.polyline(coords.map(c => [c[1], c[0]])).getBounds().getCenter();
-              latlng = [center.lat, center.lng];
-            }
-
-            const props = feature.properties || {};
-
-            const marker = L.marker(latlng, {
-              icon: L.divIcon({
-                html: `<div style="background-color: #2563eb; width: 16px; height: 16px; border-radius: 3px; border: 2px solid #1d4ed8; box-shadow: 0 1px 3px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold;">⚡</div>`,
-                iconSize: [16, 16],
-                iconAnchor: [8, 8]
-              })
-            });
-
-            let popupContent = '<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: #2563eb; font-size: 16px; font-weight: bold;">⚡ Poste HTA/BT</h4>';
-            if (props.nom_commune) popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.nom_commune}</p>`;
-            if (props.nom_iris) popupContent += `<p style="margin: 4px 0;"><strong>IRIS:</strong> ${props.nom_iris}</p>`;
-            if (props.nom_departement) popupContent += `<p style="margin: 4px 0;"><strong>Département:</strong> ${props.nom_departement}</p>`;
-            if (props.code_commune) popupContent += `<p style="margin: 4px 0;"><strong>Code INSEE:</strong> ${props.code_commune}</p>`;
-            popupContent += '</div>';
-            marker.bindPopup(popupContent, { maxWidth: 300 });
-
-            markers.push(marker);
-          });
-
-          if (markers.length > 0) {
-            clusterGroup.current.addLayers(markers);
-          }
-        })
-        .catch(err => console.error("Error loading Enedis Postes", err));
-    };
-
-    const handleMove = () => {
-      fetchData();
-    };
-
-    const handleLayerAdd = (e) => {
-      if (e.layer === clusterGroup.current) {
-        console.log("Enedis Postes layer added - fetching data");
-        fetchData();
-      }
-    };
-
-    map.on('moveend', handleMove);
-    map.on('layeradd', handleLayerAdd);
-
-    // Initial check
-    if (map.hasLayer(clusterGroup.current)) {
-      fetchData();
-    }
-
-    return () => {
-      map.off('moveend', handleMove);
-      map.off('layeradd', handleLayerAdd);
-    };
-  }, [map, layersRef]);
-
-  return null;
-}
+// ENEDIS Managers were removed in favor of WMS layers for performance with 1M points.
 
 // ====================================================================
 // LAYER TOGGLE LISTENER (for ProjectEditor buttons)
@@ -1352,6 +1159,7 @@ function LayersBootstrap({ layersRef }) {
           format: layerDef.format || 'image/png',
           transparent: layerDef.transparent !== false,
           attribution: layerDef.attribution,
+          minZoom: layerDef.minZoom || 0,
           maxZoom: layerDef.maxZoom || 20,
           opacity: layerDef.opacity || 1.0,
           zIndex: layerDef.zIndex || 10,
@@ -1361,6 +1169,7 @@ function LayersBootstrap({ layersRef }) {
       } else if (layerDef.url) { // TileLayer (WMTS or standard XYZ)
         layersRef.current[key] = L.tileLayer(layerDef.url, {
           attribution: layerDef.attrib || layerDef.attribution,
+          minZoom: layerDef.minZoom || 0,
           maxZoom: layerDef.maxZoom || 22,
           subdomains: layerDef.subdomains || ['a', 'b', 'c'],
           zIndex: layerDef.zIndex || 0,
@@ -2087,8 +1896,6 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
 
           {/* Layer Managers */}
           <SDISLayerManager layersRef={layersRef} />
-          <ENEDISHTALayerManager layersRef={layersRef} />
-          <ENEDISPostesLayerManager layersRef={layersRef} />
 
           {/* Controls inside map */}
           <BasemapControl layersRef={layersRef} />
