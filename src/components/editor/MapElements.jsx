@@ -1034,14 +1034,14 @@ function ENEDISHTALayerManager({ layersRef }) {
       const bounds = map.getBounds();
       const bboxArr = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
       const bbox = bboxArr.join(',');
-      const limit = 50000; // Large limit for lines
+      const limit = 1000000; // Limit set to 1,000,000 as requested
 
       // Fetch both overhead and underground HTA lines
       const datasets = ['reseau-hta', 'reseau-souterrain-hta'];
 
       datasets.forEach(datasetId => {
         const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/${datasetId}/lines?format=geojson&size=${limit}&bbox=${bbox}`;
-        console.log(`[Enedis HTA] Fetching ${datasetId} zoom=${zoom} bbox=${bbox}`);
+        console.log(`[Enedis HTA] Fetching ${datasetId} zoom=${zoom} bbox=${bbox} limit=${limit}`);
 
         fetch(url)
           .then(r => {
@@ -1065,9 +1065,9 @@ function ENEDISHTALayerManager({ layersRef }) {
                 onEachFeature: (f, layer) => {
                   const props = feature.properties || {};
                   let popupContent = `<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: ${color}; font-size: 16px; font-weight: bold;">⚡ Ligne HTA ${datasetId.includes('souterrain') ? 'Souterraine' : 'Aérienne'}</h4>`;
-                  if (props.code_ligne) popupContent += `<p style="margin: 4px 0;"><strong>Code ligne:</strong> ${props.code_ligne}</p>`;
-                  if (props.libelle) popupContent += `<p style="margin: 4px 0;"><strong>Libellé:</strong> ${props.libelle}</p>`;
-                  if (props.tension) popupContent += `<p style="margin: 4px 0;"><strong>Tension:</strong> ${props.tension} V</p>`;
+                  if (props.nom_commune) popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.nom_commune}</p>`;
+                  if (props.nom_iris) popupContent += `<p style="margin: 4px 0;"><strong>IRIS:</strong> ${props.nom_iris}</p>`;
+                  if (props.nom_departement) popupContent += `<p style="margin: 4px 0;"><strong>Département:</strong> ${props.nom_departement}</p>`;
                   popupContent += '</div>';
                   layer.bindPopup(popupContent, { maxWidth: 300 });
                 }
@@ -1134,8 +1134,8 @@ function ENEDISPostesLayerManager({ layersRef }) {
       const bboxArr = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
       const bbox = bboxArr.join(',');
 
-      // Limit updated to 1,200,000 as requested
-      const limit = 1200000;
+      // Limit set to 1,000,000 as requested
+      const limit = 1000000;
       const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/poste-electrique/lines?format=geojson&size=${limit}&bbox=${bbox}`;
 
       console.log(`[Enedis Postes] Fetching zoom=${zoom} bbox=${bbox} limit=${limit}`);
@@ -1156,16 +1156,13 @@ function ENEDISPostesLayerManager({ layersRef }) {
             loadedIds.current.add(featureId);
 
             const coords = feature.geometry.coordinates;
-            // Handle both Point and LineString (Enedis uses /lines endpoint for many datasets)
             let latlng;
             if (feature.geometry.type === 'Point') {
               latlng = [coords[1], coords[0]];
-            } else if (feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiLineString') {
-              // Get center of line for the marker
-              const center = L.polyline(feature.geometry.coordinates.map(c => [c[1], c[0]])).getBounds().getCenter();
-              latlng = [center.lat, center.lng];
             } else {
-              return;
+              // Fallback for line geometries if any
+              const center = L.polyline(coords.map(c => [c[1], c[0]])).getBounds().getCenter();
+              latlng = [center.lat, center.lng];
             }
 
             const props = feature.properties || {};
@@ -1179,10 +1176,10 @@ function ENEDISPostesLayerManager({ layersRef }) {
             });
 
             let popupContent = '<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: #2563eb; font-size: 16px; font-weight: bold;">⚡ Poste HTA/BT</h4>';
-            if (props.nom) popupContent += `<p style="margin: 4px 0;"><strong>Nom:</strong> ${props.nom}</p>`;
-            if (props.code_poste) popupContent += `<p style="margin: 4px 0;"><strong>Code poste:</strong> ${props.code_poste}</p>`;
-            if (props.type_poste) popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.type_poste}</p>`;
-            if (props.puissance_kva) popupContent += `<p style="margin: 4px 0;"><strong>Puissance:</strong> ${props.puissance_kva} kVA</p>`;
+            if (props.nom_commune) popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.nom_commune}</p>`;
+            if (props.nom_iris) popupContent += `<p style="margin: 4px 0;"><strong>IRIS:</strong> ${props.nom_iris}</p>`;
+            if (props.nom_departement) popupContent += `<p style="margin: 4px 0;"><strong>Département:</strong> ${props.nom_departement}</p>`;
+            if (props.code_commune) popupContent += `<p style="margin: 4px 0;"><strong>Code INSEE:</strong> ${props.code_commune}</p>`;
             popupContent += '</div>';
             marker.bindPopup(popupContent, { maxWidth: 300 });
 
