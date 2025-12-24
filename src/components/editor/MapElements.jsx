@@ -1032,44 +1032,51 @@ function ENEDISHTALayerManager({ layersRef }) {
       if (zoom < 9 || !map.hasLayer(htaGroup.current)) return;
 
       const bounds = map.getBounds();
-      // Data Fair / MongoDB standard: minLon, minLat, maxLon, maxLat
       const bboxArr = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
       const bbox = bboxArr.join(',');
-      const limit = 1000000;
-      const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-hta/lines?format=geojson&size=${limit}&bbox=${bbox}`;
+      const limit = 50000; // Large limit for lines
 
-      console.log(`[Enedis HTA] Fetching zoom=${zoom} bbox=${bbox} limit=${limit}`);
-      console.log(`[Enedis HTA] URL: ${url}`);
+      // Fetch both overhead and underground HTA lines
+      const datasets = ['reseau-hta', 'reseau-souterrain-hta'];
 
-      fetch(url)
-        .then(r => {
-          if (!r.ok) throw new Error(`HTTP error ${r.status}`);
-          return r.json();
-        })
-        .then(data => {
-          console.log(`[Enedis HTA] Received ${data.features?.length || 0} features`);
-          if (!data.features) return;
-          data.features.forEach(feature => {
-            const featureId = feature.id || feature.properties?._id;
-            if (!featureId || loadedIds.current.has(featureId)) return;
-            loadedIds.current.add(featureId);
+      datasets.forEach(datasetId => {
+        const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/${datasetId}/lines?format=geojson&size=${limit}&bbox=${bbox}`;
+        console.log(`[Enedis HTA] Fetching ${datasetId} zoom=${zoom} bbox=${bbox}`);
 
-            const geoJsonLayer = L.geoJSON(feature, {
-              style: { color: '#f97316', weight: 2, opacity: 0.7 },
-              onEachFeature: (f, layer) => {
-                const props = feature.properties || {};
-                let popupContent = '<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: #f97316; font-size: 16px; font-weight: bold;">⚡ Ligne HTA</h4>';
-                if (props.code_ligne) popupContent += `<p style="margin: 4px 0;"><strong>Code ligne:</strong> ${props.code_ligne}</p>`;
-                if (props.libelle) popupContent += `<p style="margin: 4px 0;"><strong>Libellé:</strong> ${props.libelle}</p>`;
-                if (props.tension) popupContent += `<p style="margin: 4px 0;"><strong>Tension:</strong> ${props.tension} V</p>`;
-                popupContent += '</div>';
-                layer.bindPopup(popupContent, { maxWidth: 300 });
-              }
+        fetch(url)
+          .then(r => {
+            if (!r.ok) throw new Error(`HTTP error ${r.status}`);
+            return r.json();
+          })
+          .then(data => {
+            console.log(`[Enedis HTA - ${datasetId}] Received ${data.features?.length || 0} features`);
+            if (!data.features) return;
+
+            data.features.forEach(feature => {
+              const featureId = feature.id || feature.properties?._id || (feature.properties?.code_ligne + datasetId);
+              if (!featureId || loadedIds.current.has(featureId)) return;
+              loadedIds.current.add(featureId);
+
+              const color = datasetId.includes('souterrain') ? '#ea580c' : '#f97316'; // Slightly different orange for underground
+              const dashArray = datasetId.includes('souterrain') ? '5, 5' : null;
+
+              const geoJsonLayer = L.geoJSON(feature, {
+                style: { color: color, weight: 2, opacity: 0.8, dashArray: dashArray },
+                onEachFeature: (f, layer) => {
+                  const props = feature.properties || {};
+                  let popupContent = `<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: ${color}; font-size: 16px; font-weight: bold;">⚡ Ligne HTA ${datasetId.includes('souterrain') ? 'Souterraine' : 'Aérienne'}</h4>`;
+                  if (props.code_ligne) popupContent += `<p style="margin: 4px 0;"><strong>Code ligne:</strong> ${props.code_ligne}</p>`;
+                  if (props.libelle) popupContent += `<p style="margin: 4px 0;"><strong>Libellé:</strong> ${props.libelle}</p>`;
+                  if (props.tension) popupContent += `<p style="margin: 4px 0;"><strong>Tension:</strong> ${props.tension} V</p>`;
+                  popupContent += '</div>';
+                  layer.bindPopup(popupContent, { maxWidth: 300 });
+                }
+              });
+              htaGroup.current.addLayer(geoJsonLayer);
             });
-            htaGroup.current.addLayer(geoJsonLayer);
-          });
-        })
-        .catch(err => console.error("Error loading Enedis HTA", err));
+          })
+          .catch(err => console.error(`Error loading Enedis HTA (${datasetId})`, err));
+      });
     };
 
     const handleMove = () => {
@@ -1086,7 +1093,6 @@ function ENEDISHTALayerManager({ layersRef }) {
     map.on('moveend', handleMove);
     map.on('layeradd', handleLayerAdd);
 
-    // Initial check
     if (map.hasLayer(htaGroup.current)) {
       fetchData();
     }
@@ -1125,7 +1131,6 @@ function ENEDISPostesLayerManager({ layersRef }) {
       if (zoom < 9 || !map.hasLayer(clusterGroup.current)) return;
 
       const bounds = map.getBounds();
-      // Data Fair / MongoDB standard: minLon, minLat, maxLon, maxLat
       const bboxArr = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
       const bbox = bboxArr.join(',');
 
@@ -1134,7 +1139,6 @@ function ENEDISPostesLayerManager({ layersRef }) {
       const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/poste-electrique/lines?format=geojson&size=${limit}&bbox=${bbox}`;
 
       console.log(`[Enedis Postes] Fetching zoom=${zoom} bbox=${bbox} limit=${limit}`);
-      console.log(`[Enedis Postes] URL: ${url}`);
 
       fetch(url)
         .then(r => {
@@ -1152,7 +1156,18 @@ function ENEDISPostesLayerManager({ layersRef }) {
             loadedIds.current.add(featureId);
 
             const coords = feature.geometry.coordinates;
-            const latlng = [coords[1], coords[0]];
+            // Handle both Point and LineString (Enedis uses /lines endpoint for many datasets)
+            let latlng;
+            if (feature.geometry.type === 'Point') {
+              latlng = [coords[1], coords[0]];
+            } else if (feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiLineString') {
+              // Get center of line for the marker
+              const center = L.polyline(feature.geometry.coordinates.map(c => [c[1], c[0]])).getBounds().getCenter();
+              latlng = [center.lat, center.lng];
+            } else {
+              return;
+            }
+
             const props = feature.properties || {};
 
             const marker = L.marker(latlng, {
@@ -1164,10 +1179,10 @@ function ENEDISPostesLayerManager({ layersRef }) {
             });
 
             let popupContent = '<div style="font-family: sans-serif;"><h4 style="margin: 0 0 8px 0; color: #2563eb; font-size: 16px; font-weight: bold;">⚡ Poste HTA/BT</h4>';
+            if (props.nom) popupContent += `<p style="margin: 4px 0;"><strong>Nom:</strong> ${props.nom}</p>`;
             if (props.code_poste) popupContent += `<p style="margin: 4px 0;"><strong>Code poste:</strong> ${props.code_poste}</p>`;
-            if (props.libelle) popupContent += `<p style="margin: 4px 0;"><strong>Libellé:</strong> ${props.libelle}</p>`;
             if (props.type_poste) popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.type_poste}</p>`;
-            if (props.puissance) popupContent += `<p style="margin: 4px 0;"><strong>Puissance:</strong> ${props.puissance} kVA</p>`;
+            if (props.puissance_kva) popupContent += `<p style="margin: 4px 0;"><strong>Puissance:</strong> ${props.puissance_kva} kVA</p>`;
             popupContent += '</div>';
             marker.bindPopup(popupContent, { maxWidth: 300 });
 
@@ -1175,7 +1190,6 @@ function ENEDISPostesLayerManager({ layersRef }) {
           });
 
           if (markers.length > 0) {
-            console.log(`[Enedis Postes] Bulk adding ${markers.length} markers to cluster group`);
             clusterGroup.current.addLayers(markers);
           }
         })
@@ -1927,33 +1941,55 @@ function ZoomIndicator() {
   const [zoom, setZoom] = useState(map.getZoom());
 
   useEffect(() => {
-    const onZoom = () => setZoom(map.getZoom());
-    map.on('zoom', onZoom);
-    return () => map.off('zoom', onZoom);
-  }, [map]);
+    // Update attribution on mount and on zoom change
+    const updateAttribution = (z) => {
+      const leafletAttribution = document.querySelector('.leaflet-control-attribution');
+      if (leafletAttribution) {
+        // Find or create the zoom span
+        let zoomSpan = leafletAttribution.querySelector('.zoom-indicator-attribution');
+        if (!zoomSpan) {
+          zoomSpan = document.createElement('span');
+          zoomSpan.className = 'zoom-indicator-attribution';
+          zoomSpan.style.marginRight = '5px';
+          // Find the Leaflet logo/link which is usually the last child or has a specific class
+          const attributionLinks = leafletAttribution.querySelectorAll('a');
+          let leafletLink = null;
+          attributionLinks.forEach(a => {
+            if (a.textContent === 'Leaflet' || a.querySelector('svg')) {
+              leafletLink = a;
+            }
+          });
 
-  return (
-    <div className="leaflet-bottom leaflet-right no-print">
-      <div
-        className="leaflet-control"
-        style={{
-          margin: '0 5px 0 0',
-          padding: '0 5px',
-          background: 'rgba(255, 255, 255, 0.7)',
-          fontSize: '11px',
-          color: '#333',
-          lineHeight: '18px',
-          height: '18px',
-          pointerEvents: 'none',
-          display: 'inline-block',
-          verticalAlign: 'bottom',
-          marginBottom: '0px'
-        }}
-      >
-        Zoom: {zoom}
-      </div>
-    </div>
-  );
+          if (leafletLink) {
+            leafletAttribution.insertBefore(zoomSpan, leafletLink);
+          } else {
+            leafletAttribution.prepend(zoomSpan);
+          }
+        }
+        zoomSpan.textContent = `Zoom: ${z} |`;
+      }
+    };
+
+    updateAttribution(zoom);
+
+    const onZoom = () => {
+      const currentZoom = map.getZoom();
+      setZoom(currentZoom);
+      updateAttribution(currentZoom);
+    };
+
+    map.on('zoom', onZoom);
+    map.on('viewreset', onZoom);
+
+    return () => {
+      map.off('zoom', onZoom);
+      map.off('viewreset', onZoom);
+      const zoomSpan = document.querySelector('.zoom-indicator-attribution');
+      if (zoomSpan) zoomSpan.remove();
+    };
+  }, [map, zoom]);
+
+  return null;
 }
 
 // ====================================================================
