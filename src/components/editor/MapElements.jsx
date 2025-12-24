@@ -706,6 +706,7 @@ const ENEDIS_HTA_SLD = `
               <CssParameter name="stroke">#FFFF00</CssParameter>
               <CssParameter name="stroke-width">3</CssParameter>
               <CssParameter name="stroke-opacity">1</CssParameter>
+              <CssParameter name="stroke-dasharray">10 10</CssParameter>
             </Stroke>
           </LineSymbolizer>
         </Rule>
@@ -731,10 +732,10 @@ const LAYERS = {
   batiments: { name: "Bâtiments", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=BUILDINGS.BUILDINGS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 11, maxNativeZoom: 20, maxZoom: 22 },
 
   // Agriculture et occupation du sol
-  rpg: { name: 'Parcelles agricoles', url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=LANDUSE.AGRICULTURE.LATEST&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', attrib: '© IGN', isOverlay: true, zIndex: 2, opacity: 0.7 },
+  rpg: { name: 'Parcelles agricoles', url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=LANDUSE.AGRICULTURE.LATEST&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', attrib: '© IGN', isOverlay: true, zIndex: 2, opacity: 0.7, maxNativeZoom: 18, maxZoom: 22 },
 
   // Hydrographie
-  hydro: { name: "Hydrographie", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=HYDROGRAPHY.HYDROGRAPHY&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 12 },
+  hydro: { name: "Hydrographie", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=HYDROGRAPHY.HYDROGRAPHY&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 12, maxNativeZoom: 18, maxZoom: 22 },
 
   // Transport
   routes: { name: "Routes", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=TRANSPORTNETWORKS.ROADS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 30, opacity: 0.7, maxNativeZoom: 20, maxZoom: 22 },
@@ -755,6 +756,8 @@ const LAYERS = {
     zIndex: 50,
     opacity: 1.0, // Full opacity as requested
     minZoom: 9,
+    maxNativeZoom: 18,
+    maxZoom: 22,
     sld_body: ENEDIS_HTA_SLD
   },
   enedisPostes: {
@@ -768,6 +771,8 @@ const LAYERS = {
     zIndex: 51,
     opacity: 1.0, // Full opacity as requested
     minZoom: 9,
+    maxNativeZoom: 18,
+    maxZoom: 22,
     sld_body: ENEDIS_POSTES_SLD
   },
 
@@ -795,43 +800,57 @@ const LAYERS = {
     transparent: true,
     attribution: "Géorisques / BRGM",
     isOverlay: true,
-    opacity: 0.7
+    opacity: 0.7,
+    maxNativeZoom: 14,
+    maxZoom: 22
   },
   "ZNIEFF 1": {
     name: "ZNIEFF 1",
-    url: "https://data.geopf.fr/wms-v/ows?SERVICE=WMS&",
+    url: "https://data.geopf.fr/wms-v/ows",
     layers: "PROTECTEDAREAS.ZNIEFF1",
     format: "image/png",
     transparent: true,
     attribution: "INPN",
-    isOverlay: true
+    isOverlay: true,
+    zIndex: 101,
+    maxNativeZoom: 16,
+    maxZoom: 22
   },
   "ZNIEFF 2": {
     name: "ZNIEFF 2",
-    url: "https://data.geopf.fr/wms-v/ows?SERVICE=WMS&",
+    url: "https://data.geopf.fr/wms-v/ows",
     layers: "PROTECTEDAREAS.ZNIEFF2",
     format: "image/png",
     transparent: true,
     attribution: "INPN",
-    isOverlay: true
+    isOverlay: true,
+    zIndex: 102,
+    maxNativeZoom: 16,
+    maxZoom: 22
   },
   "Natura 2000 Oiseaux": {
     name: "Natura 2000 Oiseaux",
-    url: "https://data.geopf.fr/wms-v/ows?SERVICE=WMS&",
+    url: "https://data.geopf.fr/wms-v/ows",
     layers: "PROTECTEDAREAS.ZPS",
     format: "image/png",
     transparent: true,
     attribution: "INPN",
-    isOverlay: true
+    isOverlay: true,
+    zIndex: 103,
+    maxNativeZoom: 16,
+    maxZoom: 22
   },
   "Natura 2000 Habitat": {
     name: "Natura 2000 Habitat",
-    url: "https://data.geopf.fr/wms-v/ows?SERVICE=WMS&",
+    url: "https://data.geopf.fr/wms-v/ows",
     layers: "PROTECTEDAREAS.SIC",
     format: "image/png",
     transparent: true,
     attribution: "INPN",
-    isOverlay: true
+    isOverlay: true,
+    zIndex: 104,
+    maxNativeZoom: 16,
+    maxZoom: 22
   }
 };
 // ====================================================================
@@ -862,16 +881,25 @@ function RPGLegend({ layersRef }) {
 
   return (
     <div
-      className="absolute bottom-[435px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
+      className="absolute bottom-[359px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
       style={{ userSelect: 'none' }}
     >
       <div className="flex justify-between items-center mb-2">
-        <h4 className="font-bold text-xs text-gray-900">Légende RPG</h4>
+        <h4 className="font-bold text-xs text-gray-900">Légende Parcelles agricoles</h4>
         <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded"><XIcon className="h-3 w-3" /></button>
       </div>
-      <div className="space-y-1.5 text-[10px]">
-        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#FFD700] border border-gray-300"></div><span>Prairies</span></div>
-        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#90EE90] border border-gray-300"></div><span>Vergers / vignes</span></div>
+      <div className="space-y-1.5 text-[10px] overflow-y-auto max-h-[250px] pr-1">
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#90EE90] border border-gray-300"></div><span>Prairies permanentes</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#800080] border border-gray-300"></div><span>Oléagineux (Colza, Tournesol)</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#FF0000] border border-gray-300"></div><span>Maïs</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#FFFF00] border border-gray-300"></div><span>Céréales à paille (Blé)</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#F5F5DC] border border-gray-300"></div><span>Jachères (Beige)</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#FFA500] border border-gray-300"></div><span>Vergers</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#800000] border border-gray-300"></div><span>Vignes</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#FFD700] border border-gray-300"></div><span>Fourrages</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#DEB887] border border-gray-300"></div><span>Protéagineux</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#FF69B4] border border-gray-300"></div><span>Betteraves</span></div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#00CED1] border border-gray-300"></div><span>Cultures industrielles</span></div>
       </div>
     </div>
   );
@@ -898,7 +926,7 @@ function ZoneInondableLegend({ layersRef }) {
 
   return (
     <div
-      className="absolute bottom-[280px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[220px]"
+      className="absolute bottom-[555px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[220px]"
       style={{ userSelect: 'none' }}
     >
       <div className="flex justify-between items-center mb-2">
@@ -940,11 +968,11 @@ function SDISLegend({ layersRef }) {
 
   return (
     <div
-      className="absolute bottom-[380px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
+      className="absolute bottom-[268px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[200px]"
       style={{ userSelect: 'none' }}
     >
       <div className="flex justify-between items-center mb-2">
-        <h4 className="font-bold text-xs text-gray-900">Légende SDIS 17</h4>
+        <h4 className="font-bold text-xs text-gray-900">Légende SDIS</h4>
         <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded"><XIcon className="h-3 w-3" /></button>
       </div>
       <div className="space-y-1.5 text-[10px]">

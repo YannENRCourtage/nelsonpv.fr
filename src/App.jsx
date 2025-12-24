@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
+import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import ProjectEditor from './pages/ProjectEditor.jsx';
 import Login from './pages/Login.jsx';
@@ -13,23 +14,6 @@ import { ProjectProvider } from './contexts/ProjectContext.jsx';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import DevErrorBoundary from './components/DevErrorBoundary.jsx';
-// Removed: import { ThemeProvider } from './contexts/ThemeContext.jsx'; // Import ThemeProvider
-
-function PrivateRoute({ children, page }) {
-  const { isAuthenticated, user } = useAuth();
-  const location = useLocation();
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  const accessDenied = page && user?.pageAccess && user.pageAccess[page] === false;
-  if (accessDenied) {
-    return <Navigate to="/" replace />;
-  }
-
-  return children;
-}
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
@@ -42,32 +26,53 @@ function AppContent() {
         <Route
           path="/"
           element={
-            <PrivateRoute page="projects">
+            <ProtectedRoute>
               <AppLayout />
-            </PrivateRoute>
+            </ProtectedRoute>
           }
         >
           <Route index element={<Navigate to="/crm" replace />} />
           <Route
             path="crm"
             element={
-              <PrivateRoute page="crm">
+              <ProtectedRoute requiredPermission="canAccessCRM">
                 <Crm />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="administration"
             element={
-              <PrivateRoute page="admin">
+              <ProtectedRoute requiredRole="admin">
                 <Admin />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
-          <Route path="simulator" element={<ProfitabilitySimulator />} />
-          <Route path="project/:projectId/edit" element={<ProjectEditor />} />
-          <Route path="project/new/edit" element={<ProjectEditor />} />
+          <Route
+            path="simulator"
+            element={
+              <ProtectedRoute requiredPermission="canAccessSimulator">
+                <ProfitabilitySimulator />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="project/:projectId/edit"
+            element={
+              <ProtectedRoute requiredPermission="canAccessEditor">
+                <ProjectEditor />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="project/new/edit"
+            element={
+              <ProtectedRoute requiredPermission="canAccessEditor">
+                <ProjectEditor />
+              </ProtectedRoute>
+            }
+          />
         </Route>
 
         <Route path="*" element={<Navigate to={isAuthenticated ? '/' : '/login'} replace />} />
@@ -97,13 +102,11 @@ export default function App() {
 
   return (
     <AuthProvider>
-      {/* Removed ThemeProvider */}
       <ProjectProvider>
         <DevErrorBoundary>
           <AppContent />
         </DevErrorBoundary>
       </ProjectProvider>
-      {/* Removed ThemeProvider */}
     </AuthProvider>
   );
 }

@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function canViewAllProjects() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.canViewAllProjects == true;
+    }
+    
+    // Users collection - admin only for writes, authenticated for reads
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // Contacts collection
+    match /contacts/{contactId} {
+      allow read: if isAuthenticated() && 
+                     (canViewAllProjects() || resource.data.createdBy == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && 
+                                (isAdmin() || resource.data.createdBy == request.auth.uid);
+    }
+    
+    // Projects collection
+    match /projects/{projectId} {
+      allow read: if isAuthenticated() && 
+                     (canViewAllProjects() || resource.data.createdBy == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && 
+                                (isAdmin() || resource.data.createdBy == request.auth.uid);
+    }
+    
+    // Comments collection - anyone can read, only author can update/delete
+    match /comments/{commentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && 
+                                (isAdmin() || resource.data.userId == request.auth.uid);
+    }
+    
+    // Notifications collection - users can only read their own notifications
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && 
+                       (isAdmin() || resource.data.userId == request.auth.uid);
+    }
+  }
+}

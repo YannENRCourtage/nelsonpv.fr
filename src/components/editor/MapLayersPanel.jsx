@@ -253,14 +253,36 @@ const overlayCategories = {
                 type: 'tile',
             },
             'ZNIEFF type 1': {
-                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=PROTECTEDAREAS.ZNIEFF1&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+                url: 'https://data.geopf.fr/wms-v/ows',
+                layers: 'PROTECTEDAREAS.ZNIEFF1',
+                format: 'image/png',
+                transparent: true,
                 attribution: 'IGN-F/Géoportail',
-                type: 'tile',
+                type: 'wms',
             },
             'ZNIEFF type 2': {
-                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=PROTECTEDAREAS.ZNIEFF2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+                url: 'https://data.geopf.fr/wms-v/ows',
+                layers: 'PROTECTEDAREAS.ZNIEFF2',
+                format: 'image/png',
+                transparent: true,
                 attribution: 'IGN-F/Géoportail',
-                type: 'tile',
+                type: 'wms',
+            },
+            'Natura 2000 Oiseaux': {
+                url: 'https://data.geopf.fr/wms-v/ows',
+                layers: 'PROTECTEDAREAS.ZPS',
+                format: 'image/png',
+                transparent: true,
+                attribution: 'IGN-F/Géoportail',
+                type: 'wms',
+            },
+            'Natura 2000 Habitat': {
+                url: 'https://data.geopf.fr/wms-v/ows',
+                layers: 'PROTECTEDAREAS.SIC',
+                format: 'image/png',
+                transparent: true,
+                attribution: 'IGN-F/Géoportail',
+                type: 'wms',
             },
         },
     },
@@ -312,11 +334,11 @@ const overlayCategories = {
     },
     'Sécurité': {
         layers: {
-            'SDIS 17': {
-                url: 'https://geo.geoplateforme17.fr/SDIS17/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=SDIS17:view_pei&outputFormat=application/json&srsName=EPSG:4326&count=50000',
-                attribution: 'SDIS 17 / Géoplateforme17',
-                type: 'sdis17-wfs',
-                minZoom: 12,
+            'SDIS (France entière)': {
+                url: '/api/sdis',
+                attribution: 'SDIS / Datakode / Etalab',
+                type: 'sdis-unified',
+                minZoom: 9,
             }
         }
     },
@@ -336,9 +358,15 @@ const overlayCategories = {
     'Risques': {
         layers: {
             'Zones inondables': {
-                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.SLOPES.MOUNTAIN&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
-                attribution: 'IGN-F/Géoportail',
-                type: 'tile',
+                url: 'https://mapsref.brgm.fr/wxs/georisques/risques?',
+                layers: 'PPRN_ZONE_INOND',
+                format: 'image/png',
+                transparent: true,
+                attribution: 'Géorisques / BRGM',
+                type: 'wms',
+                opacity: 0.7,
+                maxNativeZoom: 14,
+                maxZoom: 22
             },
         },
     },
@@ -384,7 +412,7 @@ const MapLayersPanel = ({ map }) => {
         Object.entries(overlayCategories).forEach(([categoryName, category]) => {
             Object.entries(category.layers).forEach(([layerName, layerConfig]) => {
                 // GeoJSON layers (local, API, or lazy, or sdis17-wfs) - initialize as null
-                if (['geojson', 'geojson-api', 'geojson-api-lazy', 'sdis17-wfs'].includes(layerConfig.type)) {
+                if (['geojson', 'geojson-api', 'geojson-api-lazy', 'sdis17-wfs', 'sdis-unified'].includes(layerConfig.type)) {
                     newGeoJsonLayers[layerName] = null;
                 }
                 // Tile layers (WMTS) - create immediately
@@ -666,73 +694,85 @@ const MapLayersPanel = ({ map }) => {
                         }
                     }
 
-                    // Type: sdis17-wfs (SDIS 17 Water Points - WFS service)
-                    else if (layerConfig.type === 'sdis17-wfs') {
+                    // Type: sdis-unified (SDIS 17, 81, 84 Water Points - via Proxy)
+                    else if (layerConfig.type === 'sdis-unified') {
                         if (checked) {
                             if (!geoJsonLayers[layerName]) {
                                 setLoadingLayers(prev => ({ ...prev, [layerName]: true }));
-                                fetch(layerConfig.url)
-                                    .then(response => response.json())
-                                    .then(data => {
-                                        const geoJsonLayer = L.geoJSON(data, {
-                                            pointToLayer: (feature, latlng) => {
-                                                const props = feature.properties;
-                                                // Determine marker style based on PEI type
-                                                let iconHtml = '';
-                                                let iconSize = [12, 12];
 
-                                                if (props.type_pei === 'PI' || props.nature_pei === 'POTEAU') {
-                                                    // Fire Hydrant Post - red circle
-                                                    iconHtml = '<div style="background: #DC143C; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #8B0000; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>';
-                                                } else if (props.type_pei === 'BI' || props.nature_pei === 'BOUCHE') {
-                                                    // Fire Hydrant Mouth - red square
-                                                    iconHtml = '<div style="background: #DC143C; width: 10px; height: 10px; border: 2px solid #8B0000; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>';
-                                                } else {
-                                                    // Water reserve or other - blue square
-                                                    iconHtml = '<div style="background: #4169E1; width: 10px; height: 10px; border: 2px solid #00008B; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>';
-                                                }
+                                const departments = Array.from({ length: 95 }, (_, i) => (i + 1).toString().padStart(2, '0'));
+                                departments.push('2A', '2B');
 
-                                                const icon = L.divIcon({
-                                                    className: '',
-                                                    html: iconHtml,
-                                                    iconSize: iconSize,
-                                                    iconAnchor: [6, 6],
-                                                });
-                                                return L.marker(latlng, { icon });
-                                            },
-                                            onEachFeature: (feature, layer) => {
-                                                if (feature.properties) {
-                                                    const props = feature.properties;
-                                                    let popupContent = '<div style="font-family: sans-serif; font-size: 13px;">';
-                                                    popupContent += '<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 15px; font-weight: bold;">🚒 Point d\'eau incendie</h4>';
-                                                    if (props.numero) popupContent += `<p style="margin: 3px 0;"><strong>N°:</strong> ${props.numero}</p>`;
-                                                    if (props.type_pei) popupContent += `<p style="margin: 3px 0;"><strong>Type:</strong> ${props.type_pei}</p>`;
-                                                    if (props.nature_pei) popupContent += `<p style="margin: 3px 0;"><strong>Nature:</strong> ${props.nature_pei}</p>`;
-                                                    if (props.diametre) popupContent += `<p style="margin: 3px 0;"><strong>Diamètre:</strong> ${props.diametre} mm</p>`;
-                                                    if (props.debit) popupContent += `<p style="margin: 3px 0;"><strong>Débit:</strong> ${props.debit} m³/h</p>`;
-                                                    if (props.adresse) popupContent += `<p style="margin: 3px 0;"><strong>Adresse:</strong> ${props.adresse}</p>`;
-                                                    if (props.commune) popupContent += `<p style="margin: 3px 0;"><strong>Commune:</strong> ${props.commune}</p>`;
-                                                    popupContent += '</div>';
-                                                    layer.bindPopup(popupContent, { maxWidth: 280 });
-                                                }
-                                            }
+                                const chunkSize = 10;
+                                const loadAllDepts = async () => {
+                                    const allFeatures = [];
+                                    for (let i = 0; i < departments.length; i += chunkSize) {
+                                        const chunk = departments.slice(i, i + chunkSize);
+                                        const results = await Promise.all(chunk.map(d =>
+                                            fetch(`${layerConfig.url}?dept=${d}`)
+                                                .then(r => r.json())
+                                                .catch(err => ({ type: 'FeatureCollection', features: [] }))
+                                        ));
+                                        results.forEach(r => {
+                                            if (r.features) allFeatures.push(...r.features);
                                         });
-                                        geoJsonLayer.addTo(map);
-                                        setGeoJsonLayers(prev => ({ ...prev, [layerName]: geoJsonLayer }));
-                                        setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
-                                    })
-                                    .catch(error => {
-                                        console.error(`Erreur chargement SDIS 17:`, error);
-                                        alert(`Impossible de charger les points d'eau SDIS 17`);
-                                        setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
+                                        // Delay to avoid UI freeze
+                                        await new Promise(res => setTimeout(res, 50));
+                                    }
+                                    return { type: 'FeatureCollection', features: allFeatures };
+                                };
+
+                                loadAllDepts().then(mergedData => {
+
+                                    const markerClusterGroup = L.markerClusterGroup({
+                                        disableClusteringAtZoom: 17,
+                                        iconCreateFunction: (cluster) => {
+                                            const count = cluster.getChildCount();
+                                            return L.divIcon({
+                                                html: `<div style="background: rgba(220, 20, 60, 0.7); border: 2px solid white; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: bold;">${count}</div>`,
+                                                className: '',
+                                                iconSize: [30, 30]
+                                            });
+                                        }
                                     });
+
+                                    const geoJsonLayer = L.geoJSON(mergedData, {
+                                        pointToLayer: (feature, latlng) => {
+                                            return L.circleMarker(latlng, {
+                                                radius: 6,
+                                                fillColor: "#DC143C",
+                                                color: "#000",
+                                                weight: 1,
+                                                opacity: 1,
+                                                fillOpacity: 0.8
+                                            });
+                                        },
+                                        onEachFeature: (feature, layer) => {
+                                            if (feature.properties) {
+                                                const props = feature.properties;
+                                                let popupContent = '<div style="font-family: sans-serif;">';
+                                                popupContent += '<h4 style="font-weight: bold; color: #DC143C;">🚒 Point d\'eau incendie</h4>';
+                                                popupContent += `<p><strong>Commune:</strong> ${props.commune || 'N/A'}</p>`;
+                                                popupContent += `<p><strong>Type:</strong> ${props.famille_pei || props.type_start || 'N/A'}</p>`;
+                                                popupContent += '</div>';
+                                                layer.bindPopup(popupContent);
+                                            }
+                                        }
+                                    });
+
+                                    markerClusterGroup.addLayer(geoJsonLayer);
+                                    markerClusterGroup.addTo(map);
+                                    setGeoJsonLayers(prev => ({ ...prev, [layerName]: markerClusterGroup }));
+                                    setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
+                                }).catch(err => {
+                                    console.error("SDIS Unified Error:", err);
+                                    setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
+                                });
                             } else {
                                 geoJsonLayers[layerName].addTo(map);
                             }
-                        } else {
-                            if (geoJsonLayers[layerName]) {
-                                map.removeLayer(geoJsonLayers[layerName]);
-                            }
+                        } else if (geoJsonLayers[layerName]) {
+                            map.removeLayer(geoJsonLayers[layerName]);
                         }
                     }
                 }

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { apiService } from '../services/api.js';
+import * as authService from '@/services/firebase/auth.service.js';
 
 const AuthContext = createContext(null);
 
@@ -13,27 +13,26 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const storedUser = sessionStorage.getItem('user');
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
+    // Listen to Firebase auth state changes
+    const unsubscribe = authService.onAuthChange((userData) => {
+      if (userData) {
+        setUser(userData);
         setIsAuthenticated(true);
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
       }
-    } catch (e) {
-      console.error("Failed to read auth status from sessionStorage", e);
-      setUser(null);
-      setIsAuthenticated(false);
-    }
-    setLoading(false);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const login = async (email, password) => {
     try {
-      const userData = await apiService.login(email, password);
+      const userData = await authService.signIn(email, password);
       setUser(userData);
       setIsAuthenticated(true);
-      sessionStorage.setItem('user', JSON.stringify(userData));
       return userData;
     } catch (error) {
       console.error('Login error:', error);
@@ -41,14 +40,41 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
+  const logout = async () => {
     try {
-      sessionStorage.removeItem('user');
-    } catch (e) {
-      console.error("Failed to remove auth status from sessionStorage", e);
+      await authService.signOut();
+      setUser(null);
+      setIsAuthenticated(false);
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
     }
+  };
+
+  // Helper functions for permission checks
+  const hasPermission = (permission) => {
+    if (!user || !user.permissions) return false;
+    return user.permissions[permission] === true;
+  };
+
+  const isAdmin = () => {
+    return user?.role === 'admin';
+  };
+
+  const canAccessCRM = () => {
+    return isAdmin() || hasPermission('canAccessCRM');
+  };
+
+  const canAccessEditor = () => {
+    return isAdmin() || hasPermission('canAccessEditor');
+  };
+
+  const canAccessSimulator = () => {
+    return isAdmin() || hasPermission('canAccessSimulator');
+  };
+
+  const canViewAllProjects = () => {
+    return isAdmin() || hasPermission('canViewAllProjects');
   };
 
   const value = {
@@ -57,6 +83,13 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     logout,
+    // Permission helpers
+    hasPermission,
+    isAdmin,
+    canAccessCRM,
+    canAccessEditor,
+    canAccessSimulator,
+    canViewAllProjects
   };
 
   return (

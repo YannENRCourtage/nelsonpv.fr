@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, Outlet, NavLink, useNavigate, useMatch } from 'react-router-dom';
 import Footer from './Footer.jsx';
@@ -14,6 +13,7 @@ import PDFGenerator, { PDFSymbolLegend } from './PDFGenerator.jsx';
 import ReactDOMServer from 'react-dom/server';
 import useNotifications from '../hooks/useNotifications.jsx';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover.jsx';
+import NotificationBell from './NotificationBell.jsx';
 
 const toastStyle = { className: "bg-white text-gray-900 p-4 border border-gray-300 rounded-lg shadow-lg" };
 
@@ -144,32 +144,6 @@ export const generatePdfForProject = async (projectData) => {
     description: "Le fichier PDF a été téléchargé."
   });
 };
-
-function NotificationBell() {
-  const { notifications, hasUnread, markAllAsRead } = useNotifications();
-
-  return (
-    <Popover onOpenChange={(open) => { if (!open) markAllAsRead(); }}>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative rounded-full">
-          <Bell className="h-5 w-5" />
-          {hasUnread && <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80">
-        <div className="font-bold mb-2">Notifications</div>
-        <div className="max-h-80 overflow-y-auto">
-          {notifications.length > 0 ? notifications.map(n => (
-            <div key={n.id} className="p-2 border-b text-sm">
-              <p className={!n.read ? 'font-semibold' : ''}>{n.message}</p>
-              <p className="text-xs text-gray-500">{new Date(n.date).toLocaleString('fr-FR')}</p>
-            </div>
-          )) : <p className="text-sm text-gray-500">Aucune notification.</p>}
-        </div>
-      </PopoverContent>
-    </Popover>
-  )
-}
 
 function Header() {
   const { logout, user } = useAuth();
