@@ -639,6 +639,82 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 }
 
 // ====================================================================
+// STYLES PERSONNALISÉS (SLD) POUR ENEDIS
+// ====================================================================
+const ENEDIS_POSTES_SLD = `
+<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld">
+  <NamedLayer>
+    <Name>poste_electrique</Name>
+    <UserStyle>
+      <FeatureTypeStyle>
+        <Rule>
+          <PointSymbolizer>
+            <Graphic>
+              <Mark>
+                <WellKnownName>square</WellKnownName>
+                <Fill><CssParameter name="fill">#FF0000</CssParameter></Fill>
+                <Stroke><CssParameter name="stroke">#FFFFFF</CssParameter><CssParameter name="stroke-width">1</CssParameter></Stroke>
+              </Mark>
+              <Size>14</Size>
+            </Graphic>
+          </PointSymbolizer>
+          <TextSymbolizer>
+            <Label>⚡</Label>
+            <Font>
+              <CssParameter name="font-family">Arial</CssParameter>
+              <CssParameter name="font-size">12</CssParameter>
+              <CssParameter name="font-weight">bold</CssParameter>
+            </Font>
+            <LabelPlacement>
+              <PointPlacement>
+                <AnchorPoint><AnchorPointX>0.5</AnchorPointX><AnchorPointY>0.5</AnchorPointY></AnchorPoint>
+              </PointPlacement>
+            </LabelPlacement>
+            <Fill><CssParameter name="fill">#FFFFFF</CssParameter></Fill>
+          </TextSymbolizer>
+        </Rule>
+      </FeatureTypeStyle>
+    </UserStyle>
+  </NamedLayer>
+</StyledLayerDescriptor>`.trim();
+
+const ENEDIS_HTA_SLD = `
+<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld">
+  <NamedLayer>
+    <Name>reseau_hta</Name>
+    <UserStyle>
+      <FeatureTypeStyle>
+        <Rule>
+          <LineSymbolizer>
+            <Stroke>
+              <CssParameter name="stroke">#FFFF00</CssParameter>
+              <CssParameter name="stroke-width">3</CssParameter>
+              <CssParameter name="stroke-opacity">1</CssParameter>
+            </Stroke>
+          </LineSymbolizer>
+        </Rule>
+      </FeatureTypeStyle>
+    </UserStyle>
+  </NamedLayer>
+  <NamedLayer>
+    <Name>reseau_souterrain_hta</Name>
+    <UserStyle>
+      <FeatureTypeStyle>
+        <Rule>
+          <LineSymbolizer>
+            <Stroke>
+              <CssParameter name="stroke">#FFFF00</CssParameter>
+              <CssParameter name="stroke-width">3</CssParameter>
+              <CssParameter name="stroke-opacity">1</CssParameter>
+            </Stroke>
+          </LineSymbolizer>
+        </Rule>
+      </FeatureTypeStyle>
+    </UserStyle>
+  </NamedLayer>
+</StyledLayerDescriptor>`.trim();
+
+// ====================================================================
 // LISTE DES CALQUES
 // ====================================================================
 const LAYERS = {
@@ -677,8 +753,9 @@ const LAYERS = {
     attribution: "Enedis / GéoBretagne",
     isOverlay: true,
     zIndex: 50,
-    opacity: 0.8,
-    minZoom: 9
+    opacity: 1.0, // Full opacity as requested
+    minZoom: 9,
+    sld_body: ENEDIS_HTA_SLD
   },
   enedisPostes: {
     name: "Postes HTA/BT",
@@ -689,8 +766,9 @@ const LAYERS = {
     attribution: "Enedis / GéoBretagne",
     isOverlay: true,
     zIndex: 51,
-    opacity: 0.9,
-    minZoom: 9
+    opacity: 1.0, // Full opacity as requested
+    minZoom: 9,
+    sld_body: ENEDIS_POSTES_SLD
   },
 
   // SDIS - Points d'eau incendie
@@ -1164,7 +1242,9 @@ function LayersBootstrap({ layersRef }) {
           opacity: layerDef.opacity || 1.0,
           zIndex: layerDef.zIndex || 10,
           pane: 'overlayPane',
-          interactive: false
+          interactive: false,
+          styles: layerDef.styles || '',
+          sld_body: layerDef.sld_body || undefined
         });
       } else if (layerDef.url) { // TileLayer (WMTS or standard XYZ)
         layersRef.current[key] = L.tileLayer(layerDef.url, {
