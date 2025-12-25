@@ -9,7 +9,8 @@ function loadAllProjectsFromLS() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     return raw ? JSON.parse(raw) : [];
-  } catch {
+  } catch (e) {
+    console.warn('localStorage access blocked or unavailable:', e);
     return [];
   }
 }
@@ -19,7 +20,10 @@ function saveAllProjectsToLS(list) {
     localStorage.setItem(LS_KEY, JSON.stringify(list));
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new Event('projectsUpdated'));
-  } catch { }
+  } catch (e) {
+    console.warn('localStorage write blocked or unavailable:', e);
+    // Gracefully fail: app can still work without localStorage
+  }
 }
 
 /** Contexte */
