@@ -9,7 +9,7 @@ import {
     deleteDoc,
     query,
     where,
-    orderBy,
+    // orderBy, // Removed to avoid index requirement
     onSnapshot,
     serverTimestamp
 } from 'firebase/firestore';
@@ -77,33 +77,48 @@ export const deleteContact = async (contactId) => {
 export const listContacts = async (userId, canViewAll = false) => {
     let q;
     if (canViewAll) {
-        q = query(collection(db, 'contacts'), orderBy('createdAt', 'desc'));
+        // q = query(collection(db, 'contacts'), orderBy('createdAt', 'desc'));
+        q = query(collection(db, 'contacts'));
     } else {
         q = query(
             collection(db, 'contacts'),
-            where('createdBy', '==', userId),
-            orderBy('createdAt', 'desc')
+            where('createdBy', '==', userId)
+            // orderBy('createdAt', 'desc') // Removed to avoid index requirement
         );
     }
 
     const contactsSnapshot = await getDocs(q);
-    return contactsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const contacts = contactsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Client-side sorting
+    return contacts.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB - dateA; // Descending
+    });
 };
 
 export const subscribeToContacts = (userId, canViewAll, callback) => {
     let q;
     if (canViewAll) {
-        q = query(collection(db, 'contacts'), orderBy('createdAt', 'desc'));
+        // q = query(collection(db, 'contacts'), orderBy('createdAt', 'desc'));
+        q = query(collection(db, 'contacts'));
     } else {
         q = query(
             collection(db, 'contacts'),
-            where('createdBy', '==', userId),
-            orderBy('createdAt', 'desc')
+            where('createdBy', '==', userId)
+            // orderBy('createdAt', 'desc') // Removed
         );
     }
 
     return onSnapshot(q, (snapshot) => {
         const contacts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Sort before callback
+        contacts.sort((a, b) => {
+            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+            return dateB - dateA;
+        });
         callback(contacts);
     });
 };
@@ -145,33 +160,48 @@ export const deleteProject = async (projectId) => {
 export const listProjects = async (userId, canViewAll = false) => {
     let q;
     if (canViewAll) {
-        q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
+        // q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
+        q = query(collection(db, 'projects'));
     } else {
         q = query(
             collection(db, 'projects'),
-            where('createdBy', '==', userId),
-            orderBy('createdAt', 'desc')
+            where('createdBy', '==', userId)
+            // orderBy('createdAt', 'desc') // Removed
         );
     }
 
     const projectsSnapshot = await getDocs(q);
-    return projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const projects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Client-side sorting
+    return projects.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB - dateA; // Descending
+    });
 };
 
 export const subscribeToProjects = (userId, canViewAll, callback) => {
     let q;
     if (canViewAll) {
-        q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
+        // q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
+        q = query(collection(db, 'projects'));
     } else {
         q = query(
             collection(db, 'projects'),
-            where('createdBy', '==', userId),
-            orderBy('createdAt', 'desc')
+            where('createdBy', '==', userId)
+            // orderBy('createdAt', 'desc') // Removed
         );
     }
 
     return onSnapshot(q, (snapshot) => {
         const projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Sort before callback
+        projects.sort((a, b) => {
+            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+            return dateB - dateA;
+        });
         callback(projects);
     });
 };
