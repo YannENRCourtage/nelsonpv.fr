@@ -17,6 +17,20 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = authService.onAuthChange((userData) => {
       // console.log("AuthContext onAuthChange:", userData);
       if (userData) {
+        // --- OVERRIDE DU COMPTE 'CONTACT' ---
+        // Le compte contact@enr-courtage.fr est forcement 'user' et sans accès Admin/Simulateur
+        if (userData.email === 'contact@enr-courtage.fr') {
+          console.log("Applying strict restrictions to contact@enr-courtage.fr");
+          userData.role = 'user';
+          userData.permissions = {
+            ...userData.permissions,
+            canAccessSimulator: false,
+            canAccessAdmin: false,
+            canAccessCRM: true, // Conserve l'accès CRM
+          };
+        }
+        // ------------------------------------
+
         setUser(userData);
         setIsAuthenticated(true);
       } else {

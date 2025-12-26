@@ -471,13 +471,24 @@ export default function Crm() {
 
   const handleDeleteContact = async (id) => {
     if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce contact ?")) return;
+
+    // Optimistic Update: On supprime de l'affichage immédiatement
+    // Si l'API échoue, on pourrait remettre, mais ici l'utilisateur VEUT que ça disparaisse.
+    // Cependant pour la cohérence, on attend l'API.
+
     try {
       await apiService.deleteContact(id);
-      setContacts(contacts.filter(c => c.id !== id));
+      setContacts(prev => prev.filter(c => c.id !== id));
       toast({ title: "Succès", description: "Contact supprimé." });
     } catch (error) {
       console.error('Failed to delete contact:', error);
-      toast({ title: "Erreur", description: "Impossible de supprimer le contact.", variant: "destructive" });
+      // Hack UX: Si l'erreur est "Permission denied" mais que l'utilisateur INSISTE pour ne plus le voir...
+      // On va quand même afficher une erreur claire.
+      toast({
+        title: "Erreur",
+        description: `Impossible de supprimer le contact. ${error.message || ''}`,
+        variant: "destructive"
+      });
     }
   };
 
