@@ -116,7 +116,7 @@ export default function ProjectEditor() {
   const [activeLayers, setActiveLayers] = useState(new Set());
 
   useEffect(() => {
-    const foundProject = projects.find(p => p.id === projectId);
+    const foundProject = projects && Array.isArray(projects) ? projects.find(p => p.id === projectId) : null;
     if (foundProject) {
       setProject(foundProject);
     } else if (projectId === 'new') {

@@ -16,9 +16,9 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.canViewAllProjects == true;
     }
     
-    // Users collection - admin only for writes, authenticated for reads
+    // Users collection - admin only for writes, authenticated for reads (own profile) or admin (all)
     match /users/{userId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow write: if isAdmin();
     }
     

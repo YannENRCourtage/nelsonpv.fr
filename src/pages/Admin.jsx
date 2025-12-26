@@ -1,56 +1,70 @@
 import React, { useState, useEffect } from 'react';
-import apiService from '../services/api.js';
-import { Button } from '@/components/ui/button.jsx';
-import { Input } from '@/components/ui/input.jsx';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog.jsx';
-import { Checkbox } from '@/components/ui/checkbox.jsx';
-import { toast } from "@/components/ui/use-toast.js";
+import { apiService } from '@/services/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Users, Plus, Edit, Trash2, Key, Mail, Phone, User,
-  Shield, Lock, Search, X, AlertCircle, CheckCircle2, Eye, EyeOff
-} from 'lucide-react';
-
-const toastStyle = { className: "bg-white text-gray-900 p-4 border border-gray-300 rounded-lg shadow-lg" };
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from '@/components/ui/use-toast';
+import { Loader2, Trash2, Edit, Plus, Shield, ShieldAlert, Mail, Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { ToggleSwitch } from '@/components/ui/toggle-switch';
 
 export default function Admin() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showUserModal, setShowUserModal] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [passwordUserId, setPasswordUserId] = useState(null);
+
+  // Form states
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
+    password: '', // Only for creation
+    displayName: '',
     firstName: '',
     lastName: '',
-    phone: '',
     role: 'user',
-    pageAccess: { crm: true, monday: false, administration: false, editeur: false }
+    permissions: {
+      canAccessCRM: false,
+      canAccessEditor: false,
+      canAccessSimulator: false,
+      canViewAllProjects: false,
+    }
   });
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Charger les utilisateurs
+  const [showPassword, setShowPassword] = useState(false);
+
   useEffect(() => {
-    loadUsers();
+    fetchUsers();
   }, []);
 
-  const loadUsers = async () => {
+  const fetchUsers = async () => {
     try {
       setLoading(true);
       const data = await apiService.getUsers();
-      setUsers(data || []);
+      setUsers(data);
     } catch (error) {
-      console.error('Error loading users:', error);
+      console.error("Failed to fetch users:", error);
       toast({
-        ...toastStyle,
         title: "Erreur",
-        description: "Impossible de charger les utilisateurs",
+        description: "Impossible de charger la liste des utilisateurs.",
         variant: "destructive"
       });
     } finally {
@@ -58,564 +72,309 @@ export default function Admin() {
     }
   };
 
-  const handleAddUser = () => {
-    setEditingUser(null);
-    setFormData({
-      email: '',
-      password: '',
-      firstName: '',
-      lastName: '',
-      phone: '',
-      role: 'user',
-      pageAccess: { crm: false, administration: false, editeur: true }
-    });
-    setShowUserModal(true);
+  const handleOpenModal = (user = null) => {
+    if (user) {
+      setEditingUser(user);
+      setFormData({
+        email: user.email || '',
+        password: '', // Don't show password
+        displayName: user.displayName || '',
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        role: user.role || 'user',
+        permissions: {
+          canAccessCRM: user.permissions?.canAccessCRM || false,
+          canAccessEditor: user.permissions?.canAccessEditor || false,
+          canAccessSimulator: user.permissions?.canAccessSimulator || false,
+          canViewAllProjects: user.permissions?.canViewAllProjects || false,
+        }
+      });
+    } else {
+      setEditingUser(null);
+      setFormData({
+        email: '',
+        password: '',
+        displayName: '',
+        firstName: '',
+        lastName: '',
+        role: 'user',
+        permissions: {
+          canAccessCRM: false,
+          canAccessEditor: false,
+          canAccessSimulator: false,
+          canViewAllProjects: false,
+        }
+      });
+    }
+    setIsModalOpen(true);
   };
 
-  const handleEditUser = (user) => {
-    setEditingUser(user);
-    setFormData({
-      email: user.email,
-      password: '', // Ne pas afficher le mot de passe
-      firstName: user.firstName,
-      lastName: user.lastName,
-      phone: user.phone || '',
-      role: user.role,
-      pageAccess: typeof user.pageAccess === 'object'
-        ? user.pageAccess
-        : JSON.parse(user.pageAccess || '{"crm":false,"administration":false,"editeur":true}')
-    });
-    setShowUserModal(true);
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSaveUser = async () => {
-    // Validation
-    if (!formData.email || !formData.firstName || !formData.lastName) {
-      toast({
-        ...toastStyle,
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs requis",
-        variant: "destructive"
-      });
-      return;
-    }
+  const handlePermissionChange = (perm, checked) => {
+    setFormData(prev => ({
+      ...prev,
+      permissions: {
+        ...prev.permissions,
+        [perm]: checked === true
+      }
+    }));
+  };
 
-    if (!editingUser && !formData.password) {
-      toast({
-        ...toastStyle,
-        title: "Erreur",
-        description: "Le mot de passe est requis pour un nouvel utilisateur",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!editingUser && formData.password.length < 6) {
-      toast({
-        ...toastStyle,
-        title: "Erreur",
-        description: "Le mot de passe doit contenir au moins 6 caractères",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     try {
       if (editingUser) {
-        // Mise à jour (sans mot de passe)
-        const { password, ...updateData } = formData;
-        await apiService.updateUser(editingUser.id, updateData);
-        toast({
-          ...toastStyle,
-          title: "Succès",
-          description: "Utilisateur mis à jour avec succès"
-        });
-      } else {
-        // Création
-        await apiService.createUser(formData);
-        toast({
-          ...toastStyle,
-          title: "Succès",
-          description: "Utilisateur créé avec succès"
-        });
-      }
+        // Update
+        const updates = {
+          displayName: formData.displayName,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          role: formData.role,
+          permissions: formData.permissions
+        };
+        // NOTE: Password update via client SDK for OTHER users is not strictly supported without Admin SDK.
+        // We will pass it to API service in case we switch to backend, but usually it won't apply to Auth.
+        // For now, we rely on recreating user if password lost.
+        if (formData.password) {
+          console.warn("Password update for existing user requested - requires Admin SDK or User Re-auth");
+          // We could try to update if it's the CURRENT user, but for others it's tricky.
+        }
 
-      setShowUserModal(false);
-      loadUsers();
+        await apiService.updateUser(editingUser.id, updates);
+        toast({ title: "Succès", description: "Utilisateur mis à jour." });
+      } else {
+        // Create
+        if (!formData.email || !formData.password) {
+          toast({ title: "Erreur", description: "Email et mot de passe requis.", variant: "destructive" });
+          return;
+        }
+        await apiService.createUser(formData);
+        toast({ title: "Succès", description: "Utilisateur créé." });
+      }
+      setIsModalOpen(false);
+      fetchUsers();
     } catch (error) {
-      console.error('Error saving user:', error);
+      console.error("Operation failed:", error);
       toast({
-        ...toastStyle,
         title: "Erreur",
-        description: error.message || "Impossible de sauvegarder l'utilisateur",
+        description: error.message || "Une erreur est survenue.",
         variant: "destructive"
       });
     }
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) {
-      return;
-    }
-
+  const handleDelete = async (userId) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.")) return;
     try {
       await apiService.deleteUser(userId);
-      toast({
-        ...toastStyle,
-        title: "Succès",
-        description: "Utilisateur supprimé avec succès"
-      });
-      loadUsers();
+      toast({ title: "Succès", description: "Utilisateur supprime." });
+      fetchUsers();
     } catch (error) {
-      console.error('Error deleting user:', error);
-      toast({
-        ...toastStyle,
-        title: "Erreur",
-        description: "Impossible de supprimer l'utilisateur",
-        variant: "destructive"
-      });
+      console.error("Delete failed:", error);
+      toast({ title: "Erreur", description: "Impossible de supprimer l'utilisateur.", variant: "destructive" });
     }
   };
 
-  const handleChangePassword = (userId) => {
-    setPasswordUserId(userId);
-    setNewPassword('');
-    setConfirmPassword('');
-    setShowPasswordModal(true);
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
-  const handleSavePassword = async () => {
-    if (!newPassword || newPassword.length < 6) {
-      toast({
-        ...toastStyle,
-        title: "Erreur",
-        description: "Le mot de passe doit contenir au moins 6 caractères",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      toast({
-        ...toastStyle,
-        title: "Erreur",
-        description: "Les mots de passe ne correspondent pas",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      await apiService.updateUserPassword(passwordUserId, newPassword);
-      toast({
-        ...toastStyle,
-        title: "Succès",
-        description: "Mot de passe modifié avec succès"
-      });
-      setShowPasswordModal(false);
-    } catch (error) {
-      console.error('Error changing password:', error);
-      toast({
-        ...toastStyle,
-        title: "Erreur",
-        description: "Impossible de modifier le mot de passe",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const filteredUsers = users.filter(user =>
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.lastName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Double check admin role just in case
+  if (currentUser?.role !== 'admin') {
+    return <div className="p-8 text-center text-red-600">Accès non autorisé.</div>;
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
+    <div className="p-8 space-y-6 bg-slate-50 min-h-screen">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
             <Shield className="w-8 h-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-slate-900">Administration</h1>
-          </div>
-          <p className="text-slate-600">Gérez les utilisateurs, leurs rôles et leurs droits d'accès</p>
+            Administration
+          </h1>
+          <p className="text-slate-500 mt-1">Gérez les utilisateurs et leurs accès</p>
         </div>
+        <Button onClick={() => handleOpenModal(null)} className="bg-blue-600 hover:bg-blue-700">
+          <Plus className="w-4 h-4 mr-2" />
+          Nouvel utilisateur
+        </Button>
+      </div>
 
-        {/* Actions Bar */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+      <Card>
+        <CardHeader>
+          <CardTitle>Utilisateurs ({users.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Utilisateur</TableHead>
+                <TableHead>Rôle</TableHead>
+                <TableHead>Accès</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-slate-900">
+                        {user.firstName ? `${user.firstName} ${user.lastName || ''}` : user.displayName}
+                      </span>
+                      <span className="text-sm text-slate-500">{user.email}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'admin'
+                      ? 'bg-purple-100 text-purple-800'
+                      : 'bg-green-100 text-green-800'
+                      }`}>
+                      {user.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2 flex-wrap">
+                      {user.permissions?.canAccessCRM && (
+                        <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs border border-blue-200">CRM</span>
+                      )}
+                      {user.permissions?.canAccessEditor && (
+                        <span className="px-2 py-1 rounded bg-orange-50 text-orange-700 text-xs border border-orange-200">Éditeur</span>
+                      )}
+                      {user.permissions?.canAccessSimulator && (
+                        <span className="px-2 py-1 rounded bg-green-50 text-green-700 text-xs border border-green-200">Simulateur</span>
+                      )}
+                      {user.permissions?.canViewAllProjects && (
+                        <span className="px-2 py-1 rounded bg-slate-100 text-slate-700 text-xs border border-slate-200">Tout voir</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenModal(user)}>
+                        <Edit className="w-4 h-4 text-slate-500" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(user.id)}
+                        disabled={user.email === 'y.barberis@enr-courtage.fr'} // Protect main admin
+                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{editingUser ? 'Modifier l\'utilisateur' : 'Créer un utilisateur'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">Prénom</Label>
+                <Input id="firstName" name="firstName" value={formData.firstName} onChange={handleInputChange} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Nom</Label>
+                <Input id="lastName" name="lastName" value={formData.lastName} onChange={handleInputChange} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="displayName">Nom d'affichage (ex: Pseudo)</Label>
+              <Input id="displayName" name="displayName" value={formData.displayName} onChange={handleInputChange} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
               <Input
-                type="text"
-                placeholder="Rechercher un utilisateur..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                disabled={!!editingUser} // Prevent email change for now to avoid Auth desync
               />
             </div>
-            <Button
-              onClick={handleAddUser}
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Nouvel utilisateur
-            </Button>
-          </div>
-        </div>
 
-        {/* Users List */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          {loading ? (
-            <div className="p-12 text-center text-slate-500">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
-              <p>Chargement...</p>
-            </div>
-          ) : filteredUsers.length === 0 ? (
-            <div className="p-12 text-center text-slate-500">
-              <Users className="w-12 h-12 mx-auto mb-4 text-slate-300" />
-              <p>Aucun utilisateur trouvé</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Utilisateur</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Email</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Téléphone</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Rôle</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Droits d'accès</th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredUsers.map((user) => {
-                    const access = typeof user.pageAccess === 'object'
-                      ? user.pageAccess
-                      : JSON.parse(user.pageAccess || '{}');
-
-                    return (
-                      <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-                              {user.firstName[0]}{user.lastName[0]}
-                            </div>
-                            <div>
-                              <div className="font-semibold text-slate-900">{user.firstName} {user.lastName}</div>
-                              <div className="text-sm text-slate-500">ID: {user.id.slice(0, 8)}...</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2 text-slate-700">
-                            <Mail className="w-4 h-4 text-slate-400" />
-                            {user.email}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2 text-slate-700">
-                            <Phone className="w-4 h-4 text-slate-400" />
-                            {user.phone || '-'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${user.role === 'admin'
-                            ? 'bg-purple-100 text-purple-700'
-                            : 'bg-blue-100 text-blue-700'
-                            }`}>
-                            {user.role === 'admin' ? 'Administrateur' : 'Utilisateur'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex gap-2">
-                            {access.crm && (
-                              <span className="px-2 py-1 rounded bg-green-100 text-green-700 text-xs font-medium">CRM</span>
-                            )}
-                            {access.editeur && (
-                              <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-medium">Éditeur</span>
-                            )}
-                            {access.administration && (
-                              <span className="px-2 py-1 rounded bg-red-100 text-red-700 text-xs font-medium">Admin</span>
-                            )}
-                            {!access.crm && !access.editeur && !access.administration && (
-                              <span className="text-slate-400 text-xs">Aucun</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditUser(user)}
-                              className="hover:bg-blue-50"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleChangePassword(user.id)}
-                              className="hover:bg-purple-50"
-                            >
-                              <Key className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteUser(user.id)}
-                              className="hover:bg-red-50 text-red-600"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* User Modal */}
-        <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editingUser ? 'Modifier l\'utilisateur' : 'Nouvel utilisateur'}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Prénom <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                    placeholder="Jean"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Nom <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                    placeholder="Dupont"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Email <span className="text-red-500">*</span>
-                </label>
+            <div className="space-y-2">
+              <Label htmlFor="password">{editingUser ? 'Nouveau mot de passe (Optionnel)' : 'Mot de passe'}</Label>
+              <div className="relative">
                 <Input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="jean.dupont@example.com"
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  placeholder={editingUser ? "Laisser vide pour ne pas changer" : ""}
+                  className="pr-10"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Téléphone
-                </label>
-                <Input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="06 12 34 56 78"
-                />
-              </div>
-
-              {!editingUser && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Mot de passe <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="Minimum 6 caractères"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Rôle</label>
-                <select
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2"
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  tabIndex={-1}
                 >
-                  <option value="user">Utilisateur</option>
-                  <option value="admin">Administrateur</option>
-                </select>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
+              {editingUser && <p className="text-xs text-slate-500">Note: Pour changer le mot de passe d'un autre utilisateur, supprimez et recréez le compte si nécessaire.</p>}
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-3">Droits d'accès</label>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.pageAccess.crm || false}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        pageAccess: { ...formData.pageAccess, crm: e.target.checked }
-                      })}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium text-slate-900">CRM</div>
-                      <div className="text-sm text-slate-500">Accès au module CRM</div>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.pageAccess.editeur || false}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        pageAccess: { ...formData.pageAccess, editeur: e.target.checked }
-                      })}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium text-slate-900">Éditeur de projet</div>
-                      <div className="text-sm text-slate-500">Accès à l'éditeur de projet</div>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.pageAccess.administration || false}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        pageAccess: { ...formData.pageAccess, administration: e.target.checked }
-                      })}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium text-slate-900">Administration</div>
-                      <div className="text-sm text-slate-500">Accès à la gestion des utilisateurs</div>
-                    </div>
-                  </label>
-                </div>
+            <div className="space-y-3 border-t pt-3">
+              <Label className="text-base">Permissions</Label>
+              <div className="flex flex-col gap-3">
+                <ToggleSwitch
+                  id="perm-crm"
+                  checked={formData.permissions.canAccessCRM}
+                  onCheckedChange={(c) => handlePermissionChange('canAccessCRM', c)}
+                  label="Accès CRM"
+                />
+                <ToggleSwitch
+                  id="perm-editor"
+                  checked={formData.permissions.canAccessEditor}
+                  onCheckedChange={(c) => handlePermissionChange('canAccessEditor', c)}
+                  label="Accès Éditeur"
+                />
+                <ToggleSwitch
+                  id="perm-simulator"
+                  checked={formData.permissions.canAccessSimulator}
+                  onCheckedChange={(c) => handlePermissionChange('canAccessSimulator', c)}
+                  label="Accès Simulateur"
+                />
+                <ToggleSwitch
+                  id="perm-viewall"
+                  checked={formData.permissions.canViewAllProjects}
+                  onCheckedChange={(c) => handlePermissionChange('canViewAllProjects', c)}
+                  label="Voir TOUS les projets"
+                />
               </div>
             </div>
 
-            <DialogFooter className="mt-6">
-              <Button variant="outline" onClick={() => setShowUserModal(false)}>
-                Annuler
-              </Button>
-              <Button onClick={handleSaveUser} className="bg-blue-600 hover:bg-blue-700">
-                {editingUser ? 'Mettre à jour' : 'Créer'}
-              </Button>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Annuler</Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">Enregistrer</Button>
             </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Password Modal */}
-        <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Modifier le mot de passe</DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Nouveau mot de passe
-                </label>
-                <div className="relative">
-                  <Input
-                    type={showNewPassword ? "text" : "password"}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Minimum 6 caractères"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Confirmer le mot de passe
-                </label>
-                <div className="relative">
-                  <Input
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirmez le mot de passe"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {newPassword && confirmPassword && newPassword !== confirmPassword && (
-                <div className="flex items-center gap-2 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  Les mots de passe ne correspondent pas
-                </div>
-              )}
-
-              {newPassword && newPassword.length < 6 && (
-                <div className="flex items-center gap-2 text-orange-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  Le mot de passe doit contenir au moins 6 caractères
-                </div>
-              )}
-            </div>
-
-            <DialogFooter className="mt-6">
-              <Button variant="outline" onClick={() => setShowPasswordModal(false)}>
-                Annuler
-              </Button>
-              <Button onClick={handleSavePassword} className="bg-purple-600 hover:bg-purple-700">
-                <Key className="w-4 h-4 mr-2" />
-                Modifier le mot de passe
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </div>
+          </form>
+        </DialogContent>
+      </Dialog >
+    </div >
   );
 }

@@ -3,7 +3,8 @@ import {
     signInWithEmailAndPassword,
     signOut as firebaseSignOut,
     onAuthStateChanged,
-    createUserWithEmailAndPassword
+    createUserWithEmailAndPassword,
+    sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth, db } from '@/config/firebase.js';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -107,8 +108,17 @@ export const onAuthChange = (callback) => {
                     callback(null);
                 }
             } catch (error) {
-                console.error('Error fetching user data:', error);
-                callback(null);
+                console.error('Error fetching user data from Firestore:', error);
+                console.error('User UID:', user.uid);
+                if (error.code === 'permission-denied') {
+                    console.error('PERMISSION DENIED: Check firestore.rules for /users collection.');
+                }
+                // Return basic auth user as fallback, but warn
+                callback({
+                    uid: user.uid,
+                    email: user.email,
+                    isFallback: true // Flag to indicate missing profile
+                });
             }
         } else {
             callback(null);
@@ -152,6 +162,19 @@ export const createUser = async (email, password, userData) => {
         };
     } catch (error) {
         console.error('Create user error:', error);
+        throw error;
+    }
+};
+
+/**
+ * Send password reset email
+ * @param {string} email
+ */
+export const sendResetPasswordEmail = async (email) => {
+    try {
+        await sendPasswordResetEmail(auth, email);
+    } catch (error) {
+        console.error('Send reset password email error:', error);
         throw error;
     }
 };

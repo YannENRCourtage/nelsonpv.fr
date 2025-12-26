@@ -64,12 +64,19 @@ export const getComments = async (projectId) => {
     try {
         const q = query(
             collection(db, 'comments'),
-            where('projectId', '==', projectId),
-            orderBy('createdAt', 'asc')
+            where('projectId', '==', projectId)
+            // orderBy('createdAt', 'asc') // Removed to avoid index requirement
         );
 
         const commentsSnapshot = await getDocs(q);
-        return commentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const comments = commentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // Client-side sorting
+        return comments.sort((a, b) => {
+            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+            return dateA - dateB; // Ascending
+        });
     } catch (error) {
         console.error('Get comments error:', error);
         throw error;
@@ -85,12 +92,18 @@ export const getComments = async (projectId) => {
 export const subscribeToComments = (projectId, callback) => {
     const q = query(
         collection(db, 'comments'),
-        where('projectId', '==', projectId),
-        orderBy('createdAt', 'asc')
+        where('projectId', '==', projectId)
+        // orderBy('createdAt', 'asc') // Removed
     );
 
     return onSnapshot(q, (snapshot) => {
         const comments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Sort before callback
+        comments.sort((a, b) => {
+            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+            return dateA - dateB; // Ascending
+        });
         callback(comments);
     });
 };
@@ -103,44 +116,40 @@ export const subscribeToComments = (projectId, callback) => {
  * Create notifications for mentioned users
  * @param {string} projectId - Project ID
  * @param {string} commentId - Comment ID
- * @param {string} authorId - Comment author UID
- * @param {string} authorName - Comment author name
- * @param {Array<string>} mentionedUsernames - Array of mentioned usernames
+ * @param {string} authorId - Author UID
+ * @param {string} authorName - Author display name
+ * @param {Array<string>} mentionNames - Array of mentioned usernames (without @)
  */
-const createMentionNotifications = async (projectId, commentId, authorId, authorName, mentionedUsernames) => {
+const createMentionNotifications = async (projectId, commentId, authorId, authorName, mentionNames) => {
     try {
-        // Get all users to find UIDs for mentioned usernames
+        // Get all users to map names to IDs
         const usersSnapshot = await getDocs(collection(db, 'users'));
         const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        // Create notifications for each mentioned user
-        const notifications = [];
-        for (const username of mentionedUsernames) {
-            // Find user by display name (case-insensitive)
+        // For each mention, find matching user and create notification
+        for (const mentionName of mentionNames) {
+            // Try to match by firstName, displayName, or email prefix
             const user = users.find(u =>
-                u.displayName?.toLowerCase() === username.toLowerCase() ||
-                u.email?.split('@')[0].toLowerCase() === username.toLowerCase()
+                (u.firstName && u.firstName.toLowerCase() === mentionName.toLowerCase()) ||
+                (u.displayName && u.displayName.toLowerCase() === mentionName.toLowerCase()) ||
+                (u.email && u.email.toLowerCase().startsWith(mentionName.toLowerCase()))
             );
 
-            if (user && user.id !== authorId) {
-                notifications.push({
+            if (user && user.id !== authorId) { // Don't notify author
+                await addDoc(collection(db, 'notifications'), {
                     userId: user.id,
-                    type: 'mention',
                     projectId,
                     commentId,
+                    type: 'mention',
                     message: `${authorName} vous a mentionné dans un commentaire`,
                     read: false,
                     createdAt: serverTimestamp()
                 });
             }
         }
-
-        // Batch create notifications
-        for (const notification of notifications) {
-            await addDoc(collection(db, 'notifications'), notification);
-        }
     } catch (error) {
         console.error('Create mention notifications error:', error);
+        // Don't throw - notification creation should not block comment creation
     }
 };
 
@@ -153,12 +162,19 @@ export const getUserNotifications = async (userId) => {
     try {
         const q = query(
             collection(db, 'notifications'),
-            where('userId', '==', userId),
-            orderBy('createdAt', 'desc')
+            where('userId', '==', userId)
+            // orderBy('createdAt', 'desc') // Removed
         );
 
         const notificationsSnapshot = await getDocs(q);
-        return notificationsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const notifications = notificationsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // Client-side sorting
+        return notifications.sort((a, b) => {
+            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+            return dateB - dateA; // Descending
+        });
     } catch (error) {
         console.error('Get user notifications error:', error);
         throw error;
@@ -174,19 +190,25 @@ export const getUserNotifications = async (userId) => {
 export const subscribeToNotifications = (userId, callback) => {
     const q = query(
         collection(db, 'notifications'),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', userId)
+        // orderBy('createdAt', 'desc') // Removed
     );
 
     return onSnapshot(q, (snapshot) => {
         const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Sort before callback
+        notifications.sort((a, b) => {
+            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+            return dateB - dateA; // Descending
+        });
         callback(notifications);
     });
 };
 
 /**
  * Mark notification as read
- * @param {string} notificationId - Notification ID
+ * ... (unchanged)
  */
 export const markNotificationAsRead = async (notificationId) => {
     try {

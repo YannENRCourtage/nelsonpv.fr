@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Listen to Firebase auth state changes
     const unsubscribe = authService.onAuthChange((userData) => {
+      // console.log("AuthContext onAuthChange:", userData);
       if (userData) {
         setUser(userData);
         setIsAuthenticated(true);

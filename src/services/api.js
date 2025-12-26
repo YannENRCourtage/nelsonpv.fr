@@ -118,6 +118,10 @@ class ApiService {
         return await firestoreService.deleteUser(id);
     }
 
+    async sendPasswordReset(email) {
+        return await authService.sendResetPasswordEmail(email);
+    }
+
     // ============================================================================
     // NOTIFICATIONS
     // ============================================================================

@@ -4,7 +4,7 @@ import Footer from './Footer.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useProject } from '../contexts/ProjectContext.jsx';
 import { Button } from './ui/button.jsx';
-import { LogOut, FileDown, Save, Bell, Users } from 'lucide-react';
+import { LogOut, FileDown, Save, Bell, Users, Shield } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast.js";
 import jsPDF from "jspdf";
 import html2canvas from 'html2canvas';
@@ -183,7 +183,13 @@ function Header() {
 
 
   const getProjectTitle = () => {
-    if (!project) return "Chargement...";
+    // Debug logging
+    // console.log("getProjectTitle check:", { project, isProjectPage, params: isProjectPage?.params });
+    if (!project) {
+      // Check both standard params and potentially nested match object
+      if (isProjectPage?.params?.projectId === 'new' || location.pathname.includes('/new/')) return "Nouveau projet";
+      return "Chargement...";
+    }
     // CORRIGÉ : Utilise la même logique que le PDF
     const p = project || {};
     // Utilise p.name (Nom du projet)
@@ -205,7 +211,15 @@ function Header() {
           <nav className="app-header__nav">
             <NavLink to="/crm" className={({ isActive }) => isActive ? 'nav-link active crm' : 'nav-link crm'}>CRM</NavLink>
             <NavLink to="/project/new/edit" className={({ isActive }) => isActive ? 'nav-link active editeur' : 'nav-link editeur'}>Editeur de projet</NavLink>
-            <NavLink to="/simulator" className={({ isActive }) => isActive ? 'nav-link active simulateur' : 'nav-link simulateur'}>Simulateur</NavLink>
+            {(user?.role === 'admin' || user?.permissions?.canAccessSimulator) && (
+              <NavLink to="/simulator" className={({ isActive }) => isActive ? 'nav-link active simulateur' : 'nav-link simulateur'}>Simulateur</NavLink>
+            )}
+            {user?.role === 'admin' && (
+              <NavLink to="/admin" className={({ isActive }) => isActive ? 'nav-link active admin' : 'nav-link admin'}>
+                <Shield className="w-4 h-4 mr-1 inline-block" />
+                Admin
+              </NavLink>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-4">
@@ -222,7 +236,10 @@ function Header() {
               </Button>
             </>
           ) : (
-            <span className="text-sm text-gray-600 dark:text-gray-300">Bonjour, {user?.name || 'Utilisateur'}</span>
+            <span className="text-sm text-gray-600 dark:text-gray-300">
+              {/* Fix: Display firstName if available, fallback to displayName, then generic */}
+              Bonjour, {user?.firstName ? user.firstName : (user?.displayName || 'Utilisateur')}
+            </span>
           )}
           <NotificationBell />
           {/* Removed Dark Mode Toggle Button */}

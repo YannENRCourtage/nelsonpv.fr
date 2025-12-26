@@ -45,10 +45,20 @@ const ProjectContext = createContext({
  * - page Client & Projet  => project + updateProject
  */
 export function ProjectProvider({ children }) {
-  const [projects, setProjects] = useState(() => loadAllProjectsFromLS());
+  const [projects, _setProjects] = useState(() => loadAllProjectsFromLS());
   const [project, _setProject] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Wrapper for setProjects that automatically syncs to localStorage
+  const setProjects = useCallback((updater) => {
+    _setProjects((prev) => {
+      const newProjects = typeof updater === 'function' ? updater(prev) : updater;
+      // Sync to localStorage immediately
+      saveAllProjectsToLS(newProjects);
+      return newProjects;
+    });
+  }, []);
 
   // Charger les projets depuis l'API au montage
   useEffect(() => {
@@ -81,7 +91,6 @@ export function ProjectProvider({ children }) {
             if (successCount === missingInApi.length) {
               const updatedApiProjects = await apiService.getProjects();
               setProjects(updatedApiProjects);
-              saveAllProjectsToLS(updatedApiProjects);
             } else {
               console.warn("Migration incomplète. Conservation du cache local pour éviter la perte de données.");
               // On ne fait rien, on garde les données locales chargées au démarrage
@@ -89,7 +98,6 @@ export function ProjectProvider({ children }) {
           } else {
             // Pas de migration nécessaire, on prend la vérité serveur
             setProjects(apiProjects);
-            saveAllProjectsToLS(apiProjects);
           }
         }
       } catch (err) {
@@ -101,13 +109,13 @@ export function ProjectProvider({ children }) {
       }
     };
     fetchProjects();
-  }, []);
+  }, [setProjects]);
 
   // Écouter les changements du localStorage (sync entre onglets)
   useEffect(() => {
     const handleStorageChange = () => {
       const local = loadAllProjectsFromLS();
-      setProjects(local);
+      _setProjects(local); // Use _setProjects to avoid triggering another save
     };
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('projectsUpdated', handleStorageChange);
@@ -132,70 +140,89 @@ export function ProjectProvider({ children }) {
   }, []);
 
   /** Sauvegarde (API + LS backup) */
+  /** Sauvegarde (API + LS backup) */
   const saveProject = useCallback(async () => {
-    if (!project || !project.id) return;
+    if (!project) return;
 
     // 1. Sauvegarde optimiste dans LS
     const all = loadAllProjectsFromLS();
-    const idx = all.findIndex((x) => x.id === project.id);
-    const updatedProject = { ...project };
-    if (idx >= 0) all[idx] = updatedProject;
-    else all.push(updatedProject);
-    saveAllProjectsToLS(all);
-    setProjects(all);
+    // Si pas d'ID (nouveau projet), on génère un ID temporaire pour le LS si besoin, 
+    // ou on attend la réponse API. Ici on suppose que le composant a déjà mis un ID ou non.
+    // Si pas d'ID, on ne peut pas vraiment sauvegarder dans LS de manière fiable pour la réhydratation
+    // sans créer de doublons.
 
-    // 2. Sauvegarde API
+    // MAIS, la logique existante suppose project.id existant.
+    // Si c'est un nouveau projet, il faut peut-être le créer d'abord.
+
+    // --- Correction : Gestion des erreurs et feedback ---
     try {
-      // Vérifier si le projet existe déjà (via GET ou liste)
-      // Pour simplifier, on tente un GET. Si 404 -> CREATE, sinon UPDATE
-      // Note: On pourrait optimiser en vérifiant la liste 'projects' mais elle peut être stale
-      try {
-        await apiService.getProject(project.id);
-        // Si pas d'erreur, il existe -> UPDATE
-        await apiService.updateProject(project.id, project);
-      } catch (e) {
-        // Si erreur (ex: 404), on suppose qu'il n'existe pas -> CREATE
-        await apiService.createProject(project);
+      let projectId = project.id;
+      let savedProject = { ...project };
+
+      // 2. Sauvegarde API
+      // On tente d'abord l'API pour avoir la vérité terrain (et l'ID généré si création)
+      if (!projectId || projectId === 'new') {
+        // CREATION
+        console.log("Creating new project via API...");
+        const created = await apiService.createProject(project);
+        console.log("Project created:", created);
+
+        savedProject = { ...project, ...created }; // Récupère l'ID et les timestamps
+        projectId = created.id;
+
+        // Mise à jour du state local pour refléter l'ID serveur
+        // Cela évite de recréer le projet au prochain 'save'
+        setProject(prev => ({ ...prev, ...created }));
+      } else {
+        // UPDATE ou CREATION si inexistant (upsert)
+        try {
+          await apiService.updateProject(projectId, project);
+        } catch (e) {
+          // Fallback: si l'update échoue (ex: document supprimé ou inexistant), on le recrée
+          console.warn("Update failed, trying create (upsert):", e);
+          await apiService.createProject(project);
+        }
       }
 
-      // 3. Créer/Mettre à jour le contact dans le CRM
+      // 3. Sauvegarde Contact (Best effort)
       try {
-        // Créer un contact à partir des données du projet
         const contactData = {
-          name: [project.firstName, project.name].filter(Boolean).join(' ').trim() || 'Client sans nom',
-          company: null, // Optionnel
-          email: project.email || null,
-          phone: project.phone || null,
-          city: project.city || null,
-          status: project.status || 'Nouveau',
-          projectId: project.id,
+          name: [savedProject.firstName, savedProject.name].filter(Boolean).join(' ').trim() || 'Client sans nom',
+          company: null,
+          email: savedProject.email || null,
+          phone: savedProject.phone || null,
+          city: savedProject.city || null,
+          status: savedProject.status || 'Nouveau',
+          projectId: projectId,
         };
 
-        // Vérifier si un contact existe déjà pour ce projet
         const allContacts = await apiService.getContacts();
-        const existingContact = allContacts.find(c => c.projectId === project.id);
+        const existingContact = allContacts.find(c => c.projectId === projectId);
 
         if (existingContact) {
-          // Mettre à jour le contact existant
           await apiService.updateContact(existingContact.id, contactData);
         } else {
-          // Créer un nouveau contact
           await apiService.createContact(contactData);
         }
       } catch (contactError) {
-        console.error("Erreur lors de la sauvegarde du contact dans le CRM:", contactError);
-        // On ne bloque pas si l'enregistrement du contact échoue
+        console.error("Erreur sauvegarde contact (non-bloquant):", contactError);
       }
 
-      // Recharger la liste pour être sûr que l'affichage est synchronisé
-      const refreshed = await apiService.getProjects();
-      setProjects(refreshed);
-      saveAllProjectsToLS(refreshed);
+      // 4. Mise à jour du Cache Local (LS) et Liste
+      // On recharge la liste officielle depuis le serveur pour être sûr
+      const refreshedProjects = await apiService.getProjects();
+      setProjects(refreshedProjects);
+      saveAllProjectsToLS(refreshedProjects);
+
+      // Feedback succès (si géré par le composant)
+      return savedProject;
+
     } catch (err) {
-      console.error("API Save failed:", err);
-      // Pas grave, on a le backup LS
+      console.error("CRITICAL API SAVE FAILURE:", err);
+      // On propage l'erreur pour que l'UI puisse afficher un toast d'erreur
+      throw err;
     }
-  }, [project]);
+  }, [project, setProject]);
 
   const value = useMemo(
     () => ({

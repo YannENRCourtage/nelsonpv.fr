@@ -20,33 +20,32 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 /**
- * List of known users from Firebase Auth (from screenshot)
- * Add or modify as needed
+ * List of known users from Firebase Auth
  */
 const knownUsers = [
     {
-        uid: "Og8h1VmYpkRc5t4t8CogJdnGi...", // Replace with actual UIDs from Firebase console
+        uid: "FZIPvq1MXYazLSNBPIhMn68wVyv1",
         email: "y.barberis@enr-courtage.fr",
         role: "admin",
         displayName: "Yann Barberis"
     },
     {
-        uid: "3jbpc4feDLpe9cSEur3bPNF8...", // Replace with actual UID
+        uid: "T83pznBTQcVOj1lR7LZiV8JYs9p1",
         email: "contact@enr-courtage.fr",
         role: "admin",
-        displayName: "Contact ENR"
+        displayName: "Contact ENR Courtage"
     },
     {
-        uid: "f2fNmqHWvdLSm93bHN1rdgA...", // Replace with actual UID
-        email: "y.barberis@enr-courtage...",
+        uid: "0g3HTVN7p5O8Xfs7CopdrlkdNI13",
+        email: "n.bachevalier@enr-courtage.fr",
         role: "user",
-        displayName: "Y. Barberis Alt"
+        displayName: "N. Bachevalier"
     },
     {
-        uid: "7t6NvamTtvoXV0TjFmZW8jk...", // Replace with actual UID
-        email: "ca.naviliatl@quantagaz...",
+        uid: "3jpycHcRJqegefS6SBF2KFtJ8wj1",
+        email: "jack.luc@icloud.com",
         role: "user",
-        displayName: "CA Naviliatl"
+        displayName: "Jack Luc"
     }
 ];
 

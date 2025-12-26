@@ -8,7 +8,10 @@ export default function ClientForm() {
 
   useEffect(() => {
     if (user && project && !project.user) {
-      updateProject({ user: user.name });
+      updateProject({
+        user: user.firstName || user.displayName || user.name,
+        createdByFirstName: user.firstName || user.displayName?.split(' ')[0] || user.name
+      });
     }
   }, [user, project, updateProject]);
 

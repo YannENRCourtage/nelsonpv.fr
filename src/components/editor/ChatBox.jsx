@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useAuth } from '../../contexts/AuthContext.jsx';
-import { Button } from "../ui/button.jsx";
-import { Textarea } from "../ui/textarea.jsx";
-import { Send } from "lucide-react";
-import { useProject } from '../../contexts/ProjectContext.jsx'; // Importé
+import React, { useState, useRef, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProject } from '@/contexts/ProjectContext';
+import { createComment } from '@/services/firebase/comments.service';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Send } from 'lucide-react';
 
 export default function ChatBox() {
   const { user } = useAuth();
@@ -18,17 +19,31 @@ export default function ChatBox() {
   // Scroll automatique supprimé à la demande de l'utilisateur
   // useEffect(scrollToBottom, [lines]);
 
-  const send = () => {
+  const send = async () => {
     const t = input.trim();
     if (!t) return;
+
     const newLine = {
-      who: user?.name || "Vous",
+      who: user?.name || user?.displayName || user?.firstName || "Vous",
       text: t,
       timestamp: new Date().toISOString()
     };
 
-    // CORRIGÉ : Sauvegarde les messages dans l'objet projet
+    // 1. Sauvegarde locale (Legacy UI)
     updateProject({ chatLines: [...lines, newLine] });
+
+    // 2. Sauvegarde backend pour Notifications (si projet existant)
+    if (project?.id) {
+      try {
+        // userId fallback
+        const uid = user?.uid || user?.id || 'unknown';
+        const uName = user?.name || user?.displayName || user?.firstName || 'Utilisateur';
+        await createComment(project.id, uid, uName, t);
+      } catch (err) {
+        console.error("Failed to create notification comment:", err);
+      }
+    }
+
     setInput("");
   };
 
