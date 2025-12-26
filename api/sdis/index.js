@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     }
 
     const DEPARTMENTS = {
-        '17': 'https://geo.geoplateforme17.fr/SDIS17/wfs?service=WFS&version=2.0.0&request=GetFeature&typeNames=SDIS17:view_pei&outputFormat=application/json&srsName=EPSG:4326',
+        '17': 'https://api.deci.sdis17.fr/api/v1/peis?format=geojson',
         '84': 'https://api.deci.sdis84.fr/api/v1/peis?format=geojson',
         '81': 'https://api.deci.sdis81.fr/api/v1/peis?format=geojson',
         '64': 'https://datanova.laposte.fr/api/explore/v2.1/catalog/datasets/points-deau-incendie-sdis64/exports/geojson',
