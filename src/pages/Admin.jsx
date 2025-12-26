@@ -156,12 +156,19 @@ export default function Admin() {
         toast({ title: "Succès", description: "Utilisateur créé." });
       }
       setIsModalOpen(false);
+      setIsModalOpen(false);
       fetchUsers();
     } catch (error) {
       console.error("Operation failed:", error);
+
+      let message = error.message || "Une erreur est survenue.";
+      if (error.code === 'auth/email-already-in-use') {
+        message = "Cet e-mail est déjà associé à un compte utilisateur existant (Firebase Auth). Veuillez utiliser un autre e-mail ou supprimer l'utilisateur manuellement via la console Firebase.";
+      }
+
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue.",
+        description: message,
         variant: "destructive"
       });
     }

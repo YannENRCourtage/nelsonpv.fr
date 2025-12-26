@@ -507,12 +507,8 @@ export default function Crm() {
   const handleDeleteProject = async (projectId) => {
     if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce projet ?")) return;
     try {
-      // Delete from Firebase first
       await apiService.deleteProject(projectId);
-
-      // Update context state - context will handle localStorage via setProjects
-      setProjects(currentProjects => currentProjects.filter(p => p.id !== projectId));
-
+      setProjects(prev => prev.filter(p => p.id !== projectId)); // Optimistic UI update
       toast({ title: "Succès", description: "Projet supprimé." });
     } catch (error) {
       console.error('Failed to delete project:', error);

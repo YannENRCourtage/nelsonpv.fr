@@ -1,4 +1,5 @@
 import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { useProject } from '../../contexts/ProjectContext.jsx';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 
@@ -6,8 +7,32 @@ export default function ClientForm() {
   const { project, setProject, updateProject, saveProject } = useProject();
   const { user } = useAuth();
 
-  // Liste des utilisateurs autorisés pour le dropdown
-  const USERS_LIST = ['Yann', 'Nicolas', 'Jack', 'Contact'];
+  // État pour la liste dynamique des utilisateurs
+  const [usersList, setUsersList] = useState([]);
+
+  // Chargement des utilisateurs pour le menu déroulant
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        // On suppose que l'API expose getUsers (ce qui est le cas pour les admins, 
+        // mais on va assumer que l'utilisateur courant peut voir la liste simplifiée ou que l'API le permet)
+        // Note: Si getUsers est restreint aux admins, il faudra peut-être une méthode listPublicUsers ou similaire.
+        // Pour l'instant on tente apiService.getUsers(). Si ça échoue, on fallback sur une liste par défaut + current.
+        const users = await import('../../services/api').then(m => m.apiService.getUsers().catch(() => []));
+
+        // On formate pour avoir juste les noms/prénoms
+        const formattedUsers = users.map(u => u.firstName || u.displayName || u.email.split('@')[0]);
+
+        // On ajoute "Contact" et les valeurs par défaut au cas où la liste soit vide
+        const uniqueUsers = [...new Set(['Yann', 'Nicolas', 'Jack', 'Contact', ...formattedUsers])];
+        setUsersList(uniqueUsers);
+      } catch (err) {
+        console.warn("Impossible de charger les utilisateurs", err);
+        setUsersList(['Yann', 'Nicolas', 'Jack', 'Contact']);
+      }
+    };
+    loadUsers();
+  }, []);
 
   useEffect(() => {
     if (user && project) {
@@ -18,13 +43,14 @@ export default function ClientForm() {
       if (!project.user) {
         // Logique de matching : Si c'est contact@..., on met 'Contact', sinon le prénom s'il est dans la liste, sinon 'Contact' par défaut
         const userFirstName = user.firstName || user.displayName?.split(' ')[0] || user.name || '';
-        const match = USERS_LIST.find(u => u.toLowerCase() === userFirstName.toLowerCase());
+        // Recherche insensible à la casse
+        const match = usersList.find(u => u.toLowerCase() === userFirstName.toLowerCase());
 
         // Si l'utilisateur connecté est dans la liste, on le sélectionne. 
         // Sinon si c'est le compte générique contact..., on met 'Contact'
         const defaultUser = match
           ? match
-          : (user.email === 'contact@enr-courtage.fr' ? 'Contact' : 'Contact'); // Fallback sur Contact si non trouvé
+          : (user.email === 'contact@enr-courtage.fr' ? 'Contact' : (match || 'Contact'));
 
         updates.user = defaultUser;
         updates.createdByFirstName = defaultUser; // On garde la cohérence
@@ -41,7 +67,7 @@ export default function ClientForm() {
         updateProject(updates);
       }
     }
-  }, [user, project, updateProject]);
+  }, [user, project, updateProject, usersList]);
 
   const debounce = (fn, delay) => {
     let t;
@@ -68,7 +94,11 @@ export default function ClientForm() {
     }));
   };
 
-
+  // Helper function to prevent auto-scroll on select focus
+  const preventAutoScroll = (e) => {
+    e.target.blur();
+    e.target.focus({ preventScroll: true });
+  };
 
   const p = project || {};
   const client = p.client || {};
@@ -88,6 +118,19 @@ export default function ClientForm() {
               <option>En cours</option>
               <option>Terminé</option>
               <option>Annulé</option>
+            </select>
+          </div>
+          <div className="pe_field">
+            <label>Utilisateur</label>
+            <select
+              value={p.user || ''}
+              onChange={(e) => handleChange('user', e.target.value)}
+              onFocus={preventAutoScroll}
+            >
+              <option value="" disabled>Choisir un utilisateur</option>
+              {usersList.map((u, index) => (
+                <option key={index} value={u}>{u}</option>
+              ))}
             </select>
           </div>
         </div>

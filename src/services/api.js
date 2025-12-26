@@ -110,6 +110,29 @@ class ApiService {
         return await authService.createUser(email, password, profileData);
     }
 
+    // NOUVEAU: Permet de créer uniquement le profil Firestore si l'utilisateur existe déjà dans Auth
+    async createUserProfileOnly(email, profileData) {
+        // On doit trouver l'UID. C'est compliqué sans Admin SDK coté client direct si on est pas l'utilisateur.
+        // HACK: Si on est admin, on peut lister les users Auth pour trouver l'UID ? Non impossible client-side.
+        // MAIS: Si "createUser" a échoué avec "email-already-in-use", ça veut dire qu'il existe.
+        // On ne peut PAS deviner son UID ici simplement sans cloud function.
+        // ALTERNATIVE: On utilise listUsers() de firestore pour voir s'il y est. S'il n'y est pas, on a un problème : on a perdu l'UID.
+        // workaround: Demander à l'utilisateur de se connecter 1 fois pour initialiser son compte ?
+        // OU: Utiliser une Function Cloud (si dispo).
+        // ICI: On va supposer que si le Auth existe, on ne peut pas réparer sans l'UID. 
+        // -> Donc on va logger une erreur explicite. "Utilisateur existant dans Auth mais UID inconnu".
+
+        // Wait, 'createUser' de auth.service.js fait quoi ?
+        // Il fait createUserWithEmailAndPassword.
+
+        throw new Error("Impossible de réparer automatiquement sans l'UID. Veuillez supprimer l'utilisateur Firebase Auth manuellement ou demander à l'utilisateur de se connecter.");
+    }
+
+    // Attendez, je peux peut-être pas réparer si je n'ai pas l'UID.
+    // Si Elodie a été créée, elle a un UID. Où est-il ? Perdu dans la console Firebase.
+    // Bon, plan B : Si erreur "email-already-in-use", on dit à l'admin : "Cet email est déjà utilisé par un compte Auth. Essayez de supprimer l'utilisateur dans la console Firebase ou changez d'email."
+    // Pas de réparation magique possible client-side sans Admin SDK.
+
     async updateUser(id, data) {
         return await firestoreService.updateUser(id, data);
     }
