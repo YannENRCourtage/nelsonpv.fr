@@ -6,12 +6,40 @@ export default function ClientForm() {
   const { project, setProject, updateProject, saveProject } = useProject();
   const { user } = useAuth();
 
+  // Liste des utilisateurs autorisés pour le dropdown
+  const USERS_LIST = ['Yann', 'Nicolas', 'Jack', 'Contact'];
+
   useEffect(() => {
-    if (user && project && !project.user) {
-      updateProject({
-        user: user.firstName || user.displayName || user.name,
-        createdByFirstName: user.firstName || user.displayName?.split(' ')[0] || user.name
-      });
+    if (user && project) {
+      const updates = {};
+      let hasUpdates = false;
+
+      // 1. Initialiser l'Utilisateur par défaut
+      if (!project.user) {
+        // Logique de matching : Si c'est contact@..., on met 'Contact', sinon le prénom s'il est dans la liste, sinon 'Contact' par défaut
+        const userFirstName = user.firstName || user.displayName?.split(' ')[0] || user.name || '';
+        const match = USERS_LIST.find(u => u.toLowerCase() === userFirstName.toLowerCase());
+
+        // Si l'utilisateur connecté est dans la liste, on le sélectionne. 
+        // Sinon si c'est le compte générique contact..., on met 'Contact'
+        const defaultUser = match
+          ? match
+          : (user.email === 'contact@enr-courtage.fr' ? 'Contact' : 'Contact'); // Fallback sur Contact si non trouvé
+
+        updates.user = defaultUser;
+        updates.createdByFirstName = defaultUser; // On garde la cohérence
+        hasUpdates = true;
+      }
+
+      // 2. Initialiser le Statut par défaut
+      if (!project.status) {
+        updates.status = 'Nouveau';
+        hasUpdates = true;
+      }
+
+      if (hasUpdates) {
+        updateProject(updates);
+      }
     }
   }, [user, project, updateProject]);
 
@@ -55,7 +83,8 @@ export default function ClientForm() {
         <div className="pe_clientStatus">
           <div className="pe_field">
             <label>Statut</label>
-            <select value={p.status || 'En cours'} onChange={(e) => handleChange('status', e.target.value)} onFocus={preventAutoScroll}>
+            <select value={p.status || 'Nouveau'} onChange={(e) => handleChange('status', e.target.value)} onFocus={preventAutoScroll}>
+              <option>Nouveau</option>
               <option>En cours</option>
               <option>Terminé</option>
               <option>Annulé</option>
@@ -148,6 +177,19 @@ export default function ClientForm() {
               onChange={(e) => handleChange('zip', e.target.value)}
 
             />
+          </div>
+          <div className="pe_clientUser">
+            <label>Utilisateur</label>
+            <select
+              value={p.user || ''}
+              onChange={(e) => handleChange('user', e.target.value)}
+              className="pe_userSelect"
+            >
+              <option value="" disabled>Sélectionner...</option>
+              {USERS_LIST.map(u => (
+                <option key={u} value={u}>{u}</option>
+              ))}
+            </select>
           </div>
           <div className="pe_field">
             <label>Ville</label>

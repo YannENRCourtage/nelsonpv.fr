@@ -488,8 +488,7 @@ export default function Crm() {
       await apiService.deleteProject(projectId);
 
       // Update context state - context will handle localStorage via setProjects
-      const updatedProjects = projects.filter(p => p.id !== projectId);
-      setProjects(updatedProjects);
+      setProjects(currentProjects => currentProjects.filter(p => p.id !== projectId));
 
       toast({ title: "Succès", description: "Projet supprimé." });
     } catch (error) {

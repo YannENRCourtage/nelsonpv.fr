@@ -165,12 +165,23 @@ function Header() {
 
   const handleSave = async () => {
     if (saveProject) {
-      await saveProject();
-      toast({
-        ...toastStyle, // Ajout du style
-        title: "Projet sauvegardé !",
-        description: "Vos modifications ont été enregistrées avec succès."
-      })
+      try {
+        await saveProject();
+        toast({
+          ...toastStyle,
+          title: "Projet sauvegardé !",
+          description: "Vos modifications ont été enregistrées avec succès.",
+          variant: "default"
+        });
+      } catch (error) {
+        console.error("Erreur sauvegarde projet:", error);
+        toast({
+          ...toastStyle,
+          title: "Erreur de sauvegarde",
+          description: "Impossible de sauvegarder le projet. Vérifiez votre connexion.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
