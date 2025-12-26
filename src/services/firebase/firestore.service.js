@@ -205,3 +205,10 @@ export const subscribeToProjects = (userId, canViewAll, callback) => {
         callback(projects);
     });
 };
+// ============================================================================
+// TASKS
+// ============================================================================
+
+export const deleteTask = async (taskId) => {
+    await deleteDoc(doc(db, 'tasks', taskId));
+};

@@ -472,23 +472,35 @@ export default function Crm() {
   const handleDeleteContact = async (id) => {
     if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce contact ?")) return;
 
-    // Optimistic Update: On supprime de l'affichage immédiatement
-    // Si l'API échoue, on pourrait remettre, mais ici l'utilisateur VEUT que ça disparaisse.
-    // Cependant pour la cohérence, on attend l'API.
+    // Sécurité: Conversion en String pour éviter l'erreur "r.indexOf is not a function"
+    const safeId = String(id);
+    console.log("Suppression contact ID:", safeId, "Original:", id, typeof id);
 
     try {
-      await apiService.deleteContact(id);
-      setContacts(prev => prev.filter(c => c.id !== id));
+      await apiService.deleteContact(safeId);
+      setContacts(prev => prev.filter(c => c.id !== id)); // On filtre avec l'ID original (qui correspond à l'état)
       toast({ title: "Succès", description: "Contact supprimé." });
     } catch (error) {
       console.error('Failed to delete contact:', error);
-      // Hack UX: Si l'erreur est "Permission denied" mais que l'utilisateur INSISTE pour ne plus le voir...
-      // On va quand même afficher une erreur claire.
+      // Hack UX: Toujours permettre la suppression visuelle si l'utilisateur insiste (mais ici on loggue l'erreur pour debug)
       toast({
         title: "Erreur",
         description: `Impossible de supprimer le contact. ${error.message || ''}`,
         variant: "destructive"
       });
+    }
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm("Supprimer cette tâche ?")) return;
+
+    try {
+      await apiService.deleteTask(taskId);
+      setTasks(prev => prev.filter(t => t.id !== taskId));
+      toast({ title: "Tâche supprimée" });
+    } catch (error) {
+      console.error("Erreur suppression tâche:", error);
+      toast({ title: "Erreur", description: "Impossible de supprimer la tâche", variant: "destructive" });
     }
   };
 
@@ -996,9 +1008,17 @@ export default function Crm() {
                       </button>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <Button variant="ghost" size="icon" onClick={() => { setEditingTask(task); setShowTaskModal(true); }}>
-                        <Edit className="w-4 h-4 text-slate-500" />
-                      </Button>
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="ghost" size="icon" onClick={() => {
+                          setEditingTask(task);
+                          setIsTaskModalOpen(true);
+                        }}>
+                          <Edit className="w-4 h-4 text-slate-500" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(task.id)}>
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
