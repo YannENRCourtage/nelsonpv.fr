@@ -21,8 +21,9 @@ export const ProtectedRoute = ({ children, requiredRole, requiredPermission }) =
     }
 
     if (requiredPermission) {
-        const hasPermission = user?.permissions?.[requiredPermission] === true || user?.role === 'admin';
+        const hasPermission = user?.permissions?.[requiredPermission] === true;
         if (!hasPermission) {
+            console.log(`Access denied: User ${user?.email} does not have permission ${requiredPermission}`, user?.permissions);
             return <Navigate to="/" replace />;
         }
     }

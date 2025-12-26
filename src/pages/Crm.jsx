@@ -627,28 +627,28 @@ export default function Crm() {
               ))}
           </div>
         </div>
-      </div>
 
-      {/* Activités récentes */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-        <h2 className="text-xl font-bold text-slate-900 mb-6">Activités récentes</h2>
+        {/* Activités récentes */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <h2 className="text-xl font-bold text-slate-900 mb-6">Activités récentes</h2>
 
-        <div className="space-y-4">
-          {recentActivities.map((activity) => (
-            <div key={activity.id} className="flex items-start gap-3 group hover:bg-slate-50 rounded-lg p-3 transition-all duration-200">
-              <div className={`${activity.color} w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0`}>
-                {activity.avatar}
+          <div className="space-y-4">
+            {recentActivities.map((activity) => (
+              <div key={activity.id} className="flex items-start gap-3 group hover:bg-slate-50 rounded-lg p-3 transition-all duration-200">
+                <div className={`${activity.color} w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0`}>
+                  {activity.avatar}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-slate-900">
+                    <span className="font-semibold">{activity.name}</span>{' '}
+                    <span className="text-slate-600">{activity.action}</span>
+                  </p>
+                  <p className="text-sm font-medium text-slate-700 mt-1 truncate">{activity.target}</p>
+                  <p className="text-xs text-slate-500 mt-1">{activity.time}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-slate-900">
-                  <span className="font-semibold">{activity.name}</span>{' '}
-                  <span className="text-slate-600">{activity.action}</span>
-                </p>
-                <p className="text-sm font-medium text-slate-700 mt-1 truncate">{activity.target}</p>
-                <p className="text-xs text-slate-500 mt-1">{activity.time}</p>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
