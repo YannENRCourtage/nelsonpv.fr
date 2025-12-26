@@ -553,7 +553,7 @@ export default function Crm() {
 
   // Rendu du Dashboard
   const renderDashboard = () => (
-    <>
+    <div>
       {/* KPIs Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {kpis.map((kpi, index) => {
@@ -652,7 +652,6 @@ export default function Crm() {
         </div>
       </div>
     </div>
-    </>
   );
 
   // Rendu de la liste des Contacts
