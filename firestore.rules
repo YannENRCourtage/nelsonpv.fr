@@ -16,28 +16,18 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.canViewAllProjects == true;
     }
     
-    // Users collection - admin only for writes, authenticated for reads (own profile) or admin (all)
+    // RÈGLES TEMPORAIRES DE DEBUG - Permettre lecture à tous authentifiés
+    // TODO: Revenir aux règles strictes une fois le problème identifié
     match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow read: if isAuthenticated(); // TEMPORAIRE - pour debug connexion Yann
       allow write: if isAdmin();
     }
     
     // Contacts collection
     match /contacts/{contactId} {
-      allow read: if isAuthenticated() && 
-                     (canViewAllProjects() || resource.data.createdBy == request.auth.uid);
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && 
-                                (isAdmin() || resource.data.createdBy == request.auth.uid);
-    }
-    
-    // Projects collection
-    match /projects/{projectId} {
-      allow read: if isAuthenticated() && 
-                     (canViewAllProjects() || resource.data.createdBy == request.auth.uid);
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && 
-                                (isAdmin() || resource.data.createdBy == request.auth.uid);
+      allow update, delete: if isAuthenticated(); // COLLABORATIVE MODE
     }
     
     // Comments collection - anyone can read, only author can update/delete
@@ -55,6 +45,27 @@ service cloud.firestore {
       allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow delete: if isAuthenticated() && 
                        (isAdmin() || resource.data.userId == request.auth.uid);
+    }
+
+    // Projects collection
+    match /projects/{projectId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated(); // COLLABORATIVE MODE
+    }
+
+    // Tasks collection
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated();
+    }
+
+    // Activities collection
+    match /activities/{activityId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
     }
   }
 }

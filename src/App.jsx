@@ -16,7 +16,24 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import DevErrorBoundary from './components/DevErrorBoundary.jsx';
 
 function AppContent() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+
+  // FORCE ROLE UPDATE FOR "Contact ENR COURTAGE"
+  useEffect(() => {
+    const forceDowngrade = async () => {
+      if (user && user.email === 'contact@enr-courtage.fr' && user.role === 'admin') {
+        console.log("Forcing downgrade for Contact ENR COURTAGE...");
+        try {
+          const { apiService } = await import('./services/api');
+          await apiService.updateUser(user.id, { role: 'user' });
+          console.log("Downgrade successful. Please refresh.");
+        } catch (err) {
+          console.error("Downgrade failed", err);
+        }
+      }
+    };
+    forceDowngrade();
+  }, [user]);
 
   return (
     <DndProvider backend={HTML5Backend}>

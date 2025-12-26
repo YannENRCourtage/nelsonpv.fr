@@ -69,36 +69,19 @@ export function ProjectProvider({ children }) {
         const localProjects = loadAllProjectsFromLS();
 
         if (Array.isArray(apiProjects)) {
-          // MIGRATION : Vérifier s'il y a des projets locaux qui ne sont pas dans l'API
-          // (Cas du premier lancement après déploiement ou données hors ligne)
+          // MIGRATION : DÉSACTIVÉE pour éviter la réapparition des projets supprimés
+          // On fait confiance à l'API comme source de vérité.
+          /*
           const missingInApi = localProjects.filter(lp => !apiProjects.find(ap => ap.id === lp.id));
 
           if (missingInApi.length > 0) {
             console.log("Migration : Envoi des projets locaux vers l'API...", missingInApi);
-            let successCount = 0;
-            // On les envoie un par un
-            for (const p of missingInApi) {
-              try {
-                // On s'assure que l'ID est présent, sinon l'API le générera (mais on veut garder l'ID local si possible)
-                await apiService.createProject(p);
-                successCount++;
-              } catch (e) {
-                console.error("Erreur migration projet:", p.id, e);
-              }
-            }
-
-            // On recharge la liste définitive depuis l'API SEULEMENT si tout a réussi
-            if (successCount === missingInApi.length) {
-              const updatedApiProjects = await apiService.getProjects();
-              setProjects(updatedApiProjects);
-            } else {
-              console.warn("Migration incomplète. Conservation du cache local pour éviter la perte de données.");
-              // On ne fait rien, on garde les données locales chargées au démarrage
-            }
-          } else {
-            // Pas de migration nécessaire, on prend la vérité serveur
-            setProjects(apiProjects);
+            // ... (code supprimé pour éviter la résurrection)
           }
+          */
+
+          // On prend la vérité serveur
+          setProjects(apiProjects);
         }
       } catch (err) {
         console.error("Failed to fetch projects from API:", err);

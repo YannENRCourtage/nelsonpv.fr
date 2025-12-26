@@ -35,7 +35,8 @@ class ApiService {
     async getProjects() {
         try {
             const user = await this._getCurrentUser();
-            const canViewAll = user.role === 'admin' || user.permissions?.canViewAllProjects;
+            // ALLOW ALL USERS TO SEE EVERYTHING (Universal Access)
+            const canViewAll = true;
             return await firestoreService.listProjects(user.uid, canViewAll);
         } catch (error) {
             console.error("Error getting projects:", error);
@@ -67,7 +68,8 @@ class ApiService {
     async getContacts() {
         try {
             const user = await this._getCurrentUser();
-            const canViewAll = user.role === 'admin' || user.permissions?.canViewAllProjects;
+            // ALLOW ALL USERS TO SEE EVERYTHING (Universal Access)
+            const canViewAll = true;
             return await firestoreService.listContacts(user.uid, canViewAll);
         } catch (error) {
             console.error("Error getting contacts:", error);
@@ -90,6 +92,43 @@ class ApiService {
 
     async deleteContact(id) {
         return await firestoreService.deleteContact(id);
+    }
+
+    // ============================================================================
+    // ACTIVITIES & TASKS
+    // ============================================================================
+
+    async getTasks() {
+        try {
+            const user = await this._getCurrentUser();
+            // ALLOW ALL USERS TO SEE EVERYTHING (Universal Access)
+            const canViewAll = true;
+            return await firestoreService.listTasks(user.uid, canViewAll);
+        } catch (error) {
+            console.error("Error getting tasks:", error);
+            return [];
+        }
+    }
+
+    async createTask(data) {
+        const user = await this._getCurrentUser();
+        return await firestoreService.createTask(data, user.uid);
+    }
+
+    async updateTask(id, data) {
+        return await firestoreService.updateTask(id, data);
+    }
+
+    async deleteTask(taskId) {
+        return await firestoreService.deleteTask(taskId);
+    }
+
+    async logActivity(data) {
+        return await firestoreService.logActivity(data);
+    }
+
+    async getActivities(limit = 20) {
+        return await firestoreService.listActivities(limit);
     }
 
     // ============================================================================

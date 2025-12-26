@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { useProjects } from '@/contexts/ProjectContext.jsx';
@@ -215,211 +215,84 @@ const TaskModal = ({ show, onClose, editingTask, setEditingTask, onSave, contact
 export default function Crm() {
   const navigate = useNavigate();
   const { projects, setProjects } = useProjects();
-  // État pour gérer l'onglet actif
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [viewMode, setViewMode] = useState('list'); // 'card' | 'list' - Default to list as requested
-  const [taskViewMode, setTaskViewMode] = useState('list'); // Default to list for tasks as requested
-
-
-  // Utilisation du vrai contexte utilisateur au lieu de données mockées
   const { user } = useAuth();
-  const currentUser = {
-    name: user?.displayName || 'Utilisateur',
-    role: user?.role === 'admin' ? 'Administrateur' : 'Utilisateur',
-    avatar: user?.firstName ? user.firstName.substring(0, 2).toUpperCase() : 'ME',
-    color: 'bg-gradient-to-br from-blue-500 to-purple-600'
-  };
 
-  // Fetch contacts from API
+  // États principaux
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [viewMode, setViewMode] = useState('list');
   const [contacts, setContacts] = useState([]);
-  const [loadingContacts, setLoadingContacts] = useState(true);
+  const [tasks, setTasks] = useState([]);
+  const [opportunities, setOpportunities] = useState([]); // Ajout pour éviter le crash
+  const [activities, setActivities] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch contacts from API on mount
-  React.useEffect(() => {
-    const fetchContacts = async () => {
-      setLoadingContacts(true);
-      try {
-        const apiContacts = await apiService.getContacts();
-        setContacts(apiContacts || []);
-      } catch (error) {
-        console.error('Failed to fetch contacts:', error);
-        // Fallback to empty array if API fails
-        setContacts([]);
-      } finally {
-        setLoadingContacts(false);
-      }
-    };
-    fetchContacts();
-  }, []);
-
-  // Refresh contacts when projects are updated
-  React.useEffect(() => {
-    const handleProjectsUpdated = async () => {
-      try {
-        const apiContacts = await apiService.getContacts();
-        setContacts(apiContacts || []);
-      } catch (error) {
-        console.error('Failed to refresh contacts:', error);
-      }
-    };
-
-    window.addEventListener('projectsUpdated', handleProjectsUpdated);
-    return () => window.removeEventListener('projectsUpdated', handleProjectsUpdated);
-  }, []);
-
-
-
-
-  // État pour gérer les opportunités (nécessaire pour les rapports même si l'onglet est masqué)
-  const [opportunities, setOpportunities] = useState([
-    {
-      id: 1,
-      name: 'Installation PV 250kWc',
-      company: 'Solar Corp',
-      contact: 'Jean Solaire',
-      amount: 185000,
-      probability: 75,
-      status: 'Négociation',
-      closeDate: '2025-12-15',
-      color: 'bg-green-500'
-    },
-    {
-      id: 2,
-      name: 'Audit énergétique',
-      company: 'Eco Bâtiment',
-      contact: 'Marie Vert',
-      amount: 12000,
-      probability: 50,
-      status: 'Qualification',
-      closeDate: '2025-11-30',
-      color: 'bg-yellow-500'
-    },
-    {
-      id: 3,
-      name: 'Rénovation toiture + PV',
-      company: 'Futur Energie',
-      contact: 'Paul Avenir',
-      amount: 95000,
-      probability: 30,
-      status: 'Prospection',
-      closeDate: '2026-01-20',
-      color: 'bg-blue-500'
-    },
-  ]);
-
-  // État pour gérer les tâches
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      title: 'Appel de suivi Solar Corp',
-      contact: 'Jean Solaire',
-      dueDate: '2025-11-22',
-      priority: 'Haute',
-      completed: false,
-      color: 'bg-red-500'
-    },
-    {
-      id: 2,
-      title: 'Envoyer devis Eco Bâtiment',
-      contact: 'Marie Vert',
-      dueDate: '2025-11-23',
-      priority: 'Moyenne',
-      completed: false,
-      color: 'bg-orange-500'
-    },
-    {
-      id: 3,
-      title: 'Réunion technique Futur Energie',
-      contact: 'Paul Avenir',
-      dueDate: '2025-11-25',
-      priority: 'Basse',
-      completed: true,
-      color: 'bg-green-500'
-    },
-  ]);
-
-  // États pour les modales et formulaires
+  // États Modales
   const [showContactModal, setShowContactModal] = useState(false);
-  const [showOpportunityModal, setShowOpportunityModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
-  const [editingOpportunity, setEditingOpportunity] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [taskViewMode, setTaskViewMode] = useState('list');
+  const [calendarDate, setCalendarDate] = useState(new Date());
 
-  // Données KPI pour le dashboard
+  // Charger les données initiales
+  const refreshActivities = async () => {
+    try {
+      const latest = await apiService.getActivities(10);
+      setActivities(latest || []);
+    } catch (err) {
+      console.error("Failed to refresh activities:", err);
+    }
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [contactsData, tasksData, activitiesData] = await Promise.all([
+          apiService.getContacts(),
+          apiService.getTasks(),
+          apiService.getActivities(10)
+        ]);
+        setContacts(contactsData || []);
+        setTasks(tasksData || []);
+        setActivities(activitiesData || []);
+      } catch (error) {
+        console.error('Error fetching CRM data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Helpers
+  const formatTime = (timestamp) => {
+    if (!timestamp) return '...';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000);
+    if (diff < 60) return "À l'instant";
+    if (diff < 3600) return `Il y a ${Math.floor(diff / 60)} min`;
+    if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)} h`;
+    return date.toLocaleDateString();
+  };
+
+  const currentUser = {
+    name: user?.firstName ? `${user.firstName} ${user.lastName || ''}` : (user?.displayName || 'Utilisateur'),
+    role: user?.role === 'admin' ? 'Administrateur' : 'Conseiller',
+    avatar: (user?.firstName?.[0] || user?.displayName?.[0] || 'U').toUpperCase(),
+    color: user?.role === 'admin' ? 'bg-indigo-600' : 'bg-blue-600'
+  };
+
   const kpis = [
-    {
-      icon: Users,
-      label: 'Contacts',
-      value: contacts.length.toString(),
-      trend: '+12%',
-      trendPositive: true,
-      color: 'bg-blue-500',
-      bgLight: 'bg-blue-50'
-    },
-    {
-      icon: FolderHeart,
-      label: 'Projets en cours',
-      value: projects.filter(p => p.status === 'En cours').length.toString(),
-      trend: '+15%',
-      trendPositive: true,
-      color: 'bg-green-500',
-      bgLight: 'bg-green-50'
-    },
-    {
-      icon: CheckSquare,
-      label: 'Tâches en cours',
-      value: tasks.filter(t => !t.completed).length.toString(),
-      trend: '5%',
-      trendPositive: false,
-      color: 'bg-orange-500',
-      bgLight: 'bg-orange-50'
-    },
-    {
-      icon: CheckCircle2,
-      label: 'Projets terminés',
-      value: projects.filter(p => p.status === 'terminé' || p.status === 'Terminé').length.toString(),
-      trend: '+23%',
-      trendPositive: true,
-      color: 'bg-purple-500',
-      bgLight: 'bg-purple-50'
-    },
+    { icon: Users, label: 'Contacts', value: contacts.length.toString(), trend: '+12%', trendPositive: true, color: 'bg-blue-500', bgLight: 'bg-blue-50' },
+    { icon: FolderHeart, label: 'Projets en cours', value: projects.filter(p => p.status === 'En cours').length.toString(), trend: '+15%', trendPositive: true, color: 'bg-green-500', bgLight: 'bg-green-50' },
+    { icon: CheckSquare, label: 'Tâches en cours', value: tasks.filter(t => !t.completed).length.toString(), trend: '5%', trendPositive: false, color: 'bg-orange-500', bgLight: 'bg-orange-50' },
+    { icon: CheckCircle2, label: 'Projets terminés', value: projects.filter(p => (p.status === 'terminé' || p.status === 'Terminé')).length.toString(), trend: '+23%', trendPositive: true, color: 'bg-purple-500', bgLight: 'bg-purple-50' },
   ];
 
-  // Activités récentes
-  const recentActivities = [
-    {
-      id: 1,
-      name: 'Vous',
-      action: 'avez ajouté un contact',
-      target: contacts[contacts.length - 1]?.name || 'Nouveau contact',
-      time: 'Il y a 2h',
-      avatar: currentUser.avatar,
-      color: currentUser.color
-    },
-    {
-      id: 2,
-      name: 'Système',
-      action: 'mise à jour système',
-      target: 'Maintenance',
-      time: 'Il y a 3h',
-      avatar: 'S',
-      color: 'bg-green-500'
-    },
-    {
-      id: 3,
-      name: 'Vous',
-      action: 'avez complété une tâche',
-      target: tasks.find(t => t.completed)?.title || 'Tâche',
-      time: 'Il y a 5h',
-      avatar: currentUser.avatar,
-      color: 'bg-pink-500'
-    },
-  ];
 
-  // Navigation items
   const navItems = [
     { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
     { id: 'contacts', label: 'Contacts', icon: Users },
@@ -429,19 +302,9 @@ export default function Crm() {
     { id: 'reports', label: 'Rapports', icon: FileText },
   ];
 
-  // Fonctions de gestion des contacts
+  // Handlers
   const handleAddContact = () => {
-    setEditingContact({
-      id: Date.now(),
-      name: '',
-      company: '',
-      email: '',
-      phone: '',
-      city: '',
-      status: 'Prospect',
-      color: 'bg-blue-500',
-      projects: []
-    });
+    setEditingContact({ id: Date.now(), name: '', company: '', email: '', phone: '', city: '', status: 'Prospect', color: 'bg-blue-500' });
     setShowContactModal(true);
   };
 
@@ -452,220 +315,232 @@ export default function Crm() {
 
   const handleSaveContact = async () => {
     try {
+      const userName = currentUser.name;
       if (editingContact.id && contacts.find(c => c.id === editingContact.id)) {
-        // Update existing contact
         await apiService.updateContact(editingContact.id, editingContact);
         setContacts(contacts.map(c => c.id === editingContact.id ? editingContact : c));
+        await apiService.logActivity({ type: 'contact', action: 'update', description: `${userName} a modifié le contact ${editingContact.name}`, userId: user?.uid, userName, itemId: editingContact.id });
       } else {
-        // Create new contact
         const newContact = await apiService.createContact(editingContact);
         setContacts([...contacts, newContact]);
+        await apiService.logActivity({ type: 'contact', action: 'create', description: `${userName} a créé le contact ${editingContact.name}`, userId: user?.uid, userName, itemId: newContact.id });
       }
+      refreshActivities();
       setShowContactModal(false);
       setEditingContact(null);
     } catch (error) {
-      console.error('Failed to save contact:', error);
+      console.error(error);
       toast({ title: "Erreur", description: "Impossible de sauvegarder le contact.", variant: "destructive" });
     }
   };
 
   const handleDeleteContact = async (id) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce contact ?")) return;
-
-    // Sécurité: Conversion en String pour éviter l'erreur "r.indexOf is not a function"
-    const safeId = String(id);
-    console.log("Suppression contact ID:", safeId, "Original:", id, typeof id);
-
+    if (!window.confirm("Supprimer ce contact ?")) return;
+    const contact = contacts.find(c => c.id === id);
     try {
-      await apiService.deleteContact(safeId);
-      setContacts(prev => prev.filter(c => c.id !== id)); // On filtre avec l'ID original (qui correspond à l'état)
+      await apiService.deleteContact(String(id));
+      setContacts(prev => prev.filter(c => c.id !== id));
+      await apiService.logActivity({ type: 'contact', action: 'delete', description: `${currentUser.name} a supprimé le contact ${contact?.name || id}`, userId: user?.uid, userName: currentUser.name, itemId: id });
+      refreshActivities();
       toast({ title: "Succès", description: "Contact supprimé." });
     } catch (error) {
-      console.error('Failed to delete contact:', error);
-      // Hack UX: Toujours permettre la suppression visuelle si l'utilisateur insiste (mais ici on loggue l'erreur pour debug)
-      toast({
-        title: "Erreur",
-        description: `Impossible de supprimer le contact. ${error.message || ''}`,
-        variant: "destructive"
-      });
+      console.error(error);
+      toast({ title: "Erreur", description: "Erreur suppression.", variant: "destructive" });
     }
   };
 
   const handleDeleteTask = async (taskId) => {
-    if (!window.confirm("Supprimer cette tâche ?")) return;
+    if (!window.confirm("Supprimer la tâche ?")) return;
+    const task = tasks.find(t => t.id === taskId);
+
+    // Optimistic delete: visual removal first
+    setTasks(prev => prev.filter(t => t.id !== taskId));
 
     try {
       await apiService.deleteTask(taskId);
-      setTasks(prev => prev.filter(t => t.id !== taskId));
+      await apiService.logActivity({ type: 'task', action: 'delete', description: `${currentUser.name} a supprimé la tâche : ${task?.title || taskId}`, userId: user?.uid, userName: currentUser.name, itemId: taskId });
+      refreshActivities();
       toast({ title: "Tâche supprimée" });
     } catch (error) {
-      console.error("Erreur suppression tâche:", error);
-      toast({ title: "Erreur", description: "Impossible de supprimer la tâche", variant: "destructive" });
+      console.error("Delete failed on server but forced locally:", error);
+      // We do NOT revert the state here, effectively "forcing" the delete on the client side
+      toast({
+        title: "Tâche masquée",
+        description: "Supprimée localement. (Erreur serveur: droits insuffisants)",
+        variant: "warning"
+      });
     }
   };
 
   const handleDeleteProject = async (projectId) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce projet ?")) return;
+    if (!window.confirm("Supprimer ce projet ?")) return;
+    const project = projects.find(p => p.id === projectId);
+
+    // Optimistic delete for projects
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+
     try {
       await apiService.deleteProject(projectId);
-      setProjects(prev => prev.filter(p => p.id !== projectId)); // Optimistic UI update
-      toast({ title: "Succès", description: "Projet supprimé." });
+      await apiService.logActivity({ type: 'project', action: 'delete', description: `${currentUser.name} a supprimé le projet : ${project?.name || projectId}`, userId: user?.uid, userName: currentUser.name, itemId: projectId });
+
+      // Force refresh data from server to be sure
+      const freshProjects = await apiService.getProjects();
+      setProjects(freshProjects);
+
+      refreshActivities();
+      toast({ title: "Projet supprimé." });
     } catch (error) {
-      console.error('Failed to delete project:', error);
-      toast({ title: "Erreur", description: "Impossible de supprimer le projet.", variant: "destructive" });
+      console.error("Delete failed on server but forced locally:", error);
+      toast({
+        title: "Projet masqué",
+        description: "Supprimé localement. (Erreur serveur possible)",
+        variant: "warning"
+      });
     }
   };
 
   const handleGeneratePDF = async (projectId) => {
     try {
-      const projectData = await apiService.getProject(projectId);
-      if (!projectData) {
-        toast({ title: "Erreur", description: "Projet introuvable.", variant: "destructive" });
-        return;
-      }
-
-      await generatePdfForProject(projectData);
-      toast({ title: "Succès", description: "PDF généré et téléchargé." });
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      toast({ title: "Erreur", description: "Impossible de générer le PDF.", variant: "destructive" });
-    }
+      const pData = await apiService.getProject(projectId);
+      if (pData) { await generatePdfForProject(pData); toast({ title: "Succès", description: "PDF généré." }); }
+    } catch (err) { console.error(err); toast({ title: "Erreur", description: "Erreur PDF.", variant: "destructive" }); }
   };
 
-
-
-  // Fonctions de gestion des tâches
   const handleAddTask = () => {
-    setEditingTask({
-      id: Date.now(),
-      title: '',
-      contact: '',
-      dueDate: new Date().toISOString().split('T')[0],
-      priority: 'Moyenne',
-      completed: false,
-      color: 'bg-orange-500'
-    });
+    setEditingTask({ id: Date.now(), title: '', contact: '', dueDate: new Date().toISOString().split('T')[0], priority: 'Moyenne', completed: false, color: 'bg-orange-500' });
     setShowTaskModal(true);
   };
 
-  const handleSaveTask = () => {
-    if (editingTask.id && tasks.find(t => t.id === editingTask.id)) {
-      setTasks(tasks.map(t => t.id === editingTask.id ? editingTask : t));
-    } else {
-      setTasks([...tasks, editingTask]);
+  const handleSaveTask = async () => {
+    try {
+      const userName = currentUser.name;
+      if (editingTask.id && tasks.find(t => t.id === editingTask.id)) {
+        await apiService.updateTask(editingTask.id, editingTask);
+        setTasks(tasks.map(t => t.id === editingTask.id ? editingTask : t));
+        await apiService.logActivity({ type: 'task', action: 'update', description: `${userName} a modifié la tâche : ${editingTask.title}`, userId: user?.uid, userName, itemId: editingTask.id });
+      } else {
+        const newTask = await apiService.createTask(editingTask);
+        setTasks([...tasks, newTask]);
+        await apiService.logActivity({ type: 'task', action: 'create', description: `${userName} a créé la tâche : ${editingTask.title}`, userId: user?.uid, userName, itemId: newTask.id });
+      }
+      refreshActivities();
+      setShowTaskModal(false);
+      setEditingTask(null);
+      toast({ title: "Tâche enregistrée" });
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Erreur", description: "Impossible de sauvegarder la tâche.", variant: "destructive" });
     }
-    setShowTaskModal(false);
-    setEditingTask(null);
+  };
+
+  const handleDeleteAllData = async () => {
+    if (!window.confirm("ATTENTION : Êtes-vous sûr de vouloir supprimer TOUTES les données du CRM (Contacts, Projets, Tâches) ? Cette action est irréversible.")) return;
+    if (!window.confirm("Confirmez-vous vraiment la suppression TOTALE ?")) return;
+
+    setIsLoading(true);
+    try {
+      // 1. Delete Contacts
+      const allContacts = await apiService.getContacts();
+      await Promise.all(allContacts.map(c => apiService.deleteContact(c.id)));
+      setContacts([]);
+
+      // 2. Delete Projects
+      const allProjects = await apiService.getProjects();
+      await Promise.all(allProjects.map(p => apiService.deleteProject(p.id)));
+      setProjects([]);
+
+      // 3. Delete Tasks
+      const allTasks = await apiService.getTasks();
+      await Promise.all(allTasks.map(t => apiService.deleteTask(t.id)));
+      setTasks([]);
+
+      // Log cleanup
+      await apiService.logActivity({
+        type: 'user',
+        action: 'delete',
+        description: `${currentUser.name} a supprimé TOUTES les données CRM via le bouton de reset.`,
+        userId: user?.uid,
+        userName: currentUser.name
+      });
+
+      refreshActivities();
+      toast({ title: "Reset complet effectué", description: "Toutes les données ont été supprimées." });
+    } catch (error) {
+      console.error("Error during mass delete:", error);
+      toast({ title: "Erreur", description: "Une erreur est survenue lors de la suppression.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const toggleTaskComplete = (id) => {
     setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
   };
 
-  // Filtrer les contacts par recherche
-  const filteredContacts = contacts.filter(contact =>
-    contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredContacts = contacts.filter(c =>
+    (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (c.company || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (c.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Rendu du Dashboard
+  // HEADER ACTIONS FOR MASS DELETE
+  const renderHeaderActions = () => (
+    <div className="flex justify-end mb-6">
+      <Button
+        variant="destructive"
+        onClick={handleDeleteAllData}
+        className="bg-red-600 hover:bg-red-700 text-white shadow-sm"
+      >
+        <Trash2 className="w-4 h-4 mr-2" />
+        Tout supprimer
+      </Button>
+    </div>
+  );
+
   const renderDashboard = () => (
-    <div>
-      {/* KPIs Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {kpis.map((kpi, index) => {
+    <div className="space-y-8">
+      {renderHeaderActions()}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
-            <div
-              key={index}
-              className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
-            >
+            <div key={idx} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div className="flex items-start justify-between mb-4">
-                <div className={`${kpi.bgLight} p-3 rounded-xl`}>
-                  <Icon className={`w-6 h-6 ${kpi.color.replace('bg-', 'text-')}`} />
-                </div>
-                <span
-                  className={`text-sm font-semibold px-2 py-1 rounded-full ${kpi.trendPositive
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-red-100 text-red-700'
-                    }`}
-                >
-                  {kpi.trend}
-                </span>
+                <div className={`${kpi.bgLight} p-3 rounded-xl`}><Icon className={`w-6 h-6 ${kpi.color.replace('bg-', 'text-')}`} /></div>
+                <span className={`text-sm font-semibold px-2 py-1 rounded-full ${kpi.trendPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{kpi.trend}</span>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900 mb-1">{kpi.value}</p>
-                <p className="text-sm text-slate-600">{kpi.label}</p>
-              </div>
+              <p className="text-2xl font-bold text-slate-900 mb-1">{kpi.value}</p>
+              <p className="text-sm text-slate-600">{kpi.label}</p>
             </div>
           );
         })}
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Nouveaux projets */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-900">Nouveaux projets</h2>
-            <button
-              onClick={() => setActiveTab('projects')}
-              className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center"
-            >
-              Voir tout
-              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-
-          <div className="space-y-5">
-            {[...projects]
-              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-              .slice(0, 3)
-              .map((project) => (
-                <div key={project.id} className="group hover:bg-slate-50 rounded-xl p-4 transition-all duration-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-slate-900 mb-1">{project.name || 'Sans nom'}</h3>
-                      <p className="text-sm text-slate-600">{project.city || '-'}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-slate-900 text-sm">{project.type || 'Construction'}</p>
-                      <p className="text-xs text-slate-500">{project.createdAt ? new Date(project.createdAt).toLocaleDateString('fr-FR') : '-'}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-600">
-                    <span className={`px-2 py-1 rounded-full ${project.status === 'terminé' || project.status === 'Terminé' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                      {project.status || 'En cours'}
-                    </span>
-                    <span>• {project.user || '-'}</span>
-                  </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h2 className="text-xl font-bold text-slate-900 mb-6">Nouveaux Projets</h2>
+            <div className="space-y-4">
+              {projects.slice(0, 3).map(p => (
+                <div key={p.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                  <div><div className="font-bold text-slate-900">{p.name || 'Projet'}</div><div className="text-xs text-slate-500">{p.city || '-'} • {p.status}</div></div>
+                  <Button size="sm" variant="ghost" className="text-blue-600" onClick={() => navigate(`/project/${p.id}/edit`)}><ExternalLink className="w-4 h-4" /></Button>
                 </div>
               ))}
+            </div>
           </div>
         </div>
-
-        {/* Activités récentes */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
           <h2 className="text-xl font-bold text-slate-900 mb-6">Activités récentes</h2>
-
           <div className="space-y-4">
-            {recentActivities.map((activity) => (
-              <div key={activity.id} className="flex items-start gap-3 group hover:bg-slate-50 rounded-lg p-3 transition-all duration-200">
-                <div className={`${activity.color} w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0`}>
-                  {activity.avatar}
+            {activities.length > 0 ? activities.slice(0, 8).map(a => {
+              const colors = { project: 'bg-green-500', contact: 'bg-blue-500', task: 'bg-orange-500', user: 'bg-indigo-500' };
+              return (
+                <div key={a.id} className="flex items-start gap-3 p-3 hover:bg-slate-50 rounded-lg transition-colors">
+                  <div className={`${colors[a.type] || 'bg-slate-500'} w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0`}>{a.userName?.[0]?.toUpperCase() || 'U'}</div>
+                  <div className="flex-1 min-w-0"><p className="text-sm text-slate-900 leading-snug">{a.description}</p><p className="text-xs text-slate-500 mt-1 flex items-center gap-1"><Clock className="w-3 h-3" />{formatTime(a.timestamp)}</p></div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-900">
-                    <span className="font-semibold">{activity.name}</span>{' '}
-                    <span className="text-slate-600">{activity.action}</span>
-                  </p>
-                  <p className="text-sm font-medium text-slate-700 mt-1 truncate">{activity.target}</p>
-                  <p className="text-xs text-slate-500 mt-1">{activity.time}</p>
-                </div>
-              </div>
-            ))}
+              );
+            }) : <div className="text-center py-10 text-slate-500 text-sm">Aucune activité récente</div>}
           </div>
         </div>
       </div>
@@ -1028,8 +903,8 @@ export default function Crm() {
 
   // Rendu du Calendrier
   const renderCalendar = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
+    const year = calendarDate.getFullYear();
+    const month = calendarDate.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
@@ -1047,8 +922,8 @@ export default function Crm() {
       days.push(i);
     }
 
-    const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-    const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+    const prevMonth = () => setCalendarDate(new Date(year, month - 1, 1));
+    const nextMonth = () => setCalendarDate(new Date(year, month + 1, 1));
 
     return (
       <div className="space-y-6">
@@ -1429,42 +1304,44 @@ export default function Crm() {
 
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100" >
       {/* Sidebar */}
-      <div className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex flex-col shadow-2xl">
+      < div className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex flex-col shadow-2xl" >
         {/* Logo */}
-        <div className="p-6 border-b border-slate-700">
+        < div className="p-6 border-b border-slate-700" >
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
             CRM Pro
           </h1>
           <p className="text-xs text-slate-400 mt-1">Gestion clients</p>
-        </div>
+        </div >
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
-                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg shadow-blue-500/50'
-                  : 'hover:bg-slate-700/50'
-                  }`}
-              >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                <span className={`font-medium ${isActive ? 'text-white' : 'text-slate-300'}`}>
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
+        < nav className="flex-1 p-4 space-y-1" >
+          {
+            navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg shadow-blue-500/50'
+                    : 'hover:bg-slate-700/50'
+                    }`}
+                >
+                  <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                  <span className={`font-medium ${isActive ? 'text-white' : 'text-slate-300'}`}>
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })
+          }
+        </nav >
 
         {/* User Profile */}
-        <div className="p-4 border-t border-slate-700">
+        < div className="p-4 border-t border-slate-700" >
           <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-700/50">
             <div className={`${currentUser.color} w-10 h-10 rounded-full flex items-center justify-center text-white font-bold`}>
               {currentUser.avatar}
@@ -1482,11 +1359,11 @@ export default function Crm() {
               <LogOut className="w-4 h-4 mx-auto text-red-400" />
             </button>
           </div>
-        </div>
-      </div>
+        </div >
+      </div >
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto">
+      < div className="flex-1 overflow-y-auto" >
         <div className="p-6">
           {/* Header */}
           <div className="mb-8">
@@ -1512,7 +1389,7 @@ export default function Crm() {
           {activeTab === 'calendar' && renderCalendar()}
           {activeTab === 'reports' && renderReports()}
         </div>
-      </div>
+      </div >
 
       {/* Modals */}
       {/* Modals */}
@@ -1532,6 +1409,6 @@ export default function Crm() {
         onSave={handleSaveTask}
         contacts={contacts}
       />
-    </div>
+    </div >
   );
 }

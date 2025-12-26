@@ -1,4 +1,9 @@
 node_modules
-public/postes-de-distribution-publique-postes-htabt.geojson
+.env
+.env.local
+dist
+scripts/serviceAccountKey.jsones-de-distribution-publique-postes-htabt.geojson
 .vercel
 .env*.local
+*BUP*
+public/postes-de-distribution-publique-postes-htabt.geojson

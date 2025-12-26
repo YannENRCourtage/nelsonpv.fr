@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 import { apiService } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,13 +18,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, Trash2, Edit, Plus, Shield, ShieldAlert, Mail, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Trash2, Edit, Plus, Shield, ShieldAlert, Mail, Eye, EyeOff, Link } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
 
@@ -31,7 +31,11 @@ export default function Admin() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRepairModalOpen, setIsRepairModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+
+  // Repair form state
+  const [repairData, setRepairData] = useState({ uid: '', email: '', firstName: '', lastName: '' });
 
   // Form states
   const [formData, setFormData] = useState({
@@ -114,6 +118,11 @@ export default function Admin() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleRepairInputChange = (e) => {
+    const { name, value } = e.target;
+    setRepairData(prev => ({ ...prev, [name]: value }));
+  };
+
   const handlePermissionChange = (perm, checked) => {
     setFormData(prev => ({
       ...prev,
@@ -156,21 +165,51 @@ export default function Admin() {
         toast({ title: "Succès", description: "Utilisateur créé." });
       }
       setIsModalOpen(false);
-      setIsModalOpen(false);
       fetchUsers();
     } catch (error) {
       console.error("Operation failed:", error);
 
       let message = error.message || "Une erreur est survenue.";
       if (error.code === 'auth/email-already-in-use') {
-        message = "Cet e-mail est déjà associé à un compte utilisateur existant (Firebase Auth). Veuillez utiliser un autre e-mail ou supprimer l'utilisateur manuellement via la console Firebase.";
+        message = "ERREUR CRITIQUE : Cet email est déjà enregistré dans l'authentification Firebase mais n'a pas de profil. Impossible de le recréer ici. SOLUTION : Utilisez le bouton 'Lier UID' en haut à droite pour réparer ce compte.";
       }
 
       toast({
-        title: "Erreur",
+        title: "Erreur de création",
         description: message,
-        variant: "destructive"
+        variant: "destructive",
+        duration: 8000
       });
+    }
+  };
+
+  const handleRepairSubmit = async (e) => {
+    e.preventDefault();
+    if (!repairData.uid || !repairData.email) return;
+
+    try {
+      await setDoc(doc(db, 'users', repairData.uid), {
+        email: repairData.email,
+        displayName: `${repairData.firstName} ${repairData.lastName}`.trim() || repairData.email.split('@')[0],
+        firstName: repairData.firstName,
+        lastName: repairData.lastName,
+        role: 'user',
+        permissions: {
+          canAccessCRM: true,
+          canAccessEditor: true,
+          canAccessSimulator: true,
+          canViewAllProjects: false
+        },
+        isActive: true, // Required for login
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      toast({ title: "Réparation réussie", description: "Profil utilisateur recréé manuellement." });
+      setIsRepairModalOpen(false);
+      fetchUsers();
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Erreur", description: "Échec de la réparation manuelle.", variant: "destructive" });
     }
   };
 
@@ -209,10 +248,16 @@ export default function Admin() {
           </h1>
           <p className="text-slate-500 mt-1">Gérez les utilisateurs et leurs accès</p>
         </div>
-        <Button onClick={() => handleOpenModal(null)} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="w-4 h-4 mr-2" />
-          Nouvel utilisateur
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setIsRepairModalOpen(true)} variant="outline" className="text-amber-600 border-amber-200 hover:bg-amber-50">
+            <Link className="w-4 h-4 mr-2" />
+            Lier UID Existant
+          </Button>
+          <Button onClick={() => handleOpenModal(null)} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Nouvel utilisateur
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -382,6 +427,43 @@ export default function Admin() {
           </form>
         </DialogContent>
       </Dialog >
+
+      {/* REPAIR MODAL */}
+      <Dialog open={isRepairModalOpen} onOpenChange={setIsRepairModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Lier un UID Firebase Existant</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleRepairSubmit} className="space-y-4">
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded text-sm text-amber-800 mb-4">
+              Utilisez cette fonction si un utilisateur existe dans "Authentication" mais n'apparaît pas ici.
+              Copiez l'UID depuis la console Firebase.
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="repair-uid">UID Firebase (Requis)</Label>
+              <Input id="repair-uid" name="uid" value={repairData.uid} onChange={handleRepairInputChange} placeholder="ex: dDQCOfuf6OcQ8WzeojrPezLlkHe2" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="repair-email">Email (Requis)</Label>
+              <Input id="repair-email" name="email" value={repairData.email} onChange={handleRepairInputChange} placeholder="ex: elodie@exemple.com" required />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Prénom</Label>
+                <Input name="firstName" value={repairData.firstName} onChange={handleRepairInputChange} />
+              </div>
+              <div className="space-y-2">
+                <Label>Nom</Label>
+                <Input name="lastName" value={repairData.lastName} onChange={handleRepairInputChange} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsRepairModalOpen(false)}>Annuler</Button>
+              <Button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white">Réparer / Créer</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div >
   );
 }

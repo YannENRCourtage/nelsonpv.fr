@@ -212,3 +212,72 @@ export const subscribeToProjects = (userId, canViewAll, callback) => {
 export const deleteTask = async (taskId) => {
     await deleteDoc(doc(db, 'tasks', taskId));
 };
+
+export const createTask = async (taskData, userId) => {
+    const taskRef = doc(collection(db, 'tasks'));
+    const task = {
+        ...taskData,
+        createdBy: userId,
+        status: taskData.status || 'todo',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+    };
+    await setDoc(taskRef, task);
+    return { id: taskRef.id, ...task };
+};
+
+export const updateTask = async (taskId, data) => {
+    await updateDoc(doc(db, 'tasks', taskId), {
+        ...data,
+        updatedAt: serverTimestamp()
+    });
+};
+
+export const listTasks = async (userId, canViewAll = false) => {
+    let q;
+    if (canViewAll) {
+        q = query(collection(db, 'tasks'));
+    } else {
+        q = query(
+            collection(db, 'tasks'),
+            where('createdBy', '==', userId)
+        );
+    }
+
+    const tasksSnapshot = await getDocs(q);
+    const tasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Client-side sorting
+    return tasks.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return dateB - dateA; // Descending
+    });
+};
+
+// ============================================================================
+// ACTIVITIES
+// ============================================================================
+
+export const logActivity = async (activityData) => {
+    const activityRef = doc(collection(db, 'activities'));
+    const activity = {
+        ...activityData,
+        timestamp: serverTimestamp()
+    };
+    await setDoc(activityRef, activity);
+    return { id: activityRef.id, ...activity };
+};
+
+export const listActivities = async (limitCount = 20) => {
+    const q = query(collection(db, 'activities'));
+    const snapshot = await getDocs(q);
+    const activities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Sort by timestamp desc
+    return activities.sort((a, b) => {
+        const dateA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp || 0);
+        const dateB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp || 0);
+        return dateB - dateA;
+    }).slice(0, limitCount);
+};
