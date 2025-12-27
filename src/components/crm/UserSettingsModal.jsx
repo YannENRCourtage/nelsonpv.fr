@@ -48,9 +48,13 @@ const UserSettingsModal = ({ show, onClose, currentUser, onUpdate }) => {
             const nameParts = displayName.trim().split(' ');
             const updateData = {
                 firstName: nameParts[0] || displayName,
-                lastName: nameParts.slice(1).join(' ') || '',
-                photoURL: photoURL
+                lastName: nameParts.slice(1).join(' ') || ''
             };
+
+            // Only include photoURL if it has a valid value (not undefined)
+            if (photoURL) {
+                updateData.photoURL = photoURL;
+            }
 
             // Only update if changes exist
             if (displayName !== currentUser.name || avatarFile) {
