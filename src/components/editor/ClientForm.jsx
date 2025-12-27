@@ -6,53 +6,18 @@ export default function ClientForm() {
   const { project, setProject, updateProject, saveProject } = useProject();
   const { user } = useAuth();
 
-  // État pour la liste dynamique des utilisateurs
-  const [usersList, setUsersList] = useState(['Yann', 'Elodie', 'Jack', 'Nicolas', 'Contact']);
-
-  // Chargement des utilisateurs pour le menu déroulant
-  useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        // On tente de charger les utilisateurs depuis l'API
-        const users = await import('../../services/api').then(m => m.apiService.getUsers().catch(() => []));
-
-        // On formate pour avoir juste les noms/prénoms
-        const formattedUsers = users.map(u => u.firstName || u.displayName || u.email.split('@')[0]);
-
-        // On fusionne avec la liste par défaut (en ajoutant Elodie qui manquait)
-        const uniqueUsers = [...new Set(['Yann', 'Elodie', 'Jack', 'Nicolas', 'Contact', ...formattedUsers])].filter(Boolean);
-        setUsersList(uniqueUsers);
-      } catch (err) {
-        console.warn("Impossible de charger les utilisateurs", err);
-        // Fallback déjà géré par l'état initial
-      }
-    };
-    loadUsers();
-  }, []);
+  // Calcul du prénom de l'utilisateur connecté pour affichage "en dur"
+  const currentUserName = user?.firstName || user?.displayName?.split(' ')[0] || user?.name || 'Utilisateur';
 
   useEffect(() => {
     if (user && project) {
       const updates = {};
       let hasUpdates = false;
 
-      // 1. Initialiser l'Utilisateur par défaut
+      // 1. Initialiser l'Utilisateur par défaut avec le compte connecté
       if (!project.user) {
-        // Pseudo-automapper : On essaie de trouver le prénom de l'user connecté dans la liste
-        // On nettoie le nom (ex: "Jack LLC" -> "Jack")
-        const currentName = user.firstName || user.displayName || user.name || '';
-        const nameToMatch = currentName.split(' ')[0]; // Prend le premier mot (Prénom)
-
-        // Recherche insensible à la casse
-        const match = usersList.find(u => u && u.toLowerCase() === nameToMatch.toLowerCase());
-
-        // Logique de priorité : Match > Nom exact > Contact
-        let defaultUser = match || 'Contact';
-
-        // Cas spécifiques si nécessaire (ex: si admin connecté mais pas dans la liste courante, on le force ?)
-        // Pour l'instant on reste sur la liste prédéfinie + API
-
-        updates.user = defaultUser;
-        updates.createdByFirstName = defaultUser;
+        updates.user = currentUserName;
+        updates.createdByFirstName = currentUserName;
         hasUpdates = true;
       }
 
@@ -67,7 +32,7 @@ export default function ClientForm() {
         updateProject(updates);
       }
     }
-  }, [user, project, updateProject, usersList]);
+  }, [user, project, updateProject, currentUserName]);
 
   const debounce = (fn, delay) => {
     let t;
@@ -122,16 +87,13 @@ export default function ClientForm() {
           </div>
           <div className="pe_field">
             <label>Utilisateur</label>
-            <select
-              value={p.user || ''}
-              onChange={(e) => handleChange('user', e.target.value)}
-              onFocus={preventAutoScroll}
-            >
-              <option value="" disabled>Choisir un utilisateur</option>
-              {usersList.map((u, index) => (
-                <option key={index} value={u}>{u}</option>
-              ))}
-            </select>
+            <input
+              type="text"
+              value={currentUserName}
+              readOnly
+              className="bg-gray-100 text-gray-500 cursor-not-allowed"
+              title="L'utilisateur est défini automatiquement"
+            />
           </div>
         </div>
       </div>
@@ -223,16 +185,13 @@ export default function ClientForm() {
           </div>
           <div className="pe_clientUser">
             <label>Utilisateur</label>
-            <select
-              value={p.user || ''}
-              onChange={(e) => handleChange('user', e.target.value)}
-              className="pe_userSelect"
-            >
-              <option value="" disabled>Sélectionner...</option>
-              {usersList.map((u, index) => (
-                <option key={index} value={u}>{u}</option>
-              ))}
-            </select>
+            <input
+              type="text"
+              value={currentUserName}
+              readOnly
+              className="bg-gray-100 text-gray-500 cursor-not-allowed w-full p-2 border rounded"
+              title="L'utilisateur est défini automatiquement"
+            />
           </div>
           <div className="pe_field">
             <label>Ville</label>
