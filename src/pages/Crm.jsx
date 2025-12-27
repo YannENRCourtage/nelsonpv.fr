@@ -1194,15 +1194,19 @@ export default function Crm() {
 
   // Rendu des Rapports
   const renderReports = () => {
-    const totalRevenue = opportunities.reduce((sum, opp) => sum + opp.amount, 0);
-    const avgDealSize = totalRevenue / opportunities.length;
-    const winRate = (opportunities.filter(o => o.status === 'Négociation').length / opportunities.length * 100).toFixed(0);
-    const completionRate = (tasks.filter(t => t.completed).length / tasks.length * 100).toFixed(0);
+    // Calculs KPI demandés
+    const projectsTotal = projects.length;
+    const projectsCompleted = projects.filter(p => p.status === 'Terminé').length;
+    const projectConversionRate = projectsTotal > 0 ? (projectsCompleted / projectsTotal * 100).toFixed(1) : '0';
+
+    const contactsTotal = contacts.length;
+    const contactsClients = contacts.filter(c => c.status === 'Client').length;
+    const contactConversionRate = contactsTotal > 0 ? (contactsClients / contactsTotal * 100).toFixed(1) : '0';
 
     const statusDistribution = [
-      { name: 'Prospection', count: opportunities.filter(o => o.status === 'Prospection').length, color: 'bg-blue-500' },
-      { name: 'Qualification', count: opportunities.filter(o => o.status === 'Qualification').length, color: 'bg-yellow-500' },
-      { name: 'Négociation', count: opportunities.filter(o => o.status === 'Négociation').length, color: 'bg-green-500' },
+      { name: 'Nouveau', count: projects.filter(p => p.status === 'Nouveau').length, color: 'bg-blue-500' },
+      { name: 'En cours', count: projects.filter(p => p.status === 'En cours').length, color: 'bg-yellow-500' },
+      { name: 'Terminé', count: projects.filter(p => p.status === 'Terminé').length, color: 'bg-green-500' },
     ];
 
     const maxCount = Math.max(...statusDistribution.map(s => s.count), 1);
@@ -1213,11 +1217,11 @@ export default function Crm() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-2">
-              <Euro className="w-8 h-8 opacity-80" />
+              <CheckSquare className="w-8 h-8 opacity-80" />
               <Activity className="w-6 h-6 opacity-60" />
             </div>
-            <div className="text-3xl font-bold">{(totalRevenue / 1000).toFixed(0)}K€</div>
-            <div className="text-blue-100 text-sm mt-1">Revenu total pipeline</div>
+            <div className="text-3xl font-bold">{projectsCompleted}</div>
+            <div className="text-blue-100 text-sm mt-1">Projets terminés</div>
           </div>
 
           <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg p-6 text-white">
@@ -1225,8 +1229,8 @@ export default function Crm() {
               <TrendingUp className="w-8 h-8 opacity-80" />
               <BarChart3 className="w-6 h-6 opacity-60" />
             </div>
-            <div className="text-3xl font-bold">{(avgDealSize / 1000).toFixed(0)}K€</div>
-            <div className="text-green-100 text-sm mt-1">Taille moyenne des deals</div>
+            <div className="text-3xl font-bold">{contactsClients}</div>
+            <div className="text-green-100 text-sm mt-1">Contacts clients</div>
           </div>
 
           <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white">
@@ -1234,8 +1238,8 @@ export default function Crm() {
               <PieChart className="w-8 h-8 opacity-80" />
               <CheckCircle2 className="w-6 h-6 opacity-60" />
             </div>
-            <div className="text-3xl font-bold">{winRate}%</div>
-            <div className="text-purple-100 text-sm mt-1">Taux de conversion</div>
+            <div className="text-3xl font-bold">{projectConversionRate}%</div>
+            <div className="text-purple-100 text-sm mt-1">Taux transfo. projets</div>
           </div>
 
           <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-lg p-6 text-white">
@@ -1243,8 +1247,8 @@ export default function Crm() {
               <CheckSquare className="w-8 h-8 opacity-80" />
               <Activity className="w-6 h-6 opacity-60" />
             </div>
-            <div className="text-3xl font-bold">{completionRate}%</div>
-            <div className="text-orange-100 text-sm mt-1">Tâches complétées</div>
+            <div className="text-3xl font-bold">{contactConversionRate}%</div>
+            <div className="text-orange-100 text-sm mt-1">Taux transfo. contacts</div>
           </div>
         </div>
 
