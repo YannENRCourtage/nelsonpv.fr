@@ -1,8 +1,11 @@
 
+
 import * as firestoreService from './firebase/firestore.service';
 import * as authService from './firebase/auth.service';
 import * as commentsService from './firebase/comments.service';
 import * as storageService from './firebase/storage.service';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/config/firebase.js';
 
 /**
  * Adapter class to connect legacy API calls to Firebase services
@@ -222,6 +225,33 @@ class ApiService {
     async updateUserProfile(data) {
         const user = await this._getCurrentUser();
         return await firestoreService.updateUser(user.uid, data);
+    }
+
+    // ============================================================================
+    // MONTHLY KPI SNAPSHOTS
+    // ============================================================================
+
+    async saveMonthlyKpiSnapshot(month, kpiData) {
+        // month format: YYYY-MM
+        const user = await this._getCurrentUser();
+        const snapshotRef = doc(db, 'monthlyKpis', `${user.uid}_${month}`);
+        await setDoc(snapshotRef, {
+            ...kpiData,
+            userId: user.uid,
+            month: month,
+            createdAt: serverTimestamp()
+        });
+    }
+
+    async getMonthlyKpiSnapshot(month) {
+        // month format: YYYY-MM
+        const user = await this._getCurrentUser();
+        const snapshotRef = doc(db, 'monthlyKpis', `${user.uid}_${month}`);
+        const snapshot = await getDoc(snapshotRef);
+        if (snapshot.exists()) {
+            return snapshot.data();
+        }
+        return null;
     }
 }
 

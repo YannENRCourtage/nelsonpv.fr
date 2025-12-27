@@ -225,6 +225,7 @@ export default function Crm() {
   const [tasks, setTasks] = useState([]);
   const [opportunities, setOpportunities] = useState([]); // Ajout pour éviter le crash
   const [activities, setActivities] = useState([]);
+  const [monthlyKpis, setMonthlyKpis] = useState(null); // Store last month's KPI values
   const [isLoading, setIsLoading] = useState(true);
 
   // États Modales
@@ -259,14 +260,32 @@ export default function Crm() {
         setContacts(contactsData || []);
         setTasks(tasksData || []);
         setActivities(activitiesData || []);
+
+        // Load monthly KPI snapshot for comparison
+        const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
+        const lastMonth = new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().slice(0, 7);
+
+        try {
+          const snapshot = await apiService.getMonthlyKpiSnapshot(lastMonth);
+          if (snapshot) {
+            setMonthlyKpis(snapshot);
+          }
+        } catch (err) {
+          console.log('No previous month snapshot found');
+        }
+
       } catch (error) {
-        console.error('Error fetching CRM data:', error);
+        console.error('Error fetching data:', error);
+        toast({ title: "Erreur", description: "Erreur de chargement des données.", variant: "destructive" });
       } finally {
         setIsLoading(false);
       }
     };
-    fetchData();
-  }, []);
+
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
 
   // Helpers
   const formatTime = (timestamp) => {
@@ -288,11 +307,60 @@ export default function Crm() {
     color: user?.role === 'admin' ? 'bg-indigo-600' : 'bg-blue-600'
   };
 
+  // Calculate monthly percentage changes
+  const calculateTrend = (current, previous) => {
+    if (!previous || previous === 0) return { trend: 'N/A', trendPositive: true };
+    const change = ((current - previous) / previous) * 100;
+    return {
+      trend: `${change > 0 ? '+' : ''}${Math.round(change)}%`,
+      trendPositive: change >= 0
+    };
+  };
+
+  const currentKpiValues = {
+    contacts: contacts.length,
+    projectsInProgress: projects.filter(p => p.status === 'En cours').length,
+    tasksInProgress: tasks.filter(t => !t.completed).length,
+    projectsCompleted: projects.filter(p => (p.status === 'terminé' || p.status === 'Terminé')).length
+  };
+
   const kpis = [
-    { icon: Users, label: 'Contacts', value: contacts.length.toString(), color: 'bg-blue-500', bgLight: 'bg-blue-50', height: 'h-48' },
-    { icon: FolderHeart, label: 'Projets en cours', value: projects.filter(p => p.status === 'En cours').length.toString(), color: 'bg-green-500', bgLight: 'bg-green-50', height: 'h-48' },
-    { icon: CheckSquare, label: 'Tâches en cours', value: tasks.filter(t => !t.completed).length.toString(), color: 'bg-orange-500', bgLight: 'bg-orange-50', height: 'h-48' },
-    { icon: CheckCircle2, label: 'Projets terminés', value: projects.filter(p => (p.status === 'terminé' || p.status === 'Terminé')).length.toString(), color: 'bg-purple-500', bgLight: 'bg-purple-50', height: 'h-48' },
+    {
+      icon: Users,
+      label: 'Contacts',
+      value: currentKpiValues.contacts.toString(),
+      ...calculateTrend(currentKpiValues.contacts, monthlyKpis?.contacts),
+      color: 'bg-blue-500',
+      bgLight: 'bg-blue-50',
+      height: 'h-48'
+    },
+    {
+      icon: FolderHeart,
+      label: 'Projets en cours',
+      value: currentKpiValues.projectsInProgress.toString(),
+      ...calculateTrend(currentKpiValues.projectsInProgress, monthlyKpis?.projectsInProgress),
+      color: 'bg-green-500',
+      bgLight: 'bg-green-50',
+      height: 'h-48'
+    },
+    {
+      icon: CheckSquare,
+      label: 'Tâches en cours',
+      value: currentKpiValues.tasksInProgress.toString(),
+      ...calculateTrend(currentKpiValues.tasksInProgress, monthlyKpis?.tasksInProgress),
+      color: 'bg-orange-500',
+      bgLight: 'bg-orange-50',
+      height: 'h-48'
+    },
+    {
+      icon: CheckCircle2,
+      label: 'Projets terminés',
+      value: currentKpiValues.projectsCompleted.toString(),
+      ...calculateTrend(currentKpiValues.projectsCompleted, monthlyKpis?.projectsCompleted),
+      color: 'bg-purple-500',
+      bgLight: 'bg-purple-50',
+      height: 'h-48'
+    },
   ];
 
 
@@ -468,12 +536,13 @@ export default function Crm() {
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
-            <div key={idx} className={`bg-white rounded-2xl shadow-sm border border-slate-200 p-6 ${kpi.height || ''} flex flex-col justify-center hover:shadow-md transition-shadow`}>
-              <div className="flex items-center justify-center mb-4">
+            <div key={idx} className={`bg-white rounded-2xl shadow-sm border border-slate-200 p-6 ${kpi.height || ''} flex flex-col justify-between hover:shadow-md transition-shadow`}>
+              <div className="flex items-start justify-between mb-4">
                 <div className={`${kpi.bgLight} p-3 rounded-xl`}><Icon className={`w-6 h-6 ${kpi.color.replace('bg-', 'text-')}`} /></div>
+                <span className={`text-sm font-semibold px-2 py-1 rounded-full ${kpi.trendPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{kpi.trend}</span>
               </div>
-              <p className="text-3xl font-bold text-slate-900 mb-2 text-center">{kpi.value}</p>
-              <p className="text-sm text-slate-600 text-center">{kpi.label}</p>
+              <p className="text-2xl font-bold text-slate-900 mb-1">{kpi.value}</p>
+              <p className="text-sm text-slate-600">{kpi.label}</p>
             </div>
           );
         })}
