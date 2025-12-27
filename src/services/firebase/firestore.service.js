@@ -22,7 +22,7 @@ import { db } from '@/config/firebase.js';
 export const getUser = async (uid) => {
     const userDoc = await getDoc(doc(db, 'users', uid));
     if (!userDoc.exists()) return null;
-    return { id: userDoc.id, ...userDoc.data() };
+    return { ...userDoc.data(), id: userDoc.id };
 };
 
 export const updateUser = async (uid, data) => {
@@ -34,7 +34,7 @@ export const updateUser = async (uid, data) => {
 
 export const listUsers = async () => {
     const usersSnapshot = await getDocs(collection(db, 'users'));
-    return usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return usersSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
 };
 
 export const deleteUser = async (uid) => {
@@ -47,8 +47,10 @@ export const deleteUser = async (uid) => {
 
 export const createContact = async (contactData, userId) => {
     const contactRef = doc(collection(db, 'contacts'));
+    // Remove temporary ID if present
+    const { id, ...data } = contactData;
     const contact = {
-        ...contactData,
+        ...data,
         createdBy: userId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -60,7 +62,7 @@ export const createContact = async (contactData, userId) => {
 export const getContact = async (contactId) => {
     const contactDoc = await getDoc(doc(db, 'contacts', contactId));
     if (!contactDoc.exists()) return null;
-    return { id: contactDoc.id, ...contactDoc.data() };
+    return { ...contactDoc.data(), id: contactDoc.id };
 };
 
 export const updateContact = async (contactId, data) => {
@@ -88,7 +90,7 @@ export const listContacts = async (userId, canViewAll = false) => {
     }
 
     const contactsSnapshot = await getDocs(q);
-    const contacts = contactsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const contacts = contactsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
 
     // Client-side sorting
     return contacts.sort((a, b) => {
@@ -112,7 +114,7 @@ export const subscribeToContacts = (userId, canViewAll, callback) => {
     }
 
     return onSnapshot(q, (snapshot) => {
-        const contacts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const contacts = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
         // Sort before callback
         contacts.sort((a, b) => {
             const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
@@ -129,8 +131,10 @@ export const subscribeToContacts = (userId, canViewAll, callback) => {
 
 export const createProject = async (projectData, userId) => {
     const projectRef = doc(collection(db, 'projects'));
+    // Remove temporary ID
+    const { id, ...data } = projectData;
     const project = {
-        ...projectData,
+        ...data,
         createdBy: userId,
         status: projectData.status || 'draft',
         createdAt: serverTimestamp(),
@@ -143,7 +147,7 @@ export const createProject = async (projectData, userId) => {
 export const getProject = async (projectId) => {
     const projectDoc = await getDoc(doc(db, 'projects', projectId));
     if (!projectDoc.exists()) return null;
-    return { id: projectDoc.id, ...projectDoc.data() };
+    return { ...projectDoc.data(), id: projectDoc.id };
 };
 
 export const updateProject = async (projectId, data) => {
@@ -171,7 +175,7 @@ export const listProjects = async (userId, canViewAll = false) => {
     }
 
     const projectsSnapshot = await getDocs(q);
-    const projects = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const projects = projectsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
 
     // Client-side sorting
     return projects.sort((a, b) => {
@@ -195,7 +199,7 @@ export const subscribeToProjects = (userId, canViewAll, callback) => {
     }
 
     return onSnapshot(q, (snapshot) => {
-        const projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const projects = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
         // Sort before callback
         projects.sort((a, b) => {
             const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
@@ -215,8 +219,10 @@ export const deleteTask = async (taskId) => {
 
 export const createTask = async (taskData, userId) => {
     const taskRef = doc(collection(db, 'tasks'));
+    // Remove temporary ID
+    const { id, ...data } = taskData;
     const task = {
-        ...taskData,
+        ...data,
         createdBy: userId,
         status: taskData.status || 'todo',
         createdAt: serverTimestamp(),
@@ -245,7 +251,7 @@ export const listTasks = async (userId, canViewAll = false) => {
     }
 
     const tasksSnapshot = await getDocs(q);
-    const tasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const tasks = tasksSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
 
     // Client-side sorting
     return tasks.sort((a, b) => {
@@ -272,7 +278,7 @@ export const logActivity = async (activityData) => {
 export const listActivities = async (limitCount = 20) => {
     const q = query(collection(db, 'activities'));
     const snapshot = await getDocs(q);
-    const activities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const activities = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
 
     // Sort by timestamp desc
     return activities.sort((a, b) => {
