@@ -1,4 +1,3 @@
-import React, { useEffect, useCallback } from 'react';
 import React, { useEffect, useCallback, useState } from 'react';
 import { useProject } from '../../contexts/ProjectContext.jsx';
 import { useAuth } from '../../contexts/AuthContext.jsx';
@@ -58,7 +57,8 @@ export default function ClientForm() {
       }
 
       // 2. Initialiser le Statut par défaut
-      if (!project.status) {
+      // IMPORTANT: On force "Nouveau" si le champ est vide, null ou undefined
+      if (!project.status || project.status === '') {
         updates.status = 'Nouveau';
         hasUpdates = true;
       }
