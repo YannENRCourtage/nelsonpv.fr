@@ -229,8 +229,8 @@ export default function ClientForm() {
               className="pe_userSelect"
             >
               <option value="" disabled>Sélectionner...</option>
-              {USERS_LIST.map(u => (
-                <option key={u} value={u}>{u}</option>
+              {usersList.map((u, index) => (
+                <option key={index} value={u}>{u}</option>
               ))}
             </select>
           </div>
