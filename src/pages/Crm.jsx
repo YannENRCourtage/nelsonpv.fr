@@ -1209,7 +1209,23 @@ export default function Crm() {
       { name: 'Terminé', count: projects.filter(p => p.status === 'Terminé').length, color: 'bg-green-500' },
     ];
 
-    const maxCount = Math.max(...statusDistribution.map(s => s.count), 1);
+    // Group projects by User
+    const userStats = {};
+    projects.forEach(p => {
+      const u = p.user || 'Non assigné';
+      if (!userStats[u]) userStats[u] = { name: u, nouveau: 0, enCours: 0, termine: 0, score: 0 };
+
+      if (p.status === 'Nouveau') userStats[u].nouveau++;
+      else if (p.status === 'En cours') userStats[u].enCours++;
+      else if (p.status === 'Terminé') userStats[u].termine++;
+
+      // Score = Nouveau + En cours
+      if (p.status === 'Nouveau' || p.status === 'En cours') {
+        userStats[u].score++;
+      }
+    });
+
+    const sortedUsers = Object.values(userStats).sort((a, b) => b.score - a.score);
 
     return (
       <div className="space-y-6">
@@ -1253,54 +1269,61 @@ export default function Crm() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Distribution par statut */}
+          {/* Répartition par utilisateur */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-blue-600" />
-              Distribution des opportunités
+              Répartition par utilisateur
             </h3>
-            <div className="space-y-4">
-              {statusDistribution.map((status) => (
-                <div key={status.name}>
+            <div className="space-y-6">
+              {sortedUsers.map((u) => (
+                <div key={u.name} className="border-b border-slate-100 pb-4 last:border-0 last:pb-0">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-slate-700">{status.name}</span>
-                    <span className="text-sm font-bold text-slate-900">{status.count}</span>
+                    <span className="font-bold text-slate-700">{u.name}</span>
+                    <span className="text-xs font-bold px-2 py-1 bg-slate-100 rounded-full text-slate-600">Total: {u.nouveau + u.enCours + u.termine}</span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-                    <div
-                      className={`h-full ${status.color} rounded-full transition-all duration-500`}
-                      style={{ width: `${(status.count / maxCount) * 100}%` }}
-                    />
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100 text-center">
+                      <span className="font-bold block text-sm">{u.nouveau}</span> Nouveau
+                    </div>
+                    <div className="bg-yellow-50 text-yellow-700 px-2 py-1 rounded border border-yellow-100 text-center">
+                      <span className="font-bold block text-sm">{u.enCours}</span> En cours
+                    </div>
+                    <div className="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100 text-center">
+                      <span className="font-bold block text-sm">{u.termine}</span> Terminé
+                    </div>
                   </div>
                 </div>
               ))}
+              {sortedUsers.length === 0 && <div className="text-slate-400 italic text-center">Aucune donnée utilisateur</div>}
             </div>
           </div>
 
-          {/* Top Opportunités */}
+          {/* Top opportunités (Classement) */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-green-600" />
-              Top opportunités
+              Top opportunités (Activité)
             </h3>
             <div className="space-y-3">
-              {opportunities
-                .sort((a, b) => b.amount - a.amount)
-                .slice(0, 5)
-                .map((opp) => (
-                  <div key={opp.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
-                    <div className="flex-1">
-                      <div className="font-semibold text-slate-900 text-sm">{opp.name}</div>
-                      <div className="text-xs text-slate-600">{opp.company}</div>
+              {sortedUsers.map((u, index) => (
+                <div key={u.name} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${index === 0 ? 'bg-yellow-100 text-yellow-600' : index === 1 ? 'bg-slate-200 text-slate-600' : index === 2 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-400'}`}>
+                      {index + 1}
                     </div>
-                    <div className="text-right">
-                      <div className="font-bold text-slate-900">{(opp.amount / 1000).toFixed(0)}K€</div>
-                      <div className={`text-xs px-2 py-0.5 rounded-full ${opp.color} bg-opacity-20 ${opp.color.replace('bg-', 'text-')}`}>
-                        {opp.probability}%
-                      </div>
+                    <div>
+                      <div className="font-semibold text-slate-900">{u.name}</div>
+                      <div className="text-xs text-slate-500">{u.nouveau} nouveaux + {u.enCours} en cours</div>
                     </div>
                   </div>
-                ))}
+                  <div className="text-right">
+                    <div className="font-bold text-slate-900 text-lg">{u.score}</div>
+                    <div className="text-xs text-slate-500">Opportunités</div>
+                  </div>
+                </div>
+              ))}
+              {sortedUsers.length === 0 && <div className="text-slate-400 italic text-center">Aucun classement disponible</div>}
             </div>
           </div>
         </div>
