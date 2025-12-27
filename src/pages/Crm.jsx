@@ -289,10 +289,10 @@ export default function Crm() {
   };
 
   const kpis = [
-    { icon: Users, label: 'Contacts', value: contacts.length.toString(), trend: '+12%', trendPositive: true, color: 'bg-blue-500', bgLight: 'bg-blue-50', height: 'h-40' },
-    { icon: FolderHeart, label: 'Projets en cours', value: projects.filter(p => p.status === 'En cours').length.toString(), trend: '+15%', trendPositive: true, color: 'bg-green-500', bgLight: 'bg-green-50', height: 'h-40' },
-    { icon: CheckSquare, label: 'Tâches en cours', value: tasks.filter(t => !t.completed).length.toString(), trend: '5%', trendPositive: false, color: 'bg-orange-500', bgLight: 'bg-orange-50', height: 'h-40' },
-    { icon: CheckCircle2, label: 'Projets terminés', value: projects.filter(p => (p.status === 'terminé' || p.status === 'Terminé')).length.toString(), trend: '+23%', trendPositive: true, color: 'bg-purple-500', bgLight: 'bg-purple-50', height: 'h-40' },
+    { icon: Users, label: 'Contacts', value: contacts.length.toString(), color: 'bg-blue-500', bgLight: 'bg-blue-50', height: 'h-48' },
+    { icon: FolderHeart, label: 'Projets en cours', value: projects.filter(p => p.status === 'En cours').length.toString(), color: 'bg-green-500', bgLight: 'bg-green-50', height: 'h-48' },
+    { icon: CheckSquare, label: 'Tâches en cours', value: tasks.filter(t => !t.completed).length.toString(), color: 'bg-orange-500', bgLight: 'bg-orange-50', height: 'h-48' },
+    { icon: CheckCircle2, label: 'Projets terminés', value: projects.filter(p => (p.status === 'terminé' || p.status === 'Terminé')).length.toString(), color: 'bg-purple-500', bgLight: 'bg-purple-50', height: 'h-48' },
   ];
 
 
@@ -468,13 +468,12 @@ export default function Crm() {
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
-            <div key={idx} className={`bg-white rounded-2xl shadow-sm border border-slate-200 p-6 ${kpi.height || ''} flex flex-col justify-between hover:shadow-md transition-shadow`}>
-              <div className="flex items-start justify-between mb-4">
+            <div key={idx} className={`bg-white rounded-2xl shadow-sm border border-slate-200 p-6 ${kpi.height || ''} flex flex-col justify-center hover:shadow-md transition-shadow`}>
+              <div className="flex items-center justify-center mb-4">
                 <div className={`${kpi.bgLight} p-3 rounded-xl`}><Icon className={`w-6 h-6 ${kpi.color.replace('bg-', 'text-')}`} /></div>
-                <span className={`text-sm font-semibold px-2 py-1 rounded-full ${kpi.trendPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{kpi.trend}</span>
               </div>
-              <p className="text-2xl font-bold text-slate-900 mb-1">{kpi.value}</p>
-              <p className="text-sm text-slate-600">{kpi.label}</p>
+              <p className="text-3xl font-bold text-slate-900 mb-2 text-center">{kpi.value}</p>
+              <p className="text-sm text-slate-600 text-center">{kpi.label}</p>
             </div>
           );
         })}
