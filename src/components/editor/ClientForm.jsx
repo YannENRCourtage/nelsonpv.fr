@@ -8,27 +8,24 @@ export default function ClientForm() {
   const { user } = useAuth();
 
   // État pour la liste dynamique des utilisateurs
-  const [usersList, setUsersList] = useState([]);
+  const [usersList, setUsersList] = useState(['Yann', 'Elodie', 'Jack', 'Nicolas', 'Contact']);
 
   // Chargement des utilisateurs pour le menu déroulant
   useEffect(() => {
     const loadUsers = async () => {
       try {
-        // On suppose que l'API expose getUsers (ce qui est le cas pour les admins, 
-        // mais on va assumer que l'utilisateur courant peut voir la liste simplifiée ou que l'API le permet)
-        // Note: Si getUsers est restreint aux admins, il faudra peut-être une méthode listPublicUsers ou similaire.
-        // Pour l'instant on tente apiService.getUsers(). Si ça échoue, on fallback sur une liste par défaut + current.
+        // On tente de charger les utilisateurs depuis l'API
         const users = await import('../../services/api').then(m => m.apiService.getUsers().catch(() => []));
 
         // On formate pour avoir juste les noms/prénoms
         const formattedUsers = users.map(u => u.firstName || u.displayName || u.email.split('@')[0]);
 
-        // On ajoute "Contact" et les valeurs par défaut au cas où la liste soit vide
-        const uniqueUsers = [...new Set(['Yann', 'Nicolas', 'Jack', 'Contact', ...formattedUsers])];
+        // On fusionne avec la liste par défaut (en ajoutant Elodie qui manquait)
+        const uniqueUsers = [...new Set(['Yann', 'Elodie', 'Jack', 'Nicolas', 'Contact', ...formattedUsers])].filter(Boolean);
         setUsersList(uniqueUsers);
       } catch (err) {
         console.warn("Impossible de charger les utilisateurs", err);
-        setUsersList(['Yann', 'Nicolas', 'Jack', 'Contact']);
+        // Fallback déjà géré par l'état initial
       }
     };
     loadUsers();
@@ -41,19 +38,22 @@ export default function ClientForm() {
 
       // 1. Initialiser l'Utilisateur par défaut
       if (!project.user) {
-        // Logique de matching : Si c'est contact@..., on met 'Contact', sinon le prénom s'il est dans la liste, sinon 'Contact' par défaut
-        const userFirstName = user.firstName || user.displayName?.split(' ')[0] || user.name || '';
-        // Recherche insensible à la casse
-        const match = usersList.find(u => u.toLowerCase() === userFirstName.toLowerCase());
+        // Pseudo-automapper : On essaie de trouver le prénom de l'user connecté dans la liste
+        // On nettoie le nom (ex: "Jack LLC" -> "Jack")
+        const currentName = user.firstName || user.displayName || user.name || '';
+        const nameToMatch = currentName.split(' ')[0]; // Prend le premier mot (Prénom)
 
-        // Si l'utilisateur connecté est dans la liste, on le sélectionne. 
-        // Sinon si c'est le compte générique contact..., on met 'Contact'
-        const defaultUser = match
-          ? match
-          : (user.email === 'contact@enr-courtage.fr' ? 'Contact' : (match || 'Contact'));
+        // Recherche insensible à la casse
+        const match = usersList.find(u => u && u.toLowerCase() === nameToMatch.toLowerCase());
+
+        // Logique de priorité : Match > Nom exact > Contact
+        let defaultUser = match || 'Contact';
+
+        // Cas spécifiques si nécessaire (ex: si admin connecté mais pas dans la liste courante, on le force ?)
+        // Pour l'instant on reste sur la liste prédéfinie + API
 
         updates.user = defaultUser;
-        updates.createdByFirstName = defaultUser; // On garde la cohérence
+        updates.createdByFirstName = defaultUser;
         hasUpdates = true;
       }
 
