@@ -433,46 +433,6 @@ export default function Crm() {
     }
   };
 
-  const handleDeleteAllData = async () => {
-    if (!window.confirm("ATTENTION : Êtes-vous sûr de vouloir supprimer TOUTES les données du CRM (Contacts, Projets, Tâches) ? Cette action est irréversible.")) return;
-    if (!window.confirm("Confirmez-vous vraiment la suppression TOTALE ?")) return;
-
-    setIsLoading(true);
-    try {
-      // 1. Delete Contacts
-      const allContacts = await apiService.getContacts();
-      await Promise.all(allContacts.map(c => apiService.deleteContact(c.id)));
-      setContacts([]);
-
-      // 2. Delete Projects
-      const allProjects = await apiService.getProjects();
-      await Promise.all(allProjects.map(p => apiService.deleteProject(p.id)));
-      setProjects([]);
-
-      // 3. Delete Tasks
-      const allTasks = await apiService.getTasks();
-      await Promise.all(allTasks.map(t => apiService.deleteTask(t.id)));
-      setTasks([]);
-
-      // Log cleanup
-      await apiService.logActivity({
-        type: 'user',
-        action: 'delete',
-        description: `${currentUser.name} a supprimé TOUTES les données CRM via le bouton de reset.`,
-        userId: user?.uid,
-        userName: currentUser.name
-      });
-
-      refreshActivities();
-      toast({ title: "Reset complet effectué", description: "Toutes les données ont été supprimées." });
-    } catch (error) {
-      console.error("Error during mass delete:", error);
-      toast({ title: "Erreur", description: "Une erreur est survenue lors de la suppression.", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const toggleTaskComplete = (id) => {
     setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
   };
@@ -483,23 +443,8 @@ export default function Crm() {
     (c.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // HEADER ACTIONS FOR MASS DELETE
-  const renderHeaderActions = () => (
-    <div className="flex justify-end mb-6">
-      <Button
-        variant="destructive"
-        onClick={handleDeleteAllData}
-        className="bg-red-600 hover:bg-red-700 text-white shadow-sm"
-      >
-        <Trash2 className="w-4 h-4 mr-2" />
-        Tout supprimer
-      </Button>
-    </div>
-  );
-
   const renderDashboard = () => (
     <div className="space-y-8">
-      {renderHeaderActions()}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
