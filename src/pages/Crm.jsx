@@ -1313,10 +1313,10 @@ export default function Crm() {
               </div>
             </div>
             <div className="text-center p-4 bg-green-50 rounded-xl">
-              <div className="text-3xl font-bold text-green-600 mb-1">{opportunities.length}</div>
-              <div className="text-sm text-slate-600">Opportunités actives</div>
+              <div className="text-3xl font-bold text-green-600 mb-1">{projects.length}</div>
+              <div className="text-sm text-slate-600">Projets totaux</div>
               <div className="text-xs text-slate-500 mt-1">
-                Pipeline de {(totalRevenue / 1000).toFixed(0)}K€
+                {projects.filter(p => p.status === 'En cours').length} en cours
               </div>
             </div>
             <div className="text-center p-4 bg-orange-50 rounded-xl">
