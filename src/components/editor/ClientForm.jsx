@@ -6,7 +6,7 @@ export default function ClientForm() {
   const { project, setProject, updateProject, saveProject } = useProject();
   const { user } = useAuth();
 
-  // Calcul du prénom de l'utilisateur connecté pour affichage "en dur"
+  // Calcul du prénom de l'utilisateur connecté pour affichage "en dur" (Lecture seule)
   const currentUserName = user?.firstName || user?.displayName?.split(' ')[0] || user?.name || 'Utilisateur';
 
   useEffect(() => {
