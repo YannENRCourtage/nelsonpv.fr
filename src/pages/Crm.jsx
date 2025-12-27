@@ -297,7 +297,7 @@ export default function Crm() {
 
 
   const navItems = [
-    { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+    { id: 'dashboard', label: 'Mon tableau de bord', icon: LayoutDashboard },
     { id: 'contacts', label: 'Contacts', icon: Users },
     { id: 'projects', label: 'Projets', icon: FolderHeart },
     { id: 'tasks', label: 'Tâches', icon: CheckSquare },
@@ -479,9 +479,9 @@ export default function Crm() {
           );
         })}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-full flex flex-col">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0">
+        <div className="lg:col-span-2 space-y-8 flex flex-col">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex-1 flex flex-col">
             <h2 className="text-xl font-bold text-slate-900 mb-6">Nouveaux Projets</h2>
             <div className="space-y-4 flex-1">
               {projects.slice(0, 3).map(p => (
@@ -495,7 +495,7 @@ export default function Crm() {
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-full flex flex-col">
           <h2 className="text-xl font-bold text-slate-900 mb-6">Activités récentes</h2>
-          <div className="space-y-4 flex-1 overflow-y-auto max-h-[400px]">
+          <div className="space-y-4 flex-1 overflow-y-auto">
             {activities.length > 0 ? activities.slice(0, 8).map(a => {
               const colors = { project: 'bg-green-500', contact: 'bg-blue-500', task: 'bg-orange-500', user: 'bg-indigo-500' };
               return (
