@@ -88,3 +88,24 @@ export const uploadPDFBlob = async (blob, contactId, projectId) => {
         throw error;
     }
 };
+
+/**
+ * Upload User Avatar to Firebase Storage
+ * @param {File} file - Image file
+ * @param {string} userId - User ID
+ * @returns {Promise<string>} Download URL
+ */
+export const uploadUserAvatar = async (file, userId) => {
+    try {
+        const fileExtension = file.name.split('.').pop();
+        const fileName = `avatar_${Date.now()}.${fileExtension}`;
+        const storageRef = ref(storage, `avatars/${userId}/${fileName}`);
+
+        await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(storageRef);
+        return downloadURL;
+    } catch (error) {
+        console.error('Avatar upload error:', error);
+        throw error;
+    }
+};

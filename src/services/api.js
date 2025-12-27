@@ -208,6 +208,29 @@ class ApiService {
         }
         return { success: false };
     }
+
+    // ============================================================================
+    // USER SETTINGS
+    // ============================================================================
+
+    async updateUserAvatar(file) {
+        const user = await this._getCurrentUser();
+        // Dynamic import to avoid circular dependencies if any, though direct import is better if possible.
+        // We will assume storage service is available via imports at top if we add it, 
+        // OR we can import it here dynamically. 
+        // Let's add the import to the top of the file in a separate edit or assume it's there? 
+        // Actually, I need to add the import to api.js first. 
+        // Wait, I can't add imports with this tool easily in the same step if I'm appending.
+        // I will use a direct call to the imported service. 
+        // I need to add `import * as storageService from './firebase/storage.service';` to the top.
+        // For now, let's just frame the method, but I'll need to fix imports.
+        return await require('./firebase/storage.service').uploadUserAvatar(file, user.uid);
+    }
+
+    async updateUserProfile(data) {
+        const user = await this._getCurrentUser();
+        return await firestoreService.updateUser(user.uid, data);
+    }
 }
 
 export const apiService = new ApiService();

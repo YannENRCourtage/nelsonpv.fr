@@ -10,9 +10,10 @@ import {
   Plus, Search, Euro, Settings, LogOut, X, Edit, Trash2, Save, Phone,
   Mail, Building, MapPin, Tag, Clock, CheckCircle2, AlertCircle,
   ChevronLeft, ChevronRight, BarChart3, PieChart, Activity, FolderHeart, MapPin as MapIcon, FileDown, ExternalLink,
-  List, LayoutGrid
+  List, LayoutGrid, UserCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
+import UserSettingsModal from '@/components/crm/UserSettingsModal.jsx';
 
 // Composants Modales extraits pour éviter les problèmes de focus
 const ContactModal = ({ show, onClose, editingContact, setEditingContact, onSave, contacts }) => {
@@ -229,6 +230,7 @@ export default function Crm() {
   // États Modales
   const [showContactModal, setShowContactModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -281,7 +283,8 @@ export default function Crm() {
   const currentUser = {
     name: user?.firstName ? `${user.firstName} ${user.lastName || ''}` : (user?.displayName || 'Utilisateur'),
     role: user?.role === 'admin' ? 'Administrateur' : 'Conseiller',
-    avatar: (user?.firstName?.[0] || user?.displayName?.[0] || 'U').toUpperCase(),
+    avatar: user?.photoURL ? user.photoURL : (user?.firstName?.[0] || user?.displayName?.[0] || 'U').toUpperCase(),
+    photoURL: user?.photoURL,
     color: user?.role === 'admin' ? 'bg-indigo-600' : 'bg-blue-600'
   };
 
@@ -303,6 +306,22 @@ export default function Crm() {
   ];
 
   // Handlers
+  const handleLogout = async () => {
+    try {
+      await apiService.logout();
+      navigate('/login');
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
+  };
+
+  const handleUserUpdate = (updatedUser) => {
+    // Force refresh or update local state if needed. 
+    // Usually auth context handles this via onAuthStateChanged, so a simple reload or state update might be enough.
+    // We'll rely on global auth state updates, but we can force a re-render if needed.
+    window.location.reload();
+  };
+
   const handleAddContact = () => {
     setEditingContact({ id: Date.now(), name: '', company: '', email: '', phone: '', city: '', status: 'Prospect', color: 'bg-blue-500' });
     setShowContactModal(true);
@@ -462,9 +481,9 @@ export default function Crm() {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-full flex flex-col">
             <h2 className="text-xl font-bold text-slate-900 mb-6">Nouveaux Projets</h2>
-            <div className="space-y-4">
+            <div className="space-y-4 flex-1">
               {projects.slice(0, 3).map(p => (
                 <div key={p.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
                   <div><div className="font-bold text-slate-900">{p.name || 'Projet'}</div><div className="text-xs text-slate-500">{p.city || '-'} • {p.status}</div></div>
@@ -474,9 +493,9 @@ export default function Crm() {
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-full flex flex-col">
           <h2 className="text-xl font-bold text-slate-900 mb-6">Activités récentes</h2>
-          <div className="space-y-4">
+          <div className="space-y-4 flex-1 overflow-y-auto max-h-[400px]">
             {activities.length > 0 ? activities.slice(0, 8).map(a => {
               const colors = { project: 'bg-green-500', contact: 'bg-blue-500', task: 'bg-orange-500', user: 'bg-indigo-500' };
               return (
@@ -1288,8 +1307,12 @@ export default function Crm() {
         {/* User Profile */}
         < div className="p-4 border-t border-slate-700" >
           <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-700/50">
-            <div className={`${currentUser.color} w-10 h-10 rounded-full flex items-center justify-center text-white font-bold`}>
-              {currentUser.avatar}
+            <div className={`${currentUser.color} w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden`}>
+              {currentUser.photoURL ? (
+                <img src={currentUser.photoURL} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                currentUser.avatar
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-white text-sm truncate">{currentUser.name}</p>
@@ -1297,10 +1320,18 @@ export default function Crm() {
             </div>
           </div>
           <div className="flex gap-2 mt-3">
-            <button className="flex-1 p-2 hover:bg-slate-700/50 rounded-lg transition-colors" title="Paramètres">
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="flex-1 p-2 hover:bg-slate-700/50 rounded-lg transition-colors"
+              title="Paramètres"
+            >
               <Settings className="w-4 h-4 mx-auto text-slate-400" />
             </button>
-            <button className="flex-1 p-2 hover:bg-red-500/10 rounded-lg transition-colors" title="Déconnexion">
+            <button
+              onClick={handleLogout}
+              className="flex-1 p-2 hover:bg-red-500/10 rounded-lg transition-colors"
+              title="Déconnexion"
+            >
               <LogOut className="w-4 h-4 mx-auto text-red-400" />
             </button>
           </div>
@@ -1353,6 +1384,13 @@ export default function Crm() {
         setEditingTask={setEditingTask}
         onSave={handleSaveTask}
         contacts={contacts}
+      />
+
+      <UserSettingsModal
+        show={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        currentUser={currentUser}
+        onUpdate={handleUserUpdate}
       />
     </div >
   );
