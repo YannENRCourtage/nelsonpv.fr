@@ -44,9 +44,11 @@ const UserSettingsModal = ({ show, onClose, currentUser, onUpdate }) => {
                 photoURL = await apiService.updateUserAvatar(avatarFile);
             }
 
-            // 2. Update Profile
+            // 2. Update Profile - split displayName into firstName/lastName for Firestore
+            const nameParts = displayName.trim().split(' ');
             const updateData = {
-                displayName: displayName,
+                firstName: nameParts[0] || displayName,
+                lastName: nameParts.slice(1).join(' ') || '',
                 photoURL: photoURL
             };
 

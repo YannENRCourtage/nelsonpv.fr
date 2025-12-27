@@ -289,10 +289,10 @@ export default function Crm() {
   };
 
   const kpis = [
-    { icon: Users, label: 'Contacts', value: contacts.length.toString(), trend: '+12%', trendPositive: true, color: 'bg-blue-500', bgLight: 'bg-blue-50' },
-    { icon: FolderHeart, label: 'Projets en cours', value: projects.filter(p => p.status === 'En cours').length.toString(), trend: '+15%', trendPositive: true, color: 'bg-green-500', bgLight: 'bg-green-50' },
-    { icon: CheckSquare, label: 'Tâches en cours', value: tasks.filter(t => !t.completed).length.toString(), trend: '5%', trendPositive: false, color: 'bg-orange-500', bgLight: 'bg-orange-50' },
-    { icon: CheckCircle2, label: 'Projets terminés', value: projects.filter(p => (p.status === 'terminé' || p.status === 'Terminé')).length.toString(), trend: '+23%', trendPositive: true, color: 'bg-purple-500', bgLight: 'bg-purple-50' },
+    { icon: Users, label: 'Contacts', value: contacts.length.toString(), trend: '+12%', trendPositive: true, color: 'bg-blue-500', bgLight: 'bg-blue-50', height: 'h-40' },
+    { icon: FolderHeart, label: 'Projets en cours', value: projects.filter(p => p.status === 'En cours').length.toString(), trend: '+15%', trendPositive: true, color: 'bg-green-500', bgLight: 'bg-green-50', height: 'h-40' },
+    { icon: CheckSquare, label: 'Tâches en cours', value: tasks.filter(t => !t.completed).length.toString(), trend: '5%', trendPositive: false, color: 'bg-orange-500', bgLight: 'bg-orange-50', height: 'h-40' },
+    { icon: CheckCircle2, label: 'Projets terminés', value: projects.filter(p => (p.status === 'terminé' || p.status === 'Terminé')).length.toString(), trend: '+23%', trendPositive: true, color: 'bg-purple-500', bgLight: 'bg-purple-50', height: 'h-40' },
   ];
 
 
@@ -468,7 +468,7 @@ export default function Crm() {
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
-            <div key={idx} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <div key={idx} className={`bg-white rounded-2xl shadow-sm border border-slate-200 p-6 ${kpi.height || ''} flex flex-col justify-between hover:shadow-md transition-shadow`}>
               <div className="flex items-start justify-between mb-4">
                 <div className={`${kpi.bgLight} p-3 rounded-xl`}><Icon className={`w-6 h-6 ${kpi.color.replace('bg-', 'text-')}`} /></div>
                 <span className={`text-sm font-semibold px-2 py-1 rounded-full ${kpi.trendPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{kpi.trend}</span>
