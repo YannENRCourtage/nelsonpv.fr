@@ -2169,6 +2169,26 @@ export default function MapElements({ style = {}, project, setProject, onAddress
     setFeatures(updater);
   };
 
+  // 0. RESET EFFECT: Force reload features on project ID change to prevent stale traces
+  const lastProjectIdFeaturesRef = useRef(null);
+  useEffect(() => {
+    if (project?.id && project.id !== lastProjectIdFeaturesRef.current) {
+      console.log(`[MapElements] Project switch detected (${project.id}). Resetting features.`);
+      lastProjectIdFeaturesRef.current = project.id;
+
+      // Reset interaction flag to allow fresh sync
+      hasUserInteractedRef.current = false;
+
+      // Force load features immediately
+      const newFeatures = project.features && Array.isArray(project.features) ? project.features : [];
+      setFeatures(newFeatures);
+
+      // Clean up UI states
+      setTemp([]);
+      setSelectedId(null);
+    }
+  }, [project]);
+
   // 1. Loading Effect: Restore features from project (Auto-Sync)
   useEffect(() => {
     // If user hasn't interacted, and local is empty, but project has features -> Sync Down
