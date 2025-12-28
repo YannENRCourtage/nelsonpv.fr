@@ -1,6 +1,18 @@
 {
     "rewrites": [
         {
+            "source": "/sdis-proxy/17/(.*)",
+            "destination": "https://api.deci.sdis17.fr/$1"
+        },
+        {
+            "source": "/sdis-proxy/84/(.*)",
+            "destination": "https://api.deci.sdis84.fr/$1"
+        },
+        {
+            "source": "/sdis-proxy/81/(.*)",
+            "destination": "https://api.deci.sdis81.fr/$1"
+        },
+        {
             "source": "/api/(.*)",
             "destination": "/api/$1"
         },

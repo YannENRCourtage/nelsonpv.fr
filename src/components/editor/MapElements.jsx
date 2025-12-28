@@ -1004,8 +1004,12 @@ function SDISLayerManager({ layersRef }) {
   const map = useMap();
 
   useEffect(() => {
+    console.log('[SDISLayerManager] useEffect triggered');
+    console.log('[SDISLayerManager] Current sdis layer:', layersRef.current['sdis']);
+
     // Initialiser la couche SDIS si elle n'existe pas encore
     if (!layersRef.current['sdis']) {
+      console.log('[SDISLayerManager] Creating new SDIS layer');
       const layerConfig = LAYERS['sdis'];
 
       // Créer un groupe de clusters pour gérer les marqueurs
@@ -1039,17 +1043,30 @@ function SDISLayerManager({ layersRef }) {
         const apis = layerConfig.apis || [];
         console.log("FETCH SDIS FROM APIS:", apis);
 
-        Promise.all(apis.map(url =>
-          fetch(url)
-            .then(r => {
-              console.log(`RESPONSE SDIS STATUS (${url}):`, r.status);
-              return r.json();
+        Promise.all(apis.map(url => {
+          // Determine correct proxy path based on domain
+          let proxyUrl = url;
+          if (url.includes('sdis17.fr')) proxyUrl = url.replace('https://api.deci.sdis17.fr', '/sdis-proxy/17');
+          else if (url.includes('sdis84.fr')) proxyUrl = url.replace('https://api.deci.sdis84.fr', '/sdis-proxy/84');
+          else if (url.includes('sdis81.fr')) proxyUrl = url.replace('https://api.deci.sdis81.fr', '/sdis-proxy/81');
+
+          console.log(`SDIS Fetching: ${proxyUrl} (Original: ${url})`);
+
+          return fetch(proxyUrl)
+            .then(async r => {
+              if (!r.ok) {
+                console.error(`Status ${r.status} for ${proxyUrl}`);
+                throw new Error(`HTTP ${r.status}`);
+              }
+              const text = await r.text();
+              try {
+                return JSON.parse(text);
+              } catch (e) {
+                console.error(`JSON Parse Error for ${proxyUrl}:`, e);
+                return { features: [] };
+              }
             })
-            .catch(err => {
-              console.warn(`Erreur API SDIS ${url}`, err);
-              return { type: 'FeatureCollection', features: [] };
-            })
-        )).then(results => {
+        })).then(results => {
           // Fusionner toutes les features
           const allFeatures = results.flatMap(r => {
             if (!r.features) {
@@ -1147,12 +1164,21 @@ function LayerToggleListener({ layersRef }) {
   useEffect(() => {
     const handleToggleLayer = (e) => {
       const { layerKey } = e.detail;
+      console.log(`[LayerToggleListener] Toggle event received for layer: ${layerKey}`);
+      console.log(`[LayerToggleListener] layersRef.current:`, Object.keys(layersRef.current));
+
       if (layersRef.current[layerKey]) {
+        console.log(`[LayerToggleListener] Layer ${layerKey} found in layersRef`);
         if (map.hasLayer(layersRef.current[layerKey])) {
+          console.log(`[LayerToggleListener] Removing layer ${layerKey} from map`);
           map.removeLayer(layersRef.current[layerKey]);
         } else {
+          console.log(`[LayerToggleListener] Adding layer ${layerKey} to map`);
+          console.log(`[LayerToggleListener] Layer object:`, layersRef.current[layerKey]);
           layersRef.current[layerKey].addTo(map);
         }
+      } else {
+        console.warn(`[LayerToggleListener] Layer ${layerKey} NOT found in layersRef!`);
       }
     };
 

@@ -468,6 +468,11 @@ const MapLayersPanel = ({ map }) => {
                     }
                 }
                 if (layerConfig) {
+                    // FIX: Delegate SDIS layer control to MapElements via event to use the robust SDISLayerManager
+                    if (layerConfig.type === 'sdis-unified' || layerName.includes('SDIS')) {
+                        window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'sdis' } }));
+                        return newActive;
+                    }
                     // Check zoom level for layers with minZoom
                     if (layerConfig.minZoom && map.getZoom() < layerConfig.minZoom && checked) {
                         alert(`Veuillez zoomer au niveau ${layerConfig.minZoom} ou plus pour afficher cette couche`);

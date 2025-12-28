@@ -247,6 +247,21 @@ export default defineConfig({
 		},
 		allowedHosts: true,
 		proxy: {
+			'/sdis-proxy/17': {
+				target: 'https://api.deci.sdis17.fr',
+				changeOrigin: true,
+				rewrite: (path) => path.replace(/^\/sdis-proxy\/17/, '')
+			},
+			'/sdis-proxy/84': {
+				target: 'https://api.deci.sdis84.fr',
+				changeOrigin: true,
+				rewrite: (path) => path.replace(/^\/sdis-proxy\/84/, '')
+			},
+			'/sdis-proxy/81': {
+				target: 'https://api.deci.sdis81.fr',
+				changeOrigin: true,
+				rewrite: (path) => path.replace(/^\/sdis-proxy\/81/, '')
+			},
 			'/api': {
 				target: 'https://nelsonpv.fr',
 				changeOrigin: true,

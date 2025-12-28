@@ -532,6 +532,17 @@ export default function ProjectEditor() {
             >
               DVF
             </button>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('windy'); }}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'windy'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+              tabIndex={-1}
+            >
+              Windy
+            </button>
           </div>
 
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden flex-1">
@@ -648,6 +659,16 @@ export default function ProjectEditor() {
                 src="https://explore.data.gouv.fr/fr/immobilier?onglet=carte&filtre=tous"
                 className="w-full h-full border-0"
                 title="DVF"
+                allow="geolocation"
+              />
+            </div>
+
+            {/* Onglet Windy */}
+            <div className={activeTab === 'windy' ? 'w-full h-full' : 'hidden'}>
+              <iframe
+                src="https://www.windy.com/?45.966,0.417,5"
+                className="w-full h-full border-0"
+                title="Windy"
                 allow="geolocation"
               />
             </div>
