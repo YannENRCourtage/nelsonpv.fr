@@ -246,7 +246,7 @@ export default function ProjectEditor() {
     }
 
     // Liste des onglets utilisant des iframes externes
-    const iframeTabs = ['owners', 'capareseau', 'terravisu', 'geoportail', 'dvf'];
+    const iframeTabs = ['owners', 'capareseau', 'terravisu', 'geoportail', 'dvf', 'windy'];
     if (iframeTabs.includes(activeTab)) {
       await captureWithDisplayMedia(slotIndex);
       return;
@@ -541,6 +541,17 @@ export default function ProjectEditor() {
             >
               DVF
             </button>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('windy'); }}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'windy'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+              tabIndex={-1}
+            >
+              Windy
+            </button>
           </div>
 
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden flex-1">
@@ -656,11 +667,37 @@ export default function ProjectEditor() {
             {/* Onglet DVF */}
             <div className={activeTab === 'dvf' ? 'w-full h-full' : 'hidden'}>
               <iframe
-                src="https://explore.data.gouv.fr/fr/immobilier?onglet=carte&filtre=tous"
+                src="https://explore.data.gouv.fr/fr/immobilier?ordering=mutation_date&page=1"
                 className="w-full h-full border-0"
-                title="DVF"
+                title="DVF Etalab"
                 allow="geolocation"
               />
+            </div>
+
+            {/* Onglet Windy */}
+            <div className={activeTab === 'windy' ? 'w-full h-full' : 'hidden'}>
+              {(() => {
+                // Parse GPS from project.gps (format "lat, lon")
+                let lat = 44.8378;
+                let lon = -0.5795;
+                if (project?.gps) {
+                  const parts = project.gps.split(',').map(s => parseFloat(s.trim()));
+                  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                    lat = parts[0];
+                    lon = parts[1];
+                  }
+                }
+                const windyUrl = `https://embed.windy.com/embed2.html?lat=${lat}&lon=${lon}&detailLat=${lat}&detailLon=${lon}&width=650&height=450&zoom=11&level=surface&overlay=wind&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1`;
+
+                return (
+                  <iframe
+                    src={windyUrl}
+                    className="w-full h-full border-0"
+                    title="Météo Windy"
+                    allow="geolocation"
+                  />
+                );
+              })()}
             </div>
 
 
