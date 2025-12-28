@@ -16,7 +16,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import DevErrorBoundary from './components/DevErrorBoundary.jsx';
 import TawkMessenger from './components/TawkMessenger.jsx';
-import ChatFloatingButton from './components/ChatFloatingButton.jsx'; // <--- Import ajouté
+import CrispChat from './components/CrispChat.jsx';
 
 function AppContent() {
   const { isAuthenticated, user } = useAuth();
@@ -105,8 +105,7 @@ function AppContent() {
         <Route path="*" element={<Navigate to={isAuthenticated ? '/' : '/login'} replace />} />
       </Routes>
       <Toaster />
-      {/* <TawkMessenger /> */}
-      <ChatFloatingButton />
+      <CrispChat />
     </DndProvider>
   );
 }
