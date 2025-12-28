@@ -242,7 +242,7 @@ export default function Crm() {
   // Charger les données initiales
   const refreshActivities = async () => {
     try {
-      const latest = await apiService.getActivities(10);
+      const latest = await apiService.getActivities(12);
       setActivities(latest || []);
     } catch (err) {
       console.error("Failed to refresh activities:", err);
@@ -256,7 +256,7 @@ export default function Crm() {
         const [contactsData, tasksData, activitiesData, usersData] = await Promise.all([
           apiService.getContacts(),
           apiService.getTasks(),
-          apiService.getActivities(10),
+          apiService.getActivities(12),
           apiService.getUsers()
         ]);
         setContacts(contactsData || []);
@@ -567,7 +567,7 @@ export default function Crm() {
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-full flex flex-col">
           <h2 className="text-xl font-bold text-slate-900 mb-6">Activités récentes</h2>
           <div className="space-y-4 flex-1 overflow-y-auto">
-            {activities.length > 0 ? activities.slice(0, 8).map(a => {
+            {activities.length > 0 ? activities.slice(0, 9).map(a => {
               const colors = { project: 'bg-green-500', contact: 'bg-blue-500', task: 'bg-orange-500', user: 'bg-indigo-500' };
               // Résoudre la photo de l'utilisateur : d'abord depuis l'activité, sinon depuis la liste des utilisateurs
               const activityUser = users.find(u => u.id === a.userId);
