@@ -618,7 +618,7 @@ export default function Crm() {
               const colors = { project: 'bg-green-500', contact: 'bg-blue-500', task: 'bg-orange-500', user: 'bg-indigo-500' };
               // Résoudre la photo de l'utilisateur : d'abord depuis l'activité, sinon depuis la liste des utilisateurs
               const activityUser = users.find(u => u.id === a.userId);
-              const photoURL = a.userPhotoURL || activityUser?.photoURL;
+              const photoURL = activityUser?.photoURL || a.userPhotoURL;
               return (
                 <div key={a.id} className="flex items-start gap-3 p-3 hover:bg-slate-50 rounded-lg transition-colors">
                   {photoURL ? (
@@ -1321,7 +1321,7 @@ export default function Crm() {
     const userStats = {};
     projects.forEach(p => {
       // Priorité : assignedUser > createdByFirstName > user > 'Non assigné'
-      const u = p.assignedUser || p.createdByFirstName || p.user || 'Non assigné';
+      const u = p.user || p.assignedUser || p.createdByFirstName || 'Non assigné';
       if (!userStats[u]) userStats[u] = { name: u, nouveau: 0, enCours: 0, termine: 0, score: 0 };
 
       if (p.status === 'Nouveau') userStats[u].nouveau++;
