@@ -10,10 +10,59 @@ import {
   Plus, Search, Euro, Settings, LogOut, X, Edit, Trash2, Save, Phone,
   Mail, Building, MapPin, Tag, Clock, CheckCircle2, AlertCircle,
   ChevronLeft, ChevronRight, BarChart3, PieChart, Activity, FolderHeart, MapPin as MapIcon, FileDown, ExternalLink,
-  List, LayoutGrid, UserCircle, User, Briefcase
+  List, LayoutGrid, UserCircle, User, Briefcase, Calendar as CalendarIcon, Filter, MoreVertical
 } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
+import { Input } from '@/components/ui/input.jsx';
+import { Badge } from '@/components/ui/badge.jsx';
 import UserSettingsModal from '@/components/crm/UserSettingsModal.jsx';
+
+// Composant Avatar Utilisateur
+const UserAvatar = ({ name, email }) => {
+  const cleanName = (name || '').trim();
+  const isYann = cleanName.toLowerCase().includes('yann');
+
+  if (!cleanName) return <span className="text-slate-400">-</span>;
+
+  if (isYann) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-200">
+          <img
+            src="/assets/yann_avatar.png"
+            alt="Yann"
+            className="w-full h-full object-cover"
+            onError={(e) => { e.target.onerror = null; e.target.src = "https://ui-avatars.com/api/?name=Yann&background=0D8ABC&color=fff"; }}
+          />
+        </div>
+        <span className="text-sm font-medium text-slate-700">Yann</span>
+      </div>
+    );
+  }
+
+  // Fallback / Autres utilisateurs
+  const initial = cleanName.charAt(0).toUpperCase();
+  const colors = [
+    'bg-red-100 text-red-700',
+    'bg-green-100 text-green-700',
+    'bg-blue-100 text-blue-700',
+    'bg-yellow-100 text-yellow-700',
+    'bg-purple-100 text-purple-700',
+    'bg-pink-100 text-pink-700'
+  ];
+  // Simple hash for color consistency
+  const colorIndex = cleanName.length % colors.length;
+  const colorClass = colors[colorIndex];
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${colorClass}`}>
+        {initial}
+      </div>
+      <span className="text-sm font-medium text-slate-700">{cleanName}</span>
+    </div>
+  );
+};
 
 // Composants Modales extraits pour éviter les problèmes de focus
 const ContactModal = ({ show, onClose, editingContact, setEditingContact, onSave, contacts }) => {
@@ -752,7 +801,9 @@ export default function Crm() {
                   return (
                     <tr key={contact.id} id={`contact-${contact.id}`} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 font-medium text-slate-900">{contact.name}</td>
-                      <td className="px-6 py-4 text-slate-600 text-sm">{project?.assignedUser || project?.createdByFirstName || (typeof project?.user === 'string' ? project.user : null) || '-'}</td>
+                      <td className="px-6 py-4">
+                        <UserAvatar name={project?.assignedUser || project?.createdByFirstName || (typeof project?.user === 'string' ? project.user : null)} />
+                      </td>
                       <td className="px-6 py-4 text-slate-600 text-sm">{contact.email}</td>
                       <td className="px-6 py-4 text-slate-600 text-sm">{contact.phone}</td>
                       <td className="px-6 py-4 text-slate-600 text-sm">{project?.address || '-'}</td>
@@ -1163,7 +1214,9 @@ export default function Crm() {
                         return <span className="text-slate-900 font-medium">{clientName}</span>;
                       })()}
                     </td>
-                    <td className="px-6 py-4 text-slate-600">{project.assignedUser || project.createdByFirstName || (typeof project.user === 'string' ? project.user : null) || '-'}</td>
+                    <td className="px-6 py-4">
+                      <UserAvatar name={project.assignedUser || project.createdByFirstName || (typeof project.user === 'string' ? project.user : null)} />
+                    </td>
                     <td className="px-6 py-4 text-slate-600">{project.address || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{project.zip || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{project.city || '-'}</td>
