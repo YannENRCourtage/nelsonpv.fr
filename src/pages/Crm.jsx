@@ -725,6 +725,7 @@ export default function Crm() {
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Contact</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Utilisateur</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Email</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Téléphone</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">ADRESSE</th>
@@ -751,6 +752,7 @@ export default function Crm() {
                   return (
                     <tr key={contact.id} id={`contact-${contact.id}`} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 font-medium text-slate-900">{contact.name}</td>
+                      <td className="px-6 py-4 text-slate-600 text-sm">{project?.assignedUser || project?.createdByFirstName || project?.user || '-'}</td>
                       <td className="px-6 py-4 text-slate-600 text-sm">{contact.email}</td>
                       <td className="px-6 py-4 text-slate-600 text-sm">{contact.phone}</td>
                       <td className="px-6 py-4 text-slate-600 text-sm">{project?.address || '-'}</td>
@@ -1160,7 +1162,7 @@ export default function Crm() {
                         return <span className="text-slate-900 font-medium">{clientName}</span>;
                       })()}
                     </td>
-                    <td className="px-6 py-4 text-slate-600">{project.createdByFirstName || project.user || '-'}</td>
+                    <td className="px-6 py-4 text-slate-600">{project.assignedUser || project.createdByFirstName || project.user || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{project.address || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{project.zip || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{project.city || '-'}</td>
