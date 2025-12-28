@@ -1166,7 +1166,7 @@ export default function Crm() {
                     <td className="px-6 py-4 text-slate-600">{project.address || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{project.zip || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{project.city || '-'}</td>
-                    <td className="px-6 py-4 text-slate-600">{project.gpsCoordinates || '-'}</td>
+                    <td className="px-6 py-4 text-slate-600">{project.gps || '-'}</td>
                     <td className="px-6 py-4">
                       <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
                         {project.type || 'Construction'}
