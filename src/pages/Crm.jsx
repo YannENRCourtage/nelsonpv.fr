@@ -225,6 +225,7 @@ export default function Crm() {
   const [tasks, setTasks] = useState([]);
   const [opportunities, setOpportunities] = useState([]); // Ajout pour éviter le crash
   const [activities, setActivities] = useState([]);
+  const [users, setUsers] = useState([]); // Pour résoudre les photos utilisateurs
   const [monthlyKpis, setMonthlyKpis] = useState(null); // Store last month's KPI values
   const [isLoading, setIsLoading] = useState(true);
 
@@ -252,14 +253,16 @@ export default function Crm() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [contactsData, tasksData, activitiesData] = await Promise.all([
+        const [contactsData, tasksData, activitiesData, usersData] = await Promise.all([
           apiService.getContacts(),
           apiService.getTasks(),
-          apiService.getActivities(10)
+          apiService.getActivities(10),
+          apiService.getUsers()
         ]);
         setContacts(contactsData || []);
         setTasks(tasksData || []);
         setActivities(activitiesData || []);
+        setUsers(usersData || []);
 
         // Load monthly KPI snapshot for comparison
         const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
@@ -566,11 +569,14 @@ export default function Crm() {
           <div className="space-y-4 flex-1 overflow-y-auto">
             {activities.length > 0 ? activities.slice(0, 8).map(a => {
               const colors = { project: 'bg-green-500', contact: 'bg-blue-500', task: 'bg-orange-500', user: 'bg-indigo-500' };
+              // Résoudre la photo de l'utilisateur : d'abord depuis l'activité, sinon depuis la liste des utilisateurs
+              const activityUser = users.find(u => u.id === a.userId);
+              const photoURL = a.userPhotoURL || activityUser?.photoURL;
               return (
                 <div key={a.id} className="flex items-start gap-3 p-3 hover:bg-slate-50 rounded-lg transition-colors">
-                  {a.userPhotoURL ? (
+                  {photoURL ? (
                     <img
-                      src={a.userPhotoURL}
+                      src={photoURL}
                       alt={a.userName || 'User'}
                       className="w-10 h-10 rounded-full flex-shrink-0 object-cover border-2 border-white shadow"
                     />
