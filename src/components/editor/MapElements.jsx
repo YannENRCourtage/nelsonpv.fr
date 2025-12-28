@@ -185,12 +185,12 @@ function LigneBTLayerManager({ layersRef }) {
       const latMin = bounds.getSouth();
       const lonMax = bounds.getEast();
 
-      const whereClause = `within_box(geo_shape, ${latMax}, ${lonMin}, ${latMin}, ${lonMax})`;
+      const whereClause = `within_box(geometry, ${latMax}, ${lonMin}, ${latMin}, ${lonMax})`;
       const limit = 1000;
 
       const urls = [
-        `https://data.enedis.fr/api/explore/v2.1/catalog/datasets/reseau-souterrain-bt/records?limit=${limit}&where=${encodeURIComponent(whereClause)}`,
-        `https://data.enedis.fr/api/explore/v2.1/catalog/datasets/reseau-aerien-bt/records?limit=${limit}&where=${encodeURIComponent(whereClause)}`
+        `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/reseau-souterrain-bt/records?limit=${limit}&where=${encodeURIComponent(whereClause)}`,
+        `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/reseau-aerien-bt/records?limit=${limit}&where=${encodeURIComponent(whereClause)}`
       ];
 
       try {
@@ -204,7 +204,15 @@ function LigneBTLayerManager({ layersRef }) {
         if (results[0].results) {
           const geoJson = {
             type: 'FeatureCollection',
-            features: results[0].results.map(r => ({ ...r, properties: { ...r, _type: 'souterrain' } }))
+            features: results[0].results.map(r => {
+              try {
+                return {
+                  type: 'Feature',
+                  geometry: typeof r.geometry === 'string' ? JSON.parse(r.geometry) : r.geometry,
+                  properties: { ...r, _type: 'souterrain' }
+                };
+              } catch (e) { return null; }
+            }).filter(f => f !== null)
           };
           L.geoJSON(geoJson, {
             style: { color: '#00008B', weight: 2, dashArray: '5, 5', opacity: 0.8 }
@@ -215,7 +223,15 @@ function LigneBTLayerManager({ layersRef }) {
         if (results[1].results) {
           const geoJson = {
             type: 'FeatureCollection',
-            features: results[1].results.map(r => ({ ...r, properties: { ...r, _type: 'aerien' } }))
+            features: results[1].results.map(r => {
+              try {
+                return {
+                  type: 'Feature',
+                  geometry: typeof r.geometry === 'string' ? JSON.parse(r.geometry) : r.geometry,
+                  properties: { ...r, _type: 'aerien' }
+                };
+              } catch (e) { return null; }
+            }).filter(f => f !== null)
           };
           L.geoJSON(geoJson, {
             style: { color: '#00008B', weight: 2, opacity: 0.8 }
