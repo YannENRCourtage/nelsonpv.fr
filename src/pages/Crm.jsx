@@ -752,7 +752,7 @@ export default function Crm() {
                   return (
                     <tr key={contact.id} id={`contact-${contact.id}`} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 font-medium text-slate-900">{contact.name}</td>
-                      <td className="px-6 py-4 text-slate-600 text-sm">{project?.assignedUser || project?.createdByFirstName || project?.user || '-'}</td>
+                      <td className="px-6 py-4 text-slate-600 text-sm">{project?.assignedUser || project?.createdByFirstName || (typeof project?.user === 'string' ? project.user : null) || '-'}</td>
                       <td className="px-6 py-4 text-slate-600 text-sm">{contact.email}</td>
                       <td className="px-6 py-4 text-slate-600 text-sm">{contact.phone}</td>
                       <td className="px-6 py-4 text-slate-600 text-sm">{project?.address || '-'}</td>
@@ -760,9 +760,10 @@ export default function Crm() {
                       <td className="px-6 py-4 text-slate-600">{contact.city}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${contact.status === 'Client' ? 'bg-green-100 text-green-700' :
-                          contact.status === 'En cours' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'
+                          contact.status === 'En cours' ? 'bg-blue-100 text-blue-700' :
+                            (contact.status === 'Terminé' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700') // Default/Draft/Nouveau -> Slate
                           }`}>
-                          {contact.status}
+                          {contact.status === 'draft' ? 'Nouveau' : contact.status}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -1162,7 +1163,7 @@ export default function Crm() {
                         return <span className="text-slate-900 font-medium">{clientName}</span>;
                       })()}
                     </td>
-                    <td className="px-6 py-4 text-slate-600">{project.assignedUser || project.createdByFirstName || project.user || '-'}</td>
+                    <td className="px-6 py-4 text-slate-600">{project.assignedUser || project.createdByFirstName || (typeof project.user === 'string' ? project.user : null) || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{project.address || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{project.zip || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{project.city || '-'}</td>
