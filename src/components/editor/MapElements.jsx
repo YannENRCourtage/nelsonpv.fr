@@ -2080,31 +2080,44 @@ function MapStateSync({ project, setProject }) {
   const map = useMap();
   const isRestoringRef = useRef(false);
   const lastSavedViewRef = useRef(null);
+  const lastProjectIdRef = useRef(null);
 
-  // 1. RESTAURATION : Au chargement d'un nouveau projet, on applique la vue
+  // 1. RESTAURATION : Force la vue au changement de projet
   useEffect(() => {
-    // On vérifie si on a un projet valide avec une vue à restaurer
-    if (project?.id && project?.mapView && !isRestoringRef.current) {
-      const { center, zoom } = project.mapView;
-      // Vérification basique pour éviter de restaurer des valeurs invalides
-      if (center && typeof center.lat === 'number' && typeof center.lng === 'number' && typeof zoom === 'number') {
-        const currentCenter = map.getCenter();
-        const currentZoom = map.getZoom();
+    if (!project?.id) return;
 
-        // On ne restaure que si c'est vraiment différent (avec une petite tolérance)
-        const dist = map.distance(currentCenter, center);
-        if (dist > 10 || currentZoom !== zoom) {
-          console.log(`[MapStateSync] Restoring view for project ${project.id}:`, project.mapView);
-          isRestoringRef.current = true;
+    // Détection changement de projet
+    if (project.id !== lastProjectIdRef.current) {
+      console.log(`[MapStateSync] New project detected (${project.id}). Updating view...`);
+      lastProjectIdRef.current = project.id;
+      isRestoringRef.current = true;
+
+      if (project.mapView) {
+        // 1. Vue sauvegardée
+        const { center, zoom } = project.mapView;
+        if (center && typeof center.lat === 'number' && typeof center.lng === 'number' && typeof zoom === 'number') {
+          console.log("Restoring saved MapView:", center, zoom);
           map.setView(center, zoom, { animate: false });
-          // Débloquer le flag après un court délai pour éviter que l'événement moveend ne déclenche une sauvegarde immédiate inutile
-          setTimeout(() => { isRestoringRef.current = false; }, 500);
         }
+      } else if (project.gps) {
+        // 2. Pas de vue mais GPS
+        const parts = project.gps.split(',').map(Number);
+        if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+          console.log("Restoring from GPS:", parts);
+          map.setView(parts, 18, { animate: false });
+        }
+      } else {
+        // 3. Rien : Défaut pour éviter de voir le projet précédent
+        console.log("No view/GPS. Resetting to default.");
+        map.setView([44.82619, -0.67201], 6, { animate: false });
       }
-    }
-  }, [project?.id, project?.mapView, map]); // Ajout de project?.mapView pour déclencher quand les données arrivent
 
-  // 2. PERSISTANCE : On écoute les mouvements pour sauvegarder dans l'état local du projet
+      // Débloquer la persistence après délai
+      setTimeout(() => { isRestoringRef.current = false; }, 800);
+    }
+  }, [project, map]);
+
+  // 2. PERSISTANCE : Sauvegarde en temps réel
   useEffect(() => {
     const handleMoveEnd = () => {
       if (isRestoringRef.current) return;
@@ -2113,13 +2126,9 @@ function MapStateSync({ project, setProject }) {
       const zoom = map.getZoom();
       const newView = { center: { lat: center.lat, lng: center.lng }, zoom };
 
-      // Debounce ou check pour éviter spam
       if (JSON.stringify(newView) !== JSON.stringify(lastSavedViewRef.current)) {
-        console.log("[MapStateSync] View changed, updating project state:", newView);
         lastSavedViewRef.current = newView;
-
         setProject(prev => {
-          // On ne met à jour que si ça a changé pour éviter re-render loops
           if (prev?.mapView && JSON.stringify(prev.mapView) === JSON.stringify(newView)) return prev;
           return { ...prev, mapView: newView };
         });
