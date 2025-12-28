@@ -1,6 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, Component } from 'react';
 import { MessageSquare, X } from 'lucide-react';
 import ChatKittyComponent from './ChatKittyComponent';
+
+class ChatErrorBoundary extends Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError(error) {
+        return { hasError: true };
+    }
+
+    componentDidCatch(error, errorInfo) {
+        console.error("ChatKitty Error:", error, errorInfo);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="flex flex-col items-center justify-center h-full p-4 text-center text-slate-500">
+                    <p>Le chat est indisponible pour le moment.</p>
+                    <button
+                        className="mt-2 text-indigo-600 hover:underline text-sm"
+                        onClick={() => this.setState({ hasError: false })}
+                    >
+                        Réessayer
+                    </button>
+                </div>
+            );
+        }
+
+        return this.props.children;
+    }
+}
 
 export default function ChatFloatingButton() {
     const [isOpen, setIsOpen] = useState(false);
@@ -21,7 +54,9 @@ export default function ChatFloatingButton() {
                             </button>
                         </div>
                         <div className="flex-1 bg-gray-50 overflow-hidden relative">
-                            <ChatKittyComponent />
+                            <ChatErrorBoundary>
+                                <ChatKittyComponent />
+                            </ChatErrorBoundary>
                         </div>
                     </div>
                 </div>
