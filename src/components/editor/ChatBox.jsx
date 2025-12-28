@@ -38,7 +38,10 @@ export default function ChatBox() {
         // userId fallback
         const uid = user?.uid || user?.id || 'unknown';
         const uName = user?.name || user?.displayName || user?.firstName || 'Utilisateur';
-        await createComment(project.id, uid, uName, t);
+
+        // PASS ASSIGNED TO
+        const assignedTo = project?.assignedTo || null;
+        await createComment(project.id, uid, uName, t, assignedTo);
       } catch (err) {
         console.error("Failed to create notification comment:", err);
       }

@@ -18,14 +18,15 @@ import { db } from '@/config/firebase.js';
 // ============================================================================
 
 /**
- * Create a comment with user mentions
+ * Create a comment with user mentions and automatic notifications
  * @param {string} projectId - Project ID
  * @param {string} userId - Comment author UID
  * @param {string} userName - Comment author display name
  * @param {string} content - Comment text
+ * @param {string} assignedTo - (Optional) User ID or Name of the project assignee
  * @returns {Promise<Object>} Created comment
  */
-export const createComment = async (projectId, userId, userName, content) => {
+export const createComment = async (projectId, userId, userName, content, assignedTo = null) => {
     try {
         // Extract mentions from content (@username)
         const mentionMatches = content.match(/@(\w+)/g) || [];
@@ -43,9 +44,59 @@ export const createComment = async (projectId, userId, userName, content) => {
 
         const commentRef = await addDoc(collection(db, 'comments'), comment);
 
-        // Create notifications for mentioned users
-        if (mentions.length > 0) {
-            await createMentionNotifications(projectId, commentRef.id, userId, userName, mentions);
+        // 1. Get all users for resolution
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // 2. Identify Target Users for Notifications
+        const targets = new Set(); // Stores User IDs to notify
+
+        // A. Project Assignee
+        if (assignedTo) {
+            const assignee = users.find(u =>
+                u.id === assignedTo ||
+                u.displayName === assignedTo ||
+                (u.firstName && u.firstName === assignedTo) ||
+                (u.email && u.email === assignedTo)
+            );
+            if (assignee && assignee.id !== userId) {
+                targets.add(assignee.id);
+            }
+        }
+
+        // B. Participants (Previous Commenters)
+        const qComments = query(collection(db, 'comments'), where('projectId', '==', projectId));
+        const commentsSnap = await getDocs(qComments);
+        commentsSnap.forEach(doc => {
+            const cData = doc.data();
+            if (cData.userId && cData.userId !== userId) {
+                targets.add(cData.userId);
+            }
+        });
+
+        // C. Mentions (Explicit)
+        mentions.forEach(mentionName => {
+            const mentionedUser = users.find(u =>
+                (u.firstName && u.firstName.toLowerCase() === mentionName.toLowerCase()) ||
+                (u.displayName && u.displayName.toLowerCase() === mentionName.toLowerCase()) ||
+                (u.email && u.email.toLowerCase().startsWith(mentionName.toLowerCase()))
+            );
+            if (mentionedUser && mentionedUser.id !== userId) {
+                targets.add(mentionedUser.id);
+            }
+        });
+
+        // 3. Create Notifications
+        for (const targetUserId of targets) {
+            await addDoc(collection(db, 'notifications'), {
+                userId: targetUserId,
+                projectId,
+                commentId: commentRef.id,
+                type: 'comment',
+                message: `${userName} a commenté sur le projet`,
+                read: false,
+                createdAt: serverTimestamp()
+            });
         }
 
         return { id: commentRef.id, ...comment };
