@@ -26,7 +26,7 @@ const UserAvatar = ({ name, email }) => {
 
   if (isYann) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" title="Yann">
         <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-200">
           <img
             src="/assets/yann_avatar.png"
@@ -35,7 +35,6 @@ const UserAvatar = ({ name, email }) => {
             onError={(e) => { e.target.onerror = null; e.target.src = "https://ui-avatars.com/api/?name=Yann&background=0D8ABC&color=fff"; }}
           />
         </div>
-        <span className="text-sm font-medium text-slate-700">Yann</span>
       </div>
     );
   }
@@ -55,11 +54,10 @@ const UserAvatar = ({ name, email }) => {
   const colorClass = colors[colorIndex];
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2" title={cleanName}>
       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${colorClass}`}>
         {initial}
       </div>
-      <span className="text-sm font-medium text-slate-700">{cleanName}</span>
     </div>
   );
 };
@@ -774,7 +772,7 @@ export default function Crm() {
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Contact</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Utilisateur</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Affectation</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Email</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Téléphone</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">ADRESSE</th>
