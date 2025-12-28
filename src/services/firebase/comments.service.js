@@ -24,9 +24,10 @@ import { db } from '@/config/firebase.js';
  * @param {string} userName - Comment author display name
  * @param {string} content - Comment text
  * @param {string} assignedTo - (Optional) User ID or Name of the project assignee
+ * @param {string} userEmail - (Optional) Comment author email for better exclusion
  * @returns {Promise<Object>} Created comment
  */
-export const createComment = async (projectId, userId, userName, content, assignedTo = null) => {
+export const createComment = async (projectId, userId, userName, content, assignedTo = null, userEmail = null) => {
     try {
         // Extract mentions from content (@username)
         const mentionMatches = content.match(/@(\w+)/g) || [];
@@ -51,15 +52,26 @@ export const createComment = async (projectId, userId, userName, content, assign
         // 2. Identify Target Users for Notifications
         const targets = new Set(); // Stores User IDs to notify
 
+        // Helper to check if a user is the author
+        const isAuthor = (u) => {
+            if (!u) return false;
+            // Strict ID check
+            if (String(u.id) === String(userId)) return true;
+            // Email check if provided
+            if (userEmail && u.email && u.email.toLowerCase() === userEmail.toLowerCase()) return true;
+            return false;
+        };
+
         // A. Project Assignee
         if (assignedTo) {
             const assignee = users.find(u =>
-                u.id === assignedTo ||
+                String(u.id) === String(assignedTo) ||
                 u.displayName === assignedTo ||
                 (u.firstName && u.firstName === assignedTo) ||
                 (u.email && u.email === assignedTo)
             );
-            if (assignee && assignee.id !== userId) {
+
+            if (assignee && !isAuthor(assignee)) {
                 targets.add(assignee.id);
             }
         }
@@ -69,8 +81,15 @@ export const createComment = async (projectId, userId, userName, content, assign
         const commentsSnap = await getDocs(qComments);
         commentsSnap.forEach(doc => {
             const cData = doc.data();
-            if (cData.userId && cData.userId !== userId) {
-                targets.add(cData.userId);
+            // userId of comment might be different format, try to resolve via Users list if possible, or just strict compare
+            if (cData.userId && String(cData.userId) !== String(userId)) {
+                // Double check if this participant is actually the current author (via email lookup if ID differs)
+                const participantUser = users.find(u => String(u.id) === String(cData.userId));
+                if (participantUser && isAuthor(participantUser)) {
+                    // It's me, don't notify
+                } else {
+                    targets.add(cData.userId);
+                }
             }
         });
 
@@ -81,12 +100,13 @@ export const createComment = async (projectId, userId, userName, content, assign
                 (u.displayName && u.displayName.toLowerCase() === mentionName.toLowerCase()) ||
                 (u.email && u.email.toLowerCase().startsWith(mentionName.toLowerCase()))
             );
-            if (mentionedUser && mentionedUser.id !== userId) {
+            if (mentionedUser && !isAuthor(mentionedUser)) {
                 targets.add(mentionedUser.id);
             }
         });
 
         // 3. Create Notifications
+        console.log(`[Notifications] Creating notifications for targets:`, [...targets]);
         for (const targetUserId of targets) {
             await addDoc(collection(db, 'notifications'), {
                 userId: targetUserId,

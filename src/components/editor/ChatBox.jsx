@@ -39,9 +39,9 @@ export default function ChatBox() {
         const uid = user?.uid || user?.id || 'unknown';
         const uName = user?.name || user?.displayName || user?.firstName || 'Utilisateur';
 
-        // PASS ASSIGNED TO
+        // PASS ASSIGNED TO AND EMAIL
         const assignedTo = project?.assignedTo || null;
-        await createComment(project.id, uid, uName, t, assignedTo);
+        await createComment(project.id, uid, uName, t, assignedTo, user?.email);
       } catch (err) {
         console.error("Failed to create notification comment:", err);
       }
@@ -66,14 +66,17 @@ export default function ChatBox() {
             Aucun message.
           </div>
         )}
-        {lines.map((l, i) => (
-          <div key={i} className={`flex flex-col ${l.who === (user?.name || "Vous") ? 'items-end' : 'items-start'}`}>
-            <div className="text-xs text-gray-500 mb-1">{l.who}</div>
-            <div className={`max-w-xs md:max-w-md rounded-lg px-3 py-2 ${l.who === (user?.name || "Vous") ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-800'}`}>
-              {l.text}
+        {lines.map((l, i) => {
+          const isMe = l.who === (user?.name || user?.displayName || user?.firstName || "Vous");
+          return (
+            <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+              <div className="text-xs text-gray-500 mb-1">{l.who}</div>
+              <div className={`max-w-xs md:max-w-md rounded-lg px-3 py-2 ${isMe ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'}`}>
+                {l.text}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
       <div className="border-t p-4">
