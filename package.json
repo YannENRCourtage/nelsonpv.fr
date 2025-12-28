@@ -12,6 +12,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@chatkitty/react": "^1.1.0",
     "@emotion/is-prop-valid": "^1.2.1",
     "@geoman-io/leaflet-geoman-free": "^2.14.2",
     "@prisma/client": "5.7.1",
