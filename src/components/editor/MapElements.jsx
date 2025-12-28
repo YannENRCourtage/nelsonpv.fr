@@ -143,6 +143,104 @@ const photoIcon = (number) => L.divIcon({
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
+// --- Ligne BT Manager (Enedis) ---
+function LigneBTLayerManager({ layersRef }) {
+  const map = useMap();
+  const [debouncedBounds, setDebouncedBounds] = useState(null);
+
+  // Debounce bounds change
+  useEffect(() => {
+    const handleMoveEnd = () => {
+      const b = map.getBounds();
+      // Only update if zoom is sufficient
+      if (map.getZoom() >= (LAYERS.enedisLigneBT.minZoom || 13)) {
+        setDebouncedBounds(b);
+      }
+    };
+    map.on('moveend', handleMoveEnd);
+    return () => map.off('moveend', handleMoveEnd);
+  }, [map]);
+
+  useEffect(() => {
+    if (!debouncedBounds) return;
+
+    // Check if layer is active
+    if (!layersRef.current['enedisLigneBT'] || !map.hasLayer(layersRef.current['enedisLigneBT'])) return;
+
+    const fetchEnedisData = async () => {
+      const bounds = debouncedBounds;
+      // Format: lat_max, lon_min, lat_min, lon_max for within_box(geo_shape, ...) NO.
+      // ODS v2.1 API uses standard OGC filter? No, it uses 'where'.
+      // Docs say: within_box(geo_shape, latS, lonW, latN, lonE) -> NO
+      // Correct for ODS: within_box(geom_col, lat_top_left, lon_top_left, lat_bottom_right, lon_bottom_right)
+      // Actually, let's use the simplest: y1, x1, y2, x2 order depends on API version.
+      // Let's use `geofilter.polygon` with ODS v1 API which is safer/easier.
+      // Or v2 export with bbox?
+
+      // Let's try v2.1 records API with 'where' clause.
+      // where=within_box(geo_shape, 46.5, 0.5, 46.4, 0.6)  (TopLeft Lat, TopLeft Lon, BottomRight Lat, BottomRight Lon)
+
+      const latMax = bounds.getNorth();
+      const lonMin = bounds.getWest();
+      const latMin = bounds.getSouth();
+      const lonMax = bounds.getEast();
+
+      const whereClause = `within_box(geo_shape, ${latMax}, ${lonMin}, ${latMin}, ${lonMax})`;
+      const limit = 1000;
+
+      const urls = [
+        `https://data.enedis.fr/api/explore/v2.1/catalog/datasets/reseau-souterrain-bt/records?limit=${limit}&where=${encodeURIComponent(whereClause)}`,
+        `https://data.enedis.fr/api/explore/v2.1/catalog/datasets/reseau-aerien-bt/records?limit=${limit}&where=${encodeURIComponent(whereClause)}`
+      ];
+
+      try {
+        const results = await Promise.all(urls.map(u => fetch(u).then(r => r.json())));
+
+        // Clear existing layer content
+        const layerGroup = layersRef.current['enedisLigneBT'];
+        layerGroup.clearLayers();
+
+        // Process Souterrain (Index 0)
+        if (results[0].results) {
+          const geoJson = {
+            type: 'FeatureCollection',
+            features: results[0].results.map(r => ({ ...r, properties: { ...r, _type: 'souterrain' } }))
+          };
+          L.geoJSON(geoJson, {
+            style: { color: '#00008B', weight: 2, dashArray: '5, 5', opacity: 0.8 }
+          }).addTo(layerGroup);
+        }
+
+        // Process Aerien (Index 1)
+        if (results[1].results) {
+          const geoJson = {
+            type: 'FeatureCollection',
+            features: results[1].results.map(r => ({ ...r, properties: { ...r, _type: 'aerien' } }))
+          };
+          L.geoJSON(geoJson, {
+            style: { color: '#00008B', weight: 2, opacity: 0.8 }
+          }).addTo(layerGroup);
+        }
+
+      } catch (err) {
+        console.error("Error fetching Enedis BT data", err);
+      }
+    };
+
+    fetchEnedisData();
+
+  }, [debouncedBounds, map, layersRef]);
+
+  // Init layer group if not exists
+  useEffect(() => {
+    if (!layersRef.current['enedisLigneBT']) {
+      layersRef.current['enedisLigneBT'] = L.layerGroup();
+    }
+  }, [layersRef]);
+
+  return null;
+}
+
 const rotationIcon = L.divIcon({
   html: `<div class="bg-white rounded-full p-1 shadow-lg border-2 border-blue-500 cursor-alias text-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L12 12h9V3"/></svg></div>`,
   className: 'bg-transparent border-none',
@@ -774,6 +872,14 @@ const LAYERS = {
     maxNativeZoom: 18,
     maxZoom: 22,
     sld_body: ENEDIS_POSTES_SLD
+  },
+  enedisLigneBT: {
+    name: "Lignes BT",
+    type: 'custom',
+    minZoom: 13, // Prevent loading at low zoom
+    attribution: "Enedis Open Data",
+    isOverlay: true,
+    zIndex: 52
   },
 
   // SDIS - Points d'eau incendie
@@ -2127,6 +2233,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
 
           {/* Layer Managers */}
           <SDISLayerManager layersRef={layersRef} />
+          <LigneBTLayerManager layersRef={layersRef} />
 
           {/* Controls inside map */}
           <BasemapControl layersRef={layersRef} />

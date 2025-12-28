@@ -567,6 +567,7 @@ export default function ProjectEditor() {
                   { key: 'Natura 2000 Habitat', label: 'Natura 2000 Habitat' },
                   { key: 'enedisHTA', label: 'Lignes HTA' },
                   { key: 'enedisPostes', label: 'Postes HTA/BT' },
+                  { key: 'enedisLigneBT', label: 'Lignes BT' },
                   { key: 'sdis', label: 'SDIS' },
                 ].map(layer => (
                   <button
