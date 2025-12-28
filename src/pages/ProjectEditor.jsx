@@ -114,17 +114,18 @@ export default function ProjectEditor() {
   const [activeTab, setActiveTab] = useState('map');
   const [streetViewUrl, setStreetViewUrl] = useState('');
   const [activeLayers, setActiveLayers] = useState(new Set());
+  const [remountKey, setRemountKey] = useState(0);
 
   useEffect(() => {
     const loadProject = async () => {
       // If creating new project, set init state
       if (projectId === 'new') {
         setProject({ id: `proj_${Date.now()}`, name: '', status: 'Nouveau', createdAt: new Date().toISOString() });
+        setRemountKey(k => k + 1);
         return;
       }
 
-      // If project is already loaded and matches ID, don't reload to preserve unsaved changes
-      if (project?.id === projectId) return;
+      // REMOVED: if (project?.id === projectId) return; to force reload from API
 
       try {
         // Load fresh project data directly from API (bypassing potentially stale list)
@@ -133,16 +134,23 @@ export default function ProjectEditor() {
 
         if (freshProject) {
           setProject(freshProject);
+          setRemountKey(k => k + 1);
         } else {
           // Fallback to list if API fails or returns null (unlikely if exists)
           const foundInList = projects && Array.isArray(projects) ? projects.find(p => p.id === projectId) : null;
-          if (foundInList) setProject(foundInList);
+          if (foundInList) {
+            setProject(foundInList);
+            setRemountKey(k => k + 1);
+          }
         }
       } catch (error) {
         console.error("Failed to load project details:", error);
         // Fallback to list
         const foundInList = projects && Array.isArray(projects) ? projects.find(p => p.id === projectId) : null;
-        if (foundInList) setProject(foundInList);
+        if (foundInList) {
+          setProject(foundInList);
+          setRemountKey(k => k + 1);
+        }
       }
     };
 
@@ -343,6 +351,7 @@ export default function ProjectEditor() {
     setCaptures([null, null, null, null]);
     setPhotos([]);
     setSymbolToPlace(null);
+    setRemountKey(k => k + 1);
 
     // Reset the map
     window.dispatchEvent(new CustomEvent('map:reset'));
@@ -539,6 +548,7 @@ export default function ProjectEditor() {
             <div className={activeTab === 'map' ? 'w-full flex flex-col h-full' : 'hidden'}>
               <div className="flex-1">
                 <MapEditor
+                  key={`${projectId}-${remountKey}`}
                   onAddressFound={handleAddressFound}
                   onAddressSearched={handleAddressSearched}
                   project={project}
