@@ -64,12 +64,13 @@ function MapControls({ project }) {
   );
 }
 
-export default function MapEditor({ project, onAddressFound, onAddressSearched, style = {}, symbolToPlace, setSymbolToPlace, photos, setPhotos }) {
+export default function MapEditor({ project, setProject, onAddressFound, onAddressSearched, style = {}, symbolToPlace, setSymbolToPlace, photos, setPhotos }) {
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%', ...style }}>
       <MapControls project={project} />
       <MapElements
         project={project}
+        setProject={setProject}
         onAddressFound={onAddressFound}
         onAddressSearched={onAddressSearched}
         style={{ height: '100%', width: '100%' }}

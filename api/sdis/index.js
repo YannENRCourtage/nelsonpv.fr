@@ -14,8 +14,8 @@ export default async function handler(req, res) {
         '17': 'https://api.deci.sdis17.fr/api/v1/peis?format=geojson',
         '84': 'https://api.deci.sdis84.fr/api/v1/peis?format=geojson',
         '81': 'https://api.deci.sdis81.fr/api/v1/peis?format=geojson',
-        '64': 'https://datanova.laposte.fr/api/explore/v2.1/catalog/datasets/points-deau-incendie-sdis64/exports/geojson',
-        '34': 'https://herault-data.fr/api/explore/v2.1/catalog/datasets/points-deau-incendie-sdis34/exports/geojson',
+        // '64': 'https://datanova.laposte.fr/api/explore/v2.1/catalog/datasets/points-deau-incendie-sdis64/exports/geojson', // URL not working
+        '34': 'https://www.herault-data.fr/api/explore/v2.1/catalog/datasets/points-deau-incendie-du-departement-de-lherault/exports/geojson',
         '18': 'https://api.deci.sdis18.fr/api/v1/peis?format=geojson',
         '33': 'https://api.deci.sdis33.fr/api/v1/peis?format=geojson',
         '04': 'https://api.deci.sdis04.fr/api/v1/peis?format=geojson',

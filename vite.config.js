@@ -182,7 +182,7 @@ const addTransformIndexHtml = {
 			},
 			{
 				tag: 'script',
-				attrs: {type: 'module'},
+				attrs: { type: 'module' },
 				children: configHorizonsConsoleErrroHandler,
 				injectTo: 'head',
 			},
@@ -220,7 +220,7 @@ const addTransformIndexHtml = {
 	},
 };
 
-console.warn = () => {};
+console.warn = () => { };
 
 const logger = createLogger()
 const loggerError = logger.error
@@ -246,9 +246,16 @@ export default defineConfig({
 			'Cross-Origin-Embedder-Policy': 'credentialless',
 		},
 		allowedHosts: true,
+		proxy: {
+			'/api': {
+				target: 'https://nelsonpv.fr',
+				changeOrigin: true,
+				secure: false,
+			}
+		}
 	},
 	resolve: {
-		extensions: ['.jsx', '.js', '.tsx', '.ts', '.json', ],
+		extensions: ['.jsx', '.js', '.tsx', '.ts', '.json',],
 		alias: {
 			'@': path.resolve(__dirname, './src'),
 		},

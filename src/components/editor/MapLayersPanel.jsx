@@ -700,8 +700,9 @@ const MapLayersPanel = ({ map }) => {
                             if (!geoJsonLayers[layerName]) {
                                 setLoadingLayers(prev => ({ ...prev, [layerName]: true }));
 
-                                const departments = Array.from({ length: 95 }, (_, i) => (i + 1).toString().padStart(2, '0'));
-                                departments.push('2A', '2B');
+                                // Liste restrictive des départements supportés par l'API (Demande utilisateur: 17, 81, 84, 34 uniquement)
+                                const departments = ['17', '81', '84', '34'];
+                                // Note: On ne charge QUE ceux-là pour éviter de spammer le serveur avec 100 requêtes inutiles.
 
                                 const chunkSize = 10;
                                 const loadAllDepts = async () => {
@@ -710,8 +711,14 @@ const MapLayersPanel = ({ map }) => {
                                         const chunk = departments.slice(i, i + chunkSize);
                                         const results = await Promise.all(chunk.map(d =>
                                             fetch(`${layerConfig.url}?dept=${d}`)
-                                                .then(r => r.json())
-                                                .catch(err => ({ type: 'FeatureCollection', features: [] }))
+                                                .then(r => {
+                                                    if (!r.ok) throw new Error(`HTTP error! status: ${r.status}`);
+                                                    return r.json();
+                                                })
+                                                .catch(err => {
+                                                    console.error(`Erreur chargement SDIS ${d}:`, err);
+                                                    return { type: 'FeatureCollection', features: [] };
+                                                })
                                         ));
                                         results.forEach(r => {
                                             if (r.features) allFeatures.push(...r.features);
@@ -750,10 +757,20 @@ const MapLayersPanel = ({ map }) => {
                                         onEachFeature: (feature, layer) => {
                                             if (feature.properties) {
                                                 const props = feature.properties;
+                                                // SDIS 81/84 have commune as object {nom: ...}, others as string
+                                                const communeName = typeof props.commune === 'object' ? props.commune?.nom : props.commune;
+                                                const typePei = props.famille_pei || props.type_start || props.type_pei || props.type_hydrant || 'N/A';
+                                                const etat = props.etat_start || props.statut || 'Inconnu';
+                                                const debit = props.debit_1bar || props.debit || props.debit_reel || 'N/A';
+                                                const pression = props.pression_statique || props.pression || 'N/A';
+
                                                 let popupContent = '<div style="font-family: sans-serif;">';
                                                 popupContent += '<h4 style="font-weight: bold; color: #DC143C;">🚒 Point d\'eau incendie</h4>';
-                                                popupContent += `<p><strong>Commune:</strong> ${props.commune || 'N/A'}</p>`;
-                                                popupContent += `<p><strong>Type:</strong> ${props.famille_pei || props.type_start || 'N/A'}</p>`;
+                                                popupContent += `<p><strong>Commune:</strong> ${communeName || 'N/A'}</p>`;
+                                                popupContent += `<p><strong>Type:</strong> ${typePei}</p>`;
+                                                popupContent += `<p><strong>Etat:</strong> ${etat}</p>`;
+                                                if (debit !== 'N/A') popupContent += `<p><strong>Débit (1bar):</strong> ${debit} m3/h</p>`;
+                                                if (pression !== 'N/A') popupContent += `<p><strong>Pression:</strong> ${pression} bar</p>`;
                                                 popupContent += '</div>';
                                                 layer.bindPopup(popupContent);
                                             }

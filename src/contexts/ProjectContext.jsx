@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo, useState, useCallback, useEffect } from "react";
 import { apiService } from "../services/api";
+import { uploadProjectCapture, uploadProjectPhoto } from "../services/firebase/storage.service";
 
 /** Clef LS commune (liste projets) */
 const LS_KEY = "nelson:projects:v1";
@@ -142,15 +143,79 @@ export function ProjectProvider({ children }) {
       let projectId = project.id;
       let savedProject = { ...project };
 
+      // Handle captures: upload to Storage if they are data URLs
+      // This prevents Firestore document size limit errors (1 MB)
+      if (savedProject.captures && Array.isArray(savedProject.captures)) {
+        console.log("Processing captures for upload to Storage...");
+        const captureUrls = await Promise.all(
+          savedProject.captures.map(async (capture, index) => {
+            if (!capture) return null;
+
+            // Check if it's a data URL (base64) that needs to be uploaded
+            if (capture.startsWith('data:image')) {
+              console.log(`Uploading capture ${index} to Storage...`);
+              try {
+                // Use temp ID if project not yet created
+                const tempId = projectId && projectId !== 'new' ? projectId : `temp_${Date.now()}`;
+                const downloadUrl = await uploadProjectCapture(capture, tempId, index);
+                console.log(`Capture ${index} uploaded successfully`);
+                return downloadUrl;
+              } catch (uploadError) {
+                console.error(`Failed to upload capture ${index}:`, uploadError);
+                // Return null instead of the data URL to avoid size limits
+                return null;
+              }
+            }
+
+            // Already a download URL, keep it
+            return capture;
+          })
+        );
+
+        // Update project with Storage URLs
+        savedProject.captures = captureUrls;
+      }
+
+      // Handle photos: upload to Storage if they are data URLs (same logic as captures)
+      if (savedProject.photos && Array.isArray(savedProject.photos)) {
+        console.log("Processing photos for upload to Storage...");
+        const photoUrls = await Promise.all(
+          savedProject.photos.map(async (photo, index) => {
+            if (!photo) return null;
+
+            // Check if it's a data URL (base64) that needs to be uploaded
+            if (photo.startsWith('data:image')) {
+              console.log(`Uploading photo ${index} to Storage...`);
+              try {
+                // Use temp ID if project not yet created
+                const tempId = projectId && projectId !== 'new' ? projectId : `temp_${Date.now()}`;
+                const downloadUrl = await uploadProjectPhoto(photo, tempId, index);
+                console.log(`Photo ${index} uploaded successfully`);
+                return downloadUrl;
+              } catch (uploadError) {
+                console.error(`Failed to upload photo ${index}:`, uploadError);
+                return null;
+              }
+            }
+
+            // Already a download URL, keep it
+            return photo;
+          })
+        );
+
+        // Update project with Storage URLs
+        savedProject.photos = photoUrls;
+      }
+
       // 2. Sauvegarde API
       // On tente d'abord l'API pour avoir la vérité terrain (et l'ID généré si création)
       if (!projectId || projectId === 'new') {
         // CREATION
         console.log("Creating new project via API...");
-        const created = await apiService.createProject(project);
+        const created = await apiService.createProject(savedProject);
         console.log("Project created:", created);
 
-        savedProject = { ...project, ...created }; // Récupère l'ID et les timestamps
+        savedProject = { ...savedProject, ...created }; // Récupère l'ID et les timestamps
         projectId = created.id;
 
         // Mise à jour du state local pour refléter l'ID serveur
@@ -159,11 +224,11 @@ export function ProjectProvider({ children }) {
       } else {
         // UPDATE ou CREATION si inexistant (upsert)
         try {
-          await apiService.updateProject(projectId, project);
+          await apiService.updateProject(projectId, savedProject);
         } catch (e) {
           // Fallback: si l'update échoue (ex: document supprimé ou inexistant), on le recrée
           console.warn("Update failed, trying create (upsert):", e);
-          await apiService.createProject(project);
+          await apiService.createProject(savedProject);
         }
       }
 

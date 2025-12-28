@@ -87,13 +87,18 @@ export default function ClientForm() {
           </div>
           <div className="pe_field">
             <label>Utilisateur</label>
-            <input
-              type="text"
-              value={currentUserName}
-              readOnly
-              className="bg-gray-100 text-gray-500 cursor-not-allowed"
-              title="L'utilisateur est défini automatiquement"
-            />
+            <select
+              value={p.user || currentUserName}
+              onChange={(e) => handleChange('user', e.target.value)}
+              onFocus={preventAutoScroll}
+              className="w-full p-2 border rounded bg-white text-slate-900"
+            >
+              <option value="Yann">Yann</option>
+              <option value="Elodie">Elodie</option>
+              <option value="Jack">Jack</option>
+              <option value="Nicolas">Nicolas</option>
+              <option value="Contact">Contact</option>
+            </select>
           </div>
         </div>
       </div>
@@ -183,15 +188,20 @@ export default function ClientForm() {
 
             />
           </div>
-          <div className="pe_clientUser">
+          <div className="pe_field">
             <label>Utilisateur</label>
-            <input
-              type="text"
-              value={currentUserName}
-              readOnly
-              className="bg-gray-100 text-gray-500 cursor-not-allowed w-full p-2 border rounded"
-              title="L'utilisateur est défini automatiquement"
-            />
+            <select
+              value={p.user || currentUserName}
+              onChange={(e) => handleChange('user', e.target.value)}
+              onFocus={preventAutoScroll}
+              className="w-full p-2 border rounded bg-white text-slate-900"
+            >
+              <option value="Yann">Yann</option>
+              <option value="Elodie">Elodie</option>
+              <option value="Jack">Jack</option>
+              <option value="Nicolas">Nicolas</option>
+              <option value="Contact">Contact</option>
+            </select>
           </div>
           <div className="pe_field">
             <label>Ville</label>

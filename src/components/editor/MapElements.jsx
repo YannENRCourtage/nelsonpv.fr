@@ -728,7 +728,7 @@ const LAYERS = {
 
   // ========== CALQUES OVERLAY ==========
   // Cadastre & Bâtiments
-  cadastre: { name: 'Cadastre', url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=CADASTRALPARCELS.PARCELLAIRE_EXPRESS&STYLE=PCI vecteur&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', attrib: '© IGN', isOverlay: true, zIndex: 1, opacity: 0.75, maxNativeZoom: 20, maxZoom: 22 },
+  cadastre: { name: 'Cadastre', url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=CADASTRALPARCELS.PARCELLAIRE_EXPRESS&STYLE=PCI vecteur&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', attrib: '© IGN', isOverlay: true, zIndex: 1, opacity: 0.75, maxNativeZoom: 19, maxZoom: 22 },
   batiments: { name: "Bâtiments", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=BUILDINGS.BUILDINGS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', isOverlay: true, zIndex: 11, maxNativeZoom: 20, maxZoom: 22 },
 
   // Agriculture et occupation du sol
@@ -806,49 +806,53 @@ const LAYERS = {
   },
   "ZNIEFF 1": {
     name: "ZNIEFF 1",
-    url: "https://data.geopf.fr/wms-v/ows",
+    url: "https://data.geopf.fr/wms-v/wms",
     layers: "PROTECTEDAREAS.ZNIEFF1",
     format: "image/png",
     transparent: true,
     attribution: "INPN",
     isOverlay: true,
     zIndex: 101,
+    opacity: 0.6,
     maxNativeZoom: 16,
     maxZoom: 22
   },
   "ZNIEFF 2": {
     name: "ZNIEFF 2",
-    url: "https://data.geopf.fr/wms-v/ows",
+    url: "https://data.geopf.fr/wms-v/wms",
     layers: "PROTECTEDAREAS.ZNIEFF2",
     format: "image/png",
     transparent: true,
     attribution: "INPN",
     isOverlay: true,
     zIndex: 102,
+    opacity: 0.6,
     maxNativeZoom: 16,
     maxZoom: 22
   },
   "Natura 2000 Oiseaux": {
     name: "Natura 2000 Oiseaux",
-    url: "https://data.geopf.fr/wms-v/ows",
+    url: "https://data.geopf.fr/wms-v/wms",
     layers: "PROTECTEDAREAS.ZPS",
     format: "image/png",
     transparent: true,
     attribution: "INPN",
     isOverlay: true,
     zIndex: 103,
+    opacity: 0.6,
     maxNativeZoom: 16,
     maxZoom: 22
   },
   "Natura 2000 Habitat": {
     name: "Natura 2000 Habitat",
-    url: "https://data.geopf.fr/wms-v/ows",
+    url: "https://data.geopf.fr/wms-v/wms",
     layers: "PROTECTEDAREAS.SIC",
     format: "image/png",
     transparent: true,
     attribution: "INPN",
     isOverlay: true,
     zIndex: 104,
+    opacity: 0.6,
     maxNativeZoom: 16,
     maxZoom: 22
   }
@@ -1260,7 +1264,7 @@ function LayersBootstrap({ layersRef }) {
       if (layerDef.isSeparator || layerDef.isDynamic) return; // Skip separators and dynamic layers here
 
       if (layerDef.layers) { // WMS layers
-        layersRef.current[key] = L.tileLayer.wms(layerDef.url, {
+        const wmsOptions = {
           layers: layerDef.layers,
           format: layerDef.format || 'image/png',
           transparent: layerDef.transparent !== false,
@@ -1271,9 +1275,14 @@ function LayersBootstrap({ layersRef }) {
           zIndex: layerDef.zIndex || 10,
           pane: 'overlayPane',
           interactive: false,
-          styles: layerDef.styles || '',
-          sld_body: layerDef.sld_body || undefined
-        });
+          styles: layerDef.styles || ''
+        };
+
+        if (layerDef.sld_body) {
+          wmsOptions.sld_body = layerDef.sld_body;
+        }
+
+        layersRef.current[key] = L.tileLayer.wms(layerDef.url, wmsOptions);
       } else if (layerDef.url) { // TileLayer (WMTS or standard XYZ)
         layersRef.current[key] = L.tileLayer(layerDef.url, {
           attribution: layerDef.attrib || layerDef.attribution,
@@ -1915,7 +1924,73 @@ function ZoomIndicator() {
 // Export LAYERS for use in ProjectEditor layer buttons
 export { LAYERS };
 
-export default function MapElements({ style = {}, project, onAddressFound, onAddressSearched, setSymbolToPlace, symbolToPlace, setPhotos, photos }) {
+
+// ====================================================================
+// COMPOSANT DE SYNCHRONISATION DE L'ÉTAT DE LA CARTE (Vue + Zoom)
+// ====================================================================
+function MapStateSync({ project, setProject }) {
+  const map = useMap();
+  const isRestoringRef = useRef(false);
+  const lastSavedViewRef = useRef(null);
+
+  // 1. RESTAURATION : Au chargement d'un nouveau projet, on applique la vue
+  useEffect(() => {
+    // On vérifie si on a un projet valide avec une vue à restaurer
+    if (project?.id && project?.mapView && !isRestoringRef.current) {
+      const { center, zoom } = project.mapView;
+      // Vérification basique pour éviter de restaurer des valeurs invalides
+      if (center && typeof center.lat === 'number' && typeof center.lng === 'number' && typeof zoom === 'number') {
+        const currentCenter = map.getCenter();
+        const currentZoom = map.getZoom();
+
+        // On ne restaure que si c'est vraiment différent (avec une petite tolérance)
+        const dist = map.distance(currentCenter, center);
+        if (dist > 10 || currentZoom !== zoom) {
+          console.log(`[MapStateSync] Restoring view for project ${project.id}:`, project.mapView);
+          isRestoringRef.current = true;
+          map.setView(center, zoom, { animate: false });
+          // Débloquer le flag après un court délai pour éviter que l'événement moveend ne déclenche une sauvegarde immédiate inutile
+          setTimeout(() => { isRestoringRef.current = false; }, 500);
+        }
+      }
+    }
+  }, [project?.id, project?.mapView, map]); // Ajout de project?.mapView pour déclencher quand les données arrivent
+
+  // 2. PERSISTANCE : On écoute les mouvements pour sauvegarder dans l'état local du projet
+  useEffect(() => {
+    const handleMoveEnd = () => {
+      if (isRestoringRef.current) return;
+
+      const center = map.getCenter();
+      const zoom = map.getZoom();
+      const newView = { center: { lat: center.lat, lng: center.lng }, zoom };
+
+      // Debounce ou check pour éviter spam
+      if (JSON.stringify(newView) !== JSON.stringify(lastSavedViewRef.current)) {
+        console.log("[MapStateSync] View changed, updating project state:", newView);
+        lastSavedViewRef.current = newView;
+
+        setProject(prev => {
+          // On ne met à jour que si ça a changé pour éviter re-render loops
+          if (prev?.mapView && JSON.stringify(prev.mapView) === JSON.stringify(newView)) return prev;
+          return { ...prev, mapView: newView };
+        });
+      }
+    };
+
+    map.on('moveend', handleMoveEnd);
+    map.on('zoomend', handleMoveEnd);
+
+    return () => {
+      map.off('moveend', handleMoveEnd);
+      map.off('zoomend', handleMoveEnd);
+    };
+  }, [map, setProject]);
+
+  return null;
+}
+
+export default function MapElements({ style = {}, project, setProject, onAddressFound, onAddressSearched, setSymbolToPlace, symbolToPlace, setPhotos, photos }) {
   const [mode, setMode] = useState(null);
   const [temp, setTemp] = useState([]);
   const [features, setFeatures] = useState([]);
@@ -1929,53 +2004,71 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
   const [map, setMap] = useState(null); // State for map instance
   const [hoverInfo, setHoverInfo] = useState(null); // New state for shared hover info
   const layersRef = useRef({});
+  const hasUserInteractedRef = useRef(false);
 
+  // Wrapper to track user interaction
+  const setFeaturesWrapper = (updater) => {
+    hasUserInteractedRef.current = true;
+    setFeatures(updater);
+  };
+
+  // 1. Loading Effect: Restore features from project (Auto-Sync)
   useEffect(() => {
-    const h = (e) => {
-      if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
-      const k = e.key.toLowerCase();
-      if (k === "l") setMode((m) => (m === "line" ? null : "line"));
-      if (k === "p") setMode((m) => (m === "polygon" ? null : "polygon"));
-      if (k === "d") setMode((m) => (m === "delete" ? null : "delete"));
-      if (k === "a") setMode((m) => (m === "altimetry" ? null : "altimetry"));
-      if (k === "b") setMode((m) => (m === "rectangle" ? null : "rectangle"));
-      if (k === "z") setMode((m) => (m === "azimuth" ? null : "azimuth"));
-      if (k === "s") setMode((m) => (m === "streetview" ? null : "streetview"));
-    };
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, []);
+    // If user hasn't interacted, and local is empty, but project has features -> Sync Down
+    // This handles Initial Load AND "LS -> API" transition
+    // Added logging to debug trace persistence
+    if (!hasUserInteractedRef.current && features.length === 0 && project?.features?.length > 0) {
+      console.log("[MapElements] Auto-syncing remote features to local state:", project.features.length, "features found.");
+      setFeatures(project.features);
+    } else if (project?.features?.length > 0 && features.length === 0) {
+      // Cas où hasUserInteracted pourrait être true par erreur ou autre, on log pour voir
+      console.log("[MapElements] Remote features exist but not pulling because hasUserInteracted:", hasUserInteractedRef.current);
+    }
+  }, [project, features.length]);
 
+  // 2. Saving Effect: Sync features back to project whenever they change
   useEffect(() => {
-    if (mode !== 'line' && mode !== 'polygon' && mode !== 'altimetry' && mode !== 'azimuth') setTemp([]);
-    if (mode !== 'text') setAskTextAt(null); if (mode !== 'symbol') setSymbolToPlace(null); if (mode !== 'rectangle') setRectangleStart(null); if (mode !== 'photo') setPhotoToPlace(null);
-  }, [mode, setSymbolToPlace]);
+    // Prevent overwriting remote data with empty local state on initial load
+    if (!hasUserInteractedRef.current && features.length === 0) return;
 
-  useEffect(() => {
-    if (symbolToPlace) setMode('symbol'); else if (photoToPlace) setMode('photo'); else if (mode === 'symbol' || mode === 'photo') setMode(null);
-  }, [symbolToPlace, photoToPlace, mode, setMode]);
+    // Sanitize features to ensure they are plain objects (remove Leaflet prototypes)
+    const sanitizedFeatures = features.map(f => {
+      // Helper to clean coords
+      const cleanLatLng = (ll) => ({ lat: ll.lat, lng: ll.lng });
 
-  // Listen for map reset event
+      if (f.type === 'line' || f.type === 'polygon' || f.type === 'rectangle') {
+        return { ...f, coords: Array.isArray(f.coords) ? f.coords.map(cleanLatLng) : [] };
+      }
+      if (f.at) {
+        return { ...f, at: cleanLatLng(f.at) };
+      }
+      if (f.center) {
+        return { ...f, center: cleanLatLng(f.center) };
+      }
+      return f;
+    });
+
+    if (setProject) {
+      // Log pour vérifier ce qu'on envoie au projet
+      // console.log("[MapElements] Syncing local features to project state:", sanitizedFeatures.length);
+      setProject(prev => {
+        const prevFeatures = prev?.features || [];
+        // Deep comparison to avoid infinite loops if objects are different references but same content
+        if (JSON.stringify(prevFeatures) === JSON.stringify(sanitizedFeatures)) return prev;
+        console.log("[MapElements] Updating project.features with", sanitizedFeatures.length, "items.");
+        return { ...prev, features: sanitizedFeatures };
+      });
+    }
+  }, [features, setProject]);
+
+  // Map Reset Handler
   useEffect(() => {
     const handleMapReset = () => {
-      // Clear all features
-      setFeatures([]);
+      console.log("[MapElements] Resetting map features.");
+      setFeaturesWrapper([]); // User interaction (clearing)
       setTemp([]);
-      setSelectedId(null);
-      setAskTextAt(null);
-      setPointInfo(null);
-      setAltimetryProfile(null);
-      setRectangleStart(null);
-      setPhotoToPlace(null);
-      setMode(null);
-      setTargetPos(null);
-
-      // Reset map view to default if map is available
-      if (map) {
-        map.setView([44.82619, -0.67201], 6);
-      }
+      // ...
     };
-
     window.addEventListener('map:reset', handleMapReset);
     return () => window.removeEventListener('map:reset', handleMapReset);
   }, [map]);
@@ -1991,11 +2084,13 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
           style={{ height: "100%", width: "100%" }}
           doubleClickZoom={false}
           zoomControl={false}
-          preferCanvas={true}
+          preferCanvas={true} // Performance
           className={mode === 'delete' ? 'cursor-pointer' : (symbolToPlace || photoToPlace ? 'cursor-crosshair' : 'cursor-default')}
           placeholder={<div className="h-full w-full bg-gray-100 animate-pulse" />}
         >
-          {/* Enable Drop on Map */}
+          {/* Nouveau composant de synchro */}
+          <MapStateSync project={project} setProject={setProject} />
+
           <div
             style={{ position: 'absolute', inset: 0, zIndex: 400, pointerEvents: 'none' }}
             onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
@@ -2019,24 +2114,52 @@ export default function MapElements({ style = {}, project, onAddressFound, onAdd
               <div className="flex flex-col items-start gap-2">
                 <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} hoverInfo={hoverInfo} />
                 <MiniMap />
-                {/* Event listener for layer toggle */}
                 <LayerToggleListener layersRef={layersRef} />
                 <ScaleControl position="bottomleft" metric={true} imperial={false} />
               </div>
             </div>
           </div>
-          <EditLayer {...{ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, photoToPlace, setPhotoToPlace, targetPos, setTargetPos }} />
+
+          <EditLayer
+            mode={mode}
+            setMode={setMode}
+            features={features}
+            setFeatures={setFeaturesWrapper} // Use Wrapper
+            temp={temp}
+            setTemp={setTemp}
+            selectedId={selectedId}
+            setSelectedId={setSelectedId}
+            askTextAt={askTextAt}
+            setAskTextAt={setAskTextAt}
+            symbolToPlace={symbolToPlace}
+            setSymbolToPlace={setSymbolToPlace}
+            setPointInfo={setPointInfo}
+            altimetryProfile={altimetryProfile}
+            setAltimetryProfile={setAltimetryProfile}
+            rectangleStart={rectangleStart}
+            setRectangleStart={setRectangleStart}
+            photoToPlace={photoToPlace}
+            setPhotoToPlace={setPhotoToPlace}
+            targetPos={targetPos}
+            setTargetPos={setTargetPos}
+          />
           <ZoomIndicator />
           <MapEvents
             project={project}
             onAddressFound={onAddressFound}
             onAddressSearched={onAddressSearched}
             setPhotoToPlace={setPhotoToPlace}
-            setFeatures={setFeatures}
+            setFeatures={setFeaturesWrapper} // Use Wrapper
             onRightClick={(latlng) => setTargetPos(latlng)}
           />
           <PointInfoPanel pointInfo={pointInfo} setPointInfo={setPointInfo} />
-          <AltimetryProfile profile={altimetryProfile} setProfile={setAltimetryProfile} setFeatures={setFeatures} features={features} setHoverInfo={setHoverInfo} />
+          <AltimetryProfile
+            profile={altimetryProfile}
+            setProfile={setAltimetryProfile}
+            setFeatures={setFeaturesWrapper} // Use Wrapper
+            features={features}
+            setHoverInfo={setHoverInfo}
+          />
         </MapContainer>
       </div>
     </div>

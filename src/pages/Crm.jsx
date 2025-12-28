@@ -10,7 +10,7 @@ import {
   Plus, Search, Euro, Settings, LogOut, X, Edit, Trash2, Save, Phone,
   Mail, Building, MapPin, Tag, Clock, CheckCircle2, AlertCircle,
   ChevronLeft, ChevronRight, BarChart3, PieChart, Activity, FolderHeart, MapPin as MapIcon, FileDown, ExternalLink,
-  List, LayoutGrid, UserCircle
+  List, LayoutGrid, UserCircle, User, Briefcase
 } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import UserSettingsModal from '@/components/crm/UserSettingsModal.jsx';
@@ -625,7 +625,7 @@ export default function Crm() {
       {viewMode === 'card' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredContacts.map((contact) => (
-            <div key={contact.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-lg transition-all duration-300">
+            <div key={contact.id} id={`contact-${contact.id}`} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-lg transition-all duration-300">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className={`${contact.color} w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg`}>
@@ -709,9 +709,10 @@ export default function Crm() {
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Contact</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Entreprise</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Email</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Téléphone</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">ADRESSE</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">CODE POSTAL</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Ville</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Statut</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Projets</th>
@@ -719,44 +720,58 @@ export default function Crm() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredContacts.map((contact) => (
-                  <tr key={contact.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-slate-900">{contact.name}</td>
-                    <td className="px-6 py-4 text-slate-600">{contact.company}</td>
-                    <td className="px-6 py-4 text-slate-600 text-sm">{contact.email}</td>
-                    <td className="px-6 py-4 text-slate-600 text-sm">{contact.phone}</td>
-                    <td className="px-6 py-4 text-slate-600">{contact.city}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${contact.status === 'Client' ? 'bg-green-100 text-green-700' :
-                        contact.status === 'En cours' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'
-                        }`}>
-                        {contact.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {contact.hasProject && contact.projectId && (
-                        <Button
-                          variant="link"
-                          size="sm"
-                          onClick={() => navigate(`/project/${contact.projectId}/edit`)}
-                          className="text-blue-600 hover:text-blue-800 p-0 h-auto"
-                        >
-                          Voir projet
-                        </Button>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEditContact(contact)}>
-                          <Edit className="w-4 h-4 text-slate-500" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteContact(contact.id)}>
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filteredContacts.map((contact) => {
+                  let project = null;
+                  if (contact.projectId) {
+                    project = projects.find(p => p.id === contact.projectId);
+                  }
+                  if (!project) {
+                    project = projects.find(p =>
+                      (p.client && p.client.email && contact.email && p.client.email.toLowerCase() === contact.email.toLowerCase()) ||
+                      (p.name && contact.name && p.name.toLowerCase() === contact.name.toLowerCase())
+                    );
+                  }
+
+                  return (
+                    <tr key={contact.id} id={`contact-${contact.id}`} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 font-medium text-slate-900">{contact.name}</td>
+                      <td className="px-6 py-4 text-slate-600 text-sm">{contact.email}</td>
+                      <td className="px-6 py-4 text-slate-600 text-sm">{contact.phone}</td>
+                      <td className="px-6 py-4 text-slate-600 text-sm">{project?.address || '-'}</td>
+                      <td className="px-6 py-4 text-slate-600 text-sm">{project?.zip || '-'}</td>
+                      <td className="px-6 py-4 text-slate-600">{contact.city}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${contact.status === 'Client' ? 'bg-green-100 text-green-700' :
+                          contact.status === 'En cours' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'
+                          }`}>
+                          {contact.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {project && (
+                          <Button
+                            variant="link"
+                            size="sm"
+                            onClick={() => navigate(`/project/${project.id}/edit`)}
+                            className="text-blue-600 hover:text-blue-800 p-0 h-auto font-medium"
+                          >
+                            {[project.name, project.city].filter(Boolean).join(' - ')} <ExternalLink className="w-3 h-3 ml-1 inline" />
+                          </Button>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditContact(contact)}>
+                            <Edit className="w-4 h-4 text-slate-500" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteContact(contact.id)}>
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -904,17 +919,20 @@ export default function Crm() {
                           }`}
                       >
                         {task.completed && (
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
+                          <div className="flex items-center gap-2">
+                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
                         )}
                       </button>
+                      {task.completed && <span className="ml-2 text-green-600 font-medium">Fait</span>}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex gap-2 justify-end">
                         <Button variant="ghost" size="icon" onClick={() => {
                           setEditingTask(task);
-                          setIsTaskModalOpen(true);
+                          setShowTaskModal(true);
                         }}>
                           <Edit className="w-4 h-4 text-slate-500" />
                         </Button>
@@ -1012,15 +1030,24 @@ export default function Crm() {
                         {day}
                       </div>
                       <div className="space-y-1">
-                        {dayTasks.map((task) => (
-                          <div
-                            key={task.id}
-                            className={`text-xs px-1.5 py-0.5 rounded ${task.color} bg-opacity-20 ${task.color.replace('bg-', 'text-')} truncate`}
-                            title={task.title}
-                          >
-                            {task.title.substring(0, 15)}
-                          </div>
-                        ))}
+                        {dayTasks.map((task) => {
+                          const priorityColor = task.priority === 'Haute' ? 'bg-red-500' :
+                            task.priority === 'Moyenne' ? 'bg-orange-500' :
+                              'bg-green-500';
+                          const textColor = task.priority === 'Haute' ? 'text-red-700' :
+                            task.priority === 'Moyenne' ? 'text-orange-700' :
+                              'text-green-700';
+
+                          return (
+                            <div
+                              key={task.id}
+                              className={`text-xs px-1.5 py-0.5 rounded ${priorityColor} bg-opacity-20 ${textColor} truncate`}
+                              title={task.title}
+                            >
+                              {task.title.substring(0, 15)}
+                            </div>
+                          );
+                        })}
                       </div>
                     </>
                   )}
@@ -1092,6 +1119,8 @@ export default function Crm() {
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Nom Projet</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Client</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Utilisateur</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Adresse</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Code Postal</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Ville</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Coordonnées GPS</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Type</th>
@@ -1105,10 +1134,19 @@ export default function Crm() {
                 ).map((project) => (
                   <tr key={project.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 font-medium text-slate-900">
-                      {[project.name, project.postalCode, project.city].filter(Boolean).join(' ').toUpperCase() || 'Sans nom'}
+                      {[project.name, project.zip, project.city].filter(Boolean).join(' ').toUpperCase() || 'Sans nom'}
                     </td>
-                    <td className="px-6 py-4 text-slate-600">{project.name} {project.firstName}</td>
+                    <td className="px-6 py-4">
+                      {(() => {
+                        const name = project.name || '';
+                        const firstName = project.firstName || '';
+                        const clientName = `${name} ${firstName}`.trim() || 'Sans nom';
+                        return <span className="text-slate-900 font-medium">{clientName}</span>;
+                      })()}
+                    </td>
                     <td className="px-6 py-4 text-slate-600">{project.createdByFirstName || project.user || '-'}</td>
+                    <td className="px-6 py-4 text-slate-600">{project.address || '-'}</td>
+                    <td className="px-6 py-4 text-slate-600">{project.zip || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{project.city || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{project.gpsCoordinates || '-'}</td>
                     <td className="px-6 py-4">
@@ -1212,7 +1250,8 @@ export default function Crm() {
     // Group projects by User
     const userStats = {};
     projects.forEach(p => {
-      const u = p.user || 'Non assigné';
+      // Priorité : assignedUser > createdByFirstName > user > 'Non assigné'
+      const u = p.assignedUser || p.createdByFirstName || p.user || 'Non assigné';
       if (!userStats[u]) userStats[u] = { name: u, nouveau: 0, enCours: 0, termine: 0, score: 0 };
 
       if (p.status === 'Nouveau') userStats[u].nouveau++;
@@ -1225,7 +1264,36 @@ export default function Crm() {
       }
     });
 
-    const sortedUsers = Object.values(userStats).sort((a, b) => b.score - a.score);
+    const usersList = Object.values(userStats);
+    const sortedByNew = [...usersList].sort((a, b) => b.nouveau - a.nouveau);
+    const sortedByRunning = [...usersList].sort((a, b) => b.enCours - a.enCours);
+    const sortedByFinished = [...usersList].sort((a, b) => b.termine - a.termine);
+    const sortedByOpp = [...usersList].sort((a, b) => b.score - a.score);
+
+    const RankingCard = ({ title, icon: Icon, data, countKey, colorBg, colorText, colorBorder }) => (
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col h-full">
+        <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+          <Icon className={`w-5 h-5 ${colorText}`} />
+          {title}
+        </h3>
+        <div className="space-y-3 flex-1 overflow-y-auto max-h-[300px]">
+          {data.filter(u => u[countKey] > 0).map((u, index) => (
+            <div key={u.name} className={`flex items-center justify-between p-3 rounded-lg transition-colors ${index < 3 ? colorBg : 'bg-slate-50'}`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${index < 3 ? 'bg-white/50' : 'bg-slate-200 text-slate-600'}`}>
+                  {index + 1}
+                </div>
+                <span className="font-semibold text-slate-900">{u.name}</span>
+              </div>
+              <span className={`font-bold ${colorText} text-lg`}>{u[countKey]}</span>
+            </div>
+          ))}
+          {data.filter(u => u[countKey] > 0).length === 0 && (
+            <div className="text-slate-400 italic text-center py-4">Aucune donnée</div>
+          )}
+        </div>
+      </div>
+    );
 
     return (
       <div className="space-y-6">
@@ -1236,8 +1304,8 @@ export default function Crm() {
               <CheckSquare className="w-8 h-8 opacity-80" />
               <Activity className="w-6 h-6 opacity-60" />
             </div>
-            <div className="text-3xl font-bold">{projectsCompleted}</div>
-            <div className="text-blue-100 text-sm mt-1">Projets terminés</div>
+            <div className="text-3xl font-bold">{projectsTotal}</div>
+            <div className="text-blue-100 text-sm mt-1">Projets totaux</div>
           </div>
 
           <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg p-6 text-white">
@@ -1268,89 +1336,94 @@ export default function Crm() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Répartition par utilisateur */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-blue-600" />
-              Répartition par utilisateur
-            </h3>
-            <div className="space-y-6">
-              {sortedUsers.map((u) => (
-                <div key={u.name} className="border-b border-slate-100 pb-4 last:border-0 last:pb-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold text-slate-700">{u.name}</span>
-                    <span className="text-xs font-bold px-2 py-1 bg-slate-100 rounded-full text-slate-600">Total: {u.nouveau + u.enCours + u.termine}</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div className="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100 text-center">
-                      <span className="font-bold block text-sm">{u.nouveau}</span> Nouveau
-                    </div>
-                    <div className="bg-yellow-50 text-yellow-700 px-2 py-1 rounded border border-yellow-100 text-center">
-                      <span className="font-bold block text-sm">{u.enCours}</span> En cours
-                    </div>
-                    <div className="bg-green-50 text-green-700 px-2 py-1 rounded border border-green-100 text-center">
-                      <span className="font-bold block text-sm">{u.termine}</span> Terminé
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {sortedUsers.length === 0 && <div className="text-slate-400 italic text-center">Aucune donnée utilisateur</div>}
-            </div>
-          </div>
+        {/* 3 Zones Distinctes : Nouveaux, En cours, Terminés */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <RankingCard
+            title="Nouveaux Projets"
+            icon={AlertCircle}
+            data={sortedByNew}
+            countKey="nouveau"
+            colorBg="bg-blue-50"
+            colorText="text-blue-600"
+            colorBorder="border-blue-200"
+          />
+          <RankingCard
+            title="Projets En Cours"
+            icon={Activity}
+            data={sortedByRunning}
+            countKey="enCours"
+            colorBg="bg-yellow-50"
+            colorText="text-yellow-600"
+            colorBorder="border-yellow-200"
+          />
+          <RankingCard
+            title="Projets Terminés"
+            icon={CheckCircle2}
+            data={sortedByFinished}
+            countKey="termine"
+            colorBg="bg-green-50"
+            colorText="text-green-600"
+            colorBorder="border-green-200"
+          />
+        </div>
 
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Top opportunités (Classement) */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-green-600" />
-              Top opportunités (Activité)
+              <TrendingUp className="w-5 h-5 text-purple-600" />
+              Top Opportunités (Nouveaux + En cours)
             </h3>
             <div className="space-y-3">
-              {sortedUsers.map((u, index) => (
-                <div key={u.name} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+              {sortedByOpp.filter(u => u.score > 0).map((u, index) => (
+                <div key={u.name} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors border border-slate-100">
                   <div className="flex items-center gap-4">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${index === 0 ? 'bg-yellow-100 text-yellow-600' : index === 1 ? 'bg-slate-200 text-slate-600' : index === 2 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${index === 0 ? 'bg-amber-100 text-amber-600 ring-2 ring-amber-200' : index === 1 ? 'bg-slate-200 text-slate-600' : index === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400'}`}>
                       {index + 1}
                     </div>
                     <div>
                       <div className="font-semibold text-slate-900">{u.name}</div>
-                      <div className="text-xs text-slate-500">{u.nouveau} nouveaux + {u.enCours} en cours</div>
+                      <div className="text-xs text-slate-500 mt-0.5 flex gap-2">
+                        <span className="text-blue-600 font-medium">{u.nouveau} Nouv.</span>
+                        <span className="text-slate-300">|</span>
+                        <span className="text-yellow-600 font-medium">{u.enCours} En cours</span>
+                      </div>
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="font-bold text-slate-900 text-lg">{u.score}</div>
-                    <div className="text-xs text-slate-500">Opportunités</div>
+                    <div className="text-xs text-slate-500">Projets</div>
                   </div>
                 </div>
               ))}
-              {sortedUsers.length === 0 && <div className="text-slate-400 italic text-center">Aucun classement disponible</div>}
+              {sortedByOpp.filter(u => u.score > 0).length === 0 && <div className="text-slate-400 italic text-center">Aucun classement disponible</div>}
             </div>
           </div>
-        </div>
 
-        {/* Statistiques détaillées */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <h3 className="text-lg font-bold text-slate-900 mb-6">Statistiques détaillées</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-4 bg-blue-50 rounded-xl">
-              <div className="text-3xl font-bold text-blue-600 mb-1">{contacts.length}</div>
-              <div className="text-sm text-slate-600">Contacts totaux</div>
-              <div className="text-xs text-slate-500 mt-1">
-                {contacts.filter(c => c.status === 'Client').length} clients actifs
+          {/* Statistiques détaillées (Simplified) */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-center">
+            <h3 className="text-lg font-bold text-slate-900 mb-6">Vue d'ensemble</h3>
+            <div className="grid grid-cols-1 gap-4">
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                <div>
+                  <div className="text-2xl font-bold text-slate-800">{contacts.length}</div>
+                  <div className="text-sm text-slate-500">Base Contacts</div>
+                </div>
+                <div className="h-10 w-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-500"><Users size={20} /></div>
               </div>
-            </div>
-            <div className="text-center p-4 bg-green-50 rounded-xl">
-              <div className="text-3xl font-bold text-green-600 mb-1">{projects.length}</div>
-              <div className="text-sm text-slate-600">Projets totaux</div>
-              <div className="text-xs text-slate-500 mt-1">
-                {projects.filter(p => p.status === 'En cours').length} en cours
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                <div>
+                  <div className="text-2xl font-bold text-slate-800">{projects.length}</div>
+                  <div className="text-sm text-slate-500">Base Projets</div>
+                </div>
+                <div className="h-10 w-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-500"><Briefcase size={20} /></div>
               </div>
-            </div>
-            <div className="text-center p-4 bg-orange-50 rounded-xl">
-              <div className="text-3xl font-bold text-orange-600 mb-1">{tasks.filter(t => !t.completed).length}</div>
-              <div className="text-sm text-slate-600">Tâches en cours</div>
-              <div className="text-xs text-slate-500 mt-1">
-                {tasks.filter(t => t.completed).length} terminées
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                <div>
+                  <div className="text-2xl font-bold text-slate-800">{tasks.filter(t => !t.completed).length}</div>
+                  <div className="text-sm text-slate-500">Tâches Actives</div>
+                </div>
+                <div className="h-10 w-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-500"><CheckSquare size={20} /></div>
               </div>
             </div>
           </div>

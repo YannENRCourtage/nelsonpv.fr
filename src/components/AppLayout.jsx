@@ -14,6 +14,8 @@ import ReactDOMServer from 'react-dom/server';
 import useNotifications from '../hooks/useNotifications.jsx';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover.jsx';
 import NotificationBell from './NotificationBell.jsx';
+import { ref, getDownloadURL } from "firebase/storage";
+import { storage } from "@/config/firebase.js";
 
 const toastStyle = { className: "bg-white text-gray-900 p-4 border border-gray-300 rounded-lg shadow-lg" };
 
@@ -49,79 +51,156 @@ export const generatePdfForProject = async (projectData) => {
   const pdfHeight = doc.internal.pageSize.getHeight();
   doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
 
-  // --- PAGES SUIVANTES : CAPTURES D'ÉCRAN ---
-  // On lit les captures depuis l'objet projet (mis à jour par ProjectMap.jsx)
+  // --- PAGES SUIVANTES : CAPTURES D'ÉCRAN (OPTIMISÉ) ---
   const captures = projectData.captures || [];
   const validCaptures = captures.filter(c => c); // Filtrer les captures vides
   const totalPages = validCaptures.length + 1;
 
   if (validCaptures.length > 0) {
-    // Création du canvas pour la légende (une seule fois)
+    // 1. Préparation de la légende (Render & Capture unique)
     const legendContainer = document.createElement('div');
-    // La largeur de base est A4 Paysage en pixels (pour la capture)
     legendContainer.style.width = "1123px";
     legendContainer.style.position = "absolute";
     legendContainer.style.left = "-9999px";
-    // On utilise le composant de légende exporté
     legendContainer.innerHTML = ReactDOMServer.renderToString(<PDFSymbolLegend isForCapturePage={true} />);
     document.body.appendChild(legendContainer);
 
-    // On capture le conteneur de légende (qui contient le wrapper de 60%)
-    const legendCanvas = await html2canvas(legendContainer.firstChild, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: null // Fond transparent
-    });
-    document.body.removeChild(legendContainer);
-    const legendImgData = legendCanvas.toDataURL('image/png');
+    let legendImgData = null;
+    let legendPdfWidth, legendPdfHeight, legendX, legendY;
 
-    // Dimensions pour la légende en bas de page (A4 Paysage)
-    const legendPdfWidth = (doc.internal.pageSize.getWidth() - 30) * 0.6; // 60% de la largeur avec marges
-    const legendImgProps = doc.getImageProperties(legendImgData);
-    const legendPdfHeight = (legendImgProps.height / legendImgProps.width) * legendPdfWidth;
-    // Position X centrée (correspond au 60% width + 20% marge)
-    const legendX = (doc.internal.pageSize.getWidth() - legendPdfWidth) / 2;
-    const legendY = doc.internal.pageSize.getHeight() - legendPdfHeight - 10; // 10mm du bas
+    try {
+      const legendCanvas = await html2canvas(legendContainer.firstChild, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: null
+      });
+      legendImgData = legendCanvas.toDataURL('image/png');
 
-    // Boucle sur les captures valides
-    for (let i = 0; i < validCaptures.length; i++) {
-      const captureDataUrl = validCaptures[i];
+      // Dimensions pour la légende
+      legendPdfWidth = (doc.internal.pageSize.getWidth() - 30) * 0.6;
+      const legendImgProps = doc.getImageProperties(legendImgData);
+      legendPdfHeight = (legendImgProps.height / legendImgProps.width) * legendPdfWidth;
+      legendX = (doc.internal.pageSize.getWidth() - legendPdfWidth) / 2;
+      legendY = doc.internal.pageSize.getHeight() - legendPdfHeight - 10;
 
-      // Ajout de la page en mode PAYSAGE
+    } catch (err) {
+      console.error("Erreur génération légende PDF", err);
+    } finally {
+      document.body.removeChild(legendContainer);
+    }
+
+    // 2. Téléchargement via PROXY SERVERLESS (Rapide + Fiable + Contourne CORS/Timeout client)
+    console.log("Début du téléchargement via Proxy...");
+
+    const fetchImageViaProxy = async (url, index) => {
+      if (!url) return { error: "URL vide" };
+      if (url.startsWith('data:')) return url;
+
+      if (url.startsWith('http') || url.startsWith('gs://')) {
+        try {
+          if (!storage) throw new Error("Storage non initialisé");
+          const storageRef = ref(storage, url);
+
+          // 1. Obtenir l'URL publique signée (rapide, juste une signature)
+          const downloadURL = await getDownloadURL(storageRef);
+
+          // 2. Passer par notre PROXY Vercel pour le téléchargement réel
+          // Le client appelle son propre serveur (/api/proxy-image)
+          const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(downloadURL)}`;
+
+          // Timeout Proxy de 60s
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+          const response = await fetch(proxyUrl, { signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          if (!response.ok) throw new Error(`Proxy Error: ${response.status}`);
+
+          const arrayBuffer = await response.arrayBuffer();
+
+          let binary = '';
+          const bytes = new Uint8Array(arrayBuffer);
+          const len = bytes.byteLength;
+          for (let k = 0; k < len; k++) binary += String.fromCharCode(bytes[k]);
+
+          return `data:image/png;base64,${window.btoa(binary)}`;
+        } catch (e) {
+          console.error(`Erreur image ${index}:`, e);
+          return { error: e.message || "Erreur de téléchargement" };
+        }
+      }
+      return { error: "Format URL non supporté" };
+    };
+
+    // Retour au chargement parallèle (Batch de 5) car le Proxy est RAPIDE (Backbone network)
+    const activeCaptures = validCaptures.map((url, i) => ({ url, index: i }));
+    const loadedImages = new Array(activeCaptures.length);
+    const BATCH_SIZE = 5;
+
+    for (let i = 0; i < activeCaptures.length; i += BATCH_SIZE) {
+      const batch = activeCaptures.slice(i, i + BATCH_SIZE);
+      const results = await Promise.all(batch.map(item => fetchImageViaProxy(item.url, item.index)));
+      results.forEach((res, batchIndex) => {
+        loadedImages[i + batchIndex] = res;
+      });
+    }
+
+    console.log("Images téléchargées/traitées (Proxy):", loadedImages);
+
+    // 3. Boucle de génération des pages PDF
+    for (let i = 0; i < loadedImages.length; i++) {
       doc.addPage('a4', 'l');
-
       const pageNumber = i + 2;
       doc.setFontSize(10);
       doc.setTextColor(150);
-      // Positionnement des numéros de page pour A4 Paysage
       doc.text(`Page ${pageNumber} / ${totalPages}`, doc.internal.pageSize.getWidth() - 25, doc.internal.pageSize.getHeight() - 10);
 
-      // doc.setFontSize(16); // Titre "Vue d'implantation" retiré
-      // doc.setTextColor(0);
-      // doc.text(`Vue d'implantation N°${i + 1}`, 15, 15); // Titre retiré
+      const result = loadedImages[i];
 
-      // --- AJOUT DE L'IMAGE DE CAPTURE ---
-      const img = new Image();
-      img.src = captureDataUrl;
-      await new Promise(resolve => { img.onload = resolve; }); // Attendre que l'image soit chargée
+      // Si c'est une string (DataURL), c'est une image valide
+      if (typeof result === 'string' && result.startsWith('data:image')) {
+        try {
+          const img = new Image();
+          img.src = result;
+          await new Promise((resolve) => {
+            if (img.complete) resolve();
+            else img.onload = resolve;
+            img.onerror = resolve;
+          });
 
-      const imgPropsCap = doc.getImageProperties(img);
-      // Réduction de la hauteur max pour laisser place à la légende
-      const capturePdfWidth = doc.internal.pageSize.getWidth() - 30; // 15mm marge G/D
-      // Hauteur max de l'image = hauteur page - marge haut (15) - marge bas (10) - hauteur légende
-      const capturePdfHeight = doc.internal.pageSize.getHeight() - 25 - legendPdfHeight;
+          const imgPropsCap = doc.getImageProperties(img);
+          const capturePdfWidth = doc.internal.pageSize.getWidth() - 30;
+          const maxH = doc.internal.pageSize.getHeight() - 25 - (legendPdfHeight || 0);
 
-      const ratio = Math.min(capturePdfWidth / imgPropsCap.width, capturePdfHeight / imgPropsCap.height);
-      const imgWidth = imgPropsCap.width * ratio;
-      const imgHeight = imgPropsCap.height * ratio;
+          const ratio = Math.min(capturePdfWidth / imgPropsCap.width, maxH / imgPropsCap.height);
+          const finalW = imgPropsCap.width * ratio;
+          const finalH = imgPropsCap.height * ratio;
 
-      const x = (doc.internal.pageSize.getWidth() - imgWidth) / 2;
-      const y = 15; // 15mm du haut (au lieu de 20)
+          const x = (doc.internal.pageSize.getWidth() - finalW) / 2;
+          const y = 15;
 
-      doc.addImage(captureDataUrl, 'PNG', x, y, imgWidth, imgHeight);
+          doc.addImage(result, 'PNG', x, y, finalW, finalH);
+        } catch (e) {
+          console.error("Erreur ajout image au PDF", e);
+          doc.setFontSize(12);
+          doc.setTextColor(255, 0, 0);
+          doc.text(`Erreur rendu image: ${e.message}`, 20, 100);
+        }
+      } else {
+        // C'est un objet erreur ou null
+        const msg = result?.error || "Image inaccessible";
+        doc.setFontSize(14);
+        doc.setTextColor(255, 0, 0);
+        doc.text(`Image non disponible`, 105, 90);
+        doc.setFontSize(10);
+        doc.text(`Raison: ${msg}`, 105, 100); // Affiche la raison exacte (Timeout, 404, etc)
+      }
 
-      // --- AJOUT DE LA LÉGENDE SOUS L'IMAGE ---
-      doc.addImage(legendImgData, 'PNG', legendX, legendY, legendPdfWidth, legendPdfHeight);
+      // Ajout légende si dispo
+      if (legendImgData) {
+        doc.addImage(legendImgData, 'PNG', legendX, legendY, legendPdfWidth, legendPdfHeight);
+      }
     }
   }
 
@@ -226,6 +305,13 @@ function Header() {
             {/* Show Simulator if explicit permission is granted OR if admin (unless admin explicitly restricted) */}
             {((user?.role === 'admin' && user?.permissions?.canAccessSimulator !== false) || user?.permissions?.canAccessSimulator) && (
               <NavLink to="/simulator" className={({ isActive }) => isActive ? 'nav-link active simulateur' : 'nav-link simulateur'}>Simulateur</NavLink>
+            )}
+
+            {/* CDP Link (Admin only) */}
+            {user?.role === 'admin' && (
+              <NavLink to="/cdp" className={({ isActive }) => isActive ? 'nav-link active cdp' : 'nav-link cdp'}>
+                CDP
+              </NavLink>
             )}
 
             {user?.role === 'admin' && (

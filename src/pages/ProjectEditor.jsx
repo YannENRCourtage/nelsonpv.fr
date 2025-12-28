@@ -116,13 +116,38 @@ export default function ProjectEditor() {
   const [activeLayers, setActiveLayers] = useState(new Set());
 
   useEffect(() => {
-    const foundProject = projects && Array.isArray(projects) ? projects.find(p => p.id === projectId) : null;
-    if (foundProject) {
-      setProject(foundProject);
-    } else if (projectId === 'new') {
-      setProject({ id: `proj_${Date.now()}`, name: '', status: 'Nouveau', createdAt: new Date().toISOString() });
-    }
-  }, [projectId, projects, setProject]);
+    const loadProject = async () => {
+      // If creating new project, set init state
+      if (projectId === 'new') {
+        setProject({ id: `proj_${Date.now()}`, name: '', status: 'Nouveau', createdAt: new Date().toISOString() });
+        return;
+      }
+
+      // If project is already loaded and matches ID, don't reload to preserve unsaved changes
+      if (project?.id === projectId) return;
+
+      try {
+        // Load fresh project data directly from API (bypassing potentially stale list)
+        const { apiService } = await import('@/services/api');
+        const freshProject = await apiService.getProject(projectId);
+
+        if (freshProject) {
+          setProject(freshProject);
+        } else {
+          // Fallback to list if API fails or returns null (unlikely if exists)
+          const foundInList = projects && Array.isArray(projects) ? projects.find(p => p.id === projectId) : null;
+          if (foundInList) setProject(foundInList);
+        }
+      } catch (error) {
+        console.error("Failed to load project details:", error);
+        // Fallback to list
+        const foundInList = projects && Array.isArray(projects) ? projects.find(p => p.id === projectId) : null;
+        if (foundInList) setProject(foundInList);
+      }
+    };
+
+    loadProject();
+  }, [projectId, setProject]); // Removed projects dependency to avoid overwrite loops
 
   useEffect(() => {
     if (project?.captures) setCaptures(project.captures);
@@ -374,17 +399,21 @@ export default function ProjectEditor() {
               </Button>
             </div>
             <div className="flex gap-4">
-              <Select value={p.user} onValueChange={(v) => updateProject({ user: v })}>
+              <Select value={p.assignedUser || 'Yann'} onValueChange={(v) => updateProject({ assignedUser: v })}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Utilisateur" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {projectUsers.map(u => <SelectItem key={u.name} value={u.name}>{u.name}</SelectItem>)}
+                  <SelectItem value="Yann">Yann</SelectItem>
+                  <SelectItem value="Jack">Jack</SelectItem>
+                  <SelectItem value="Nicolas">Nicolas</SelectItem>
+                  <SelectItem value="Elodie">Elodie</SelectItem>
+                  <SelectItem value="Contact">Contact</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={p.status} onValueChange={(v) => updateProject({ status: v })}>
+              <Select value={p.status || 'Nouveau'} onValueChange={(v) => updateProject({ status: v })}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Statut" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Nouveau">Nouveau</SelectItem>
@@ -513,6 +542,7 @@ export default function ProjectEditor() {
                   onAddressFound={handleAddressFound}
                   onAddressSearched={handleAddressSearched}
                   project={project}
+                  setProject={setProject}
                   symbolToPlace={symbolToPlace}
                   setSymbolToPlace={setSymbolToPlace}
                   photos={photos}

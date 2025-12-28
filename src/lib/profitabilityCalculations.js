@@ -353,33 +353,64 @@ export function calculatePaybackPeriod(businessPlan, initialInvestment) {
     return 20.0;
 }
 
+/**
+ * Calcule le retour sur investissement basé sur les Gains Cumulés (Reyenus)
+ * Correspond aux courbes du graphique "Gains Cumulés (sur 20 ans)"
+ * @param {Array} businessPlan - Business plan généré
+ * @param {number} totalCost - Coût total du projet
+ * @param {string} gainKey - Clé de la courbe ('cumulativeGainACC' ou 'cumulativeGainTH')
+ * @returns {number} Années pour croisement courbe / coût
+ */
+export function calculatePaybackFromRevenue(businessPlan, totalCost, gainKey) {
+    if (totalCost <= 0) return 0;
+
+    for (let i = 0; i < businessPlan.length; i++) {
+        const currentGain = businessPlan[i][gainKey];
+        if (currentGain >= totalCost) {
+            // Interpolation pour plus de précision
+            // Gain précédent (ou 0 si année 0)
+            const previousGain = i > 0 ? businessPlan[i - 1][gainKey] : 0;
+
+            // Différence de gain sur l'année
+            const gainDelta = currentGain - previousGain;
+
+            // Fraction nécessaire pour atteindre le TotalCost
+            // (TotalCost - Prev) / (Curr - Prev)
+            const fraction = gainDelta !== 0 ? (totalCost - previousGain) / gainDelta : 0;
+
+            return i + fraction;
+        }
+    }
+
+    // Si jamais atteint en 20 ans
+    return 20.0;
+}
+
 export function calculateAllMetrics(params, costs) {
     const totalCost = calculateTotalProjectCost(costs);
 
-    // 1. Calculate Standard Business Plan (with User Params)
+    // 1. Calculate Standard Business Plan
     const businessPlan = generateBusinessPlan(params, costs);
-
-    // 2. Calculate "No ACC" Business Plan (Hypothetical: 100% Surplus)
-    const paramsNoACC = { ...params, prixAchatACC: 0 };
-    const businessPlanNoACC = generateBusinessPlan(paramsNoACC, costs);
 
     const cumulativeGains = calculateCumulativeGains(businessPlan);
 
     const tri = calculateTRI(businessPlan, totalCost);
     const averageDSCR = calculateAverageDSCR(businessPlan);
+    const drci = calculateDRCI(businessPlan, totalCost);
 
-    // Payback with ACC uses standard BP
-    const paybackWithACC = calculatePaybackPeriod(businessPlan, totalCost);
+    // Nouveau calcul ROI basé sur les courbes de Gains (Revenus)
+    // 1. ROI TB + ACC (Basé sur le CA Réel avec Autoconso)
+    const paybackWithACC = calculatePaybackFromRevenue(businessPlan, totalCost, 'cumulativeGainACC');
 
-    // Payback without ACC uses "No ACC" BP
-    const paybackWithoutACC = calculatePaybackPeriod(businessPlanNoACC, totalCost);
+    // 2. ROI TB Seul (Basé sur le CA théorique Vente Totale Surplus)
+    const paybackWithoutACC = calculatePaybackFromRevenue(businessPlan, totalCost, 'cumulativeGainTH');
 
     return {
         totalCost,
         businessPlan,
         cumulativeGains,
         tri,
-        drci: calculateDRCI(businessPlan, totalCost),
+        drci,
         paybackWithoutACC,
         paybackWithACC,
         averageDSCR

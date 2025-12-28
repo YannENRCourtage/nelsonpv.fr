@@ -9,11 +9,13 @@ import AppLayout from './components/AppLayout.jsx';
 import Crm from './pages/Crm.jsx';
 import Admin from './pages/Admin.jsx';
 import ProfitabilitySimulator from './pages/ProfitabilitySimulator.jsx';
+import CDP from './pages/CDP.jsx';
 import { Toaster } from './components/ui/toaster.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import DevErrorBoundary from './components/DevErrorBoundary.jsx';
+import TawkMessenger from './components/TawkMessenger.jsx'; // <--- Import ajouté
 
 function AppContent() {
   const { isAuthenticated, user } = useAuth();
@@ -74,6 +76,14 @@ function AppContent() {
             }
           />
           <Route
+            path="cdp"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <CDP />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="project/:projectId/edit"
             element={
               <ProtectedRoute requiredPermission="canAccessEditor">
@@ -94,6 +104,7 @@ function AppContent() {
         <Route path="*" element={<Navigate to={isAuthenticated ? '/' : '/login'} replace />} />
       </Routes>
       <Toaster />
+      <TawkMessenger />
     </DndProvider>
   );
 }
