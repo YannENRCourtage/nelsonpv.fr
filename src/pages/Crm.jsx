@@ -406,11 +406,11 @@ export default function Crm() {
       if (editingContact.id && contacts.find(c => c.id === editingContact.id)) {
         await apiService.updateContact(editingContact.id, editingContact);
         setContacts(contacts.map(c => c.id === editingContact.id ? editingContact : c));
-        await apiService.logActivity({ type: 'contact', action: 'update', description: `${userName} a modifié le contact ${editingContact.name}`, userId: user?.uid, userName, itemId: editingContact.id });
+        await apiService.logActivity({ type: 'contact', action: 'update', description: `${userName} a modifié le contact ${editingContact.name}`, userId: user?.uid, userName, userPhotoURL: currentUser.photoURL, itemId: editingContact.id });
       } else {
         const newContact = await apiService.createContact(editingContact);
         setContacts([...contacts, newContact]);
-        await apiService.logActivity({ type: 'contact', action: 'create', description: `${userName} a créé le contact ${editingContact.name}`, userId: user?.uid, userName, itemId: newContact.id });
+        await apiService.logActivity({ type: 'contact', action: 'create', description: `${userName} a créé le contact ${editingContact.name}`, userId: user?.uid, userName, userPhotoURL: currentUser.photoURL, itemId: newContact.id });
       }
       refreshActivities();
       setShowContactModal(false);
@@ -427,7 +427,7 @@ export default function Crm() {
     try {
       await apiService.deleteContact(String(id));
       setContacts(prev => prev.filter(c => c.id !== id));
-      await apiService.logActivity({ type: 'contact', action: 'delete', description: `${currentUser.name} a supprimé le contact ${contact?.name || id}`, userId: user?.uid, userName: currentUser.name, itemId: id });
+      await apiService.logActivity({ type: 'contact', action: 'delete', description: `${currentUser.name} a supprimé le contact ${contact?.name || id}`, userId: user?.uid, userName: currentUser.name, userPhotoURL: currentUser.photoURL, itemId: id });
       refreshActivities();
       toast({ title: "Succès", description: "Contact supprimé." });
     } catch (error) {
@@ -445,7 +445,7 @@ export default function Crm() {
 
     try {
       await apiService.deleteTask(taskId);
-      await apiService.logActivity({ type: 'task', action: 'delete', description: `${currentUser.name} a supprimé la tâche : ${task?.title || taskId}`, userId: user?.uid, userName: currentUser.name, itemId: taskId });
+      await apiService.logActivity({ type: 'task', action: 'delete', description: `${currentUser.name} a supprimé la tâche : ${task?.title || taskId}`, userId: user?.uid, userName: currentUser.name, userPhotoURL: currentUser.photoURL, itemId: taskId });
       refreshActivities();
       toast({ title: "Tâche supprimée" });
     } catch (error) {
@@ -468,7 +468,7 @@ export default function Crm() {
 
     try {
       await apiService.deleteProject(projectId);
-      await apiService.logActivity({ type: 'project', action: 'delete', description: `${currentUser.name} a supprimé le projet : ${project?.name || projectId}`, userId: user?.uid, userName: currentUser.name, itemId: projectId });
+      await apiService.logActivity({ type: 'project', action: 'delete', description: `${currentUser.name} a supprimé le projet : ${project?.name || projectId}`, userId: user?.uid, userName: currentUser.name, userPhotoURL: currentUser.photoURL, itemId: projectId });
 
       // Force refresh data from server to be sure
       const freshProjects = await apiService.getProjects();
@@ -504,11 +504,11 @@ export default function Crm() {
       if (editingTask.id && tasks.find(t => t.id === editingTask.id)) {
         await apiService.updateTask(editingTask.id, editingTask);
         setTasks(tasks.map(t => t.id === editingTask.id ? editingTask : t));
-        await apiService.logActivity({ type: 'task', action: 'update', description: `${userName} a modifié la tâche : ${editingTask.title}`, userId: user?.uid, userName, itemId: editingTask.id });
+        await apiService.logActivity({ type: 'task', action: 'update', description: `${userName} a modifié la tâche : ${editingTask.title}`, userId: user?.uid, userName, userPhotoURL: currentUser.photoURL, itemId: editingTask.id });
       } else {
         const newTask = await apiService.createTask(editingTask);
         setTasks([...tasks, newTask]);
-        await apiService.logActivity({ type: 'task', action: 'create', description: `${userName} a créé la tâche : ${editingTask.title}`, userId: user?.uid, userName, itemId: newTask.id });
+        await apiService.logActivity({ type: 'task', action: 'create', description: `${userName} a créé la tâche : ${editingTask.title}`, userId: user?.uid, userName, userPhotoURL: currentUser.photoURL, itemId: newTask.id });
       }
       refreshActivities();
       setShowTaskModal(false);
@@ -568,7 +568,17 @@ export default function Crm() {
               const colors = { project: 'bg-green-500', contact: 'bg-blue-500', task: 'bg-orange-500', user: 'bg-indigo-500' };
               return (
                 <div key={a.id} className="flex items-start gap-3 p-3 hover:bg-slate-50 rounded-lg transition-colors">
-                  <div className={`${colors[a.type] || 'bg-slate-500'} w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0`}>{a.userName?.[0]?.toUpperCase() || 'U'}</div>
+                  {a.userPhotoURL ? (
+                    <img
+                      src={a.userPhotoURL}
+                      alt={a.userName || 'User'}
+                      className="w-10 h-10 rounded-full flex-shrink-0 object-cover border-2 border-white shadow"
+                    />
+                  ) : (
+                    <div className={`${colors[a.type] || 'bg-slate-500'} w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0`}>
+                      {a.userName?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0"><p className="text-sm text-slate-900 leading-snug">{a.description}</p><p className="text-xs text-slate-500 mt-1 flex items-center gap-1"><Clock className="w-3 h-3" />{formatTime(a.timestamp)}</p></div>
                 </div>
               );
