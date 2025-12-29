@@ -1,103 +1,157 @@
+import { useMemo } from 'react';
 import * as THREE from 'three';
 
 /**
- * Génère une Normal Map procédurale pour simuler du Bac Acier (Ondulé).
- * Crée un motif sinusoïdal répété verticalement.
+ * Génère une Normal Map procédurale pour simuler le relief d'un bac acier ondulé.
+ * Économise énormément de polygones par rapport à une géométrie réelle.
+ * 
+ * @param {number} width - Largeur de la texture (puissance de 2 recommandée)
+ * @param {number} height - Hauteur de la texture
+ * @param {number} frequency - Nombre d'ondulations horizontales
+ * @returns {THREE.CanvasTexture}
  */
-export const createCorrugatedNormalMap = () => {
-    const size = 512;
+export function createCorrugatedNormalMap(width = 512, height = 512, frequency = 20) {
     const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext('2d');
 
-    // Remplir avec neutre (0.5, 0.5, 1.0) -> RGB(128, 128, 255)
-    ctx.fillStyle = 'rgb(128, 128, 255)';
-    ctx.fillRect(0, 0, size, size);
+    const imgData = ctx.createImageData(width, height);
 
-    const imageData = ctx.getImageData(0, 0, size, size);
-    const data = imageData.data;
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const u = x / width; // [0, 1]
 
-    // Paramètres ondulation
-    const frequency = 20; // Nombre d'ondes
-
-    for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-            // L'ondulation est constante sur Y (verticale) et varie sur X (horizontale)
-            // Bac acier : ondes verticales. Donc constant sur Y, varie sur X ?
-            // Si on veut des ondes verticales (comme des tuyaux debouts), z varie selon x.
-            // La normale varie selon x.
-
-            // Hauteur z = sin(x * freq)
-            // Normale x = -dz/dx = -cos(x * freq)
-
-            const u = x / size;
+            // Onde sinusoïdale
             const angle = u * Math.PI * 2 * frequency;
+            const wave = Math.sin(angle);
 
-            // Calcul vecteur normal (nx, ny, nz)
-            // Surface z(x) = A * sin(kx)
-            // Tangente T = (1, 0, A*k*cos(kx))
-            // Normale N = (-A*k*cos(kx), 0, 1) normalisé
+            // Calcul de la normale (vecteur perpendiculaire à la surface)
+            // Pour une fonction z = A*sin(kx), la dérivée est dz/dx = A*k*cos(kx)
+            const amplitude = 1.0;
+            const k = Math.PI * 2 * frequency / width;
+            const dzdx = amplitude * k * Math.cos(angle);
 
-            // On simplifie : nx varie comme -cos(angle)
-            let nx = -Math.cos(angle);
-            let ny = 0;
-            let nz = 1; // Composante Z dominante
+            // Vecteur normal non normalisé : (-dz/dx, 0, 1)
+            const nx = -dzdx;
+            const ny = 0;
+            const nz = 1;
 
             // Normalisation
-            const l = Math.sqrt(nx * nx + ny * ny + nz * nz);
-            nx /= l;
-            ny /= l;
-            nz /= l;
+            const length = Math.sqrt(nx * nx + ny * ny + nz * nz);
+            const normX = nx / length;
+            const normY = ny / length;
+            const normZ = nz / length;
 
-            // Mapping vers RGB [0, 255]
-            // [-1, 1] -> [0, 255]
-            const r = Math.floor((nx + 1) * 127.5);
-            const g = Math.floor((ny + 1) * 127.5); // 128
-            const b = Math.floor((nz + 1) * 127.5); // ~255
-
-            const index = (y * size + x) * 4;
-            data[index] = r;
-            data[index + 1] = g;
-            data[index + 2] = b;
-            data[index + 3] = 255;
+            // Conversion [-1, 1] → [0, 255]
+            const idx = (y * width + x) * 4;
+            imgData.data[idx] = (normX + 1) * 127.5; // R
+            imgData.data[idx + 1] = (normY + 1) * 127.5; // G
+            imgData.data[idx + 2] = (normZ + 1) * 127.5; // B
+            imgData.data[idx + 3] = 255; // A
         }
     }
 
-    ctx.putImageData(imageData, 0, 0);
+    ctx.putImageData(imgData, 0, 0);
 
     const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.anisotropy = 16;
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(10, 10); // Répétition de l'ondulation
+
     return texture;
-};
+}
 
 /**
- * Génère une Roughness Map de bruit pour simuler l'acier galvanisé.
+ * Génère une Roughness Map pour simuler l'aspect pailleté de l'acier galvanisé (zinc).
+ * Le motif de cristallisation du zinc crée des variations de brillance.
+ * 
+ * @param {number} size - Taille de la texture (carrée)
+ * @returns {THREE.CanvasTexture}
  */
-export const createGalvanizedRoughnessMap = () => {
-    const size = 256;
+export function createGalvanizedRoughnessMap(size = 256) {
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d');
 
-    const imageData = ctx.createImageData(size, size);
-    const data = imageData.data;
+    const imgData = ctx.createImageData(size, size);
 
-    for (let i = 0; i < data.length; i += 4) {
-        // Bruit aléatoire entre 100 et 200 (gris moyen)
-        const val = Math.floor(Math.random() * 100) + 100;
-        data[i] = val;     // R
-        data[i + 1] = val;   // G
-        data[i + 2] = val;   // B
-        data[i + 3] = 255;   // A
+    // Générateur de bruit haute fréquence (simule les cristaux de zinc)
+    for (let i = 0; i < imgData.data.length; i += 4) {
+        // Bruit aléatoire dans la plage [100, 180]
+        // (évite les extrêmes pour garder un aspect métallique cohérent)
+        const noise = Math.floor(Math.random() * 80 + 100);
+
+        imgData.data[i] = noise; // R
+        imgData.data[i + 1] = noise; // G
+        imgData.data[i + 2] = noise; // B
+        imgData.data[i + 3] = 255; // A
     }
 
-    ctx.putImageData(imageData, 0, 0);
+    ctx.putImageData(imgData, 0, 0);
+
     const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(5, 5);
+
     return texture;
-};
+}
+
+/**
+ * Hook React pour créer un matériau Bac Acier ondulé.
+ * Utilise MeshStandardMaterial avec une Normal Map procédurale.
+ * 
+ * @param {Object} props
+ * @param {string} props.color - Couleur du bac acier (hex)
+ * @param {number} props.metalness - Métallicité [0, 1]
+ * @param {number} props.roughness - Rugosité [0, 1]
+ * @returns {JSX.Element}
+ */
+export function useCorrugatedSteelMaterial({
+    color = '#5c6166',
+    metalness = 0.3,
+    roughness = 0.4
+} = {}) {
+    const normalMap = useMemo(() => createCorrugatedNormalMap(), []);
+
+    return useMemo(
+        () => ({
+            color,
+            metalness,
+            roughness,
+            normalMap,
+            normalScale: new THREE.Vector2(1, 1),
+            envMapIntensity: 1.0
+        }),
+        [color, metalness, roughness, normalMap]
+    );
+}
+
+/**
+ * Hook React pour créer un matériau Acier Galvanisé.
+ * Aspect pailleté typique du zinc cristallisé.
+ * 
+ * @param {Object} props
+ * @param {string} props.color - Couleur de base
+ * @param {number} props.metalness - Métallicité [0, 1]
+ * @param {number} props.roughness - Rugosité moyenne [0, 1]
+ * @returns {JSX.Element}
+ */
+export function useGalvanizedSteelMaterial({
+    color = '#d0d0d0',
+    metalness = 0.6,
+    roughness = 0.5
+} = {}) {
+    const roughnessMap = useMemo(() => createGalvanizedRoughnessMap(), []);
+
+    return useMemo(
+        () => ({
+            color,
+            metalness,
+            roughness,
+            roughnessMap,
+            envMapIntensity: 1.2
+        }),
+        [color, metalness, roughness, roughnessMap]
+    );
+}
