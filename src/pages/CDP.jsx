@@ -3,10 +3,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { useProjects } from '../contexts/ProjectContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, FileText, Send, Search, CheckCircle2, Download, Upload, Copy, X } from 'lucide-react';
+import { User, FileText, Send, Search, CheckCircle2, Download, Upload, Save, X } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { createReport } from 'docx-templates';
+import { PDFViewer } from '../components/PDFViewer';
 
 export default function CDP() {
     const { user } = useAuth();
@@ -19,16 +19,19 @@ export default function CDP() {
     const [selectedTemplates, setSelectedTemplates] = useState([]);
     const [generatedDocuments, setGeneratedDocuments] = useState([]);
 
-    // Documents chargés par template (stockés en localStorage)
+    // Documents chargés avec balises positionnées
     const [uploadedTemplates, setUploadedTemplates] = useState(() => {
         const saved = localStorage.getItem('cdp_uploaded_templates');
         return saved ? JSON.parse(saved) : {};
     });
 
-    // Modal pour afficher les balises disponibles
-    const [tagInstructionsModal, setTagInstructionsModal] = useState(null);
+    // Modal éditeur de balises avec PDFViewer
+    const [tagEditorModal, setTagEditorModal] = useState(null);
 
-    // Formulaire Client (modifiable)
+    // Balise sélectionnée pour placement
+    const [selectedTagForPlacement, setSelectedTagForPlacement] = useState(null);
+
+    // Formulaire Client
     const [clientData, setClientData] = useState({
         nom: '',
         prenom: '',
@@ -47,7 +50,7 @@ export default function CDP() {
         lieu: ''
     });
 
-    // Balises disponibles pour mapping
+    // Balises disponibles
     const availableTags = [
         { key: '{{nom}}', label: 'Nom', value: () => clientData.nom },
         { key: '{{prenom}}', label: 'Prénom', value: () => clientData.prenom },
@@ -73,7 +76,7 @@ export default function CDP() {
         [projects, selectedProjectId]
     );
 
-    // Remplir formulaire quand projet sélectionné
+    // Remplir formulaire
     useEffect(() => {
         if (targetProject) {
             setClientData({
@@ -96,7 +99,7 @@ export default function CDP() {
         }
     }, [targetProject]);
 
-    // Calcul automatique surface
+    // Calcul surface
     useEffect(() => {
         const l = parseFloat(clientData.largeur);
         const L = parseFloat(clientData.longueur);
@@ -105,7 +108,7 @@ export default function CDP() {
         }
     }, [clientData.largeur, clientData.longueur]);
 
-    // Templates disponibles
+    // Templates
     const availableTemplates = [
         { id: 'mandat_representation', name: 'Mandat de représentation', category: 'Juridique' },
         { id: 'attestation_elagage', name: 'Attestation élagage', category: 'Administratif' },
@@ -136,46 +139,34 @@ export default function CDP() {
         );
     };
 
-    // Chargement document pour un template
+    // Chargement document PDF
     const handleUploadTemplate = (templateId, templateName) => {
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = '.docx,.pdf';
+        input.accept = '.pdf';
         input.onchange = async (e) => {
             const file = e.target.files?.[0];
             if (file) {
                 try {
-                    // Convertir en base64 pour stockage
                     const reader = new FileReader();
                     reader.onload = () => {
                         const base64 = reader.result;
-                        const newTemplates = {
-                            ...uploadedTemplates,
-                            [templateId]: {
-                                fileName: file.name,
-                                fileType: file.type,
-                                fileData: base64,
-                                uploadedAt: new Date().toISOString()
-                            }
-                        };
-                        setUploadedTemplates(newTemplates);
-                        localStorage.setItem('cdp_uploaded_templates', JSON.stringify(newTemplates));
 
-                        toast({
-                            title: "Document chargé",
-                            description: `${file.name} enregistré pour ${templateName}`,
-                            className: "bg-green-50 border-green-200"
+                        // Ouvrir le modal avec PDFViewer
+                        setTagEditorModal({
+                            templateId,
+                            templateName,
+                            fileName: file.name,
+                            pdfData: base64,
+                            placedTags: uploadedTemplates[templateId]?.tags || []
                         });
-
-                        // Ouvrir le modal des instructions
-                        setTagInstructionsModal({ templateId, templateName, fileName: file.name });
                     };
                     reader.readAsDataURL(file);
                 } catch (error) {
                     toast({
                         variant: "destructive",
                         title: "Erreur",
-                        description: "Impossible de charger le fichier"
+                        description: "Impossible de charger le PDF"
                     });
                 }
             }
@@ -183,49 +174,53 @@ export default function CDP() {
         input.click();
     };
 
-    // Copier une balise dans le presse-papier
-    const copyTagToClipboard = (tag) => {
-        navigator.clipboard.writeText(tag);
-        toast({
-            description: `${tag} copié !`,
-            duration: 2000
-        });
+    // Placement d'une balise
+    const handleTagPlaced = (tag) => {
+        setTagEditorModal(prev => ({
+            ...prev,
+            placedTags: [...prev.placedTags, tag]
+        }));
+        setSelectedTagForPlacement(null);
     };
 
-    // Remplacement des balises dans un document
-    const replaceTags = async (fileData, fileType) => {
-        const tagValues = {};
-        availableTags.forEach(tag => {
-            const cleanKey = tag.key.replace(/[{}]/g, ''); // Retirer les accolades pour docx-templates
-            tagValues[cleanKey] = tag.value();
-        });
+    // Suppression d'une balise
+    const handleTagRemoved = (tagToRemove) => {
+        setTagEditorModal(prev => ({
+            ...prev,
+            placedTags: prev.placedTags.filter(t =>
+                !(t.key === tagToRemove.key && t.page === tagToRemove.page && t.x === tagToRemove.x && t.y === tagToRemove.y)
+            )
+        }));
+    };
 
-        if (fileType.includes('word') || fileType.includes('docx')) {
-            // Document Word avec docx-templates
-            try {
-                const arrayBuffer = await fetch(fileData).then(r => r.arrayBuffer());
-                const buffer = await createReport({
-                    template: arrayBuffer,
-                    data: tagValues,
-                    cmdDelimiter: ['{{', '}}']
-                });
-                return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-            } catch (error) {
-                console.error('Erreur remplacement Word:', error);
-                throw error;
+    // Sauvegarde configuration balises
+    const handleSaveTagConfiguration = () => {
+        if (!tagEditorModal) return;
+
+        const newTemplates = {
+            ...uploadedTemplates,
+            [tagEditorModal.templateId]: {
+                fileName: tagEditorModal.fileName,
+                pdfData: tagEditorModal.pdfData,
+                tags: tagEditorModal.placedTags,
+                uploadedAt: new Date().toISOString()
             }
-        } else if (fileType.includes('pdf')) {
-            // PDF simple sans remplacement (nécessiterait PDFLib avec placement manuel)
-            toast({
-                variant: "destructive",
-                title: "PDF non supporté",
-                description: "Veuillez utiliser des fichiers Word (.docx) pour le remplacement automatique"
-            });
-            return null;
-        }
+        };
+
+        setUploadedTemplates(newTemplates);
+        localStorage.setItem('cdp_uploaded_templates', JSON.stringify(newTemplates));
+
+        toast({
+            title: "Configuration sauvegardée",
+            description: `${tagEditorModal.placedTags.length} balise(s) enregistrée(s)`,
+            className: "bg-green-50 border-green-200"
+        });
+
+        setTagEditorModal(null);
+        setSelectedTagForPlacement(null);
     };
 
-    // Génération des documents
+    // Génération documents avec pdf-lib
     const handleGenerateDocuments = async () => {
         if (selectedTemplates.length === 0) {
             toast({ variant: "destructive", title: "Aucun template", description: "Sélectionnez au moins un document." });
@@ -242,26 +237,54 @@ export default function CDP() {
                 toast({
                     variant: "destructive",
                     title: "Document manquant",
-                    description: `Veuillez charger un document pour "${template.name}"`
+                    description: `Veuillez charger un PDF pour "${template.name}"`
                 });
                 continue;
             }
 
             try {
-                const blob = await replaceTags(uploadedTemplate.fileData, uploadedTemplate.fileType);
-                if (blob) {
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `${template.name}_${clientData.nom}_${clientData.prenom}.docx`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(url);
+                // Charger le PDF template
+                const existingPdfBytes = await fetch(uploadedTemplate.pdfData).then(r => r.arrayBuffer());
+                const pdfDoc = await PDFDocument.load(existingPdfBytes);
+                const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-                    generated.push(template.name);
+                // Appliquer les balises
+                for (const tag of uploadedTemplate.tags) {
+                    const page = pdfDoc.getPage(tag.page - 1);
+                    const { width, height } = page.getSize();
+
+                    // Convertir % en coordonnées absolues
+                    const x = (tag.x / 100) * width;
+                    const y = height - ((tag.y / 100) * height); // Inverser Y pour PDF
+
+                    // Récupérer la valeur de la balise
+                    const tagValue = availableTags.find(t => t.key === tag.key)?.value() || '';
+
+                    // Écrire le texte
+                    page.drawText(tagValue, {
+                        x,
+                        y,
+                        size: 10,
+                        font,
+                        color: rgb(0, 0, 0)
+                    });
                 }
+
+                // Sauvegarder et télécharger
+                const pdfBytes = await pdfDoc.save();
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${template.name}_${clientData.nom}_${clientData.prenom}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                generated.push(template.name);
             } catch (error) {
+                console.error('Erreur génération:', error);
                 toast({
                     variant: "destructive",
                     title: "Erreur génération",
@@ -543,7 +566,7 @@ export default function CDP() {
                                                         <div className="text-xs text-slate-500">{template.category}</div>
                                                         {uploadedTemplates[template.id] && (
                                                             <div className="text-xs text-green-600 mt-1">
-                                                                ✓ {uploadedTemplates[template.id].fileName}
+                                                                ✓ {uploadedTemplates[template.id].fileName} ({uploadedTemplates[template.id].tags.length} balises)
                                                             </div>
                                                         )}
                                                     </div>
@@ -640,75 +663,86 @@ export default function CDP() {
                 </div>
             </div>
 
-            {/* ========== MODAL INSTRUCTIONS BALISES ========== */}
-            {tagInstructionsModal && (
+            {/* ========== MODAL ÉDITEUR AVEC PDFVIEWER ========== */}
+            {tagEditorModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white rounded-2xl shadow-2xl w-[95vw] h-[90vh] flex flex-col">
 
-                        <div className="sticky top-0 bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-t-2xl">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-2xl font-bold">Balises Disponibles</h3>
-                                    <p className="text-purple-100 text-sm mt-1">{tagInstructionsModal.templateName}</p>
-                                    <p className="text-purple-200 text-xs mt-1">📎 {tagInstructionsModal.fileName}</p>
-                                </div>
-                                <button
-                                    onClick={() => setTagInstructionsModal(null)}
-                                    className="text-white hover:bg-purple-600 p-2 rounded-lg transition"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-t-2xl flex items-center justify-between">
+                            <div>
+                                <h3 className="text-2xl font-bold">Configuration des Balises</h3>
+                                <p className="text-purple-100 text-sm mt-1">{tagEditorModal.templateName}</p>
+                                <p className="text-purple-200 text-xs mt-1">📎 {tagEditorModal.fileName}</p>
                             </div>
+                            <button
+                                onClick={() => { setTagEditorModal(null); setSelectedTagForPlacement(null); }}
+                                className="text-white hover:bg-purple-600 p-2 rounded-lg transition"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
 
-                        <div className="p-6 space-y-6">
+                        {/* Body: PDF Viewer + Balises */}
+                        <div className="flex-1 flex overflow-hidden">
 
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <h4 className="font-semibold text-blue-900 text-sm mb-2">💡 Instructions</h4>
-                                <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
-                                    <li>Ouvrez votre document Word (.docx) téléchargé</li>
-                                    <li>Cliquez sur les balises ci-dessous pour les copier</li>
-                                    <li>Collez les balises aux emplacements souhaités dans votre document</li>
-                                    <li>Sauvegardez et rechargez le document</li>
-                                    <li>Les balises seront automatiquement remplacées lors de la génération</li>
-                                </ol>
+                            {/* PDF Viewer (70%) */}
+                            <div className="flex-[7] border-r">
+                                <PDFViewer
+                                    pdfData={tagEditorModal.pdfData}
+                                    placedTags={tagEditorModal.placedTags}
+                                    selectedTag={selectedTagForPlacement}
+                                    onTagPlaced={handleTagPlaced}
+                                    onTagRemoved={handleTagRemoved}
+                                    availableTags={availableTags}
+                                />
                             </div>
 
-                            <div>
-                                <h4 className="font-semibold text-slate-700 mb-3">Balises Disponibles (cliquez pour copier)</h4>
-                                <div className="grid grid-cols-2 gap-2">
+                            {/* Liste Balises (30%) */}
+                            <div className="flex-[3] p-6 overflow-y-auto bg-slate-50">
+                                <h4 className="font-semibold text-slate-700 mb-4">Balises Disponibles</h4>
+                                <p className="text-xs text-slate-600 mb-4">Cliquez sur une balise puis cliquez sur le PDF pour la placer</p>
+
+                                <div className="space-y-2">
                                     {availableTags.map(tag => (
                                         <button
                                             key={tag.key}
-                                            onClick={() => copyTagToClipboard(tag.key)}
-                                            className="text-left px-3 py-2 rounded-lg text-sm border bg-white border-slate-300 hover:border-purple-400 hover:bg-purple-50 transition flex items-center justify-between group"
+                                            onClick={() => setSelectedTagForPlacement(tag.key)}
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm border transition ${selectedTagForPlacement === tag.key
+                                                    ? 'bg-purple-600 border-purple-600 text-white'
+                                                    : 'bg-white border-slate-300 hover:border-purple-400 hover:bg-purple-50'
+                                                }`}
                                         >
-                                            <div>
-                                                <code className="font-mono text-xs block text-purple-600">{tag.key}</code>
-                                                <span className="text-xs text-slate-600">{tag.label}</span>
-                                            </div>
-                                            <Copy className="w-4 h-4 text-slate-400 group-hover:text-purple-600" />
+                                            <code className="font-mono text-xs block">{tag.key}</code>
+                                            <span className="text-xs opacity-75">{tag.label}</span>
                                         </button>
                                     ))}
                                 </div>
-                            </div>
 
-                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                                <h4 className="font-semibold text-amber-900 text-sm mb-2">⚠️ Important</h4>
-                                <ul className="text-xs text-amber-800 space-y-1">
-                                    <li>• Les balises doivent être exactement comme indiquées (avec les accolades)</li>
-                                    <li>• Utilisez uniquement des fichiers Word (.docx) pour le remplacement automatique</li>
-                                    <li>• Les PDFs ne supportent pas encore le remplacement automatique</li>
-                                </ul>
+                                {tagEditorModal.placedTags.length > 0 && (
+                                    <div className="mt-6 p-4 bg-purple-100 border border-purple-300 rounded-lg">
+                                        <h5 className="font-semibold text-purple-900 text-sm mb-2">Balises placées</h5>
+                                        <p className="text-xs text-purple-700">{tagEditorModal.placedTags.length} balise(s)</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        <div className="sticky bottom-0 bg-slate-50 p-6 rounded-b-2xl border-t">
+                        {/* Footer */}
+                        <div className="bg-slate-50 p-6 rounded-b-2xl border-t flex gap-4">
                             <Button
-                                onClick={() => setTagInstructionsModal(null)}
-                                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                                variant="outline"
+                                onClick={() => { setTagEditorModal(null); setSelectedTagForPlacement(null); }}
+                                className="flex-1"
                             >
-                                Compris !
+                                Annuler
+                            </Button>
+                            <Button
+                                onClick={handleSaveTagConfiguration}
+                                className="flex-1 bg-gradient-to-r from-purple-600 to-purple-700 text-white"
+                            >
+                                <Save className="w-4 h-4 mr-2" />
+                                Sauvegarder
                             </Button>
                         </div>
 
