@@ -460,7 +460,13 @@ export default function Crm() {
         setContacts(contacts.map(c => c.id === editingContact.id ? editingContact : c));
         await apiService.logActivity({ type: 'contact', action: 'update', description: `${userName} a modifié le contact ${editingContact.name}`, userId: user?.uid, userName, userPhotoURL: currentUser.photoURL, itemId: editingContact.id });
       } else {
-        const newContact = await apiService.createContact(editingContact);
+        // Ajouter le nom de l'utilisateur au contact avant la création
+        const contactWithUser = {
+          ...editingContact,
+          createdByFirstName: userName,
+          user: userName
+        };
+        const newContact = await apiService.createContact(contactWithUser);
         setContacts([...contacts, newContact]);
         await apiService.logActivity({ type: 'contact', action: 'create', description: `${userName} a créé le contact ${editingContact.name}`, userId: user?.uid, userName, userPhotoURL: currentUser.photoURL, itemId: newContact.id });
       }
@@ -802,7 +808,18 @@ export default function Crm() {
                     <tr key={contact.id} id={`contact-${contact.id}`} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 font-medium text-slate-900">{contact.name}</td>
                       <td className="px-6 py-4">
-                        <UserAvatar name={project?.assignedUser || project?.createdByFirstName || (typeof project?.user === 'string' ? project.user : null)} />
+                        {(() => {
+                          // Essayer de récupérer le nom de l'utilisateur depuis le contact
+                          const contactCreator = contact.createdByFirstName || contact.user;
+
+                          // Si pas trouvé, essayer de retrouver l'utilisateur via son ID
+                          if (!contactCreator && contact.createdBy && users.length > 0) {
+                            const userFromList = users.find(u => u.id === contact.createdBy);
+                            return <UserAvatar name={userFromList?.firstName || userFromList?.displayName || null} />;
+                          }
+
+                          return <UserAvatar name={contactCreator} />;
+                        })()}
                       </td>
                       <td className="px-6 py-4 text-slate-600 text-sm">{contact.email}</td>
                       <td className="px-6 py-4 text-slate-600 text-sm">{contact.phone}</td>
