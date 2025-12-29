@@ -184,7 +184,7 @@ export function PDFViewer({
             const x = (tag.x / 100) * canvasRef.current.width;
             const y = (tag.y / 100) * canvasRef.current.height;
 
-            const isDragging = draggingTag && draggingTag.tag === tag;
+            const isDragging = draggingTag && (draggingTag.id ? draggingTag.id === tag.id : draggingTag.tag === tag);
 
             return (
                 <div
