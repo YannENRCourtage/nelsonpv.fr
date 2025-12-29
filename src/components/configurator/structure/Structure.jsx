@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import { PortalFrame } from './PortalFrame';
-import { generateIPEShape, IPE_Ref } from '../utils/geometry';
+import { PortalFrame } from './PortalFrame.jsx';
+import { generateIPEShape, IPE_Ref } from '../utils/geometry.js';
 
 export const Structure = ({
     length = 20, // Longueur bâtiment (Z)

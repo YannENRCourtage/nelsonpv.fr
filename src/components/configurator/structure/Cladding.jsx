@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import { createCorrugatedNormalMap } from '../materials/materialUtils';
+import { createCorrugatedNormalMap } from '../materials/materialUtils.js';
 
 export const Cladding = ({
     length = 20,

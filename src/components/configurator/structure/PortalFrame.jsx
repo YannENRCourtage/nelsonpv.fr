@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import { generateIPEShape, IPE_Ref } from '../utils/geometry';
+import { generateIPEShape, IPE_Ref } from '../utils/geometry.js';
 
 export const PortalFrame = ({
     span = 20,

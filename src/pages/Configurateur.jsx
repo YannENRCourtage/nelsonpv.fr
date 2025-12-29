@@ -3,9 +3,9 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, Sky, ContactShadows } from '@react-three/drei';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Structure } from '../components/configurator/structure/Structure';
-import { Cladding } from '../components/configurator/structure/Cladding';
-import { DimensionLine } from '../components/configurator/ui/DimensionLine';
+import { Structure } from '../components/configurator/structure/Structure.jsx';
+import { Cladding } from '../components/configurator/structure/Cladding.jsx';
+import { DimensionLine } from '../components/configurator/ui/DimensionLine.jsx';
 import { Button } from '@/components/ui/button';
 
 export default function Configurateur() {
