@@ -1,5 +1,5 @@
 import React from 'react';
-import { useConfiguratorStore } from '../../stores/useConfiguratorStore.js';
+import { useConfiguratorStore } from '@/stores/useConfiguratorStore.js';
 
 export function ControlPanel() {
     // Récupération des valeurs et actions du store
