@@ -544,8 +544,8 @@ export default function CDP() {
                                         <div
                                             key={template.id}
                                             className={`p-3 rounded-lg border transition-all ${selectedTemplates.includes(template.id)
-                                                    ? 'bg-purple-50 border-purple-200 ring-1 ring-purple-500'
-                                                    : 'bg-white border-slate-200'
+                                                ? 'bg-purple-50 border-purple-200 ring-1 ring-purple-500'
+                                                : 'bg-white border-slate-200'
                                                 }`}
                                         >
                                             <div className="flex items-center justify-between gap-2">
@@ -554,8 +554,8 @@ export default function CDP() {
                                                     onClick={() => toggleTemplate(template.id)}
                                                 >
                                                     <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${selectedTemplates.includes(template.id)
-                                                            ? 'bg-purple-600 border-purple-600'
-                                                            : 'border-slate-300'
+                                                        ? 'bg-purple-600 border-purple-600'
+                                                        : 'border-slate-300'
                                                         }`}>
                                                         {selectedTemplates.includes(template.id) && (
                                                             <CheckCircle2 className="w-4 h-4 text-white" />
@@ -566,7 +566,7 @@ export default function CDP() {
                                                         <div className="text-xs text-slate-500">{template.category}</div>
                                                         {uploadedTemplates[template.id] && (
                                                             <div className="text-xs text-green-600 mt-1">
-                                                                ✓ {uploadedTemplates[template.id].fileName} ({uploadedTemplates[template.id].tags.length} balises)
+                                                                ✓ {uploadedTemplates[template.id].fileName} ({(uploadedTemplates[template.id].tags || []).length} balises)
                                                             </div>
                                                         )}
                                                     </div>
@@ -709,8 +709,8 @@ export default function CDP() {
                                             key={tag.key}
                                             onClick={() => setSelectedTagForPlacement(tag.key)}
                                             className={`w-full text-left px-3 py-2 rounded-lg text-sm border transition ${selectedTagForPlacement === tag.key
-                                                    ? 'bg-purple-600 border-purple-600 text-white'
-                                                    : 'bg-white border-slate-300 hover:border-purple-400 hover:bg-purple-50'
+                                                ? 'bg-purple-600 border-purple-600 text-white'
+                                                : 'bg-white border-slate-300 hover:border-purple-400 hover:bg-purple-50'
                                                 }`}
                                         >
                                             <code className="font-mono text-xs block">{tag.key}</code>
