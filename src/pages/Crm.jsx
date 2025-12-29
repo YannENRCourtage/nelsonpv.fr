@@ -588,11 +588,21 @@ export default function Crm() {
     setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
   };
 
-  const filteredContacts = contacts.filter(c =>
-    (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (c.company || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (c.email || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredContacts = contacts.filter(c => {
+    // Filtre par recherche textuelle
+    const matchesSearch = (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.company || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.email || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Filtre par utilisateur
+    const contactUser = c.createdByFirstName || c.user;
+    const matchesUser = filterUser === 'all' || contactUser === filterUser;
+
+    // Filtre par statut
+    const matchesStatus = filterStatus === 'all' || (c.status || 'Nouveau') === filterStatus;
+
+    return matchesSearch && matchesUser && matchesStatus;
+  });
 
   const renderDashboard = () => (
     <div className="space-y-8">
@@ -669,6 +679,31 @@ export default function Crm() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+        </div>
+
+        {/* Filtres */}
+        <div className="flex gap-4 items-center">
+          <select
+            value={filterUser}
+            onChange={(e) => setFilterUser(e.target.value)}
+            className="px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          >
+            <option value="all">Tous les utilisateurs</option>
+            {users.map(u => (
+              <option key={u.id} value={u.firstName || u.displayName}>{u.firstName || u.displayName || 'Utilisateur'}</option>
+            ))}
+          </select>
+
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          >
+            <option value="all">Tous les statuts</option>
+            <option value="Nouveau">Nouveau</option>
+            <option value="En cours">En cours</option>
+            <option value="Client">Client</option>
+          </select>
         </div>
 
         <div className="flex gap-4 items-center">
