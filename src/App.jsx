@@ -9,6 +9,7 @@ import AppLayout from './components/AppLayout.jsx';
 import Crm from './pages/Crm.jsx';
 import Admin from './pages/Admin.jsx';
 import ProfitabilitySimulator from './pages/ProfitabilitySimulator.jsx';
+import Configurateur from './pages/Configurateur.jsx';
 import CDP from './pages/CDP.jsx';
 import { Toaster } from './components/ui/toaster.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
@@ -73,6 +74,14 @@ function AppContent() {
             element={
               <ProtectedRoute requiredPermission="canAccessSimulator">
                 <ProfitabilitySimulator />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="configurateur"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <Configurateur />
               </ProtectedRoute>
             }
           />
