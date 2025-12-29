@@ -411,7 +411,17 @@ export default function ProjectEditor() {
         throw new Error(`Erreur API PVGIS: ${response.status}`);
       }
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        console.error("Erreur parsing JSON PVGIS:", e);
+        // Tenter de lire le texte pour voir l'erreur (ex: 404 HTML)
+        const text = await response.text().catch(() => "Pas de réponse textuelle");
+        console.error("Réponse brute:", text);
+        throw new Error("Réponse API invalide (pas du JSON). Voir console.");
+      }
+
       setPvgisData(data);
       toast({ title: "Données PVGIS chargées", description: "Les données photovoltaïques ont été récupérées avec succès." });
     } catch (error) {
