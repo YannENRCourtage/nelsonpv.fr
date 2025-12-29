@@ -46,7 +46,7 @@ export const useConfiguratorStore = create((set, get) => ({
      * Choix binaire : 6m ou 7.5m
      * @type {number}
      */
-    baySpacing: 6, // 6m ou 7.5m
+    baySpacing: 7.5, // 6m ou 7.5m (DEFAULT 7.5m)
 
     /**
      * Nombre de travées
@@ -140,7 +140,7 @@ export const useConfiguratorStore = create((set, get) => ({
      */
     reset: () => set({
         width: 18.6,
-        baySpacing: 6,
+        baySpacing: 7.5,
         bayCount: 4
     }),
 

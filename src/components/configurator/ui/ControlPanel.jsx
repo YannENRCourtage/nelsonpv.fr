@@ -24,7 +24,7 @@ export function ControlPanel() {
 
             {/* HEADER */}
             <div className="mb-6 border-b pb-4">
-                <h2 className="text-2xl font-bold text-slate-900">Configurateur 3D</h2>
+                <h2 className="text-2xl font-bold text-slate-900">Configurateur 2D/3D</h2>
                 <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Bâtiment Métallique Pro</p>
             </div>
 
@@ -57,9 +57,23 @@ export function ControlPanel() {
                 <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
                     <p className="text-xs text-blue-700 font-medium">
                         <span className="opacity-70">Hauteur Faîtage :</span>{' '}
-                        <span className="font-bold text-blue-900">{ridgeHeight}m</span> (auto)
+                        <span className="font-bold text-blue-900">{ridgeHeight}m</span>
                     </p>
                 </div>
+            </div>
+
+            {/* ========== TYPE DE BÂTIMENT ========== */}
+            <div className="param-group mb-6">
+                <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
+                    Type de Bâtiment
+                </label>
+                <select className="w-full px-4 py-3 border border-slate-300 rounded-lg font-semibold text-sm bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all">
+                    <option value="symetrique">Symétrique</option>
+                    <option value="asymetrique">Asymétrique</option>
+                    <option value="monopente">Monopente</option>
+                    <option value="ombriere">Ombrière</option>
+                </select>
+                <p className="text-xs text-slate-500 mt-2 italic">À venir : affectation structure 3D</p>
             </div>
 
             {/* ========== ESPACEMENT TRAVÉES ========== */}

@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useProjects } from '../contexts/ProjectContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, FileText, Send, Search, CheckCircle2, Download } from 'lucide-react';
+import { User, FileText, Send, Search, CheckCircle2, Download, Upload } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import jsPDF from 'jspdf';
 
@@ -71,14 +71,20 @@ export default function CDP() {
         }
     }, [clientData.largeur, clientData.longueur]);
 
-    // Templates disponibles
+    // Templates disponibles (NOUVELLE LISTE COMPLÈTE)
     const availableTemplates = [
-        { id: 'devis', name: 'Devis détaillé', category: 'Commercial' },
-        { id: 'contrat', name: 'Contrat de prestation', category: 'Juridique' },
-        { id: 'plan_masse', name: 'Plan de masse', category: 'Technique' },
-        { id: 'attestation', name: 'Attestation de conformité', category: 'Administratif' },
-        { id: 'bon_commande', name: 'Bon de commande', category: 'Commercial' },
-        { id: 'bail_solaire', name: 'Bail solaire', category: 'Juridique' },
+        { id: 'mandat_representation', name: 'Mandat de représentation', category: 'Juridique' },
+        { id: 'attestation_elagage', name: 'Attestation élagage', category: 'Administratif' },
+        { id: 'attestation_amiante', name: 'Attestation enlèvement amiante', category: 'Technique' },
+        { id: 'attestation_icpe', name: 'Attestation ICPE', category: 'Administratif' },
+        { id: 'attestation_honneur', name: 'Attestation sur l\'honneur', category: 'Administratif' },
+        { id: 'attestation_mise_disposition', name: 'Attestation mise à disposition', category: 'Administratif' },
+        { id: 'notice_enr', name: 'Notice ENR', category: 'Commercial' },
+        { id: 'plan_bardage', name: 'Plan de bardage & Aménagement', category: 'Technique' },
+        { id: 'plan_bardage_symetrique', name: 'Plan de bardage & Aménagement symétrique', category: 'Technique' },
+        { id: 'promesse_bail_1', name: 'Promesse de bail #1', category: 'Juridique' },
+        { id: 'promesse_bail_2', name: 'Promesse de bail #2', category: 'Juridique' },
+        { id: 'promesse_bail_3', name: 'Promesse de bail #3', category: 'Juridique' },
     ];
 
     // Toggle sélection template
@@ -163,8 +169,8 @@ export default function CDP() {
     }, [projects, projectSearch]);
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-            <div className="max-w-[1920px] mx-auto">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+            <div className="w-full mx-auto"> {/* Pleine largeur */}
 
                 {/* HEADER */}
                 <div className="mb-6">
@@ -174,8 +180,8 @@ export default function CDP() {
                     <p className="text-slate-500 mt-1">Génération de documents & Signature électronique</p>
                 </div>
 
-                {/* LAYOUT 3 COLONNES ÉGALES */}
-                <div className="grid grid-cols-3 gap-6">
+                {/* LAYOUT 3 COLONNES ÉGALES - PLUS LARGE */}
+                <div className="grid grid-cols-3 gap-8"> {/* gap-8 au lieu de gap-6 pour plus d'espace */}
 
                     {/* ========== VOLET 1 : CLIENT ========== */}
                     <Card className="h-fit">
@@ -358,14 +364,25 @@ export default function CDP() {
                         </CardHeader>
                         <CardContent className="p-6 space-y-4">
 
-                            <Button
-                                onClick={handleGenerateDocuments}
-                                disabled={!clientData.nom || selectedTemplates.length === 0}
-                                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                            >
-                                <Download className="w-4 h-4 mr-2" />
-                                Générer documents clients
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    onClick={handleGenerateDocuments}
+                                    disabled={!clientData.nom || selectedTemplates.length === 0}
+                                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                                >
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Générer documents clients
+                                </Button>
+
+                                <Button
+                                    variant="outline"
+                                    className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                                    onClick={() => toast({ title: "Fonctionnalité à venir", description: "Chargement de templates personnalisés" })}
+                                >
+                                    <Upload className="w-4 h-4 mr-2" />
+                                    Charger
+                                </Button>
+                            </div>
 
                             <div className="pt-4 border-t">
                                 <h3 className="font-semibold text-sm text-slate-700 mb-3 uppercase tracking-wide">Bibliothèque de Templates</h3>
