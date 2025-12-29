@@ -68,6 +68,7 @@ export default function CDP() {
         { key: '{{surface}}', label: 'Surface', value: () => clientData.surface },
         { key: '{{fait_a}}', label: 'Fait à', value: () => clientData.faitA },
         { key: '{{lieu}}', label: 'Lieu', value: () => clientData.lieu },
+        { key: '{{champ_libre}}', label: 'Champ libre', value: () => '' },
     ];
 
     // Projet sélectionné
