@@ -278,6 +278,9 @@ export default function Crm() {
   const [opportunities, setOpportunities] = useState([]); // Ajout pour éviter le crash
   const [activities, setActivities] = useState([]);
   const [users, setUsers] = useState([]); // Pour résoudre les photos utilisateurs
+  const [filterUser, setFilterUser] = useState('all'); // Filtre par utilisateur
+  const [filterType, setFilterType] = useState('all'); // Filtre par type
+  const [filterStatus, setFilterStatus] = useState('all'); // Filtre par statut
   const [monthlyKpis, setMonthlyKpis] = useState(null); // Store last month's KPI values
   const [isLoading, setIsLoading] = useState(true);
 
@@ -1198,15 +1201,53 @@ export default function Crm() {
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="p-4 border-b border-slate-200">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Rechercher..."
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="flex gap-4 items-center">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Rechercher..."
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            {/* Filtre Utilisateur */}
+            <select
+              value={filterUser}
+              onChange={(e) => setFilterUser(e.target.value)}
+              className="px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            >
+              <option value="all">Tous les utilisateurs</option>
+              {users.map(u => (
+                <option key={u.id} value={u.firstName || u.displayName}>{u.firstName || u.displayName || 'Utilisateur'}</option>
+              ))}
+            </select>
+
+            {/* Filtre Type */}
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            >
+              <option value="all">Tous les types</option>
+              <option value="Construction">Construction</option>
+              <option value="Location">Location</option>
+            </select>
+
+            {/* Filtre Statut */}
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            >
+              <option value="all">Tous les statuts</option>
+              <option value="Nouveau">Nouveau</option>
+              <option value="En cours">En cours</option>
+              <option value="Terminé">Terminé</option>
+              <option value="Abandonné">Abandonné</option>
+            </select>
           </div>
         </div>
 
@@ -1223,14 +1264,28 @@ export default function Crm() {
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Ville</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Coordonnées GPS</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Type</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Statut</th>
                   <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {projects.filter(p =>
-                  (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  (p.city || '').toLowerCase().includes(searchTerm.toLowerCase())
-                ).map((project) => (
+                {projects.filter(p => {
+                  // Filtre par recherche textuelle
+                  const matchesSearch = (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    (p.city || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+                  // Filtre par utilisateur
+                  const projectUser = p.assignedUser || p.createdByFirstName || (typeof p.user === 'string' ? p.user : null);
+                  const matchesUser = filterUser === 'all' || projectUser === filterUser;
+
+                  // Filtre par type
+                  const matchesType = filterType === 'all' || (p.type || 'Construction') === filterType;
+
+                  // Filtre par statut
+                  const matchesStatus = filterStatus === 'all' || (p.status || 'Nouveau') === filterStatus;
+
+                  return matchesSearch && matchesUser && matchesType && matchesStatus;
+                }).map((project) => (
                   <tr key={project.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 font-medium text-slate-900">
                       {[project.name, project.zip, project.city].filter(Boolean).join(' ').toUpperCase() || 'Sans nom'}
@@ -1273,6 +1328,15 @@ export default function Crm() {
                     <td className="px-6 py-4">
                       <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
                         {project.type || 'Construction'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${project.status === 'Terminé' ? 'bg-green-100 text-green-700' :
+                        project.status === 'En cours' ? 'bg-blue-100 text-blue-700' :
+                          project.status === 'Abandonné' ? 'bg-red-100 text-red-700' :
+                            'bg-slate-100 text-slate-700' // Nouveau
+                        }`}>
+                        {project.status || 'Nouveau'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
