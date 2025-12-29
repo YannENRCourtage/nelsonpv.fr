@@ -3,9 +3,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { useProjects } from '../contexts/ProjectContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, FileText, Send, Search, CheckCircle2, Download, Upload, Edit, Save, X } from 'lucide-react';
+import { User, FileText, Send, Search, CheckCircle2, Download, Upload, Copy, X } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
-import jsPDF from 'jspdf';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { createReport } from 'docx-templates';
 
 export default function CDP() {
     const { user } = useAuth();
@@ -16,16 +17,16 @@ export default function CDP() {
     const [selectedProjectId, setSelectedProjectId] = useState(null);
     const [projectSearch, setProjectSearch] = useState('');
     const [selectedTemplates, setSelectedTemplates] = useState([]);
-    const [generatedDocument, setGeneratedDocument] = useState(null);
+    const [generatedDocuments, setGeneratedDocuments] = useState([]);
 
-    // Nouveau : Documents chargés par template (stockés en localStorage)
+    // Documents chargés par template (stockés en localStorage)
     const [uploadedTemplates, setUploadedTemplates] = useState(() => {
         const saved = localStorage.getItem('cdp_uploaded_templates');
         return saved ? JSON.parse(saved) : {};
     });
 
-    // Nouveau : Modal configuration balises
-    const [tagEditorModal, setTagEditorModal] = useState(null); // { templateId, templateName, tags: [] }
+    // Modal pour afficher les balises disponibles
+    const [tagInstructionsModal, setTagInstructionsModal] = useState(null);
 
     // Formulaire Client (modifiable)
     const [clientData, setClientData] = useState({
@@ -36,12 +37,14 @@ export default function CDP() {
         adresse: '',
         codePostal: '',
         ville: '',
-        typeBatiment: 'Hangar Agricole',
+        typeBatiment: 'Bâtiment métallique',
         parcelles: '',
         hauteurSabliere: '',
         largeur: '',
         longueur: '',
-        surface: ''
+        surface: '',
+        faitA: '',
+        lieu: ''
     });
 
     // Balises disponibles pour mapping
@@ -60,6 +63,8 @@ export default function CDP() {
         { key: '{{largeur}}', label: 'Largeur', value: () => clientData.largeur },
         { key: '{{longueur}}', label: 'Longueur', value: () => clientData.longueur },
         { key: '{{surface}}', label: 'Surface', value: () => clientData.surface },
+        { key: '{{fait_a}}', label: 'Fait à', value: () => clientData.faitA },
+        { key: '{{lieu}}', label: 'Lieu', value: () => clientData.lieu },
     ];
 
     // Projet sélectionné
@@ -68,7 +73,7 @@ export default function CDP() {
         [projects, selectedProjectId]
     );
 
-    // Quand un projet est sélectionné, remplir le formulaire
+    // Remplir formulaire quand projet sélectionné
     useEffect(() => {
         if (targetProject) {
             setClientData({
@@ -79,17 +84,19 @@ export default function CDP() {
                 adresse: targetProject.address || '',
                 codePostal: targetProject.zip || '',
                 ville: targetProject.city || '',
-                typeBatiment: targetProject.type || 'Hangar Agricole',
+                typeBatiment: targetProject.type || 'Bâtiment métallique',
                 parcelles: targetProject.parcelles || '',
                 hauteurSabliere: targetProject.eaveHeight || '',
                 largeur: targetProject.width || '',
                 longueur: targetProject.length || '',
-                surface: targetProject.surface || ''
+                surface: targetProject.surface || '',
+                faitA: '',
+                lieu: ''
             });
         }
     }, [targetProject]);
 
-    // Calcul automatique de la surface
+    // Calcul automatique surface
     useEffect(() => {
         const l = parseFloat(clientData.largeur);
         const L = parseFloat(clientData.longueur);
@@ -98,7 +105,7 @@ export default function CDP() {
         }
     }, [clientData.largeur, clientData.longueur]);
 
-    // Templates disponibles (NOUVELLE VERSION avec types détaillés)
+    // Templates disponibles
     const availableTemplates = [
         { id: 'mandat_representation', name: 'Mandat de représentation', category: 'Juridique' },
         { id: 'attestation_elagage', name: 'Attestation élagage', category: 'Administratif' },
@@ -134,127 +141,143 @@ export default function CDP() {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.docx,.pdf';
-        input.onchange = (e) => {
+        input.onchange = async (e) => {
             const file = e.target.files?.[0];
             if (file) {
-                // Ouvrir l'éditeur de balises
-                setTagEditorModal({
-                    templateId,
-                    templateName,
-                    fileName: file.name,
-                    file,
-                    tags: uploadedTemplates[templateId]?.tags || []
-                });
+                try {
+                    // Convertir en base64 pour stockage
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const base64 = reader.result;
+                        const newTemplates = {
+                            ...uploadedTemplates,
+                            [templateId]: {
+                                fileName: file.name,
+                                fileType: file.type,
+                                fileData: base64,
+                                uploadedAt: new Date().toISOString()
+                            }
+                        };
+                        setUploadedTemplates(newTemplates);
+                        localStorage.setItem('cdp_uploaded_templates', JSON.stringify(newTemplates));
+
+                        toast({
+                            title: "Document chargé",
+                            description: `${file.name} enregistré pour ${templateName}`,
+                            className: "bg-green-50 border-green-200"
+                        });
+
+                        // Ouvrir le modal des instructions
+                        setTagInstructionsModal({ templateId, templateName, fileName: file.name });
+                    };
+                    reader.readAsDataURL(file);
+                } catch (error) {
+                    toast({
+                        variant: "destructive",
+                        title: "Erreur",
+                        description: "Impossible de charger le fichier"
+                    });
+                }
             }
         };
         input.click();
     };
 
-    // Sauvegarde template avec balises
-    const handleSaveTemplateWithTags = () => {
-        if (!tagEditorModal) return;
-
-        const newUploadedTemplates = {
-            ...uploadedTemplates,
-            [tagEditorModal.templateId]: {
-                fileName: tagEditorModal.fileName,
-                tags: tagEditorModal.tags,
-                uploadedAt: new Date().toISOString()
-            }
-        };
-
-        setUploadedTemplates(newUploadedTemplates);
-        localStorage.setItem('cdp_uploaded_templates', JSON.stringify(newUploadedTemplates));
-
+    // Copier une balise dans le presse-papier
+    const copyTagToClipboard = (tag) => {
+        navigator.clipboard.writeText(tag);
         toast({
-            title: "Template sauvegardé",
-            description: `${tagEditorModal.templateName} configuré avec ${tagEditorModal.tags.length} balise(s)`,
-            className: "bg-green-50 border-green-200"
+            description: `${tag} copié !`,
+            duration: 2000
         });
-
-        setTagEditorModal(null);
     };
 
-    // Ajout d'une balise dans l'éditeur
-    const handleAddTag = (tag) => {
-        if (!tagEditorModal) return;
-        if (!tagEditorModal.tags.includes(tag.key)) {
-            setTagEditorModal({
-                ...tagEditorModal,
-                tags: [...tagEditorModal.tags, tag.key]
+    // Remplacement des balises dans un document
+    const replaceTags = async (fileData, fileType) => {
+        const tagValues = {};
+        availableTags.forEach(tag => {
+            const cleanKey = tag.key.replace(/[{}]/g, ''); // Retirer les accolades pour docx-templates
+            tagValues[cleanKey] = tag.value();
+        });
+
+        if (fileType.includes('word') || fileType.includes('docx')) {
+            // Document Word avec docx-templates
+            try {
+                const arrayBuffer = await fetch(fileData).then(r => r.arrayBuffer());
+                const buffer = await createReport({
+                    template: arrayBuffer,
+                    data: tagValues,
+                    cmdDelimiter: ['{{', '}}']
+                });
+                return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+            } catch (error) {
+                console.error('Erreur remplacement Word:', error);
+                throw error;
+            }
+        } else if (fileType.includes('pdf')) {
+            // PDF simple sans remplacement (nécessiterait PDFLib avec placement manuel)
+            toast({
+                variant: "destructive",
+                title: "PDF non supporté",
+                description: "Veuillez utiliser des fichiers Word (.docx) pour le remplacement automatique"
             });
+            return null;
         }
     };
 
-    // Retrait d'une balise
-    const handleRemoveTag = (tagKey) => {
-        if (!tagEditorModal) return;
-        setTagEditorModal({
-            ...tagEditorModal,
-            tags: tagEditorModal.tags.filter(t => t !== tagKey)
-        });
-    };
-
-    // Génération de documents
-    const handleGenerateDocuments = () => {
+    // Génération des documents
+    const handleGenerateDocuments = async () => {
         if (selectedTemplates.length === 0) {
             toast({ variant: "destructive", title: "Aucun template", description: "Sélectionnez au moins un document." });
             return;
         }
 
-        // Génération PDF simple pour démo
-        const pdf = new jsPDF();
+        const generated = [];
 
-        pdf.setFontSize(16);
-        pdf.text('DOCUMENT GÉNÉRÉ - ENR COURTAGE', 105, 20, { align: 'center' });
+        for (const templateId of selectedTemplates) {
+            const template = availableTemplates.find(t => t.id === templateId);
+            const uploadedTemplate = uploadedTemplates[templateId];
 
-        pdf.setFontSize(10);
-        let y = 40;
-
-        // Informations client
-        pdf.text(`Client: ${clientData.nom} ${clientData.prenom}`, 20, y);
-        y += 7;
-        pdf.text(`Adresse: ${clientData.adresse}`, 20, y);
-        y += 7;
-        pdf.text(`${clientData.codePostal} ${clientData.ville}`, 20, y);
-        y += 7;
-        pdf.text(`Tél: ${clientData.telephone} | Email: ${clientData.email}`, 20, y);
-
-        y += 15;
-        pdf.text('PROJET:', 20, y);
-        y += 7;
-        pdf.text(`Type: ${clientData.typeBatiment}`, 20, y);
-        y += 7;
-        pdf.text(`Parcelle(s): ${clientData.parcelles}`, 20, y);
-        y += 7;
-        pdf.text(`Dimensions: ${clientData.largeur}m × ${clientData.longueur}m`, 20, y);
-        y += 7;
-        pdf.text(`Surface: ${clientData.surface}m²`, 20, y);
-        y += 7;
-        pdf.text(`Hauteur sablière: ${clientData.hauteurSabliere}m`, 20, y);
-
-        y += 15;
-        pdf.text('DOCUMENTS INCLUS:', 20, y);
-        y += 7;
-        selectedTemplates.forEach(tId => {
-            const template = availableTemplates.find(t => t.id === tId);
-            if (template) {
-                const hasCustomDoc = uploadedTemplates[tId];
-                pdf.text(`- ${template.name}${hasCustomDoc ? ' (personnalisé)' : ''}`, 25, y);
-                y += 6;
+            if (!uploadedTemplate) {
+                toast({
+                    variant: "destructive",
+                    title: "Document manquant",
+                    description: `Veuillez charger un document pour "${template.name}"`
+                });
+                continue;
             }
-        });
 
-        const pdfBlob = pdf.output('blob');
-        setGeneratedDocument(pdfBlob);
+            try {
+                const blob = await replaceTags(uploadedTemplate.fileData, uploadedTemplate.fileType);
+                if (blob) {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `${template.name}_${clientData.nom}_${clientData.prenom}.docx`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
 
-        pdf.save(`Documents_${clientData.nom}_${clientData.prenom}.pdf`);
+                    generated.push(template.name);
+                }
+            } catch (error) {
+                toast({
+                    variant: "destructive",
+                    title: "Erreur génération",
+                    description: `Impossible de générer "${template.name}"`
+                });
+            }
+        }
 
-        toast({
-            title: "Documents générés",
-            description: `${selectedTemplates.length} document(s) créé(s)`,
-            className: "bg-green-50 border-green-200"
-        });
+        if (generated.length > 0) {
+            setGeneratedDocuments(generated);
+            toast({
+                title: "Documents générés",
+                description: `${generated.length} document(s) téléchargé(s)`,
+                className: "bg-green-50 border-green-200"
+            });
+        }
     };
 
     // Recherche projets
@@ -280,7 +303,7 @@ export default function CDP() {
                     <p className="text-slate-500 mt-1">Génération de documents & Signature électronique</p>
                 </div>
 
-                {/* LAYOUT 3 COLONNES ÉGALES */}
+                {/* LAYOUT 3 COLONNES */}
                 <div className="grid grid-cols-3 gap-8">
 
                     {/* ========== VOLET 1 : CLIENT ========== */}
@@ -405,10 +428,9 @@ export default function CDP() {
                                     onChange={(e) => setClientData({ ...clientData, typeBatiment: e.target.value })}
                                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                 >
-                                    <option value="Hangar Agricole">Hangar Agricole</option>
-                                    <option value="Bâtiment Industriel">Bâtiment Industriel</option>
-                                    <option value="Stockage">Stockage</option>
-                                    <option value="Autre">Autre</option>
+                                    <option value="Bâtiment métallique">Bâtiment métallique</option>
+                                    <option value="Ombrière">Ombrière</option>
+                                    <option value="Couverture">Couverture</option>
                                 </select>
 
                                 <input
@@ -450,6 +472,24 @@ export default function CDP() {
                                         className="px-3 py-2 border border-slate-300 bg-slate-50 rounded-lg text-sm font-semibold text-blue-600"
                                     />
                                 </div>
+
+                                {/* Champs Fait à et Lieu */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <input
+                                        type="text"
+                                        placeholder="Fait à"
+                                        value={clientData.faitA}
+                                        onChange={(e) => setClientData({ ...clientData, faitA: e.target.value })}
+                                        className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Lieu"
+                                        value={clientData.lieu}
+                                        onChange={(e) => setClientData({ ...clientData, lieu: e.target.value })}
+                                        className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    />
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -464,7 +504,6 @@ export default function CDP() {
                         </CardHeader>
                         <CardContent className="p-6 space-y-4">
 
-                            {/* BOUTON GÉNÉRATION SEUL */}
                             <Button
                                 onClick={handleGenerateDocuments}
                                 disabled={!clientData.nom || selectedTemplates.length === 0}
@@ -504,13 +543,12 @@ export default function CDP() {
                                                         <div className="text-xs text-slate-500">{template.category}</div>
                                                         {uploadedTemplates[template.id] && (
                                                             <div className="text-xs text-green-600 mt-1">
-                                                                ✓ {uploadedTemplates[template.id].fileName} ({uploadedTemplates[template.id].tags.length} balises)
+                                                                ✓ {uploadedTemplates[template.id].fileName}
                                                             </div>
                                                         )}
                                                     </div>
                                                 </div>
 
-                                                {/* BOUTON CHARGER PAR TEMPLATE */}
                                                 <Button
                                                     size="sm"
                                                     variant="outline"
@@ -546,15 +584,15 @@ export default function CDP() {
                         </CardHeader>
                         <CardContent className="p-6 space-y-4">
 
-                            {generatedDocument ? (
+                            {generatedDocuments.length > 0 ? (
                                 <div className="space-y-4">
                                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                                         <div className="flex items-center gap-2 text-green-700 font-medium">
                                             <CheckCircle2 className="w-5 h-5" />
-                                            Document prêt pour signature
+                                            Documents prêts pour signature
                                         </div>
                                         <p className="text-xs text-green-600 mt-2">
-                                            {selectedTemplates.length} document(s) inclus
+                                            {generatedDocuments.length} document(s) généré(s)
                                         </p>
                                     </div>
 
@@ -593,7 +631,7 @@ export default function CDP() {
                             ) : (
                                 <div className="text-center py-12 text-slate-500">
                                     <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                                    <p className="text-sm">Générez un document pour activer l'envoi</p>
+                                    <p className="text-sm">Générez des documents pour activer l'envoi</p>
                                 </div>
                             )}
                         </CardContent>
@@ -602,24 +640,20 @@ export default function CDP() {
                 </div>
             </div>
 
-            {/* ========== MODAL ÉDITEUR DE BALISES ========== */}
-            {tagEditorModal && (
+            {/* ========== MODAL INSTRUCTIONS BALISES ========== */}
+            {tagInstructionsModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
 
-                        {/* Header Modal */}
                         <div className="sticky top-0 bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-t-2xl">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-2xl font-bold flex items-center gap-2">
-                                        <Edit className="w-6 h-6" />
-                                        Configuration des Balises
-                                    </h3>
-                                    <p className="text-purple-100 text-sm mt-1">{tagEditorModal.templateName}</p>
-                                    <p className="text-purple-200 text-xs mt-1">📎 {tagEditorModal.fileName}</p>
+                                    <h3 className="text-2xl font-bold">Balises Disponibles</h3>
+                                    <p className="text-purple-100 text-sm mt-1">{tagInstructionsModal.templateName}</p>
+                                    <p className="text-purple-200 text-xs mt-1">📎 {tagInstructionsModal.fileName}</p>
                                 </div>
                                 <button
-                                    onClick={() => setTagEditorModal(null)}
+                                    onClick={() => setTagInstructionsModal(null)}
                                     className="text-white hover:bg-purple-600 p-2 rounded-lg transition"
                                 >
                                     <X className="w-5 h-5" />
@@ -627,86 +661,54 @@ export default function CDP() {
                             </div>
                         </div>
 
-                        {/* Body Modal */}
                         <div className="p-6 space-y-6">
 
-                            {/* Balises sélectionnées */}
-                            <div>
-                                <h4 className="font-semibold text-slate-700 mb-3">Balises Actives ({tagEditorModal.tags.length})</h4>
-                                {tagEditorModal.tags.length > 0 ? (
-                                    <div className="flex flex-wrap gap-2">
-                                        {tagEditorModal.tags.map(tagKey => {
-                                            const tagInfo = availableTags.find(t => t.key === tagKey);
-                                            return (
-                                                <div
-                                                    key={tagKey}
-                                                    className="bg-purple-100 border border-purple-300 text-purple-800 px-3 py-2 rounded-lg flex items-center gap-2 text-sm"
-                                                >
-                                                    <code className="font-mono">{tagKey}</code>
-                                                    <span className="text-xs text-purple-600">({tagInfo?.label})</span>
-                                                    <button
-                                                        onClick={() => handleRemoveTag(tagKey)}
-                                                        className="text-purple-600 hover:text-purple-800 ml-1"
-                                                    >
-                                                        <X className="w-3 h-3" />
-                                                    </button>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <p className="text-slate-500 text-sm italic">Aucune balise sélectionnée. Ajoutez-en ci-dessous.</p>
-                                )}
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <h4 className="font-semibold text-blue-900 text-sm mb-2">💡 Instructions</h4>
+                                <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                                    <li>Ouvrez votre document Word (.docx) téléchargé</li>
+                                    <li>Cliquez sur les balises ci-dessous pour les copier</li>
+                                    <li>Collez les balises aux emplacements souhaités dans votre document</li>
+                                    <li>Sauvegardez et rechargez le document</li>
+                                    <li>Les balises seront automatiquement remplacées lors de la génération</li>
+                                </ol>
                             </div>
 
-                            {/* Balises disponibles */}
-                            <div className="border-t pt-6">
-                                <h4 className="font-semibold text-slate-700 mb-3">Balises Disponibles</h4>
+                            <div>
+                                <h4 className="font-semibold text-slate-700 mb-3">Balises Disponibles (cliquez pour copier)</h4>
                                 <div className="grid grid-cols-2 gap-2">
                                     {availableTags.map(tag => (
                                         <button
                                             key={tag.key}
-                                            onClick={() => handleAddTag(tag)}
-                                            disabled={tagEditorModal.tags.includes(tag.key)}
-                                            className={`text-left px-3 py-2 rounded-lg text-sm border transition ${tagEditorModal.tags.includes(tag.key)
-                                                    ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                                                    : 'bg-white border-slate-300 text-slate-700 hover:border-purple-400 hover:bg-purple-50'
-                                                }`}
+                                            onClick={() => copyTagToClipboard(tag.key)}
+                                            className="text-left px-3 py-2 rounded-lg text-sm border bg-white border-slate-300 hover:border-purple-400 hover:bg-purple-50 transition flex items-center justify-between group"
                                         >
-                                            <code className="font-mono text-xs block text-purple-600">{tag.key}</code>
-                                            <span className="text-xs text-slate-600">{tag.label}</span>
+                                            <div>
+                                                <code className="font-mono text-xs block text-purple-600">{tag.key}</code>
+                                                <span className="text-xs text-slate-600">{tag.label}</span>
+                                            </div>
+                                            <Copy className="w-4 h-4 text-slate-400 group-hover:text-purple-600" />
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            {/* Instructions */}
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <h4 className="font-semibold text-blue-900 text-sm mb-2">💡 Instructions</h4>
-                                <ul className="text-xs text-blue-800 space-y-1">
-                                    <li>1. Sélectionnez les balises que vous souhaitez utiliser dans ce document</li>
-                                    <li>2. Insérez ces balises dans votre document Word/PDF (ex: <code className="bg-blue-100 px-1 rounded">{"{{nom}}"}</code>)</li>
-                                    <li>3. Cliquez sur "Sauvegarder" pour enregistrer la configuration</li>
-                                    <li>4. Les balises seront automatiquement remplacées lors de la génération</li>
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                <h4 className="font-semibold text-amber-900 text-sm mb-2">⚠️ Important</h4>
+                                <ul className="text-xs text-amber-800 space-y-1">
+                                    <li>• Les balises doivent être exactement comme indiquées (avec les accolades)</li>
+                                    <li>• Utilisez uniquement des fichiers Word (.docx) pour le remplacement automatique</li>
+                                    <li>• Les PDFs ne supportent pas encore le remplacement automatique</li>
                                 </ul>
                             </div>
                         </div>
 
-                        {/* Footer Modal */}
-                        <div className="sticky bottom-0 bg-slate-50 p-6 rounded-b-2xl border-t flex gap-4">
+                        <div className="sticky bottom-0 bg-slate-50 p-6 rounded-b-2xl border-t">
                             <Button
-                                variant="outline"
-                                onClick={() => setTagEditorModal(null)}
-                                className="flex-1"
+                                onClick={() => setTagInstructionsModal(null)}
+                                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                             >
-                                Annuler
-                            </Button>
-                            <Button
-                                onClick={handleSaveTemplateWithTags}
-                                className="flex-1 bg-gradient-to-r from-purple-600 to-purple-700 text-white"
-                            >
-                                <Save className="w-4 h-4 mr-2" />
-                                Sauvegarder
+                                Compris !
                             </Button>
                         </div>
 
