@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge.jsx';
 import UserSettingsModal from '@/components/crm/UserSettingsModal.jsx';
 
 // Composant Avatar Utilisateur
-const UserAvatar = ({ name, email }) => {
+const UserAvatar = ({ name, email, showName = true }) => {
   const cleanName = (name || '').trim();
   const isYann = cleanName.toLowerCase().includes('yann');
 
@@ -27,7 +27,7 @@ const UserAvatar = ({ name, email }) => {
   if (isYann) {
     return (
       <div className="flex items-center gap-2" title="Yann">
-        <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-200">
+        <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 flex-shrink-0">
           <img
             src="/assets/yann_avatar.png"
             alt="Yann"
@@ -35,6 +35,7 @@ const UserAvatar = ({ name, email }) => {
             onError={(e) => { e.target.onerror = null; e.target.src = "https://ui-avatars.com/api/?name=Yann&background=0D8ABC&color=fff"; }}
           />
         </div>
+        {showName && <span className="text-slate-900 font-medium text-sm">Yann</span>}
       </div>
     );
   }
@@ -55,9 +56,10 @@ const UserAvatar = ({ name, email }) => {
 
   return (
     <div className="flex items-center gap-2" title={cleanName}>
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${colorClass}`}>
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${colorClass} flex-shrink-0`}>
         {initial}
       </div>
+      {showName && <span className="text-slate-900 font-medium text-sm">{cleanName}</span>}
     </div>
   );
 };
