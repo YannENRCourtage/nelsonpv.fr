@@ -2,10 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 
-// Configuration du worker PDF.js - Version corrigée avec HTTPS
-if (typeof window !== 'undefined' && 'Worker' in window) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-}
+// Configuration du worker PDF.js - Utilisation du worker local
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry';
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 export function PDFViewer({
     pdfData,
@@ -207,8 +206,9 @@ export function PDFViewer({
                 {loadingError ? (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
                         <h3 className="font-bold text-red-900 mb-2">Erreur de chargement</h3>
-                        <p className="text-sm text-red-700">{loadingError}</p>
+                        <p className="text-sm text-red-700 mb-2">{loadingError}</p>
                         <p className="text-xs text-red-600 mt-2">Vérifiez que le fichier est un PDF valide.</p>
+                        <p className="text-xs text-red-500 mt-2">Si le problème persiste, essayez avec un autre PDF.</p>
                     </div>
                 ) : !pdfDoc ? (
                     <div className="text-center">
