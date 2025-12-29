@@ -224,7 +224,7 @@ export function PDFViewer({
 
                         {/* Overlay balises */}
                         <div className="absolute inset-0 pointer-events-none">
-                            <div className="relative w-full h-full pointer-events-auto">
+                            <div className="relative w-full h-full pointer-events-none">
                                 {renderPlacedTags()}
                             </div>
                         </div>
