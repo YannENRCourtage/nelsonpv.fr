@@ -402,12 +402,10 @@ export default function ProjectEditor() {
         loss: 14, // pertes système 14%
         angle: 30, // inclinaison optimale par défaut
         aspect: 0, // plein sud
-        outputformat: 'json'
       });
 
-      const response = await fetch(
-        `https://re.jrc.ec.europa.eu/api/v5_3/PVcalc?${params}`
-      );
+      // Utiliser le proxy serverless au lieu d'appeler directement l'API (résolution CORS)
+      const response = await fetch(`/api/pvgis?${params}`);
 
       if (!response.ok) {
         throw new Error(`Erreur API PVGIS: ${response.status}`);
