@@ -133,7 +133,7 @@ export function PDFViewer({
             return (
                 <div
                     key={`${tag.key}-${index}`}
-                    className="absolute flex items-center gap-2 bg-purple-600 text-white px-2 py-1 rounded-lg text-xs font-semibold shadow-lg cursor-pointer hover:bg-purple-700 transition"
+                    className="absolute flex items-center gap-2 bg-purple-600 text-white px-2 py-1 rounded-lg text-xs font-semibold shadow-lg cursor-pointer hover:bg-purple-700 transition pointer-events-auto"
                     style={{
                         left: `${x}px`,
                         top: `${y}px`,
