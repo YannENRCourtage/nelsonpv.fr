@@ -405,7 +405,7 @@ export default function ProjectEditor() {
       });
 
       // Utiliser le proxy serverless au lieu d'appeler directement l'API (résolution CORS)
-      const response = await fetch(`/api/pvgis?${params}`);
+      const response = await fetch(`/api/pvgis-proxy?${params}`);
 
       if (!response.ok) {
         throw new Error(`Erreur API PVGIS: ${response.status}`);
