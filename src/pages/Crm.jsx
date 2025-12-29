@@ -18,29 +18,32 @@ import { Badge } from '@/components/ui/badge.jsx';
 import UserSettingsModal from '@/components/crm/UserSettingsModal.jsx';
 
 // Composant Avatar Utilisateur
-const UserAvatar = ({ name, email, showName = true }) => {
+const UserAvatar = ({ name, email, showName = true, photoURL = null }) => {
   const cleanName = (name || '').trim();
-  const isYann = cleanName.toLowerCase().includes('yann');
 
   if (!cleanName) return <span className="text-slate-400">-</span>;
 
-  if (isYann) {
+  // Si photoURL est fourni, l'utiliser en priorité
+  if (photoURL) {
     return (
-      <div className="flex items-center gap-2" title="Yann">
-        <div className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 flex-shrink-0">
+      <div className="flex items-center gap-2" title={cleanName}>
+        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-slate-200 flex-shrink-0">
           <img
-            src="/assets/yann_avatar.png"
-            alt="Yann"
+            src={photoURL}
+            alt={cleanName}
             className="w-full h-full object-cover"
-            onError={(e) => { e.target.onerror = null; e.target.src = "https://ui-avatars.com/api/?name=Yann&background=0D8ABC&color=fff"; }}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanName)}&background=0D8ABC&color=fff`;
+            }}
           />
         </div>
-        {showName && <span className="text-slate-900 font-medium text-sm">Yann</span>}
+        {showName && <span className="text-slate-900 font-medium text-sm">{cleanName}</span>}
       </div>
     );
   }
 
-  // Fallback / Autres utilisateurs
+  // Fallback / Autres utilisateurs sans photo
   const initial = cleanName.charAt(0).toUpperCase();
   const colors = [
     'bg-red-100 text-red-700',
@@ -56,7 +59,7 @@ const UserAvatar = ({ name, email, showName = true }) => {
 
   return (
     <div className="flex items-center gap-2" title={cleanName}>
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${colorClass} flex-shrink-0`}>
+      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-base font-bold ${colorClass} flex-shrink-0`}>
         {initial}
       </div>
       {showName && <span className="text-slate-900 font-medium text-sm">{cleanName}</span>}
@@ -815,10 +818,19 @@ export default function Crm() {
                           // Si pas trouvé, essayer de retrouver l'utilisateur via son ID
                           if (!contactCreator && contact.createdBy && users.length > 0) {
                             const userFromList = users.find(u => u.id === contact.createdBy);
-                            return <UserAvatar name={userFromList?.firstName || userFromList?.displayName || null} />;
+                            return <UserAvatar
+                              name={userFromList?.firstName || userFromList?.displayName || null}
+                              photoURL={userFromList?.photoURL}
+                            />;
                           }
 
-                          return <UserAvatar name={contactCreator} />;
+                          // Trouver le photoURL de l'utilisateur par son nom
+                          const userWithPhoto = users.find(u =>
+                            (u.firstName && u.firstName.toLowerCase() === contactCreator?.toLowerCase()) ||
+                            (u.displayName && u.displayName.toLowerCase() === contactCreator?.toLowerCase())
+                          );
+
+                          return <UserAvatar name={contactCreator} photoURL={userWithPhoto?.photoURL} />;
                         })()}
                       </td>
                       <td className="px-6 py-4 text-slate-600 text-sm">{contact.email}</td>
@@ -1205,7 +1217,7 @@ export default function Crm() {
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Nom Projet</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Client</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Utilisateur</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Affectation</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Adresse</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Code Postal</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Ville</th>
@@ -1232,7 +1244,27 @@ export default function Crm() {
                       })()}
                     </td>
                     <td className="px-6 py-4">
-                      <UserAvatar name={project.assignedUser || project.createdByFirstName || (typeof project.user === 'string' ? project.user : null)} />
+                      {(() => {
+                        // Récupérer le nom de l'utilisateur depuis le projet
+                        const projectUser = project.assignedUser || project.createdByFirstName || (typeof project.user === 'string' ? project.user : null);
+
+                        // Si pas trouvé, essayer de retrouver l'utilisateur via createdBy
+                        if (!projectUser && project.createdBy && users.length > 0) {
+                          const userFromList = users.find(u => u.id === project.createdBy);
+                          return <UserAvatar
+                            name={userFromList?.firstName || userFromList?.displayName || null}
+                            photoURL={userFromList?.photoURL}
+                          />;
+                        }
+
+                        // Trouver le photoURL de l'utilisateur par son nom
+                        const userWithPhoto = users.find(u =>
+                          (u.firstName && u.firstName.toLowerCase() === projectUser?.toLowerCase()) ||
+                          (u.displayName && u.displayName.toLowerCase() === projectUser?.toLowerCase())
+                        );
+
+                        return <UserAvatar name={projectUser} photoURL={userWithPhoto?.photoURL} />;
+                      })()}
                     </td>
                     <td className="px-6 py-4 text-slate-600">{project.address || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{project.zip || '-'}</td>
