@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import { ChevronLeft, ChevronRight, X, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 
-// Configuration du worker PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Configuration du worker PDF.js - Version corrigée avec HTTPS
+if (typeof window !== 'undefined' && 'Worker' in window) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+}
 
 export function PDFViewer({
     pdfData,
@@ -21,23 +23,40 @@ export function PDFViewer({
     const [totalPages, setTotalPages] = useState(0);
     const [scale, setScale] = useState(1.5);
     const [pageRendering, setPageRendering] = useState(false);
+    const [loadingError, setLoadingError] = useState(null);
 
     // Charger le PDF
     useEffect(() => {
         const loadPDF = async () => {
+            if (!pdfData) {
+                console.log('Pas de données PDF');
+                return;
+            }
+
             try {
+                setLoadingError(null);
+                console.log('Tentative de chargement PDF...');
+                console.log('Type de données:', typeof pdfData);
+                console.log('Début des données:', pdfData.substring(0, 100));
+
                 const loadingTask = pdfjsLib.getDocument(pdfData);
+
+                loadingTask.onProgress = (progress) => {
+                    console.log(`Chargement: ${progress.loaded} / ${progress.total}`);
+                };
+
                 const pdf = await loadingTask.promise;
+
+                console.log('✅ PDF chargé avec succès!', pdf.numPages, 'page(s)');
                 setPdfDoc(pdf);
                 setTotalPages(pdf.numPages);
             } catch (error) {
-                console.error('Erreur chargement PDF:', error);
+                console.error('❌ Erreur chargement PDF:', error);
+                setLoadingError(error.message || 'Erreur de chargement');
             }
         };
 
-        if (pdfData) {
-            loadPDF();
-        }
+        loadPDF();
     }, [pdfData]);
 
     // Rendu de la page
@@ -48,6 +67,7 @@ export function PDFViewer({
             setPageRendering(true);
 
             try {
+                console.log(`Rendu page ${currentPage}...`);
                 const page = await pdfDoc.getPage(currentPage);
                 const viewport = page.getViewport({ scale });
 
@@ -63,15 +83,16 @@ export function PDFViewer({
                 };
 
                 await page.render(renderContext).promise;
+                console.log('✅ Page rendue');
             } catch (error) {
-                console.error('Erreur rendu page:', error);
+                console.error('❌ Erreur rendu page:', error);
             } finally {
                 setPageRendering(false);
             }
         };
 
         renderPage();
-    }, [pdfDoc, currentPage, scale, pageRendering]);
+    }, [pdfDoc, currentPage, scale]);
 
     // Gestion du clic pour placer une balise
     const handleCanvasClick = (e) => {
@@ -84,11 +105,10 @@ export function PDFViewer({
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
-        // Conversion en pourcentages (pour adaptabilité)
+        // Conversion en pourcentages
         const xPercent = (x / canvas.width) * 100;
         const yPercent = (y / canvas.height) * 100;
 
-        // Créer la balise placée
         const newTag = {
             key: selectedTag,
             page: currentPage,
@@ -97,10 +117,11 @@ export function PDFViewer({
             label: availableTags.find(t => t.key === selectedTag)?.label || selectedTag
         };
 
+        console.log('Balise placée:', newTag);
         onTagPlaced(newTag);
     };
 
-    // Rendu des balises placées sur la page actuelle
+    // Rendu des balises placées
     const renderPlacedTags = () => {
         if (!canvasRef.current) return null;
 
@@ -140,19 +161,19 @@ export function PDFViewer({
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={currentPage === 1}
+                        disabled={currentPage === 1 || !pdfDoc}
                         className="p-2 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <ChevronLeft className="w-4 h-4" />
                     </button>
 
                     <span className="text-sm font-medium">
-                        Page {currentPage} / {totalPages}
+                        Page {currentPage} / {totalPages || 0}
                     </span>
 
                     <button
                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                        disabled={currentPage === totalPages}
+                        disabled={currentPage === totalPages || !pdfDoc}
                         className="p-2 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <ChevronRight className="w-4 h-4" />
@@ -162,14 +183,16 @@ export function PDFViewer({
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => setScale(prev => Math.max(0.5, prev - 0.25))}
-                        className="px-3 py-1 bg-white border border-slate-300 rounded-lg text-sm hover:bg-slate-50"
+                        disabled={!pdfDoc}
+                        className="px-3 py-1 bg-white border border-slate-300 rounded-lg text-sm hover:bg-slate-50 disabled:opacity-50"
                     >
                         -
                     </button>
                     <span className="text-sm font-medium">{Math.round(scale * 100)}%</span>
                     <button
                         onClick={() => setScale(prev => Math.min(3, prev + 0.25))}
-                        className="px-3 py-1 bg-white border border-slate-300 rounded-lg text-sm hover:bg-slate-50"
+                        disabled={!pdfDoc}
+                        className="px-3 py-1 bg-white border border-slate-300 rounded-lg text-sm hover:bg-slate-50 disabled:opacity-50"
                     >
                         +
                     </button>
@@ -179,26 +202,39 @@ export function PDFViewer({
             {/* Viewer Container */}
             <div
                 ref={containerRef}
-                className="flex-1 overflow-auto bg-slate-200 p-4 relative"
+                className="flex-1 overflow-auto bg-slate-200 p-4 relative flex items-center justify-center"
             >
-                <div className="inline-block relative">
-                    <canvas
-                        ref={canvasRef}
-                        onClick={handleCanvasClick}
-                        className={`shadow-2xl border border-slate-300 ${selectedTag ? 'cursor-crosshair' : 'cursor-default'}`}
-                    />
+                {loadingError ? (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+                        <h3 className="font-bold text-red-900 mb-2">Erreur de chargement</h3>
+                        <p className="text-sm text-red-700">{loadingError}</p>
+                        <p className="text-xs text-red-600 mt-2">Vérifiez que le fichier est un PDF valide.</p>
+                    </div>
+                ) : !pdfDoc ? (
+                    <div className="text-center">
+                        <div className="animate-spin w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-3"></div>
+                        <p className="text-sm text-slate-600">Chargement du PDF...</p>
+                    </div>
+                ) : (
+                    <div className="inline-block relative">
+                        <canvas
+                            ref={canvasRef}
+                            onClick={handleCanvasClick}
+                            className={`shadow-2xl border border-slate-300 bg-white ${selectedTag ? 'cursor-crosshair' : 'cursor-default'}`}
+                        />
 
-                    {/* Overlay pour balises placées */}
-                    <div className="absolute inset-0 pointer-events-none">
-                        <div className="relative w-full h-full pointer-events-auto">
-                            {renderPlacedTags()}
+                        {/* Overlay balises */}
+                        <div className="absolute inset-0 pointer-events-none">
+                            <div className="relative w-full h-full pointer-events-auto">
+                                {renderPlacedTags()}
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Instruction */}
-            {selectedTag && (
+            {selectedTag && pdfDoc && (
                 <div className="bg-purple-100 border-t border-purple-300 p-3">
                     <p className="text-sm text-purple-800 font-medium text-center">
                         🖱️ Cliquez sur le document pour placer : <code className="bg-purple-200 px-2 py-1 rounded">{selectedTag}</code>
