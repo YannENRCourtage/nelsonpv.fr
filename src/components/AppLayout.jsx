@@ -302,11 +302,9 @@ function Header() {
             <NavLink to="/crm" className={({ isActive }) => isActive ? 'nav-link active crm' : 'nav-link crm'}>CRM</NavLink>
             <NavLink to="/project/new/edit" className={({ isActive }) => isActive ? 'nav-link active editeur' : 'nav-link editeur'}>Editeur de projet</NavLink>
 
-            {/* TEMPORAIRE: Lien désactivé pendant reconstruction
             {user?.role === 'admin' && (
               <NavLink to="/configurateur" className={({ isActive }) => isActive ? 'nav-link active configurateur' : 'nav-link configurateur'}>Configurateur</NavLink>
             )}
-            */}
 
             {/* Show Simulator if explicit permission is granted OR if admin (unless admin explicitly restricted) */}
             {((user?.role === 'admin' && user?.permissions?.canAccessSimulator !== false) || user?.permissions?.canAccessSimulator) && (
