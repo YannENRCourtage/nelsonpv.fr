@@ -71,7 +71,7 @@ export function PortalFrame({
         const rafterGeo = createIPEGeometry(rafterProfile, rafterLength);
 
         // Goussets (haunches) - Dimensions du profilé IPE pour le width
-        const rafterProfile Data = IPE_CATALOG[rafterProfile] || IPE_CATALOG.IPE360;
+        const rafterProfileData = IPE_CATALOG[rafterProfile] || IPE_CATALOG.IPE360;
         const haunchGeo = createHaunchGeometry(
             haunchLength,
             rafterProfileData.h * 0.7, // Hauteur début gousset
