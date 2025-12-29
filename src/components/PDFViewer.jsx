@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 
-// Configuration du worker PDF.js - Utilisation unpkg.com au lieu du CDN
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+// Configuration du worker PDF.js - Fichier statique depuis public/
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf-worker/pdf.worker.min.js';
 
 export function PDFViewer({
     pdfData,
