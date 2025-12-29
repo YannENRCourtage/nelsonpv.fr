@@ -115,9 +115,7 @@ export default function ProjectEditor() {
   const [streetViewUrl, setStreetViewUrl] = useState('');
   const [activeLayers, setActiveLayers] = useState(new Set());
   const [remountKey, setRemountKey] = useState(0);
-  const [pvgisData, setPvgisData] = useState(null);
-  const [pvgisLoading, setPvgisLoading] = useState(false);
-  const [pvgisError, setPvgisError] = useState(null);
+
 
   useEffect(() => {
     const loadProject = async () => {
@@ -377,61 +375,7 @@ export default function ProjectEditor() {
     window.dispatchEvent(new CustomEvent("map:goto-project-address"));
   };
 
-  const fetchPVGISData = async () => {
-    if (!project?.gps) {
-      setPvgisError("Coordonnées GPS manquantes. Veuillez renseigner l'adresse du projet.");
-      return;
-    }
 
-    setPvgisLoading(true);
-    setPvgisError(null);
-
-    try {
-      // Extraire lat/lon du projet (format: "lat, lon")
-      const [lat, lon] = project.gps.split(',').map(s => parseFloat(s.trim()));
-
-      if (isNaN(lat) || isNaN(lon)) {
-        throw new Error("Coordonnées GPS invalides");
-      }
-
-      // Paramètres de l'API PVGIS
-      const params = new URLSearchParams({
-        lat: lat,
-        lon: lon,
-        peakpower: project.power || 100, // kWc par défaut si non renseigné
-        loss: 14, // pertes système 14%
-        angle: 30, // inclinaison optimale par défaut
-        aspect: 0, // plein sud
-      });
-
-      // Utiliser le proxy serverless au lieu d'appeler directement l'API (résolution CORS)
-      const response = await fetch(`/api/pvgis-proxy?${params}`);
-
-      if (!response.ok) {
-        throw new Error(`Erreur API PVGIS: ${response.status}`);
-      }
-
-      let data;
-      try {
-        data = await response.json();
-      } catch (e) {
-        console.error("Erreur parsing JSON PVGIS:", e);
-        // Tenter de lire le texte pour voir l'erreur (ex: 404 HTML)
-        const text = await response.text().catch(() => "Pas de réponse textuelle");
-        console.error("Réponse brute:", text);
-        throw new Error("Réponse API invalide (pas du JSON). Voir console.");
-      }
-
-      setPvgisData(data);
-      toast({ title: "Données PVGIS chargées", description: "Les données photovoltaïques ont été récupérées avec succès." });
-    } catch (error) {
-      console.error('PVGIS API error:', error);
-      setPvgisError(error.message || "Erreur lors du chargement des données PVGIS");
-      toast({ title: "Erreur PVGIS", description: error.message, variant: "destructive" });
-    } finally {
-      setPvgisLoading(false);
-    }
-  };
 
   useEffect(() => {
     const handleSaveShortcut = (e) => {
@@ -556,17 +500,7 @@ export default function ProjectEditor() {
             >
               ZN / ZV
             </button>
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('pvgis'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'pvgis'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              PVGIS
-            </button>
+
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('owners'); }}
@@ -702,146 +636,7 @@ export default function ProjectEditor() {
               />
             </div>
 
-            {/* Onglet PVGIS */}
-            <div className={activeTab === 'pvgis' ? 'w-full h-full p-6 bg-white overflow-auto' : 'hidden'}>
-              <div className="max-w-4xl mx-auto space-y-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-2">Données Photovoltaïques PVGIS</h2>
-                  <p className="text-slate-600">Estimation de la production photovoltaïque basée sur la localisation du projet</p>
-                </div>
 
-                {!pvgisData && !pvgisLoading && !pvgisError && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-                    <p className="text-slate-700 mb-4">Cliquez sur le bouton pour charger les données PVGIS</p>
-                    <Button onClick={fetchPVGISData} className="bg-blue-600 hover:bg-blue-700 text-white">
-                      Charger les données PVGIS
-                    </Button>
-                  </div>
-                )}
-
-                {pvgisLoading && (
-                  <div className="bg-white border border-slate-200 rounded-lg p-8 text-center">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
-                    <p className="text-slate-600">Chargement des données PVGIS...</p>
-                  </div>
-                )}
-
-                {pvgisError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-                    <p className="text-red-600 font-medium">Erreur : {pvgisError}</p>
-                    <Button onClick={fetchPVGISData} className="mt-4 bg-red-600 hover:bg-red-700 text-white">
-                      Réessayer
-                    </Button>
-                  </div>
-                )}
-
-                {pvgisData && (
-                  <div className="space-y-6">
-                    {/* KPIs principaux */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-6">
-                        <p className="text-sm text-slate-600 mb-1">Production annuelle</p>
-                        <p className="text-3xl font-bold text-blue-700">
-                          {pvgisData.outputs?.totals?.fixed?.E_y?.toFixed(2) || 'N/A'}
-                        </p>
-                        <p className="text-sm text-slate-600 mt-1">kWh/an</p>
-                      </div>
-                      <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-6">
-                        <p className="text-sm text-slate-600 mb-1">Production moyenne journalière</p>
-                        <p className="text-3xl font-bold text-green-700">
-                          {pvgisData.outputs?.totals?.fixed?.E_d?.toFixed(2) || 'N/A'}
-                        </p>
-                        <p className="text-sm text-slate-600 mt-1">kWh/jour</p>
-                      </div>
-                      <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg p-6">
-                        <p className="text-sm text-slate-600 mb-1">Irradiation horizontale</p>
-                        <p className="text-3xl font-bold text-orange-700">
-                          {pvgisData.outputs?.totals?.fixed?.H_i_opt?.toFixed(2) || 'N/A'}
-                        </p>
-                        <p className="text-sm text-slate-600 mt-1">kWh/m²</p>
-                      </div>
-                      <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-6">
-                        <p className="text-sm text-slate-600 mb-1">Pertes système</p>
-                        <p className="text-3xl font-bold text-purple-700">
-                          {pvgisData.inputs?.pv_module?.system_loss || 14}
-                        </p>
-                        <p className="text-sm text-slate-600 mt-1">%</p>
-                      </div>
-                    </div>
-
-                    {/* Paramètres d'entrée */}
-                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-6">
-                      <h3 className="font-semibold text-lg mb-4 text-slate-900">Paramètres utilisés</h3>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <p className="text-sm text-slate-600">Latitude</p>
-                          <p className="font-medium text-slate-900">{pvgisData.inputs?.location?.latitude?.toFixed(4)}°</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-slate-600">Longitude</p>
-                          <p className="font-medium text-slate-900">{pvgisData.inputs?.location?.longitude?.toFixed(4)}°</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-slate-600">Puissance crête</p>
-                          <p className="font-medium text-slate-900">{pvgisData.inputs?.pv_module?.peak_power || 'N/A'} kWc</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-slate-600">Inclinaison</p>
-                          <p className="font-medium text-slate-900">{pvgisData.inputs?.mounting_system?.fixed?.slope?.value || 'N/A'}°</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-slate-600">Azimut</p>
-                          <p className="font-medium text-slate-900">{pvgisData.inputs?.mounting_system?.fixed?.azimuth?.value || 0}°</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-slate-600">Base de données</p>
-                          <p className="font-medium text-slate-900">{pvgisData.inputs?.meteo_data?.radiation_db || 'N/A'}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Tableau mensuel */}
-                    {pvgisData.outputs?.monthly?.fixed && (
-                      <div className="bg-white border border-slate-200 rounded-lg p-6">
-                        <h3 className="font-semibold text-lg mb-4 text-slate-900">Production mensuelle</h3>
-                        <div className="overflow-x-auto">
-                          <table className="w-full border-collapse">
-                            <thead>
-                              <tr className="bg-slate-100">
-                                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700 border-b-2 border-slate-300">Mois</th>
-                                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700 border-b-2 border-slate-300">E_m (kWh)</th>
-                                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700 border-b-2 border-slate-300">H_m (kWh/m²)</th>
-                                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700 border-b-2 border-slate-300">SD_m (kWh)</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {pvgisData.outputs.monthly.fixed.map((month, i) => {
-                                const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
-                                return (
-                                  <tr key={i} className="hover:bg-slate-50">
-                                    <td className="px-4 py-3 text-sm text-slate-900 border-b border-slate-200">{monthNames[month.month - 1]}</td>
-                                    <td className="px-4 py-3 text-sm text-slate-900 text-right border-b border-slate-200">{month.E_m?.toFixed(2)}</td>
-                                    <td className="px-4 py-3 text-sm text-slate-900 text-right border-b border-slate-200">{month.H_m?.toFixed(2)}</td>
-                                    <td className="px-4 py-3 text-sm text-slate-600 text-right border-b border-slate-200">{month.SD_m?.toFixed(2)}</td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Bouton pour rafraîchir */}
-                    <div className="flex justify-center">
-                      <Button onClick={fetchPVGISData} className="bg-blue-600 hover:bg-blue-700 text-white">
-                        Rafraîchir les données
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
 
             {/* Onglet Propriétaires */}
             <div className={activeTab === 'owners' ? 'w-full h-full' : 'hidden'}>
