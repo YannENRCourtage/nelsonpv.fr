@@ -102,6 +102,7 @@ export function PDFViewer({
         const yPercent = (y / canvas.height) * 100;
 
         const newTag = {
+            id: Date.now().toString(),
             key: selectedTag,
             page: currentPage,
             x: xPercent,
@@ -119,6 +120,7 @@ export function PDFViewer({
 
         setDraggingTag({
             tag: tag,
+            id: tag.id,
             startX: e.clientX,
             startY: e.clientY,
             initialX: tag.x,
@@ -146,10 +148,10 @@ export function PDFViewer({
             const newX = draggingTag.initialX + deltaXPercent;
             const newY = draggingTag.initialY + deltaYPercent;
 
-            // Mettre à jour via le parent (ou état local optimiste si besoin de fluidité extrême, 
-            // mais via parent ça devrait aller si React est rapide)
+            // Mettre à jour via le parent
             if (onTagMoved) {
-                onTagMoved(draggingTag.tag, { x: newX, y: newY });
+                const tagToUpdate = draggingTag.id ? { ...draggingTag.tag, id: draggingTag.id } : draggingTag.tag;
+                onTagMoved(tagToUpdate, { x: newX, y: newY });
             }
         };
 
