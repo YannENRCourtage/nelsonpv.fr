@@ -9,7 +9,7 @@ import AppLayout from './components/AppLayout.jsx';
 import Crm from './pages/Crm.jsx';
 import Admin from './pages/Admin.jsx';
 import ProfitabilitySimulator from './pages/ProfitabilitySimulator.jsx';
-// import Configurateur from './pages/Configurateur.jsx';
+import Configurateur from './pages/Configurateur.jsx';
 import CDP from './pages/CDP.jsx';
 import { Toaster } from './components/ui/toaster.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
@@ -77,7 +77,6 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          {/* 
           <Route
             path="configurateur"
             element={
@@ -86,7 +85,6 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          */}
           <Route
             path="cdp"
             element={
