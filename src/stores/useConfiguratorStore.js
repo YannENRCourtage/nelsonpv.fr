@@ -5,12 +5,12 @@ import { create } from 'zustand';
  * Correspondance exacte selon spécifications SCREB
  */
 const WIDTH_HEIGHT_MAP = {
-    15.0: 6.82,
-    18.6: 7.14,
-    22.3: 7.47,
-    26.0: 7.80,
-    29.8: 8.12,
-    33.5: 8.45
+    15.0: 6.8,
+    18.6: 7.1,
+    22.3: 7.5,
+    26.0: 7.8,
+    29.8: 8.1,
+    33.5: 8.5
 };
 
 /**
@@ -60,6 +60,12 @@ export const useConfiguratorStore = create((set, get) => ({
      * @type {boolean}
      */
     hasAwning: false,
+
+    /**
+     * Affichage des côtes
+     * @type {boolean}
+     */
+    showDimensions: true,
 
     // ========== GETTERS CALCULÉS ==========
     /** 
@@ -135,13 +141,21 @@ export const useConfiguratorStore = create((set, get) => ({
     },
 
     /**
+     * Active/Désactive l'affichage des côtes
+     */
+    toggleDimensions: () => {
+        set((state) => ({ showDimensions: !state.showDimensions }));
+    },
+
+    /**
      * Réinitialise la configuration aux valeurs par défaut
      */
     reset: () => set({
         width: 18.6,
         baySpacing: 7.5,
         bayCount: 4,
-        hasAwning: false
+        hasAwning: false,
+        showDimensions: true
     }),
 
     /**
@@ -161,7 +175,8 @@ export const useConfiguratorStore = create((set, get) => ({
             baySpacing: state.baySpacing,
             bayCount: state.bayCount,
             length: length,
-            hasAwning: state.hasAwning
+            hasAwning: state.hasAwning,
+            showDimensions: state.showDimensions
         };
     }
 }));
@@ -185,7 +200,8 @@ export const useConfiguratorValues = () => {
         baySpacing: state.baySpacing,
         bayCount: state.bayCount,
         length: length,
-        hasAwning: state.hasAwning
+        hasAwning: state.hasAwning,
+        showDimensions: state.showDimensions
     };
 };
 
@@ -200,6 +216,7 @@ export const useConfiguratorActions = () => {
         incrementBayCount: state.incrementBayCount,
         decrementBayCount: state.decrementBayCount,
         toggleAwning: state.toggleAwning,
+        toggleDimensions: state.toggleDimensions,
         reset: state.reset,
         getSummary: state.getSummary
     }));

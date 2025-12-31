@@ -10,7 +10,7 @@ import { Awning } from './Awning.jsx';
 
 export function Structure() {
     const config = useConfiguratorValues();
-    const { width, length, bayCount, baySpacing, eaveHeight, roofPitch, hasAwning } = config;
+    const { width, length, bayCount, baySpacing, eaveHeight, roofPitch, hasAwning, showDimensions } = config;
 
     const calculatedRidgeHeight = eaveHeight + (width / 2) * Math.tan(roofPitch * Math.PI / 180);
 
@@ -75,8 +75,10 @@ export function Structure() {
                 width={width}
                 length={length}
                 eaveHeight={eaveHeight}
-                ridgeHeight={calculatedRidgeHeight} // Using calculatedRidgeHeight
+                ridgeHeight={calculatedRidgeHeight}
                 roofPitch={roofPitch}
+                hasAwning={hasAwning}
+                showDimensions={showDimensions}
             />
         </group>
     );
