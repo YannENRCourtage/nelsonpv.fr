@@ -53,6 +53,8 @@ export const useConfiguratorStore = create((set, get) => ({
      * Minimum absolu : 4
      * @type {number}
      */
+    bayCount: 4,
+
     /**
      * Présence d'un auvent (accolé gauche)
      * @type {boolean}
