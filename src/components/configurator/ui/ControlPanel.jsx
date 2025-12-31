@@ -16,6 +16,8 @@ export function ControlPanel() {
         setBaySpacing,
         incrementBayCount,
         decrementBayCount,
+        hasAwning,
+        toggleAwning,
         reset
     } = useConfiguratorStore();
 
@@ -74,6 +76,30 @@ export function ControlPanel() {
                     <option value="ombriere">Ombrière</option>
                 </select>
                 <p className="text-xs text-slate-500 mt-2 italic">À venir : affectation structure 3D</p>
+            </div>
+
+            {/* ========== OPTION AUVENT ========== */}
+            <div className="param-group mb-6">
+                <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
+                    Options Structure
+                </label>
+                <div className="flex items-center justify-between p-4 border border-slate-300 rounded-lg bg-white">
+                    <span className="font-semibold text-slate-700">Ajouter un Auvent (9.3m)</span>
+                    <button
+                        onClick={toggleAwning}
+                        className={`
+                            relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none
+                            ${hasAwning ? 'bg-blue-600' : 'bg-slate-300'}
+                        `}
+                    >
+                        <span
+                            className={`
+                                inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                                ${hasAwning ? 'translate-x-6' : 'translate-x-1'}
+                            `}
+                        />
+                    </button>
+                </div>
             </div>
 
             {/* ========== ESPACEMENT TRAVÉES ========== */}

@@ -53,9 +53,17 @@ export const useConfiguratorStore = create((set, get) => ({
      * Minimum absolu : 4
      * @type {number}
      */
-    bayCount: 4,
+    /**
+     * Présence d'un auvent (accolé gauche)
+     * @type {boolean}
+     */
+    hasAwning: false,
 
     // ========== GETTERS CALCULÉS ==========
+    /** 
+     * NOTE: Derived values (length, ridgeHeight) are now computed in hooks 
+     * to avoid reactivity issues with getters in Zustand state object.
+     */
 
     /**
      * Retourne la liste des largeurs disponibles
@@ -118,12 +126,20 @@ export const useConfiguratorStore = create((set, get) => ({
     },
 
     /**
+     * Active/Désactive le auvent
+     */
+    toggleAwning: () => {
+        set((state) => ({ hasAwning: !state.hasAwning }));
+    },
+
+    /**
      * Réinitialise la configuration aux valeurs par défaut
      */
     reset: () => set({
         width: 18.6,
         baySpacing: 7.5,
-        bayCount: 4
+        bayCount: 4,
+        hasAwning: false
     }),
 
     /**
@@ -142,7 +158,8 @@ export const useConfiguratorStore = create((set, get) => ({
             roofPitch: state.roofPitch,
             baySpacing: state.baySpacing,
             bayCount: state.bayCount,
-            length: length
+            length: length,
+            hasAwning: state.hasAwning
         };
     }
 }));
@@ -165,7 +182,8 @@ export const useConfiguratorValues = () => {
         roofPitch: state.roofPitch,
         baySpacing: state.baySpacing,
         bayCount: state.bayCount,
-        length: length
+        length: length,
+        hasAwning: state.hasAwning
     };
 };
 
@@ -179,6 +197,7 @@ export const useConfiguratorActions = () => {
         setBayCount: state.setBayCount,
         incrementBayCount: state.incrementBayCount,
         decrementBayCount: state.decrementBayCount,
+        toggleAwning: state.toggleAwning,
         reset: state.reset,
         getSummary: state.getSummary
     }));

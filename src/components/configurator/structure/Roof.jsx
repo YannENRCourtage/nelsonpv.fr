@@ -30,9 +30,9 @@ export function Roof({ width, length, roofPitch, eaveHeight }) {
     const purlinHeight = 0.140;
     const roofThickness = 0.001; // Sheet metal thickness
 
-    // User Request: "Remonte de 20cm" (on top of previous 15cm?) -> Let's assume +35cm total extra.
-    // Offset = (PurlinHeight / 2) + (RoofThickness / 2) + Extra 0.35m
-    const perpOffset = (purlinHeight / 2) + (roofThickness / 2) + 0.35;
+    // User Request: "Remonte de 20cm" -> Adjusted -5cm by request -> Total +0.30m
+    // Offset = (PurlinHeight / 2) + (RoofThickness / 2) + Extra 0.30m
+    const perpOffset = (purlinHeight / 2) + (roofThickness / 2) + 0.30;
 
     // --- GEOMETRY CREATION (HORIZONTAL WAVES) ---
     const profileShape = useMemo(() => createTrapezoidalProfile(roofSlopeLength, 0.035, 0.25), [roofSlopeLength]);

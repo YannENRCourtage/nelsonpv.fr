@@ -6,10 +6,11 @@ import { Roof } from './Roof.jsx';
 import { Bracing } from './Bracing.jsx';
 import { RidgeCap } from './RidgeCap.jsx';
 import { DimensionsMarkers } from './DimensionsMarkers.jsx';
+import { Awning } from './Awning.jsx';
 
 export function Structure() {
     const config = useConfiguratorValues();
-    const { width, length, bayCount, baySpacing, eaveHeight, roofPitch } = config;
+    const { width, length, bayCount, baySpacing, eaveHeight, roofPitch, hasAwning } = config;
 
     const calculatedRidgeHeight = eaveHeight + (width / 2) * Math.tan(roofPitch * Math.PI / 180);
 
@@ -25,7 +26,7 @@ export function Structure() {
                 position={[0, 0, zPos]}
                 width={width}
                 eaveHeight={eaveHeight}
-                ridgeHeight={calculatedRidgeHeight}
+                ridgeHeight={calculatedRidgeHeight} // Same prop name
                 roofPitch={roofPitch}
             />
         );
@@ -62,6 +63,14 @@ export function Structure() {
                 roofPitch={roofPitch}
                 eaveHeight={eaveHeight}
             />
+            {hasAwning && (
+                <Awning
+                    length={length}
+                    eaveHeight={eaveHeight}
+                    roofPitch={roofPitch}
+                    buildingWidth={width}
+                />
+            )}
             <DimensionsMarkers
                 width={width}
                 length={length}

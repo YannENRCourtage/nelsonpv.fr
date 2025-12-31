@@ -26,7 +26,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const widthMid = new THREE.Vector3(0, 0.1, zFront);
 
     // Length Arrow (Left Side, Ground)
-    const xSide = -width / 2 - 2.0;
+    const xSide = -width / 2 - 3.0; // Moved outwards (was -2.0)
     const lengthStart = new THREE.Vector3(xSide, 0.1, 0);
     const lengthEnd = new THREE.Vector3(xSide, 0.1, -length);
     const lengthMid = new THREE.Vector3(xSide, 0.1, -length / 2);
@@ -152,8 +152,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
             {/* Surface Area - On left roof, Parallel to slope, Lengthwise direction */}
             <Text
-                // Raised 50cm by user request (was ridgeHeight - 1.0)
-                position={[-width / 4, ridgeHeight - 0.5, -length / 2]}
+                // Raised by another 30cm (from -0.5 to -0.2 relative to Ridge)
+                position={[-width / 4, ridgeHeight - 0.2, -length / 2]}
 
                 // Rotation Logic:
                 // 1. Follow Roof Pitch: Rotate X by (-PI/2 + pitch) -> lays flat on slope
