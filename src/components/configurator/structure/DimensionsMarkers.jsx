@@ -181,11 +181,14 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 // Positioned on RIGHT Roof (+width/4)
                 position={[width / 4, ridgeHeight + 0.3, -length / 2]}
                 // Rotation Logic:
-                // User requested "pente de 10° perpendiculaire à la couverture".
-                // 1. Tilt X -90 (Flat)
-                // 2. Subtract Pitch (angleRad) to match slope.
-                // 3. Rotate Z +90 for alignment.
-                rotation={[-Math.PI / 2 - angleRad, 0, Math.PI / 2]}
+                // User requested:
+                // 1. "Pente perpendiculaire à 0°" 
+                // 2. "Pente parallèle à 10%" (atan(0.10))
+                // This implies scaling the X-tilt to 10% (~5.7°) instead of the roof's 10° (~17%?).
+                // Wait, roof is 10 DEGREES.
+                // 10% is ~5.7 degrees.
+                // We apply this tilt to the X-axis (Reading axis).
+                rotation={[-Math.PI / 2 - Math.atan(0.10), 0, Math.PI / 2]}
                 fontSize={3}
                 color="#ffffff"
                 anchorX="center"
