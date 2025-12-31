@@ -58,24 +58,6 @@ export const useConfiguratorStore = create((set, get) => ({
     // ========== GETTERS CALCULÉS ==========
 
     /**
-     * Retourne la hauteur de faîtage correspondant à la largeur sélectionnée
-     * @returns {number} Hauteur en mètres
-     */
-    get ridgeHeight() {
-        const width = get().width;
-        return WIDTH_HEIGHT_MAP[width] || WIDTH_HEIGHT_MAP[18.6]; // Fallback
-    },
-
-    /**
-     * Calcule la longueur totale du bâtiment
-     * Formule : Espacement × Nombre de travées
-     * @returns {number} Longueur en mètres
-     */
-    get length() {
-        return get().baySpacing * get().bayCount;
-    },
-
-    /**
      * Retourne la liste des largeurs disponibles
      * @returns {number[]}
      */
@@ -150,14 +132,17 @@ export const useConfiguratorStore = create((set, get) => ({
      */
     getSummary: () => {
         const state = get();
+        // Recalcul needed inside getSummary if accessed directly
+        const length = state.baySpacing * state.bayCount;
+        const ridgeHeight = WIDTH_HEIGHT_MAP[state.width] || WIDTH_HEIGHT_MAP[18.6];
         return {
             width: state.width,
-            ridgeHeight: state.ridgeHeight,
+            ridgeHeight: ridgeHeight,
             eaveHeight: state.eaveHeight,
             roofPitch: state.roofPitch,
             baySpacing: state.baySpacing,
             bayCount: state.bayCount,
-            length: state.length
+            length: length
         };
     }
 }));
@@ -168,14 +153,19 @@ export const useConfiguratorStore = create((set, get) => ({
  */
 export const useConfiguratorValues = () => {
     const state = useConfiguratorStore();
+
+    // Derived Calculations (Reactive)
+    const length = state.baySpacing * state.bayCount;
+    const ridgeHeight = WIDTH_HEIGHT_MAP[state.width] || WIDTH_HEIGHT_MAP[18.6];
+
     return {
         width: state.width,
-        ridgeHeight: state.ridgeHeight,
+        ridgeHeight: ridgeHeight,
         eaveHeight: state.eaveHeight,
         roofPitch: state.roofPitch,
         baySpacing: state.baySpacing,
         bayCount: state.bayCount,
-        length: state.length
+        length: length
     };
 };
 

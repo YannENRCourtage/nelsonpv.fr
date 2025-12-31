@@ -16,12 +16,14 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // --- GEOMETRY HELPERS ---
 
+    // Gap for text (Widened as requested)
+    const gapSize = 3.0;
+
     // Width Arrow (Front, Ground)
     const zFront = 2.0;
     const widthStart = new THREE.Vector3(-width / 2, 0.1, zFront);
     const widthEnd = new THREE.Vector3(width / 2, 0.1, zFront);
     const widthMid = new THREE.Vector3(0, 0.1, zFront);
-    const gapSize = 1.5; // Gap for text
 
     // Length Arrow (Left Side, Ground)
     const xSide = -width / 2 - 2.0;
@@ -41,15 +43,13 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     return (
         <group>
-            {/* Width Dimension */}
+            {/* Width Dimension - Aligned with Width line (Horizontal) */}
             <group>
-                {/* Left segment */}
                 <Line
                     points={[widthStart, new THREE.Vector3(widthMid.x - gapSize / 2, widthMid.y, widthMid.z)]}
                     color={lineColor}
                     lineWidth={lineWidth}
                 />
-                {/* Right segment */}
                 <Line
                     points={[new THREE.Vector3(widthMid.x + gapSize / 2, widthMid.y, widthMid.z), widthEnd]}
                     color={lineColor}
@@ -77,15 +77,13 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </Text>
             </group>
 
-            {/* Length Dimension */}
+            {/* Length Dimension - Aligned with Length line (Rotated 180 from previous) */}
             <group>
-                {/* Top segment */}
                 <Line
                     points={[lengthStart, new THREE.Vector3(lengthMid.x, lengthMid.y, lengthMid.z + gapSize / 2)]}
                     color={lineColor}
                     lineWidth={lineWidth}
                 />
-                {/* Bottom segment */}
                 <Line
                     points={[new THREE.Vector3(lengthMid.x, lengthMid.y, lengthMid.z - gapSize / 2), lengthEnd]}
                     color={lineColor}
@@ -100,12 +98,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <meshBasicMaterial color={lineColor} />
                 </mesh>
                 <Text
+                    // Positioned slightly outside (xSide - 1)
                     position={[xSide - 1, 0.2, -length / 2]}
-                    rotation={[-Math.PI / 2, 0, Math.PI / 2]}
+                    // Previous: [-Math.PI / 2, 0, Math.PI / 2]
+                    // Rotate 180 around vertical (Z in this local frame of text?)
+                    // Let's set it to [-Math.PI / 2, 0, -Math.PI / 2] to flip it
+                    rotation={[-Math.PI / 2, 0, -Math.PI / 2]}
                     fontSize={0.8}
                     color={textColor}
                     anchorX="center"
-                    anchorY="bottom"
+                    anchorY="bottom" // Sits on the line
                     outlineWidth={0.1}
                     outlineColor="#ffffff"
                 >
@@ -113,15 +115,13 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </Text>
             </group>
 
-            {/* Height Dimension */}
+            {/* Height Dimension - Vertical Alignment */}
             <group>
-                {/* Bottom segment */}
                 <Line
                     points={[heightStart, new THREE.Vector3(heightMid.x, heightMid.y - gapSize / 2, heightMid.z)]}
                     color={lineColor}
                     lineWidth={lineWidth}
                 />
-                {/* Top segment */}
                 <Line
                     points={[new THREE.Vector3(heightMid.x, heightMid.y + gapSize / 2, heightMid.z), heightEnd]}
                     color={lineColor}
@@ -136,12 +136,13 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <meshBasicMaterial color={lineColor} />
                 </mesh>
                 <Text
-                    position={[xRight + 0.8, eaveHeight / 2, 0]}
-                    rotation={[0, 0, 0]}
-                    fontSize={0.6}
+                    position={[xRight + 0.5, eaveHeight / 2, 0]}
+                    // Rotate 90 degrees around Z axis to make it vertical
+                    rotation={[0, 0, Math.PI / 2]}
+                    fontSize={0.8}
                     color={textColor}
-                    anchorX="left"
-                    anchorY="middle"
+                    anchorX="center"
+                    anchorY="bottom" // Sits on the line (which is vertical now relative to text)
                     outlineWidth={0.1}
                     outlineColor="#ffffff"
                 >
@@ -149,10 +150,28 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </Text>
             </group>
 
-            {/* Surface Area - On left roof slope, lengthwise */}
+            {/* Surface Area - On left roof, Parallel to slope, Lengthwise direction */}
             <Text
-                position={[-width / 4, ridgeHeight - 0.5, -length / 2]}
-                rotation={[-Math.PI / 2 + angleRad, 0, 0]}
+                // Positioned on Left Slope (-Width/4), Mid-length (-Length/2)
+                // y = RidgeHeight approx (minus a bit for slope)
+                position={[-width / 4, ridgeHeight - 1.0, -length / 2]}
+
+                // Rotation Logic:
+                // 1. Follow Roof Pitch: Rotate X by (-PI/2 + pitch) -> lays flat on slope
+                // 2. Align with Length: Rotate Z by -PI/2 (to run along the Z axis)
+                // Euler order is tricky.
+                // Let's try: [ -Math.PI/2, angleRad, -Math.PI/2 ] 
+                // Or: rotation={[ -Math.PI/2 + angleRad, 0, -Math.PI/2 ]}
+                // Testing visual logic: 
+                // Default Text is XY plane. 
+                // We want it on Slope plane.
+                // We want text baseline along Z axis.
+                rotation={[-Math.PI / 2, angleRad, -Math.PI / 2]}
+                // Actually, let's stick to simple:
+                // X rotation tilts it back.
+                // Z rotation spins it on the plane.
+                // rotation={[-Math.PI / 2 + angleRad, 0, -Math.PI / 2]}
+
                 fontSize={3}
                 color="#ffffff"
                 anchorX="center"
