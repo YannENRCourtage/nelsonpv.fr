@@ -7,6 +7,7 @@ import { Bracing } from './Bracing.jsx';
 import { RidgeCap } from './RidgeCap.jsx';
 import { DimensionsMarkers } from './DimensionsMarkers.jsx';
 import { Awning } from './Awning.jsx';
+import { Auvent } from './Auvent.jsx';
 
 export function Structure() {
     const config = useConfiguratorValues();

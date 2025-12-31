@@ -9,7 +9,7 @@ import * as THREE from 'three';
  * - Height arrow (Vertical, Eave)
  * - Surface Area (Roof, Top)
  */
-export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roofPitch, hasAwning, showDimensions }) {
+export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roofPitch, hasAwning, hasAuvent, showDimensions }) {
     if (!showDimensions) return null;
 
     const textColor = "#000000";
