@@ -179,7 +179,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             <Text
                 // Raised by +0.30m (user request total +80cm from original, here +0.30 relative to last state)
                 position={[-width / 4, ridgeHeight + 0.3, -length / 2]}
-                rotation={[-Math.PI / 2, angleRad, -Math.PI / 2]}
+                // Rotation Logic:
+                // 1. Tilt X back by 90 (-PI/2) to make it flat on ground.
+                // 2. Add Pitch to X (angleRad) to match slope.
+                // 3. Rotate Z by -90 (-PI/2) to align text baseline with Ridge (Z-axis).
+                rotation={[-Math.PI / 2 + angleRad, 0, -Math.PI / 2]}
                 fontSize={3}
                 color="#ffffff"
                 anchorX="center"

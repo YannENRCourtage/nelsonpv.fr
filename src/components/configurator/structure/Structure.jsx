@@ -69,6 +69,8 @@ export function Structure() {
                     eaveHeight={eaveHeight}
                     roofPitch={roofPitch}
                     buildingWidth={width}
+                    bayCount={bayCount}
+                    baySpacing={baySpacing}
                 />
             )}
             <DimensionsMarkers
