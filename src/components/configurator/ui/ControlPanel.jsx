@@ -17,7 +17,9 @@ export function ControlPanel() {
         incrementBayCount,
         decrementBayCount,
         hasAwning,
+        hasAuvent,
         toggleAwning,
+        toggleAuvent,
         showDimensions,
         toggleDimensions,
         reset

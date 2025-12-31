@@ -94,7 +94,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 <mesh position={lengthStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                 <mesh position={lengthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                 <Text
-                    position={[xSide, 0.2, -length / 2]}
+                    // Offset by +0.5m to sit "outside" the line, matching Width dimension style
+                    position={[xSide + 0.5, 0.2, -length / 2]}
                     // Rotation flipped to face 'outwards' on the Right Side?
                     // Left Side was [-PI/2, 0, -PI/2] (Reading Bottom-Up).
                     // Right Side [-PI/2, 0, PI/2] should read Bottom-Up (facing right).
@@ -180,10 +181,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 // Positioned on RIGHT Roof (+width/4)
                 position={[width / 4, ridgeHeight + 0.3, -length / 2]}
                 // Rotation Logic:
-                // User requested "pente à 0°" (Flat relative to ground).
-                // 1. Tilt X -90 (Flat on ground)
-                // 2. Rotate Z +90 (Alignment).
-                rotation={[-Math.PI / 2, 0, Math.PI / 2]}
+                // User requested "pente de 10° perpendiculaire à la couverture".
+                // 1. Tilt X -90 (Flat)
+                // 2. Subtract Pitch (angleRad) to match slope.
+                // 3. Rotate Z +90 for alignment.
+                rotation={[-Math.PI / 2 - angleRad, 0, Math.PI / 2]}
                 fontSize={3}
                 color="#ffffff"
                 anchorX="center"

@@ -216,6 +216,7 @@ export const useConfiguratorActions = () => {
         incrementBayCount: state.incrementBayCount,
         decrementBayCount: state.decrementBayCount,
         toggleAwning: state.toggleAwning,
+        toggleAuvent: state.toggleAuvent,
         toggleDimensions: state.toggleDimensions,
         reset: state.reset,
         getSummary: state.getSummary
