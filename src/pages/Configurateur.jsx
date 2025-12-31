@@ -42,89 +42,260 @@ export default function Configurateur() {
     // Helper: Wait function
     const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // Génération PDF Complète
+    // Firebase Imports
+    import { ref, getDownloadURL } from "firebase/storage";
+    import { storage } from "@/config/firebase.js";
+
+    // ... (inside component)
+
+    // Helper: Fetch Image via Proxy (Shared logic with AppLayout)
+    const fetchImageViaProxy = async (url) => {
+        if (!url) return null;
+        if (url.startsWith('data:')) return url;
+
+        if (url.startsWith('http') || url.startsWith('gs://')) {
+            try {
+                if (!storage) throw new Error("Storage non initialisé");
+                const storageRef = ref(storage, url);
+                const downloadURL = await getDownloadURL(storageRef);
+                const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(downloadURL)}`;
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+                const response = await fetch(proxyUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (!response.ok) throw new Error(`Proxy Error: ${response.status}`);
+                const arrayBuffer = await response.arrayBuffer();
+                let binary = '';
+                const bytes = new Uint8Array(arrayBuffer);
+                for (let k = 0; k < bytes.byteLength; k++) binary += String.fromCharCode(bytes[k]);
+                return `data:image/png;base64,${window.btoa(binary)}`;
+            } catch (e) {
+                console.error("Erreur téléchargement image:", e);
+                return null;
+            }
+        }
+        return null;
+    };
+
+    // Génération PDF Complète (OFFRE)
     const generateFullPDF = async () => {
         if (!canvasRef.current) return;
 
-        setIsCapturing(true); // Optimization flag for Scene (white bg etc)
-        const originalView = viewMode;
+        setIsCapturing(true);
+        const originalView = viewMode; // Save current view
 
         try {
-            // 1. Capture View 1 (3D / Iso)
+            // 1. Capture 3D View (Perspective)
             setViewMode('3D');
-            // Give time for renderer to settle/center
-            await wait(800);
-            // Force a render or just grab data? R3F loop usually renders.
+            await wait(1000); // Allow render to settle
             const img3D = canvasRef.current.toDataURL('image/png', 1.0);
 
-            // 2. Capture View 2 (2D Front)
-            setViewMode('2D_FRONT');
-            await wait(800);
-            const img2D = canvasRef.current.toDataURL('image/png', 1.0);
-
-            // 3. Generate PDF
-            const pdf = new jsPDF('portrait', 'mm', 'a4');
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-
-            // HEADER
-            pdf.setFontSize(14);
-            pdf.setFont('helvetica', 'bold');
-            pdf.text('OFFRE DE DEVIS - BATIMENT METALLIQUE', pageWidth / 2, 15, { align: 'center' });
-
-            // Client Info
-            pdf.setFontSize(10);
-            pdf.setFont('helvetica', 'normal');
-            let y = 30;
-            if (selectedProject) {
-                pdf.text('CLIENT:', 15, y);
-                pdf.text(`${selectedProject.name || ''} ${selectedProject.firstName || ''}`, 15, y + 5);
-                pdf.text(`${selectedProject.address || ''}`, 15, y + 10);
-                pdf.text(`${selectedProject.zip || ''} ${selectedProject.city || ''}`, 15, y + 15);
-            } else {
-                pdf.text('CLIENT: (Non renseigné)', 15, y);
+            // 2. Fetch Map Capture (Plan d'Implantation)
+            let mapImg = null;
+            if (selectedProject?.captures?.length > 0) {
+                // Take the first capture as per request
+                const captureUrl = selectedProject.captures[0];
+                mapImg = await fetchImageViaProxy(captureUrl);
             }
 
-            // Specs Summary (Right side)
-            const rightX = 120;
-            pdf.text('CARACTERISTIQUES:', rightX, y);
-            pdf.text(`Dimensions: ${config.width}m x ${config.length}m`, rightX, y + 5);
-            pdf.text(`Hauteurs: ${config.eaveHeight}m (Sablière) / ${config.ridgeHeight}m (Faîtage)`, rightX, y + 10);
-            pdf.text(`Pente: ${config.roofPitch}° - Travées: ${config.bayCount} x ${config.baySpacing}m`, rightX, y + 15);
+            // 3. Generate PDF (Landscape)
+            const pdf = new jsPDF('landscape', 'mm', 'a4');
+            const pageWidth = pdf.internal.pageSize.getWidth(); // 297mm
+            const pageHeight = pdf.internal.pageSize.getHeight(); // 210mm
+
+            // --- LEFT COLUMN ---
+            const leftMargin = 15;
+            let y = 15;
+
+            // Logo (Top Left)
+            // Using public URL
+            const logoUrl = "https://enr-courtage.fr/wp-content/uploads/2023/11/logo-enr-courtage-v3.png";
+            try {
+                const logoImg = new Image();
+                logoImg.src = logoUrl;
+                // Wait for load if needed, but addImage handles urls mostly if clean, 
+                // but better handle async or use a base64 string if possible. 
+                // For simplicity, we assume generic addImage works or we use the proxy if CORS issues.
+                // Re-using proxy for Logo to be safe against CORS in PDF
+                // Or try direct addImage
+                pdf.addImage(logoUrl, 'PNG', leftMargin, y, 50, 0);
+            } catch (e) {
+                // Fallback text
+                pdf.setFontSize(16);
+                pdf.setTextColor(0, 0, 0);
+                pdf.text("ENR COURTAGE", leftMargin, y + 10);
+            }
 
             y += 25;
 
-            // Image 1 (3D)
-            const imgHeight = 90;
-            pdf.addImage(img3D, 'PNG', 10, y, pageWidth - 20, imgHeight);
-            pdf.setFontSize(9);
-            pdf.text('Vue 3D Perspective', pageWidth / 2, y + imgHeight + 5, { align: 'center' });
+            // Client Info
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(12);
+            pdf.setTextColor(0, 0, 0);
 
-            y += imgHeight + 15;
+            if (selectedProject) {
+                const name = `${selectedProject.name || ''} ${selectedProject.firstName || ''}`;
+                pdf.text(name.toUpperCase(), leftMargin, y);
+                y += 6;
+                pdf.text(`${selectedProject.address || ''}`, leftMargin, y);
+                y += 6;
+                pdf.text(`${selectedProject.zip || ''} ${selectedProject.city || ''}`, leftMargin, y);
+            } else {
+                pdf.text('CLIENT: (Non renseigné)', leftMargin, y);
+            }
 
-            // Image 2 (2D)
-            pdf.addImage(img2D, 'PNG', 10, y, pageWidth - 20, imgHeight);
-            pdf.text('Vue Technique (Façade)', pageWidth / 2, y + imgHeight + 5, { align: 'center' });
+            y += 20;
 
-            // FOOTER
-            pdf.setFontSize(9);
-            pdf.setTextColor(80, 80, 80);
-            pdf.text(
-                'Offre valable un mois à compter de ce jour - Des modifications mineures pourront être apportées',
-                pageWidth / 2, 280, { align: 'center' }
-            );
+            // Prise en charge (List)
             pdf.setFont('helvetica', 'bold');
-            pdf.text('ENR COURTAGE - 2025', pageWidth / 2, 287, { align: 'center' });
+            pdf.setTextColor(0, 51, 153); // Dark Blue
+            pdf.text('Prise en charge :', leftMargin, y);
+            y += 8;
 
-            pdf.save(`Offre_${selectedProject?.name || 'Projet'}.pdf`);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(0, 0, 0);
+            const prises = [
+                "Ensemble des démarches administratives",
+                "Fondations",
+                "Structure métallique du bâtiment",
+                "Couverture Bac acier avec feutre anti-condensation",
+                "Centrale Photovoltaïque (modules, câblages, onduleur...)",
+                "Raccordement au réseau électrique"
+            ];
+            prises.forEach(item => {
+                pdf.text(item, leftMargin, y);
+                y += 6;
+            });
+
+            y += 10;
+
+            // A votre charge (List)
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(0, 51, 153);
+            pdf.text('A votre charge :', leftMargin, y);
+            y += 8;
+
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(0, 0, 0);
+            // Right align "A votre charge" text to the underline? Or just list.
+            // User image has underline.
+            // Let's add underline for headers.
+            pdf.setDrawColor(255, 165, 0); // Orange
+            pdf.setLineWidth(1);
+            // Underline "Prise en charge" (retroactive visual fix, coordinate guess)
+            // pdf.line(leftMargin, 75, leftMargin + 40, 75); 
+
+            // Underline "A votre charge"
+            pdf.line(leftMargin, y - 2, leftMargin + 35, y - 2);
+
+            const charges = [
+                "Terrassement",
+                "Tranchée du bâtiment jusqu'au point de livraison (PDL)",
+                "Équipement optionnels: chéneaux, bardage, portails, extincteurs..."
+            ];
+            // Wrap text if too long?
+            charges.forEach(item => {
+                const splitTitle = pdf.splitTextToSize(item, 100); // 100mm width max
+                pdf.text(splitTitle, leftMargin, y);
+                y += (6 * splitTitle.length);
+            });
+
+            // Website Footer (Left Column Bottom)
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(0, 0, 100);
+            pdf.text('enr-courtage.fr', leftMargin, 190);
+
+            // --- RIGHT COLUMN ---
+            const rightMargin = 140; // Middle of page approx
+            let ry = 15;
+
+            // Header "NOTRE PROPOSITION"
+            pdf.setFontSize(14);
+            pdf.setTextColor(0, 0, 0); // Black
+            pdf.setFont('helvetica', 'normal');
+            pdf.text('NOTRE PROPOSITION', rightMargin + 40, ry, { align: 'center' }); // Centered in right col
+            ry += 10;
+
+            // Specs
+            pdf.setFontSize(11);
+            pdf.setTextColor(0, 0, 0);
+            // Right align specs?
+            // "30m x 18.6m Symétrique"
+            // "Surface au sol : 558m²"
+            // "Sablière : 5.5m"
+            // "Faitage : 7.1m"
+            // "Pente : 10° - Travées : 4 x 7.5m"
+
+            const alignX = rightMargin + 40; // Center axis for text
+            const buildingType = "Symétrique"; // Hardcoded or config.type ? config doesn't have type yet, default symetric
+
+            // Calc Surface
+            const totalWidth = config.width + (config.hasAwning ? 9.3 : 0) + (config.hasAuvent ? 4.0 : 0);
+            const surface = (totalWidth * config.length).toFixed(0);
+
+            pdf.text(`${config.length}m x ${config.width}m ${buildingType}`, alignX, ry, { align: 'center' });
+            ry += 6;
+            pdf.text(`Surface au sol : ${surface}m²`, alignX, ry, { align: 'center' });
+            ry += 6;
+            pdf.text(`Sablière : ${config.eaveHeight}m`, alignX, ry, { align: 'center' });
+            ry += 6;
+            pdf.text(`Faitage : ${config.ridgeHeight}m`, alignX, ry, { align: 'center' });
+            ry += 6;
+            pdf.text(`Pente : ${config.roofPitch}° - Travées : ${config.bayCount} x ${config.baySpacing}m`, alignX, ry, { align: 'center' });
+
+            ry += 10;
+
+            // IMAGE 1: 3D Perspective
+            // Dimensions: ~130mm wide
+            if (img3D) {
+                pdf.addImage(img3D, 'PNG', rightMargin, ry, 130, 70); // Aspect ratio to be checked
+            }
+            ry += 75;
+
+            // Text "Des modifications mineures..."
+            pdf.setFontSize(9);
+            pdf.setTextColor(0, 51, 153);
+            pdf.text('Des modifications mineures pourront être apportées', alignX, ry, { align: 'center' });
+            ry += 10;
+
+            // Header "PLAN D'IMPLANTATION"
+            pdf.setFontSize(12);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text("PLAN D'IMPLANTATION", rightMargin + 130, ry, { align: 'right' }); // Right aligned
+            ry += 5;
+
+            // IMAGE 2: Map Capture
+            if (mapImg) {
+                // Map Image
+                pdf.addImage(mapImg, 'PNG', rightMargin, ry, 130, 80);
+            } else {
+                // Fallback or placeholder
+                pdf.setDrawColor(200);
+                pdf.rect(rightMargin, ry, 130, 80);
+                pdf.text("Plan d'implantation non disponible", alignX, ry + 40, { align: 'center' });
+            }
+            ry += 85;
+
+            // Date & Validity (Bottom Right)
+            const date = new Date().toLocaleDateString('fr-FR');
+            pdf.setFontSize(9);
+            pdf.setTextColor(150);
+            pdf.text(`${date} - Validité : 1 mois`, rightMargin + 130, 200, { align: 'right' });
+
+
+            // Save
+            const filename = `Offre_${selectedProject?.name || 'Projet'}.pdf`;
+            pdf.save(filename);
 
         } catch (err) {
             console.error("PDF Generation error:", err);
-            alert("Erreur lors de la génération du PDF");
+            alert("Erreur lors de la génération du PDF: " + err.message);
         } finally {
-            // Restore state
             setIsCapturing(false);
             setViewMode(originalView);
+            // Keep modal open or close? User usually wants to close.
             setShowPDFModal(false);
             setSelectedProject(null);
             setProjectSearch('');
