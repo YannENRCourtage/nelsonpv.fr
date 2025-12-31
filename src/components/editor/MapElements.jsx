@@ -1740,7 +1740,14 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
     };
     const goToProjectAddress = () => {
       if (project?.gps) { const [lat, lng] = project.gps.split(',').map(Number); if (!isNaN(lat) && !isNaN(lng)) { map.setView([lat, lng], 18); return; } }
-      if (project?.address) { const fullAddress = `${project.address}, ${project.zip} ${project.city}`; const event = new CustomEvent('geosearch/search', { detail: { query: fullAddress, keepPopupOpen: false } }); map.getContainer().dispatchEvent(event); }
+      if (project?.address || project?.zip || project?.city) {
+        const parts = [project.address, project.zip, project.city].filter(p => p && p.trim() !== '');
+        if (parts.length > 0) {
+          const fullAddress = parts.join(', ');
+          const event = new CustomEvent('geosearch/search', { detail: { query: fullAddress, keepPopupOpen: false } });
+          map.getContainer().dispatchEvent(event);
+        }
+      }
     };
     const handlePlacePhoto = (e) => { setPhotoToPlace(e.detail); };
     const handleZoomIn = () => { map.zoomIn(); };

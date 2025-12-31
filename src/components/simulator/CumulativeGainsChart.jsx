@@ -44,6 +44,17 @@ export default function CumulativeGainsChart({ data, totalCost }) {
                             strokeDasharray="5 5"
                             label={{ value: 'Coût Projet', position: 'insideLeft', fill: '#ff6b6b', dy: -10 }}
                         />
+                        <ReferenceLine
+                            y={costInK}
+                            stroke="none"
+                            label={{
+                                value: `${totalCost.toLocaleString('fr-FR')} €`,
+                                position: 'insideRight',
+                                fill: '#ff6b6b',
+                                dy: -10,
+                                dx: -10
+                            }}
+                        />
 
                         {/* Courbe Gain TH Seul */}
                         <Line

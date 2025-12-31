@@ -52,7 +52,7 @@ export default function ProfitabilitySimulator() {
 
     // Load saved defaults
     useEffect(() => {
-        const savedCosts = localStorage.getItem('simulator_default_costs_v3');
+        const savedCosts = localStorage.getItem('simulator_default_costs_v4');
         if (savedCosts) {
             try {
                 // Merge saved defaults with structure to ensure installationRate exists

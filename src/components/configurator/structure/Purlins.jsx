@@ -1,144 +1,122 @@
-import React, { useMemo, useRef, useLayoutEffect } from 'react';
+import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import { createIPEGeometry, IPE_CATALOG } from '../utils/steelProfiles.js';
+import { createZProfile } from '../utils/profiles.js';
 
-/**
- * Crée une géométrie de panne en Z (Z-Purlin)
- * Simplifié en forme rectangulaire pour l'instant
- */
-function createZPurlinGeometry(length) {
-    // Dimensions typiques panne Z: 200x75mm
-    const width = 0.075;
-    const height = 0.200;
+export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHeight }) {
+    const material = useMemo(() => new THREE.MeshStandardMaterial({
+        color: '#d0d0d0', // Galvanized
+        metalness: 0.5,
+        roughness: 0.5
+    }), []);
+
+    // Config for Z-Purlin (Z140)
+    const purlinHeight = 0.140;
+    const purlinWidth = 0.060;
     const thickness = 0.003;
+    const purlinSpacing = 1.3; // Distance between purlins along slope
 
-    // Pour simplifier, on utilise un BoxGeometry étroit
-    // TODO: Implémenter la vraie forme en Z plus tard
-    return new THREE.BoxGeometry(thickness, height, length);
-}
+    // Geometry for a SINGLE BAY
+    // Extrude depth = baySpacing.
+    const shape = useMemo(() => createZProfile(purlinHeight, purlinWidth, thickness), []);
 
-/**
- * Composant Pannes (Purlins) - Éléments secondaires de toiture
- * Utilise InstancedMesh pour optimisation performance
- * 
- * @param {Object} props
- * @param {number} props.span - Portée du bâtiment  
- * @param {number} props.eaveHeight - Hauteur sous égout
- * @param {number} props.roofPitch - Pente toiture en degrés
- * @param {number} props.buildingLength - Longueur totale du bâtiment
- * @param {number} props.purlinSpacing - Espacement entre pannes (défaut 1.2m)
- */
-export function Purlins({
-    span = 20,
-    eaveHeight = 6,
-    roofPitch = 15,
-    buildingLength = 20,
-    purlinSpacing = 1.3
-}) {
-    const instancedMeshRef = useRef();
+    // We want the purlin to run along the bay (-Z direction usually if we just offset).
+    // Let's create it with positive depth and rotate/position accordingly.
+    const bayGeometry = useMemo(() => new THREE.ExtrudeGeometry(shape, {
+        depth: baySpacing,
+        bevelEnabled: false
+    }), [baySpacing, shape]);
 
-    // ========== CALCULS GÉOMÉTRIQUES ==========
+    const halfWidth = width / 2;
+    const angleRad = (roofPitch * Math.PI) / 180;
+    const slopeLength = halfWidth / Math.cos(angleRad);
 
-    const pitchRad = useMemo(() => (roofPitch * Math.PI) / 180, [roofPitch]);
-    const halfSpan = useMemo(() => span / 2, [span]);
+    // Rafter IPE 400 (Height = 0.4m). Half-height = 0.2m.
+    // Purlin sits ON TOP of Rafter.
+    const rafterOffset = 0.20;
+    const perpOffset = rafterOffset + (purlinHeight / 2) + 0.001; // Small 1mm tolerance
 
-    // Longueur du rampant (pente)
-    const rafterSlope = useMemo(
-        () => halfSpan / Math.cos(pitchRad),
-        [halfSpan, pitchRad]
-    );
+    const numPurlinsPerSide = Math.floor(slopeLength / purlinSpacing);
+    const purlins = [];
 
-    // Nombre de pannes par versant
-    const purlinCountPerSide = useMemo(
-        () => Math.max(1, Math.floor(rafterSlope / purlinSpacing)),
-        [rafterSlope, purlinSpacing]
-    );
+    // Loop through BAYS
+    // Bay 0 starts at Z=0, ends at Z=-baySpacing
+    for (let bayIndex = 0; bayIndex < bayCount; bayIndex++) {
+        const zStart = -bayIndex * baySpacing;
 
-    // Espacement ajusté pour répartition uniforme
-    const adjustedSpacing = useMemo(
-        () => rafterSlope / (purlinCountPerSide + 1),
-        [rafterSlope, purlinCountPerSide]
-    );
+        // Loop through PURLIN ROWS
+        for (let i = 0; i <= numPurlinsPerSide; i++) {
+            const dist = i * purlinSpacing;
 
-    const totalPurlins = purlinCountPerSide * 2; // 2 versants
+            // --- Left Side (Gauche) ---
+            const xLocal = dist * Math.cos(angleRad);
+            const yLocal = dist * Math.sin(angleRad);
 
-    // ========== GÉOMÉTRIE & MATÉRIAU ==========
+            // Normal Vector to slope (for stacking): (-sin a, cos a)
+            const xPerp = -perpOffset * Math.sin(angleRad);
+            const yPerp = perpOffset * Math.cos(angleRad);
 
-    const purlinGeo = useMemo(() => createZPurlinGeometry(buildingLength), [buildingLength]);
+            purlins.push(
+                <mesh
+                    key={`Bay${bayIndex}-L-${i}`}
+                    geometry={bayGeometry}
+                    material={material}
+                    position={[
+                        -halfWidth + xLocal + xPerp,
+                        eaveHeight + yLocal + yPerp,
+                        zStart
+                    ]}
+                    // Rotate Y centered means it spins around its start.
+                    // Extrusion +Z.
+                    // We want it to go -Z.
+                    // Rotate Y=180? (Math.PI). 
+                    // Then Z becomes -Z. X becomes -X.
+                    // We need to verify orientation.
+                    // Let's use `depth: -baySpacing` in geometry? No, keep standard.
+                    // If we position at zStart (e.g. 0) and it extrudes +Z (0 to +6), that's wrong direction (into building front yard).
+                    // We want 0 to -6.
+                    // So position at zStart + ? Or Rotate 180.
+                    // If Rotate 180: Origin stays at zStart. Extrusion goes -Z.
+                    // Orientation of cross section flips X->-X.
+                    // Z-profile is asymmetric. We need to check if flip matters.
+                    // Doing rotation Y=PI is safe for straight beam.
+                    // Then we also apply Roof Slope Rotation (Z axis).
+                    rotation={[0, Math.PI, -angleRad]}
+                />
+            );
 
-    const purlinMaterial = useMemo(
-        () => (
-            <meshStandardMaterial
-                color="#999999"
-                metalness={0.6}
-                roughness={0.4}
-            />
-        ),
-        []
-    );
+            // --- Right Side (Droit) ---
+            const xLocalR = dist * Math.cos(angleRad);
+            const yLocalR = dist * Math.sin(angleRad);
 
-    // ========== CALCUL DES POSITIONS ==========
+            // Normal Vector (Stacking): (sin a, cos a)
+            const xPerpR = perpOffset * Math.sin(angleRad);
+            const yPerpR = perpOffset * Math.cos(angleRad);
 
-    const purlinPositions = useMemo(() => {
-        const positions = [];
+            purlins.push(
+                <mesh
+                    key={`Bay${bayIndex}-R-${i}`}
+                    geometry={bayGeometry}
+                    material={material}
+                    position={[
+                        halfWidth - xLocalR + xPerpR,
+                        eaveHeight + yLocalR + yPerpR,
+                        zStart
+                    ]}
+                    // Right side slope is negative.
+                    // Rotate Y=180 to get -Z extrusion.
+                    // Local X becomes -Global X.
+                    // We want slope UP-Left (from Right Eave).
+                    // Up-Left is +Y, -X.
+                    // With Y=180, Local X is -Global X.
+                    // So +Local X goes Left.
+                    // Simple Angle Rotation Z = +angle?
+                    // Let's stick to symmetry: Right side slope factor `angleRad`.
+                    // If we just mirrored the left side mesh? scale=[-1,1,1]?
+                    rotation={[0, Math.PI, angleRad]}
+                />
+            );
+        }
+    }
 
-        // Boucle sur les 2 versants
-        [-1, 1].forEach(side => {
-            // side = -1 (gauche), side = 1 (droit)
-
-            for (let i = 1; i <= purlinCountPerSide; i++) {
-                // Distance le long de la pente depuis l'égoût
-                const distOnSlope = i * adjustedSpacing;
-
-                // Coordonnées X et Y (trigonométrie)
-                const xOffset = distOnSlope * Math.cos(pitchRad);
-                const yOffset = distOnSlope * Math.sin(pitchRad);
-
-                // Position finale
-                const x = side === -1 ? (-halfSpan + xOffset) : (halfSpan - xOffset);
-                const y = eaveHeight + yOffset;
-                const z = 0; // Centre du bâtiment (longueur)
-
-                // Angle de rotation (suivre la pente)
-                const rotationZ = side === -1 ? -pitchRad : pitchRad;
-
-                positions.push({
-                    position: new THREE.Vector3(x, y, z),
-                    rotation: new THREE.Euler(-Math.PI / 2, 0, rotationZ)
-                });
-            }
-        });
-
-        return positions;
-    }, [purlinCountPerSide, adjustedSpacing, pitchRad, halfSpan, eaveHeight]);
-
-    // ========== MISE À JOUR DES INSTANCES ==========
-
-    useLayoutEffect(() => {
-        if (!instancedMeshRef.current) return;
-
-        const tempMatrix = new THREE.Matrix4();
-        const tempObject = new THREE.Object3D();
-
-        purlinPositions.forEach((purlin, index) => {
-            tempObject.position.copy(purlin.position);
-            tempObject.rotation.copy(purlin.rotation);
-            tempObject.updateMatrix();
-
-            instancedMeshRef.current.setMatrixAt(index, tempObject.matrix);
-        });
-
-        instancedMeshRef.current.instanceMatrix.needsUpdate = true;
-    }, [purlinPositions]);
-
-    // ========== RENDU ==========
-
-    return (
-        <instancedMesh
-            ref={instancedMeshRef}
-            args={[purlinGeo, purlinMaterial, totalPurlins]}
-            castShadow
-            receiveShadow
-        />
-    );
+    return <group>{purlins}</group>;
 }

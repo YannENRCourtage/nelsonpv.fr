@@ -207,11 +207,26 @@ export function ProjectProvider({ children }) {
         savedProject.photos = photoUrls;
       }
 
+      // Helper to remove undefined values for Firestore
+      const sanitizeForFirestore = (obj) => {
+        return JSON.parse(JSON.stringify(obj));
+      };
+
+      savedProject = sanitizeForFirestore(savedProject);
+
       // 2. Sauvegarde API
       // On tente d'abord l'API pour avoir la vérité terrain (et l'ID généré si création)
-      if (!projectId || projectId === 'new') {
+      // FIX: Check for temp IDs (starting with "proj_" or "temp_") to force creation
+      const isTempId = projectId && (String(projectId).startsWith('proj_') || String(projectId).startsWith('temp_'));
+
+      if (!projectId || projectId === 'new' || isTempId) {
         // CREATION
         console.log("Creating new project via API...");
+        // If it was a temp ID, remove it from the data sent to API to let Firestore generate a real one
+        if (isTempId) {
+          delete savedProject.id;
+        }
+
         const created = await apiService.createProject(savedProject);
         console.log("Project created:", created);
 
@@ -222,7 +237,7 @@ export function ProjectProvider({ children }) {
         // Cela évite de recréer le projet au prochain 'save'
         setProject(prev => ({ ...prev, ...created }));
       } else {
-        // UPDATE ou CREATION si inexistant (upsert)
+        // UPDATE
         try {
           await apiService.updateProject(projectId, savedProject);
         } catch (e) {

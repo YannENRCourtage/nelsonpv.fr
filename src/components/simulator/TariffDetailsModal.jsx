@@ -17,11 +17,11 @@ export default function TariffDetailsModal({ onClose }) {
                     <ul className="space-y-4 text-gray-700">
                         <li className="flex items-center gap-2">
                             <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                            <span>9kWc à 36 kWc : <span className="font-semibold">10.49 c€/kWh</span></span>
+                            <span>9kWc à 36 kWc : <span className="font-semibold">9.11 c€/kWh</span></span>
                         </li>
                         <li className="flex items-center gap-2">
                             <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                            <span>36kWc à 100kWc : <span className="font-semibold">9.12 c€/kWh</span></span>
+                            <span>36kWc à 100kWc : <span className="font-semibold">7.92 c€/kWh</span></span>
                         </li>
                         <li className="flex items-center gap-2">
                             <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>

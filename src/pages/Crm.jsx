@@ -625,13 +625,15 @@ export default function Crm() {
         <div className="lg:col-span-2 space-y-8 flex flex-col">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex-1 flex flex-col">
             <h2 className="text-xl font-bold text-slate-900 mb-6">Nouveaux Projets</h2>
-            <div className="space-y-4 flex-1">
-              {projects.slice(0, 3).map(p => (
-                <div key={p.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                  <div><div className="font-bold text-slate-900">{p.name || 'Projet'}</div><div className="text-xs text-slate-500">{p.city || '-'} • {p.status}</div></div>
-                  <Button size="sm" variant="ghost" className="text-blue-600" onClick={() => navigate(`/project/${p.id}/edit`)}><ExternalLink className="w-4 h-4" /></Button>
-                </div>
-              ))}
+            <div className="space-y-4 flex-1 overflow-y-auto max-h-[400px]">
+              {projects
+                .filter(p => !p.status || p.status === 'Nouveau' || p.status === 'draft')
+                .map(p => (
+                  <div key={p.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                    <div><div className="font-bold text-slate-900">{p.name || 'Projet'}</div><div className="text-xs text-slate-500">{p.city || '-'} • {p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau')}</div></div>
+                    <Button size="sm" variant="ghost" className="text-blue-600" onClick={() => navigate(`/project/${p.id}/edit`)}><ExternalLink className="w-4 h-4" /></Button>
+                  </div>
+                ))}
             </div>
           </div>
         </div>
@@ -669,41 +671,42 @@ export default function Crm() {
   // Rendu de la liste des Contacts
   const renderContacts = () => (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Rechercher un contact..."
-            className="w-full pl-10 pr-4 py-2 bg-white shadow-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+      <div className="flex items-center justify-between gap-6">
+        <div className="flex items-center gap-4 flex-1">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Rechercher un contact..."
+              className="w-full pl-10 pr-4 py-2 bg-white shadow-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
 
-        {/* Filtres */}
-        <div className="flex gap-4 items-center">
-          <select
-            value={filterUser}
-            onChange={(e) => setFilterUser(e.target.value)}
-            className="px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          >
-            <option value="all">Tous les utilisateurs</option>
-            {users.map(u => (
-              <option key={u.id} value={u.firstName || u.displayName}>{u.firstName || u.displayName || 'Utilisateur'}</option>
-            ))}
-          </select>
+          <div className="flex gap-2 items-center">
+            <select
+              value={filterUser}
+              onChange={(e) => setFilterUser(e.target.value)}
+              className="px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            >
+              <option value="all">Tous les utilisateurs</option>
+              {users.map(u => (
+                <option key={u.id} value={u.firstName || u.displayName}>{u.firstName || u.displayName || 'Utilisateur'}</option>
+              ))}
+            </select>
 
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          >
-            <option value="all">Tous les statuts</option>
-            <option value="Nouveau">Nouveau</option>
-            <option value="En cours">En cours</option>
-            <option value="Client">Client</option>
-          </select>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            >
+              <option value="all">Tous les statuts</option>
+              <option value="Nouveau">Nouveau</option>
+              <option value="En cours">En cours</option>
+              <option value="Client">Client</option>
+            </select>
+          </div>
         </div>
 
         <div className="flex gap-4 items-center">
@@ -1317,7 +1320,8 @@ export default function Crm() {
                   const matchesType = filterType === 'all' || (p.type || 'Construction') === filterType;
 
                   // Filtre par statut
-                  const matchesStatus = filterStatus === 'all' || (p.status || 'Nouveau') === filterStatus;
+                  const currentStatus = p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau');
+                  const matchesStatus = filterStatus === 'all' || currentStatus === filterStatus;
 
                   return matchesSearch && matchesUser && matchesType && matchesStatus;
                 }).map((project) => (
@@ -1371,7 +1375,7 @@ export default function Crm() {
                           project.status === 'Abandonné' ? 'bg-red-100 text-red-700' :
                             'bg-slate-100 text-slate-700' // Nouveau
                         }`}>
-                        {project.status || 'Nouveau'}
+                        {project.status === 'draft' ? 'Nouveau' : (project.status || 'Nouveau')}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -1462,7 +1466,7 @@ export default function Crm() {
     const contactConversionRate = contactsTotal > 0 ? (contactsClients / contactsTotal * 100).toFixed(1) : '0';
 
     const statusDistribution = [
-      { name: 'Nouveau', count: projects.filter(p => p.status === 'Nouveau').length, color: 'bg-blue-500' },
+      { name: 'Nouveau', count: projects.filter(p => !p.status || p.status === 'Nouveau' || p.status === 'draft').length, color: 'bg-blue-500' },
       { name: 'En cours', count: projects.filter(p => p.status === 'En cours').length, color: 'bg-yellow-500' },
       { name: 'Terminé', count: projects.filter(p => p.status === 'Terminé').length, color: 'bg-green-500' },
     ];
@@ -1474,12 +1478,14 @@ export default function Crm() {
       const u = p.user || p.assignedUser || p.createdByFirstName || 'Non assigné';
       if (!userStats[u]) userStats[u] = { name: u, nouveau: 0, enCours: 0, termine: 0, score: 0 };
 
-      if (p.status === 'Nouveau') userStats[u].nouveau++;
-      else if (p.status === 'En cours') userStats[u].enCours++;
-      else if (p.status === 'Terminé') userStats[u].termine++;
+      const pStatus = p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau');
+
+      if (pStatus === 'Nouveau') userStats[u].nouveau++;
+      else if (pStatus === 'En cours') userStats[u].enCours++;
+      else if (pStatus === 'Terminé') userStats[u].termine++;
 
       // Score = Nouveau + En cours
-      if (p.status === 'Nouveau' || p.status === 'En cours') {
+      if (pStatus === 'Nouveau' || pStatus === 'En cours') {
         userStats[u].score++;
       }
     });

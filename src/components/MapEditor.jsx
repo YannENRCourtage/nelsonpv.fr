@@ -13,7 +13,7 @@ function MapControls({ project }) {
       }
     }
     // Fallback to address search if no GPS
-    if (project?.address) {
+    if (project?.address || project?.zip || project?.city) {
       window.dispatchEvent(new CustomEvent('map:goto-project-address'));
     }
   };

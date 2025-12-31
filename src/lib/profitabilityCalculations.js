@@ -378,7 +378,11 @@ export function calculatePaybackFromRevenue(businessPlan, totalCost, gainKey) {
             // (TotalCost - Prev) / (Curr - Prev)
             const fraction = gainDelta !== 0 ? (totalCost - previousGain) / gainDelta : 0;
 
-            return i + fraction;
+            // Ajustement (-1) pour correspondre à la perception utilisateur (Date fin - Date début)
+            // ex: 2032 (index 7) - 2025 (début) = 7 ans.
+            // Notre index est 0-based (2025=0).
+            const rawYears = i + fraction;
+            return Math.max(0, rawYears - 1);
         }
     }
 

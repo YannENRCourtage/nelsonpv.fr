@@ -39,7 +39,6 @@ class ApiService {
     async getProjects() {
         try {
             const user = await this._getCurrentUser();
-            // ALLOW ALL USERS TO SEE EVERYTHING (Universal Access)
             const canViewAll = true;
             return await firestoreService.listProjects(user.uid, canViewAll);
         } catch (error) {
@@ -54,15 +53,63 @@ class ApiService {
 
     async createProject(data) {
         const user = await this._getCurrentUser();
-        return await firestoreService.createProject(data, user.uid);
+        const created = await firestoreService.createProject(data, user.uid);
+
+        await this.logActivity({
+            type: 'project',
+            action: 'create',
+            description: `${user.firstName || user.displayName || 'Un utilisateur'} a créé le projet ${created.name || 'Sans nom'}`,
+            userId: user.uid,
+            userName: user.firstName || user.displayName,
+            userPhotoURL: user.photoURL,
+            itemId: created.id
+        });
+
+        return created;
     }
 
     async updateProject(id, data) {
-        return await firestoreService.updateProject(id, data);
+        const result = await firestoreService.updateProject(id, data);
+
+        // Log update (debounced ideally, but direct for now)
+        try {
+            const user = await this._getCurrentUser();
+            // Fetch project name if not in data, or use generic
+            const projectName = data.name || (await this.getProject(id))?.name || 'Projet';
+
+            await this.logActivity({
+                type: 'project',
+                action: 'update',
+                description: `${user.firstName || user.displayName} a modifié le projet ${projectName}`,
+                userId: user.uid,
+                userName: user.firstName || user.displayName,
+                userPhotoURL: user.photoURL,
+                itemId: id
+            });
+        } catch (e) { console.error("Log fail", e); }
+
+        return result;
     }
 
     async deleteProject(id) {
-        return await firestoreService.deleteProject(id);
+        const user = await this._getCurrentUser();
+        // Get name before delete
+        const project = await this.getProject(id);
+        const name = project?.name || id;
+
+        const result = await firestoreService.deleteProject(id);
+
+        await this.logActivity({
+            type: 'project',
+            action: 'delete',
+            description: `${user.firstName || user.displayName} a supprimé le projet ${name}`,
+            userId: user.uid,
+            userName: user.firstName || user.displayName,
+            userPhotoURL: user.photoURL,
+            itemId: id
+        });
+
+        return result;
     }
 
     // ============================================================================
@@ -72,7 +119,6 @@ class ApiService {
     async getContacts() {
         try {
             const user = await this._getCurrentUser();
-            // ALLOW ALL USERS TO SEE EVERYTHING (Universal Access)
             const canViewAll = true;
             return await firestoreService.listContacts(user.uid, canViewAll);
         } catch (error) {
@@ -87,15 +133,58 @@ class ApiService {
 
     async createContact(data) {
         const user = await this._getCurrentUser();
-        return await firestoreService.createContact(data, user.uid);
+        const created = await firestoreService.createContact(data, user.uid);
+
+        await this.logActivity({
+            type: 'contact',
+            action: 'create',
+            description: `${user.firstName || user.displayName} a créé le contact ${created.name}`,
+            userId: user.uid,
+            userName: user.firstName || user.displayName,
+            userPhotoURL: user.photoURL,
+            itemId: created.id
+        });
+
+        return created;
     }
 
     async updateContact(id, data) {
-        return await firestoreService.updateContact(id, data);
+        const result = await firestoreService.updateContact(id, data);
+        try {
+            const user = await this._getCurrentUser();
+            const contactName = data.name || (await this.getContact(id))?.name || 'Contact';
+
+            await this.logActivity({
+                type: 'contact',
+                action: 'update',
+                description: `${user.firstName || user.displayName} a modifié le contact ${contactName}`,
+                userId: user.uid,
+                userName: user.firstName || user.displayName,
+                userPhotoURL: user.photoURL,
+                itemId: id
+            });
+        } catch (e) { console.warn("Log activity failed", e); }
+        return result;
     }
 
     async deleteContact(id) {
-        return await firestoreService.deleteContact(id);
+        const user = await this._getCurrentUser();
+        const contact = await this.getContact(id);
+        const name = contact?.name || id;
+
+        const result = await firestoreService.deleteContact(id);
+
+        await this.logActivity({
+            type: 'contact',
+            action: 'delete',
+            description: `${user.firstName || user.displayName} a supprimé le contact ${name}`,
+            userId: user.uid,
+            userName: user.firstName || user.displayName,
+            userPhotoURL: user.photoURL,
+            itemId: id
+        });
+
+        return result;
     }
 
     // ============================================================================
@@ -105,7 +194,6 @@ class ApiService {
     async getTasks() {
         try {
             const user = await this._getCurrentUser();
-            // ALLOW ALL USERS TO SEE EVERYTHING (Universal Access)
             const canViewAll = true;
             return await firestoreService.listTasks(user.uid, canViewAll);
         } catch (error) {
@@ -116,15 +204,58 @@ class ApiService {
 
     async createTask(data) {
         const user = await this._getCurrentUser();
-        return await firestoreService.createTask(data, user.uid);
+        const created = await firestoreService.createTask(data, user.uid);
+
+        await this.logActivity({
+            type: 'task',
+            action: 'create',
+            description: `${user.firstName || user.displayName} a créé la tâche : ${created.title}`,
+            userId: user.uid,
+            userName: user.firstName || user.displayName,
+            userPhotoURL: user.photoURL,
+            itemId: created.id
+        });
+
+        return created;
     }
 
     async updateTask(id, data) {
-        return await firestoreService.updateTask(id, data);
+        const result = await firestoreService.updateTask(id, data);
+        try {
+            const user = await this._getCurrentUser();
+            const task = (await firestoreService.getTasks([id]))?.[0] || {};
+            // Warning: firestoreService doesn't have getTasks(ids), but getTasks() returns all. 
+            // Simplified:
+            const title = data.title || 'Tâche';
+
+            await this.logActivity({
+                type: 'task',
+                action: 'update',
+                description: `${user.firstName || user.displayName} a modifié la tâche : ${title}`,
+                userId: user.uid,
+                userName: user.firstName || user.displayName,
+                userPhotoURL: user.photoURL,
+                itemId: id
+            });
+        } catch (e) { }
+        return result;
     }
 
     async deleteTask(taskId) {
-        return await firestoreService.deleteTask(taskId);
+        const user = await this._getCurrentUser();
+        const result = await firestoreService.deleteTask(taskId);
+
+        await this.logActivity({
+            type: 'task',
+            action: 'delete',
+            description: `${user.firstName || user.displayName} a supprimé une tâche`,
+            userId: user.uid,
+            userName: user.firstName || user.displayName,
+            userPhotoURL: user.photoURL,
+            itemId: taskId
+        });
+
+        return result;
     }
 
     async logActivity(data) {

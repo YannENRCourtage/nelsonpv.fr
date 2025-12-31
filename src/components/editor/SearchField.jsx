@@ -85,11 +85,35 @@ export default function SearchField({ onAddressFound }) {
       } catch { }
     };
 
+    const searchHandler = async (e) => {
+      if (!e.detail || !e.detail.query) return;
+      try {
+        const results = await provider.search({ query: e.detail.query });
+        if (results && results.length > 0) {
+          const firstResult = results[0];
+          // Manually trigger the selection handling
+          const { x: lng, y: lat, label } = firstResult;
+          if (lat && lng) {
+            map.setView([lat, lng], 18, { animate: true });
+            onAddressFound?.({ lat, lng, label: simplifyAddress(label) });
+            // Optionally trigger the showlocation event for other listeners (though we just did the work)
+            // map.fireEvent('geosearch/showlocation', { location: firstResult, marker: null });
+          }
+        } else {
+          console.warn("No results found for query:", e.detail.query);
+        }
+      } catch (err) {
+        console.error("Search error:", err);
+      }
+    };
+
     map.on("geosearch/showlocation", handler);
+    map.getContainer().addEventListener('geosearch/search', searchHandler);
 
     return () => {
       try {
         map.off("geosearch/showlocation", handler);
+        map.getContainer().removeEventListener('geosearch/search', searchHandler);
         map.removeControl(searchControl);
       } catch { }
     };

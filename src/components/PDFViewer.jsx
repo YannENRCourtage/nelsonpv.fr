@@ -270,7 +270,7 @@ export function PDFViewer({
             {/* Viewer Container */}
             <div
                 ref={containerRef}
-                className="flex-1 overflow-auto bg-slate-200/50 p-8 relative flex items-center justify-center select-none"
+                className="flex-1 overflow-auto bg-slate-200/50 p-8 relative flex items-start justify-center select-none"
             >
                 {loadingError ? (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md shadow-sm">
