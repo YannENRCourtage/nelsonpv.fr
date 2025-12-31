@@ -27,22 +27,17 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const widthEnd = new THREE.Vector3(width / 2, 0.1, zFront);
     const widthMid = new THREE.Vector3(0, 0.1, zFront);
 
-    // 2. Length Arrow (Left Side)
-    const xSide = -width / 2 - 3.0;
+    // 2. Length Arrow (Right Side requested)
+    // Awning is on Right. Length lines must be OUTSIDE the awning.
+    // Offset = Width/2 + (Awning ? 9.3 : 0) + 3.0
+    const xSide = width / 2 + (hasAwning ? 9.3 : 0) + 3.0;
     const lengthStart = new THREE.Vector3(xSide, 0.1, 0);
     const lengthEnd = new THREE.Vector3(xSide, 0.1, -length);
     const lengthMid = new THREE.Vector3(xSide, 0.1, -length / 2);
 
-    // 3. Main Eave Height (Right Side used formerly, maybe conflict with Awning)
-    // If hasAwning, move Building Eave Height to LEFT side (-width/2 - 5.0)? 
-    // Or keep it. Let's keep it but if Awning exists, it might be hidden. 
-    // Let's move it to LEFT side if Awning is present? 
-    // User request: "Ajoute l'indication de la hauteur en bas du auvent (3.9m) de la même façon que la hauteur de la sablière du bâtiment." 
-    // Does not implicitly ask to move. But logic dictates clarity.
-    // Let's keep Building Eave on Right (width/2 + 2.0) if NO awning. 
-    // If Awning, move Building Eave to Left (-width/2 - 5.0) or inside? 
-    // Let's try placing Building Eave on LEFT if Awning is present, to avoid clutter.
-    const xEave = hasAwning ? (-width / 2 - 5.0) : (width / 2 + 2.0);
+    // 3. Main Eave Height (Move to Left Side to avoid Awning overlap)
+    // Left side is at -width/2. Offset by -2.0.
+    const xEave = -width / 2 - 2.0;
     const heightStart = new THREE.Vector3(xEave, 0, 0);
     const heightEnd = new THREE.Vector3(xEave, eaveHeight, 0);
     const heightMid = new THREE.Vector3(xEave, eaveHeight / 2, 0);
@@ -51,12 +46,14 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const awningWidth = 9.3;
     const awningEaveHeight = 3.9;
 
-    // Awning Width (Front, continues from Building Width)
+    // Awning Width (Front, continues from Building Width on Right)
     const awningWidthStart = new THREE.Vector3(width / 2, 0.1, zFront);
     const awningWidthEnd = new THREE.Vector3(width / 2 + awningWidth, 0.1, zFront);
     const awningWidthMid = new THREE.Vector3(width / 2 + awningWidth / 2, 0.1, zFront);
 
-    // Awning Height (Far Right)
+    // Awning Height (Far Right, matches Length line)
+    // We can place it near the Length line or the Awning Eave.
+    // Let's place it at Awning Edge + 2.0.
     const xAwningRight = width / 2 + awningWidth + 2.0;
     const awningHeightStart = new THREE.Vector3(xAwningRight, 0, 0);
     const awningHeightEnd = new THREE.Vector3(xAwningRight, awningEaveHeight, 0);
@@ -90,7 +87,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </Text>
             </group>
 
-            {/* --- LENGTH (CENTERED) --- */}
+            {/* --- LENGTH (RIGHT SIDE) --- */}
             <group>
                 <Line points={[lengthStart, new THREE.Vector3(lengthMid.x, lengthMid.y, lengthMid.z + gapSize / 2)]} color={lineColor} lineWidth={lineWidth} />
                 <Line points={[new THREE.Vector3(lengthMid.x, lengthMid.y, lengthMid.z - gapSize / 2), lengthEnd]} color={lineColor} lineWidth={lineWidth} />
@@ -98,7 +95,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 <mesh position={lengthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                 <Text
                     position={[xSide, 0.2, -length / 2]}
-                    rotation={[-Math.PI / 2, 0, -Math.PI / 2]}
+                    // Rotation flipped to face 'outwards' on the Right Side?
+                    // Left Side was [-PI/2, 0, -PI/2] (Reading Bottom-Up).
+                    // Right Side [-PI/2, 0, PI/2] should read Bottom-Up (facing right).
+                    rotation={[-Math.PI / 2, 0, Math.PI / 2]}
                     fontSize={0.8}
                     color={textColor}
                     anchorX="center"
@@ -110,7 +110,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </Text>
             </group>
 
-            {/* --- BUILDING EAVE HEIGHT --- */}
+            {/* --- BUILDING EAVE HEIGHT (LEFT SIDE) --- */}
             <group>
                 <Line points={[heightStart, new THREE.Vector3(heightMid.x, heightMid.y - gapSize / 2, heightMid.z)]} color={lineColor} lineWidth={lineWidth} />
                 <Line points={[new THREE.Vector3(heightMid.x, heightMid.y + gapSize / 2, heightMid.z), heightEnd]} color={lineColor} lineWidth={lineWidth} />
@@ -175,15 +175,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </>
             )}
 
-            {/* --- SURFACE AREA --- */}
+            {/* --- SURFACE AREA (RIGHT ROOF) --- */}
             <Text
-                // Raised by +0.30m (user request total +80cm from original, here +0.30 relative to last state)
-                position={[-width / 4, ridgeHeight + 0.3, -length / 2]}
+                // Positioned on RIGHT Roof (+width/4)
+                position={[width / 4, ridgeHeight + 0.3, -length / 2]}
                 // Rotation Logic:
-                // 1. Tilt X back by 90 (-PI/2) to make it flat on ground.
-                // 2. Add Pitch to X (angleRad) to match slope.
-                // 3. Rotate Z by -90 (-PI/2) to align text baseline with Ridge (Z-axis).
-                rotation={[-Math.PI / 2 + angleRad, 0, -Math.PI / 2]}
+                // Right roof slopes DOWN (-10 deg relative to horizontal).
+                // 1. Tilt X back -90 (Flat on ground)
+                // 2. Subtract pitch from X -> -90 - 10 = -100 deg (Tilts down-right).
+                // 3. Rotate Z +90 (Math.PI/2) to align text baseline with Z-axis (reading direction).
+                rotation={[-Math.PI / 2 - angleRad, 0, Math.PI / 2]}
                 fontSize={3}
                 color="#ffffff"
                 anchorX="center"

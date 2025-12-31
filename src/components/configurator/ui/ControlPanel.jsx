@@ -88,7 +88,7 @@ export function ControlPanel() {
                 <div className="space-y-3">
                     {/* Auvent Toggle */}
                     <div className="flex items-center justify-between p-4 border border-slate-300 rounded-lg bg-white">
-                        <span className="font-semibold text-slate-700">Ajouter un Auvent (9.3m)</span>
+                        <span className="font-semibold text-slate-700">Ajouter un Appentis (9.3m)</span>
                         <button
                             onClick={toggleAwning}
                             className={`
