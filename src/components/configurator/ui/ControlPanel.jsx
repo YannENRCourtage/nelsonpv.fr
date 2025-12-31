@@ -88,19 +88,30 @@ export function ControlPanel() {
                     Options Structure
                 </label>
                 <div className="space-y-3">
-                    {/* Appentis Button (Purple) */}
+                    {/* Options: Appentis & Auvent */}
                     <div className="flex items-center gap-4 p-4 border border-slate-300 rounded-lg bg-white">
-                        <span className="font-semibold text-slate-700">Option :</span>
                         <button
                             onClick={toggleAwning}
                             className={`
-                                px-4 py-2 rounded-md text-sm font-semibold transition-colors shadow-sm
+                                flex-1 px-4 py-2 rounded-md text-sm font-semibold transition-colors shadow-sm
                                 ${hasAwning
                                     ? 'bg-purple-600 text-white hover:bg-purple-700'
                                     : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}
                             `}
                         >
                             Appentis
+                        </button>
+
+                        <button
+                            onClick={toggleAuvent}
+                            className={`
+                                flex-1 px-4 py-2 rounded-md text-sm font-semibold transition-colors shadow-sm
+                                ${hasAuvent
+                                    ? 'bg-purple-600 text-white hover:bg-purple-700'
+                                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}
+                            `}
+                        >
+                            Auvent
                         </button>
                     </div>
 
