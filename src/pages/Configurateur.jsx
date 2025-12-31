@@ -7,6 +7,9 @@ import { useProjects } from '@/contexts/ProjectContext';
 import { Search, Monitor, icons } from 'lucide-react';
 import jsPDF from 'jspdf';
 import BuildingScene from '../components/configurator/BuildingScene.jsx';
+// Firebase Imports
+import { ref, getDownloadURL } from "firebase/storage";
+import { storage } from "@/config/firebase.js";
 
 export default function Configurateur() {
     const { user } = useAuth();
@@ -41,10 +44,6 @@ export default function Configurateur() {
 
     // Helper: Wait function
     const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-    // Firebase Imports
-    import { ref, getDownloadURL } from "firebase/storage";
-    import { storage } from "@/config/firebase.js";
 
     // ... (inside component)
 
