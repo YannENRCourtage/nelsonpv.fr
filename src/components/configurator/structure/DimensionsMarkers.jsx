@@ -152,9 +152,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
             {/* Surface Area - On left roof, Parallel to slope, Lengthwise direction */}
             <Text
-                // Positioned on Left Slope (-Width/4), Mid-length (-Length/2)
-                // y = RidgeHeight approx (minus a bit for slope)
-                position={[-width / 4, ridgeHeight - 1.0, -length / 2]}
+                // Raised 50cm by user request (was ridgeHeight - 1.0)
+                position={[-width / 4, ridgeHeight - 0.5, -length / 2]}
 
                 // Rotation Logic:
                 // 1. Follow Roof Pitch: Rotate X by (-PI/2 + pitch) -> lays flat on slope
