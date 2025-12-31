@@ -43,7 +43,8 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false }, ref)
                 <>
                     <PerspectiveCamera makeDefault position={[20, 15, 30]} fov={50} />
                     {/* Target X=8 shifts building to the Left visually. Y=4 lowers building in view. */}
-                    <OrbitControls minPolarAngle={0} maxPolarAngle={Math.PI / 2.1} target={[8, 4, 0]} />
+                    {/* No minPolarAngle to allow viewing from below */}
+                    <OrbitControls maxPolarAngle={Math.PI} target={[8, 4, 0]} />
                 </>
             )}
 

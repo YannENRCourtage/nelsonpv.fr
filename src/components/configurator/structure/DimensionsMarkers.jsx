@@ -20,30 +20,41 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const zFront = 2.0;
     const widthStart = new THREE.Vector3(-width / 2, 0.1, zFront);
     const widthEnd = new THREE.Vector3(width / 2, 0.1, zFront);
+    const widthMid = new THREE.Vector3(0, 0.1, zFront);
+    const gapSize = 1.5; // Gap for text
 
     // Length Arrow (Left Side, Ground)
     const xSide = -width / 2 - 2.0;
     const lengthStart = new THREE.Vector3(xSide, 0.1, 0);
     const lengthEnd = new THREE.Vector3(xSide, 0.1, -length);
+    const lengthMid = new THREE.Vector3(xSide, 0.1, -length / 2);
 
     // Height Arrow (Right Side, Eave)
     const xRight = width / 2 + 2.0;
     const heightStart = new THREE.Vector3(xRight, 0, 0);
     const heightEnd = new THREE.Vector3(xRight, eaveHeight, 0);
+    const heightMid = new THREE.Vector3(xRight, eaveHeight / 2, 0);
 
     // Surface Area
     const surfaceArea = (width * length).toFixed(0);
+    const angleRad = (roofPitch * Math.PI) / 180;
 
     return (
         <group>
             {/* Width Dimension */}
             <group>
+                {/* Left segment */}
                 <Line
-                    points={[widthStart, widthEnd]}
+                    points={[widthStart, new THREE.Vector3(widthMid.x - gapSize / 2, widthMid.y, widthMid.z)]}
                     color={lineColor}
                     lineWidth={lineWidth}
                 />
-                {/* Simple spheres as arrow markers */}
+                {/* Right segment */}
+                <Line
+                    points={[new THREE.Vector3(widthMid.x + gapSize / 2, widthMid.y, widthMid.z), widthEnd]}
+                    color={lineColor}
+                    lineWidth={lineWidth}
+                />
                 <mesh position={widthStart}>
                     <sphereGeometry args={[0.1, 8, 8]} />
                     <meshBasicMaterial color={lineColor} />
@@ -59,7 +70,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     color={textColor}
                     anchorX="center"
                     anchorY="bottom"
-                    outlineWidth={0.05}
+                    outlineWidth={0.1}
                     outlineColor="#ffffff"
                 >
                     {`${width} m`}
@@ -68,8 +79,15 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
             {/* Length Dimension */}
             <group>
+                {/* Top segment */}
                 <Line
-                    points={[lengthStart, lengthEnd]}
+                    points={[lengthStart, new THREE.Vector3(lengthMid.x, lengthMid.y, lengthMid.z + gapSize / 2)]}
+                    color={lineColor}
+                    lineWidth={lineWidth}
+                />
+                {/* Bottom segment */}
+                <Line
+                    points={[new THREE.Vector3(lengthMid.x, lengthMid.y, lengthMid.z - gapSize / 2), lengthEnd]}
                     color={lineColor}
                     lineWidth={lineWidth}
                 />
@@ -88,7 +106,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     color={textColor}
                     anchorX="center"
                     anchorY="bottom"
-                    outlineWidth={0.05}
+                    outlineWidth={0.1}
                     outlineColor="#ffffff"
                 >
                     {`${length} m`}
@@ -97,8 +115,15 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
             {/* Height Dimension */}
             <group>
+                {/* Bottom segment */}
                 <Line
-                    points={[heightStart, heightEnd]}
+                    points={[heightStart, new THREE.Vector3(heightMid.x, heightMid.y - gapSize / 2, heightMid.z)]}
+                    color={lineColor}
+                    lineWidth={lineWidth}
+                />
+                {/* Top segment */}
+                <Line
+                    points={[new THREE.Vector3(heightMid.x, heightMid.y + gapSize / 2, heightMid.z), heightEnd]}
                     color={lineColor}
                     lineWidth={lineWidth}
                 />
@@ -117,17 +142,17 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     color={textColor}
                     anchorX="left"
                     anchorY="middle"
-                    outlineWidth={0.05}
+                    outlineWidth={0.1}
                     outlineColor="#ffffff"
                 >
                     {`${eaveHeight} m`}
                 </Text>
             </group>
 
-            {/* Surface Area */}
+            {/* Surface Area - On left roof slope, lengthwise */}
             <Text
-                position={[0, ridgeHeight + 0.8, -length / 2]}
-                rotation={[-Math.PI / 2, 0, 0]}
+                position={[-width / 4, ridgeHeight - 0.5, -length / 2]}
+                rotation={[-Math.PI / 2 + angleRad, 0, 0]}
                 fontSize={3}
                 color="#ffffff"
                 anchorX="center"
