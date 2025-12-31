@@ -86,22 +86,19 @@ export function ControlPanel() {
                     Options Structure
                 </label>
                 <div className="space-y-3">
-                    {/* Auvent Toggle */}
-                    <div className="flex items-center justify-between p-4 border border-slate-300 rounded-lg bg-white">
-                        <span className="font-semibold text-slate-700">Ajouter un Appentis (9.3m)</span>
+                    {/* Appentis Button (Purple) */}
+                    <div className="flex items-center gap-4 p-4 border border-slate-300 rounded-lg bg-white">
+                        <span className="font-semibold text-slate-700">Option :</span>
                         <button
                             onClick={toggleAwning}
                             className={`
-                                relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none
-                                ${hasAwning ? 'bg-blue-600' : 'bg-slate-300'}
+                                px-4 py-2 rounded-md text-sm font-semibold transition-colors shadow-sm
+                                ${hasAwning
+                                    ? 'bg-purple-600 text-white hover:bg-purple-700'
+                                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}
                             `}
                         >
-                            <span
-                                className={`
-                                    inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                                    ${hasAwning ? 'translate-x-6' : 'translate-x-1'}
-                                `}
-                            />
+                            Appentis
                         </button>
                     </div>
 

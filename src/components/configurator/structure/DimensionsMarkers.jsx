@@ -180,11 +180,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 // Positioned on RIGHT Roof (+width/4)
                 position={[width / 4, ridgeHeight + 0.3, -length / 2]}
                 // Rotation Logic:
-                // Right roof slopes DOWN (-10 deg relative to horizontal).
-                // 1. Tilt X back -90 (Flat on ground)
-                // 2. Subtract pitch from X -> -90 - 10 = -100 deg (Tilts down-right).
-                // 3. Rotate Z +90 (Math.PI/2) to align text baseline with Z-axis (reading direction).
-                rotation={[-Math.PI / 2 - angleRad, 0, Math.PI / 2]}
+                // User requested "pente à 0°" (Flat relative to ground).
+                // 1. Tilt X -90 (Flat on ground)
+                // 2. Rotate Z +90 (Alignment).
+                rotation={[-Math.PI / 2, 0, Math.PI / 2]}
                 fontSize={3}
                 color="#ffffff"
                 anchorX="center"

@@ -49,6 +49,18 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
         bevelEnabled: false
     }), [profileShape, length]);
 
+    // GEOMETRY CENTERING ADJUSTMENT
+    // The profile is created centered at (0,0) with width = slopeLength.
+    // We want the "High Point" (Left Edge of profile) to be at local X=0, Y=0.
+    // So we must shift the mesh by +slopeLength/2 along the rotated axis.
+    // Since we rotate the mesh, we can calculate the global shift or local shift?
+    // Easy way: Calculate global shift for the center.
+    // Center X should be at: (slopeLength/2) * cos(angle)
+    // Center Y should be at: -(slopeLength/2) * sin(angle)
+    const shiftLength = slopeLength / 2;
+    const shiftX = shiftLength * Math.cos(angleRad);
+    const shiftY = -shiftLength * Math.sin(angleRad);
+
     // --- STRUCTURE GENERATION (Bays Loop) ---
     const frames = [];
     const numFrames = bayCount + 1; // n bays = n+1 frames
