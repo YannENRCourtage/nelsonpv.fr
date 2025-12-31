@@ -98,8 +98,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <meshBasicMaterial color={lineColor} />
                 </mesh>
                 <Text
-                    // Positioned slightly outside (xSide - 1)
-                    position={[xSide - 1, 0.2, -length / 2]}
+                    // Positioned exactly on the line (xSide)
+                    position={[xSide, 0.2, -length / 2]}
                     // Previous: [-Math.PI / 2, 0, Math.PI / 2]
                     // Rotate 180 around vertical (Z in this local frame of text?)
                     // Let's set it to [-Math.PI / 2, 0, -Math.PI / 2] to flip it
