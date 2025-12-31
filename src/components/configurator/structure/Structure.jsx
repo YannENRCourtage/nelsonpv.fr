@@ -5,6 +5,7 @@ import { Purlins } from './Purlins.jsx';
 import { Roof } from './Roof.jsx';
 import { Bracing } from './Bracing.jsx';
 import { RidgeCap } from './RidgeCap.jsx';
+import { DimensionsMarkers } from './DimensionsMarkers.jsx';
 
 export function Structure() {
     const config = useConfiguratorValues();
@@ -60,6 +61,13 @@ export function Structure() {
                 length={length}
                 roofPitch={roofPitch}
                 eaveHeight={eaveHeight}
+            />
+            <DimensionsMarkers
+                width={width}
+                length={length}
+                eaveHeight={eaveHeight}
+                ridgeHeight={calculatedRidgeHeight} // Using calculatedRidgeHeight
+                roofPitch={roofPitch}
             />
         </group>
     );
