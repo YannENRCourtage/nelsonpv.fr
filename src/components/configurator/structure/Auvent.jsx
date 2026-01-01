@@ -120,50 +120,74 @@ export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
                 );
             }
         }
-    }
+        // 3. DIAGONAL STRUT (Bracon)
+        // From Wall (X=0, Y=-2.0 relative to eave) to Rafter (X=2.5, Y=Slope)
+        const strutStartX = 0.1; // Slightly off wall
+        const strutStartY = -2.0; // 2m below eave
+        // Target: Rafter at X=2.5
+        const rafX = 2.5;
+        const rafY = -rafX * Math.tan(angleRad); // Rafter height at X=2.5
 
-    // Roof Shift: Center on slope median
-    // Median of 4m slope is at 2m.
-    // Profile is centered? No, createTrapezoidalProfile starts at 0? 
-    // Usually createTrapezoidalProfile starts at X=0.
-    // So we need to position it.
-    // We want Start (High) at X=0, Y=0.
-    // And align with slope -angleRad.
-    // If we rotate -angleRad around (0,0), it goes Down-Right. 
-    // Matches.
+        const deltaX = rafX - strutStartX;
+        const deltaY = rafY - strutStartY;
+        const strutLen = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        const strutAngle = Math.atan2(deltaY, deltaX);
 
-    // Z Positioning:
-    // Extrusion depth = Length + 0.4.
-    // We want it centered on the frame run (0 to Length).
-    // Start at -0.2?
-
-    // Debug Log
-    React.useEffect(() => {
-        console.log("Auvent Rendered:", { length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing, groupPosX, groupPosY });
-    }, [length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing]);
-
-    return (
-        <group
-            position={[groupPosX, groupPosY, groupPosZ]}
-            rotation={[0, Math.PI, 0]} // ROTATE 180 Y => Mirrors to Left & Flips Z
-        >
-            {/* ROOF SHEETS */}
+        frames.push(
             <mesh
-                geometry={roofGeometry}
-                material={roofMaterial}
+                key={`strut-${i}`}
+                material={structureMaterial}
                 position={[
-                    slopeLength / 2, // Shifted to start at 0 and go outward
-                    0.25, // Height offset (Rafter/2 + Purlin + Sheet)
-                    -0.2  // Z Offset (Start slightly before 0)
+                    strutStartX + deltaX / 2,
+                    strutStartY + deltaY / 2,
+                    zPos
                 ]}
-                rotation={[0, 0, -angleRad]}
-                castShadow
-                receiveShadow
-            />
+                rotation={[0, 0, strutAngle]}
+            >
+                <boxGeometry args={[strutLen, 0.1, 0.1]} />
+            </mesh>
+        );
+        // Median of 4m slope is at 2m.
+        // Profile is centered? No, createTrapezoidalProfile starts at 0? 
+        // Usually createTrapezoidalProfile starts at X=0.
+        // So we need to position it.
+        // We want Start (High) at X=0, Y=0.
+        // And align with slope -angleRad.
+        // If we rotate -angleRad around (0,0), it goes Down-Right. 
+        // Matches.
 
-            {/* STRUCTURE */}
-            {frames}
-            {purlins}
-        </group>
-    );
-}
+        // Z Positioning:
+        // Extrusion depth = Length + 0.4.
+        // We want it centered on the frame run (0 to Length).
+        // Start at -0.2?
+
+        // Debug Log
+        React.useEffect(() => {
+            console.log("Auvent Rendered:", { length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing, groupPosX, groupPosY });
+        }, [length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing]);
+
+        return (
+            <group
+                position={[groupPosX, groupPosY, groupPosZ]}
+                rotation={[0, Math.PI, 0]} // ROTATE 180 Y => Mirrors to Left & Flips Z
+            >
+                {/* ROOF SHEETS */}
+                <mesh
+                    geometry={roofGeometry}
+                    material={roofMaterial}
+                    position={[
+                        slopeLength / 2, // Shifted to start at 0 and go outward
+                        0.25, // Height offset (Rafter/2 + Purlin + Sheet)
+                        -0.2  // Z Offset (Start slightly before 0)
+                    ]}
+                    rotation={[0, 0, -angleRad]}
+                    castShadow
+                    receiveShadow
+                />
+
+                {/* STRUCTURE */}
+                {frames}
+                {purlins}
+            </group>
+        );
+    }
