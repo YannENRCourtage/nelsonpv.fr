@@ -254,7 +254,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     fontSize={0.8}
                     color={textColor}
                     anchorX="center"
-                    anchorY="bottom"
+                    anchorY="middle"
                     outlineWidth={0.1}
                     outlineColor="#ffffff"
                 >
@@ -315,7 +315,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Line points={leftExtData.heightPoints[1]} color={lineColor} lineWidth={lineWidth} />
                     <mesh position={leftExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={leftExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text position={[leftExtData.xH - 0.5, leftExtData.extHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                    <Text position={[leftExtData.xH - 0.5, leftExtData.extHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
                         {`${leftExtData.extHeight} m`}
                     </Text>
                 </group>
