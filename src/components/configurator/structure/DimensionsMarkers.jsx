@@ -96,7 +96,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     // I'll place it at `x = -width/2 - leftWidth - 2.0`.
 
     const { heightPoints, heightStart, heightEnd, xEave } = useMemo(() => {
-        const x = -width / 2 - leftWidth - 2.0;
+        const x = leftSide !== 'none' ? -width / 2 - 0.5 : -width / 2 - 2.0;
         const start = new THREE.Vector3(x, 0, 0);
         const end = new THREE.Vector3(x, eaveHeight, 0);
         const mid = new THREE.Vector3(x, eaveHeight / 2, 0);
@@ -113,8 +113,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // 3b. Ridge Height
     const { ridgePoints, ridgeStart, ridgeEnd, xRidge, zRidge } = useMemo(() => {
-        const x = width / 2 + rightWidth + 5.0;
-        const z = 0;
+        const x = 0;
+        const z = 2.0;
         const start = new THREE.Vector3(x, 0, z);
         const end = new THREE.Vector3(x, ridgeHeight, z);
         const mid = new THREE.Vector3(x, ridgeHeight / 2, z);
@@ -333,7 +333,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     // I will set it to +1.0.
                     -length / 2,
                 ]}
-                rotation={[-Math.PI / 2, 0, -Math.PI / 2]} // 90° Clockwise
+                rotation={[-Math.PI / 2, 0, Math.PI / 2]} // 180° Horizontal
                 fontSize={3}
                 color="#ffffff"
                 anchorX="center"
