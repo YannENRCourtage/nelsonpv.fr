@@ -171,6 +171,19 @@ export const useConfiguratorStore = create((set, get) => ({
     },
 
     /**
+     * Présence de couverture solaire PV
+     * @type {boolean}
+     */
+    hasSolar: false,
+
+    /**
+     * Active/Désactive la couverture solaire
+     */
+    toggleSolar: () => {
+        set((state) => ({ hasSolar: !state.hasSolar }));
+    },
+
+    /**
      * Active/Désactive l'affichage des côtes
      */
     toggleDimensions: () => {
@@ -222,6 +235,61 @@ export const useConfiguratorValues = () => {
     const length = state.baySpacing * state.bayCount;
     const ridgeHeight = WIDTH_HEIGHT_MAP[state.width] || WIDTH_HEIGHT_MAP[18.6];
 
+    // --- SOLAR STATS ---
+    const PANEL_WIDTH = 1.134;
+    const PANEL_HEIGHT = 1.762;
+    const GAP = 0.01;
+    const MARGIN = 0.50;
+
+    const getPanelCount = (surfWidth, surfLength) => {
+        const uW = surfWidth - 2 * MARGIN;
+        const uL = surfLength - 2 * MARGIN;
+        if (uW <= 0 || uL <= 0) return 0;
+
+        // Option A
+        const cXA = Math.floor((uW + GAP) / (PANEL_WIDTH + GAP));
+        const cZA = Math.floor((uL + GAP) / (PANEL_HEIGHT + GAP));
+        const tA = cXA * cZA;
+
+        // Option B
+        const cXB = Math.floor((uW + GAP) / (PANEL_HEIGHT + GAP));
+        const cZB = Math.floor((uL + GAP) / (PANEL_WIDTH + GAP));
+        const tB = cXB * cZB;
+
+        return Math.max(tA, tB);
+    };
+
+    let solarCount = 0;
+    if (state.hasSolar) {
+        // Main Roof: 2 sides
+        const halfWidth = state.width / 2;
+        const angleRad = (state.roofPitch * Math.PI) / 180;
+        const geoSlope = halfWidth / Math.cos(angleRad);
+        const roofSlope = geoSlope + 0.50; // + overhang
+        const roofLength = length + 1.0; // + overhangs front/back
+
+        solarCount += getPanelCount(roofSlope, roofLength) * 2;
+
+        // Auvent
+        if (state.hasAuvent) {
+            const auventSlope = 4.0 / Math.cos(angleRad);
+            const auventLength = length; // Auvent matches length but without overhang logic in calculation? Check Auvent.jsx
+            // Auvent.jsx uses `length` directly for geometry extrude, often w/o extra overhangs or maybe small ones.
+            // Let's assume matches Main Roof Length for consistency or just length.
+            // Auvent.jsx: depth: length
+            solarCount += getPanelCount(auventSlope, length);
+        }
+
+        // Awning
+        if (state.hasAwning) {
+            const awningWidth = 9.3;
+            const awningSlope = awningWidth / Math.cos(angleRad);
+            solarCount += getPanelCount(awningSlope, length + 1.0);
+        }
+    }
+
+    const solarPower = (solarCount * 465) / 1000; // kWc
+
     return {
         width: state.width,
         ridgeHeight: ridgeHeight,
@@ -232,7 +300,9 @@ export const useConfiguratorValues = () => {
         length: length,
         hasAwning: state.hasAwning,
         hasAuvent: state.hasAuvent,
-        showDimensions: state.showDimensions
+        hasSolar: state.hasSolar,
+        showDimensions: state.showDimensions,
+        solarStats: { count: solarCount, power: solarPower }
     };
 };
 
@@ -255,6 +325,7 @@ export const useConfiguratorActions = () => {
         decrementBayCount: () => useConfiguratorStore.getState().decrementBayCount(),
         toggleAwning: () => useConfiguratorStore.getState().toggleAwning(),
         toggleAuvent: () => useConfiguratorStore.getState().toggleAuvent(),
+        toggleSolar: () => useConfiguratorStore.getState().toggleSolar(),
         toggleDimensions: () => useConfiguratorStore.getState().toggleDimensions(),
         reset: () => useConfiguratorStore.getState().reset(),
         getSummary: () => useConfiguratorStore.getState().getSummary()

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { createTrapezoidalProfile } from '../utils/profiles.js';
+import { SolarPanels } from './SolarPanels.jsx';
 
 export function Roof({ width, length, roofPitch, eaveHeight }) {
     // Material: RAL 7016 (Anthracite Grey)
@@ -100,6 +101,30 @@ export function Roof({ width, length, roofPitch, eaveHeight }) {
                 castShadow
                 receiveShadow
             />
+
+            {/* Solar Panels Left */}
+            <group
+                position={[
+                    -halfWidth + localCenterX + offsetX,
+                    eaveHeight + localCenterY + offsetY,
+                    -length - 0.5
+                ]}
+                rotation={[0, 0, angleRad]}
+            >
+                <SolarPanels surfaceWidth={roofSlopeLength} surfaceLength={length + 1.0} />
+            </group>
+
+            {/* Solar Panels Right */}
+            <group
+                position={[
+                    halfWidth - localCenterX - offsetX,
+                    eaveHeight + localCenterY + offsetY,
+                    -length - 0.5
+                ]}
+                rotation={[0, 0, -angleRad]}
+            >
+                <SolarPanels surfaceWidth={roofSlopeLength} surfaceLength={length + 1.0} />
+            </group>
         </group>
     );
 }

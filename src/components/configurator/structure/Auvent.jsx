@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { createTrapezoidalProfile, createZProfile } from '../utils/profiles.js';
+import { SolarPanels } from './SolarPanels.jsx';
 
 /**
  * Auvent Component
@@ -170,6 +171,17 @@ export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
                 castShadow
                 receiveShadow
             />
+            {/* Solar Panels (Auvent) */}
+            <group
+                position={[
+                    slopeLength / 2,
+                    -0.03,
+                    -0.2
+                ]}
+                rotation={[0, 0, -angleRad]}
+            >
+                <SolarPanels surfaceWidth={slopeLength} surfaceLength={length} />
+            </group>
 
             {/* STRUCTURE */}
             {frames}
