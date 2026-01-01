@@ -7,12 +7,8 @@ import { createTrapezoidalProfile, createZProfile } from '../utils/profiles.js';
  * - 4m Width
  * - Attached to LEFT side (-buildingWidth/2)
  * - Slope 10 deg down
- * - Cantilever structure (Rafters only, no columns)
+ * - Cantilever structure (Rafters + Struts)
  * - Purlins + Roof
- * 
- * IMPLEMENTATION NOTE:
- * Modeled as a RIGHT-SIDE extension (Positive X) inside a Group rotated 180 Y.
- * This effectively mirrors it to the Left (-X) and flips Z to go backwards (-Z).
  */
 export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing }) {
 
@@ -40,7 +36,7 @@ export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
         side: THREE.DoubleSide
     }), []);
 
-    // --- GEOMETRY (Defined as Right-Side Extension) ---
+    // --- GEOMETRY ---
     // Slope Length
     const slopeLength = auventWidth / Math.cos(angleRad) + 0.1; // +10cm overhang
 
@@ -49,7 +45,7 @@ export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
 
     // Extrude +Z (Inside group, RotY 180 makes it -Z Global)
     const roofGeometry = useMemo(() => new THREE.ExtrudeGeometry(profileShape, {
-        depth: length + 0.4, // 20cm overhang each end? 
+        depth: length + 0.4,
         bevelEnabled: false
     }), [profileShape, length]);
 
@@ -65,7 +61,7 @@ export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
     }), [purlinShape, baySpacing]);
 
     // Purlin Offset
-    const purlinPerpOffset = 0.1 + (purlinHeight / 2); // Sit on Rafter (0.2m high)
+    const purlinPerpOffset = 0.1 + (purlinHeight / 2);
 
     const numPurlins = Math.floor(slopeLength / purlinSpacing);
     const numFrames = bayCount + 1;
@@ -92,7 +88,36 @@ export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
             </mesh>
         );
 
-        // 2. PURLINS
+        // 2. DIAGONAL STRUT (Bracon)
+        // From Wall (X=0, Y=-2.0 relative to eave) to Rafter (X=2.5, Y=Slope)
+        const strutStartX = 0.1; // Slightly off wall for visual separation
+        const strutStartY = -2.0; // 2m below eave
+
+        // Target: Rafter at X=2.5
+        const rafX = 2.5;
+        const rafY = -rafX * Math.tan(angleRad); // Rafter height at X=2.5
+
+        const deltaX = rafX - strutStartX;
+        const deltaY = rafY - strutStartY;
+        const strutLen = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        const strutAngle = Math.atan2(deltaY, deltaX);
+
+        frames.push(
+            <mesh
+                key={`strut-${i}`}
+                material={structureMaterial}
+                position={[
+                    strutStartX + deltaX / 2,
+                    strutStartY + deltaY / 2,
+                    zPos
+                ]}
+                rotation={[0, 0, strutAngle]}
+            >
+                <boxGeometry args={[strutLen, 0.1, 0.1]} />
+            </mesh>
+        );
+
+        // 3. PURLINS
         if (i < bayCount) {
             const zStart = zPos;
 
@@ -120,74 +145,35 @@ export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
                 );
             }
         }
-        // 3. DIAGONAL STRUT (Bracon)
-        // From Wall (X=0, Y=-2.0 relative to eave) to Rafter (X=2.5, Y=Slope)
-        const strutStartX = 0.1; // Slightly off wall
-        const strutStartY = -2.0; // 2m below eave
-        // Target: Rafter at X=2.5
-        const rafX = 2.5;
-        const rafY = -rafX * Math.tan(angleRad); // Rafter height at X=2.5
-
-        const deltaX = rafX - strutStartX;
-        const deltaY = rafY - strutStartY;
-        const strutLen = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-        const strutAngle = Math.atan2(deltaY, deltaX);
-
-        frames.push(
-            <mesh
-                key={`strut-${i}`}
-                material={structureMaterial}
-                position={[
-                    strutStartX + deltaX / 2,
-                    strutStartY + deltaY / 2,
-                    zPos
-                ]}
-                rotation={[0, 0, strutAngle]}
-            >
-                <boxGeometry args={[strutLen, 0.1, 0.1]} />
-            </mesh>
-        );
-        // Median of 4m slope is at 2m.
-        // Profile is centered? No, createTrapezoidalProfile starts at 0? 
-        // Usually createTrapezoidalProfile starts at X=0.
-        // So we need to position it.
-        // We want Start (High) at X=0, Y=0.
-        // And align with slope -angleRad.
-        // If we rotate -angleRad around (0,0), it goes Down-Right. 
-        // Matches.
-
-        // Z Positioning:
-        // Extrusion depth = Length + 0.4.
-        // We want it centered on the frame run (0 to Length).
-        // Start at -0.2?
-
-        // Debug Log
-        React.useEffect(() => {
-            console.log("Auvent Rendered:", { length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing, groupPosX, groupPosY });
-        }, [length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing]);
-
-        return (
-            <group
-                position={[groupPosX, groupPosY, groupPosZ]}
-                rotation={[0, Math.PI, 0]} // ROTATE 180 Y => Mirrors to Left & Flips Z
-            >
-                {/* ROOF SHEETS */}
-                <mesh
-                    geometry={roofGeometry}
-                    material={roofMaterial}
-                    position={[
-                        slopeLength / 2, // Shifted to start at 0 and go outward
-                        0.25, // Height offset (Rafter/2 + Purlin + Sheet)
-                        -0.2  // Z Offset (Start slightly before 0)
-                    ]}
-                    rotation={[0, 0, -angleRad]}
-                    castShadow
-                    receiveShadow
-                />
-
-                {/* STRUCTURE */}
-                {frames}
-                {purlins}
-            </group>
-        );
     }
+
+    // Debug Log (Moved outside loop!)
+    React.useEffect(() => {
+        console.log("Auvent Rendered:", { length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing, groupPosX, groupPosY });
+    }, [length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing]);
+
+    return (
+        <group
+            position={[groupPosX, groupPosY, groupPosZ]}
+            rotation={[0, Math.PI, 0]} // ROTATE 180 Y => Mirrors to Left & Flips Z
+        >
+            {/* ROOF SHEETS - Shifted X for correct placement */}
+            <mesh
+                geometry={roofGeometry}
+                material={roofMaterial}
+                position={[
+                    slopeLength / 2,
+                    0.25,
+                    -0.2
+                ]}
+                rotation={[0, 0, -angleRad]}
+                castShadow
+                receiveShadow
+            />
+
+            {/* STRUCTURE */}
+            {frames}
+            {purlins}
+        </group>
+    );
+}
