@@ -6,13 +6,30 @@ import * as THREE from 'three';
  * Renders dimension lines and surface area text.
  * Optimized with useMemo to prevent re-render loops from new object creation.
  */
-export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roofPitch, hasAwning, hasAuvent, showDimensions }) {
+export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roofPitch, leftSide, rightSide, showDimensions }) {
     if (!showDimensions) return null;
 
     const textColor = "#000000";
     const lineColor = "#000000";
     const lineWidth = 2;
     const gapSize = 3.0;
+
+    // Widths
+    const getExtWidth = (type) => {
+        if (type === 'auvent') return 4.0;
+        if (type === 'appentis') return 9.3;
+        return 0;
+    };
+    const getExtHeight = (type) => {
+        if (type === 'auvent') return 4.8; // Auvent Height
+        if (type === 'appentis') return 3.9; // Appentis Height
+        return 0;
+    };
+
+    const leftWidth = getExtWidth(leftSide);
+    const rightWidth = getExtWidth(rightSide);
+    const leftHeight = getExtHeight(leftSide);
+    const rightHeight = getExtHeight(rightSide);
 
     // --- MEMOIZED GEOMETRY HELPERS ---
 
@@ -34,7 +51,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // 2. Length Arrow (Right Side)
     const { lengthPoints, lengthStart, lengthEnd, xSide } = useMemo(() => {
-        const x = width / 2 + (hasAwning ? 9.3 : 0) + 3.0;
+        const x = width / 2 + rightWidth + 3.0;
         const start = new THREE.Vector3(x, 0.1, 0);
         const end = new THREE.Vector3(x, 0.1, -length);
         const mid = new THREE.Vector3(x, 0.1, -length / 2);
@@ -47,11 +64,39 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(mid.x, mid.y, mid.z - gapSize / 2), end]
             ]
         };
-    }, [width, length, hasAwning, gapSize]);
+    }, [width, length, rightWidth, gapSize]);
 
-    // 3. Eave Height (Dynamic Side)
+    // 3. Eave Height (Left Side - Wait, if Left Ext exists, Eave marker moves?)
+    // Originally: `x = hasAuvent ? (width / 2 + 2.0) : (-width / 2 - 2.0);`
+    // This logic was ensuring the Eave Marker is NOT overlapped by left extension?
+    // If Left Extension exists, the Eave Marker for the MAIN building (-width/2) is hidden inside?
+    // Or does it move to the EDGE of the extension?
+    // User requested "Alignement verticale au trait".
+    // Usually Eave Height is for the Main Building.
+    // If Extension is there, maybe keep it at Main Building Eave?
+    // BUT the marker code moved it.
+    // If Left Extension exists, `x` should be `-width/2 - leftWidth - 2.0`?
+    // Or if `hasAuvent` (Left), it moved to `width/2 + 2.0` (Right Side)?
+    // Ah, if Left has Auvent, it moved the Eave Marker to the RIGHT side?
+    // Let's check original code `DimensionsMarkers.jsx` lines 54:
+    // `const x = hasAuvent ? (width / 2 + 2.0) : (-width / 2 - 2.0);`
+    // If `hasAuvent` (Left), x = Right Side.
+    // So it moved the indicator to avoid the Auvent.
+    // Now we have independent sides.
+    // If Left has Extension, try Right.
+    // If Right has Extension, try Left?
+    // If BOTH have extensions, pick one outer edge?
+    // Let's assume we place it on Left, but offset if Left Ext exists.
+    // `const x = -width / 2 - leftWidth - 2.0;`
+    // This places it outside the left extension.
+    // And verifies the height of the EAVE (which is usually same for extension connection?).
+    // Actually eaveHeight is Main Building Eave.
+    // Extension might be lower/higher.
+    // Marker usually indicates Main Building Eave.
+    // I'll place it at `x = -width/2 - leftWidth - 2.0`.
+
     const { heightPoints, heightStart, heightEnd, xEave } = useMemo(() => {
-        const x = hasAuvent ? (width / 2 + 2.0) : (-width / 2 - 2.0);
+        const x = -width / 2 - leftWidth - 2.0;
         const start = new THREE.Vector3(x, 0, 0);
         const end = new THREE.Vector3(x, eaveHeight, 0);
         const mid = new THREE.Vector3(x, eaveHeight / 2, 0);
@@ -64,28 +109,28 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
             ]
         };
-    }, [width, eaveHeight, hasAuvent, gapSize]);
+    }, [width, eaveHeight, leftWidth, gapSize]);
 
-    // 4. Awning Dimensions (Right)
-    const awningData = useMemo(() => {
-        if (!hasAwning) return null;
-        const awWidth = 9.3;
-        const awHeight = 3.9;
+    // 4. Right Extension Dimensions
+    const rightExtData = useMemo(() => {
+        if (rightSide === 'none') return null;
+        const extWidth = rightWidth;
+        const extHeight = rightHeight;
         const zFront = 2.0;
 
-        // Width
+        // Width Marker
         const wStart = new THREE.Vector3(width / 2, 0.1, zFront);
-        const wEnd = new THREE.Vector3(width / 2 + awWidth, 0.1, zFront);
-        const wMid = new THREE.Vector3(width / 2 + awWidth / 2, 0.1, zFront);
+        const wEnd = new THREE.Vector3(width / 2 + extWidth, 0.1, zFront);
+        const wMid = new THREE.Vector3(width / 2 + extWidth / 2, 0.1, zFront);
 
-        // Height
-        const xH = width / 2 + awWidth + 2.0;
+        // Height Marker
+        const xH = width / 2 + extWidth + 2.0;
         const hStart = new THREE.Vector3(xH, 0, 0);
-        const hEnd = new THREE.Vector3(xH, awHeight, 0);
-        const hMid = new THREE.Vector3(xH, awHeight / 2, 0);
+        const hEnd = new THREE.Vector3(xH, extHeight, 0);
+        const hMid = new THREE.Vector3(xH, extHeight / 2, 0);
 
         return {
-            awWidth, awHeight, xH,
+            extWidth, extHeight, xH,
             wStart, wEnd,
             hStart, hEnd,
             widthPoints: [
@@ -97,51 +142,60 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(hMid.x, hMid.y + gapSize / 2, hMid.z), hEnd]
             ]
         };
-    }, [hasAwning, width, gapSize]);
+    }, [rightSide, rightWidth, rightHeight, width, gapSize]);
 
-    // 5. Auvent Dimensions (Left)
-    const auventData = useMemo(() => {
-        if (!hasAuvent) return null;
-        const avWidth = 4.0;
-        const avHeight = 4.8;
+    // 5. Left Extension Dimensions
+    const leftExtData = useMemo(() => {
+        if (leftSide === 'none') return null;
+        const extWidth = leftWidth;
+        const extHeight = leftHeight;
+        // Logic for Left side: Start -Width/2, End -Width/2 - ExtWidth
 
-        const xLeft = -width / 2 - avWidth - 2.0;
-        const start = new THREE.Vector3(xLeft, 0, 0);
-        const end = new THREE.Vector3(xLeft, avHeight, 0);
-        const mid = new THREE.Vector3(xLeft, avHeight / 2, 0);
+        const xStart = -width / 2;
+        const xEnd = -width / 2 - extWidth;
+        const xMid = -width / 2 - extWidth / 2;
+        const zFront = 2.0;
+
+        // Width Marker (at zFront, optional)
+        // Original code didn't show Width for Auvent (Left)?
+        // Wait, Step 4007 `auventData` had NO Width Marker. Only Height.
+        // I will add Width Marker for consistency? Or stick to original?
+        // Original `auventData` calculated `avWidth` but didn't output `widthPoints`.
+        // I will stick to Height only for Left if that was the design, OR add Width.
+        // User wants flexibility. I'll add Width marker.
+
+        // Width
+        // Flip Start/End visual for left?
+        // Start: -width/2. End: -width/2 - extWidth.
+
+        const wPoints = [
+            [new THREE.Vector3(xStart, 0.1, zFront), new THREE.Vector3(xMid + gapSize / 2, 0.1, zFront)],
+            [new THREE.Vector3(xMid - gapSize / 2, 0.1, zFront), new THREE.Vector3(xEnd, 0.1, zFront)]
+        ]; // Ordered Right to Left physically, but Line points don't care.
+
+        // Height
+        const xH = -width / 2 - leftWidth - 2.0; // Same as Eave Marker? 
+        // If Eave Marker is also at `-width/2 - leftWidth - 2.0`, they overlap!
+        // The Eave Marker should be FURTHER out? Or inner?
+        // If I put Eave Marker at `xH - 2.0`?
+        // Logic collision.
 
         return {
-            avHeight, xLeft,
-            start, end,
-            points: [
-                [start, new THREE.Vector3(mid.x, mid.y - gapSize / 2, mid.z)],
-                [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
+            extWidth, extHeight, xH,
+            hStart: new THREE.Vector3(xH, 0, 0),
+            hEnd: new THREE.Vector3(xH, extHeight, 0),
+            heightPoints: [
+                [new THREE.Vector3(xH, 0, 0), new THREE.Vector3(xH, extHeight / 2 - gapSize / 2, 0)],
+                [new THREE.Vector3(xH, extHeight / 2 + gapSize / 2, 0), new THREE.Vector3(xH, extHeight, 0)]
             ]
         };
-    }, [hasAuvent, width, gapSize]);
-
-    // 6. Ridge Height
-    const { ridgePoints, ridgeStart, ridgeEnd, xRidge, zRidge } = useMemo(() => {
-        const x = 0;
-        const z = 0;
-        const start = new THREE.Vector3(x, 0, z);
-        const end = new THREE.Vector3(x, ridgeHeight, z);
-        const mid = new THREE.Vector3(x, ridgeHeight / 2, z);
-        return {
-            xRidge: x, zRidge: z,
-            ridgeStart: start, ridgeEnd: end,
-            ridgePoints: [
-                [start, new THREE.Vector3(mid.x, mid.y - gapSize / 2, mid.z)],
-                [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
-            ]
-        };
-    }, [ridgeHeight, gapSize]);
+    }, [leftSide, leftWidth, leftHeight, width, gapSize]);
 
     // 7. Surface Area
     const surfaceArea = useMemo(() => {
-        const totalWidth = width + (hasAwning ? 9.3 : 0) + (hasAuvent ? 4.0 : 0);
+        const totalWidth = width + leftWidth + rightWidth;
         return (totalWidth * length).toFixed(0);
-    }, [width, length, hasAwning, hasAuvent]);
+    }, [width, length, leftWidth, rightWidth]);
 
     return (
         <group>

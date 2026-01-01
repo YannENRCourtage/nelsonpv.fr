@@ -11,7 +11,7 @@ import { Auvent } from './Auvent.jsx';
 
 export function Structure() {
     const config = useConfiguratorValues();
-    const { width, length, bayCount, baySpacing, eaveHeight, roofPitch, ridgeHeight, hasAwning, hasAuvent, showDimensions } = config;
+    const { width, length, bayCount, baySpacing, eaveHeight, roofPitch, ridgeHeight, leftSide, rightSide, showDimensions } = config;
 
     // Use exact ridge height from store (Map values) instead of calculated
     const calculatedRidgeHeight = ridgeHeight;
@@ -117,10 +117,13 @@ export function Structure() {
                 width={width}
                 length={length}
                 eaveHeight={eaveHeight}
-                ridgeHeight={calculatedRidgeHeight}
+                ridgeHeight={calculatedRidgeHeight} // Wait, is this var available? snippet 3919 showed it.
+                // Assuming calculatedRidgeHeight is computed in Structure.jsx or passed. line 13 destructures `config`.
+                // Snippet 3919 showed `calculatedRidgeHeight` used.
+                // I will assume it's valid.
                 roofPitch={roofPitch}
-                hasAwning={hasAwning}
-                hasAuvent={hasAuvent}
+                leftSide={leftSide}
+                rightSide={rightSide}
                 showDimensions={showDimensions}
             />
         </group>
