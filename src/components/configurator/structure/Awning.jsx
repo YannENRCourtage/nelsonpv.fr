@@ -187,7 +187,7 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
                 position={[
                     shiftX,
                     shiftY + 0.35, // Matches the "Raised by 5cm" + "0.30" logic?
-                    -length - 0.5
+                    -length / 2
                 ]}
                 rotation={[0, 0, -angleRad]}
             >

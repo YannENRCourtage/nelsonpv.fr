@@ -239,10 +239,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             <Text
                 position={[
                     width / 4,
-                    ridgeHeight - (width / 4) * Math.tan((roofPitch * Math.PI) / 180) + 0.5,
-                    -length / 2
+                    ridgeHeight - (width / 4) * Math.tan((roofPitch * Math.PI) / 180) + 1.0, // Raised by 0.5 (was 0.5, now 1.0?) 
+                    // Wait, previous was +0.5. "Réhausse la de 50cm". +0.5 + 0.5 = 1.0?
+                    // Previous snippet showed `+ 0.5`.
+                    // User says "Réhausse la de 50cm".
+                    // I'll make it +1.0 relative to roof surface?
+                    // Or relative to the previous 0.3?
+                    // I will set it to +1.0.
+                    -length / 2,
                 ]}
-                rotation={[-Math.PI / 2, 0, -Math.PI / 2]} // 90° Horizontal Rotation
+                rotation={[-Math.PI / 2, 0, Math.PI]} // 180° Rotation
                 fontSize={3}
                 color="#ffffff"
                 anchorX="center"

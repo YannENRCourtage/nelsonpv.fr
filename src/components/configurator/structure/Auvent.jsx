@@ -176,11 +176,11 @@ export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
                 position={[
                     slopeLength / 2,
                     -0.03,
-                    -0.2
+                    length / 2
                 ]}
                 rotation={[0, 0, -angleRad]}
             >
-                <SolarPanels surfaceWidth={slopeLength} surfaceLength={length} />
+                <SolarPanels surfaceWidth={slopeLength} surfaceLength={length + 1.0} />
             </group>
 
             {/* STRUCTURE */}

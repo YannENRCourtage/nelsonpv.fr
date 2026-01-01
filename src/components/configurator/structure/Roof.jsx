@@ -107,7 +107,7 @@ export function Roof({ width, length, roofPitch, eaveHeight }) {
                 position={[
                     -halfWidth + localCenterX + offsetX,
                     eaveHeight + localCenterY + offsetY,
-                    -length - 0.5
+                    -length / 2
                 ]}
                 rotation={[0, 0, angleRad]}
             >
@@ -119,7 +119,7 @@ export function Roof({ width, length, roofPitch, eaveHeight }) {
                 position={[
                     halfWidth - localCenterX - offsetX,
                     eaveHeight + localCenterY + offsetY,
-                    -length - 0.5
+                    -length / 2
                 ]}
                 rotation={[0, 0, -angleRad]}
             >

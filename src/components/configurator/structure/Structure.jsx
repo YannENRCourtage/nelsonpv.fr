@@ -65,8 +65,21 @@ export function Structure() {
                 roofPitch={roofPitch}
                 eaveHeight={eaveHeight}
             />
-            {hasAwning && (
+            {/* --- EXTENSIONS GAUCHE --- */}
+            {config.leftSide === 'auvent' && (
+                <Auvent
+                    side="left"
+                    length={length}
+                    eaveHeight={eaveHeight}
+                    roofPitch={roofPitch}
+                    buildingWidth={width}
+                    bayCount={bayCount}
+                    baySpacing={baySpacing}
+                />
+            )}
+            {config.leftSide === 'appentis' && (
                 <Awning
+                    side="left"
                     length={length}
                     eaveHeight={eaveHeight}
                     roofPitch={roofPitch}
@@ -76,8 +89,21 @@ export function Structure() {
                 />
             )}
 
-            {hasAuvent && (
+            {/* --- EXTENSIONS DROITE --- */}
+            {config.rightSide === 'auvent' && (
                 <Auvent
+                    side="right"
+                    length={length}
+                    eaveHeight={eaveHeight}
+                    roofPitch={roofPitch}
+                    buildingWidth={width}
+                    bayCount={bayCount}
+                    baySpacing={baySpacing}
+                />
+            )}
+            {config.rightSide === 'appentis' && (
+                <Awning
+                    side="right"
                     length={length}
                     eaveHeight={eaveHeight}
                     roofPitch={roofPitch}
