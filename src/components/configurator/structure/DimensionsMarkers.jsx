@@ -111,6 +111,26 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         };
     }, [width, eaveHeight, leftWidth, gapSize]);
 
+    // 3b. Ridge Height
+    const { ridgePoints, ridgeStart, ridgeEnd, xRidge, zRidge } = useMemo(() => {
+        const x = width / 2 + rightWidth + 5.0;
+        const z = 0;
+        const start = new THREE.Vector3(x, 0, z);
+        const end = new THREE.Vector3(x, ridgeHeight, z);
+        const mid = new THREE.Vector3(x, ridgeHeight / 2, z);
+
+        return {
+            xRidge: x,
+            zRidge: z,
+            ridgeStart: start,
+            ridgeEnd: end,
+            ridgePoints: [
+                [start, new THREE.Vector3(mid.x, mid.y - gapSize / 2, mid.z)],
+                [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
+            ]
+        };
+    }, [width, rightWidth, ridgeHeight, gapSize]);
+
     // 4. Right Extension Dimensions
     const rightExtData = useMemo(() => {
         if (rightSide === 'none') return null;
