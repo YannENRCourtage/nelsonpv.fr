@@ -14,6 +14,8 @@ const WIDTH_HEIGHT_MAP = {
     33.5: 8.5
 };
 
+const AVAILABLE_WIDTHS = Object.keys(WIDTH_HEIGHT_MAP).map(Number).sort((a, b) => a - b);
+
 /**
  * Store Zustand pour le Configurateur 3D
  * Logique métier codée en dur selon contraintes SCREB
