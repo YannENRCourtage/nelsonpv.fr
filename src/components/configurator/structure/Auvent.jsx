@@ -137,6 +137,11 @@ export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
     // We want it centered on the frame run (0 to Length).
     // Start at -0.2?
 
+    // Debug Log
+    React.useEffect(() => {
+        console.log("Auvent Rendered:", { length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing, groupPosX, groupPosY });
+    }, [length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing]);
+
     return (
         <group
             position={[groupPosX, groupPosY, groupPosZ]}
@@ -147,7 +152,7 @@ export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
                 geometry={roofGeometry}
                 material={roofMaterial}
                 position={[
-                    0,
+                    slopeLength / 2, // Shifted to start at 0 and go outward
                     0.25, // Height offset (Rafter/2 + Purlin + Sheet)
                     -0.2  // Z Offset (Start slightly before 0)
                 ]}
