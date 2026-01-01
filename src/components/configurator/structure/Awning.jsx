@@ -50,9 +50,9 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
     }), [profileShape, length]);
 
     // GEOMETRY CENTERING ADJUSTMENT
-    // Phase 30: Shift 25% towards eave (relative to median).
-    // Median = 50% (0.50). Towards eave (down) = +25% (0.25). Total = 0.75.
-    const shiftLength = slopeLength * 0.75;
+    // Phase 32: Shift 15% towards ridge (relative to median).
+    // Median = 50% (0.50). Towards ridge (up) = -15% (-0.15). Total = 0.35.
+    const shiftLength = slopeLength * 0.35;
     const shiftX = shiftLength * Math.cos(angleRad);
     const shiftY = -shiftLength * Math.sin(angleRad);
 
@@ -160,16 +160,9 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
             <mesh
                 geometry={roofGeometry}
                 material={roofMaterial}
-                // Updated Position (Phase 30):
-                // 1. Shifted 75% (shiftX, shiftY)
-                // 2. Raised by 5cm (+0.05 in Y) relative to previous.
-                //    (Previous was +0.3. New = +0.35)
-                // 3. Base offset 0.2 is included in calculation logic or raw number?
-                //    Let's stick to consistent logic: "ShiftY + BaseOffset + ExtraRaise".
-                //    BaseOffset ~0.2. ExtraRaise:
-                //    Phase 28: +0.3 extra -> Total 0.5.
-                //    Phase 29: -0.2 adjustment -> +0.1 extra -> Total 0.3.
-                //    Phase 30: +0.05 adjustment -> +0.15 extra -> Total 0.35.
+                // Updated Position (Phase 30 maintained):
+                // 1. Shifted (shiftX, shiftY) based on new 35% logic.
+                // 2. Raised by 5cm (+0.05 in Y) relative to previous. (Total +0.35)
                 position={[
                     shiftX,
                     shiftY + 0.35,
