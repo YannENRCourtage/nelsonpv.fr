@@ -59,13 +59,7 @@ export function ControlPanel() {
                     ))}
                 </div>
 
-                {/* Info calculée : Hauteur Faîtage */}
-                <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-xs text-blue-700 font-medium">
-                        <span className="opacity-70">Hauteur Faîtage :</span>{' '}
-                        <span className="font-bold text-blue-900">{ridgeHeight}m</span>
-                    </p>
-                </div>
+
             </div>
 
             {/* ========== TYPE DE BÂTIMENT ========== */}

@@ -59,6 +59,23 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const awningHeightEnd = new THREE.Vector3(xAwningRight, awningEaveHeight, 0);
     const awningHeightMid = new THREE.Vector3(xAwningRight, awningEaveHeight / 2, 0);
 
+    // 6. Ridge Height (Center, Front)
+    // Vertical line from Ground to Ridge Height at X=0, Z=Front
+    // Place it slightly offset in Z to avoid cladding (Z=0.1) -> Z=2.0 (same as width line)
+    // Or maybe offset in X slightly so it doesn't overlap with a center column if any?
+    // Let's create a new vertical line at X = -2.0 (Inside left width?) No, "Hauteur Faîtage" is central.
+    // But Width marker goes across. Vert marker might clash.
+    // Let's put it at X = 2.0 ? Or X = 0.
+    // If I put it at X=0, it crosses the Width line.
+    // Width line is at Y=0.1. Ridge line goes up.
+    // Let's put it on the Front Right corner? No that's Eave.
+    // Ridge is center. Let's put it at X=0, Z=zFront + 1.5? Or just Z=zFront and let them intersect.
+    const xRidge = 0;
+    const zRidge = zFront;
+    const ridgeStart = new THREE.Vector3(xRidge, 0, zRidge);
+    const ridgeEnd = new THREE.Vector3(xRidge, ridgeHeight, zRidge);
+    const ridgeMid = new THREE.Vector3(xRidge, ridgeHeight / 2, zRidge);
+
     // 5. Surface Area
     // Logic: (Building Width + Awning Width + Auvent Width) * Length
     const totalWidth = width + (hasAwning ? awningWidth : 0) + (hasAuvent ? 4.0 : 0);
@@ -118,7 +135,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 <mesh position={heightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                 <mesh position={heightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                 <Text
-                    position={[xEave + 0.5, eaveHeight / 2, 0]}
+                    position={[xEave - 0.5, eaveHeight / 2, 0]} // Offset -0.5 to be outside line
                     rotation={[0, 0, Math.PI / 2]}
                     fontSize={0.8}
                     color={textColor}
@@ -128,6 +145,31 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     outlineColor="#ffffff"
                 >
                     {`${eaveHeight} m`}
+                </Text>
+            </group>
+
+            {/* --- RIDGE HEIGHT (CENTER FRONT) --- */}
+            <group>
+                {/* Vertical Line */}
+                <Line points={[ridgeStart, new THREE.Vector3(ridgeMid.x, ridgeMid.y - gapSize / 2, ridgeMid.z)]} color={lineColor} lineWidth={lineWidth} />
+                <Line points={[new THREE.Vector3(ridgeMid.x, ridgeMid.y + gapSize / 2, ridgeMid.z), ridgeEnd]} color={lineColor} lineWidth={lineWidth} />
+
+                {/* Endpoints */}
+                <mesh position={ridgeStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                <mesh position={ridgeEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+
+                {/* Label */}
+                <Text
+                    position={[xRidge + 0.5, ridgeHeight / 2, zRidge]} // Offset X+0.5 to sit beside vertical line
+                    rotation={[0, 0, Math.PI / 2]} // Vertical Text
+                    fontSize={0.8}
+                    color={textColor}
+                    anchorX="center"
+                    anchorY="bottom"
+                    outlineWidth={0.1}
+                    outlineColor="#ffffff"
+                >
+                    {`${ridgeHeight} m`}
                 </Text>
             </group>
 
