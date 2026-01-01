@@ -230,14 +230,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             <Text
                 position={[
                     width / 4,
-                    ridgeHeight - (width / 4) * Math.tan((roofPitch * Math.PI) / 180) + 0.3,
+                    ridgeHeight - (width / 4) * Math.tan((roofPitch * Math.PI) / 180) + 0.5,
                     -length / 2
                 ]}
-                rotation={[
-                    -Math.PI / 2,
-                    0,
-                    Math.PI / 2 - (roofPitch * Math.PI) / 180
-                ]}
+                rotation={[-Math.PI / 2, 0, 0]}
                 fontSize={3}
                 color="#ffffff"
                 anchorX="center"

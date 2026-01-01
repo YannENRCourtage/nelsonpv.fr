@@ -12,7 +12,7 @@ import { SolarPanels } from './SolarPanels.jsx';
  * - Covered by Bac Acier (Steel Deck)
  * - Supports (Columns) at the 3.87m end
  */
-export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing }) {
+export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing, side = 'right' }) {
 
     // --- DIMENSIONS ---
     const awningWidth = 9.3;
@@ -20,8 +20,13 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
     const endHeight = 3.87;
     const angleRad = (roofPitch * Math.PI) / 180;
 
-    // Position: Attached to the RIGHT side of the building (X = buildingWidth/2)
-    const startX = buildingWidth / 2;
+    // Position: Attached to the building
+    // Right: +buildingWidth/2
+    // Left: -buildingWidth/2
+    const groupPosX = side === 'right' ? buildingWidth / 2 : -buildingWidth / 2;
+
+    // Scale: Mirror X for Left side (Standard Awning is Right-facing +X)
+    const scale = side === 'left' ? [-1, 1, 1] : [1, 1, 1];
 
     // --- MATERIALS ---
     const structureMaterial = useMemo(() => new THREE.MeshStandardMaterial({
@@ -156,7 +161,10 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
     }
 
     return (
-        <group position={[startX, startHeight, 0]}>
+        <group
+            position={[groupPosX, startHeight, 0]}
+            scale={scale}
+        >
             {/* ROOF SHEETS */}
             <mesh
                 geometry={roofGeometry}
