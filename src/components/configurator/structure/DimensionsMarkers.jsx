@@ -167,13 +167,22 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </Text>
             </group>
 
-            {/* 3. EAVE HEIGHT */}
+            {/* 3. EAVE HEIGHT (Left) */}
             <group>
                 <Line points={heightPoints[0]} color={lineColor} lineWidth={lineWidth} />
                 <Line points={heightPoints[1]} color={lineColor} lineWidth={lineWidth} />
                 <mesh position={heightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                 <mesh position={heightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                <Text position={[xEave + (hasAuvent ? 0.5 : -0.5), eaveHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                <Text
+                    position={[xEave - 0.5, eaveHeight / 2, 0]}
+                    rotation={[0, 0, 0]} // Horizontal text
+                    fontSize={0.8}
+                    color={textColor}
+                    anchorX="right"
+                    anchorY="middle"
+                    outlineWidth={0.1}
+                    outlineColor="#ffffff"
+                >
                     {`${eaveHeight} m`}
                 </Text>
             </group>
@@ -233,7 +242,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     ridgeHeight - (width / 4) * Math.tan((roofPitch * Math.PI) / 180) + 0.5,
                     -length / 2
                 ]}
-                rotation={[-Math.PI / 2, 0, 0]}
+                rotation={[-Math.PI / 2, 0, -Math.PI / 2]} // 90° Horizontal Rotation
                 fontSize={3}
                 color="#ffffff"
                 anchorX="center"
