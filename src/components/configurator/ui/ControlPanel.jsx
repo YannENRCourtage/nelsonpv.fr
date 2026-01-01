@@ -2,8 +2,8 @@ import React from 'react';
 import { useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
 
 export function ControlPanel() {
-    // OLD: const { ... } = useConfiguratorStore();
     // NEW: Split hooks with destructuring to maintain variable scope compatibility
+    // Removed unused: ridgeHeight, length, showDimensions
     const {
         width,
         eaveHeight,
@@ -51,19 +51,17 @@ export function ControlPanel() {
                             key={w}
                             onClick={() => setWidth(w)}
                             className={`
-                px-4 py-3 rounded-lg font-semibold text-sm transition-all
-                ${width === w
+                                px-4 py-3 rounded-lg font-semibold text-sm transition-all
+                                ${width === w
                                     ? 'bg-blue-600 text-white shadow-lg scale-105'
                                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:scale-102'
                                 }
-              `}
+                            `}
                         >
                             {w}m
                         </button>
                     ))}
                 </div>
-
-
             </div>
 
             {/* ========== TYPE DE BÂTIMENT ========== */}
@@ -80,7 +78,6 @@ export function ControlPanel() {
                 <p className="text-xs text-slate-500 mt-2 italic">À venir : affectation structure 3D</p>
             </div>
 
-            {/* ========== OPTION AUVENT & CÔTES ========== */}
             {/* ========== OPTIONS STRUCTURE - EXTENSIONS (Compact) ========== */}
             <div className="param-group mb-6">
                 <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider flex items-center gap-2">
@@ -140,84 +137,79 @@ export function ControlPanel() {
                 </div>
             </div>
 
-        </div>
-            </div >
+            {/* ========== ESPACEMENT TRAVÉES ========== */}
+            <div className="param-group mb-6">
+                <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
+                    Espacement Travées
+                </label>
 
-        {/* ========== ESPACEMENT TRAVÉES ========== */ }
-        < div className = "param-group mb-6" >
-            <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
-                Espacement Travées
-            </label>
+                {/* Toggle 6m / 7.5m */}
+                <div className="inline-flex rounded-lg overflow-hidden border-2 border-slate-300">
+                    <button
+                        onClick={() => setBaySpacing(6)}
+                        className={`
+                            px-6 py-3 font-semibold text-sm transition-all
+                            ${baySpacing === 6
+                                ? 'bg-green-600 text-white'
+                                : 'bg-white text-slate-700 hover:bg-slate-50'
+                            }
+                        `}
+                    >
+                        6m
+                    </button>
+                    <button
+                        onClick={() => setBaySpacing(7.5)}
+                        className={`
+                            px-6 py-3 font-semibold text-sm transition-all
+                            ${baySpacing === 7.5
+                                ? 'bg-green-600 text-white'
+                                : 'bg-white text-slate-700 hover:bg-slate-50'
+                            }
+                        `}
+                    >
+                        7.5m
+                    </button>
+                </div>
+            </div>
 
-    {/* Toggle 6m / 7.5m */ }
-    <div className="inline-flex rounded-lg overflow-hidden border-2 border-slate-300">
-        <button
-            onClick={() => setBaySpacing(6)}
-            className={`
-              px-6 py-3 font-semibold text-sm transition-all
-              ${baySpacing === 6
-                    ? 'bg-green-600 text-white'
-                    : 'bg-white text-slate-700 hover:bg-slate-50'
-                }
-            `}
-        >
-            6m
-        </button>
-        <button
-            onClick={() => setBaySpacing(7.5)}
-            className={`
-              px-6 py-3 font-semibold text-sm transition-all
-              ${baySpacing === 7.5
-                    ? 'bg-green-600 text-white'
-                    : 'bg-white text-slate-700 hover:bg-slate-50'
-                }
-            `}
-        >
-            7.5m
-        </button>
-    </div>
-            </div >
+            {/* ========== NOMBRE DE TRAVÉES ========== */}
+            <div className="param-group mb-6">
+                <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
+                    Nombre de Travées
+                </label>
 
-        {/* ========== NOMBRE DE TRAVÉES ========== */ }
-        < div className = "param-group mb-6" >
-            <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
-                Nombre de Travées
-            </label>
+                {/* Stepper (Plus/Moins) */}
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={decrementBayCount}
+                        disabled={bayCount <= 4}
+                        className={`
+                            w-12 h-12 rounded-lg font-bold text-xl transition-all
+                            ${bayCount > 4
+                                ? 'bg-red-500 text-white hover:bg-red-600 hover:scale-105'
+                                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                            }
+                        `}
+                    >
+                        −
+                    </button>
 
-    {/* Stepper (Plus/Moins) */ }
-    <div className="flex items-center gap-4">
-        <button
-            onClick={decrementBayCount}
-            disabled={bayCount <= 4}
-            className={`
-              w-12 h-12 rounded-lg font-bold text-xl transition-all
-              ${bayCount > 4
-                    ? 'bg-red-500 text-white hover:bg-red-600 hover:scale-105'
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                }
-            `}
-        >
-            −
-        </button>
+                    <div className="flex-1 text-center">
+                        <span className="text-4xl font-bold text-slate-900">{bayCount}</span>
+                        <p className="text-xs text-slate-500 mt-1">travées (min. 4)</p>
+                    </div>
 
-        <div className="flex-1 text-center">
-            <span className="text-4xl font-bold text-slate-900">{bayCount}</span>
-            <p className="text-xs text-slate-500 mt-1">travées (min. 4)</p>
-        </div>
+                    <button
+                        onClick={incrementBayCount}
+                        className="w-12 h-12 rounded-lg bg-green-500 text-white font-bold text-xl hover:bg-green-600 transition-all hover:scale-105"
+                    >
+                        +
+                    </button>
+                </div>
+            </div>
 
-        <button
-            onClick={incrementBayCount}
-            className="w-12 h-12 rounded-lg bg-green-500 text-white font-bold text-xl hover:bg-green-600 transition-all hover:scale-105"
-        >
-            +
-        </button>
-    </div>
-
-
-            </div >
-
-        {/* ========== PARAMÈTRES FIXES ========== */ }
-        < div className = "fixed-params mb-6 p-4 bg-slate-100 rounded-lg border border-slate-300" >
+            {/* ========== PARAMÈTRES FIXES ========== */}
+            <div className="fixed-params mb-6 p-4 bg-slate-100 rounded-lg border border-slate-300">
                 <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">
                     Paramètres Fixes
                 </h3>
@@ -231,10 +223,10 @@ export function ControlPanel() {
                         <span className="text-slate-700">H. Égout: <strong>{eaveHeight}m</strong></span>
                     </div>
                 </div>
-            </div >
+            </div>
 
-        {/* ========== OPTION SOLAIRE ========== */ }
-        < div className = "param-group mb-6" >
+            {/* ========== OPTION SOLAIRE ========== */}
+            <div className="param-group mb-6">
                 <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
                     Option Solaire
                 </label>
@@ -251,33 +243,29 @@ export function ControlPanel() {
                     Couverture Solaire PV
                 </button>
 
-    {
-        hasSolar && (
-            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-100 rounded-lg">
-                <div className="text-xs text-yellow-800 uppercase font-semibold mb-1">Puissance Installée</div>
-                <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold text-yellow-900">{solarStats?.power?.toFixed(2)}</span>
-                    <span className="text-sm font-medium text-yellow-700">kWc</span>
-                </div>
-                <div className="text-xs text-yellow-600 mt-1">{solarStats?.count} panneaux</div>
+                {hasSolar && (
+                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-100 rounded-lg">
+                        <div className="text-xs text-yellow-800 uppercase font-semibold mb-1">Puissance Installée</div>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-bold text-yellow-900">{solarStats?.power?.toFixed(2)}</span>
+                            <span className="text-sm font-medium text-yellow-700">kWc</span>
+                        </div>
+                        <div className="text-xs text-yellow-600 mt-1">{solarStats?.count} panneaux</div>
+                    </div>
+                )}
             </div>
-        )
-    }
-            </div >
 
-        {/* ========== RÉSUMÉ & ACTIONS ========== */ }
-        < div className = "actions space-y-3" >
-            {/* Bouton Reset */ }
-            < button
-    onClick = { reset }
-    className = "w-full px-4 py-3 bg-slate-200 text-slate-700 rounded-lg font-semibold text-sm hover:bg-slate-300 transition-all"
-        >
+            {/* ========== RÉSUMÉ & ACTIONS ========== */}
+            <div className="actions space-y-3">
+                {/* Bouton Reset */}
+                <button
+                    onClick={reset}
+                    className="w-full px-4 py-3 bg-slate-200 text-slate-700 rounded-lg font-semibold text-sm hover:bg-slate-300 transition-all"
+                >
                     ↺ Réinitialiser
-                </button >
+                </button>
+            </div>
 
-        {/* Résumé */ }
-
-            </div >
-        </div >
+        </div>
     );
 }
