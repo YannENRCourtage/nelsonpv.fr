@@ -109,24 +109,6 @@ export function ControlPanel() {
                         </button>
                     </div>
 
-                    {/* Dimensions Toggle */}
-                    <div className="flex items-center justify-between p-4 border border-slate-300 rounded-lg bg-white">
-                        <span className="font-semibold text-slate-700">Afficher les côtes</span>
-                        <button
-                            onClick={toggleDimensions}
-                            className={`
-                                relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none
-                                ${showDimensions ? 'bg-blue-600' : 'bg-slate-300'}
-                            `}
-                        >
-                            <span
-                                className={`
-                                    inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                                    ${showDimensions ? 'translate-x-6' : 'translate-x-1'}
-                                `}
-                            />
-                        </button>
-                    </div>
                 </div>
             </div>
 

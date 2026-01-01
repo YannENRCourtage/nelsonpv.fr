@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { ControlPanel } from '../components/configurator/ui/ControlPanel.jsx';
-import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
+import { useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
 import { useProjects } from '@/contexts/ProjectContext';
 import { Search, Monitor, icons } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -15,6 +15,7 @@ export default function Configurateur() {
     const { user } = useAuth();
     const { projects } = useProjects();
     const config = useConfiguratorValues();
+    const actions = useConfiguratorActions();
 
     // UI State
     const [showPDFModal, setShowPDFModal] = useState(false);
@@ -322,11 +323,25 @@ export default function Configurateur() {
                     />
                 </div>
 
-                {/* INFO BADGE: Dimensions & Surface (Top Left of Visualizer) */}
-                <div className="absolute top-4 left-4 z-20 bg-white/90 backdrop-blur px-4 py-2 rounded-lg shadow border border-slate-200">
-                    <span className="text-slate-800 font-bold text-lg">
-                        {config.length}m x {config.width}m - {((config.width + (config.hasAwning ? 9.3 : 0) + (config.hasAuvent ? 4.0 : 0)) * config.length).toFixed(0)}m²
-                    </span>
+                {/* INFO BADGE & DIMENSIONS TOGGLE (Top Left of Visualizer) */}
+                <div className="absolute top-4 left-[25rem] z-20 flex flex-col gap-2 w-fit pointer-events-auto">
+                    {/* Badge */}
+                    <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-lg shadow border border-slate-200">
+                        <span className="text-slate-800 font-bold text-lg whitespace-nowrap">
+                            {config.length}m x {config.width}m - {((config.width + (config.hasAwning ? 9.3 : 0) + (config.hasAuvent ? 4.0 : 0)) * config.length).toFixed(0)}m²
+                        </span>
+                    </div>
+
+                    {/* Dimensions Toggle Button */}
+                    <button
+                        onClick={actions.toggleDimensions}
+                        className={`w-full px-4 py-2 rounded-lg font-semibold text-sm shadow border transition-all flex items-center justify-between gap-3 ${config.showDimensions ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
+                    >
+                        <span>Afficher les côtes</span>
+                        <div className={`w-10 h-5 rounded-full relative transition-colors ${config.showDimensions ? 'bg-white/30' : 'bg-slate-300'}`}>
+                            <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${config.showDimensions ? 'left-6' : 'left-1'}`} />
+                        </div>
+                    </button>
                 </div>
 
                 {/* View Toggles & Actions (Top Right Overlay) */}
