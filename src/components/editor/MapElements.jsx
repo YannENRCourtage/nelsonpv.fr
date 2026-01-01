@@ -130,7 +130,7 @@ const textIcon = (txt) => L.divIcon({
 const symbolIcon = (emoji, number = null) => L.divIcon({
   html: `<div class="flex flex-col items-center cursor-grab relative">
            <div class="bg-white rounded-full p-2 shadow-lg border-2 border-border text-xl">${emoji}</div>
-           ${number ? `<span class="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">${number}</span>` : ''}
+           ${number ? `<span class="absolute -top-2 -right-2 bg-blue-600 text-white text-[12px] font-bold rounded-full h-5 w-5 flex items-center justify-center border border-white">${number}</span>` : ''}
            <div class="w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-white -mt-1"></div>
          </div>`,
   className: 'bg-transparent border-none',

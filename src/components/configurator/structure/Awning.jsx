@@ -50,9 +50,9 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
     }), [profileShape, length]);
 
     // GEOMETRY CENTERING ADJUSTMENT
-    // Phase 33: Shift 10% towards eave (relative to median).
-    // Median = 50% (0.50). Towards eave (down) = +10% (0.10). Total = 0.60.
-    const shiftLength = slopeLength * 0.60;
+    // Phase 34: Shift 5% towards eave (relative to median).
+    // Median = 50% (0.50). Towards eave positive = +5% (0.05). Total = 0.55.
+    const shiftLength = slopeLength * 0.55;
     const shiftX = shiftLength * Math.cos(angleRad);
     const shiftY = -shiftLength * Math.sin(angleRad);
 
@@ -161,8 +161,8 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
                 geometry={roofGeometry}
                 material={roofMaterial}
                 // Updated Position (Phase 30 maintained):
-                // 1. Shifted (shiftX, shiftY) based on new 60% logic.
-                // 2. Raised by 5cm (+0.05 in Y) relative to previous baseline (+0.3). Total +0.35.
+                // 1. Shifted (shiftX, shiftY) based on new 55% logic.
+                // 2. Raised by 5cm (+0.05 in Y) relative to previous baseline. Total +0.35.
                 position={[
                     shiftX,
                     shiftY + 0.35,
