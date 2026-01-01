@@ -106,8 +106,8 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
                 // Total depth = length + 1.
                 // If we position at Z = -length - 0.5, and Extrude + depth -> Ends at +0.5. Correct.
                 position={[
-                    0,
-                    0.2, // Offset up for thickness/rafters
+                    shiftX,
+                    shiftY + 0.2, // Offset up for thickness/rafters and apply Y shift
                     -length - 0.5
                 ]}
                 rotation={[0, 0, -angleRad]} // Rotate down 10 deg
