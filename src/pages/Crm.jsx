@@ -1703,7 +1703,7 @@ export default function Crm() {
         {/* User Profile */}
         < div className="p-4 border-t border-slate-700" >
           <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-700/50">
-            <div className={`${currentUser.color} w-14 h-14 rounded-full flex items-center justify-center text-white font-bold overflow-hidden`}>
+            <div className={`${currentUser.color} w-20 h-20 rounded-full flex items-center justify-center text-white font-bold overflow-hidden`}>
               {currentUser.photoURL ? (
                 <img src={currentUser.photoURL} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
