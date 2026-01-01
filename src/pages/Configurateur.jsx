@@ -308,13 +308,7 @@ export default function Configurateur() {
             <div className="absolute top-4 left-4 z-20 w-80 max-h-[calc(100vh-2rem)] overflow-y-auto">
                 <ControlPanel />
 
-                {/* BOUTON GÉNÉRATION OFFRE */}
-                <button
-                    onClick={() => setShowPDFModal(true)}
-                    className="mt-4 w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
-                >
-                    📄 Générer l'Offre PDF
-                </button>
+
             </div>
 
             {/* ========== VISUALISATION BÂTIMENT (CENTER) ========== */}
@@ -335,19 +329,32 @@ export default function Configurateur() {
                     </span>
                 </div>
 
-                {/* View Toggles (Top Right Overlay) */}
-                <div className="absolute top-4 right-4 z-20 flex gap-2 bg-white/90 backdrop-blur p-2 rounded-lg shadow border border-slate-200">
+                {/* View Toggles & Actions (Top Right Overlay) */}
+                <div className="absolute top-4 right-4 z-20 flex flex-col gap-3 p-3 bg-white/90 backdrop-blur rounded-2xl shadow-lg border border-slate-200">
+
+                    {/* View Modes */}
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setViewMode('3D')}
+                            className={`flex-1 px-4 py-2 rounded-xl font-medium params-transition text-sm ${viewMode === '3D' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
+                        >
+                            Vue 3D
+                        </button>
+                        <button
+                            onClick={() => setViewMode('2D_FRONT')}
+                            className={`flex-1 px-4 py-2 rounded-xl font-medium params-transition text-sm ${viewMode === '2D_FRONT' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
+                        >
+                            Vue 2D
+                        </button>
+                    </div>
+
+                    {/* PDF Generation Button */}
                     <button
-                        onClick={() => setViewMode('3D')}
-                        className={`px-4 py-2 rounded-md font-medium transition ${viewMode === '3D' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                        onClick={() => setShowPDFModal(true)}
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all hover:scale-[1.02] flex items-center justify-center gap-2 text-sm"
                     >
-                        Vue 3D
-                    </button>
-                    <button
-                        onClick={() => setViewMode('2D_FRONT')}
-                        className={`px-4 py-2 rounded-md font-medium transition ${viewMode === '2D_FRONT' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
-                    >
-                        Vue 2D
+                        <span>📄</span>
+                        <span>Générer l'Offre</span>
                     </button>
                 </div>
             </div>
