@@ -96,7 +96,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     // I'll place it at `x = -width/2 - leftWidth - 2.0`.
 
     const { heightPoints, heightStart, heightEnd, xEave } = useMemo(() => {
-        const x = leftSide !== 'none' ? -width / 2 - 0.5 : -width / 2 - 2.0;
+        // Move 1m further out: -1.5 (with ext) or -3.0 (without ext)
+        const x = leftSide !== 'none' ? -width / 2 - 1.5 : -width / 2 - 3.0;
         const start = new THREE.Vector3(x, 0, 0);
         const end = new THREE.Vector3(x, eaveHeight, 0);
         const mid = new THREE.Vector3(x, eaveHeight / 2, 0);
@@ -249,11 +250,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 <mesh position={heightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                 <Text
                     position={[xEave - 0.5, eaveHeight / 2, 0]}
-                    rotation={[0, 0, 0]} // Horizontal text
+                    rotation={[0, 0, Math.PI / 2]} // Vertical text to match others
                     fontSize={0.8}
                     color={textColor}
-                    anchorX="right"
-                    anchorY="middle"
+                    anchorX="center"
+                    anchorY="bottom"
                     outlineWidth={0.1}
                     outlineColor="#ffffff"
                 >

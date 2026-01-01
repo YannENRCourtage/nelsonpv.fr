@@ -255,16 +255,7 @@ export function ControlPanel() {
                 )}
             </div>
 
-            {/* ========== RÉSUMÉ & ACTIONS ========== */}
-            <div className="actions space-y-3">
-                {/* Bouton Reset */}
-                <button
-                    onClick={reset}
-                    className="w-full px-4 py-3 bg-slate-200 text-slate-700 rounded-lg font-semibold text-sm hover:bg-slate-300 transition-all"
-                >
-                    ↺ Réinitialiser
-                </button>
-            </div>
+
 
         </div>
     );
