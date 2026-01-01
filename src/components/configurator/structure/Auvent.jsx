@@ -45,14 +45,14 @@ export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
 
     // --- GEOMETRY ---
     // Slope Length
-    const slopeLength = auventWidth / Math.cos(angleRad) + 0.1; // +10cm overhang
+    const slopeLength = auventWidth / Math.cos(angleRad) + 0.2; // +20cm overhang (Same as Appentis)
 
     // Roof Profile
     const profileShape = useMemo(() => createTrapezoidalProfile(slopeLength, 0.035, 0.25), [slopeLength]);
 
     // Extrude +Z (Inside group, RotY 180 makes it -Z Global)
     const roofGeometry = useMemo(() => new THREE.ExtrudeGeometry(profileShape, {
-        depth: length + 0.4,
+        depth: length + 1.0, // Same to Appentis/Building (1.0m extra)
         bevelEnabled: false
     }), [profileShape, length]);
 
@@ -171,8 +171,8 @@ export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
                 material={roofMaterial}
                 position={[
                     slopeLength / 2,
-                    -0.03, // Lowered by 3cm (was 0)
-                    -0.2
+                    -0.03, // Lowered by 3cm
+                    -0.5   // -50cm offset (Front Overhang)
                 ]}
                 rotation={[0, 0, -angleRad]}
                 castShadow
