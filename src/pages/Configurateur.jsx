@@ -311,14 +311,14 @@ export default function Configurateur() {
         <div className="h-screen w-full bg-gradient-to-b from-slate-50 to-slate-200 relative flex overflow-hidden">
 
             {/* ========== CONTROL PANEL (LEFT) ========== */}
-            <div className="absolute top-4 left-4 z-20 w-88 max-h-[calc(100vh-2rem)] overflow-y-auto">
+            <div className="absolute top-4 left-4 z-20 w-[420px] max-h-[calc(100vh-2rem)] overflow-y-auto">
                 <ControlPanel />
 
 
             </div>
 
             {/* ========== VISUALISATION BÂTIMENT (CENTER) ========== */}
-            <div className="flex-1 ml-[340px] relative h-full">
+            <div className="flex-1 ml-[440px] relative h-full">
                 {/* 3D Scene */}
                 <div className="w-full h-full">
                     <BuildingScene
@@ -339,6 +339,15 @@ export default function Configurateur() {
                             ) * config.length).toFixed(0)}m²
                         </span>
                     </div>
+
+                    {/* Solar PV Badge */}
+                    {config.hasSolar && (
+                        <div className="bg-yellow-50/90 backdrop-blur px-4 py-2 rounded-lg shadow border border-yellow-200">
+                            <span className="text-yellow-800 font-bold text-lg whitespace-nowrap">
+                                ⚡ {config.solarStats?.power?.toFixed(2)} kWc
+                            </span>
+                        </div>
+                    )}
 
                     {/* Dimensions Toggle Button */}
                     <button
