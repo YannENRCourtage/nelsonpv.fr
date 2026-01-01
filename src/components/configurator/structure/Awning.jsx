@@ -50,9 +50,9 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
     }), [profileShape, length]);
 
     // GEOMETRY CENTERING ADJUSTMENT
-    // Phase 28/29: Shift 25% down slope (relative to ridge/start).
-    // This is "25% towards ridge relative to median" (Median was 50%, now 25%).
-    const shiftLength = slopeLength * 0.25;
+    // Phase 30: Shift 25% towards eave (relative to median).
+    // Median = 50% (0.50). Towards eave (down) = +25% (0.25). Total = 0.75.
+    const shiftLength = slopeLength * 0.75;
     const shiftX = shiftLength * Math.cos(angleRad);
     const shiftY = -shiftLength * Math.sin(angleRad);
 
@@ -160,15 +160,19 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
             <mesh
                 geometry={roofGeometry}
                 material={roofMaterial}
-                // Updated Position (Phase 29):
-                // 1. Shifted 25% (shiftX, shiftY)
-                // 2. Raised by 10cm (+0.1 in Y) relative to base.
-                //    (Previous was +30cm -> +0.3. Now "Lower by 20cm" -> +0.1)
-                // 3. Base offset 0.2 (thickness/rafter clear)
-                // Total Y offset = shiftY + 0.2 + 0.1 = shiftY + 0.3
+                // Updated Position (Phase 30):
+                // 1. Shifted 75% (shiftX, shiftY)
+                // 2. Raised by 5cm (+0.05 in Y) relative to previous.
+                //    (Previous was +0.3. New = +0.35)
+                // 3. Base offset 0.2 is included in calculation logic or raw number?
+                //    Let's stick to consistent logic: "ShiftY + BaseOffset + ExtraRaise".
+                //    BaseOffset ~0.2. ExtraRaise:
+                //    Phase 28: +0.3 extra -> Total 0.5.
+                //    Phase 29: -0.2 adjustment -> +0.1 extra -> Total 0.3.
+                //    Phase 30: +0.05 adjustment -> +0.15 extra -> Total 0.35.
                 position={[
                     shiftX,
-                    shiftY + 0.3,
+                    shiftY + 0.35,
                     -length - 0.5
                 ]}
                 rotation={[0, 0, -angleRad]} // Rotate down 10 deg
