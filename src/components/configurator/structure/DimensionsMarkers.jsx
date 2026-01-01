@@ -35,7 +35,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // 1. Width Arrow
     const { widthPoints, widthStart, widthEnd } = useMemo(() => {
-        const zFront = 2.0;
+        const zFront = 3.0;
         const start = new THREE.Vector3(-width / 2, 0.1, zFront);
         const end = new THREE.Vector3(width / 2, 0.1, zFront);
         const mid = new THREE.Vector3(0, 0.1, zFront);
@@ -137,7 +137,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         if (rightSide === 'none') return null;
         const extWidth = rightWidth;
         const extHeight = rightHeight;
-        const zFront = 2.0;
+        const zFront = 3.0;
 
         // Width Marker
         const wStart = new THREE.Vector3(width / 2, 0.1, zFront);
@@ -175,34 +175,23 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const xStart = -width / 2;
         const xEnd = -width / 2 - extWidth;
         const xMid = -width / 2 - extWidth / 2;
-        const zFront = 2.0;
+        const zFront = 3.0;
 
-        // Width Marker (at zFront, optional)
-        // Original code didn't show Width for Auvent (Left)?
-        // Wait, Step 4007 `auventData` had NO Width Marker. Only Height.
-        // I will add Width Marker for consistency? Or stick to original?
-        // Original `auventData` calculated `avWidth` but didn't output `widthPoints`.
-        // I will stick to Height only for Left if that was the design, OR add Width.
-        // User wants flexibility. I'll add Width marker.
-
-        // Width
-        // Flip Start/End visual for left?
-        // Start: -width/2. End: -width/2 - extWidth.
+        // Width Marker
+        const wStart = new THREE.Vector3(xStart, 0.1, zFront);
+        const wEnd = new THREE.Vector3(xEnd, 0.1, zFront);
 
         const wPoints = [
             [new THREE.Vector3(xStart, 0.1, zFront), new THREE.Vector3(xMid + gapSize / 2, 0.1, zFront)],
             [new THREE.Vector3(xMid - gapSize / 2, 0.1, zFront), new THREE.Vector3(xEnd, 0.1, zFront)]
-        ]; // Ordered Right to Left physically, but Line points don't care.
+        ];
 
         // Height
         const xH = -width / 2 - leftWidth - 2.0; // Same as Eave Marker? 
-        // If Eave Marker is also at `-width/2 - leftWidth - 2.0`, they overlap!
-        // The Eave Marker should be FURTHER out? Or inner?
-        // If I put Eave Marker at `xH - 2.0`?
-        // Logic collision.
-
         return {
             extWidth, extHeight, xH,
+            wStart, wEnd,
+            widthPoints: wPoints,
             hStart: new THREE.Vector3(xH, 0, 0),
             hEnd: new THREE.Vector3(xH, extHeight, 0),
             heightPoints: [
@@ -226,7 +215,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 <Line points={widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
                 <mesh position={widthStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                 <mesh position={widthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                <Text position={[0, 0.2, 2.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                <Text position={[0, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
                     {`${width} m`}
                 </Text>
             </group>
@@ -281,7 +270,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         <Line points={rightExtData.widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
                         <mesh position={rightExtData.wStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                         <mesh position={rightExtData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <Text position={[width / 2 + rightExtData.extWidth / 2, 0.2, 2.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                        <Text position={[width / 2 + rightExtData.extWidth / 2, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
                             {`${rightExtData.extWidth} m`}
                         </Text>
                     </group>
@@ -300,6 +289,22 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             {/* 6. LEFT EXTENSION (If Exists) */}
             {leftExtData && (
                 <group>
+                    <Line points={leftExtData.widthPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={leftExtData.widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={leftExtData.wStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={leftExtData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text
+                        position={[-width / 2 - leftExtData.extWidth / 2, 0.2, 3.5]}
+                        rotation={[-Math.PI / 2, 0, 0]}
+                        fontSize={0.8}
+                        color={textColor}
+                        anchorX="center"
+                        anchorY="bottom"
+                        outlineWidth={0.1}
+                        outlineColor="#ffffff"
+                    >
+                        {`${leftExtData.extWidth} m`}
+                    </Text>
                     {/* Height Only (consistency with original design for Left?) OR add Width. 
                         In Step 4015 hook, I added `wPoints` but commented about logic. 
                         Wait, Step 4015 hook for `leftExtData` includes `widthPoints`?
