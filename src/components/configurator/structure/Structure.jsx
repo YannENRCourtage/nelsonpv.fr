@@ -11,9 +11,10 @@ import { Auvent } from './Auvent.jsx';
 
 export function Structure() {
     const config = useConfiguratorValues();
-    const { width, length, bayCount, baySpacing, eaveHeight, roofPitch, hasAwning, hasAuvent, showDimensions } = config;
+    const { width, length, bayCount, baySpacing, eaveHeight, roofPitch, ridgeHeight, hasAwning, hasAuvent, showDimensions } = config;
 
-    const calculatedRidgeHeight = eaveHeight + (width / 2) * Math.tan(roofPitch * Math.PI / 180);
+    // Use exact ridge height from store (Map values) instead of calculated
+    const calculatedRidgeHeight = ridgeHeight;
 
     const frames = [];
     const numFrames = bayCount + 1;

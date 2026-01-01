@@ -60,18 +60,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const awningHeightMid = new THREE.Vector3(xAwningRight, awningEaveHeight / 2, 0);
 
     // 6. Ridge Height (Center, Front)
-    // Vertical line from Ground to Ridge Height at X=0, Z=Front
-    // Place it slightly offset in Z to avoid cladding (Z=0.1) -> Z=2.0 (same as width line)
-    // Or maybe offset in X slightly so it doesn't overlap with a center column if any?
-    // Let's create a new vertical line at X = -2.0 (Inside left width?) No, "Hauteur Faîtage" is central.
-    // But Width marker goes across. Vert marker might clash.
-    // Let's put it at X = 2.0 ? Or X = 0.
-    // If I put it at X=0, it crosses the Width line.
-    // Width line is at Y=0.1. Ridge line goes up.
-    // Let's put it on the Front Right corner? No that's Eave.
-    // Ridge is center. Let's put it at X=0, Z=zFront + 1.5? Or just Z=zFront and let them intersect.
+    // Vertical line from Ground to Ridge Height at X=0
+    // User Request: Align with Eave (Sablière) line.
+    // Eave marker is at Z=0. We set Ridge marker to Z=0 too.
     const xRidge = 0;
-    const zRidge = zFront;
+    const zRidge = 0; // Aligned with Eave Z depth
     const ridgeStart = new THREE.Vector3(xRidge, 0, zRidge);
     const ridgeEnd = new THREE.Vector3(xRidge, ridgeHeight, zRidge);
     const ridgeMid = new THREE.Vector3(xRidge, ridgeHeight / 2, zRidge);
@@ -169,7 +162,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     outlineWidth={0.1}
                     outlineColor="#ffffff"
                 >
-                    {`${ridgeHeight} m`}
+                    {`${Number(ridgeHeight).toFixed(1)} m`}
                 </Text>
             </group>
 
