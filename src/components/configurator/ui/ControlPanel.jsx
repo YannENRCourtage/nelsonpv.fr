@@ -237,11 +237,7 @@ export function ControlPanel() {
                 </button>
 
                 {/* Résumé */}
-                <div className="text-center p-3 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
-                    <p className="text-xs text-slate-600 font-medium">
-                        Bâtiment {width}m × {length}m  •  {bayCount} travées
-                    </p>
-                </div>
+
             </div>
         </div>
     );

@@ -305,7 +305,7 @@ export default function Configurateur() {
         <div className="h-screen w-full bg-gradient-to-b from-slate-50 to-slate-200 relative flex overflow-hidden">
 
             {/* ========== CONTROL PANEL (LEFT) ========== */}
-            <div className="absolute top-4 left-4 z-20 w-80 max-h-[calc(100vh-2rem)] overflow-y-auto">
+            <div className="absolute top-4 left-4 z-20 w-88 max-h-[calc(100vh-2rem)] overflow-y-auto">
                 <ControlPanel />
 
 
