@@ -163,7 +163,7 @@ export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
                 material={roofMaterial}
                 position={[
                     slopeLength / 2,
-                    0.25,
+                    -0.25, // Lowered by another 20cm (Total 50cm from original 0.25)
                     -0.2
                 ]}
                 rotation={[0, 0, -angleRad]}
