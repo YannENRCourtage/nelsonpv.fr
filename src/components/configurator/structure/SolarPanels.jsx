@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import { useConfiguratorStore, useConfiguratorValues } from '../../../../stores/useConfiguratorStore';
+import { useConfiguratorStore, useConfiguratorValues } from '../../../stores/useConfiguratorStore';
 
 // CONSTANTS
 const PANEL_WIDTH = 1.134; // meters (Largeur)
