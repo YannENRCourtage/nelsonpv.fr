@@ -6,16 +6,13 @@ export function ControlPanel() {
     // NEW: Split hooks with destructuring to maintain variable scope compatibility
     const {
         width,
-        ridgeHeight,
         eaveHeight,
         roofPitch,
         baySpacing,
         bayCount,
-        length,
         availableWidths,
         leftSide,
         rightSide,
-        showDimensions,
         hasSolar,
         solarStats
     } = useConfiguratorValues();
