@@ -134,10 +134,39 @@ export const useConfiguratorStore = create((set, get) => ({
     },
 
     /**
-     * Active/Désactive le auvent
+     * Active/Désactive l'appentis (Droite)
+     * Si activé, désactive l'auvent (Gauche) pour éviter conflit visuel/structurel
      */
     toggleAwning: () => {
-        set((state) => ({ hasAwning: !state.hasAwning }));
+        set((state) => {
+            const newValue = !state.hasAwning;
+            return {
+                hasAwning: newValue,
+                // Si on active l'appentis, on désactive l'auvent
+                hasAuvent: newValue ? false : state.hasAuvent
+            };
+        });
+    },
+
+    /**
+     * Présence d'un auvent (accolé gauche)
+     * @type {boolean}
+     */
+    hasAuvent: false,
+
+    /**
+     * Active/Désactive l'auvent (Gauche)
+     * Si activé, désactive l'appentis (Droite)
+     */
+    toggleAuvent: () => {
+        set((state) => {
+            const newValue = !state.hasAuvent;
+            return {
+                hasAuvent: newValue,
+                // Si on active l'auvent, on désactive l'appentis
+                hasAwning: newValue ? false : state.hasAwning
+            };
+        });
     },
 
     /**
@@ -201,6 +230,7 @@ export const useConfiguratorValues = () => {
         bayCount: state.bayCount,
         length: length,
         hasAwning: state.hasAwning,
+        hasAuvent: state.hasAuvent,
         showDimensions: state.showDimensions
     };
 };
