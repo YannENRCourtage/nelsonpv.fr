@@ -182,13 +182,7 @@ export function ControlPanel() {
                     </button>
                 </div>
 
-                {/* Info calculée : Longueur */}
-                <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                    <p className="text-xs text-green-700 font-medium">
-                        <span className="opacity-70">Longueur Totale :</span>{' '}
-                        <span className="font-bold text-green-900">{(baySpacing * bayCount).toFixed(1).replace(/[.,]0$/, '')}m</span> ({baySpacing}m × {bayCount})
-                    </p>
-                </div>
+
             </div>
 
             {/* ========== PARAMÈTRES FIXES ========== */}
