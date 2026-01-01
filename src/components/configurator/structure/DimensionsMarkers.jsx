@@ -252,39 +252,50 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </Text>
             </group>
 
-            {/* 5. AWNING (If Enabled) */}
-            {hasAwning && awningData && (
+            {/* 5. RIGHT EXTENSION (If Exists) */}
+            {rightExtData && (
                 <>
                     <group>
-                        <Line points={awningData.widthPoints[0]} color={lineColor} lineWidth={lineWidth} />
-                        <Line points={awningData.widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
-                        <mesh position={awningData.wStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <mesh position={awningData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <Text position={[width / 2 + awningData.awWidth / 2, 0.2, 2.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                            {`${awningData.awWidth} m`}
+                        <Line points={rightExtData.widthPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                        <Line points={rightExtData.widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                        <mesh position={rightExtData.wStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <mesh position={rightExtData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <Text position={[width / 2 + rightExtData.extWidth / 2, 0.2, 2.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                            {`${rightExtData.extWidth} m`}
                         </Text>
                     </group>
                     <group>
-                        <Line points={awningData.heightPoints[0]} color={lineColor} lineWidth={lineWidth} />
-                        <Line points={awningData.heightPoints[1]} color={lineColor} lineWidth={lineWidth} />
-                        <mesh position={awningData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <mesh position={awningData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <Text position={[awningData.xH + 0.5, awningData.awHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                            {`${awningData.awHeight} m`}
+                        <Line points={rightExtData.heightPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                        <Line points={rightExtData.heightPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                        <mesh position={rightExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <mesh position={rightExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <Text position={[rightExtData.xH + 0.5, rightExtData.extHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                            {`${rightExtData.extHeight} m`}
                         </Text>
                     </group>
                 </>
             )}
 
-            {/* 6. AUVENT (If Enabled) */}
-            {hasAuvent && auventData && (
+            {/* 6. LEFT EXTENSION (If Exists) */}
+            {leftExtData && (
                 <group>
-                    <Line points={auventData.points[0]} color={lineColor} lineWidth={lineWidth} />
-                    <Line points={auventData.points[1]} color={lineColor} lineWidth={lineWidth} />
-                    <mesh position={auventData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <mesh position={auventData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text position={[auventData.xLeft - 0.5, auventData.avHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                        {`${auventData.avHeight} m`}
+                    {/* Height Only (consistency with original design for Left?) OR add Width. 
+                        In Step 4015 hook, I added `wPoints` but commented about logic. 
+                        Wait, Step 4015 hook for `leftExtData` includes `widthPoints`?
+                        Let's check snippet from 4015.
+                        I added `wPoints` variable but Return object included `hStart`, `hEnd`, `heightPoints`.
+                        IT DID NOT RETURN `widthPoints`!
+                        So `leftExtData.widthPoints` is UNDEFINED.
+                        So I should NOT render Width for Left Extension unless I fix the hook.
+                        Original Auvent didn't have Width marker.
+                        I will replicate "Height Only" for Left Extension for safety and consistency with original Auvent.
+                    */}
+                    <Line points={leftExtData.heightPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={leftExtData.heightPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={leftExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={leftExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text position={[leftExtData.xH - 0.5, leftExtData.extHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                        {`${leftExtData.extHeight} m`}
                     </Text>
                 </group>
             )}
