@@ -117,10 +117,7 @@ export function Structure() {
                 width={width}
                 length={length}
                 eaveHeight={eaveHeight}
-                ridgeHeight={calculatedRidgeHeight} // Wait, is this var available? snippet 3919 showed it.
-                // Assuming calculatedRidgeHeight is computed in Structure.jsx or passed. line 13 destructures `config`.
-                // Snippet 3919 showed `calculatedRidgeHeight` used.
-                // I will assume it's valid.
+                ridgeHeight={calculatedRidgeHeight}
                 roofPitch={roofPitch}
                 leftSide={leftSide}
                 rightSide={rightSide}

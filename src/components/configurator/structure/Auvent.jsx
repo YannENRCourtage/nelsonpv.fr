@@ -11,15 +11,21 @@ import { SolarPanels } from './SolarPanels.jsx';
  * - Cantilever structure (Rafters + Struts)
  * - Purlins + Roof
  */
-export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing }) {
+export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing, side = 'left' }) {
 
     // --- DIMENSIONS ---
     const auventWidth = 4.0;
     const startHeight = eaveHeight; // 5.5m
     const angleRad = (roofPitch * Math.PI) / 180;
 
-    // Group Position: Left Eave
-    const groupPosX = -buildingWidth / 2;
+    // Group Position
+    // Left: -buildingWidth/2
+    // Right: +buildingWidth/2
+    const groupPosX = side === 'right' ? buildingWidth / 2 : -buildingWidth / 2;
+
+    // Scale: Mirror X for Right side (Standard Auvent is designed for Left -X)
+    const scale = side === 'right' ? [-1, 1, 1] : [1, 1, 1];
+
     const groupPosY = startHeight;
     const groupPosZ = 0;
 
@@ -157,6 +163,7 @@ export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
         <group
             position={[groupPosX, groupPosY, groupPosZ]}
             rotation={[0, Math.PI, 0]} // ROTATE 180 Y => Mirrors to Left & Flips Z
+            scale={scale}
         >
             {/* ROOF SHEETS - Shifted X for correct placement */}
             <mesh

@@ -313,7 +313,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     // I will set it to +1.0.
                     -length / 2,
                 ]}
-                rotation={[-Math.PI / 2, 0, Math.PI]} // 180° Rotation
+                rotation={[-Math.PI / 2, 0, -Math.PI / 2]} // 90° Clockwise
                 fontSize={3}
                 color="#ffffff"
                 anchorX="center"
