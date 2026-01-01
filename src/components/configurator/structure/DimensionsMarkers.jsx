@@ -220,7 +220,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Line points={auventData.points[1]} color={lineColor} lineWidth={lineWidth} />
                     <mesh position={auventData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={auventData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text position={[auventData.xLeft - 0.5, auventData.avHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                    <Text position={[auventData.xLeft, auventData.avHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
                         {`${auventData.avHeight} m`}
                     </Text>
                 </group>

@@ -625,9 +625,11 @@ export default function Crm() {
         <div className="lg:col-span-2 space-y-8 flex flex-col">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex-1 flex flex-col">
             <h2 className="text-xl font-bold text-slate-900 mb-6">Nouveaux Projets</h2>
-            <div className="space-y-4 flex-1 overflow-y-auto max-h-[400px]">
+            <div className="space-y-4 flex-1">
               {projects
                 .filter(p => !p.status || p.status === 'Nouveau' || p.status === 'draft')
+                .sort((a, b) => (new Date(b.createdAt || 0) - new Date(a.createdAt || 0)) || (b.id - a.id)) // Sort by newest (using createdAt or fallback to id)
+                .slice(0, 9) // Limit to 9 items
                 .map(p => (
                   <div key={p.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
                     <div><div className="font-bold text-slate-900">{p.name || 'Projet'}</div><div className="text-xs text-slate-500">{p.city || '-'} • {p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau')}</div></div>
@@ -1701,7 +1703,7 @@ export default function Crm() {
         {/* User Profile */}
         < div className="p-4 border-t border-slate-700" >
           <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-700/50">
-            <div className={`${currentUser.color} w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden`}>
+            <div className={`${currentUser.color} w-12 h-12 rounded-full flex items-center justify-center text-white font-bold overflow-hidden`}>
               {currentUser.photoURL ? (
                 <img src={currentUser.photoURL} alt="Avatar" className="w-full h-full object-cover" />
               ) : (

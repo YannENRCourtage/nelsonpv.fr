@@ -324,7 +324,7 @@ export default function Configurateur() {
                 </div>
 
                 {/* INFO BADGE & DIMENSIONS TOGGLE (Top Left of Visualizer) */}
-                <div className="absolute top-4 left-[25rem] z-20 flex flex-col gap-2 w-fit pointer-events-auto">
+                <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 w-fit pointer-events-auto">
                     {/* Badge */}
                     <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-lg shadow border border-slate-200">
                         <span className="text-slate-800 font-bold text-lg whitespace-nowrap">
