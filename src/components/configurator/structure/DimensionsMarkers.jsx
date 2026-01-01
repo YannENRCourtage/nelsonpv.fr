@@ -115,7 +115,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     // 3b. Ridge Height
     const { ridgePoints, ridgeStart, ridgeEnd, xRidge, zRidge } = useMemo(() => {
         const x = 0;
-        const z = 2.0;
+        const z = 0;
         const start = new THREE.Vector3(x, 0, z);
         const end = new THREE.Vector3(x, ridgeHeight, z);
         const mid = new THREE.Vector3(x, ridgeHeight / 2, z);
