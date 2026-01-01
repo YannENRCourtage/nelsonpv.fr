@@ -1,13 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Text, Line } from '@react-three/drei';
 import * as THREE from 'three';
 
 /**
  * Renders dimension lines and surface area text.
- * - Width arrow (Ground, Front)
- * - Length arrow (Ground, Side)
- * - Height arrow (Vertical, Eave)
- * - Surface Area (Roof, Top)
+ * Optimized with useMemo to prevent re-render loops from new object creation.
  */
 export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roofPitch, hasAwning, hasAuvent, showDimensions }) {
     if (!showDimensions) return null;
@@ -15,152 +12,222 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const textColor = "#000000";
     const lineColor = "#000000";
     const lineWidth = 2;
-
-    // --- GEOMETRY HELPERS ---
-
-    // Gap for text
     const gapSize = 3.0;
 
-    // 1. Width Arrow (Building)
-    const zFront = 2.0;
-    const widthStart = new THREE.Vector3(-width / 2, 0.1, zFront);
-    const widthEnd = new THREE.Vector3(width / 2, 0.1, zFront);
-    const widthMid = new THREE.Vector3(0, 0.1, zFront);
+    // --- MEMOIZED GEOMETRY HELPERS ---
 
-    // 2. Length Arrow (Right Side requested)
-    // Awning is on Right. Length lines must be OUTSIDE the awning.
-    // Offset = Width/2 + (Awning ? 9.3 : 0) + 3.0
-    const xSide = width / 2 + (hasAwning ? 9.3 : 0) + 3.0;
-    const lengthStart = new THREE.Vector3(xSide, 0.1, 0);
-    const lengthEnd = new THREE.Vector3(xSide, 0.1, -length);
-    const lengthMid = new THREE.Vector3(xSide, 0.1, -length / 2);
+    // 1. Width Arrow
+    const { widthPoints, widthStart, widthEnd } = useMemo(() => {
+        const zFront = 2.0;
+        const start = new THREE.Vector3(-width / 2, 0.1, zFront);
+        const end = new THREE.Vector3(width / 2, 0.1, zFront);
+        const mid = new THREE.Vector3(0, 0.1, zFront);
+        return {
+            widthStart: start,
+            widthEnd: end,
+            widthPoints: [
+                [start, new THREE.Vector3(mid.x - gapSize / 2, mid.y, mid.z)],
+                [new THREE.Vector3(mid.x + gapSize / 2, mid.y, mid.z), end]
+            ]
+        };
+    }, [width, gapSize]);
 
-    // 3. Main Eave Height (Move to Left Side to avoid Awning overlap)
-    // Left side is at -width/2. Offset by -2.0.
-    const xEave = -width / 2 - 2.0;
-    const heightStart = new THREE.Vector3(xEave, 0, 0);
-    const heightEnd = new THREE.Vector3(xEave, eaveHeight, 0);
-    const heightMid = new THREE.Vector3(xEave, eaveHeight / 2, 0);
+    // 2. Length Arrow (Right Side)
+    const { lengthPoints, lengthStart, lengthEnd, xSide } = useMemo(() => {
+        const x = width / 2 + (hasAwning ? 9.3 : 0) + 3.0;
+        const start = new THREE.Vector3(x, 0.1, 0);
+        const end = new THREE.Vector3(x, 0.1, -length);
+        const mid = new THREE.Vector3(x, 0.1, -length / 2);
+        return {
+            xSide: x,
+            lengthStart: start,
+            lengthEnd: end,
+            lengthPoints: [
+                [start, new THREE.Vector3(mid.x, mid.y, mid.z + gapSize / 2)],
+                [new THREE.Vector3(mid.x, mid.y, mid.z - gapSize / 2), end]
+            ]
+        };
+    }, [width, length, hasAwning, gapSize]);
 
-    // 4. Awning Dimensions (If enabled)
-    const awningWidth = 9.3;
-    const awningEaveHeight = 3.9;
+    // 3. Eave Height (Dynamic Side)
+    const { heightPoints, heightStart, heightEnd, xEave } = useMemo(() => {
+        const x = hasAuvent ? (width / 2 + 2.0) : (-width / 2 - 2.0);
+        const start = new THREE.Vector3(x, 0, 0);
+        const end = new THREE.Vector3(x, eaveHeight, 0);
+        const mid = new THREE.Vector3(x, eaveHeight / 2, 0);
+        return {
+            xEave: x,
+            heightStart: start,
+            heightEnd: end,
+            heightPoints: [
+                [start, new THREE.Vector3(mid.x, mid.y - gapSize / 2, mid.z)],
+                [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
+            ]
+        };
+    }, [width, eaveHeight, hasAuvent, gapSize]);
 
-    // Awning Width (Front, continues from Building Width on Right)
-    const awningWidthStart = new THREE.Vector3(width / 2, 0.1, zFront);
-    const awningWidthEnd = new THREE.Vector3(width / 2 + awningWidth, 0.1, zFront);
-    const awningWidthMid = new THREE.Vector3(width / 2 + awningWidth / 2, 0.1, zFront);
+    // 4. Awning Dimensions (Right)
+    const awningData = useMemo(() => {
+        if (!hasAwning) return null;
+        const awWidth = 9.3;
+        const awHeight = 3.9;
+        const zFront = 2.0;
 
-    // Awning Height (Far Right, matches Length line)
-    // We can place it near the Length line or the Awning Eave.
-    // Let's place it at Awning Edge + 2.0.
-    const xAwningRight = width / 2 + awningWidth + 2.0;
-    const awningHeightStart = new THREE.Vector3(xAwningRight, 0, 0);
-    const awningHeightEnd = new THREE.Vector3(xAwningRight, awningEaveHeight, 0);
-    const awningHeightMid = new THREE.Vector3(xAwningRight, awningEaveHeight / 2, 0);
+        // Width
+        const wStart = new THREE.Vector3(width / 2, 0.1, zFront);
+        const wEnd = new THREE.Vector3(width / 2 + awWidth, 0.1, zFront);
+        const wMid = new THREE.Vector3(width / 2 + awWidth / 2, 0.1, zFront);
 
-    // 6. Ridge Height (Center, Front)
-    // Vertical line from Ground to Ridge Height at X=0
-    // User Request: Align with Eave (Sablière) line.
-    // Eave marker is at Z=0. We set Ridge marker to Z=0 too.
-    const xRidge = 0;
-    const zRidge = 0; // Aligned with Eave Z depth
-    const ridgeStart = new THREE.Vector3(xRidge, 0, zRidge);
-    const ridgeEnd = new THREE.Vector3(xRidge, ridgeHeight, zRidge);
-    const ridgeMid = new THREE.Vector3(xRidge, ridgeHeight / 2, zRidge);
+        // Height
+        const xH = width / 2 + awWidth + 2.0;
+        const hStart = new THREE.Vector3(xH, 0, 0);
+        const hEnd = new THREE.Vector3(xH, awHeight, 0);
+        const hMid = new THREE.Vector3(xH, awHeight / 2, 0);
 
-    // 5. Surface Area
-    // Logic: (Building Width + Awning Width + Auvent Width) * Length
-    const totalWidth = width + (hasAwning ? awningWidth : 0) + (hasAuvent ? 4.0 : 0);
-    const surfaceArea = (totalWidth * length).toFixed(0);
-    const angleRad = (roofPitch * Math.PI) / 180;
+        return {
+            awWidth, awHeight, xH,
+            wStart, wEnd,
+            hStart, hEnd,
+            widthPoints: [
+                [wStart, new THREE.Vector3(wMid.x - gapSize / 2, wMid.y, wMid.z)],
+                [new THREE.Vector3(wMid.x + gapSize / 2, wMid.y, wMid.z), wEnd]
+            ],
+            heightPoints: [
+                [hStart, new THREE.Vector3(hMid.x, hMid.y - gapSize / 2, hMid.z)],
+                [new THREE.Vector3(hMid.x, hMid.y + gapSize / 2, hMid.z), hEnd]
+            ]
+        };
+    }, [hasAwning, width, gapSize]);
+
+    // 5. Auvent Dimensions (Left)
+    const auventData = useMemo(() => {
+        if (!hasAuvent) return null;
+        const avWidth = 4.0;
+        const avHeight = 4.8;
+
+        const xLeft = -width / 2 - avWidth - 2.0;
+        const start = new THREE.Vector3(xLeft, 0, 0);
+        const end = new THREE.Vector3(xLeft, avHeight, 0);
+        const mid = new THREE.Vector3(xLeft, avHeight / 2, 0);
+
+        return {
+            avHeight, xLeft,
+            start, end,
+            points: [
+                [start, new THREE.Vector3(mid.x, mid.y - gapSize / 2, mid.z)],
+                [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
+            ]
+        };
+    }, [hasAuvent, width, gapSize]);
+
+    // 6. Ridge Height
+    const { ridgePoints, ridgeStart, ridgeEnd, xRidge, zRidge } = useMemo(() => {
+        const x = 0;
+        const z = 0;
+        const start = new THREE.Vector3(x, 0, z);
+        const end = new THREE.Vector3(x, ridgeHeight, z);
+        const mid = new THREE.Vector3(x, ridgeHeight / 2, z);
+        return {
+            xRidge: x, zRidge: z,
+            ridgeStart: start, ridgeEnd: end,
+            ridgePoints: [
+                [start, new THREE.Vector3(mid.x, mid.y - gapSize / 2, mid.z)],
+                [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
+            ]
+        };
+    }, [ridgeHeight, gapSize]);
+
+    // 7. Surface Area
+    const surfaceArea = useMemo(() => {
+        const totalWidth = width + (hasAwning ? 9.3 : 0) + (hasAuvent ? 4.0 : 0);
+        return (totalWidth * length).toFixed(0);
+    }, [width, length, hasAwning, hasAuvent]);
 
     return (
         <group>
-            {/* --- BUILDING WIDTH --- */}
+            {/* 1. BUILDING WIDTH */}
             <group>
-                <Line points={[widthStart, new THREE.Vector3(widthMid.x - gapSize / 2, widthMid.y, widthMid.z)]} color={lineColor} lineWidth={lineWidth} />
-                <Line points={[new THREE.Vector3(widthMid.x + gapSize / 2, widthMid.y, widthMid.z), widthEnd]} color={lineColor} lineWidth={lineWidth} />
+                <Line points={widthPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                <Line points={widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
                 <mesh position={widthStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                 <mesh position={widthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                <Text
-                    position={[0, 0.2, zFront + 0.5]}
-                    rotation={[-Math.PI / 2, 0, 0]}
-                    fontSize={0.8}
-                    color={textColor}
-                    anchorX="center"
-                    anchorY="bottom"
-                    outlineWidth={0.1}
-                    outlineColor="#ffffff"
-                >
+                <Text position={[0, 0.2, 2.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
                     {`${width} m`}
                 </Text>
             </group>
 
-            {/* --- LENGTH (RIGHT SIDE) --- */}
+            {/* 2. LENGTH */}
             <group>
-                <Line points={[lengthStart, new THREE.Vector3(lengthMid.x, lengthMid.y, lengthMid.z + gapSize / 2)]} color={lineColor} lineWidth={lineWidth} />
-                <Line points={[new THREE.Vector3(lengthMid.x, lengthMid.y, lengthMid.z - gapSize / 2), lengthEnd]} color={lineColor} lineWidth={lineWidth} />
+                <Line points={lengthPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                <Line points={lengthPoints[1]} color={lineColor} lineWidth={lineWidth} />
                 <mesh position={lengthStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                 <mesh position={lengthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                <Text
-                    // Offset by +0.5m to sit "outside" the line, matching Width dimension style
-                    position={[xSide + 0.5, 0.2, -length / 2]}
-                    // Rotation flipped to face 'outwards' on the Right Side?
-                    // Left Side was [-PI/2, 0, -PI/2] (Reading Bottom-Up).
-                    // Right Side [-PI/2, 0, PI/2] should read Bottom-Up (facing right).
-                    rotation={[-Math.PI / 2, 0, Math.PI / 2]}
-                    fontSize={0.8}
-                    color={textColor}
-                    anchorX="center"
-                    anchorY="bottom"
-                    outlineWidth={0.1}
-                    outlineColor="#ffffff"
-                >
+                <Text position={[xSide + 0.5, 0.2, -length / 2]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
                     {`${length} m`}
                 </Text>
             </group>
 
-            {/* --- BUILDING EAVE HEIGHT (SWAP SIDE IF AUVENT) --- */}
-            {/* If hasAuvent, move to Right Side (+width/2 + 2.0) */
-            /* If Normal, Left Side (-width/2 - 2.0) */}
+            {/* 3. EAVE HEIGHT */}
             <group>
-                <Line
-                    points={[
-                        new THREE.Vector3(hasAuvent ? width / 2 + 2.0 : -width / 2 - 2.0, 0, 0),
-                        new THREE.Vector3(hasAuvent ? width / 2 + 2.0 : -width / 2 - 2.0, eaveHeight, 0)
-                    ]}
-                    color={lineColor} lineWidth={lineWidth}
-                />
-
-                {/* Horizontal Ticks */}
-                <Line
-                    points={[
-                        new THREE.Vector3(hasAuvent ? width / 2 + 2.0 : -width / 2 - 2.0, 0, 0),
-                        new THREE.Vector3(hasAuvent ? width / 2 + 2.0 : -width / 2 - 2.0, 0, 0) // Zero length? No, tick geometry needed.
-                        // Actually use existing logic with start/end vectors adjusted
-                    ]}
-                    color={lineColor} lineWidth={lineWidth}
-                />
-                {/* Wait, simpler to redefine xEave dynamically */}
+                <Line points={heightPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                <Line points={heightPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                <mesh position={heightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                <mesh position={heightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                <Text position={[xEave + (hasAuvent ? 0.5 : -0.5), eaveHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                    {`${eaveHeight} m`}
+                </Text>
             </group>
 
-            {/* Marker logic below using dynamicX */}
+            {/* 4. RIDGE HEIGHT */}
+            <group>
+                <Line points={ridgePoints[0]} color={lineColor} lineWidth={lineWidth} />
+                <Line points={ridgePoints[1]} color={lineColor} lineWidth={lineWidth} />
+                <mesh position={ridgeStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                <mesh position={ridgeEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                <Text position={[xRidge + 0.5, ridgeHeight / 2, zRidge]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                    {`${Number(ridgeHeight).toFixed(1)} m`}
+                </Text>
+            </group>
 
-            {/* --- SURFACE AREA --- */}
-            <Text
-                // Positioned on RIGHT Roof (+width/4)
-                position={[width / 4, ridgeHeight + 0.3, -length / 2]}
-                // Rotation Logic:
-                // User requested "Remet la pente... à 0°".
-                rotation={[-Math.PI / 2, 0, Math.PI / 2]}
-                fontSize={3}
-                color="#ffffff"
-                anchorX="center"
-                anchorY="middle"
-                outlineWidth={0.2}
-                outlineColor="#000000"
-            >
+            {/* 5. AWNING (If Enabled) */}
+            {hasAwning && awningData && (
+                <>
+                    <group>
+                        <Line points={awningData.widthPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                        <Line points={awningData.widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                        <mesh position={awningData.wStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <mesh position={awningData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <Text position={[width / 2 + awningData.awWidth / 2, 0.2, 2.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                            {`${awningData.awWidth} m`}
+                        </Text>
+                    </group>
+                    <group>
+                        <Line points={awningData.heightPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                        <Line points={awningData.heightPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                        <mesh position={awningData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <mesh position={awningData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <Text position={[awningData.xH + 0.5, awningData.awHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                            {`${awningData.awHeight} m`}
+                        </Text>
+                    </group>
+                </>
+            )}
+
+            {/* 6. AUVENT (If Enabled) */}
+            {hasAuvent && auventData && (
+                <group>
+                    <Line points={auventData.points[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={auventData.points[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={auventData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={auventData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text position={[auventData.xLeft - 0.5, auventData.avHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                        {`${auventData.avHeight} m`}
+                    </Text>
+                </group>
+            )}
+
+            {/* SURFACE AREA */}
+            <Text position={[width / 4, ridgeHeight + 0.3, -length / 2]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={3} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.2} outlineColor="#000000">
                 {`${surfaceArea} m²`}
             </Text>
         </group>

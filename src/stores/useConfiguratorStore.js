@@ -1,3 +1,4 @@
+import React from 'react';
 import { create } from 'zustand';
 
 /**
@@ -238,17 +239,24 @@ export const useConfiguratorValues = () => {
 /**
  * Hook helper pour récupérer uniquement les actions
  */
+/**
+ * Hook helper pour récupérer uniquement les actions
+ * VERSION STABILISÉE: Ne déclenche pas de re-render (pas de souscription au state)
+ * Les actions sont statiques car définies une seule fois dans le store.
+ */
 export const useConfiguratorActions = () => {
-    return useConfiguratorStore((state) => ({
-        setWidth: state.setWidth,
-        setBaySpacing: state.setBaySpacing,
-        setBayCount: state.setBayCount,
-        incrementBayCount: state.incrementBayCount,
-        decrementBayCount: state.decrementBayCount,
-        toggleAwning: state.toggleAwning,
-        toggleAuvent: state.toggleAuvent,
-        toggleDimensions: state.toggleDimensions,
-        reset: state.reset,
-        getSummary: state.getSummary
-    }));
+    // On utilise useMemo pour retourner toujours la même instance d'objet actions
+    // On appelle directement les méthodes du store via getState() pour éviter la souscription
+    return React.useMemo(() => ({
+        setWidth: (w) => useConfiguratorStore.getState().setWidth(w),
+        setBaySpacing: (s) => useConfiguratorStore.getState().setBaySpacing(s),
+        setBayCount: (c) => useConfiguratorStore.getState().setBayCount(c),
+        incrementBayCount: () => useConfiguratorStore.getState().incrementBayCount(),
+        decrementBayCount: () => useConfiguratorStore.getState().decrementBayCount(),
+        toggleAwning: () => useConfiguratorStore.getState().toggleAwning(),
+        toggleAuvent: () => useConfiguratorStore.getState().toggleAuvent(),
+        toggleDimensions: () => useConfiguratorStore.getState().toggleDimensions(),
+        reset: () => useConfiguratorStore.getState().reset(),
+        getSummary: () => useConfiguratorStore.getState().getSummary()
+    }), []);
 };
