@@ -1,28 +1,13 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
-
-function createTrapezoidalProfile(width, height, thickness) {
-    const shape = new THREE.Shape();
-    // Simplified wave profile
-    const steps = 10;
-    const stepWidth = width / steps;
-
-    shape.moveTo(0, 0);
-    for (let i = 0; i < steps; i++) {
-        const x = i * stepWidth;
-        // Go Up
-        shape.lineTo(x + stepWidth * 0.2, height);
-        // Go Right
-        shape.lineTo(x + stepWidth * 0.8, height);
-        // Go Down
-        shape.lineTo(x + stepWidth, 0);
+shape.lineTo(x + stepWidth, 0);
     }
-    // Close shape with thickness
-    shape.lineTo(width, -thickness);
-    shape.lineTo(0, -thickness);
-    shape.lineTo(0, 0);
+// Close shape with thickness
+shape.lineTo(width, -thickness);
+shape.lineTo(0, -thickness);
+shape.lineTo(0, 0);
 
-    return shape;
+return shape;
 }
 
 /**

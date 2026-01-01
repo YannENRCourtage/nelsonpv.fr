@@ -79,9 +79,11 @@ export function Structure() {
             {hasAuvent && (
                 <Auvent
                     length={length}
-                    eaveHeight={eaveHeight} // 5.5m
+                    eaveHeight={eaveHeight}
                     roofPitch={roofPitch}
                     buildingWidth={width}
+                    bayCount={bayCount}
+                    baySpacing={baySpacing}
                 />
             )}
 
