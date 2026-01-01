@@ -1,8 +1,9 @@
 import React from 'react';
-import { useConfiguratorStore } from '@/stores/useConfiguratorStore.js';
+import { useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
 
 export function ControlPanel() {
-    // Récupération des valeurs et actions du store
+    // OLD: const { ... } = useConfiguratorStore();
+    // NEW: Split hooks with destructuring to maintain variable scope compatibility
     const {
         width,
         ridgeHeight,
@@ -12,18 +13,24 @@ export function ControlPanel() {
         bayCount,
         length,
         availableWidths,
+        hasAwning,
+        hasAuvent,
+        showDimensions,
+        hasSolar,
+        solarStats
+    } = useConfiguratorValues();
+
+    const {
         setWidth,
         setBaySpacing,
         incrementBayCount,
         decrementBayCount,
-        hasAwning,
-        hasAuvent,
         toggleAwning,
         toggleAuvent,
-        showDimensions,
         toggleDimensions,
+        toggleSolar,
         reset
-    } = useConfiguratorStore();
+    } = useConfiguratorActions();
 
     return (
         <div className="control-panel bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-2xl border border-slate-200">
@@ -208,10 +215,10 @@ export function ControlPanel() {
                     Option Solaire
                 </label>
                 <button
-                    onClick={actions.toggleSolar}
+                    onClick={toggleSolar}
                     className={`
                         w-full py-3 px-4 rounded-xl font-medium text-sm transition-all duration-200 shadow-sm border
-                        ${values.hasSolar
+                        ${hasSolar
                             ? 'bg-yellow-100 text-yellow-800 border-yellow-200 shadow-inner'
                             : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                         }
@@ -220,14 +227,14 @@ export function ControlPanel() {
                     Couverture Solaire PV
                 </button>
 
-                {values.hasSolar && (
+                {hasSolar && (
                     <div className="mt-3 p-3 bg-yellow-50 border border-yellow-100 rounded-lg">
                         <div className="text-xs text-yellow-800 uppercase font-semibold mb-1">Puissance Installée</div>
                         <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-bold text-yellow-900">{values.solarStats?.power?.toFixed(2)}</span>
+                            <span className="text-2xl font-bold text-yellow-900">{solarStats?.power?.toFixed(2)}</span>
                             <span className="text-sm font-medium text-yellow-700">kWc</span>
                         </div>
-                        <div className="text-xs text-yellow-600 mt-1">{values.solarStats?.count} panneaux</div>
+                        <div className="text-xs text-yellow-600 mt-1">{solarStats?.count} panneaux</div>
                     </div>
                 )}
             </div>

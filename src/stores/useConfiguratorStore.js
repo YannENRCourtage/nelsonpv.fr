@@ -291,6 +291,7 @@ export const useConfiguratorValues = () => {
     const solarPower = (solarCount * 465) / 1000; // kWc
 
     return {
+        availableWidths: state.availableWidths,
         width: state.width,
         ridgeHeight: ridgeHeight,
         eaveHeight: state.eaveHeight,

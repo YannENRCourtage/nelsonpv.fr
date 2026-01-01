@@ -227,7 +227,24 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             )}
 
             {/* SURFACE AREA */}
-            <Text position={[width / 4, ridgeHeight + 0.3, -length / 2]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={3} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.2} outlineColor="#000000">
+            <Text
+                position={[
+                    width / 4,
+                    ridgeHeight - (width / 4) * Math.tan((roofPitch * Math.PI) / 180) + 0.3,
+                    -length / 2
+                ]}
+                rotation={[
+                    -Math.PI / 2,
+                    0,
+                    Math.PI / 2 - (roofPitch * Math.PI) / 180
+                ]}
+                fontSize={3}
+                color="#ffffff"
+                anchorX="center"
+                anchorY="middle"
+                outlineWidth={0.2}
+                outlineColor="#000000"
+            >
                 {`${surfaceArea} m²`}
             </Text>
         </group>
