@@ -100,6 +100,10 @@ export function Structure() {
                     buildingWidth={width}
                     bayCount={bayCount}
                     baySpacing={baySpacing}
+                    buildingType={config.buildingType}
+                />
+                    bayCount={bayCount}
+            baySpacing={baySpacing}
                 />
             )}
 

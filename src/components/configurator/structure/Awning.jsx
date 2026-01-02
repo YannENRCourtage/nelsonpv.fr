@@ -12,7 +12,7 @@ import { SolarPanels } from './SolarPanels.jsx';
  * - Covered by Bac Acier (Steel Deck)
  * - Supports (Columns) at the 3.87m end
  */
-export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing, side = 'right' }) {
+export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing, side = 'right', buildingType = 'symetrique' }) {
 
     // --- DIMENSIONS ---
     const awningWidth = 9.3;
@@ -196,6 +196,19 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
 
             {/* STRUCTURE FRAMES */}
             {frames}
+
+            {/* Longitudinal Beam (Sablière) at Tip - Reduced 20%, Adjusted Height */}
+            <mesh
+                position={[
+                    awningWidth,
+                    -awningWidth * Math.tan(angleRad) - 0.1 + (buildingType === 'monopente' ? 0.4 : 0.25),
+                    -length / 2
+                ]}
+                rotation={[0, 0, 0]}
+                material={structureMaterial}
+            >
+                <boxGeometry args={[0.16, 0.32, length]} />
+            </mesh>
 
             {/* PURLINS */}
             {purlins}
