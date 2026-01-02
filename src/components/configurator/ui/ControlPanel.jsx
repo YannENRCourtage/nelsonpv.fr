@@ -11,6 +11,7 @@ export function ControlPanel() {
         baySpacing,
         bayCount,
         availableWidths,
+        buildingType,
         leftSide,
         rightSide,
         hasSolar,
@@ -22,6 +23,7 @@ export function ControlPanel() {
         setBaySpacing,
         incrementBayCount,
         decrementBayCount,
+        setBuildingType,
         setLeftSide,
         setRightSide,
         toggleDimensions,
@@ -38,44 +40,41 @@ export function ControlPanel() {
                 <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Bâtiment Métallique Pro</p>
             </div>
 
+            {/* ========== TYPE DE BÂTIMENT ========== */}
+            <div className="param-group mb-6">
+                <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
+                    Type de Bâtiment
+                </label>
+                <select
+                    value={buildingType}
+                    onChange={(e) => setBuildingType(e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg font-semibold text-sm bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                >
+                    <option value="symetrique">Symétrique</option>
+                    <option value="asymetrique_1">Asymétrique 1 zone</option>
+                    <option value="asymetrique_2">Asymétrique 2 zones</option>
+                    <option value="monopente">Monopente</option>
+                    <option value="ombriere_vl_simple">Ombrière VL simple</option>
+                    <option value="ombriere_vl_double">Ombrière VL double</option>
+                    <option value="ombriere_pl">Ombrière PL</option>
+                </select>
+            </div>
+
             {/* ========== LARGEUR DU BÂTIMENT ========== */}
             <div className="param-group mb-6">
                 <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
                     Largeur du Bâtiment
                 </label>
 
-                {/* Button Group pour sélection largeur */}
-                <div className="grid grid-cols-3 gap-2">
+                <select
+                    value={width}
+                    onChange={(e) => setWidth(Number(e.target.value))}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg font-semibold text-sm bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                >
                     {availableWidths.map((w) => (
-                        <button
-                            key={w}
-                            onClick={() => setWidth(w)}
-                            className={`
-                                px-4 py-3 rounded-lg font-semibold text-sm transition-all
-                                ${width === w
-                                    ? 'bg-blue-600 text-white shadow-lg scale-105'
-                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:scale-102'
-                                }
-                            `}
-                        >
-                            {w}m
-                        </button>
+                        <option key={w} value={w}>{w} m</option>
                     ))}
-                </div>
-            </div>
-
-            {/* ========== TYPE DE BÂTIMENT ========== */}
-            <div className="param-group mb-6">
-                <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
-                    Type de Bâtiment
-                </label>
-                <select className="w-full px-4 py-3 border border-slate-300 rounded-lg font-semibold text-sm bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all">
-                    <option value="symetrique">Symétrique</option>
-                    <option value="asymetrique">Asymétrique</option>
-                    <option value="monopente">Monopente</option>
-                    <option value="ombriere">Ombrière</option>
                 </select>
-                <p className="text-xs text-slate-500 mt-2 italic">À venir : affectation structure 3D</p>
             </div>
 
             {/* ========== OPTIONS STRUCTURE - EXTENSIONS (Compact) ========== */}

@@ -2,31 +2,54 @@ import React from 'react';
 import { create } from 'zustand';
 
 /**
+ * Mapping of Building Types to Allowed Widths
+ */
+const TYPE_WIDTHS_MAP = {
+    'symetrique': [15.0, 18.6, 22.3, 26.0, 29.8, 33.5],
+    'asymetrique_1': [16.4, 20.0],
+    'asymetrique_2': [25.5, 29.1],
+    'monopente': [12.7, 16.4],
+    'ombriere_vl_simple': [6.0],
+    'ombriere_vl_double': [9.1, 11.3],
+    'ombriere_pl': [15.8, 20.2, 24.6]
+};
+
+/**
  * Mapping STRICT : Largeur → Hauteur Faîtage
- * Correspondance exacte selon spécifications SCREB
  */
 const WIDTH_HEIGHT_MAP = {
+    // Symétrique
     15.0: 6.8,
     18.6: 7.1,
     22.3: 7.5,
     26.0: 7.8,
     29.8: 8.1,
-    33.5: 8.5
+    33.5: 8.5,
+    // Asymétrique 1 zone (Approx calc: 5.5 + w/2 * tan(10))
+    16.4: 6.9,
+    20.0: 7.3,
+    // Asymétrique 2 zones
+    25.5: 7.8,
+    29.1: 8.1,
+    // Monopente
+    12.7: 6.6,
+    // Ombrière VL simple (Low pitch?)
+    6.0: 4.5, // Arbitrary
+    // Ombrière VL double
+    9.1: 5.0,
+    11.3: 5.5,
+    // Ombrière PL
+    15.8: 6.0,
+    20.2: 6.5,
+    24.6: 7.0
 };
-
-const AVAILABLE_WIDTHS = Object.keys(WIDTH_HEIGHT_MAP).map(Number).sort((a, b) => a - b);
-
-/**
- * Store Zustand pour le Configurateur 3D
- * Logique métier codée en dur selon contraintes SCREB
- */
-// ... (imports and constants)
 
 export const useConfiguratorStore = create((set, get) => ({
     // ... (existing constants and params)
     roofPitch: 10,
     eaveHeight: 5.5,
     width: 18.6,
+    buildingType: 'symetrique', // Default
     baySpacing: 7.5,
     bayCount: 4,
     showDimensions: true,
@@ -36,12 +59,21 @@ export const useConfiguratorStore = create((set, get) => ({
     rightSide: 'none', // 'none', 'auvent', 'appentis'
 
     get availableWidths() {
-        return AVAILABLE_WIDTHS;
+        const type = get().buildingType;
+        return TYPE_WIDTHS_MAP[type] || TYPE_WIDTHS_MAP['symetrique'];
     },
 
     // ACTIONS
+    setBuildingType: (type) => {
+        if (TYPE_WIDTHS_MAP[type]) {
+            const defaultWidth = TYPE_WIDTHS_MAP[type][0];
+            set({ buildingType: type, width: defaultWidth });
+        }
+    },
     setWidth: (width) => {
-        if (WIDTH_HEIGHT_MAP[width] !== undefined) set({ width });
+        // Allow setting width if it exists in current type's list
+        // Or broadly check if valid number to avoid locking
+        set({ width: Number(width) });
     },
     setBaySpacing: (spacing) => {
         if (spacing === 6 || spacing === 7.5) set({ baySpacing: spacing });
@@ -73,6 +105,7 @@ export const useConfiguratorStore = create((set, get) => ({
     toggleDimensions: () => set((state) => ({ showDimensions: !state.showDimensions })),
 
     reset: () => set({
+        buildingType: 'symetrique',
         width: 18.6,
         baySpacing: 7.5,
         bayCount: 4,
@@ -85,8 +118,10 @@ export const useConfiguratorStore = create((set, get) => ({
     getSummary: () => {
         const state = get();
         const length = state.baySpacing * state.bayCount;
-        const ridgeHeight = WIDTH_HEIGHT_MAP[state.width] || WIDTH_HEIGHT_MAP[18.6];
+        // Fallback or explicit map
+        const ridgeHeight = WIDTH_HEIGHT_MAP[state.width] || (state.eaveHeight + (state.width / 2) * Math.tan(state.roofPitch * Math.PI / 180));
         return {
+            buildingType: state.buildingType,
             width: state.width,
             ridgeHeight,
             eaveHeight: state.eaveHeight,
