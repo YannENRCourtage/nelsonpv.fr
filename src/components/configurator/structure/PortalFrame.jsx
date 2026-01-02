@@ -168,7 +168,7 @@ export function PortalFrame({
                     <mesh
                         geometry={monoRafterGeo}
                         material={steelMaterial}
-                        rotation={[0, 0, angleRad]}
+                        rotation={[0, Math.PI / 2, angleRad]}
                         castShadow receiveShadow
                     >
                         {/* Adjust orientation: IPE extrusion assumes Z-axis length. 

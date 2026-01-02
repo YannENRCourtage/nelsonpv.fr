@@ -160,7 +160,9 @@ export const useConfiguratorValues = () => {
 
     return React.useMemo(() => {
         const length = state.baySpacing * state.bayCount;
-        const ridgeHeight = WIDTH_HEIGHT_MAP[state.width] || WIDTH_HEIGHT_MAP[18.6];
+        const ridgeHeight = (state.buildingType === 'monopente' && MONOPENTE_HEIGHTS[state.width])
+            ? MONOPENTE_HEIGHTS[state.width]
+            : (WIDTH_HEIGHT_MAP[state.width] || WIDTH_HEIGHT_MAP[18.6]);
 
         // --- SOLAR STATS ---
         const PANEL_WIDTH = 1.134;

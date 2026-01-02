@@ -114,7 +114,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // 3b. Ridge Height
     const { ridgePoints, ridgeStart, ridgeEnd, xRidge, zRidge } = useMemo(() => {
-        const x = 0;
+        const x = buildingType === 'monopente' ? width / 2 + 1.5 : 0;
         const z = 0;
         const start = new THREE.Vector3(x, 0, z);
         const end = new THREE.Vector3(x, ridgeHeight, z);
@@ -130,7 +130,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
             ]
         };
-    }, [width, rightWidth, ridgeHeight, gapSize]);
+    }, [width, rightWidth, ridgeHeight, gapSize, buildingType]);
 
     // 4. Right Extension Dimensions
     const rightExtData = useMemo(() => {

@@ -14,7 +14,7 @@ import { SolarPanels } from './SolarPanels.jsx';
 export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWidth, bayCount, baySpacing, side = 'left', buildingType = 'symetrique' }) {
 
     // --- DIMENSIONS ---
-    const auventWidth = 4.0;
+    const auventWidth = 2.0;
 
     // Logic for Monopente Heights
     let startHeight = eaveHeight;
