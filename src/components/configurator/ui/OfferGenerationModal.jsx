@@ -64,8 +64,18 @@ export function OfferGenerationModal({ isOpen, onClose, config, selectedProject 
 
     // 1. UPLOAD
     const handleFileUpload = (e) => {
+        console.log("File input change detected");
         const file = e.target.files[0];
-        if (!file || file.type !== 'application/pdf') return;
+        if (!file) {
+            console.log("No file selected");
+            return;
+        }
+        console.log("File selected:", file.name, file.type, file.size);
+
+        if (file.type !== 'application/pdf') {
+            alert("Veuillez sélectionner un fichier PDF valide.");
+            return;
+        }
 
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -268,15 +278,15 @@ export function OfferGenerationModal({ isOpen, onClose, config, selectedProject 
                     {step === 'upload' && (
                         <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
                             <div className="bg-white p-12 rounded-3xl shadow-xl border-2 border-dashed border-slate-300 w-full max-w-lg hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer relative">
+                                <Upload className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+                                <h3 className="text-xl font-bold text-slate-800 mb-2">Charger un modèle PDF</h3>
+                                <p className="text-slate-500">Cliquez ou glissez un fichier PDF ici pour commencer (Devis vierge, Trame...)</p>
                                 <input
                                     type="file"
                                     accept="application/pdf"
                                     onChange={handleFileUpload}
-                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                    className="absolute inset-0 opacity-0 cursor-pointer z-50"
                                 />
-                                <Upload className="w-16 h-16 text-blue-500 mx-auto mb-4" />
-                                <h3 className="text-xl font-bold text-slate-800 mb-2">Charger un modèle PDF</h3>
-                                <p className="text-slate-500">Cliquez ou glissez un fichier PDF ici pour commencer (Devis vierge, Trame...)</p>
                             </div>
                         </div>
                     )}
@@ -322,8 +332,8 @@ export function OfferGenerationModal({ isOpen, onClose, config, selectedProject 
                                                 key={tag.key}
                                                 onClick={() => setSelectedTagKey(tag.key)}
                                                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${selectedTagKey === tag.key
-                                                        ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
-                                                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-blue-300'
+                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
+                                                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-blue-300'
                                                     }`}
                                             >
                                                 {tag.label}
@@ -364,8 +374,8 @@ export function OfferGenerationModal({ isOpen, onClose, config, selectedProject 
                                                 <button
                                                     onClick={() => setSelectedTagKey(tag.key)}
                                                     className={`flex-1 text-left px-3 py-2 rounded-lg text-xs font-medium border transition-all ${selectedTagKey === tag.key
-                                                            ? 'bg-purple-600 text-white border-purple-600 shadow-md'
-                                                            : 'bg-purple-50 text-purple-700 border-purple-100 hover:border-purple-300'
+                                                        ? 'bg-purple-600 text-white border-purple-600 shadow-md'
+                                                        : 'bg-purple-50 text-purple-700 border-purple-100 hover:border-purple-300'
                                                         }`}
                                                 >
                                                     {tag.label}
