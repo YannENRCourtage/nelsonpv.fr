@@ -74,9 +74,10 @@ export const useConfiguratorStore = create((set, get) => ({
             const defaultWidth = TYPE_WIDTHS_MAP[type][0];
             const updates = { buildingType: type, width: defaultWidth };
 
-            // Forcer la hauteur de sablière pour Monopente
+            // Forcer la hauteur de sablière pour Monopente + Pente 15°
             if (type === 'monopente') {
                 updates.eaveHeight = 4.0;
+                updates.roofPitch = 15; // FORCE 15°
 
                 // Disable Appentis if selected
                 const state = get();
@@ -84,6 +85,7 @@ export const useConfiguratorStore = create((set, get) => ({
                 if (state.rightSide === 'appentis') updates.rightSide = 'none';
             } else {
                 updates.eaveHeight = 5.5;
+                // Keep existing pitch or reset? Usually keep user selection or default to 10
             }
 
             set(updates);

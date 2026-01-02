@@ -1273,6 +1273,8 @@ export default function Crm() {
             >
               <option value="all">Tous les types</option>
               <option value="Construction">Construction</option>
+              <option value="Rénovation">Rénovation</option>
+              <option value="Construction & Rénovation">Construction & Rénovation</option>
               <option value="Location">Location</option>
             </select>
 

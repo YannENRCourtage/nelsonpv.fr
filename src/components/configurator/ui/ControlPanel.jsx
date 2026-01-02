@@ -99,9 +99,12 @@ export function ControlPanel() {
                             </button>
                             <button
                                 onClick={() => setLeftSide(leftSide === 'appentis' ? 'none' : 'appentis')}
+                                disabled={buildingType === 'monopente'}
                                 className={`flex-1 py-1.5 rounded text-xs font-bold uppercase border transition-all ${leftSide === 'appentis'
                                     ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
-                                    : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                                    : buildingType === 'monopente'
+                                        ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
+                                        : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
                                     }`}
                             >
                                 Appentis
