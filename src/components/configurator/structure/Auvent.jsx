@@ -11,12 +11,28 @@ import { SolarPanels } from './SolarPanels.jsx';
  * - Cantilever structure (Rafters + Struts)
  * - Purlins + Roof
  */
-export function Auvent({ length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing, side = 'left' }) {
+export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWidth, bayCount, baySpacing, side = 'left', buildingType = 'symetrique' }) {
 
     // --- DIMENSIONS ---
     const auventWidth = 4.0;
-    const startHeight = eaveHeight; // 5.5m
-    const angleRad = (roofPitch * Math.PI) / 180;
+
+    // Logic for Monopente Heights
+    let startHeight = eaveHeight;
+    let angleRad = (roofPitch * Math.PI) / 180;
+
+    if (buildingType === 'monopente') {
+        // Monopente Specifics
+        if (side === 'left') {
+            // Low Side: Start 4m, End 3m -> Drop 1m
+            startHeight = 4.0;
+            angleRad = Math.atan(1.0 / auventWidth);
+        } else {
+            // High Side: Start Ridge, End Ridge-1m -> Drop 1m
+            // Note: ridgeHeight is the high point. Auvent attaches there.
+            startHeight = ridgeHeight;
+            angleRad = Math.atan(1.0 / auventWidth);
+        }
+    }
 
     // Group Position
     // Left: -buildingWidth/2

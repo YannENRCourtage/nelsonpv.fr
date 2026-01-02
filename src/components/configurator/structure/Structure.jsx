@@ -51,6 +51,8 @@ export function Structure() {
                 length={length}
                 roofPitch={roofPitch}
                 eaveHeight={eaveHeight}
+                ridgeHeight={calculatedRidgeHeight}
+                buildingType={config.buildingType}
             />
             <Bracing
                 width={width}
@@ -72,10 +74,12 @@ export function Structure() {
                     side="left"
                     length={length}
                     eaveHeight={eaveHeight}
+                    ridgeHeight={calculatedRidgeHeight} // Needed for Monopente
                     roofPitch={roofPitch}
                     buildingWidth={width}
                     bayCount={bayCount}
                     baySpacing={baySpacing}
+                    buildingType={config.buildingType}
                 />
             )}
             {config.leftSide === 'appentis' && (
@@ -96,10 +100,12 @@ export function Structure() {
                     side="right"
                     length={length}
                     eaveHeight={eaveHeight}
+                    ridgeHeight={calculatedRidgeHeight} // Needed for Monopente
                     roofPitch={roofPitch}
                     buildingWidth={width}
                     bayCount={bayCount}
                     baySpacing={baySpacing}
+                    buildingType={config.buildingType}
                 />
             )}
             {config.rightSide === 'appentis' && (
