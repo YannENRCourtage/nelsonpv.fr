@@ -117,9 +117,6 @@ export function PortalFrame({
                         {/* Adjust orientation: IPE extrusion assumes Z-axis length. 
                             We rotated Parent Z to Slope. 
                             Child Mesh needs to align Extrusion Z with Parent X? 
-                            Wait. createSlantedColumn used rotation={[-Math.PI/2, 0, Math.PI/2]}.
-                            Rafter Profile (IPE) is XY shape. Extrusion Z.
-                            We want Profile Vertical (Y). Length Horizontal (X).
                             Standard Rotation `[0, Math.PI/2, 0]` rotates Z->X.
                         */}
                         <group rotation={[0, Math.PI / 2, 0]} /> {/* No, apply to mesh */}
@@ -135,115 +132,6 @@ export function PortalFrame({
             </group>
         );
     }
-
-    // --- Symmetrical Logic Continues ---
-    const halfWidth = width / 2;
-    // ... rest of code uses `angleRad` (which is symAngleRad basically)
-    // Recalculate haunches based on angleRad (which is correct).
-
-
-    // 2. Rafters (Arbalétriers) - Heavy IPE 400
-    // Math for Apex Cut:
-    // We want the rafter to end exactly at X=0 with a vertical cut.
-    // However, ExtrudeGeometry makes a perpendicular cut at the end.
-    // To get a vertical cut at the apex, we'd need to subtract a shape or use a custom shape.
-    // Simplification for "Screb Look": Stop 10mm short of center.
-
-    // 4. Apex Haunch (Jarret de Faîtage) logic
-    // We want the rafters to TOUCH at the top.
-    const apexGap = 0.001; // Virtually zero
-
-    // Create a custom shape for the Apex Haunch
-
-    // Rafter Logic
-    const rafterHorizontalSpan = halfWidth - apexGap;
-    const rafterLength = rafterHorizontalSpan / Math.cos(angleRad);
-    const rafterProfileType = 'IPE400';
-    const rafterGeometry = useMemo(() => {
-        const params = getIPEProfileParams(rafterProfileType, rafterLength);
-        return new THREE.ExtrudeGeometry(params.shape, params.options);
-    }, [rafterLength]);
-
-    // Knee Haunch (Jarret) Logic
-    const haunchShape = useMemo(() => {
-        const s = new THREE.Shape();
-        const hRafter = 1.2; // Length along rafter
-        const hColumn = 0.8; // Length down column
-
-        // We need the "Column Side" of the haunch to be Vertical in World Space.
-        // In Rafter Local Space (rotated by angleRad), a vertical vector (0, -1) becomes tilted.
-        // We need the inverse: What local vector becomes (0, -hColumn) in World?
-        // Rotz(a) * v_local = v_world
-        // v_local = Rotz(-a) * v_world
-        // v_world = (0, -hColumn)
-        // x_local = 0 - (-hColumn * -Math.sin(angleRad)) = -hColumn * Math.sin(angleRad)
-        // y_local = 0 + (-hColumn * Math.cos(angleRad)) = -hColumn * Math.cos(angleRad)
-
-        const xBottom = -hColumn * Math.sin(angleRad);
-        const yBottom = -hColumn * Math.cos(angleRad);
-
-        // (0,0) is overlap with Top Flange of Column / Bottom Flange of Rafter intersection?
-        // Actually, (0,0) in Rafter group is the Pivot (Axis intersection).
-        // Rafter bottom is at y = -0.2.
-        // So Haunch Top Edge should be at y = -0.2.
-        // Let's shift the shape so (0,0) is on the Rafter Bottom.
-        // But our mesh position is [0, -0.2]. So Shape Y=0 aligns with Rafter Bottom. OK.
-
-        s.moveTo(0, 0); // Corner at Rafter Bottom
-        s.lineTo(hRafter, 0); // Along Rafter Bottom
-        s.lineTo(xBottom, yBottom); // To Bottom Tip (Vertical back edge)
-        s.lineTo(0, 0); // Close
-
-        return s;
-    }, [angleRad]);
-
-    const haunchGeometry = useMemo(() => new THREE.ExtrudeGeometry(haunchShape, {
-        depth: 0.015,
-        bevelEnabled: false
-    }), [haunchShape]);
-
-    // Apex Haunch Logic
-    const apexHaunchGeometry = useMemo(() => {
-        const s = new THREE.Shape();
-
-        // Rafter Profile Height (IPE400) -> 0.4m
-        const rHeight = 0.4;
-        const halfH = rHeight / 2;
-
-        // We are at Apex (X=0). Rafter Axis is at Y=ridgeHeight.
-        // Rafter Bottom Flange is perpendicular distance 0.2m from axis.
-        // Vertical distance to bottom flange = 0.2 / cos(angle)
-        const verticalOffset = halfH / Math.cos(angleRad);
-
-        const yTop = -verticalOffset; // Start exactly at Rafter Bottom intersection
-
-        const hLength = 0.8; // Horizontal coverage
-        const hDepth = 0.35; // Height of the haunch plate itself
-
-        // Bottom Tip
-        const yTip = yTop - hDepth;
-
-        // Draw V shape
-        s.moveTo(0, yTop); // Top Center
-        // Slope down-left: y = yTop - x*tan(angle) ?
-        // Rafter bottom slope equation line.
-        // We want the haunch top edge to hug the rafter bottom.
-        // Left side point: x = -hLength. y = yTop - (hLength * tan(angle)) ?
-        // Wait, rafter goes DOWN as we go out.
-        // y_rafter = y_apex - |x| * tan(angle) - verticalOffset.
-        // Yes.
-
-        const ySide = yTop - (hLength * Math.tan(angleRad));
-
-        s.lineTo(-hLength, ySide); // Left Upper Corner
-        // Vertical drop or tapered? Usually tapered.
-        // Let's go to Tip.
-        s.lineTo(0, yTip); // Bottom Tip
-        s.lineTo(hLength, ySide); // Right Upper Corner
-        s.lineTo(0, yTop); // Close
-
-        return new THREE.ExtrudeGeometry(s, { depth: 0.015, bevelEnabled: false });
-    }, [angleRad]);
 
     return (
         <group position={position}>
