@@ -4,7 +4,7 @@ import { PortalFrame } from './PortalFrame.jsx';
 import { Purlins } from './Purlins.jsx';
 import { Roof } from './Roof.jsx';
 import { Bracing } from './Bracing.jsx';
-import { RidgeCap } from './RidgeCap.jsx';
+import { LongitudinalBeams } from './LongitudinalBeams.jsx';
 import { DimensionsMarkers } from './DimensionsMarkers.jsx';
 import { Awning } from './Awning.jsx';
 import { Auvent } from './Auvent.jsx';
@@ -66,12 +66,17 @@ export function Structure() {
                 roofPitch={roofPitch}
                 buildingType={config.buildingType} // Pass Type
             />
-            <RidgeCap
+
+            {/* REMOVED RidgeCap */}
+            {/* Added Longitudinal Beams (Sablière/Faitière) */}
+            <LongitudinalBeams
                 width={width}
                 length={length}
-                roofPitch={roofPitch}
                 eaveHeight={eaveHeight}
+                ridgeHeight={calculatedRidgeHeight}
+                buildingType={config.buildingType}
             />
+
             {/* --- EXTENSIONS GAUCHE --- */}
             {config.leftSide === 'auvent' && (
                 <Auvent

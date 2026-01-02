@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input.jsx";
 import { toast } from "@/components/ui/use-toast.js";
 import { cn } from "@/lib/utils";
 import PredefinedBuildingsPanel from "@/components/editor/PredefinedBuildingsPanel.jsx";
+import znzvData from "@/data/znzv.json";
 
 function SymbolBtn({ icon, label, type, emoji, onSelect, isSelected }) {
   return (
@@ -163,13 +164,33 @@ export default function ProjectEditor() {
     if (project?.photos) setPhotos(project.photos);
   }, [project]);
 
+  // ZNZV Lookup Effect
+  useEffect(() => {
+    if (project?.zip && znzvData[project.zip]) {
+      const data = znzvData[project.zip];
+      if (
+        project.seismicZone !== data.seisme ||
+        project.snowZone !== data.neige ||
+        project.windZone !== data.vent
+      ) {
+        updateProject({
+          seismicZone: data.seisme,
+          snowZone: data.neige,
+          windZone: data.vent
+        });
+      }
+    }
+  }, [project?.zip, updateProject]);
+
   const handlePickPhotos = (e) => {
     const files = Array.from(e.target.files || []);
     const newPhotos = files.map(file => ({
       id: URL.createObjectURL(file),
       file: file,
       name: file.name,
+      // Create a persistent URL or ensure file is handled correctly during upload
     }));
+    // Limit to 16
     const updatedPhotos = [...photos, ...newPhotos].slice(0, 16);
     setPhotos(updatedPhotos);
     updateProject({ photos: updatedPhotos });
@@ -393,8 +414,8 @@ export default function ProjectEditor() {
 
   return (
     <div className="w-full px-4 py-6 bg-gray-50">
-      <div className="grid grid-cols-12 gap-6 mb-6">
-        <section className="col-span-9 rounded-2xl bg-white p-6 shadow-sm">
+      <div className="grid grid-cols-12 gap-6 mb-6 items-stretch">
+        <section className="col-span-9 rounded-2xl bg-white p-6 shadow-sm h-full flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-semibold">Client & Projet</h2>
@@ -450,15 +471,20 @@ export default function ProjectEditor() {
             </div>
 
             <div className="col-span-3"><label className="text-sm font-medium">Coordonnées GPS</label><Input value={p.gps || ''} onChange={e => updateProject({ gps: e.target.value })} className="mt-1" placeholder="Ex: 45.24, 4.36" /></div>
-            <div className="col-span-3"><label className="text-sm font-medium">Type de projet</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background"><option>Construction</option><option>Rénovation</option></select></div>
+            <div className="col-span-3"><label className="text-sm font-medium">Type de projet</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background"><option>Construction</option><option>Rénovation</option><option>Construction & Rénovation</option></select></div>
             <div className="col-span-6"><label className="text-sm font-medium">Projet</label><Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} className="mt-1" placeholder="Ex: 150m² ou 9kWc" /></div>
+
+            {/* ZNZV Fields */}
+            <div className="col-span-4"><label className="text-sm font-medium">Zone de séisme</label><Input value={p.seismicZone || ''} onChange={e => updateProject({ seismicZone: e.target.value })} className="mt-1" placeholder="Zone séisme" /></div>
+            <div className="col-span-4"><label className="text-sm font-medium">Zone de neige</label><Input value={p.snowZone || ''} onChange={e => updateProject({ snowZone: e.target.value })} className="mt-1" placeholder="Zone neige" /></div>
+            <div className="col-span-4"><label className="text-sm font-medium">Zone de vent</label><Input value={p.windZone || ''} onChange={e => updateProject({ windZone: e.target.value })} className="mt-1" placeholder="Zone vent" /></div>
 
             <div className="col-span-12"><label className="text-sm font-medium">Commentaires</label><textarea value={p.comments || ''} onChange={e => updateProject({ comments: e.target.value })} className="mt-1 h-24 w-full rounded-lg border px-3 py-2" placeholder="Commentaires" /></div>
           </div>
         </section>
 
-        <aside className="col-span-3">
-          <ChatBox />
+        <aside className="col-span-3 h-full">
+          <ChatBox className="h-full" />
         </aside>
       </div>
 
