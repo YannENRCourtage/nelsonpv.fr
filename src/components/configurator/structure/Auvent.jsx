@@ -179,6 +179,9 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
         console.log("Auvent Rendered:", { length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing, groupPosX, groupPosY });
     }, [length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing]);
 
+    // Roof Y Position logic
+    const roofY = buildingType === 'monopente' ? -0.03 : 0.17; // +20cm for Symetrique (-0.03 + 0.20)
+
     return (
         <group
             position={[groupPosX, groupPosY, groupPosZ]}
@@ -191,7 +194,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
                 material={roofMaterial}
                 position={[
                     slopeLength / 2,
-                    -0.03, // Lowered by 3cm
+                    roofY,
                     -0.5   // -50cm offset (Front Overhang)
                 ]}
                 rotation={[0, 0, -angleRad]}
@@ -202,7 +205,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
             <group
                 position={[
                     slopeLength / 2,
-                    -0.03,
+                    roofY,
                     length / 2
                 ]}
                 rotation={[0, 0, -angleRad]}
@@ -214,7 +217,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
             {frames}
             {/* Longitudinal Beam (Sablière) at Tip */}
             <mesh
-                position={[auventWidth, -auventWidth * Math.tan(angleRad) - 0.1, -length / 2]}
+                position={[auventWidth, -auventWidth * Math.tan(angleRad) - 0.1 + 0.4, length / 2]}
                 rotation={[0, 0, 0]}
                 material={structureMaterial}
             >
