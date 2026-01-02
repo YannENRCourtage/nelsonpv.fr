@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import { createTrapezoidalProfile, createZProfile } from '../utils/profiles.js';
+import { createTrapezoidalProfile, createZProfile, getIPEProfileParams } from '../utils/profiles.js';
 import { SolarPanels } from './SolarPanels.jsx';
 
 /**
@@ -212,6 +212,16 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
 
             {/* STRUCTURE */}
             {frames}
+            {/* Longitudinal Beam (Sablière) at Tip */}
+            <mesh
+                position={[auventWidth, -auventWidth * Math.tan(angleRad) - 0.1, -length / 2]}
+                rotation={[0, 0, 0]}
+                material={structureMaterial}
+            >
+                <boxGeometry args={[0.08, 0.16, length]} />
+            </mesh>
+
+            {/* Purlins */}
             {purlins}
         </group>
     );
