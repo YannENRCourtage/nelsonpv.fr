@@ -69,7 +69,7 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
                             eaveHeight + yLocal + yPerp,
                             zStart
                         ]}
-                        rotation={[0, Math.PI, -angleRad]}
+                        rotation={[0, Math.PI, angleRad]}
                     />
                 );
             }

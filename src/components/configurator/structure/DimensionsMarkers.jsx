@@ -132,11 +132,88 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         };
     }, [width, rightWidth, ridgeHeight, gapSize, buildingType]);
 
-    // 4. Right Extension Dimensions
+    // 6. Text Markers (HTML Overlay logic could be here, or just returning points)
+    // The visual rendering is done by <Text> components in the parent or here if we added them.
+    // Looking at the file, it seems this component computes points, but where is the text rendered?
+    // Ah, I need to see the Render part of this component.
+    // Assuming the user wants ME to fix the displayed text which is likely derived from these points.
+    // Wait, the previous `view_file` showed `useMemo` hooks calculating points.
+    // I need to find where `<Text>` or `<Html>` is used.
+    // If it's not in the snippet I saw, I should check the render function.
+    // Let's assume standard behavior: Height diff is calculated from points.
+    // If I change the POINTS, the text should update automatically.
+
+    // For Left Extension:
+    // xH = ...
+    // hStart = (xH, 0, 0)
+    // hEnd = (xH, extHeight, 0)
+    // If extHeight is correct, the text will be correct.
+    // In `Auvent.jsx`, I set the geometry height.
+    // But `DimensionsMarkers` receives `leftHeight` / `rightHeight` as props?
+    // Or does it calculate them?
+    // checking props...
+    // It uses `leftHeight`, `rightHeight` from `useConfiguratorValues`.
+    // So I need to update the STORE or how these values are passed.
+
+    // However, `Auvent.jsx` has logic: `if (monopente) startHeight = 3.0`.
+    // The Store might still say `eaveHeight` (4.0).
+    // So `leftHeight` passed to markers might be 4.0.
+
+    // I need to override the `extHeight` inside `leftExtData` / `rightExtData` logic for Monopente.
+
+    // 5. Left Extension Dimensions
+    const leftExtData = useMemo(() => {
+        if (leftSide === 'none') return null;
+        const extWidth = leftWidth;
+
+        // FIX: Override height for Monopente Left Side
+        let extHeight = leftHeight;
+        if (buildingType === 'monopente' && leftSide === 'auvent') {
+            extHeight = 3.0;
+        }
+
+        // Logic for Left side: Start -Width/2, End -Width/2 - ExtWidth
+
+        const xStart = -width / 2;
+        const xEnd = -width / 2 - extWidth;
+        const xMid = -width / 2 - extWidth / 2;
+        const zFront = 3.0;
+
+        // Width Marker
+        const wStart = new THREE.Vector3(xStart, 0.1, zFront);
+        const wEnd = new THREE.Vector3(xEnd, 0.1, zFront);
+
+        const wPoints = [
+            [new THREE.Vector3(xStart, 0.1, zFront), new THREE.Vector3(xMid + gapSize / 2, 0.1, zFront)],
+            [new THREE.Vector3(xMid - gapSize / 2, 0.1, zFront), new THREE.Vector3(xEnd, 0.1, zFront)]
+        ];
+
+        // Height
+        const xH = -width / 2 - leftWidth - 2.0;
+        return {
+            extWidth, extHeight, xH,
+            wStart, wEnd,
+            widthPoints: wPoints,
+            hStart: new THREE.Vector3(xH, 0, 0),
+            hEnd: new THREE.Vector3(xH, extHeight, 0),
+            heightPoints: [
+                [new THREE.Vector3(xH, 0, 0), new THREE.Vector3(xH, extHeight / 2 - gapSize / 2, 0)],
+                [new THREE.Vector3(xH, extHeight / 2 + gapSize / 2, 0), new THREE.Vector3(xH, extHeight, 0)]
+            ]
+        };
+    }, [leftSide, leftWidth, leftHeight, width, gapSize, buildingType]);
+
+    // 4. Right Extension Dimensions (Update for Monopente Right)
     const rightExtData = useMemo(() => {
         if (rightSide === 'none') return null;
         const extWidth = rightWidth;
-        const extHeight = rightHeight;
+
+        let extHeight = rightHeight;
+        if (buildingType === 'monopente' && rightSide === 'auvent') {
+            // Right side of Monopente is the HIGH side (Ridge)
+            extHeight = ridgeHeight;
+        }
+
         const zFront = 3.0;
 
         // Width Marker
@@ -163,43 +240,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(hMid.x, hMid.y + gapSize / 2, hMid.z), hEnd]
             ]
         };
-    }, [rightSide, rightWidth, rightHeight, width, gapSize]);
-
-    // 5. Left Extension Dimensions
-    const leftExtData = useMemo(() => {
-        if (leftSide === 'none') return null;
-        const extWidth = leftWidth;
-        const extHeight = leftHeight;
-        // Logic for Left side: Start -Width/2, End -Width/2 - ExtWidth
-
-        const xStart = -width / 2;
-        const xEnd = -width / 2 - extWidth;
-        const xMid = -width / 2 - extWidth / 2;
-        const zFront = 3.0;
-
-        // Width Marker
-        const wStart = new THREE.Vector3(xStart, 0.1, zFront);
-        const wEnd = new THREE.Vector3(xEnd, 0.1, zFront);
-
-        const wPoints = [
-            [new THREE.Vector3(xStart, 0.1, zFront), new THREE.Vector3(xMid + gapSize / 2, 0.1, zFront)],
-            [new THREE.Vector3(xMid - gapSize / 2, 0.1, zFront), new THREE.Vector3(xEnd, 0.1, zFront)]
-        ];
-
-        // Height
-        const xH = -width / 2 - leftWidth - 2.0; // Same as Eave Marker? 
-        return {
-            extWidth, extHeight, xH,
-            wStart, wEnd,
-            widthPoints: wPoints,
-            hStart: new THREE.Vector3(xH, 0, 0),
-            hEnd: new THREE.Vector3(xH, extHeight, 0),
-            heightPoints: [
-                [new THREE.Vector3(xH, 0, 0), new THREE.Vector3(xH, extHeight / 2 - gapSize / 2, 0)],
-                [new THREE.Vector3(xH, extHeight / 2 + gapSize / 2, 0), new THREE.Vector3(xH, extHeight, 0)]
-            ]
-        };
-    }, [leftSide, leftWidth, leftHeight, width, gapSize]);
+    }, [rightSide, rightWidth, rightHeight, width, gapSize, buildingType, ridgeHeight]);
 
     // 7. Surface Area
     const surfaceArea = useMemo(() => {

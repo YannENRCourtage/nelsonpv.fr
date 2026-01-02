@@ -165,26 +165,14 @@ export function PortalFrame({
 
                 {/* Single Rafter: Starts at Left Eave, goes to Right Ridge */}
                 <group position={[-width / 2, eaveHeight, 0]}>
-                    <mesh
-                        geometry={monoRafterGeo}
-                        material={steelMaterial}
-                        rotation={[0, Math.PI / 2, angleRad]}
-                        castShadow receiveShadow
-                    >
-                        {/* Adjust orientation: IPE extrusion assumes Z-axis length. 
-                            We rotated Parent Z to Slope. 
-                            Child Mesh needs to align Extrusion Z with Parent X? 
-                            Standard Rotation `[0, Math.PI/2, 0]` rotates Z->X.
-                        */}
-                        <group rotation={[0, Math.PI / 2, 0]} /> {/* No, apply to mesh */}
-                    </mesh>
-                    {/* Correct way: */}
-                    <mesh
-                        geometry={monoRafterGeo}
-                        material={steelMaterial}
-                        rotation={[0, Math.PI / 2, 0]} // Z(Length) -> X(Horizontal)
-                        castShadow receiveShadow
-                    />
+                    <group rotation={[0, 0, angleRad]}>
+                        <mesh
+                            geometry={monoRafterGeo}
+                            material={steelMaterial}
+                            rotation={[0, Math.PI / 2, 0]} // Z(Length) -> X(Horizontal)
+                            castShadow receiveShadow
+                        />
+                    </group>
                 </group>
             </group>
         );
