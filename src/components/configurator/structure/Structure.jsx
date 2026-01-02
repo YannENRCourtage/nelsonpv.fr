@@ -45,6 +45,8 @@ export function Structure() {
                 baySpacing={baySpacing}
                 roofPitch={roofPitch}
                 eaveHeight={eaveHeight}
+                ridgeHeight={calculatedRidgeHeight} // Pass Ridge Height
+                buildingType={config.buildingType} // Pass Type
             />
             <Roof
                 width={width}
@@ -60,7 +62,9 @@ export function Structure() {
                 bayCount={bayCount}
                 baySpacing={baySpacing}
                 eaveHeight={eaveHeight}
+                ridgeHeight={calculatedRidgeHeight} // Pass Ridge Height
                 roofPitch={roofPitch}
+                buildingType={config.buildingType} // Pass Type
             />
             <RidgeCap
                 width={width}
