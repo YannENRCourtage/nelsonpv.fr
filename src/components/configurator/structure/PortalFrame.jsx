@@ -38,10 +38,10 @@ export function PortalFrame({
     const baseColumnProfile = useMemo(() => getIPEProfileParams('IPE450'), []); // No eaveHeight here, as extrusion depth is handled by custom geometry
 
     // Custom Geometry Generator for Slanted Columns
-    const createSlantedColumn = (profileParams, angle, isRight) => {
-        // Extrude with depth = eaveHeight.
+    const createSlantedColumn = (profileParams, angle, isRight, height) => {
+        // Extrude with depth = height.
         const geo = new THREE.ExtrudeGeometry(profileParams.shape, {
-            depth: eaveHeight, // Vertical Height
+            depth: height, // Vertical Height
             bevelEnabled: false
         });
 
@@ -53,47 +53,11 @@ export function PortalFrame({
         for (let i = 0; i < pos.count; i++) {
             v.fromBufferAttribute(pos, i);
 
-            // Extrusion is along Z (Local).
-            // Top vertices are near z = eaveHeight.
-            // Bottom vertices are near z = 0.
-
-            if (v.z > eaveHeight - 0.1) { // Top Cap
+            if (v.z > height - 0.1) { // Top Cap
                 // Apply Slant. 
                 // In Local Frame: Web is along X (per PortalFrame rotation logic planning).
-                // Or Y? 'getIPEProfileParams' creates IPE in XY. H is usually Y.
-                // In PortalFrame rotation: RotX(-90) -> Z becomes Y(up), Y becomes -Z(back).
-                // If IPE H is along Y (in 2D shape), it becomes -Z (in World)??
-                // Wait.
-                // Let's rely on standard IPE shape: H is Y, B is X.
-                // Extrusion is Z.
-                // PortalFrame Rotation: [-PI/2, 0, PI/2].
-                // Start: X(Right), Y(Up), Z(Forward).
-                // Mesh: Z(Extrusion).
-                // RotX(-90): Z->Y(GlobalUp). Y->-Z(GlobalBack). X->X(GlobalRight).
-                // RotZ(90): X->Y(GlobalUp)? No. Rotation is intrinsic or extrinsic?
-                // Three.js Euler is Extrinsic (parent relative) usually, order XYZ.
-                // Rotate X, then Y, then Z.
-                // Step 1 (X -90): X, Z, -Y.
-                // Step 2 (Y 0): No change.
-                // Step 3 (Z 90): -Z, X, -Y. (Rotates X to Y around new Z).
-
-                // Result:
-                // Mesh X (Flange Width) -> Global -Z (Length/Depth of building).
-                // Mesh Y (Web Height) -> Global X (Width of building).
-                // Mesh Z (Extrusion) -> Global Y (Height of building).
-
-                // Perfect. Mesh Y aligns with Global X (Slope direction).
-                // So we want to shear Z based on Y.
-                // Left Column: Slope Up-Right. (Angle > 0).
-                // Global X increases -> Global Y increases.
-                // Mesh Y increases -> Mesh Z increases.
-                // Delta Z = Y * tan(angle).
-
-                // Correct logic:
-                // z' = z + (v.y * Math.tan(angle));
                 v.z += (v.y * Math.tan(angle));
             }
-            // Bottom vertices (z ~ 0) stay flat.
 
             pos.setXYZ(i, v.x, v.y, v.z);
         }
@@ -102,9 +66,81 @@ export function PortalFrame({
         return geo;
     };
 
-    const angleRad = (roofPitch * Math.PI) / 180;
-    const leftColumnGeo = useMemo(() => createSlantedColumn(baseColumnProfile, angleRad, false), [baseColumnProfile, eaveHeight, angleRad]);
-    const rightColumnGeo = useMemo(() => createSlantedColumn(baseColumnProfile, -angleRad, true), [baseColumnProfile, eaveHeight, angleRad]);
+    const isMonopente = buildingType === 'monopente';
+
+    // Angle validation
+    const monoSlopeRad = isMonopente ? Math.atan((ridgeHeight - eaveHeight) / width) : 0;
+    const symAngleRad = (roofPitch * Math.PI) / 180;
+    const angleRad = isMonopente ? monoSlopeRad : symAngleRad;
+
+    // Column Heights
+    const leftColHeight = eaveHeight;
+    const rightColHeight = isMonopente ? ridgeHeight : eaveHeight;
+    // Column Angles
+    // Left: +Angle
+    // Right: Monopente (+Angle same direction), Sym (-Angle opposite)
+    const rightColAngle = isMonopente ? angleRad : -angleRad;
+
+    const leftColumnGeo = useMemo(() => createSlantedColumn(baseColumnProfile, angleRad, false, leftColHeight), [baseColumnProfile, leftColHeight, angleRad]);
+    const rightColumnGeo = useMemo(() => createSlantedColumn(baseColumnProfile, rightColAngle, true, rightColHeight), [baseColumnProfile, rightColHeight, rightColAngle]);
+
+    // 2. Rafters
+    // Monopente: Single Rafter IPE400
+    // Sym: Double Rafter IPE400
+
+    // We can define the Monopente Rafter here
+    const monoRafterLength = width / Math.cos(angleRad);
+    const monoRafterGeo = useMemo(() => {
+        if (!isMonopente) return null;
+        const params = getIPEProfileParams('IPE400', monoRafterLength);
+        return new THREE.ExtrudeGeometry(params.shape, params.options);
+    }, [isMonopente, monoRafterLength]);
+
+    // If Monopente, return structure immediately
+    if (isMonopente) {
+        return (
+            <group position={position}>
+                {/* Left Column */}
+                <mesh geometry={leftColumnGeo} material={steelMaterial} position={[-width / 2, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
+
+                {/* Right Column */}
+                <mesh geometry={rightColumnGeo} material={steelMaterial} position={[width / 2, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
+
+                {/* Single Rafter: Starts at Left Eave, goes to Right Ridge */}
+                <group position={[-width / 2, eaveHeight, 0]}>
+                    <mesh
+                        geometry={monoRafterGeo}
+                        material={steelMaterial}
+                        rotation={[0, 0, angleRad]}
+                        castShadow receiveShadow
+                    >
+                        {/* Adjust orientation: IPE extrusion assumes Z-axis length. 
+                            We rotated Parent Z to Slope. 
+                            Child Mesh needs to align Extrusion Z with Parent X? 
+                            Wait. createSlantedColumn used rotation={[-Math.PI/2, 0, Math.PI/2]}.
+                            Rafter Profile (IPE) is XY shape. Extrusion Z.
+                            We want Profile Vertical (Y). Length Horizontal (X).
+                            Standard Rotation `[0, Math.PI/2, 0]` rotates Z->X.
+                        */}
+                        <group rotation={[0, Math.PI / 2, 0]} /> {/* No, apply to mesh */}
+                    </mesh>
+                    {/* Correct way: */}
+                    <mesh
+                        geometry={monoRafterGeo}
+                        material={steelMaterial}
+                        rotation={[0, Math.PI / 2, 0]} // Z(Length) -> X(Horizontal)
+                        castShadow receiveShadow
+                    />
+                </group>
+            </group>
+        );
+    }
+
+    // --- Symmetrical Logic Continues ---
+    const halfWidth = width / 2;
+    // ... rest of code uses `angleRad` (which is symAngleRad basically)
+    // Recalculate haunches based on angleRad (which is correct).
+
 
     // 2. Rafters (Arbalétriers) - Heavy IPE 400
     // Math for Apex Cut:

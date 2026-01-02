@@ -77,6 +77,11 @@ export const useConfiguratorStore = create((set, get) => ({
             // Forcer la hauteur de sablière pour Monopente
             if (type === 'monopente') {
                 updates.eaveHeight = 4.0;
+
+                // Disable Appentis if selected
+                const state = get();
+                if (state.leftSide === 'appentis') updates.leftSide = 'none';
+                if (state.rightSide === 'appentis') updates.rightSide = 'none';
             } else {
                 updates.eaveHeight = 5.5;
             }
