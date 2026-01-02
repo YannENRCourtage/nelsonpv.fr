@@ -76,9 +76,9 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
         bevelEnabled: false
     }), [profileShape, length]);
 
-    // Purlin Profile (Z140)
-    const purlinHeight = 0.140;
-    const purlinWidth = 0.060;
+    // Purlin Profile (Z180)
+    const purlinHeight = 0.180;
+    const purlinWidth = 0.070;
     const thickness = 0.003;
     const purlinSpacing = 1.3;
     const purlinShape = useMemo(() => createZProfile(purlinHeight, purlinWidth, thickness), []);

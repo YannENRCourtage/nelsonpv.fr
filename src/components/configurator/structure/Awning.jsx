@@ -63,9 +63,9 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
     const shiftY = -shiftLength * Math.sin(angleRad);
 
     // --- PURLINS (PANNES) ---
-    // Config Z140
-    const purlinHeight = 0.140;
-    const purlinWidth = 0.060;
+    // Config Z180 (increased from Z140)
+    const purlinHeight = 0.180;
+    const purlinWidth = 0.070;
     const thickness = 0.003;
     const purlinSpacing = 1.3; // Same as building
 
