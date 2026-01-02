@@ -101,9 +101,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     for (let i = 0; i < numFrames; i++) {
         const zPos = i * baySpacing; // Positive Z in local space
 
-        // 1. CANTILEVER RAFTER
-        // Center of 4m span: X = 2.0
-        // Y = -2.0 * tan(angle)
+        // 1. CANTILEVER RAFTER (Massive)
         frames.push(
             <mesh
                 key={`rafter-${i}`}
@@ -111,18 +109,16 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
                 position={[auventWidth / 2, -(auventWidth / 2) * Math.tan(angleRad), zPos]}
                 rotation={[0, 0, -angleRad]} // Down-Right slope (in local space)
             >
-                <boxGeometry args={[auventWidth, 0.2, 0.1]} />
+                <boxGeometry args={[auventWidth, 0.35, 0.15]} />
             </mesh>
         );
 
-        // 2. DIAGONAL STRUT (Bracon)
-        // From Wall (X=0, Y=-2.0 relative to eave) to Rafter (X=2.5, Y=Slope)
-        const strutStartX = 0.1; // Slightly off wall for visual separation
-        const strutStartY = -2.0; // 2m below eave
+        // 2. DIAGONAL STRUT (Massive, Raised, Shortened)
+        const strutStartX = 0.1;
+        const strutStartY = -0.8; // Raised High (was -2.0)
 
-        // Target: Rafter at X=2.5
-        const rafX = 2.5;
-        const rafY = -rafX * Math.tan(angleRad); // Rafter height at X=2.5
+        const rafX = 2.0; // Shortened Target
+        const rafY = -rafX * Math.tan(angleRad); // Rafter height at X=2.0
 
         const deltaX = rafX - strutStartX;
         const deltaY = rafY - strutStartY;
@@ -140,7 +136,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
                 ]}
                 rotation={[0, 0, strutAngle]}
             >
-                <boxGeometry args={[strutLen, 0.1, 0.1]} />
+                <boxGeometry args={[strutLen, 0.2, 0.2]} />
             </mesh>
         );
 
@@ -215,13 +211,13 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
 
             {/* STRUCTURE */}
             {frames}
-            {/* Longitudinal Beam (Sablière) at Tip */}
+            {/* Longitudinal Beam (Sablière) at Tip - Massive */}
             <mesh
-                position={[auventWidth, -auventWidth * Math.tan(angleRad) - 0.1 + 0.4, length / 2]}
+                position={[auventWidth, -auventWidth * Math.tan(angleRad) - 0.1 + 0.5, length / 2]}
                 rotation={[0, 0, 0]}
                 material={structureMaterial}
             >
-                <boxGeometry args={[0.08, 0.16, length]} />
+                <boxGeometry args={[0.2, 0.4, length]} />
             </mesh>
 
             {/* Purlins */}
