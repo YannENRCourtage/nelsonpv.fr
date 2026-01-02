@@ -96,6 +96,63 @@ export function PortalFrame({
         return new THREE.ExtrudeGeometry(params.shape, params.options);
     }, [isMonopente, monoRafterLength]);
 
+    // --- Symmetrical Logic Hooks ---
+    const halfWidth = width / 2;
+    const apexGap = 0.001;
+
+    // Rafter Logic
+    const rafterHorizontalSpan = halfWidth - apexGap;
+    const rafterLength = rafterHorizontalSpan / Math.cos(angleRad);
+    const rafterProfileType = 'IPE400';
+    const rafterGeometry = useMemo(() => {
+        const params = getIPEProfileParams(rafterProfileType, rafterLength);
+        return new THREE.ExtrudeGeometry(params.shape, params.options);
+    }, [rafterLength]);
+
+    // Knee Haunch (Jarret) Logic
+    const haunchShape = useMemo(() => {
+        const s = new THREE.Shape();
+        const hRafter = 1.2;
+        const hColumn = 0.8;
+
+        const xBottom = -hColumn * Math.sin(angleRad);
+        const yBottom = -hColumn * Math.cos(angleRad);
+
+        s.moveTo(0, 0);
+        s.lineTo(hRafter, 0);
+        s.lineTo(xBottom, yBottom);
+        s.lineTo(0, 0);
+
+        return s;
+    }, [angleRad]);
+
+    const haunchGeometry = useMemo(() => new THREE.ExtrudeGeometry(haunchShape, {
+        depth: 0.015,
+        bevelEnabled: false
+    }), [haunchShape]);
+
+    // Apex Haunch Logic
+    const apexHaunchGeometry = useMemo(() => {
+        const s = new THREE.Shape();
+        const rHeight = 0.4;
+        const halfH = rHeight / 2;
+        const verticalOffset = halfH / Math.cos(angleRad);
+        const yTop = -verticalOffset;
+        const hLength = 0.8;
+        const hDepth = 0.35;
+        const yTip = yTop - hDepth;
+
+        s.moveTo(0, yTop);
+        const ySide = yTop - (hLength * Math.tan(angleRad));
+
+        s.lineTo(-hLength, ySide);
+        s.lineTo(0, yTip);
+        s.lineTo(hLength, ySide);
+        s.lineTo(0, yTop);
+
+        return new THREE.ExtrudeGeometry(s, { depth: 0.015, bevelEnabled: false });
+    }, [angleRad]);
+
     // If Monopente, return structure immediately
     if (isMonopente) {
         return (
