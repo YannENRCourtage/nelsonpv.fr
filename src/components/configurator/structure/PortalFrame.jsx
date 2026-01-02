@@ -149,7 +149,6 @@ export function PortalFrame({
     // To get a vertical cut at the apex, we'd need to subtract a shape or use a custom shape.
     // Simplification for "Screb Look": Stop 10mm short of center.
 
-    const halfWidth = width / 2;
     // 4. Apex Haunch (Jarret de Faîtage) logic
     // We want the rafters to TOUCH at the top.
     const apexGap = 0.001; // Virtually zero
