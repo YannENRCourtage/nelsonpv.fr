@@ -85,7 +85,7 @@ export const useConfiguratorStore = create((set, get) => ({
                 if (state.rightSide === 'appentis') updates.rightSide = 'none';
             } else {
                 updates.eaveHeight = 5.5;
-                // Keep existing pitch or reset? Usually keep user selection or default to 10
+                updates.roofPitch = 10; // Reset to 10° for Symmetrical/Asymmetrical
             }
 
             set(updates);

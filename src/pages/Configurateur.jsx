@@ -333,7 +333,7 @@ export default function Configurateur() {
                     {/* Badge */}
                     <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-lg shadow border border-slate-200">
                         <span className="text-slate-800 font-bold text-lg whitespace-nowrap">
-                            {config.length}m x {config.width}m - {((config.width
+                            {config.length}m x {config.width + (config.leftSide === 'appentis' ? 9.3 : (config.leftSide === 'auvent' ? 4.0 : 0)) + (config.rightSide === 'appentis' ? 9.3 : (config.rightSide === 'auvent' ? 4.0 : 0))}m - {((config.width
                                 + (config.leftSide === 'appentis' ? 9.3 : (config.leftSide === 'auvent' ? 4.0 : 0))
                                 + (config.rightSide === 'appentis' ? 9.3 : (config.rightSide === 'auvent' ? 4.0 : 0))
                             ) * config.length).toFixed(0)}m²
