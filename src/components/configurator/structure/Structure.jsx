@@ -30,6 +30,7 @@ export function Structure() {
                 eaveHeight={eaveHeight}
                 ridgeHeight={calculatedRidgeHeight} // Same prop name
                 roofPitch={roofPitch}
+                buildingType={config.buildingType}
             />
         );
     }

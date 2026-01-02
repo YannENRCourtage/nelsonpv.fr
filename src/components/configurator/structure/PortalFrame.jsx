@@ -16,7 +16,8 @@ export function PortalFrame({
     width,
     eaveHeight,
     ridgeHeight,
-    roofPitch = 10
+    roofPitch = 10,
+    buildingType = 'symetrique'
 }) {
     // Steel material: "Heavy Industry" Red Oxide or Rough Galvanized
     const steelMaterial = useMemo(() => new THREE.MeshStandardMaterial({
