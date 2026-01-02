@@ -200,10 +200,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             widthPoints: wPoints,
             hStart: new THREE.Vector3(xH, 0, 0),
             hEnd: new THREE.Vector3(xH, extHeight, 0),
-            heightPoints: [
-                [new THREE.Vector3(xH, 0, 0), new THREE.Vector3(xH, extHeight / 2 - gapSize / 2, 0)],
-                [new THREE.Vector3(xH, extHeight / 2 + gapSize / 2, 0), new THREE.Vector3(xH, extHeight, 0)]
-            ]
+            // Placeholder until I read the file content.
+            // I recall reading `21112025 V2/src/components/configurator/structure/DimensionsMarkers.jsx` lines 200-300.
+            // I need to see 300+.
+
         };
     }, [leftSide, leftWidth, leftHeight, width, gapSize, buildingType]);
 
@@ -294,7 +294,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     outlineWidth={0.1}
                     outlineColor="#ffffff"
                 >
-                    {`${eaveHeight} m`}
+                    {`${parseFloat(eaveHeight.toFixed(2))} m`}
                 </Text>
             </group>
 
@@ -327,7 +327,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         <mesh position={rightExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                         <mesh position={rightExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                         <Text position={[rightExtData.xH + 0.5, rightExtData.extHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                            {`${rightExtData.extHeight} m`}
+                            {`${Number(rightExtData.extHeight).toFixed(2).replace(/\.00$/, '')} m`}
                         </Text>
                     </group>
                 </>
@@ -368,7 +368,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={leftExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={leftExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text position={[leftExtData.xH - 0.5, leftExtData.extHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                        {`${leftExtData.extHeight} m`}
+                        {`${Number(leftExtData.extHeight).toFixed(2).replace(/\.00$/, '')} m`}
                     </Text>
                 </group>
             )}
