@@ -8,7 +8,9 @@ export default function ParametersSection({ params, onParamsChange }) {
     const [showTariffsModal, setShowTariffsModal] = useState(false);
 
     const handleChange = (field, value) => {
-        onParamsChange({ ...params, [field]: parseFloat(value) || 0 });
+        // Replace comma with dot for parsing, ensuring both separators work
+        const normalized = String(value).replace(',', '.');
+        onParamsChange({ ...params, [field]: parseFloat(normalized) || 0 });
     };
 
     const handleSwitchChange = (field, checked) => {
@@ -94,7 +96,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                     </label>
                     <input
                         type="number"
-                        step="0.005"
+                        step="0.001"
                         value={params.tarifTH || 0.12}
                         onChange={(e) => handleChange('tarifTH', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
