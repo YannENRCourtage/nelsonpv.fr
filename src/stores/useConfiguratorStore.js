@@ -196,7 +196,8 @@ export const useConfiguratorValues = () => {
         const solarPower = (solarCount * 465) / 1000;
 
         return {
-            availableWidths: AVAILABLE_WIDTHS,
+            availableWidths: state.availableWidths,
+            buildingType: state.buildingType,
             width: state.width,
             ridgeHeight,
             eaveHeight: state.eaveHeight,
@@ -216,6 +217,7 @@ export const useConfiguratorValues = () => {
         state.roofPitch,
         state.baySpacing,
         state.bayCount,
+        state.buildingType,
         state.leftSide,
         state.rightSide,
         state.hasSolar,
@@ -230,6 +232,7 @@ export const useConfiguratorActions = () => {
         setBayCount: (c) => useConfiguratorStore.getState().setBayCount(c),
         incrementBayCount: () => useConfiguratorStore.getState().incrementBayCount(),
         decrementBayCount: () => useConfiguratorStore.getState().decrementBayCount(),
+        setBuildingType: (t) => useConfiguratorStore.getState().setBuildingType(t),
         setLeftSide: (t) => useConfiguratorStore.getState().setLeftSide(t),
         setRightSide: (t) => useConfiguratorStore.getState().setRightSide(t),
         toggleSolar: () => useConfiguratorStore.getState().toggleSolar(),
