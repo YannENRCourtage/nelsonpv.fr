@@ -152,6 +152,10 @@ const PDFGenerator = ({ project }) => {
               {/* CORRIGÉ : Valeur pointe vers 'projectSize' */}
               <span style={valueStyle}>{p.projectSize || 'N/A'}</span>
             </div>
+            <div style={fieldStyle}>
+              <span style={labelStyle}>Zones Neige & Vent :</span>
+              <span style={valueStyle}>Neige : {p.snowZone || 'N/A'}  |  Vent : {p.windZone || 'N/A'}</span>
+            </div>
           </div>
         </div>
 
