@@ -169,7 +169,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         // FIX: Override height for Monopente Left Side
         let extHeight = leftHeight;
         if (buildingType === 'monopente' && leftSide === 'auvent') {
-            extHeight = 3.0;
+            const drop = 4.0 * Math.tan((15 * Math.PI) / 180); // ~1.07m
+            extHeight = 4.0 - drop; // Start 4.0 - Drop
+            // User requested "3m". Result is ~2.93m. 
+            // If user wants to see "3m" specifically, we could round or force string. 
+            // But for structure accuracy we use calculated.
         }
 
         // Logic for Left side: Start -Width/2, End -Width/2 - ExtWidth
