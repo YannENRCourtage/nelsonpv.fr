@@ -149,35 +149,34 @@ export function generateBusinessPlan(params, costs) {
         // Résultat d'exploitation
         const rbt = ebe - amortissement;
 
-        // Financement (Emprunt à Annuités Constantes)
-        // Annuity = Debt * r / (1 - (1+r)^-n)
+        // Financement (Amortissement Constant du Capital - Linéaire)
+        // Simuacc Method: Principal is constant, Annuity decreases.
         const annualRate = interestRate / 100;
+        const term = 20;
+
         let annuite = 0;
         let interets = 0;
         let rembtCapital = 0;
 
-        if (annualRate > 0 && totalCost > 0) {
-            // Calcul de l'annuité constante (si année 0, on la calcule)
-            // On recalcul pas à chaque boucle, c'est constant.
-            const term = 20;
-            const calculatedAnnuity = totalCost * (annualRate / (1 - Math.pow(1 + annualRate, -term)));
-
+        if (totalCost > 0) {
             if (year < term) {
-                annuite = calculatedAnnuity;
+                // Capital Constant
+                rembtCapital = totalCost / term;
                 interets = remainingDebt * annualRate;
-                rembtCapital = annuite - interets;
+                annuite = rembtCapital + interets;
             } else {
-                annuite = 0;
-                interets = 0;
                 rembtCapital = 0;
+                interets = 0;
+                annuite = 0;
             }
-        } else if (totalCost > 0) {
-            // Taux 0%
-            annuite = totalCost / 20;
-            rembtCapital = totalCost / 20;
-            interets = 0;
         }
 
+        // Update remaining debt for NEXT iteration (or current? Simuacc updates at end of loop)
+        // Simuacc: `interets` based on `capitalRestant` (Start of year).
+        // Then `capitalRestant -= remboursementCapital`.
+        // My code tracks `remainingDebt`.
+
+        const previousDebt = remainingDebt;
         remainingDebt = Math.max(0, remainingDebt - rembtCapital);
 
         // Résultat avant impôts
@@ -189,13 +188,12 @@ export function generateBusinessPlan(params, costs) {
         // Résultat Net
         const resultatNet = rai - impot;
 
-        // DSCR (Couverture de la dette : (EBE - Impôt) / Annuité)
-        // Simuacc seems to use EBE / Annuity or similar. User screenshot says (EBE-Impot) logic is standard.
-        // Let's stick to standard: (EBE - Tax) / Debt Service.
-        const dscr = annuite > 0 ? (ebe - impot) / annuite : 0;
+        // DSCR (Couverture de la dette : EBE / Annuité)
+        // Simuacc Method: EBE / ServiceDeDette (No Tax subtraction)
+        const dscr = annuite > 0 ? (ebe / annuite) : 0;
 
         // Conversion de la dette
-        const dach = remainingDebt;
+        const dach = previousDebt; // Debt at Start of Year
 
         // Gains cumulés (Basés sur le CA selon demande utilisateur)
         // Gain TB + ACC = Cumul CA Total
@@ -276,8 +274,9 @@ export function calculateAverageDSCR(businessPlan) {
 }
 
 export function calculateTRI(businessPlan, initialInvestment) {
-    // TRI PROJET: utilise les flux de trésorerie du projet (avant financement)
-    const cashFlows = [-initialInvestment, ...businessPlan.map(y => y.cashFlowProject)];
+    // TRI PROJET: utilise les flux de trésorerie du projet
+    // Simuacc Logic uses EBE directly as flux
+    const cashFlows = [-initialInvestment, ...businessPlan.map(y => y.ebe)];
 
     const sumPositive = cashFlows.reduce((acc, val) => val > 0 ? acc + val : acc, 0);
     if (sumPositive < initialInvestment) {
