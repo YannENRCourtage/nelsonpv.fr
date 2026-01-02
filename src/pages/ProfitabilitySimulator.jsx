@@ -16,7 +16,8 @@ const DEFAULT_PARAMS = {
     tarifTH: 0.12,
     tarifACC: 0.14,
     turpe: 0.012,
-    prixAchatACC: 0.85,
+    prixAchatACC: 0.40, // Part ACC 40%
+    partACC: 40,        // Default Part ACC
     interestRate: 3.9
 };
 
