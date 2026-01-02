@@ -200,9 +200,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             widthPoints: wPoints,
             hStart: new THREE.Vector3(xH, 0, 0),
             hEnd: new THREE.Vector3(xH, extHeight, 0),
-            // Placeholder until I read the file content.
-            // I recall reading `21112025 V2/src/components/configurator/structure/DimensionsMarkers.jsx` lines 200-300.
-            // I need to see 300+.
+            heightPoints: [
+                [new THREE.Vector3(xH, 0, 0), new THREE.Vector3(xH, extHeight / 2 - gapSize / 2, 0)],
+                [new THREE.Vector3(xH, extHeight / 2 + gapSize / 2, 0), new THREE.Vector3(xH, extHeight, 0)]
+            ]
 
         };
     }, [leftSide, leftWidth, leftHeight, width, gapSize, buildingType]);
