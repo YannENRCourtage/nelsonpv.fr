@@ -6,7 +6,7 @@ import * as THREE from 'three';
  * Renders dimension lines and surface area text.
  * Optimized with useMemo to prevent re-render loops from new object creation.
  */
-export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roofPitch, leftSide, rightSide, showDimensions }) {
+export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roofPitch, leftSide, rightSide, showDimensions, buildingType = 'symetrique' }) {
     if (!showDimensions) return null;
 
     const textColor = "#000000";

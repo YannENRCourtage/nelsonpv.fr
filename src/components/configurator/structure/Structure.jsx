@@ -128,11 +128,12 @@ export function Structure() {
                 width={width}
                 length={length}
                 eaveHeight={eaveHeight}
-                ridgeHeight={calculatedRidgeHeight}
+                ridgeHeight={calculatedRidgeHeight} // Pass Ridge Height
                 roofPitch={roofPitch}
                 leftSide={leftSide}
                 rightSide={rightSide}
                 showDimensions={showDimensions}
+                buildingType={config.buildingType} // Pass Type
             />
         </group>
     );
