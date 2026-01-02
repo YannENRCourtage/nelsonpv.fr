@@ -208,10 +208,12 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         if (rightSide === 'none') return null;
         const extWidth = rightWidth;
 
-        let extHeight = rightHeight;
+        let extHeight = rightHeight; // Default: eave height of extension
         if (buildingType === 'monopente' && rightSide === 'auvent') {
-            // Right side of Monopente is the HIGH side (Ridge)
-            extHeight = ridgeHeight;
+            // Right side of Monopente Auvent: 
+            // High point = Ridge. Low point = Ridge - 1m.
+            // User wants to see the "Low Point" (Sablière).
+            extHeight = ridgeHeight - 1.0;
         }
 
         const zFront = 3.0;

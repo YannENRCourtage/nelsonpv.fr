@@ -21,23 +21,20 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     let angleRad = (roofPitch * Math.PI) / 180;
 
     if (buildingType === 'monopente') {
-        // Monopente Specifics
+        // Monopente: Auvent drops 1m over 2m width (User Request)
+        // Left: High 4m -> Low 3m
+        // Right: High Ridge -> Low Ridge-1m
+
+        const dropHeight = 1.0;
+        const width = 2.0;
+        const requiredAngle = Math.atan(dropHeight / width);
+
         if (side === 'left') {
-            // Low Side: ALWAYS 3.0m as per user request
-            startHeight = 3.0;
-            // Calculate angle to drop 1m over 2m width? 
-            // Or does it follow roof pitch? 
-            // User: "height... is always 3m". 
-            // Usually Auvent slope is standard (e.g. 10deg) unless it extends roof.
-            // Assuming standard slope for Auvent itself:
-            // angleRad remains default (10 deg) unless specified otherwise.
-            // If it must be continuous with roof, we'd use roofPitch.
-            // Keeping default angleRad derived from roofPitch prop is safer unless specified.
-            angleRad = (roofPitch * Math.PI) / 180;
+            startHeight = 4.0; // Fixed Eave Height for Monopente
+            angleRad = requiredAngle;
         } else {
-            // High Side: Attaches at Ridge Height
-            startHeight = ridgeHeight;
-            angleRad = (roofPitch * Math.PI) / 180;
+            startHeight = ridgeHeight; // Attaches at Ridge
+            angleRad = requiredAngle;
         }
     }
 
