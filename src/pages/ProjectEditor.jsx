@@ -80,14 +80,6 @@ export default function ProjectEditor() {
 
   // ...
 
-  // Auto-save on unmount or periodic?
-  // Actually, ClientForm handles auto-save.
-  // But here we might have explicit save calls.
-
-  // ...
-
-  // If there are explicit calls:
-  // saveProject();
   const { user: currentUser } = useAuth();
   const [projectUsers, setProjectUsers] = useState([]);
 
@@ -127,8 +119,6 @@ export default function ProjectEditor() {
         return;
       }
 
-      // REMOVED: if (project?.id === projectId) return; to force reload from API
-
       try {
         // Load fresh project data directly from API (bypassing potentially stale list)
         const { apiService } = await import('@/services/api');
@@ -157,17 +147,22 @@ export default function ProjectEditor() {
     };
 
     loadProject();
-  }, [projectId, setProject]); // Removed projects dependency to avoid overwrite loops
+  }, [projectId, setProject]);
 
   useEffect(() => {
     if (project?.captures) setCaptures(project.captures);
     if (project?.photos) setPhotos(project.photos);
   }, [project]);
 
-  // ZNZV Lookup Effect
+  // ZNZV Lookup Effect (Robust Version)
   useEffect(() => {
-    if (project?.zip && znzvData[project.zip]) {
-      const data = znzvData[project.zip];
+    if (!project?.zip || project.zip.length < 2) return;
+
+    // Normalize zip: string, trim matches
+    const zip = String(project.zip).trim();
+
+    function applyData(data) {
+      if (!data) return;
       if (
         project.seismicZone !== data.seisme ||
         project.snowZone !== data.neige ||
@@ -178,6 +173,19 @@ export default function ProjectEditor() {
           snowZone: data.neige,
           windZone: data.vent
         });
+      }
+    }
+
+    // Try direct match
+    if (znzvData[zip]) {
+      applyData(znzvData[zip]);
+    } else {
+      // Try padded with 0 (e.g. 1000 -> 01000)
+      if (zip.length === 4) {
+        const padded = '0' + zip;
+        if (znzvData[padded]) {
+          applyData(znzvData[padded]);
+        }
       }
     }
   }, [project?.zip, updateProject]);
