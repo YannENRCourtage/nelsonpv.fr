@@ -212,12 +212,13 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
             {/* STRUCTURE */}
             {frames}
             {/* Longitudinal Beam (Sablière) at Tip - Massive */}
+            {/* Longitudinal Beam (Sablière) at Tip - Reduced 20%, Lowered 20cm */}
             <mesh
-                position={[auventWidth, -auventWidth * Math.tan(angleRad) - 0.1 + 0.5, length / 2]}
+                position={[auventWidth, -auventWidth * Math.tan(angleRad) - 0.1 + 0.3, length / 2]}
                 rotation={[0, 0, 0]}
                 material={structureMaterial}
             >
-                <boxGeometry args={[0.2, 0.4, length]} />
+                <boxGeometry args={[0.16, 0.32, length]} />
             </mesh>
 
             {/* Purlins */}
