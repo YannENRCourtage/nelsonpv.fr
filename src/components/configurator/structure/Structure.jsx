@@ -102,9 +102,6 @@ export function Structure() {
                     baySpacing={baySpacing}
                     buildingType={config.buildingType}
                 />
-                    bayCount={bayCount}
-            baySpacing={baySpacing}
-                />
             )}
 
             {/* --- EXTENSIONS DROITE --- */}

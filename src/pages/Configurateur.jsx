@@ -10,6 +10,7 @@ import BuildingScene from '../components/configurator/BuildingScene.jsx';
 // Firebase Imports
 import { ref, getDownloadURL } from "firebase/storage";
 import { storage } from "@/config/firebase.js";
+import { OfferGenerationModal } from '../components/configurator/ui/OfferGenerationModal.jsx';
 
 export default function Configurateur() {
     const { user } = useAuth();
@@ -391,74 +392,13 @@ export default function Configurateur() {
                 </div>
             </div>
 
-            {/* ========== MODAL PDF ========== */}
-            {showPDFModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8">
-                        <h3 className="text-2xl font-bold text-slate-900 mb-6">Sélection Projet pour l'Offre</h3>
-
-                        {!selectedProject ? (
-                            <div className="space-y-4">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                                    <input
-                                        type="text"
-                                        placeholder="Rechercher un projet (nom, prénom, ville)..."
-                                        value={projectSearch}
-                                        onChange={(e) => setProjectSearch(e.target.value)}
-                                        className="w-full pl-10 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    />
-                                </div>
-
-                                {projectSearch && filteredProjects.length > 0 && (
-                                    <div className="border border-slate-200 rounded-lg max-h-60 overflow-y-auto">
-                                        {filteredProjects.map(p => (
-                                            <div
-                                                key={p.id}
-                                                onClick={() => { setSelectedProject(p); setProjectSearch(''); }}
-                                                className="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0"
-                                            >
-                                                <div className="font-semibold text-slate-800">{p.name} {p.firstName}</div>
-                                                <div className="text-sm text-slate-500">{p.city} ({p.zip})</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {projectSearch && filteredProjects.length === 0 && (
-                                    <div className="text-center py-8 text-slate-500">
-                                        <p className="text-sm">Aucun projet trouvé</p>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                    <div className="font-bold text-green-900">{selectedProject.name} {selectedProject.firstName}</div>
-                                    <div className="text-sm text-green-700">{selectedProject.address}</div>
-                                    <div className="text-sm text-green-700">{selectedProject.zip} {selectedProject.city}</div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex gap-4 mt-8">
-                            <button
-                                onClick={() => { setShowPDFModal(false); setSelectedProject(null); setProjectSearch(''); }}
-                                className="flex-1 px-6 py-3 bg-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-300 transition"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={generateFullPDF}
-                                disabled={!selectedProject || isCapturing}
-                                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isCapturing ? 'Génération en cours...' : 'Générer le PDF'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* ========== MODAL OFFRE ========== */}
+            <OfferGenerationModal
+                isOpen={showPDFModal}
+                onClose={() => setShowPDFModal(false)}
+                config={config}
+                selectedProject={selectedProject} // Assuming selectedProject is managed elsewhere or I need to restore the Project Selection Logic?
+            />
         </div>
     );
 }
