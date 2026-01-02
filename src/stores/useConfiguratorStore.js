@@ -195,8 +195,10 @@ export const useConfiguratorValues = () => {
 
         const solarPower = (solarCount * 465) / 1000;
 
+        const availableWidths = TYPE_WIDTHS_MAP[state.buildingType] || TYPE_WIDTHS_MAP['symetrique'];
+
         return {
-            availableWidths: state.availableWidths,
+            availableWidths,
             buildingType: state.buildingType,
             width: state.width,
             ridgeHeight,
