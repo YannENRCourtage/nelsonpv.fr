@@ -58,10 +58,10 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
     const getProjectValue = (field) => {
         if (!selectedProject) return '';
         switch (field) {
-            case 'name': return selectedProject.nom || '';
-            case 'address': return selectedProject.adresse || '';
-            case 'zip': return selectedProject.cp || '';
-            case 'city': return selectedProject.ville || '';
+            case 'name': return selectedProject.name || '';
+            case 'address': return selectedProject.address || '';
+            case 'zip': return selectedProject.zip || '';
+            case 'city': return selectedProject.city || '';
             default: return '';
         }
     };
@@ -178,7 +178,7 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `Offre_${selectedProject?.nom || 'Projet'}.pdf`;
+            link.download = `Offre_${selectedProject?.name || 'Projet'}.pdf`;
             link.click();
 
         } catch (err) {
@@ -192,9 +192,11 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
     // Filter projects
     const filteredProjects = useMemo(() => {
         if (!searchTerm) return [];
+        const lower = searchTerm.toLowerCase();
         return projects.filter(p =>
-            p.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.ville?.toLowerCase().includes(searchTerm.toLowerCase())
+            (p.name && p.name.toLowerCase().includes(lower)) ||
+            (p.firstName && p.firstName.toLowerCase().includes(lower)) ||
+            (p.city && p.city.toLowerCase().includes(lower))
         ).slice(0, 5);
     }, [projects, searchTerm]);
 
@@ -256,12 +258,12 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                                                 onMouseDown={(e) => { // Use onMouseDown to prevent blur before click
                                                     e.preventDefault();
                                                     setSelectedProject(p);
-                                                    setSearchTerm(p.nom);
+                                                    setSearchTerm(p.name);
                                                     setShowProjectResults(false);
                                                 }}
                                             >
-                                                <div className="font-medium text-slate-800">{p.nom}</div>
-                                                <div className="text-xs text-slate-500">{p.ville} ({p.cp})</div>
+                                                <div className="font-medium text-slate-800">{p.name} {p.firstName}</div>
+                                                <div className="text-xs text-slate-500">{p.city} ({p.zip})</div>
                                             </div>
                                         ))}
                                         {filteredProjects.length === 0 && (
