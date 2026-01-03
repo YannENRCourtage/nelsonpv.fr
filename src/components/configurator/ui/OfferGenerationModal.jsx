@@ -1,457 +1,518 @@
-import React, { useState, useEffect, useMemo } from 'react';
+```jsx
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { PDFViewer } from '@/components/PDFViewer';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { X, Upload, Save, Download, Plus, FileText, Trash2 } from 'lucide-react';
+import { X, Upload, Save, Download, Plus, FileText, Trash2, Search, User, MapPin, Ruler, Image as ImageIcon, ChevronDown, ChevronRight, Phone, Mail } from 'lucide-react';
+import { useProjects } from '@/contexts/ProjectContext';
 
 const STORAGE_KEY = 'configurator_offer_template';
 
-export function OfferGenerationModal({ isOpen, onClose, config, selectedProject }) {
-    // --- STATE ---
-    const [step, setStep] = useState('loading'); // loading -> upload -> editor -> input_values
-    const [templateData, setTemplateData] = useState(null); // { pdfData: string(base64), tags: [], customTags: [] }
+export function OfferGenerationModal({ isOpen, onClose, config }) {
+    const { projects } = useProjects();
+    
+    // Global State
+    const [templateData, setTemplateData] = useState(null); // { pdfData, tags: [] }
     const [selectedTagKey, setSelectedTagKey] = useState(null);
-
-    // Custom Tag Creation
-    const [newTagLabel, setNewTagLabel] = useState('');
-    const [isCreatingTag, setIsCreatingTag] = useState(false);
-
-    // Generation Values
-    const [customTagValues, setCustomTagValues] = useState({});
     const [isGenerating, setIsGenerating] = useState(false);
 
-    // --- INITIALIZATION ---
+    // Project Selection
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedProject, setSelectedProject] = useState(null);
+    const [showProjectResults, setShowProjectResults] = useState(false);
+
+    // Manual Values
+    const [manualValues, setManualValues] = useState({
+        contactName: '',
+        contactPhone: '',
+        contactEmail: ''
+    });
+
+    // Accordion State
+    const [openSections, setOpenSections] = useState({
+        project: true,
+        building: true,
+        contact: true,
+        visuals: true
+    });
+
+    const toggleSection = (sec) => setOpenSections(prev => ({ ...prev, [sec]: !prev[sec] }));
+
+    // --- INITIALIZATON ---
     useEffect(() => {
         if (isOpen) {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 try {
-                    const parsed = JSON.parse(saved);
-                    setTemplateData(parsed);
-                    setStep('editor');
+                    setTemplateData(JSON.parse(saved));
                 } catch (e) {
                     console.error("Error loading template", e);
-                    setStep('upload');
                 }
-            } else {
-                setStep('upload');
             }
         }
     }, [isOpen]);
 
-    // --- AVAILABLE TAGS ---
-    const systemTags = useMemo(() => [
-        { key: '{{client_name}}', label: 'Nom Client' },
-        { key: '{{client_address}}', label: 'Adresse Client' },
-        { key: '{{date}}', label: 'Date du jour' },
-        { key: '{{building_dims}}', label: 'Dimensions (LxS)' },
-        { key: '{{building_surface}}', label: 'Surface (m²)' },
-        { key: '{{eave_height}}', label: 'Hauteur Sablière' },
-        { key: '{{ridge_height}}', label: 'Hauteur Faitage' },
-        { key: '{{roof_pitch}}', label: 'Pente (%)' },
-        { key: '{{total_price}}', label: 'Prix Total' }, // Make sure to handle if not available
-    ], []);
+    // --- DATA MAPPING ---
+    const getProjectValue = (field) => {
+        if (!selectedProject) return '';
+        switch (field) {
+            case 'name': return selectedProject.nom || '';
+            case 'address': return selectedProject.adresse || '';
+            case 'zip': return selectedProject.cp || '';
+            case 'city': return selectedProject.ville || '';
+            default: return '';
+        }
+    };
 
-    const allTags = useMemo(() => {
-        const customs = templateData?.customTags || [];
-        return [...systemTags, ...customs];
-    }, [systemTags, templateData?.customTags]);
+    const getConfigValue = (field) => {
+        if (!config) return '';
+        const effectiveWidth = config.width
+            + (config.leftSide === 'appentis' ? 9.3 : (config.leftSide === 'auvent' ? 4.0 : 0))
+            + (config.rightSide === 'appentis' ? 9.3 : (config.rightSide === 'auvent' ? 4.0 : 0));
+
+        switch (field) {
+            case 'width': return effectiveWidth;
+            case 'length': return config.length;
+            case 'surface': return (effectiveWidth * config.length).toFixed(0);
+            case 'eaveHeight': return config.eaveHeight;
+            case 'ridgeHeight': return config.ridgeHeight; // You might need to calculate this if not in config
+            case 'roofPitch': return config.roofPitch;
+            case 'bayCount': return config.bayCount;
+            case 'baySpacing': return config.baySpacing;
+            default: return '';
+        }
+    };
+
+    // --- TAG DEFINITIONS ---
+    const availableTags = useMemo(() => [
+        // Project
+        { category: 'project', key: '{{project_name}}', label: 'Nom Projet', value: getProjectValue('name'), icon: User },
+        { category: 'project', key: '{{project_address}}', label: 'Adresse', value: getProjectValue('address'), icon: MapPin },
+        { category: 'project', key: '{{project_zip}}', label: 'Code Postal', value: getProjectValue('zip'), icon: MapPin },
+        { category: 'project', key: '{{project_city}}', label: 'Ville', value: getProjectValue('city'), icon: MapPin },
+
+        // Building
+        { category: 'building', key: '{{b_dims}}', label: 'Dimensions (Lxl)', value: `${ getConfigValue('length') }m x ${ getConfigValue('width').toFixed(2) } m`, icon: Ruler },
+        { category: 'building', key: '{{b_surface}}', label: 'Surface', value: `${ getConfigValue('surface') } m²`, icon: Ruler },
+        { category: 'building', key: '{{b_eave}}', label: 'Hauteur Sablière', value: `${ getConfigValue('eaveHeight') } m`, icon: Ruler },
+        { category: 'building', key: '{{b_ridge}}', label: 'Hauteur Faitage', value: `${ getConfigValue('ridgeHeight') || '?' } m`, icon: Ruler }, // config.ridgeHeight might need calculation
+        { category: 'building', key: '{{b_pitch}}', label: 'Pente', value: `${ getConfigValue('roofPitch') }°`, icon: Ruler },
+        { category: 'building', key: '{{b_bays}}', label: 'Travées', value: `${ getConfigValue('bayCount') } x ${ getConfigValue('baySpacing') } m`, icon: Ruler },
+
+        // Contact
+        { category: 'contact', key: '{{contact_name}}', label: 'Nom Contact', value: manualValues.contactName, icon: User },
+        { category: 'contact', key: '{{contact_phone}}', label: 'Téléphone', value: manualValues.contactPhone, icon: Phone },
+        { category: 'contact', key: '{{contact_email}}', label: 'Email', value: manualValues.contactEmail, icon: Mail },
+        
+        // Visuals (Placeholders)
+        { category: 'visuals', key: '{{img_2d}}', label: 'Vue 2D', value: '[Image Vue 2D]', icon: ImageIcon },
+        { category: 'visuals', key: '{{img_capture}}', label: 'Capture Projet', value: '[Image Capture]', icon: ImageIcon },
+    ], [selectedProject, config, manualValues]);
+
+    const currentSelectedTag = selectedTagKey ? availableTags.find(t => t.key === selectedTagKey) : null;
 
     // --- HANDLERS ---
-
-    // 1. UPLOAD
     const handleFileUpload = (e) => {
-        console.log("File input change detected");
         const file = e.target.files[0];
-        if (!file) {
-            console.log("No file selected");
-            return;
-        }
-        console.log("File selected:", file.name, file.type, file.size);
-
-        if (file.type !== 'application/pdf') {
-            alert("Veuillez sélectionner un fichier PDF valide.");
-            return;
-        }
-
+        if (!file || file.type !== 'application/pdf') return;
         const reader = new FileReader();
         reader.onload = (ev) => {
-            const base64 = ev.target.result; // Data URL
-            const newData = {
-                pdfData: base64, // Keep full data url? PDFViewer expects ArrayBuffer or Uint8Array usually but pdfjs accepts strings. PDFViewer accepts 'pdfData' prop.
-                // Checking PDFViewer.jsx: it passes pdfData to pdfjsLib.getDocument(pdfData).
-                // pdfjs can handle data uri string.
-                tags: [],
-                customTags: []
-            };
-
-            // To be safe, let's keep it as Data URL.
+            const newData = { pdfData: ev.target.result, tags: [] };
             setTemplateData(newData);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
-            setStep('editor');
         };
         reader.readAsDataURL(file);
     };
 
-    // 2. TAG MANAGEMENT
     const handleTagPlaced = (newTag) => {
+        // Tag placed on PDF
         const updatedTags = [...(templateData.tags || []), newTag];
-        updateTemplate({ tags: updatedTags });
-        setSelectedTagKey(null); // Deselect after placing
+        const newData = { ...templateData, tags: updatedTags };
+        setTemplateData(newData);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+        setSelectedTagKey(null); // Deselect after placement
     };
 
-    const handleTagRemoved = (tagToRemove) => {
-        const updatedTags = templateData.tags.filter(t => t.id !== tagToRemove.id);
-        updateTemplate({ tags: updatedTags });
-    };
-
-    const handleTagMoved = (tagToUpdate, newPos) => {
-        const updatedTags = templateData.tags.map(t =>
-            t.id === tagToUpdate.id ? { ...t, x: newPos.x, y: newPos.y } : t
-        );
-        updateTemplate({ tags: updatedTags });
-    };
-
-    const createCustomTag = () => {
-        if (!newTagLabel.trim()) return;
-        const key = `{{${newTagLabel.trim().toLowerCase().replace(/\s+/g, '_')}}}`;
-        const newCustomTag = { key, label: newTagLabel.trim() };
-
-        const updatedCustoms = [...(templateData.customTags || []), newCustomTag];
-        updateTemplate({ customTags: updatedCustoms });
-
-        setNewTagLabel('');
-        setIsCreatingTag(false);
-    };
-
-    const deleteCustomTag = (tagKey) => {
-        // Remove from definitions
-        const updatedCustoms = templateData.customTags.filter(t => t.key !== tagKey);
-        // Remove placed instances
-        const updatedTags = templateData.tags.filter(t => t.key !== tagKey);
-        updateTemplate({ customTags: updatedCustoms, tags: updatedTags });
-    };
-
-    const updateTemplate = (updates) => {
-        const newData = { ...templateData, ...updates };
+    const handleTagRemoved = (tagId) => {
+        const updatedTags = templateData.tags.filter(t => t.id !== tagId);
+        const newData = { ...templateData, tags: updatedTags };
         setTemplateData(newData);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     };
 
-    const resetTemplate = () => {
-        if (confirm("Voulez-vous vraiment supprimer le template actuel ?")) {
-            localStorage.removeItem(STORAGE_KEY);
-            setTemplateData(null);
-            setStep('upload');
-        }
-    };
-
-    // 3. GENERATION FLOW
-    const startGeneration = () => {
-        // Initialize values for custom tags
-        const initialValues = {};
-        (templateData.customTags || []).forEach(t => {
-            initialValues[t.key] = '';
-        });
-        setCustomTagValues(initialValues);
-        setStep('input_values');
-    };
-
-    const generatePDF = async () => {
+    const handleGeneratePDF = async () => {
+        if (!templateData?.pdfData) return;
         setIsGenerating(true);
         try {
-            // 1. Prepare Data
-            const values = {
-                // System Values
-                '{{client_name}}': selectedProject ? `${selectedProject.name} ${selectedProject.firstName}` : 'Client Inconnu',
-                '{{client_address}}': selectedProject ? `${selectedProject.address}, ${selectedProject.zip} ${selectedProject.city}` : '',
-                '{{date}}': new Date().toLocaleDateString('fr-FR'),
-                '{{building_dims}}': `${config.length}m x ${config.width}m`,
-                '{{building_surface}}': ((config.length * config.width).toFixed(0)), // Simple calc
-                '{{eave_height}}': `${config.eaveHeight}m`,
-                '{{ridge_height}}': `${config.ridgeHeight}m`,
-                '{{roof_pitch}}': `${config.roofPitch}°`,
-                '{{total_price}}': 'Sur Devis', // Placeholder
-
-                // Custom Values form Input Step
-                ...customTagValues
-            };
-
-            // 2. Load PDF
-            const existingPdfBytes = await fetch(templateData.pdfData).then(res => res.arrayBuffer());
-            const pdfDoc = await PDFDocument.load(existingPdfBytes);
-            const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-
-            // 3. Draw Tags
+            const pdfDoc = await PDFDocument.load(templateData.pdfData);
+            const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
             const pages = pdfDoc.getPages();
 
+            // Iterate over placed tags
             for (const tag of templateData.tags) {
-                const pageIndex = tag.page - 1;
-                if (pageIndex < 0 || pageIndex >= pages.length) continue;
+                const page = pages[tag.page - 1];
+                if (!page) continue;
 
-                const page = pages[pageIndex];
+                // Find Value
+                const def = availableTags.find(t => t.key === tag.key);
+                const textToDraw = def ? String(def.value) : tag.label;
+
+                // The PDFViewer passes x/y as percentages (0-100) of the page dimensions.
+                // PDF-lib uses points, with origin at bottom-left.
                 const { width, height } = page.getSize();
-
-                // Coord transformation: PDF origin is Bottom-Left. PDFViewer origin is Top-Left.
-                // PDFViewer provides percentage (0-100).
-                // X: (tag.x / 100) * width
-                // Y: height - ((tag.y / 100) * height)
-
                 const x = (tag.x / 100) * width;
-                const y = height - ((tag.y / 100) * height);
+                const y = height - ((tag.y / 100) * height); // Convert from top-left origin to bottom-left
 
-                const text = values[tag.key] || ''; // Default to empty if missing
-
-                // Adjustment for text height (approx centering)
-                // Font size 10 -> ~7pt height?
-                // Let's shift up slightly to match baseline?
-                // PDFViewer usually places anchor at Top-Left of the element visually?
-                // The viewer returns visual center or top-left?
-                // In PDFViewer.jsx: `left: ${x}px`, `top: ${y}px`, `transform: 'translate(-50%, -100%)'` (Bottom-Middle anchor?)
-                // Wait, PDFViewer uses `translate(-50%, -100%)`.
-                // This means the point (tag.x, tag.y) corresponds to the **Bottom Middle** of the label div.
-                // So the text should reside *above* that point? 
-                // No, `translate(-50%, -100%)` shifts the div UP and LEFT.
-                // So the point (left, top) is the BOTTOM CENTER of the div.
-                // If I place a tag on a line, I click ON the line.
-                // So the anchor point is where I clicked.
-
-                // If I click on a line, I want the text BASELINE to be roughly there.
-                // Helper: drawText draws from baseline.
-                // So y should be roughly y.
-
-                page.drawText(text, {
+                page.drawText(textToDraw, {
                     x: x,
-                    y: y,
-                    size: 10,
-                    font,
-                    color: rgb(0, 0, 0)
+                    y: y - 10, // Adjust for baseline (text usually draws from bottom-left of text box)
+                    size: 12,
+                    font: helveticaFont,
+                    color: rgb(0, 0, 0),
                 });
             }
 
-            // 4. Save & Download
             const pdfBytes = await pdfDoc.save();
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-            const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.href = url;
-            link.download = `Offre_${selectedProject?.name || 'Projet'}.pdf`;
-            document.body.appendChild(link);
+            link.href = URL.createObjectURL(blob);
+            link.download = `Offre_${ selectedProject?.nom || 'Projet' }.pdf`;
             link.click();
-            document.body.removeChild(link);
-
-            // Close after success? Or stay?
-            // onClose(); 
 
         } catch (err) {
-            console.error("Generation Error", err);
+            console.error(err);
             alert("Erreur lors de la génération : " + err.message);
         } finally {
             setIsGenerating(false);
         }
     };
 
-    if (!isOpen) return null;
+    // Filter projects
+    const filteredProjects = useMemo(() => {
+        if (!searchTerm) return [];
+        return projects.filter(p => 
+            p.nom?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            p.ville?.toLowerCase().includes(searchTerm.toLowerCase())
+        ).slice(0, 5);
+    }, [projects, searchTerm]);
+
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-6xl h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col p-0 gap-0 bg-slate-50 overflow-hidden">
+                
                 {/* HEADER */}
-                <div className="bg-slate-900 text-white p-4 flex items-center justify-between shrink-0">
-                    <h2 className="text-xl font-bold flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-blue-400" />
-                        Générateur d'Offre
-                        {step === 'editor' && <span className="text-xs bg-blue-600 px-2 py-0.5 rounded ml-2">Éditeur</span>}
-                    </h2>
-                    <button onClick={onClose} className="hover:bg-white/10 p-2 rounded-lg transition">
-                        <X className="w-5 h-5" />
-                    </button>
+                <div className="flex justify-between items-center px-6 py-4 bg-white border-b border-slate-200">
+                    <div className="flex items-center gap-3">
+                        <FileText className="w-6 h-6 text-blue-600" />
+                        <h2 className="text-xl font-bold text-slate-800">Générer l'Offre Commerciale</h2>
+                    </div>
+                    {/* Header Actions */}
+                    <div className="flex items-center gap-3">
+                        <Button variant="outline" onClick={onClose}>Fermer</Button>
+                        <Button 
+                            onClick={handleGeneratePDF} 
+                            disabled={!templateData?.pdfData || isGenerating}
+                            className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                        >
+                            <Download className="w-4 h-4" />
+                            {isGenerating ? 'Génération...' : 'Télécharger le PDF'}
+                        </Button>
+                    </div>
                 </div>
 
-                {/* CONTENT */}
-                <div className="flex-1 overflow-hidden relative bg-slate-100 flex">
-
-                    {step === 'upload' && (
-                        <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-                            <div className="bg-white p-12 rounded-3xl shadow-xl border-2 border-dashed border-slate-300 w-full max-w-lg hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer relative">
-                                <Upload className="w-16 h-16 text-blue-500 mx-auto mb-4" />
-                                <h3 className="text-xl font-bold text-slate-800 mb-2">Charger un modèle PDF</h3>
-                                <p className="text-slate-500">Cliquez ou glissez un fichier PDF ici pour commencer (Devis vierge, Trame...)</p>
-                                <input
-                                    type="file"
-                                    accept="application/pdf"
-                                    onChange={handleFileUpload}
-                                    className="absolute inset-0 opacity-0 cursor-pointer z-50"
+                {/* MAIN CONTENT */}
+                <div className="flex flex-1 overflow-hidden">
+                    
+                    {/* --- LEFT PANEL: DATA & TAGS --- */}
+                    <div className="w-[400px] flex flex-col border-r border-slate-200 bg-white z-10 shadow-sm overflow-y-auto">
+                        
+                        {/* 1. Project Search */}
+                        <div className="p-4 border-b border-slate-100 bg-slate-50 sticky top-0 z-10">
+                            <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">
+                                Sélectionner un Projet
+                            </Label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <Input 
+                                    placeholder="Rechercher (Nom, Ville)..." 
+                                    className="pl-9 bg-white"
+                                    value={searchTerm}
+                                    onChange={(e) => {
+                                        setSearchTerm(e.target.value);
+                                        setShowProjectResults(true);
+                                    }}
+                                    onFocus={() => setShowProjectResults(true)}
+                                    onBlur={() => setTimeout(() => setShowProjectResults(false), 100)} // Delay to allow click
                                 />
-                            </div>
-                        </div>
-                    )}
-
-                    {step === 'editor' && templateData && (
-                        <>
-                            {/* PDF VIEWER (LEFT) */}
-                            <div className="flex-[3] relative border-r border-slate-200">
-                                <PDFViewer
-                                    pdfData={templateData.pdfData}
-                                    placedTags={templateData.tags || []}
-                                    selectedTag={selectedTagKey}
-                                    onTagPlaced={handleTagPlaced}
-                                    onTagRemoved={handleTagRemoved}
-                                    onTagMoved={handleTagMoved}
-                                    availableTags={allTags}
-                                />
-                            </div>
-
-                            {/* SIDEBAR (RIGHT) */}
-                            <div className="flex-1 bg-white p-4 overflow-y-auto flex flex-col gap-6 w-80 shrink-0">
-
-                                {/* Actions */}
-                                <div className="space-y-2">
-                                    <Button onClick={startGeneration} className="w-full bg-blue-600 hover:bg-blue-700">
-                                        <Download className="w-4 h-4 mr-2" />
-                                        Générer le PDF
-                                    </Button>
-                                    <Button onClick={resetTemplate} variant="outline" className="w-full text-red-600 border-red-200 hover:bg-red-50">
-                                        <Trash2 className="w-4 h-4 mr-2" />
-                                        Changer de modèle
-                                    </Button>
-                                </div>
-
-                                <hr className="border-slate-100" />
-
-                                {/* System Tags */}
-                                <div>
-                                    <h4 className="font-bold text-slate-700 mb-3 text-sm uppercase tracking-wide">Données Système</h4>
-                                    <div className="flex flex-wrap gap-2">
-                                        {systemTags.map(tag => (
-                                            <button
-                                                key={tag.key}
-                                                onClick={() => setSelectedTagKey(tag.key)}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${selectedTagKey === tag.key
-                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
-                                                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-blue-300'
-                                                    }`}
+                                {showProjectResults && searchTerm && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                                        {filteredProjects.map(p => (
+                                            <div 
+                                                key={p.id}
+                                                className="p-3 hover:bg-blue-50 cursor-pointer border-b border-slate-200 last:border-0"
+                                                onMouseDown={(e) => { // Use onMouseDown to prevent blur before click
+                                                    e.preventDefault();
+                                                    setSelectedProject(p);
+                                                    setSearchTerm(p.nom);
+                                                    setShowProjectResults(false);
+                                                }}
                                             >
-                                                {tag.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Custom Tags */}
-                                <div>
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h4 className="font-bold text-slate-700 text-sm uppercase tracking-wide">Champs Personnalisés</h4>
-                                        <button
-                                            onClick={() => setIsCreatingTag(!isCreatingTag)}
-                                            className="text-blue-600 hover:bg-blue-50 p-1 rounded"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                        </button>
-                                    </div>
-
-                                    {isCreatingTag && (
-                                        <div className="flex gap-2 mb-3 animate-in fade-in slide-in-from-top-2">
-                                            <Input
-                                                value={newTagLabel}
-                                                onChange={e => setNewTagLabel(e.target.value)}
-                                                placeholder="Label (ex: Remise)"
-                                                className="h-8 text-xs"
-                                                autoFocus
-                                                onKeyDown={e => e.key === 'Enter' && createCustomTag()}
-                                            />
-                                            <Button size="sm" onClick={createCustomTag} className="h-8 px-2 bg-blue-600">OK</Button>
-                                        </div>
-                                    )}
-
-                                    <div className="space-y-2">
-                                        {templateData.customTags?.map(tag => (
-                                            <div key={tag.key} className="flex items-center gap-2 group">
-                                                <button
-                                                    onClick={() => setSelectedTagKey(tag.key)}
-                                                    className={`flex-1 text-left px-3 py-2 rounded-lg text-xs font-medium border transition-all ${selectedTagKey === tag.key
-                                                        ? 'bg-purple-600 text-white border-purple-600 shadow-md'
-                                                        : 'bg-purple-50 text-purple-700 border-purple-100 hover:border-purple-300'
-                                                        }`}
-                                                >
-                                                    {tag.label}
-                                                </button>
-                                                <button
-                                                    onClick={() => deleteCustomTag(tag.key)}
-                                                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition"
-                                                    title="Supprimer"
-                                                >
-                                                    <Trash2 className="w-3 h-3" />
-                                                </button>
+                                                <div className="font-medium text-slate-800">{p.nom}</div>
+                                                <div className="text-xs text-slate-500">{p.ville} ({p.cp})</div>
                                             </div>
                                         ))}
-                                        {(!templateData.customTags || templateData.customTags.length === 0) && (
-                                            <p className="text-xs text-slate-400 italic text-center py-2">Aucun champ personnalisé</p>
+                                        {filteredProjects.length === 0 && (
+                                            <div className="p-3 text-sm text-slate-400 text-center">Aucun résultat</div>
                                         )}
                                     </div>
-                                </div>
-
-                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-xs text-blue-800 mt-auto">
-                                    <strong>Astuce :</strong> Sélectionnez une balise puis cliquez sur le document pour la placer.
-                                </div>
-                            </div>
-                        </>
-                    )}
-
-                    {step === 'input_values' && (
-                        <div className="w-full flex items-center justify-center p-12">
-                            <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-lg border border-slate-200">
-                                <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                                    <Edit className="w-5 h-5 text-blue-500" />
-                                    Saisie des valeurs
-                                </h3>
-
-                                <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
-                                    {templateData.customTags?.length > 0 ? (
-                                        templateData.customTags.map(tag => (
-                                            <div key={tag.key}>
-                                                <Label className="text-sm font-semibold text-slate-700 mb-1 block">
-                                                    {tag.label}
-                                                </Label>
-                                                <Input
-                                                    value={customTagValues[tag.key]}
-                                                    onChange={e => setCustomTagValues(prev => ({ ...prev, [tag.key]: e.target.value }))}
-                                                    placeholder={`Valeur pour ${tag.label}`}
-                                                />
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <p className="text-slate-500 text-center py-4">Aucun champ personnalisé à remplir. Vous pouvez générer le document directement.</p>
-                                    )}
-                                </div>
-
-                                <div className="flex gap-4 mt-8 pt-4 border-t">
-                                    <Button variant="outline" onClick={() => setStep('editor')} className="flex-1">
-                                        Retour
-                                    </Button>
-                                    <Button
-                                        onClick={generatePDF}
-                                        disabled={isGenerating}
-                                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                                    >
-                                        {isGenerating ? 'Génération...' : 'Confirmer et Télécharger'}
-                                    </Button>
-                                </div>
+                                )}
                             </div>
                         </div>
-                    )}
+
+                        {/* 2. Sections */}
+                        <div className="p-2 space-y-2">
+                            
+                            {/* Project Info */}
+                            <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                <button 
+                                    className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors"
+                                    onClick={() => toggleSection('project')}
+                                >
+                                    <span className="font-semibold text-slate-700 flex items-center gap-2">
+                                        <User className="w-4 h-4 text-blue-500" />
+                                        Projet
+                                    </span>
+                                    {openSections.project ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                                </button>
+                                {openSections.project && (
+                                    <div className="p-3 space-y-3 bg-white">
+                                        {availableTags.filter(t => t.category === 'project').map(tag => (
+                                            <div key={tag.key} className="flex items-center gap-2 group">
+                                                <div className="flex-1">
+                                                    <label className="text-xs text-slate-500 block">{tag.label}</label>
+                                                    <div className="text-sm font-medium text-slate-800 truncate" title={tag.value}>{tag.value || '-'}</div>
+                                                </div>
+                                                <Button 
+                                                    size="sm" 
+                                                    variant={selectedTagKey === tag.key ? "default" : "outline"}
+                                                    className={`h - 8 w - 8 p - 0 ${ selectedTagKey === tag.key ? 'bg-blue-600' : 'hover:border-blue-400 hover:text-blue-600' } `}
+                                                    onClick={() => setSelectedTagKey(tag.key)}
+                                                    title="Placer sur le document"
+                                                >
+                                                    <Plus className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Building Info */}
+                            <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                <button 
+                                    className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors"
+                                    onClick={() => toggleSection('building')}
+                                >
+                                    <span className="font-semibold text-slate-700 flex items-center gap-2">
+                                        <Ruler className="w-4 h-4 text-amber-500" />
+                                        Bâtiment (Configurateur)
+                                    </span>
+                                    {openSections.building ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                                </button>
+                                {openSections.building && (
+                                    <div className="p-3 space-y-3 bg-white">
+                                        {availableTags.filter(t => t.category === 'building').map(tag => (
+                                            <div key={tag.key} className="flex items-center gap-2">
+                                                <div className="flex-1">
+                                                    <label className="text-xs text-slate-500 block">{tag.label}</label>
+                                                    <div className="text-sm font-medium text-slate-800">{tag.value || '-'}</div>
+                                                </div>
+                                                <Button 
+                                                    size="sm" 
+                                                    variant={selectedTagKey === tag.key ? "default" : "outline"}
+                                                    className={`h - 8 w - 8 p - 0 ${ selectedTagKey === tag.key ? 'bg-blue-600' : 'hover:border-blue-400 hover:text-blue-600' } `}
+                                                    onClick={() => setSelectedTagKey(tag.key)}
+                                                >
+                                                    <Plus className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Contact Info (Manual) */}
+                            <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                <button 
+                                    className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors"
+                                    onClick={() => toggleSection('contact')}
+                                >
+                                    <span className="font-semibold text-slate-700 flex items-center gap-2">
+                                        <Phone className="w-4 h-4 text-green-500" />
+                                        Contact (Champs Libres)
+                                    </span>
+                                    {openSections.contact ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                                </button>
+                                {openSections.contact && (
+                                    <div className="p-3 space-y-3 bg-white">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs text-slate-500">Nom Contact</Label>
+                                            <div className="flex gap-2">
+                                                <Input 
+                                                    value={manualValues.contactName} 
+                                                    onChange={e => setManualValues(p => ({...p, contactName: e.target.value}))}
+                                                    className="h-8 text-sm"
+                                                    placeholder="Ex: M. Dupont"
+                                                />
+                                                <Button 
+                                                    size="sm" variant={selectedTagKey === '{{contact_name}}' ? "default" : "outline"}
+                                                    className="h-8 w-8 p-0" onClick={() => setSelectedTagKey('{{contact_name}}')}
+                                                >
+                                                    <Plus className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs text-slate-500">Téléphone</Label>
+                                            <div className="flex gap-2">
+                                                <Input 
+                                                    value={manualValues.contactPhone} 
+                                                    onChange={e => setManualValues(p => ({...p, contactPhone: e.target.value}))}
+                                                    className="h-8 text-sm"
+                                                    placeholder="06..."
+                                                />
+                                                <Button 
+                                                    size="sm" variant={selectedTagKey === '{{contact_phone}}' ? "default" : "outline"}
+                                                    className="h-8 w-8 p-0" onClick={() => setSelectedTagKey('{{contact_phone}}')}
+                                                >
+                                                    <Plus className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs text-slate-500">Email</Label>
+                                            <div className="flex gap-2">
+                                                <Input 
+                                                    value={manualValues.contactEmail} 
+                                                    onChange={e => setManualValues(p => ({...p, contactEmail: e.target.value}))}
+                                                    className="h-8 text-sm"
+                                                    placeholder="@..."
+                                                />
+                                                <Button 
+                                                    size="sm" variant={selectedTagKey === '{{contact_email}}' ? "default" : "outline"}
+                                                    className="h-8 w-8 p-0" onClick={() => setSelectedTagKey('{{contact_email}}')}
+                                                >
+                                                    <Plus className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                             {/* Visuals */}
+                             <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                <button 
+                                    className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors"
+                                    onClick={() => toggleSection('visuals')}
+                                >
+                                    <span className="font-semibold text-slate-700 flex items-center gap-2">
+                                        <ImageIcon className="w-4 h-4 text-purple-500" />
+                                        Visuels
+                                    </span>
+                                    {openSections.visuals ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                                </button>
+                                {openSections.visuals && (
+                                    <div className="p-3 space-y-3 bg-white">
+                                        <p className="text-xs text-slate-400 italic mb-2">Cliquez pour placer (Images placeholder)</p>
+                                        {availableTags.filter(t => t.category === 'visuals').map(tag => (
+                                            <div key={tag.key} className="flex items-center gap-2">
+                                                <div className="flex-1">
+                                                    <label className="text-xs text-slate-500 block">{tag.label}</label>
+                                                    <div className="text-sm font-medium text-slate-800">{tag.value}</div>
+                                                </div>
+                                                <Button 
+                                                    size="sm" 
+                                                    variant={selectedTagKey === tag.key ? "default" : "outline"}
+                                                    className={`h - 8 w - 8 p - 0 ${ selectedTagKey === tag.key ? 'bg-blue-600' : 'hover:border-blue-400 hover:text-blue-600' } `}
+                                                    onClick={() => setSelectedTagKey(tag.key)}
+                                                >
+                                                    <Plus className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                        </div>
+                    </div>
+
+                    {/* --- RIGHT PANEL: PDF VIEWER --- */}
+                    <div className="flex-1 bg-slate-100 relative flex flex-col h-full">
+                        {!templateData?.pdfData ? (
+                           <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+                                <div className="bg-white p-12 rounded-3xl shadow-xl border-2 border-dashed border-slate-300 w-full max-w-lg hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer relative group">
+                                    <Upload className="w-16 h-16 text-blue-500 mx-auto mb-4 group-hover:scale-110 transition-transform" />
+                                    <h3 className="text-xl font-bold text-slate-800 mb-2">Charger un modèle PDF</h3>
+                                    <p className="text-slate-500">Cliquez ou glissez un fichier PDF ici pour commencer</p>
+                                    <input
+                                        type="file"
+                                        accept="application/pdf"
+                                        onChange={handleFileUpload}
+                                        className="absolute inset-0 opacity-0 cursor-pointer z-50"
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="absolute top-4 right-4 z-20">
+                                    <div className="relative group">
+                                        <Button className="bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm gap-2">
+                                            <Upload className="w-4 h-4" />
+                                            Changer le PDF
+                                        </Button>
+                                        <input
+                                            type="file"
+                                            accept="application/pdf"
+                                            onChange={handleFileUpload}
+                                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex-1 overflow-hidden relative p-4">
+                                    <div className="h-full w-full bg-slate-200/50 rounded-xl overflow-hidden shadow-inner border border-slate-300 flex items-center justify-center">
+                                        <PDFViewer
+                                            pdfData={templateData.pdfData}
+                                            placedTags={templateData.tags || []}
+                                            selectedTag={currentSelectedTag} // Pass the full tag object
+                                            onTagPlaced={handleTagPlaced}
+                                            onTagRemoved={handleTagRemoved}
+                                            availableTags={[]} // We manage selection externally
+                                        />
+                                    </div>
+                                    
+                                    {/* Helper Overlay */}
+                                    {selectedTagKey && (
+                                        <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg z-30 animate-in fade-in slide-in-from-top-4 flex items-center gap-2">
+                                            <Plus className="w-4 h-4" />
+                                            <span>Cliquez sur le document pour placer : <strong>{currentSelectedTag?.label}</strong></span>
+                                            <button onClick={() => setSelectedTagKey(null)} className="ml-2 hover:bg-blue-700 rounded-full p-1"><X className="w-3 h-3" /></button>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )}
+                    </div>
 
                 </div>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }
-
-// Helper component for Icon
-function Edit({ className }) {
-    return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>;
 }
