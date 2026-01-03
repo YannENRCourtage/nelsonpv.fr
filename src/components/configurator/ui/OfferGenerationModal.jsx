@@ -114,6 +114,21 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
     const currentSelectedTag = selectedTagKey ? availableTags.find(t => t.key === selectedTagKey) : null;
 
     // --- HANDLERS ---
+    const handleTagMoved = (tag, newPos) => {
+        const updatedTags = templateData.tags.map(t =>
+            t.id === tag.id ? { ...t, x: newPos.x, y: newPos.y } : t
+        );
+        const newData = { ...templateData, tags: updatedTags };
+        setTemplateData(newData);
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+        } catch (e) {
+            console.warn("Storage update failed on move via drag");
+            // Non-critical, just won't save if reload
+        }
+    };
+
+    // --- HANDLERS ---
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
         if (!file || file.type !== 'application/pdf') return;
@@ -121,7 +136,12 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
         reader.onload = (ev) => {
             const newData = { pdfData: ev.target.result, tags: [] };
             setTemplateData(newData);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+            } catch (error) {
+                console.error("LocalStorage Error:", error);
+                alert("Le fichier PDF est trop volumineux pour être sauvegardé dans le navigateur. Il sera utilisable pour cette session, mais devra être rechargé la prochaine fois.");
+            }
         };
         reader.readAsDataURL(file);
     };
@@ -131,7 +151,11 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
         const updatedTags = [...(templateData.tags || []), newTag];
         const newData = { ...templateData, tags: updatedTags };
         setTemplateData(newData);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+        } catch (e) {
+            console.warn("Storage update failed on place");
+        }
         setSelectedTagKey(null); // Deselect after placement
     };
 
@@ -139,7 +163,11 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
         const updatedTags = templateData.tags.filter(t => t.id !== tagId);
         const newData = { ...templateData, tags: updatedTags };
         setTemplateData(newData);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+        } catch (e) {
+            console.warn("Storage update failed on remove");
+        }
     };
 
     const handleGeneratePDF = async () => {
@@ -203,7 +231,7 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col p-0 gap-0 bg-slate-50 overflow-hidden">
+            <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col p-0 gap-0 bg-slate-50 overflow-hidden [&>button]:hidden">
 
                 {/* HEADER */}
                 <div className="flex justify-between items-center px-6 py-4 bg-white border-b border-slate-200">
@@ -494,6 +522,7 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                                             selectedTag={currentSelectedTag} // Pass the full tag object
                                             onTagPlaced={handleTagPlaced}
                                             onTagRemoved={handleTagRemoved}
+                                            onTagMoved={handleTagMoved}
                                             availableTags={[]} // We manage selection externally
                                         />
                                     </div>
