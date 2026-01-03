@@ -242,7 +242,8 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
                 // Handle Images
                 if (tag.key === '{{img_2d}}' && generatedImages?.img3D) {
                     const img = await pdfDoc.embedPng(generatedImages.img3D);
-                    const imgDims = img.scaleToFit(400, 300); // DOUBLE SIZE (approx 14cm x 10cm on A4)
+                    // Decreased by 20% from 400 -> 320
+                    const imgDims = img.scaleToFit(320, 240);
 
                     page.drawImage(img, {
                         x: x,
@@ -258,7 +259,8 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
 
                 if (tag.key === '{{img_capture}}' && captureToUse) {
                     const img = await pdfDoc.embedPng(captureToUse);
-                    const captureDims = img.scaleToFit(300, 225);
+                    // Increased by 80% from 300 -> 540
+                    const captureDims = img.scaleToFit(540, 405);
 
                     page.drawImage(img, {
                         x: x,
@@ -279,7 +281,7 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
                     y: y, // Adjust for baseline 
                     size: 11, // Slightly smaller
                     font: helveticaFont,
-                    color: rgb(0, 0, 0),
+                    color: rgb(0, 15 / 255, 82 / 255), // #000f52
                 });
             }
 
