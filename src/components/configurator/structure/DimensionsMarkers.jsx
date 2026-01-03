@@ -19,18 +19,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const getExtWidth = (type) => {
         if (type === 'appentis') return 9.3;
         if (type === 'auvent') {
-            if (buildingType === 'monopente') {
-                // Buffer Auvent.jsx logic: Drop 1m, 13 deg
-                return 1.0 / Math.tan(13 * Math.PI / 180);
-            } else {
-                // Symetrique: Start Eave -> End 4.8m, 10 deg
-                const drop = Math.max(0, eaveHeight - 4.8);
-                const angle = 10 * Math.PI / 180;
-                // If drop is small/zero, default to 4m? Or calculated?
-                // Auvent.jsx defaults to 4.0 if drop <= 0.
-                if (drop <= 0) return 4.0;
-                return drop / Math.tan(angle);
-            }
+            // Standardized to 4.0m for both Monopente and Symetrique per user request
+            return 4.0;
         }
         return 0;
     };
@@ -184,8 +174,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         // FIX: Override height for Monopente Left Side
         let extHeight = leftHeight;
         if (buildingType === 'monopente' && leftSide === 'auvent') {
-            const drop = 4.0 * Math.tan((15 * Math.PI) / 180); // ~1.07m
-            extHeight = 4.0 - drop; // Start 4.0 - Drop
+            const drop = 4.0 * Math.tan((13 * Math.PI) / 180); // 4m * tan(13) ~ 0.92m
+            extHeight = 4.0 - drop; // ~3.08m
             // User requested "3m". Result is ~2.93m. 
             // If user wants to see "3m" specifically, we could round or force string. 
             // But for structure accuracy we use calculated.

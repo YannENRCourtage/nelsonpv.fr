@@ -22,19 +22,10 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     let auventWidth = 2.0;
 
     if (buildingType === 'monopente') {
-        // Monopente: Auvent drops 1m based on slope 13 deg
-        // Left: High 4m -> Low 3m (Drop 1m)
-        // Right: High Ridge -> Low Ridge-1m (Drop 1m)
-
-        const dropHeight = 1.0;
+        // Monopente: Auvent drops roughly 1m based on slope 13 deg
+        // Width fixed to 4.0m per user request
         const requiredAngle = 13 * (Math.PI / 180); // 13 degrees fixed slope
-
-        // Calculate Width needed for 1m drop at 13 degrees
-        // tan(11) = drop / width => width = drop / tan(11)
-        const calculatedWidth = dropHeight / Math.tan(requiredAngle);
-        // Approx 5.14m
-
-        auventWidth = calculatedWidth;
+        auventWidth = 4.0;
 
         if (side === 'left') {
             startHeight = 4.0; // Fixed Eave Height for Monopente
@@ -44,20 +35,11 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
             angleRad = requiredAngle;
         }
     } else if (buildingType === 'symetrique') {
-        // Symetrique: Auvent drops from Eave to 4.8m based on slope 10 deg
-        const targetEndHeight = 4.8;
-        const dropHeight = startHeight - targetEndHeight; // e.g. 5.5 - 4.8 = 0.7m
-
+        // Symetrique: Auvent drops from Eave to ~4.8m based on slope 10 deg
+        // Width fixed to 4.0m per user request
         const specificAngle = 10 * (Math.PI / 180); // 10 degrees fixed slope
         angleRad = specificAngle;
-
-        // Calculate Width needed for drop at 10 degrees
-        // width = drop / tan(10)
-        if (dropHeight > 0) {
-            auventWidth = dropHeight / Math.tan(specificAngle);
-        } else {
-            auventWidth = 4.0; // Fallback
-        }
+        auventWidth = 4.0;
     }
     // Group Position
     // Left: -buildingWidth/2
