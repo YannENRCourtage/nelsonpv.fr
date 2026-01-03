@@ -197,8 +197,9 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     }, [length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing]);
 
     // Roof Y Position logic
-    // Monopente: Lowered by 10cm from previous value (-0.03 -> -0.13)
-    const roofY = buildingType === 'monopente' ? -0.13 : 0.17;
+    // Monopente & Symetrique: Lowered (-0.13)
+    // Previously Symetrique was 0.17, requested -30cm => -0.13
+    const roofY = -0.13;
 
     return (
         <group
