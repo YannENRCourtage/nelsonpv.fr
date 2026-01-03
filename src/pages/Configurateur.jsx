@@ -1,4 +1,3 @@
-```javascript
 import React, { useState, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
@@ -60,19 +59,19 @@ export default function Configurateur() {
                 if (!storage) throw new Error("Storage non initialisé");
                 const storageRef = ref(storage, url);
                 const downloadURL = await getDownloadURL(storageRef);
-                const proxyUrl = `/ api / proxy - image ? url = ${ encodeURIComponent(downloadURL) } `;
+                const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(downloadURL)}`;
 
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
                 const response = await fetch(proxyUrl, { signal: controller.signal });
                 clearTimeout(timeoutId);
 
-                if (!response.ok) throw new Error(`Proxy Error: ${ response.status } `);
+                if (!response.ok) throw new Error(`Proxy Error: ${response.status}`);
                 const arrayBuffer = await response.arrayBuffer();
                 let binary = '';
                 const bytes = new Uint8Array(arrayBuffer);
                 for (let k = 0; k < bytes.byteLength; k++) binary += String.fromCharCode(bytes[k]);
-                return `data: image / png; base64, ${ window.btoa(binary) } `;
+                return `data:image/png;base64,${window.btoa(binary)}`;
             } catch (e) {
                 console.error("Erreur téléchargement image:", e);
                 return null;
@@ -138,12 +137,12 @@ export default function Configurateur() {
             pdf.setTextColor(0, 0, 0);
 
             if (selectedProject) {
-                const name = `${ selectedProject.name || '' } ${ selectedProject.firstName || '' } `;
+                const name = `${selectedProject.name || ''} ${selectedProject.firstName || ''}`;
                 pdf.text(name.toUpperCase(), leftMargin, y);
                 y += 6;
-                pdf.text(`${ selectedProject.address || '' } `, leftMargin, y);
+                pdf.text(`${selectedProject.address || ''}`, leftMargin, y);
                 y += 6;
-                pdf.text(`${ selectedProject.zip || '' } ${ selectedProject.city || '' } `, leftMargin, y);
+                pdf.text(`${selectedProject.zip || ''} ${selectedProject.city || ''}`, leftMargin, y);
             } else {
                 pdf.text('CLIENT: (Non renseigné)', leftMargin, y);
             }
@@ -242,15 +241,15 @@ export default function Configurateur() {
             const totalWidth = config.width + getExtWidth(config.leftSide) + getExtWidth(config.rightSide);
             const surface = (totalWidth * config.length).toFixed(0);
 
-            pdf.text(`${ config.length }m x ${ config.width }m ${ buildingType } `, alignX, ry, { align: 'center' });
+            pdf.text(`${config.length}m x ${config.width}m ${buildingType}`, alignX, ry, { align: 'center' });
             ry += 6;
-            pdf.text(`Surface au sol: ${ surface } m²`, alignX, ry, { align: 'center' });
+            pdf.text(`Surface au sol: ${surface} m²`, alignX, ry, { align: 'center' });
             ry += 6;
-            pdf.text(`Sablière: ${ config.eaveHeight } m`, alignX, ry, { align: 'center' });
+            pdf.text(`Sablière: ${config.eaveHeight} m`, alignX, ry, { align: 'center' });
             ry += 6;
-            pdf.text(`Faitage: ${ config.ridgeHeight } m`, alignX, ry, { align: 'center' });
+            pdf.text(`Faitage: ${config.ridgeHeight} m`, alignX, ry, { align: 'center' });
             ry += 6;
-            pdf.text(`Pente: ${ config.roofPitch }° - Travées : ${ config.bayCount } x ${ config.baySpacing } m`, alignX, ry, { align: 'center' });
+            pdf.text(`Pente: ${config.roofPitch}° - Travées : ${config.bayCount} x ${config.baySpacing} m`, alignX, ry, { align: 'center' });
 
             ry += 10;
 
@@ -289,11 +288,11 @@ export default function Configurateur() {
             const date = new Date().toLocaleDateString('fr-FR');
             pdf.setFontSize(9);
             pdf.setTextColor(150);
-            pdf.text(`${ date } - Validité : 1 mois`, rightMargin + 130, 200, { align: 'right' });
+            pdf.text(`${date} - Validité : 1 mois`, rightMargin + 130, 200, { align: 'right' });
 
 
             // Save
-            const filename = `Offre_${ selectedProject?.name || 'Projet' }.pdf`;
+            const filename = `Offre_${selectedProject?.name || 'Projet'}.pdf`;
             pdf.save(filename);
 
         } catch (err) {
@@ -373,11 +372,11 @@ export default function Configurateur() {
                     {/* Dimensions Toggle Button */}
                     <button
                         onClick={actions.toggleDimensions}
-                        className={`w - full px - 4 py - 2 rounded - lg font - semibold text - sm shadow border transition - all flex items - center justify - between gap - 3 ${ config.showDimensions ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50' } `}
+                        className={`w-full px-4 py-2 rounded-lg font-semibold text-sm shadow border transition-all flex items-center justify-between gap-3 ${config.showDimensions ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
                     >
                         <span>Afficher les côtes</span>
-                        <div className={`w - 10 h - 5 rounded - full relative transition - colors ${ config.showDimensions ? 'bg-white/30' : 'bg-slate-300' } `}>
-                            <div className={`absolute top - 1 w - 3 h - 3 rounded - full bg - white transition - all ${ config.showDimensions ? 'left-6' : 'left-1' } `} />
+                        <div className={`w-10 h-5 rounded-full relative transition-colors ${config.showDimensions ? 'bg-white/30' : 'bg-slate-300'}`}>
+                            <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${config.showDimensions ? 'left-6' : 'left-1'}`} />
                         </div>
                     </button>
                 </div>
@@ -389,13 +388,13 @@ export default function Configurateur() {
                     <div className="flex gap-2">
                         <button
                             onClick={() => setViewMode('3D')}
-                            className={`flex - 1 px - 4 py - 2 rounded - xl font - medium params - transition text - sm ${ viewMode === '3D' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100' } `}
+                            className={`flex-1 px-4 py-2 rounded-xl font-medium params-transition text-sm ${viewMode === '3D' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
                         >
                             Vue 3D
                         </button>
                         <button
                             onClick={() => setViewMode('2D_FRONT')}
-                            className={`flex - 1 px - 4 py - 2 rounded - xl font - medium params - transition text - sm ${ viewMode === '2D_FRONT' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100' } `}
+                            className={`flex-1 px-4 py-2 rounded-xl font-medium params-transition text-sm ${viewMode === '2D_FRONT' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
                         >
                             Vue 2D
                         </button>
