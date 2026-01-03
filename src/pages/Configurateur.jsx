@@ -319,7 +319,7 @@ export default function Configurateur() {
             </div>
 
             {/* ========== VISUALISATION BÂTIMENT (CENTER) ========== */}
-            <div id="3d-view-container" className="flex-1 ml-[440px] relative h-full">
+            <div id="3d-view-container" className="flex-1 ml-[440px] relative h-full isolate">
                 {/* 3D Scene */}
                 <div className="w-full h-full">
                     <BuildingScene
@@ -368,7 +368,7 @@ export default function Configurateur() {
                 </div>
 
                 {/* View Toggles & Actions (Top Right Overlay) */}
-                <div className="absolute top-4 right-4 z-50 flex flex-col gap-3 p-3 bg-white/90 backdrop-blur rounded-2xl shadow-lg border border-slate-200 pointer-events-auto">
+                <div className="absolute top-4 right-4 z-[100] flex flex-col gap-3 p-3 bg-white/90 backdrop-blur rounded-2xl shadow-lg border border-slate-200 pointer-events-auto">
 
                     {/* View Modes */}
                     <div className="flex gap-2">
