@@ -216,18 +216,20 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
 
             {/* STRUCTURE */}
             {frames}
-            {/* Longitudinal Beam (Sablière) at Tip - Further Reduced Dimensions */}
-            <mesh
-                position={[
-                    auventWidth,
-                    -auventWidth * Math.tan(angleRad) - 0.1 + (buildingType === 'monopente' ? 0.36 : 0.25),
-                    length / 2
-                ]}
-                rotation={[0, 0, 0]}
-                material={structureMaterial}
-            >
-                <boxGeometry args={[0.10, 0.20, length]} />
-            </mesh>
+            {/* Longitudinal Beam (Sablière) at Tip - Only for Symmetric (Hidden for Monopente) */}
+            {buildingType !== 'monopente' && (
+                <mesh
+                    position={[
+                        auventWidth,
+                        -auventWidth * Math.tan(angleRad) - 0.1 + 0.25,
+                        length / 2
+                    ]}
+                    rotation={[0, 0, 0]}
+                    material={structureMaterial}
+                >
+                    <boxGeometry args={[0.10, 0.20, length]} />
+                </mesh>
+            )}
 
             {/* Purlins */}
             {purlins}

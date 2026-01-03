@@ -6,7 +6,7 @@ import { useConfiguratorStore, useConfiguratorValues } from '../../../stores/use
 const PANEL_WIDTH = 1.134; // meters (Largeur)
 const PANEL_HEIGHT = 1.762; // meters (Hauteur/Longueur)
 const PANEL_POWER = 465; // Watts peak
-const GAP = 0.01; // 1cm gap
+const GAP = 0.00; // No gap (Jointif)
 const MARGIN = 0.50; // 50cm margin
 
 /**
