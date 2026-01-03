@@ -220,7 +220,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
             <mesh
                 position={[
                     auventWidth,
-                    -auventWidth * Math.tan(angleRad) - 0.1 + (buildingType === 'monopente' ? 0.4 : 0.25),
+                    -auventWidth * Math.tan(angleRad) - 0.1 + (buildingType === 'monopente' ? 0.36 : 0.25),
                     length / 2
                 ]}
                 rotation={[0, 0, 0]}
