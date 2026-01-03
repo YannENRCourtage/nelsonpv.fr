@@ -298,7 +298,7 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                                                 <Button
                                                     size="sm"
                                                     variant={selectedTagKey === tag.key ? "default" : "outline"}
-                                                    className={`h - 8 w - 8 p - 0 ${selectedTagKey === tag.key ? 'bg-blue-600' : 'hover:border-blue-400 hover:text-blue-600'} `}
+                                                    className={`h-8 w-8 p-0 ${selectedTagKey === tag.key ? 'bg-blue-600' : 'hover:border-blue-400 hover:text-blue-600'}`}
                                                     onClick={() => setSelectedTagKey(tag.key)}
                                                     title="Placer sur le document"
                                                 >
@@ -333,7 +333,7 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                                                 <Button
                                                     size="sm"
                                                     variant={selectedTagKey === tag.key ? "default" : "outline"}
-                                                    className={`h - 8 w - 8 p - 0 ${selectedTagKey === tag.key ? 'bg-blue-600' : 'hover:border-blue-400 hover:text-blue-600'} `}
+                                                    className={`h-8 w-8 p-0 ${selectedTagKey === tag.key ? 'bg-blue-600' : 'hover:border-blue-400 hover:text-blue-600'}`}
                                                     onClick={() => setSelectedTagKey(tag.key)}
                                                 >
                                                     <Plus className="w-4 h-4" />
@@ -437,7 +437,7 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                                                 <Button
                                                     size="sm"
                                                     variant={selectedTagKey === tag.key ? "default" : "outline"}
-                                                    className={`h - 8 w - 8 p - 0 ${selectedTagKey === tag.key ? 'bg-blue-600' : 'hover:border-blue-400 hover:text-blue-600'} `}
+                                                    className={`h-8 w-8 p-0 ${selectedTagKey === tag.key ? 'bg-blue-600' : 'hover:border-blue-400 hover:text-blue-600'}`}
                                                     onClick={() => setSelectedTagKey(tag.key)}
                                                 >
                                                     <Plus className="w-4 h-4" />
