@@ -307,7 +307,7 @@ export function PDFViewer({
             {/* Instruction */}
             {selectedTag && pdfDoc && (
                 <div className="bg-purple-600 text-white p-2 text-center text-xs font-medium shadow-md z-20">
-                    Cliquez sur le document pour placer : <span className="bg-white/20 px-2 py-0.5 rounded ml-1">{selectedTag}</span>
+                    Cliquez sur le document pour placer : <span className="bg-white/20 px-2 py-0.5 rounded ml-1">{selectedTag?.label || selectedTag}</span>
                 </div>
             )}
         </div>

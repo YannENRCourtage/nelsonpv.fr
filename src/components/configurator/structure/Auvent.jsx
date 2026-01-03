@@ -43,8 +43,22 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
             startHeight = ridgeHeight; // Attaches at Ridge
             angleRad = requiredAngle;
         }
-    }
+    } else if (buildingType === 'symetrique') {
+        // Symetrique: Auvent drops from Eave to 4.8m based on slope 5 deg
+        const targetEndHeight = 4.8;
+        const dropHeight = startHeight - targetEndHeight; // e.g. 5.5 - 4.8 = 0.7m
 
+        const specificAngle = 5 * (Math.PI / 180); // 5 degrees fixed slope
+        angleRad = specificAngle;
+
+        // Calculate Width needed for drop at 5 degrees
+        // width = drop / tan(5)
+        if (dropHeight > 0) {
+            auventWidth = dropHeight / Math.tan(specificAngle);
+        } else {
+            auventWidth = 4.0; // Fallback
+        }
+    }
     // Group Position
     // Left: -buildingWidth/2
     // Right: +buildingWidth/2
