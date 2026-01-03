@@ -103,11 +103,11 @@ export function PDFViewer({
 
         const newTag = {
             id: Date.now().toString(),
-            key: selectedTag,
+            key: selectedTag.key || selectedTag, // Handle object or string
             page: currentPage,
             x: xPercent,
             y: yPercent,
-            label: availableTags.find(t => t.key === selectedTag)?.label || selectedTag
+            label: selectedTag.label || availableTags.find(t => t.key === selectedTag)?.label || selectedTag
         };
 
         onTagPlaced(newTag);
