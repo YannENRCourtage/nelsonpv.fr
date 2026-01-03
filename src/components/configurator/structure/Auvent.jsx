@@ -14,27 +14,34 @@ import { SolarPanels } from './SolarPanels.jsx';
 export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWidth, bayCount, baySpacing, side = 'left', buildingType = 'symetrique' }) {
 
     // --- DIMENSIONS ---
-    const auventWidth = 2.0;
-
     // Logic for Monopente Heights
     let startHeight = eaveHeight;
     let angleRad = (roofPitch * Math.PI) / 180;
 
+    // Default width
+    let auventWidth = 2.0;
+
     if (buildingType === 'monopente') {
-        // Monopente: Auvent drops 1m over 2m width (User Request)
-        // Left: High 4m -> Low 3m
-        // Right: High Ridge -> Low Ridge-1m
+        // Monopente: Auvent drops 1m based on slope 11 deg
+        // Left: High 4m -> Low 3m (Drop 1m)
+        // Right: High Ridge -> Low Ridge-1m (Drop 1m)
 
         const dropHeight = 1.0;
-        const width = 2.0;
-        const requiredAngle = Math.atan(dropHeight / width);
+        const requiredAngle = 11 * (Math.PI / 180); // 11 degrees fixed slope
+
+        // Calculate Width needed for 1m drop at 11 degrees
+        // tan(11) = drop / width => width = drop / tan(11)
+        const calculatedWidth = dropHeight / Math.tan(requiredAngle);
+        // Approx 5.14m
+
+        auventWidth = calculatedWidth;
 
         if (side === 'left') {
             startHeight = 4.0; // Fixed Eave Height for Monopente
-            angleRad = 10 * (Math.PI / 180); // 10 degrees fixed slope
+            angleRad = requiredAngle;
         } else {
             startHeight = ridgeHeight; // Attaches at Ridge
-            angleRad = 10 * (Math.PI / 180); // 10 degrees fixed slope
+            angleRad = requiredAngle;
         }
     }
 
@@ -176,7 +183,8 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     }, [length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing]);
 
     // Roof Y Position logic
-    const roofY = buildingType === 'monopente' ? -0.03 : 0.17; // +20cm for Symetrique (-0.03 + 0.20)
+    // Monopente: +30cm requested (-0.03 + 0.30 = +0.27)
+    const roofY = buildingType === 'monopente' ? 0.27 : 0.17;
 
     return (
         <group
@@ -211,8 +219,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
 
             {/* STRUCTURE */}
             {frames}
-            {/* Longitudinal Beam (Sablière) at Tip - Massive */}
-            {/* Longitudinal Beam (Sablière) at Tip - Reduced 20%, Adjusted Height */}
+            {/* Longitudinal Beam (Sablière) at Tip - Reduced Dimensions */}
             <mesh
                 position={[
                     auventWidth,
@@ -222,7 +229,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
                 rotation={[0, 0, 0]}
                 material={structureMaterial}
             >
-                <boxGeometry args={[0.16, 0.32, length]} />
+                <boxGeometry args={[0.12, 0.25, length]} />
             </mesh>
 
             {/* Purlins */}

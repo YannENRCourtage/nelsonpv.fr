@@ -329,21 +329,7 @@ export default function Configurateur() {
                     />
                 </div>
 
-                {/* Fullscreen Toggle */}
-                <button
-                    onClick={() => {
-                        const elem = document.getElementById('3d-view-container');
-                        if (!document.fullscreenElement) {
-                            elem?.requestFullscreen();
-                        } else {
-                            document.exitFullscreen();
-                        }
-                    }}
-                    className="absolute top-4 right-20 z-20 bg-white/90 backdrop-blur p-2 rounded-lg shadow hover:bg-white transition text-slate-700 hover:text-blue-600"
-                    title="Plein écran"
-                >
-                    <Maximize className="w-5 h-5" />
-                </button>
+
 
                 {/* INFO BADGE & DIMENSIONS TOGGLE (Top Left of Visualizer) */}
                 <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 w-fit pointer-events-auto">
@@ -407,6 +393,23 @@ export default function Configurateur() {
                     >
                         <span>📄</span>
                         <span>Générer l'Offre</span>
+                    </button>
+
+                    {/* Fullscreen Toggle (Integrated) */}
+                    <button
+                        onClick={() => {
+                            const elem = document.getElementById('3d-view-container');
+                            if (!document.fullscreenElement) {
+                                elem?.requestFullscreen();
+                            } else {
+                                document.exitFullscreen();
+                            }
+                        }}
+                        className="w-full bg-white text-slate-700 font-bold py-3 px-4 rounded-xl shadow-sm border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-2 text-sm"
+                        title="Plein écran"
+                    >
+                        <Maximize className="w-5 h-5" />
+                        <span>Plein écran</span>
                     </button>
                 </div>
             </div>
