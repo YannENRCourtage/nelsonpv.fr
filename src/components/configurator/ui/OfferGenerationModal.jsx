@@ -10,6 +10,9 @@ import { useProjects } from '@/contexts/ProjectContext';
 
 const STORAGE_KEY = 'configurator_offer_template';
 
+import { ref, getDownloadURL } from "firebase/storage";
+import { storage } from "@/config/firebase.js";
+
 export function OfferGenerationModal({ isOpen, onClose, config, generatedImages }) {
     const { projects } = useProjects();
 
@@ -17,6 +20,7 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
     const [templateData, setTemplateData] = useState(null); // { pdfData, tags: [] }
     const [selectedTagKey, setSelectedTagKey] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [projectCaptureImg, setProjectCaptureImg] = useState(null); // New State
 
     // Project Selection
     const [searchTerm, setSearchTerm] = useState('');
@@ -40,6 +44,37 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
 
     const toggleSection = (sec) => setOpenSections(prev => ({ ...prev, [sec]: !prev[sec] }));
 
+    // Helper: Fetch Image via Proxy (Replicated from Configurateur.jsx)
+    const fetchImageViaProxy = async (url) => {
+        if (!url) return null;
+        if (url.startsWith('data:')) return url;
+
+        if (url.startsWith('http') || url.startsWith('gs://')) {
+            try {
+                if (!storage) throw new Error("Storage non initialisé");
+                const storageRef = ref(storage, url);
+                const downloadURL = await getDownloadURL(storageRef);
+                const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(downloadURL)}`;
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+                const response = await fetch(proxyUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (!response.ok) throw new Error(`Proxy Error: ${response.status}`);
+                const arrayBuffer = await response.arrayBuffer();
+                let binary = '';
+                const bytes = new Uint8Array(arrayBuffer);
+                for (let k = 0; k < bytes.byteLength; k++) binary += String.fromCharCode(bytes[k]);
+                return `data:image/png;base64,${window.btoa(binary)}`;
+            } catch (e) {
+                console.error("Erreur téléchargement image:", e);
+                return null;
+            }
+        }
+        return null;
+    };
+
     // --- INITIALIZATON ---
     useEffect(() => {
         if (isOpen) {
@@ -53,6 +88,20 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
             }
         }
     }, [isOpen]);
+
+    // Fetch capture when selectedProject changes
+    useEffect(() => {
+        const loadCapture = async () => {
+            if (selectedProject?.captures?.length > 0) {
+                const url = selectedProject.captures[0]; // First capture
+                const imgData = await fetchImageViaProxy(url);
+                setProjectCaptureImg(imgData);
+            } else {
+                setProjectCaptureImg(null);
+            }
+        };
+        loadCapture();
+    }, [selectedProject]);
 
     // --- DATA MAPPING ---
     const getProjectValue = (field) => {
@@ -159,8 +208,9 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
         setSelectedTagKey(null); // Deselect after placement
     };
 
-    const handleTagRemoved = (tagId) => {
-        const updatedTags = templateData.tags.filter(t => t.id !== tagId);
+    const handleTagRemoved = (tagOrId) => {
+        const id = tagOrId.id || tagOrId; // Handle object or ID
+        const updatedTags = templateData.tags.filter(t => t.id !== id);
         const newData = { ...templateData, tags: updatedTags };
         setTemplateData(newData);
         try {
@@ -192,34 +242,29 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
                 // Handle Images
                 if (tag.key === '{{img_2d}}' && generatedImages?.img3D) {
                     const img = await pdfDoc.embedPng(generatedImages.img3D);
-                    const imgDims = img.scaleToFit(200, 150); // Reasonable max size? Or configurable?
+                    const imgDims = img.scaleToFit(400, 300); // DOUBLE SIZE (approx 14cm x 10cm on A4)
 
-                    // Center image at x, y
                     page.drawImage(img, {
-                        x: x, // Align Left (or center?)
-                        y: y - imgDims.height, // Draw upwards from Y? No, drawImage is from bottom-left corner. 
-                        // If Y is top-left in UI, and we converted Y to bottom-left coordinate of that point...
-                        // If UI tag anchor is Bottom-Left:
-                        // tag.y (percent) -> top-left origin
-                        // y (points) -> bottom-left origin.
-                        // So (x, y) is the bottom-left corner of the tag. 
-                        // If we execute drawImage at (x, y), it draws image upwards/rightwards from there.
-                        // But if y includes "height" in calculation?
-                        // Let's assume (x,y) is insertion point.
+                        x: x,
+                        y: y - imgDims.height,
                         width: imgDims.width,
                         height: imgDims.height,
                     });
                     continue;
                 }
 
-                if (tag.key === '{{img_capture}}' && generatedImages?.mapImg) {
-                    const img = await pdfDoc.embedPng(generatedImages.mapImg);
-                    const imgDims = img.scaleToFit(200, 150);
+                // Use projectCaptureImg if available, fallback to mapImg from props (if any)
+                const captureToUse = projectCaptureImg || generatedImages?.mapImg;
+
+                if (tag.key === '{{img_capture}}' && captureToUse) {
+                    const img = await pdfDoc.embedPng(captureToUse);
+                    const captureDims = img.scaleToFit(300, 225);
+
                     page.drawImage(img, {
                         x: x,
-                        y: y - imgDims.height,
-                        width: imgDims.width,
-                        height: imgDims.height,
+                        y: y - captureDims.height,
+                        width: captureDims.width,
+                        height: captureDims.height,
                     });
                     continue;
                 }
