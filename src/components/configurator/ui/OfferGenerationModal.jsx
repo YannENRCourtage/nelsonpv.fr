@@ -242,8 +242,8 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
                 // Handle Images
                 if (tag.key === '{{img_2d}}' && generatedImages?.img3D) {
                     const img = await pdfDoc.embedPng(generatedImages.img3D);
-                    // Decreased by 20% from 400 -> 320
-                    const imgDims = img.scaleToFit(320, 240);
+                    // Decreased by further 20% from 320 -> 256
+                    const imgDims = img.scaleToFit(256, 192);
 
                     page.drawImage(img, {
                         x: x,
