@@ -1,4 +1,3 @@
-```jsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { PDFViewer } from '@/components/PDFViewer';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
@@ -13,7 +12,7 @@ const STORAGE_KEY = 'configurator_offer_template';
 
 export function OfferGenerationModal({ isOpen, onClose, config }) {
     const { projects } = useProjects();
-    
+
     // Global State
     const [templateData, setTemplateData] = useState(null); // { pdfData, tags: [] }
     const [selectedTagKey, setSelectedTagKey] = useState(null);
@@ -95,18 +94,18 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
         { category: 'project', key: '{{project_city}}', label: 'Ville', value: getProjectValue('city'), icon: MapPin },
 
         // Building
-        { category: 'building', key: '{{b_dims}}', label: 'Dimensions (Lxl)', value: `${ getConfigValue('length') }m x ${ getConfigValue('width').toFixed(2) } m`, icon: Ruler },
-        { category: 'building', key: '{{b_surface}}', label: 'Surface', value: `${ getConfigValue('surface') } m²`, icon: Ruler },
-        { category: 'building', key: '{{b_eave}}', label: 'Hauteur Sablière', value: `${ getConfigValue('eaveHeight') } m`, icon: Ruler },
-        { category: 'building', key: '{{b_ridge}}', label: 'Hauteur Faitage', value: `${ getConfigValue('ridgeHeight') || '?' } m`, icon: Ruler }, // config.ridgeHeight might need calculation
-        { category: 'building', key: '{{b_pitch}}', label: 'Pente', value: `${ getConfigValue('roofPitch') }°`, icon: Ruler },
-        { category: 'building', key: '{{b_bays}}', label: 'Travées', value: `${ getConfigValue('bayCount') } x ${ getConfigValue('baySpacing') } m`, icon: Ruler },
+        { category: 'building', key: '{{b_dims}}', label: 'Dimensions (Lxl)', value: `${getConfigValue('length')}m x ${getConfigValue('width').toFixed(2)} m`, icon: Ruler },
+        { category: 'building', key: '{{b_surface}}', label: 'Surface', value: `${getConfigValue('surface')} m²`, icon: Ruler },
+        { category: 'building', key: '{{b_eave}}', label: 'Hauteur Sablière', value: `${getConfigValue('eaveHeight')} m`, icon: Ruler },
+        { category: 'building', key: '{{b_ridge}}', label: 'Hauteur Faitage', value: `${getConfigValue('ridgeHeight') || '?'} m`, icon: Ruler }, // config.ridgeHeight might need calculation
+        { category: 'building', key: '{{b_pitch}}', label: 'Pente', value: `${getConfigValue('roofPitch')}°`, icon: Ruler },
+        { category: 'building', key: '{{b_bays}}', label: 'Travées', value: `${getConfigValue('bayCount')} x ${getConfigValue('baySpacing')} m`, icon: Ruler },
 
         // Contact
         { category: 'contact', key: '{{contact_name}}', label: 'Nom Contact', value: manualValues.contactName, icon: User },
         { category: 'contact', key: '{{contact_phone}}', label: 'Téléphone', value: manualValues.contactPhone, icon: Phone },
         { category: 'contact', key: '{{contact_email}}', label: 'Email', value: manualValues.contactEmail, icon: Mail },
-        
+
         // Visuals (Placeholders)
         { category: 'visuals', key: '{{img_2d}}', label: 'Vue 2D', value: '[Image Vue 2D]', icon: ImageIcon },
         { category: 'visuals', key: '{{img_capture}}', label: 'Capture Projet', value: '[Image Capture]', icon: ImageIcon },
@@ -179,7 +178,7 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `Offre_${ selectedProject?.nom || 'Projet' }.pdf`;
+            link.download = `Offre_${selectedProject?.nom || 'Projet'}.pdf`;
             link.click();
 
         } catch (err) {
@@ -193,8 +192,8 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
     // Filter projects
     const filteredProjects = useMemo(() => {
         if (!searchTerm) return [];
-        return projects.filter(p => 
-            p.nom?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        return projects.filter(p =>
+            p.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.ville?.toLowerCase().includes(searchTerm.toLowerCase())
         ).slice(0, 5);
     }, [projects, searchTerm]);
@@ -203,7 +202,7 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col p-0 gap-0 bg-slate-50 overflow-hidden">
-                
+
                 {/* HEADER */}
                 <div className="flex justify-between items-center px-6 py-4 bg-white border-b border-slate-200">
                     <div className="flex items-center gap-3">
@@ -213,8 +212,8 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                     {/* Header Actions */}
                     <div className="flex items-center gap-3">
                         <Button variant="outline" onClick={onClose}>Fermer</Button>
-                        <Button 
-                            onClick={handleGeneratePDF} 
+                        <Button
+                            onClick={handleGeneratePDF}
                             disabled={!templateData?.pdfData || isGenerating}
                             className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
                         >
@@ -226,10 +225,10 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
 
                 {/* MAIN CONTENT */}
                 <div className="flex flex-1 overflow-hidden">
-                    
+
                     {/* --- LEFT PANEL: DATA & TAGS --- */}
                     <div className="w-[400px] flex flex-col border-r border-slate-200 bg-white z-10 shadow-sm overflow-y-auto">
-                        
+
                         {/* 1. Project Search */}
                         <div className="p-4 border-b border-slate-100 bg-slate-50 sticky top-0 z-10">
                             <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 block">
@@ -237,8 +236,8 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                             </Label>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <Input 
-                                    placeholder="Rechercher (Nom, Ville)..." 
+                                <Input
+                                    placeholder="Rechercher (Nom, Ville)..."
                                     className="pl-9 bg-white"
                                     value={searchTerm}
                                     onChange={(e) => {
@@ -251,7 +250,7 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                                 {showProjectResults && searchTerm && (
                                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
                                         {filteredProjects.map(p => (
-                                            <div 
+                                            <div
                                                 key={p.id}
                                                 className="p-3 hover:bg-blue-50 cursor-pointer border-b border-slate-200 last:border-0"
                                                 onMouseDown={(e) => { // Use onMouseDown to prevent blur before click
@@ -275,10 +274,10 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
 
                         {/* 2. Sections */}
                         <div className="p-2 space-y-2">
-                            
+
                             {/* Project Info */}
                             <div className="border border-slate-200 rounded-lg overflow-hidden">
-                                <button 
+                                <button
                                     className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors"
                                     onClick={() => toggleSection('project')}
                                 >
@@ -296,10 +295,10 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                                                     <label className="text-xs text-slate-500 block">{tag.label}</label>
                                                     <div className="text-sm font-medium text-slate-800 truncate" title={tag.value}>{tag.value || '-'}</div>
                                                 </div>
-                                                <Button 
-                                                    size="sm" 
+                                                <Button
+                                                    size="sm"
                                                     variant={selectedTagKey === tag.key ? "default" : "outline"}
-                                                    className={`h - 8 w - 8 p - 0 ${ selectedTagKey === tag.key ? 'bg-blue-600' : 'hover:border-blue-400 hover:text-blue-600' } `}
+                                                    className={`h - 8 w - 8 p - 0 ${selectedTagKey === tag.key ? 'bg-blue-600' : 'hover:border-blue-400 hover:text-blue-600'} `}
                                                     onClick={() => setSelectedTagKey(tag.key)}
                                                     title="Placer sur le document"
                                                 >
@@ -313,7 +312,7 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
 
                             {/* Building Info */}
                             <div className="border border-slate-200 rounded-lg overflow-hidden">
-                                <button 
+                                <button
                                     className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors"
                                     onClick={() => toggleSection('building')}
                                 >
@@ -331,10 +330,10 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                                                     <label className="text-xs text-slate-500 block">{tag.label}</label>
                                                     <div className="text-sm font-medium text-slate-800">{tag.value || '-'}</div>
                                                 </div>
-                                                <Button 
-                                                    size="sm" 
+                                                <Button
+                                                    size="sm"
                                                     variant={selectedTagKey === tag.key ? "default" : "outline"}
-                                                    className={`h - 8 w - 8 p - 0 ${ selectedTagKey === tag.key ? 'bg-blue-600' : 'hover:border-blue-400 hover:text-blue-600' } `}
+                                                    className={`h - 8 w - 8 p - 0 ${selectedTagKey === tag.key ? 'bg-blue-600' : 'hover:border-blue-400 hover:text-blue-600'} `}
                                                     onClick={() => setSelectedTagKey(tag.key)}
                                                 >
                                                     <Plus className="w-4 h-4" />
@@ -347,7 +346,7 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
 
                             {/* Contact Info (Manual) */}
                             <div className="border border-slate-200 rounded-lg overflow-hidden">
-                                <button 
+                                <button
                                     className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors"
                                     onClick={() => toggleSection('contact')}
                                 >
@@ -362,13 +361,13 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                                         <div className="space-y-2">
                                             <Label className="text-xs text-slate-500">Nom Contact</Label>
                                             <div className="flex gap-2">
-                                                <Input 
-                                                    value={manualValues.contactName} 
-                                                    onChange={e => setManualValues(p => ({...p, contactName: e.target.value}))}
+                                                <Input
+                                                    value={manualValues.contactName}
+                                                    onChange={e => setManualValues(p => ({ ...p, contactName: e.target.value }))}
                                                     className="h-8 text-sm"
                                                     placeholder="Ex: M. Dupont"
                                                 />
-                                                <Button 
+                                                <Button
                                                     size="sm" variant={selectedTagKey === '{{contact_name}}' ? "default" : "outline"}
                                                     className="h-8 w-8 p-0" onClick={() => setSelectedTagKey('{{contact_name}}')}
                                                 >
@@ -379,13 +378,13 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                                         <div className="space-y-2">
                                             <Label className="text-xs text-slate-500">Téléphone</Label>
                                             <div className="flex gap-2">
-                                                <Input 
-                                                    value={manualValues.contactPhone} 
-                                                    onChange={e => setManualValues(p => ({...p, contactPhone: e.target.value}))}
+                                                <Input
+                                                    value={manualValues.contactPhone}
+                                                    onChange={e => setManualValues(p => ({ ...p, contactPhone: e.target.value }))}
                                                     className="h-8 text-sm"
                                                     placeholder="06..."
                                                 />
-                                                <Button 
+                                                <Button
                                                     size="sm" variant={selectedTagKey === '{{contact_phone}}' ? "default" : "outline"}
                                                     className="h-8 w-8 p-0" onClick={() => setSelectedTagKey('{{contact_phone}}')}
                                                 >
@@ -396,13 +395,13 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                                         <div className="space-y-2">
                                             <Label className="text-xs text-slate-500">Email</Label>
                                             <div className="flex gap-2">
-                                                <Input 
-                                                    value={manualValues.contactEmail} 
-                                                    onChange={e => setManualValues(p => ({...p, contactEmail: e.target.value}))}
+                                                <Input
+                                                    value={manualValues.contactEmail}
+                                                    onChange={e => setManualValues(p => ({ ...p, contactEmail: e.target.value }))}
                                                     className="h-8 text-sm"
                                                     placeholder="@..."
                                                 />
-                                                <Button 
+                                                <Button
                                                     size="sm" variant={selectedTagKey === '{{contact_email}}' ? "default" : "outline"}
                                                     className="h-8 w-8 p-0" onClick={() => setSelectedTagKey('{{contact_email}}')}
                                                 >
@@ -414,9 +413,9 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                                 )}
                             </div>
 
-                             {/* Visuals */}
-                             <div className="border border-slate-200 rounded-lg overflow-hidden">
-                                <button 
+                            {/* Visuals */}
+                            <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                <button
                                     className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors"
                                     onClick={() => toggleSection('visuals')}
                                 >
@@ -435,10 +434,10 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                                                     <label className="text-xs text-slate-500 block">{tag.label}</label>
                                                     <div className="text-sm font-medium text-slate-800">{tag.value}</div>
                                                 </div>
-                                                <Button 
-                                                    size="sm" 
+                                                <Button
+                                                    size="sm"
                                                     variant={selectedTagKey === tag.key ? "default" : "outline"}
-                                                    className={`h - 8 w - 8 p - 0 ${ selectedTagKey === tag.key ? 'bg-blue-600' : 'hover:border-blue-400 hover:text-blue-600' } `}
+                                                    className={`h - 8 w - 8 p - 0 ${selectedTagKey === tag.key ? 'bg-blue-600' : 'hover:border-blue-400 hover:text-blue-600'} `}
                                                     onClick={() => setSelectedTagKey(tag.key)}
                                                 >
                                                     <Plus className="w-4 h-4" />
@@ -455,7 +454,7 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                     {/* --- RIGHT PANEL: PDF VIEWER --- */}
                     <div className="flex-1 bg-slate-100 relative flex flex-col h-full">
                         {!templateData?.pdfData ? (
-                           <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+                            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
                                 <div className="bg-white p-12 rounded-3xl shadow-xl border-2 border-dashed border-slate-300 w-full max-w-lg hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer relative group">
                                     <Upload className="w-16 h-16 text-blue-500 mx-auto mb-4 group-hover:scale-110 transition-transform" />
                                     <h3 className="text-xl font-bold text-slate-800 mb-2">Charger un modèle PDF</h3>
@@ -496,7 +495,7 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                                             availableTags={[]} // We manage selection externally
                                         />
                                     </div>
-                                    
+
                                     {/* Helper Overlay */}
                                     {selectedTagKey && (
                                         <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg z-30 animate-in fade-in slide-in-from-top-4 flex items-center gap-2">
@@ -514,5 +513,4 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
             </DialogContent>
         </Dialog>
     );
-}
 }
