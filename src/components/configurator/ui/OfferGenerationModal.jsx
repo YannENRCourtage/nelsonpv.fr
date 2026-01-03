@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PDFViewer } from '@/components/PDFViewer';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { X, Upload, Save, Download, Plus, FileText, Trash2, Search, User, MapPin, Ruler, Image as ImageIcon, ChevronDown, ChevronRight, Phone, Mail } from 'lucide-react';
+import { X, Upload, Download, Plus, FileText, Search, User, MapPin, Ruler, Image as ImageIcon, ChevronDown, ChevronRight, Phone, Mail } from 'lucide-react';
 import { useProjects } from '@/contexts/ProjectContext';
 
 const STORAGE_KEY = 'configurator_offer_template';
