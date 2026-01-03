@@ -54,18 +54,30 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         const offY = perpOffset * Math.cos(slopeAngle);
 
         return (
-            <mesh
-                geometry={monoGeometry}
-                material={roofMaterial}
-                position={[
-                    offX,
-                    centerY + offY,
-                    -length - 0.5
-                ]}
-                rotation={[0, 0, slopeAngle]}
-                castShadow
-                receiveShadow
-            />
+            <group>
+                <mesh
+                    geometry={monoGeometry}
+                    material={roofMaterial}
+                    position={[
+                        offX,
+                        centerY + offY,
+                        -length - 0.5
+                    ]}
+                    rotation={[0, 0, slopeAngle]}
+                    castShadow
+                    receiveShadow
+                />
+                <group
+                    position={[
+                        offX,
+                        centerY + offY,
+                        -length / 2
+                    ]}
+                    rotation={[0, 0, slopeAngle]}
+                >
+                    <SolarPanels surfaceWidth={slopeLength} surfaceLength={length + 1.0} />
+                </group>
+            </group>
         );
     }
 

@@ -31,10 +31,10 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
 
         if (side === 'left') {
             startHeight = 4.0; // Fixed Eave Height for Monopente
-            angleRad = requiredAngle;
+            angleRad = 10 * (Math.PI / 180); // 10 degrees fixed slope
         } else {
             startHeight = ridgeHeight; // Attaches at Ridge
-            angleRad = requiredAngle;
+            angleRad = 10 * (Math.PI / 180); // 10 degrees fixed slope
         }
     }
 

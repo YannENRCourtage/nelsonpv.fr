@@ -227,7 +227,7 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                 <div className="flex flex-1 overflow-hidden">
 
                     {/* --- LEFT PANEL: DATA & TAGS --- */}
-                    <div className="w-[400px] flex flex-col border-r border-slate-200 bg-white z-10 shadow-sm overflow-y-auto">
+                    <div className="w-[500px] flex flex-col border-r border-slate-200 bg-white z-10 shadow-sm overflow-y-auto">
 
                         {/* 1. Project Search */}
                         <div className="p-4 border-b border-slate-100 bg-slate-50 sticky top-0 z-10">

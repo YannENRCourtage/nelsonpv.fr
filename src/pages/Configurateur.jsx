@@ -321,7 +321,7 @@ export default function Configurateur() {
             {/* ========== VISUALISATION BÂTIMENT (CENTER) ========== */}
             <div className="flex-1 ml-[440px] relative h-full">
                 {/* 3D Scene */}
-                <div className="w-full h-full">
+                <div id="3d-view-container" className="w-full h-full">
                     <BuildingScene
                         ref={canvasRef}
                         viewMode={viewMode}
