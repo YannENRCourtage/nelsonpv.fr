@@ -319,9 +319,9 @@ export default function Configurateur() {
             </div>
 
             {/* ========== VISUALISATION BÂTIMENT (CENTER) ========== */}
-            <div className="flex-1 ml-[440px] relative h-full">
+            <div id="3d-view-container" className="flex-1 ml-[440px] relative h-full">
                 {/* 3D Scene */}
-                <div id="3d-view-container" className="w-full h-full">
+                <div className="w-full h-full">
                     <BuildingScene
                         ref={canvasRef}
                         viewMode={viewMode}

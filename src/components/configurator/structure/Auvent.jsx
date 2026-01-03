@@ -22,14 +22,14 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     let auventWidth = 2.0;
 
     if (buildingType === 'monopente') {
-        // Monopente: Auvent drops 1m based on slope 11 deg
+        // Monopente: Auvent drops 1m based on slope 13 deg
         // Left: High 4m -> Low 3m (Drop 1m)
         // Right: High Ridge -> Low Ridge-1m (Drop 1m)
 
         const dropHeight = 1.0;
-        const requiredAngle = 11 * (Math.PI / 180); // 11 degrees fixed slope
+        const requiredAngle = 13 * (Math.PI / 180); // 13 degrees fixed slope
 
-        // Calculate Width needed for 1m drop at 11 degrees
+        // Calculate Width needed for 1m drop at 13 degrees
         // tan(11) = drop / width => width = drop / tan(11)
         const calculatedWidth = dropHeight / Math.tan(requiredAngle);
         // Approx 5.14m
@@ -183,8 +183,8 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     }, [length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing]);
 
     // Roof Y Position logic
-    // Monopente: +30cm requested (-0.03 + 0.30 = +0.27)
-    const roofY = buildingType === 'monopente' ? 0.27 : 0.17;
+    // Monopente: Reverted to default offset (-0.03) as per request "rabaisse de 30cm" (undoing +0.30)
+    const roofY = buildingType === 'monopente' ? -0.03 : 0.17;
 
     return (
         <group
@@ -219,7 +219,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
 
             {/* STRUCTURE */}
             {frames}
-            {/* Longitudinal Beam (Sablière) at Tip - Reduced Dimensions */}
+            {/* Longitudinal Beam (Sablière) at Tip - Further Reduced Dimensions */}
             <mesh
                 position={[
                     auventWidth,
@@ -229,7 +229,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
                 rotation={[0, 0, 0]}
                 material={structureMaterial}
             >
-                <boxGeometry args={[0.12, 0.25, length]} />
+                <boxGeometry args={[0.10, 0.20, length]} />
             </mesh>
 
             {/* Purlins */}
