@@ -15,19 +15,34 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const gapSize = 3.0;
 
     // Widths
+    // Widths
     const getExtWidth = (type) => {
-        if (type === 'auvent') return 4.0;
         if (type === 'appentis') return 9.3;
+        if (type === 'auvent') {
+            if (buildingType === 'monopente') {
+                // Buffer Auvent.jsx logic: Drop 1m, 13 deg
+                return 1.0 / Math.tan(13 * Math.PI / 180);
+            } else {
+                // Symetrique: Start Eave -> End 4.8m, 5 deg
+                const drop = Math.max(0, eaveHeight - 4.8);
+                const angle = 5 * Math.PI / 180;
+                // If drop is small/zero, default to 4m? Or calculated?
+                // Auvent.jsx defaults to 4.0 if drop <= 0.
+                if (drop <= 0) return 4.0;
+                return drop / Math.tan(angle);
+            }
+        }
         return 0;
     };
+
     const getExtHeight = (type) => {
-        if (type === 'auvent') return 4.8; // Auvent Height
+        if (type === 'auvent') return 4.8; // Auvent Height Target
         if (type === 'appentis') return 3.9; // Appentis Height
         return 0;
     };
 
-    const leftWidth = getExtWidth(leftSide);
-    const rightWidth = getExtWidth(rightSide);
+    const leftWidth = parseFloat(getExtWidth(leftSide).toFixed(2));
+    const rightWidth = parseFloat(getExtWidth(rightSide).toFixed(2));
     const leftHeight = getExtHeight(leftSide);
     const rightHeight = getExtHeight(rightSide);
 
