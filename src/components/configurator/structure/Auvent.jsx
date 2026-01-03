@@ -44,15 +44,15 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
             angleRad = requiredAngle;
         }
     } else if (buildingType === 'symetrique') {
-        // Symetrique: Auvent drops from Eave to 4.8m based on slope 8 deg
+        // Symetrique: Auvent drops from Eave to 4.8m based on slope 10 deg
         const targetEndHeight = 4.8;
         const dropHeight = startHeight - targetEndHeight; // e.g. 5.5 - 4.8 = 0.7m
 
-        const specificAngle = 8 * (Math.PI / 180); // 8 degrees fixed slope
+        const specificAngle = 10 * (Math.PI / 180); // 10 degrees fixed slope
         angleRad = specificAngle;
 
-        // Calculate Width needed for drop at 8 degrees
-        // width = drop / tan(8)
+        // Calculate Width needed for drop at 10 degrees
+        // width = drop / tan(10)
         if (dropHeight > 0) {
             auventWidth = dropHeight / Math.tan(specificAngle);
         } else {
@@ -197,9 +197,9 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     }, [length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing]);
 
     // Roof Y Position logic
-    // Monopente & Symetrique: Lowered (-0.13)
-    // Previously Symetrique was 0.17, requested -30cm => -0.13
-    const roofY = -0.13;
+    // Monopente & Symetrique: Adjusted
+    // Prev: -0.13. User requested raise +10cm => -0.03
+    const roofY = -0.03;
 
     return (
         <group

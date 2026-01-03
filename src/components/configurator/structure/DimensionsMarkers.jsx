@@ -23,9 +23,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 // Buffer Auvent.jsx logic: Drop 1m, 13 deg
                 return 1.0 / Math.tan(13 * Math.PI / 180);
             } else {
-                // Symetrique: Start Eave -> End 4.8m, 8 deg
+                // Symetrique: Start Eave -> End 4.8m, 10 deg
                 const drop = Math.max(0, eaveHeight - 4.8);
-                const angle = 8 * Math.PI / 180;
+                const angle = 10 * Math.PI / 180;
                 // If drop is small/zero, default to 4m? Or calculated?
                 // Auvent.jsx defaults to 4.0 if drop <= 0.
                 if (drop <= 0) return 4.0;
