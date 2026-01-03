@@ -368,7 +368,7 @@ export default function Configurateur() {
                 </div>
 
                 {/* View Toggles & Actions (Top Right Overlay) */}
-                <div className="absolute top-4 right-4 z-20 flex flex-col gap-3 p-3 bg-white/90 backdrop-blur rounded-2xl shadow-lg border border-slate-200">
+                <div className="absolute top-4 right-4 z-50 flex flex-col gap-3 p-3 bg-white/90 backdrop-blur rounded-2xl shadow-lg border border-slate-200 pointer-events-auto">
 
                     {/* View Modes */}
                     <div className="flex gap-2">

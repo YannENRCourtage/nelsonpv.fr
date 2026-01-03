@@ -183,8 +183,8 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     }, [length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing]);
 
     // Roof Y Position logic
-    // Monopente: Reverted to default offset (-0.03) as per request "rabaisse de 30cm" (undoing +0.30)
-    const roofY = buildingType === 'monopente' ? -0.03 : 0.17;
+    // Monopente: Lowered by 10cm from previous value (-0.03 -> -0.13)
+    const roofY = buildingType === 'monopente' ? -0.13 : 0.17;
 
     return (
         <group
