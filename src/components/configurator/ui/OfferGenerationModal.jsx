@@ -10,7 +10,7 @@ import { useProjects } from '@/contexts/ProjectContext';
 
 const STORAGE_KEY = 'configurator_offer_template';
 
-export function OfferGenerationModal({ isOpen, onClose, config }) {
+export function OfferGenerationModal({ isOpen, onClose, config, generatedImages }) {
     const { projects } = useProjects();
 
     // Global State
@@ -183,20 +183,56 @@ export function OfferGenerationModal({ isOpen, onClose, config }) {
                 const page = pages[tag.page - 1];
                 if (!page) continue;
 
-                // Find Value
-                const def = availableTags.find(t => t.key === tag.key);
-                const textToDraw = def ? String(def.value) : tag.label;
-
                 // The PDFViewer passes x/y as percentages (0-100) of the page dimensions.
                 // PDF-lib uses points, with origin at bottom-left.
                 const { width, height } = page.getSize();
                 const x = (tag.x / 100) * width;
                 const y = height - ((tag.y / 100) * height); // Convert from top-left origin to bottom-left
 
+                // Handle Images
+                if (tag.key === '{{img_2d}}' && generatedImages?.img3D) {
+                    const img = await pdfDoc.embedPng(generatedImages.img3D);
+                    const imgDims = img.scaleToFit(200, 150); // Reasonable max size? Or configurable?
+
+                    // Center image at x, y
+                    page.drawImage(img, {
+                        x: x, // Align Left (or center?)
+                        y: y - imgDims.height, // Draw upwards from Y? No, drawImage is from bottom-left corner. 
+                        // If Y is top-left in UI, and we converted Y to bottom-left coordinate of that point...
+                        // If UI tag anchor is Bottom-Left:
+                        // tag.y (percent) -> top-left origin
+                        // y (points) -> bottom-left origin.
+                        // So (x, y) is the bottom-left corner of the tag. 
+                        // If we execute drawImage at (x, y), it draws image upwards/rightwards from there.
+                        // But if y includes "height" in calculation?
+                        // Let's assume (x,y) is insertion point.
+                        width: imgDims.width,
+                        height: imgDims.height,
+                    });
+                    continue;
+                }
+
+                if (tag.key === '{{img_capture}}' && generatedImages?.mapImg) {
+                    const img = await pdfDoc.embedPng(generatedImages.mapImg);
+                    const imgDims = img.scaleToFit(200, 150);
+                    page.drawImage(img, {
+                        x: x,
+                        y: y - imgDims.height,
+                        width: imgDims.width,
+                        height: imgDims.height,
+                    });
+                    continue;
+                }
+
+
+                // Find Value
+                const def = availableTags.find(t => t.key === tag.key);
+                const textToDraw = def ? String(def.value) : tag.label;
+
                 page.drawText(textToDraw, {
                     x: x,
-                    y: y - 10, // Adjust for baseline (text usually draws from bottom-left of text box)
-                    size: 12,
+                    y: y, // Adjust for baseline 
+                    size: 11, // Slightly smaller
                     font: helveticaFont,
                     color: rgb(0, 0, 0),
                 });

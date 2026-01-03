@@ -24,6 +24,7 @@ export default function Configurateur() {
     const [selectedProject, setSelectedProject] = useState(null);
     const [viewMode, setViewMode] = useState('3D'); // '3D', '2D_FRONT'
     const [isCapturing, setIsCapturing] = useState(false);
+    const [generatedImages, setGeneratedImages] = useState({ img3D: null, mapImg: null });
 
     // Canvas Ref for screenshots
     const canvasRef = useRef();
@@ -388,7 +389,29 @@ export default function Configurateur() {
 
                     {/* PDF Generation Button */}
                     <button
-                        onClick={() => setShowPDFModal(true)}
+                        onClick={async () => {
+                            // Capture 3D
+                            let img3D = null;
+                            if (canvasRef.current) {
+                                const originalView = viewMode;
+                                if (viewMode !== '2D_FRONT') {
+                                    // Optionally force a specific view for the offer, but user might want 'current' view
+                                    // Actually, let's just capture current view.
+                                }
+                                // Wait a bit if we switched view? No, we use current.
+                                img3D = canvasRef.current.toDataURL('image/png', 1.0);
+                            }
+
+                            // Capture Map (Proxy)
+                            let mapImg = null;
+                            if (selectedProject?.captures?.length > 0) {
+                                const captureUrl = selectedProject.captures[0];
+                                mapImg = await fetchImageViaProxy(captureUrl);
+                            }
+
+                            setGeneratedImages({ img3D, mapImg });
+                            setShowPDFModal(true);
+                        }}
                         className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all hover:scale-[1.02] flex items-center justify-center gap-2 text-sm"
                     >
                         <span>📄</span>
@@ -419,7 +442,8 @@ export default function Configurateur() {
                 isOpen={showPDFModal}
                 onClose={() => setShowPDFModal(false)}
                 config={config}
-                selectedProject={selectedProject} // Assuming selectedProject is managed elsewhere or I need to restore the Project Selection Logic?
+                selectedProject={selectedProject}
+                generatedImages={generatedImages}
             />
         </div>
     );

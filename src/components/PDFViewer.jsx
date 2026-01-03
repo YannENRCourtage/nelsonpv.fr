@@ -195,7 +195,7 @@ export function PDFViewer({
                     style={{
                         left: `${x}px`,
                         top: `${y}px`,
-                        transform: 'translate(-50%, -100%)', // Le point d'ancrage est en bas au milieu
+                        transform: 'translate(0, -100%)', // Anchor Bottom-Left (aligns with PDF draw text)
                         transition: isDragging ? 'none' : 'transform 0.1s, left 0.1s, top 0.1s' // Pas de transition pendant le drag pour fluidité
                     }}
                     onMouseDown={(e) => handleTagMouseDown(e, tag)}
