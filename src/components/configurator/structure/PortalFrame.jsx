@@ -434,12 +434,12 @@ export function PortalFrame({
                     {createRafterAssembly(leftSectionRafterLength - 0.05, false)}
                 </group>
 
-                {/* Middle Rafter (from middle column up to apex) */}
+                {/* Middle Rafter (from middle column up to apex) - pointing LEFT */}
                 <group position={[middleColumnX, middleColHeightFinal, 0]} rotation={[0, 0, middleSectionAngle]}>
                     {createRafterAssembly(middleSectionRafterLength - 0.05, false)}
                 </group>
 
-                {/* Right Rafter (from right column up to middle column) */}
+                {/* Right Rafter (from right column up to middle column) - pointing LEFT */}
                 <group position={[width / 2, rightColHeight, 0]} rotation={[0, 0, rightSectionAngle]}>
                     {createRafterAssembly(rightSectionRafterLength - 0.05, false)}
                 </group>
