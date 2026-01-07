@@ -14,6 +14,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
 
     const isMonopente = buildingType === 'monopente';
     const isAsymetrique = buildingType === 'asymetrique_1';
+    const isAsymetrique2 = buildingType === 'asymetrique_2';
 
     // ==========================================
     // HOOKS (Must be unconditional)
@@ -101,7 +102,110 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         );
     }
 
-    // --- B. ASYMETRIQUE (1 ZONE) ---
+    // --- B. ASYMETRIQUE 2 ZONES ---
+    if (isAsymetrique2) {
+        // Same 15° slope across all sections
+        const mainSlope = 15 * (Math.PI / 180);
+        const asymRightEaveH = 4.0;
+        const w = width;
+
+        // Calculate ridge height and left eave
+        const ridgeH = 4.0 + (w * 0.75 * Math.tan(mainSlope));
+        const asymLeftEaveH = ridgeH - (w * 0.25 * Math.tan(mainSlope));
+
+        // Determine middle column position
+        let middleColumnX;
+        if (Math.abs(width - 25.5) < 0.1) {
+            middleColumnX = width / 2 - 12.4;
+        } else if (Math.abs(width - 29.1) < 0.1) {
+            middleColumnX = width / 2 - 16.0;
+        } else {
+            middleColumnX = 0;
+        }
+
+        // Calculate middle column height
+        const distRightToMiddle = width / 2 - middleColumnX;
+        const rightSpan = width * 0.75;
+        const ratio = distRightToMiddle / rightSpan;
+        const rightSectionRise = ridgeH - asymRightEaveH;
+        const middleColumnHeight = asymRightEaveH + (rightSectionRise * ratio);
+
+        // Section 1: Right (from right eave to middle column)
+        const section1Span = distRightToMiddle;
+        const section1Length = section1Span / Math.cos(mainSlope);
+        const section1Overhang = 0.50;
+        const section1RoofLength = section1Length + section1Overhang;
+
+        // Section 2: Middle (from middle column to apex)
+        const section2Span = rightSpan - section1Span;
+        const section2Length = section2Span / Math.cos(mainSlope);
+        const section2RoofLength = section2Length + 0.25; // Half overhang
+
+        // Section 3: Left (from apex to left eave)
+        const leftSpan = width * 0.25;
+        const section3Length = leftSpan / Math.cos(mainSlope);
+        const section3RoofLength = section3Length; // No overhang on left
+
+        // Create geometries for 3 sections
+        const section1Profile = useMemo(() => createTrapezoidalProfile(section1RoofLength, 0.035, 0.25), [section1RoofLength]);
+        const section2Profile = useMemo(() => createTrapezoidalProfile(section2RoofLength, 0.035, 0.25), [section2RoofLength]);
+        const section3Profile = useMemo(() => createTrapezoidalProfile(section3RoofLength, 0.035, 0.25), [section3RoofLength]);
+
+        const section1Geo = useMemo(() => new THREE.ExtrudeGeometry(section1Profile, { depth: length + 1.0, bevelEnabled: false }), [section1Profile, length]);
+        const section2Geo = useMemo(() => new THREE.ExtrudeGeometry(section2Profile, { depth: length + 1.0, bevelEnabled: false }), [section2Profile, length]);
+        const section3Geo = useMemo(() => new THREE.ExtrudeGeometry(section3Profile, { depth: length + 1.0, bevelEnabled: false }), [section3Profile, length]);
+
+        // Positioning helper
+        const getOffsetProps = (slopeLen, angle, isRight, overhang) => {
+            const centerDist = (slopeLen - overhang) / 2;
+            const localX = centerDist * Math.cos(angle);
+            const localY = centerDist * Math.sin(angle);
+
+            const extraLift = 0.10;
+            const purlinH = 0.140;
+            const thick = 0.001;
+            const offsetDist = (purlinH / 2) + (thick / 2) + 0.35 + extraLift;
+
+            const nX = isRight ? Math.sin(angle) : -Math.sin(angle);
+            const nY = Math.cos(angle);
+
+            return {
+                x: localX + (offsetDist * nX),
+                y: localY + (offsetDist * nY),
+                rot: isRight ? -angle : angle
+            };
+        };
+
+        const section1Props = getOffsetProps(section1Length, mainSlope, true, section1Overhang);
+        const section2Props = getOffsetProps(section2Length, mainSlope, true, 0.25);
+        const section3Props = getOffsetProps(section3Length, mainSlope, false, 0);
+
+        return (
+            <group>
+                {/* Section 1: Right column to middle column */}
+                <mesh geometry={section1Geo} material={roofMaterial}
+                    position={[width / 2 - section1Props.x, asymRightEaveH + section1Props.y, -length - 0.5]}
+                    rotation={[0, 0, section1Props.rot]}
+                    scale={[-1, 1, 1]}
+                    castShadow receiveShadow />
+
+                {/* Section 2: Middle column to apex */}
+                <mesh geometry={section2Geo} material={roofMaterial}
+                    position={[middleColumnX - section2Props.x, middleColumnHeight + section2Props.y, -length - 0.5]}
+                    rotation={[0, 0, section2Props.rot]}
+                    scale={[-1, 1, 1]}
+                    castShadow receiveShadow />
+
+                {/* Section 3: Apex to left column */}
+                <mesh geometry={section3Geo} material={roofMaterial}
+                    position={[-width / 2 + section3Props.x, asymLeftEaveH + section3Props.y + 0.10, -length - 0.5]}
+                    rotation={[0, 0, section3Props.rot]}
+                    castShadow receiveShadow />
+            </group>
+        );
+    }
+
+    // --- C. ASYMETRIQUE (1 ZONE) ---
     if (isAsymetrique) {
         // Exact Heights Logic (Match PortalFrame - FORCED 15 DEG)
         const asymRightEaveH = 4.0;
@@ -176,7 +280,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         );
     }
 
-    // --- C. SYMMETRICAL (Default) ---
+    // --- D. SYMMETRICAL (Default) ---
     // Offset Logic
     const purlinHeight = 0.140;
     const roofThickness = 0.001;
