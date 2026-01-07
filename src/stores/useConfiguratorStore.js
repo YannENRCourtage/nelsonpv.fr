@@ -29,8 +29,8 @@ const WIDTH_HEIGHT_MAP = {
     16.4: 6.9,
     20.0: 7.3,
     // Asymétrique 2 zones
-    25.5: 7.8,
-    29.1: 8.1,
+    25.5: 8.9,  // User specified
+    29.1: 9.8,  // User specified
     // Monopente
     12.7: 6.6,
     // Ombrière VL simple (Low pitch?)
