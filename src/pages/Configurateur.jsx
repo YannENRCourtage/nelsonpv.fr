@@ -29,8 +29,8 @@ export default function Configurateur() {
     // Canvas Ref for screenshots
     const canvasRef = useRef();
 
-    // Restriction admin
-    if (!user || user.role !== 'admin') {
+    // Restriction admin ou permission spécifique
+    if (!user || (user.role !== 'admin' && !user.permissions?.canAccessConfigurator)) {
         return <Navigate to="/" replace />;
     }
 

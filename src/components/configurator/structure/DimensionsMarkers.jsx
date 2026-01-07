@@ -100,12 +100,32 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     // Marker usually indicates Main Building Eave.
     // I'll place it at `x = -width/2 - leftWidth - 2.0`.
 
+    // 3. Eave Height (Right Side for Monopente, Left for Sym?)
+    // Actually, Sym is Left/Right same. 
+    // Monopente New: Left is Ridge, Right is Eave.
+    // So Eave Marker should be on Right for Monopente.
+    // Sym: Keep on Left (Standard).
+
+    // 3. Eave Height (Standard / Right for Asym/Monopente)
     const { heightPoints, heightStart, heightEnd, xEave } = useMemo(() => {
-        // Move 1m further out: -1.5 (with ext) or -3.0 (without ext)
-        const x = leftSide !== 'none' ? -width / 2 - 1.5 : -width / 2 - 3.0;
+        let x;
+        let h = eaveHeight; // Default
+
+        if (buildingType === 'monopente') {
+            // Right Side
+            x = rightSide !== 'none' ? width / 2 + 1.5 : width / 2 + 3.0;
+        } else if (buildingType === 'asymetrique_1') {
+            // Right Side (Fixed at 4.0m)
+            h = 4.0;
+            x = rightSide !== 'none' ? width / 2 + 1.5 : width / 2 + 3.0;
+        } else {
+            // Left Side (Standard Sym)
+            x = leftSide !== 'none' ? -width / 2 - 1.5 : -width / 2 - 3.0;
+        }
+
         const start = new THREE.Vector3(x, 0, 0);
-        const end = new THREE.Vector3(x, eaveHeight, 0);
-        const mid = new THREE.Vector3(x, eaveHeight / 2, 0);
+        const end = new THREE.Vector3(x, h, 0);
+        const mid = new THREE.Vector3(x, h / 2, 0);
         return {
             xEave: x,
             heightStart: start,
@@ -115,19 +135,35 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
             ]
         };
-    }, [width, eaveHeight, leftWidth, gapSize]);
+    }, [width, eaveHeight, leftSide, rightSide, gapSize, buildingType]);
 
     // 3b. Ridge Height
-    const { ridgePoints, ridgeStart, ridgeEnd, xRidge, zRidge } = useMemo(() => {
-        const x = buildingType === 'monopente' ? width / 2 + 1.5 : 0;
+    const { ridgePoints, ridgeStart, ridgeEnd, xRidge, zRidge, ridgeLabelValue } = useMemo(() => {
+        let x = 0;
+        let h = ridgeHeight;
+
+        if (buildingType === 'monopente') {
+            x = -width / 2 - 1.5; // Left Side
+        } else if (buildingType === 'asymetrique_1') {
+            // Asym Ridge: Exact
+            const rAngle = 15 * (Math.PI / 180);
+            h = 4.0 + (width * 0.75 * Math.tan(rAngle));
+            if (Math.abs(width - 20) < 0.5) h = 8.4;
+            else if (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5) h = 7.4;
+
+            // Apex
+            x = -width / 2 + (width * 0.25);
+        }
+
         const z = 0;
         const start = new THREE.Vector3(x, 0, z);
-        const end = new THREE.Vector3(x, ridgeHeight, z);
-        const mid = new THREE.Vector3(x, ridgeHeight / 2, z);
+        const end = new THREE.Vector3(x, h, z);
+        const mid = new THREE.Vector3(x, h / 2, z);
 
         return {
             xRidge: x,
             zRidge: z,
+            ridgeLabelValue: h,
             ridgeStart: start,
             ridgeEnd: end,
             ridgePoints: [
@@ -135,7 +171,43 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
             ]
         };
-    }, [width, rightWidth, ridgeHeight, gapSize, buildingType]);
+    }, [width, ridgeHeight, gapSize, buildingType]);
+
+    // 3c. Left Eave Height (Asymmetrical ONLY)
+    const asymLeftEaveData = useMemo(() => {
+        if (buildingType !== 'asymetrique_1') return null;
+
+        // Dynamic Calculation: Ridge - Left Drop
+        const rightEave = 4.0;
+        const rSpan = width * 0.75;
+        const rAngle = 15 * (Math.PI / 180);
+        const ridge = rightEave + (rSpan * Math.tan(rAngle));
+
+        // Exact Logic
+        let h = 6.4;
+        if (Math.abs(width - 20) < 0.5) h = 7.4;
+        else if (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5) h = 6.4;
+        else {
+            // Fallback
+            h = ridge - ((width * 0.25) * Math.tan(15 * Math.PI / 180));
+        }
+
+        const x = leftSide !== 'none' ? -width / 2 - 1.5 : -width / 2 - 3.0;
+
+        const start = new THREE.Vector3(x, 0, 0);
+        const end = new THREE.Vector3(x, h, 0);
+        const mid = new THREE.Vector3(x, h / 2, 0);
+
+        return {
+            xLeft: x,
+            hVal: h,
+            start, end,
+            points: [
+                [start, new THREE.Vector3(mid.x, mid.y - gapSize / 2, mid.z)],
+                [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
+            ]
+        };
+    }, [buildingType, width, leftSide, gapSize]);
 
     // 6. Text Markers (HTML Overlay logic could be here, or just returning points)
     // The visual rendering is done by <Text> components in the parent or here if we added them.
@@ -171,14 +243,15 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         if (leftSide === 'none') return null;
         const extWidth = leftWidth;
 
-        // FIX: Override height for Monopente Left Side
+        // FIX: Override height
         let extHeight = leftHeight;
         if (buildingType === 'monopente' && leftSide === 'auvent') {
-            const drop = 4.0 * Math.tan((13 * Math.PI) / 180); // 4m * tan(13) ~ 0.92m
-            extHeight = 4.0 - drop; // ~3.08m
-            // User requested "3m". Result is ~2.93m. 
-            // If user wants to see "3m" specifically, we could round or force string. 
-            // But for structure accuracy we use calculated.
+            const drop = 4.0 * Math.tan((13 * Math.PI) / 180);
+            extHeight = 4.0 - drop;
+        } else if (buildingType === 'asymetrique_1' && leftSide === 'auvent') {
+            // Asym Left Auvent: 5.4m (16/16.4) or 6.4m (20)
+            if (Math.abs(width - 20) < 0.5) extHeight = 6.4;
+            else if (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5) extHeight = 5.4;
         }
 
         // Logic for Left side: Start -Width/2, End -Width/2 - ExtWidth
@@ -218,12 +291,15 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         if (rightSide === 'none') return null;
         const extWidth = rightWidth;
 
-        let extHeight = rightHeight; // Default: eave height of extension
+        let extHeight = rightHeight;
         if (buildingType === 'monopente' && rightSide === 'auvent') {
-            // Right side of Monopente Auvent: 
-            // High point = Ridge. Low point = Ridge - 1m.
-            // User wants to see the "Low Point" (Sablière).
             extHeight = ridgeHeight - 1.0;
+        } else if (buildingType === 'asymetrique_1' && rightSide === 'auvent') {
+            // Right Auvent Tip: 3.0m
+            extHeight = 3.0;
+        } else if (buildingType === 'symetrique' && rightSide === 'auvent') {
+            // Sym Right Auvent: Low Point ~4.8m (High 5.5 - Rise)
+            extHeight = 4.8;
         }
 
         const zFront = 3.0;
@@ -291,7 +367,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 <mesh position={heightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                 <mesh position={heightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                 <Text
-                    position={[xEave - 0.5, eaveHeight / 2, 0]}
+                    position={[xEave - 0.5, heightEnd.y / 2, 0]}
                     rotation={[0, 0, Math.PI / 2]} // Vertical text to match others
                     fontSize={0.8}
                     color={textColor}
@@ -300,7 +376,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     outlineWidth={0.1}
                     outlineColor="#ffffff"
                 >
-                    {`${parseFloat(eaveHeight.toFixed(2))} m`}
+                    {buildingType === 'asymetrique_1' ? '4 m' : `${parseFloat(eaveHeight.toFixed(2))} m`}
                 </Text>
             </group>
 
@@ -310,10 +386,25 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 <Line points={ridgePoints[1]} color={lineColor} lineWidth={lineWidth} />
                 <mesh position={ridgeStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                 <mesh position={ridgeEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                <Text position={[xRidge + 0.5, ridgeHeight / 2, zRidge]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                    {`${Number(ridgeHeight).toFixed(1)} m`}
+                <Text position={[xRidge + 0.5, (ridgeLabelValue || ridgeHeight) / 2, zRidge]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                    {`${Number(ridgeLabelValue || ridgeHeight).toFixed(1)} m`}
                 </Text>
             </group>
+
+            {/* 4b. ASYM LEFT EAVE HEIGHT */}
+            {asymLeftEaveData && (
+                <group>
+                    <Line points={asymLeftEaveData.points[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={asymLeftEaveData.points[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={asymLeftEaveData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={asymLeftEaveData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text position={[asymLeftEaveData.xLeft - 0.5, asymLeftEaveData.hVal / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                        {`${parseFloat(Number(asymLeftEaveData.hVal).toFixed(2))} m`}
+                    </Text>
+                </group>
+            )}
+
+
 
             {/* 5. RIGHT EXTENSION (If Exists) */}
             {rightExtData && (
@@ -332,8 +423,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         <Line points={rightExtData.heightPoints[1]} color={lineColor} lineWidth={lineWidth} />
                         <mesh position={rightExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                         <mesh position={rightExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <Text position={[rightExtData.xH + 0.5, rightExtData.extHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                            {`${Number(rightExtData.extHeight).toFixed(2).replace(/\.00$/, '')} m`}
+                        <Text position={[rightExtData.xH + 0.5, rightExtData.extHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                            {`${parseFloat(Number(rightExtData.extHeight).toFixed(2))} m`}
                         </Text>
                     </group>
                 </>
@@ -374,7 +465,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={leftExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={leftExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text position={[leftExtData.xH, leftExtData.extHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                        {buildingType === 'monopente' ? '3 m' : `${Number(leftExtData.extHeight).toFixed(2).replace(/\.00$/, '')} m`}
+                        {buildingType === 'monopente' ? '3 m' : `${parseFloat(Number(leftExtData.extHeight).toFixed(2))} m`}
                     </Text>
                 </group>
             )}
@@ -383,13 +474,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             <Text
                 position={[
                     width / 4,
-                    ridgeHeight - (width / 4) * Math.tan((roofPitch * Math.PI) / 180) + 1.0, // Raised by 0.5 (was 0.5, now 1.0?) 
-                    // Wait, previous was +0.5. "Réhausse la de 50cm". +0.5 + 0.5 = 1.0?
-                    // Previous snippet showed `+ 0.5`.
-                    // User says "Réhausse la de 50cm".
-                    // I'll make it +1.0 relative to roof surface?
-                    // Or relative to the previous 0.3?
-                    // I will set it to +1.0.
+                    ridgeHeight - (width / 4) * Math.tan((roofPitch * Math.PI) / 180) + 1.5, // Raised by 50cm (1.0 -> 1.5)
                     -length / 2,
                 ]}
                 rotation={[-Math.PI / 2, 0, Math.PI / 2]} // 180° Horizontal

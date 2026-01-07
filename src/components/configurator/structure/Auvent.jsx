@@ -14,33 +14,74 @@ import { SolarPanels } from './SolarPanels.jsx';
 export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWidth, bayCount, baySpacing, side = 'left', buildingType = 'symetrique' }) {
 
     // --- DIMENSIONS ---
-    // Logic for Monopente Heights
+    // --- DIMENSIONS ---
+    // --- DIMENSIONS ---
+    let auventWidth = 4.0; // Fixed 4m
+    let angleRad = 5 * (Math.PI / 180); // Default 5 deg
     let startHeight = eaveHeight;
-    let angleRad = (roofPitch * Math.PI) / 180;
 
-    // Default width
-    let auventWidth = 2.0;
+    if (buildingType === 'asymetrique_1') {
+        const asymRightEave = 4.0;
+        let asymLeftEave = 6.4;
+        const w = buildingWidth;
 
-    if (buildingType === 'monopente') {
-        // Monopente: Auvent drops roughly 1m based on slope 13 deg
-        // Width fixed to 4.0m per user request
-        const requiredAngle = 13 * (Math.PI / 180); // 13 degrees fixed slope
-        auventWidth = 4.0;
+        // Logic matching PortalFrame
+        const rAngle = 15 * (Math.PI / 180); // Fixed 15 (Reference)
 
-        if (side === 'left') {
-            startHeight = 4.0; // Fixed Eave Height for Monopente
-            angleRad = requiredAngle;
-        } else {
-            startHeight = ridgeHeight; // Attaches at Ridge
-            angleRad = requiredAngle;
+        // Exact Logic for 16.4/20
+        if (Math.abs(w - 20) < 0.5) { asymLeftEave = 7.4; }
+        else if (Math.abs(w - 16.4) < 0.5 || Math.abs(w - 16) < 0.5) { asymLeftEave = 6.4; }
+        else {
+            // Fallback
+            const ridge = asymRightEave + (w * 0.75 * Math.tan(rAngle));
+            asymLeftEave = ridge - (w * 0.25 * Math.tan(15 * Math.PI / 180));
         }
-    } else if (buildingType === 'symetrique') {
-        // Symetrique: Auvent drops from Eave to ~4.8m based on slope 10 deg
-        // Width fixed to 4.0m per user request
-        const specificAngle = 10 * (Math.PI / 180); // 10 degrees fixed slope
-        angleRad = specificAngle;
-        auventWidth = 4.0;
+
+        if (side === 'right') {
+            startHeight = asymRightEave; // 4.0
+            const tipHeight = 3.0; // Fixed Tip
+            angleRad = Math.atan((startHeight - tipHeight) / auventWidth);
+        } else {
+            startHeight = asymLeftEave;
+            const tipHeight = startHeight - 1.0; // 1m Drop
+            angleRad = Math.atan((startHeight - tipHeight) / auventWidth);
+        }
+
+    } else {
+        // Sym/Mono Logic
+        if (buildingType === 'symetrique') {
+            angleRad = 10 * (Math.PI / 180);
+            const rise = auventWidth * Math.tan(angleRad);
+
+            if (side === 'right') {
+                // Right High Point Fixed at 5.5m
+                startHeight = 5.5;
+            } else {
+                // Left Keep Tip Logic with 10deg
+                let tipHeight = 5.4;
+                if (Math.abs(buildingWidth - 20) < 0.5) tipHeight = 6.4;
+                else if (Math.abs(buildingWidth - 16) < 0.5 || Math.abs(buildingWidth - 16.4) < 0.5) tipHeight = 5.4;
+                startHeight = (tipHeight + rise) - 0.60; // Lowered by 60cm total
+            }
+        } else {
+            // Monopente (Default 5 deg)
+            angleRad = 5 * (Math.PI / 180);
+            const rise = auventWidth * Math.tan(angleRad);
+            if (side === 'right') {
+                startHeight = 3.0 + rise;
+            } else {
+                let tipHeight = 5.4;
+                if (Math.abs(buildingWidth - 20) < 0.5) tipHeight = 6.4;
+                else if (Math.abs(buildingWidth - 16) < 0.5 || Math.abs(buildingWidth - 16.4) < 0.5) tipHeight = 5.4;
+                startHeight = tipHeight + rise;
+            }
+        }
     }
+
+    // Override for Logic Consistency?
+    // If Monopente Left is Ridge... but user wants specific height. I respect strict height.
+    // So I ignore `buildingType` checks for height, I use the rules.
+    // Except maybe keep `angleRad` assignment clean.
     // Group Position
     // Left: -buildingWidth/2
     // Right: +buildingWidth/2
@@ -90,8 +131,18 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
         bevelEnabled: false
     }), [purlinShape, baySpacing]);
 
-    // Purlin Offset
-    const purlinPerpOffset = 0.1 + (purlinHeight / 2);
+    // Purlin Offset (with adjustments)
+    let purlinPerpOffset = 0.1 + (purlinHeight / 2);
+
+    // Asymmetric Right Awning: Raise purlins by 5cm
+    if (buildingType === 'asymetrique_1' && side === 'right') {
+        purlinPerpOffset += 0.05;
+    }
+
+    // Asymmetric Left Awning 20m: Lower purlins by 30cm
+    if (buildingType === 'asymetrique_1' && side === 'left' && Math.abs(buildingWidth - 20) < 0.5) {
+        purlinPerpOffset -= 0.30;
+    }
 
     const numPurlins = Math.floor(slopeLength / purlinSpacing);
     const numFrames = bayCount + 1;
@@ -105,11 +156,17 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
         const zPos = i * baySpacing; // Positive Z in local space
 
         // 1. CANTILEVER RAFTER (Massive)
+        // Asymmetric Left 20m: Lower by 30cm
+        let rafterYOffset = 0;
+        if (buildingType === 'asymetrique_1' && side === 'left' && Math.abs(buildingWidth - 20) < 0.5) {
+            rafterYOffset = -0.30;
+        }
+
         frames.push(
             <mesh
                 key={`rafter-${i}`}
                 material={structureMaterial}
-                position={[auventWidth / 2, -(auventWidth / 2) * Math.tan(angleRad), zPos]}
+                position={[auventWidth / 2, -(auventWidth / 2) * Math.tan(angleRad) + rafterYOffset, zPos]}
                 rotation={[0, 0, -angleRad]} // Down-Right slope (in local space)
             >
                 <boxGeometry args={[auventWidth, 0.35, 0.15]} />
@@ -118,10 +175,15 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
 
         // 2. DIAGONAL STRUT (Massive, Raised, Shortened)
         const strutStartX = 0.1;
-        const strutStartY = -0.8; // Raised High (was -2.0)
+        let strutStartY = -0.8; // Raised High (was -2.0)
+
+        // Asymmetric Left 20m: Lower strut by 30cm
+        if (buildingType === 'asymetrique_1' && side === 'left' && Math.abs(buildingWidth - 20) < 0.5) {
+            strutStartY -= 0.30;
+        }
 
         const rafX = 2.0; // Shortened Target
-        const rafY = -rafX * Math.tan(angleRad); // Rafter height at X=2.0
+        const rafY = -rafX * Math.tan(angleRad) + rafterYOffset; // Rafter height at X=2.0 (with offset)
 
         const deltaX = rafX - strutStartX;
         const deltaY = rafY - strutStartY;
@@ -178,10 +240,27 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
         console.log("Auvent Rendered:", { length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing, groupPosX, groupPosY });
     }, [length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing]);
 
-    // Roof Y Position logic
-    // Monopente: Lowered by 10cm requested (-0.13)
-    // Symetrique: Kept at raised level (-0.03)
-    const roofY = buildingType === 'monopente' ? -0.13 : -0.03;
+    // Roof Y Position logic with all adjustments
+    let roofY = -0.10; // Default baseline
+
+    if (buildingType === 'symetrique') {
+        // Symmetric: Raise both awnings by 4cm
+        roofY = -0.10 + 0.04; // -0.06
+    } else if (buildingType === 'asymetrique_1') {
+        if (side === 'right') {
+            // Asymmetric Right Awning: Raise cover by 3cm
+            roofY = -0.10 + 0.03; // -0.07
+        } else {
+            // Asymmetric Left Awning adjustments
+            if (Math.abs(buildingWidth - 20) < 0.5) {
+                // 20m width: Lower by 30cm
+                roofY = -0.10 - 0.30; // -0.40
+            } else if (Math.abs(buildingWidth - 16.4) < 0.5 || Math.abs(buildingWidth - 16) < 0.5) {
+                // 16.4m width: Lower by 15cm
+                roofY = -0.10 - 0.15; // -0.25
+            }
+        }
+    }
 
     return (
         <group

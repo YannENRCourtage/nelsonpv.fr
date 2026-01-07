@@ -42,9 +42,15 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false }, ref)
             {viewMode === '3D' && (
                 <>
                     <PerspectiveCamera makeDefault position={[20, 15, 30]} fov={50} />
-                    {/* Target X=8 shifts building to the Left visually. Y=4 lowers building in view. */}
-                    {/* No minPolarAngle to allow viewing from below */}
-                    <OrbitControls maxPolarAngle={Math.PI} target={[8, 4, 0]} />
+                    {/* Target optimization for PDF Capture: Center on the building mass */}
+                    {/* Normal mode: X=8 shifts building to the Left visually. Y=4 lowers building in view. */}
+                    <OrbitControls
+                        maxPolarAngle={Math.PI}
+                        target={isCapturing
+                            ? [0, config.eaveHeight / 2, -config.length / 2]
+                            : [8, 4, 0]
+                        }
+                    />
                 </>
             )}
 
@@ -69,8 +75,8 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false }, ref)
             )}
 
             {/* Auto-Centering logic: Re-fits whenever config changes */}
-            {/* margin=1.1 means ~90% screen usage (1/1.1 = 0.9) */}
-            <Bounds fit clip observe margin={1.1}>
+            {/* Capture: margin=0.8 (Zoomed in). Normal: margin=1.1 (Breathable) */}
+            <Bounds fit clip observe margin={isCapturing ? 0.8 : 1.1}>
                 <Structure />
                 {/* Add Cladding/Doors here later */}
             </Bounds>

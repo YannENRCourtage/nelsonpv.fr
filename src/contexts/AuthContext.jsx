@@ -31,6 +31,33 @@ export const AuthProvider = ({ children }) => {
         }
         // ------------------------------------
 
+        // --- GESTION ACCÈS CONFIGURATEUR ---
+        const CONFIGURATOR_USERS = [
+          'contact@enr-courtage.fr',
+          'elodievinet17@gmail.com',
+          'jack.luc@icloud.com',
+          'n.bachevalier@enr-courtage.fr'
+        ];
+
+        const userEmail = userData.email?.toLowerCase();
+
+        // Debug
+        // console.log("Checking Configurator Access for:", userEmail);
+
+        if (
+          (userEmail && CONFIGURATOR_USERS.includes(userEmail)) ||
+          userData.role === 'admin' ||
+          userData.permissions?.canAccessConfigurator === true ||
+          userData.permissions?.canAccessConfigurateur === true
+        ) {
+          // console.log("Granting Configurator Access to:", userEmail);
+          userData.permissions = {
+            ...(userData.permissions || {}), // Safety for null
+            canAccessConfigurator: true
+          };
+        }
+        // ------------------------------------
+
         setUser(userData);
         setIsAuthenticated(true);
       } else {
@@ -104,7 +131,8 @@ export const AuthProvider = ({ children }) => {
     canAccessCRM,
     canAccessEditor,
     canAccessSimulator,
-    canViewAllProjects
+    canViewAllProjects,
+    canAccessConfigurator: () => hasPermission('canAccessConfigurator')
   };
 
   return (

@@ -13,189 +13,234 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     }), []);
 
     const isMonopente = buildingType === 'monopente';
+    const isAsymetrique = buildingType === 'asymetrique_1';
 
-    // --- MONOPENTE LOGIC ---
+    // ==========================================
+    // HOOKS (Must be unconditional)
+    // ==========================================
+
+    // --- 1. Monopente Geometries ---
+    const monoDeltaH = ridgeHeight - eaveHeight; // 7.4 - 4.0 = 3.4
+    const monoSlopeAngle = isMonopente ? Math.atan(monoDeltaH / width) : 0;
+    // Overhangs: 50cm horizontal projection each side -> Total Width + 1.0
+    // Fallback 1.0 to avoid NaN if logic skipped, though useMemo dep array handles it.
+    const monoSlopeLength = isMonopente ? (width + 1.0) / Math.cos(monoSlopeAngle) : 1.0;
+
+    const monoProfile = useMemo(() => createTrapezoidalProfile(monoSlopeLength, 0.035, 0.25), [monoSlopeLength]);
+    const monoGeometry = useMemo(() => new THREE.ExtrudeGeometry(monoProfile, {
+        depth: length + 1.0, // Front/Back Overhang
+        bevelEnabled: false
+    }), [monoProfile, length]);
+
+    // --- 2. Asymmetrical Geometries ---
+    // Asym Rules: 15° Right, 12° Left
+    const asymRAngle = 15 * (Math.PI / 180);
+    const asymLAngle = 12 * (Math.PI / 180);
+    const asymRightSpan = width * 0.75;
+    const asymLeftSpan = width * 0.25;
+
+    const asymRightSlopeGeoLength = asymRightSpan / Math.cos(asymRAngle);
+    const asymLeftSlopeGeoLength = asymLeftSpan / Math.cos(asymLAngle);
+
+    // User Request: Left Covering ends above column (No Overhang). Right standard (0.50).
+    const asymRightOverhang = 0.50;
+    const asymLeftOverhang = 0.0;
+
+    const asymRightRoofLength = asymRightSlopeGeoLength + asymRightOverhang;
+    const asymLeftRoofLength = asymLeftSlopeGeoLength + asymLeftOverhang;
+
+    const asymRightProfile = useMemo(() => createTrapezoidalProfile(asymRightRoofLength, 0.035, 0.25), [asymRightRoofLength]);
+    const asymLeftProfile = useMemo(() => createTrapezoidalProfile(asymLeftRoofLength, 0.035, 0.25), [asymLeftRoofLength]);
+
+    const asymRightGeo = useMemo(() => new THREE.ExtrudeGeometry(asymRightProfile, { depth: length + 1.0, bevelEnabled: false }), [asymRightProfile, length]);
+    const asymLeftGeo = useMemo(() => new THREE.ExtrudeGeometry(asymLeftProfile, { depth: length + 1.0, bevelEnabled: false }), [asymLeftProfile, length]);
+
+    // --- 3. Symmetrical Geometries (Default) ---
+    const symAngleRad = (roofPitch * Math.PI) / 180;
+    const symHalfWidth = width / 2;
+    const symGeometricSlopeLength = symHalfWidth / Math.cos(symAngleRad);
+    const symOverhang = 0.50; // 50cm Eave Overhang
+    const symRoofSlopeLength = symGeometricSlopeLength + symOverhang;
+
+    const symProfile = useMemo(() => createTrapezoidalProfile(symRoofSlopeLength, 0.035, 0.25), [symRoofSlopeLength]);
+    const symGeometry = useMemo(() => new THREE.ExtrudeGeometry(symProfile, {
+        depth: length + 1.0, // Length + 50cm Front + 50cm Back
+        bevelEnabled: false
+    }), [symProfile, length]);
+
+
+    // ==========================================
+    // RENDER LOGIC
+    // ==========================================
+
+    // --- A. MONOPENTE ---
     if (isMonopente) {
-        const deltaH = ridgeHeight - eaveHeight; // 7.4 - 4.0 = 3.4
-        const slopeAngle = Math.atan(deltaH / width);
-
-        // Overhangs: 50cm horizontal projection each side -> Total Width + 1.0
-        const totalHorizontalWidth = width + 1.0; // 0.5 left + 0.5 right
-        const slopeLength = totalHorizontalWidth / Math.cos(slopeAngle);
-
-        // Offset Logic (Same as Sym)
+        // Offset Logic
         const purlinHeight = 0.140;
         const roofThickness = 0.001;
-        const perpOffset = (purlinHeight / 2) + (roofThickness / 2) + 0.30;
+        const perpOffset = (purlinHeight / 2) + (roofThickness / 2) + 0.35;
 
-        const monoProfile = useMemo(() => createTrapezoidalProfile(slopeLength, 0.035, 0.25), [slopeLength]);
-        const monoGeometry = useMemo(() => new THREE.ExtrudeGeometry(monoProfile, {
-            depth: length + 1.0, // Front/Back Overhang
-            bevelEnabled: false
-        }), [monoProfile, length]);
-
-        // Position:
-        // Midpoint of the roof plane (including overhangs).
-        // Building Midpoint: (0, (R+E)/2).
-        // But we have overhangs.
-        // Left Overhang starts at -W/2 - 0.5. Right ends at W/2 + 0.5.
-        // Midpoint is still 0 (Symmetric overhangs).
-        // Vertical Midpoint calculated at X=0 on the slope line.
-        // Line passes through (-W/2 - 0.5, E - 0.5*tan) ?? 
-        // Let's rely on the Pivot at Centre Building.
-        // Center X = 0.
-        // Center Y = Eave + (Ridge-Eave)/2 ? 
-        // Yes, if linear slope.
-        const centerY = eaveHeight + (deltaH / 2);
-
-        // Perpendicular offset vector
-        // Normal to slope is (-sin, cos)
-        const offX = perpOffset * -Math.sin(slopeAngle);
-        const offY = perpOffset * Math.cos(slopeAngle);
+        const centerY = eaveHeight + (monoDeltaH / 2);
+        // Normal to slope (-angle) is (sin, cos)
+        const offX = perpOffset * Math.sin(monoSlopeAngle);
+        const offY = perpOffset * Math.cos(monoSlopeAngle);
 
         return (
             <group>
                 <mesh
                     geometry={monoGeometry}
                     material={roofMaterial}
-                    position={[
-                        offX,
-                        centerY + offY,
-                        -length - 0.5
-                    ]}
-                    rotation={[0, 0, slopeAngle]}
-                    castShadow
-                    receiveShadow
+                    position={[offX, centerY + offY, -length - 0.5]}
+                    rotation={[0, 0, -monoSlopeAngle]} // Negative Angle
+                    castShadow receiveShadow
                 />
-                <group
-                    position={[
-                        offX,
-                        centerY + offY,
-                        -length / 2
-                    ]}
-                    rotation={[0, 0, slopeAngle]}
-                >
-                    <SolarPanels surfaceWidth={slopeLength} surfaceLength={length + 1.0} />
+                <group position={[offX, centerY + offY, -length / 2]} rotation={[0, 0, -monoSlopeAngle]}>
+                    <SolarPanels surfaceWidth={monoSlopeLength} surfaceLength={length + 1.0} />
                 </group>
             </group>
         );
     }
 
-    // --- EXISTING SYMMETRICAL LOGIC ---
-    const angleRad = (roofPitch * Math.PI) / 180;
-    const halfWidth = width / 2;
-    // ... rest of code
+    // --- B. ASYMETRIQUE (1 ZONE) ---
+    if (isAsymetrique) {
+        // Exact Heights Logic (Match PortalFrame - FORCED 15 DEG)
+        const asymRightEaveH = 4.0;
+        const w = width;
+        const mainSlope = 15 * (Math.PI / 180);
 
+        // Ridge from Right
+        const ridgeH = 4.0 + (w * 0.75 * Math.tan(mainSlope));
 
-    // --- GEOMETRY CALCULATIONS ---
-    // User Request: Roof must cover the entire building width (Eave to Ridge).
-    // Previous logic anchored to purlins, causing gaps if purlins didn't reach apex.
-    // New Logic: Geometric coverage.
+        // Left Eave from Ridge (15 deg)
+        const asymLeftEaveH = ridgeH - (w * 0.25 * Math.tan(mainSlope));
 
-    const geometricSlopeLength = halfWidth / Math.cos(angleRad);
+        // Angles
+        const rAngle = mainSlope;
+        const lAngle = mainSlope;
 
-    // Roof length = Geometric Slope Length + Eave Overhang
-    const overhang = 0.50; // 50cm Eave Overhang
-    const roofSlopeLength = geometricSlopeLength + overhang;
+        // Derived Left Angle (Redundant but safe)
+        const rSpan = w * 0.75;
+        const lSpan = w * 0.25;
+        const lRise = ridgeH - asymLeftEaveH;
 
-    // --- PERPENDICULAR OFFSET (Prevent Intersection) ---
-    // Purlin specs from Purlins.jsx
+        // Recalc Lengths with Derived Angles
+        const rSlopeLen = rSpan / Math.cos(rAngle);
+        const lSlopeLen = lSpan / Math.cos(lAngle);
+
+        const getOffsetProps = (slopeLen, angle, isRight, overhang) => {
+            const centerDist = (slopeLen - overhang) / 2;
+            const localX = centerDist * Math.cos(angle);
+            const localY = centerDist * Math.sin(angle);
+
+            // Perp Offset - Lifted above purlins
+            // Base: 0.35 (Rafter) + 0.14/2 (Purlin/2) + Thick/2
+            // User requested "Au dessus". Adding extra lift.
+            const extraLift = 0.10;
+            const purlinH = 0.140;
+            const thick = 0.001;
+            const offsetDist = (purlinH / 2) + (thick / 2) + 0.35 + extraLift;
+
+            const nX = isRight ? Math.sin(angle) : -Math.sin(angle);
+            const nY = Math.cos(angle);
+
+            return {
+                x: localX + (offsetDist * nX),
+                y: localY + (offsetDist * nY),
+                rot: isRight ? -angle : angle
+            };
+        };
+
+        const rProps = getOffsetProps(rSlopeLen, rAngle, true, asymRightOverhang);
+        const lProps = getOffsetProps(lSlopeLen, lAngle, false, asymLeftOverhang);
+
+        return (
+            <group>
+                {/* Left Side */}
+                <mesh geometry={asymLeftGeo} material={roofMaterial}
+                    position={[-width / 2 + lProps.x, asymLeftEaveH + lProps.y + 0.10 + (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5 ? -0.12 : 0), -length - 0.5]}
+                    rotation={[0, 0, lProps.rot]}
+                    castShadow receiveShadow />
+
+                {/* Right Side */}
+                <mesh geometry={asymRightGeo} material={roofMaterial}
+                    position={[width / 2 - rProps.x, asymRightEaveH + rProps.y, -length - 0.5]}
+                    rotation={[0, 0, rProps.rot]}
+                    scale={[-1, 1, 1]}
+                    castShadow receiveShadow />
+
+                {/* Solar */}
+                <group position={[width / 2 - rProps.x, asymRightEaveH + rProps.y, -length / 2]} rotation={[0, 0, rProps.rot]}>
+                    <SolarPanels surfaceWidth={asymRightRoofLength} surfaceLength={length + 1.0} />
+                </group>
+            </group>
+        );
+    }
+
+    // --- C. SYMMETRICAL (Default) ---
+    // Offset Logic
     const purlinHeight = 0.140;
-    const roofThickness = 0.001; // Sheet metal thickness
+    const roofThickness = 0.001;
+    const perpOffset = (purlinHeight / 2) + (roofThickness / 2) + 0.35;
 
-    // User Request: "Remonte de 20cm" -> Adjusted -5cm by request -> Total +0.30m
-    // Offset = (PurlinHeight / 2) + (RoofThickness / 2) + Extra 0.30m
-    const perpOffset = (purlinHeight / 2) + (roofThickness / 2) + 0.30;
-
-    // --- GEOMETRY CREATION (HORIZONTAL WAVES) ---
-    const profileShape = useMemo(() => createTrapezoidalProfile(roofSlopeLength, 0.035, 0.25), [roofSlopeLength]);
-
-    const geometry = useMemo(() => new THREE.ExtrudeGeometry(profileShape, {
-        depth: length + 1.0, // Length + 50cm Front + 50cm Back
-        bevelEnabled: false
-    }), [profileShape, length]);
-
-    // --- ANCHOR POSITIONING ---
-    // We anchor at the Eave Purlin position (0) minus overhang along the slope.
-    // Or simpler: Center the profile on the midpoint of the "Sheet Length".
-
-    // Sheet starts at: -overhang (relative to Eave Purlin).
-    // Sheet ends at: geometricSlopeLength (Ridge).
-    // Midpoint = (-overhang + geometricSlopeLength) / 2.
-
-    // Wait, Eave Purlin (0) is at x=-halfWidth.
-    // The "Start" of slope is exactly at -halfWidth in global X? No, Eave Purlin is there.
-    // The sheet starts "overhang" meters DOWN-SLOPE from the Eave Purlin.
-    // Down-slope means negative local X?
-    // Let's assume Local X=0 is Eave Purlin.
-    // Sheet extends from X = -overhang to X = geometricSlopeLength.
-    // Center X = (geometricSlopeLength - overhang) / 2.
-
-    const centerDist = (geometricSlopeLength - overhang) / 2;
-
-    // Convert to World displacement relative to Eave Purlin (which is at local 0).
-    const localCenterX = centerDist * Math.cos(angleRad);
-    const localCenterY = centerDist * Math.sin(angleRad);
+    const centerDist = (symGeometricSlopeLength - symOverhang) / 2;
+    const localCenterX = centerDist * Math.cos(symAngleRad);
+    const localCenterY = centerDist * Math.sin(symAngleRad);
 
     // Perpendicular Offset Vectors
-    const perpNormalX = -Math.sin(angleRad);
-
-    const offsetX = perpOffset * perpNormalX;
-    const offsetY = perpOffset * Math.cos(angleRad);
+    const offsetX = -perpOffset * Math.sin(symAngleRad);
+    const offsetY = perpOffset * Math.cos(symAngleRad);
 
     return (
         <group>
             {/* Left Roof Side */}
             <mesh
-                geometry={geometry}
+                geometry={symGeometry}
                 material={roofMaterial}
                 position={[
-                    -halfWidth + localCenterX + offsetX,
+                    -symHalfWidth + localCenterX + offsetX,
                     eaveHeight + localCenterY + offsetY,
-                    -length - 0.5 // Start at Back Overhang (-Length - 0.5)
+                    -length - 0.5
                 ]}
-                rotation={[0, 0, angleRad]}
-                castShadow
-                receiveShadow
+                rotation={[0, 0, symAngleRad]}
+                castShadow receiveShadow
             />
 
             {/* Right Roof Side */}
             <mesh
-                geometry={geometry}
+                geometry={symGeometry}
                 material={roofMaterial}
                 position={[
-                    halfWidth - localCenterX - offsetX, // Mirror X
+                    symHalfWidth - localCenterX - offsetX, // Mirror X
                     eaveHeight + localCenterY + offsetY, // Same Y height
                     -length - 0.5
                 ]}
-                rotation={[0, 0, -angleRad]}
+                rotation={[0, 0, -symAngleRad]}
                 scale={[-1, 1, 1]}
-                castShadow
-                receiveShadow
+                castShadow receiveShadow
             />
 
             {/* Solar Panels Left */}
             <group
                 position={[
-                    -halfWidth + localCenterX + offsetX,
+                    -symHalfWidth + localCenterX + offsetX,
                     eaveHeight + localCenterY + offsetY,
                     -length / 2
                 ]}
-                rotation={[0, 0, angleRad]}
+                rotation={[0, 0, symAngleRad]}
             >
-                <SolarPanels surfaceWidth={roofSlopeLength} surfaceLength={length + 1.0} />
+                <SolarPanels surfaceWidth={symRoofSlopeLength} surfaceLength={length + 1.0} />
             </group>
 
             {/* Solar Panels Right */}
             <group
                 position={[
-                    halfWidth - localCenterX - offsetX,
+                    symHalfWidth - localCenterX - offsetX,
                     eaveHeight + localCenterY + offsetY,
                     -length / 2
                 ]}
-                rotation={[0, 0, -angleRad]}
+                rotation={[0, 0, -symAngleRad]}
             >
-                <SolarPanels surfaceWidth={roofSlopeLength} surfaceLength={length + 1.0} />
+                <SolarPanels surfaceWidth={symRoofSlopeLength} surfaceLength={length + 1.0} />
             </group>
         </group>
     );

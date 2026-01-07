@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import * as THREE from 'three';
 import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
 import { PortalFrame } from './PortalFrame.jsx';
 import { Purlins } from './Purlins.jsx';
@@ -15,6 +16,51 @@ export function Structure() {
 
     // Use exact ridge height from store (Map values) instead of calculated
     const calculatedRidgeHeight = ridgeHeight;
+
+    // Ridge Flashing (Bande Lisse Faîtière)
+    // 1m wide (0.5m each side), spanning length.
+    const RidgeFlashing = ({ len, h, angle }) => {
+        // Material
+        const mat = useMemo(() => new THREE.MeshStandardMaterial({
+            color: '#4A4A4A', // Dark Grey / Anthracite often used for flashings
+            roughness: 0.5,
+            metalness: 0.4,
+            side: THREE.DoubleSide
+        }), []);
+
+        const shape = useMemo(() => {
+            const s = new THREE.Shape();
+            const halfW = 0.5; // 0.5m
+            const drop = halfW * Math.tan(angle);
+            const t = 0.005;
+
+            // Profile in XY plane
+            // Center is peak
+            s.moveTo(0, 0.02); // Exact peak slightly raised
+            s.lineTo(-halfW, -drop);
+            s.lineTo(-halfW, -drop - t);
+            s.lineTo(0, 0.02 - t);
+            s.lineTo(halfW, -drop - t);
+            s.lineTo(halfW, -drop);
+            s.lineTo(0, 0.02);
+            return s;
+        }, [angle]);
+
+        const geo = useMemo(() => new THREE.ExtrudeGeometry(shape, {
+            depth: len,
+            bevelEnabled: false
+        }), [shape, len]);
+
+        return (
+            // Rotate Y 180 to extrude towards -Z (since frames are usually 0 to -L)
+            // Or -Z? 
+            // In Structure loop: zPos = -i * baySpacing. So building spans 0 to -Length.
+            // ExtrudeGeometry defaults +Z.
+            // Rotate Y PI -> +Z becomes -Z.
+            // Position: [0, h, 0]
+            <mesh geometry={geo} material={mat} position={[0, h, 0]} rotation={[0, Math.PI, 0]} castShadow />
+        );
+    };
 
     const frames = [];
     const numFrames = bayCount + 1;
@@ -35,8 +81,13 @@ export function Structure() {
         );
     }
 
+    const angleRad = (roofPitch * Math.PI) / 180;
+
     return (
         <group>
+            {config.buildingType === 'symetrique' && (
+                <RidgeFlashing len={length} h={calculatedRidgeHeight} angle={angleRad} />
+            )}
             {frames}
             <Purlins
                 width={width}

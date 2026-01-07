@@ -45,21 +45,17 @@ export function LongitudinalBeams({ width, length, eaveHeight, ridgeHeight, buil
     if (isMonopente) {
         return (
             <group>
-                {/* Sablière Gauche (Left Eave) */}
-                {/* Position: x = -width/2, y = eaveHeight */}
-                {/* Adjust Y to be 'top' at eaveHeight? IPE240 is 240mm high. Center is 120mm. */}
-                {/* If we want it strictly 'horizontal' and aligned with column top. */}
+                {/* Faitage Gauche (Ridge Left) */}
                 <Beam
                     x={-width / 2}
-                    y={eaveHeight} // Centered vertically on the node? or sitting on top? Let's center.
+                    y={ridgeHeight}
                     z={-length}
                 />
 
-                {/* Faitage Droite (Right Ridge) */}
-                {/* Position: x = +width/2, y = ridgeHeight */}
+                {/* Sablière Droite (Eave Right) */}
                 <Beam
                     x={width / 2}
-                    y={ridgeHeight}
+                    y={eaveHeight}
                     z={-length}
                 />
             </group>

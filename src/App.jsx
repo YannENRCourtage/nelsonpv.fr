@@ -80,7 +80,7 @@ function AppContent() {
           <Route
             path="configurateur"
             element={
-              <ProtectedRoute requiredRole="admin">
+              <ProtectedRoute requiredPermission="canAccessConfigurator">
                 <Configurateur />
               </ProtectedRoute>
             }

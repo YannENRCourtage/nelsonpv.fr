@@ -39,7 +39,7 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
     // --- MONOPENTE GENERATION ---
     if (isMonopente) {
         const deltaH = ridgeHeight - eaveHeight;
-        const angleRad = Math.atan(deltaH / width);
+        const angleRad = Math.atan(deltaH / width); // Absolute angle
         const slopeLength = width / Math.cos(angleRad);
 
         const numPurlins = Math.floor(slopeLength / purlinSpacing);
@@ -52,11 +52,24 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
             for (let i = 0; i <= numPurlins; i++) {
                 const dist = i * purlinSpacing;
 
-                const xLocal = dist * Math.cos(angleRad);
-                const yLocal = dist * Math.sin(angleRad);
+                // Start from Left Wall (-halfWidth)
+                // Height starts at RIDGE HEIGHT
+                // X progresses positive
+                // Y progresses NEGATIVE (Down)
 
-                // Normal Vector: (-sin, cos)
-                const xPerp = -perpOffset * Math.sin(angleRad);
+                const xLocal = dist * Math.cos(angleRad);
+                const yLocal = -dist * Math.sin(angleRad); // Go Down
+
+                // Normal Vector for Perpendicular Offset
+                // Slope is Down-Right (-Angle). Normal is (+Sin, +Cos)? 
+                // Wait. Vector (1, -tan). Normal (tan, 1).
+                // Or simply: Previous was (+Angle). 
+                // Now we are rotating -Angle.
+                // Left-to-Right Descending.
+                // Perpendicular is "Up-Right"? No, "Up-Left" (Normal to surface).
+                // Surface Normal for -Angle: (-sin(-a), cos(-a)) -> (sin a, cos a).
+
+                const xPerp = perpOffset * Math.sin(angleRad);
                 const yPerp = perpOffset * Math.cos(angleRad);
 
                 purlins.push(
@@ -66,14 +79,106 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
                         material={material}
                         position={[
                             -halfWidth + xLocal + xPerp,
-                            eaveHeight + yLocal + yPerp,
+                            ridgeHeight + yLocal + yPerp, // Start at Ridge
                             zStart
                         ]}
-                        rotation={[0, Math.PI, angleRad]}
+                        rotation={[0, Math.PI, -angleRad]} // Rotate Negative
                     />
                 );
             }
         }
+    }
+    // --- ASYMMETRICAL GENERATION ---
+    else if (buildingType === 'asymetrique_1') {
+        const w = width;
+        const rightEave = 4.0;
+        let leftEave = 6.4;
+        let ridge = 7.4;
+
+        // Force 15 deg logic
+        const rS = 15 * Math.PI / 180;
+        ridge = 4.0 + (w * 0.75 * Math.tan(rS));
+        leftEave = ridge - (w * 0.25 * Math.tan(rS));
+
+        const rightSpan = w * 0.75;
+        const rRise = ridge - rightEave;
+        const rAngle = Math.atan(rRise / rightSpan);
+
+        const lSpan = w * 0.25;
+        const lRise = ridge - leftEave;
+        const lAngle = Math.atan(lRise / lSpan);
+
+        // --- Left Side (Steep) ---
+        const leftSlopeLen = lSpan / Math.cos(lAngle);
+        const numPurlinsLeft = Math.floor(leftSlopeLen / purlinSpacing);
+
+        for (let bayIndex = 0; bayIndex < bayCount; bayIndex++) {
+            const zStart = -bayIndex * baySpacing;
+
+            for (let i = 0; i <= numPurlinsLeft; i++) {
+                const dist = i * purlinSpacing;
+
+                const xLocal = dist * Math.cos(lAngle);
+                const yLocal = dist * Math.sin(lAngle);
+
+                // Perp Offset 
+                const xPerp = -perpOffset * Math.sin(lAngle);
+                const yPerp = perpOffset * Math.cos(lAngle);
+
+                purlins.push(
+                    <mesh
+                        key={`Bay${bayIndex}-L-${i}`}
+                        geometry={bayGeometry}
+                        material={material}
+                        position={[
+                            -halfWidth + xLocal + xPerp,
+                            leftEave + yLocal + yPerp,
+                            zStart
+                        ]}
+                        rotation={[0, Math.PI, -lAngle]}
+                    />
+                );
+            }
+        }
+
+        // --- Right Side (Shallow - 15 deg) ---
+        const rightSlopeLen = rightSpan / Math.cos(rAngle);
+        const numPurlinsRight = Math.floor(rightSlopeLen / purlinSpacing);
+
+        for (let bayIndex = 0; bayIndex < bayCount; bayIndex++) {
+            const zStart = -bayIndex * baySpacing;
+
+            for (let i = 0; i <= numPurlinsRight; i++) {
+                const dist = i * purlinSpacing;
+
+                // Right Side Logic: Starts at Right Eave (Width/2, EaveHeight)
+                // Goes Up-Left.
+                // Local X = - dist * cos(rAngle)
+                // Local Y = dist * sin(rAngle)
+
+                const xLocal = -dist * Math.cos(rAngle);
+                const yLocal = dist * Math.sin(rAngle);
+
+                // Perp Offset (Normal points UP-RIGHT) -> (sin, cos)
+                const xPerp = perpOffset * Math.sin(rAngle);
+                const yPerp = perpOffset * Math.cos(rAngle);
+
+                purlins.push(
+                    <mesh
+                        key={`Bay${bayIndex}-R-${i}`}
+                        geometry={bayGeometry}
+                        material={material}
+                        position={[
+                            halfWidth + xLocal + xPerp,
+                            eaveHeight - 1.5 + yLocal + yPerp, // Lower by 1.5m
+                            zStart
+                        ]}
+                        rotation={[0, Math.PI, rAngle]}
+                    />
+                );
+            }
+        }
+
     }
     // --- SYMMETRICAL GENERATION ---
     else {

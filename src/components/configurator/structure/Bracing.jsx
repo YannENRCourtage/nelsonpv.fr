@@ -32,8 +32,12 @@ export function Bracing({ width, length, bayCount, baySpacing, eaveHeight, roofP
         // --- Wall Bracing (Long pans) ---
         // Cross between Column i and Column i+1
         const yBot = 0.5;
-        const yTopLeft = eaveHeight - 0.5;
-        const yTopRight = isMonopente ? ridgeHeight - 0.5 : eaveHeight - 0.5;
+        // Monopente: Left is Ridge (High), Right is Eave (Low)
+        const yTopLeft = isMonopente ? ridgeHeight - 0.5 : eaveHeight - 0.5;
+        let yTopRight = eaveHeight - 0.5;
+        if (buildingType === 'asymetrique_1') {
+            yTopRight = 3.9;
+        }
 
         // Coordinates for Left Wall (-width/2)
         const p1 = new THREE.Vector3(-width / 2, yBot, zStart);
@@ -62,15 +66,70 @@ export function Bracing({ width, length, bayCount, baySpacing, eaveHeight, roofP
         // --- Roof Bracing (Versants) ---
         if (isMonopente) {
             // Single Cross across full width
-            // Left (Low) to Right (High)
-            const L_Eave_Start = new THREE.Vector3(-width / 2, eaveHeight, zStart);
-            const R_Ridge_End = new THREE.Vector3(width / 2, ridgeHeight, zEnd);
+            // High Left (Ridge) to Low Right (Eave)
 
-            const R_Ridge_Start = new THREE.Vector3(width / 2, ridgeHeight, zStart);
-            const L_Eave_End = new THREE.Vector3(-width / 2, eaveHeight, zEnd);
+            // Cross 1: High Left Start -> Low Right End
+            const L_Ridge_Start = new THREE.Vector3(-width / 2, ridgeHeight, zStart);
+            const R_Eave_End = new THREE.Vector3(width / 2, eaveHeight, zEnd);
 
-            bracings.push(createRod(L_Eave_Start, R_Ridge_End, `roof-Mono-${i}-1`));
-            bracings.push(createRod(R_Ridge_Start, L_Eave_End, `roof-Mono-${i}-2`));
+            // Cross 2: Low Right Start -> High Left End
+            const R_Eave_Start = new THREE.Vector3(width / 2, eaveHeight, zStart);
+            const L_Ridge_End = new THREE.Vector3(-width / 2, ridgeHeight, zEnd);
+
+            bracings.push(createRod(L_Ridge_Start, R_Eave_End, `roof-Mono-${i}-1`));
+            bracings.push(createRod(R_Eave_Start, L_Ridge_End, `roof-Mono-${i}-2`));
+
+        } else if (buildingType === 'asymetrique_1') {
+            // Asymmetrical: Right Side (75%) 15deg, Left Side (25%) Steep
+            // Ridge is at x = -width/2 + (0.25 * width) = -0.25 * width
+            // Wait, coordinate system:
+            // Center is 0. Left Wall -W/2. Right Wall +W/2.
+            // Left Span = 0.25 * W.
+            // Apex X = -Width/2 + LeftSpan.
+
+            const leftSpan = width * 0.25;
+            const rightSpan = width * 0.75;
+
+            // Recalculate Heights (Match PortalFrame/Exact Logic)
+            const asymRightEave = 4.0;
+            const w = width;
+            let asymLeftEave = 6.4;
+            let asymRidge = 7.4;
+
+            if (Math.abs(w - 20) < 0.5) { asymLeftEave = 7.4; asymRidge = 8.4; }
+            else if (Math.abs(w - 16.4) < 0.5 || Math.abs(w - 16) < 0.5) { asymLeftEave = 6.4; asymRidge = 7.4; }
+            else {
+                // Fallback
+                const rS = 15 * Math.PI / 180;
+                asymRidge = 4.0 + (w * 0.75 * Math.tan(rS));
+                asymLeftEave = asymRidge - (w * 0.25 * Math.tan(15 * Math.PI / 180));
+            }
+
+            // Offset to match Rafter
+            const rafterOffset = 0.15;
+            const leftStartH = asymLeftEave + rafterOffset;
+            const rightStartH = asymRightEave + rafterOffset;
+            const apexY = asymRidge;
+            const apexX = -width / 2 + (width * 0.25);
+
+            // Left Slope Bracing:
+            const L_Eave_Start = new THREE.Vector3(-width / 2, leftStartH, zStart);
+            const L_Apex_Start = new THREE.Vector3(apexX - 0.1, apexY, zStart);
+            const L_Eave_End = new THREE.Vector3(-width / 2, leftStartH, zEnd);
+            const L_Apex_End = new THREE.Vector3(apexX - 0.1, apexY, zEnd);
+
+            bracings.push(createRod(L_Eave_Start, L_Apex_End, `roof-L-Asym-${i}-1`));
+            bracings.push(createRod(L_Apex_Start, L_Eave_End, `roof-L-Asym-${i}-2`));
+
+            // Right Slope Bracing:
+            const R_Eave_Start = new THREE.Vector3(width / 2, rightStartH, zStart);
+            const R_Apex_Start = new THREE.Vector3(apexX + 0.1, apexY, zStart);
+            const R_Eave_End = new THREE.Vector3(width / 2, rightStartH, zEnd);
+            const R_Apex_End = new THREE.Vector3(apexX + 0.1, apexY, zEnd);
+
+            bracings.push(createRod(R_Eave_Start, R_Apex_End, `roof-R-Asym-${i}-1`));
+            bracings.push(createRod(R_Apex_Start, R_Eave_End, `roof-R-Asym-${i}-2`));
+
 
         } else {
             // Symmetrical: Two Crosses (Left->Center, Right->Center)

@@ -302,7 +302,7 @@ function Header() {
             <NavLink to="/crm" className={({ isActive }) => isActive ? 'nav-link active crm' : 'nav-link crm'}>CRM</NavLink>
             <NavLink to="/project/new/edit" className={({ isActive }) => isActive ? 'nav-link active editeur' : 'nav-link editeur'}>Editeur de projet</NavLink>
 
-            {user?.role === 'admin' && (
+            {(user?.role === 'admin' || user?.permissions?.canAccessConfigurator) && (
               <NavLink to="/configurateur" className={({ isActive }) => isActive ? 'nav-link active configurateur' : 'nav-link configurateur'}>Configurateur</NavLink>
             )}
 

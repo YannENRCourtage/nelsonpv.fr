@@ -190,30 +190,39 @@ export default function ProjectEditor() {
     }
   }, [project?.zip, updateProject]);
 
-  const handlePickPhotos = (e) => {
+  // Helper for Base64 conversion
+  const toBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+  });
+
+  const handlePickPhotos = async (e) => {
     const files = Array.from(e.target.files || []);
-    const newPhotos = files.map(file => ({
-      id: URL.createObjectURL(file),
-      file: file,
-      name: file.name,
-      // Create a persistent URL or ensure file is handled correctly during upload
-    }));
-    // Limit to 16
-    const updatedPhotos = [...photos, ...newPhotos].slice(0, 16);
-    setPhotos(updatedPhotos);
-    updateProject({ photos: updatedPhotos });
+    try {
+      const newPhotos = await Promise.all(files.map(file => toBase64(file)));
+      // Combine with existing (strings), limit to 16
+      const updatedPhotos = [...photos, ...newPhotos].slice(0, 16);
+      setPhotos(updatedPhotos);
+      updateProject({ photos: updatedPhotos });
+    } catch (err) {
+      console.error("Error processing photos", err);
+      toast({ title: "Erreur", description: "Impossible de traiter les photos.", variant: "destructive" });
+    }
   };
 
-  const deletePhoto = (idToDelete) => {
-    const updatedPhotos = photos.filter(p => p.id !== idToDelete);
+  const deletePhoto = (index, photoSrc) => {
+    const updatedPhotos = photos.filter((_, i) => i !== index);
     setPhotos(updatedPhotos);
     updateProject({ photos: updatedPhotos });
-    // Also remove from map if it exists
-    window.dispatchEvent(new CustomEvent("map:delete-feature-by-prop", { detail: { prop: 'photoId', value: idToDelete } }));
+    // Try to remove from map using photo source as ID (if that's what was used)
+    window.dispatchEvent(new CustomEvent("map:delete-feature-by-prop", { detail: { prop: 'photoId', value: photoSrc } }));
   };
 
-  const placePhotoOnMap = (photo, index) => {
-    window.dispatchEvent(new CustomEvent("map:place-photo", { detail: { id: photo.id, number: index + 1 } }));
+  const placePhotoOnMap = (photoSrc, index) => {
+    // Use photo source (URL/Base64) as ID
+    window.dispatchEvent(new CustomEvent("map:place-photo", { detail: { id: photoSrc, number: index + 1 } }));
     toast({ title: "Placer la photo", description: `Cliquez sur la carte pour placer la photo n°${index + 1}.` });
   };
 
@@ -801,24 +810,29 @@ export default function ProjectEditor() {
         <div className="grid grid-cols-8 gap-3">
           {Array.from({ length: 16 }).map((_, i) => {
             const photo = photos[i];
+            // Normalize: if object, take .id (legacy/fallback), else use string
+            const photoSrc = typeof photo === 'object' && photo !== null ? photo.id : photo;
+
             return (
               <div key={i} className="group relative aspect-[4/3] w-full overflow-hidden rounded-lg border bg-gray-100">
-                {photo ? (
+                {photoSrc ? (
                   <>
-                    <img src={photo.id} className="h-full w-full object-cover" alt={photo.name || `photo-${i + 1}`} />
+                    <img src={photoSrc} className="h-full w-full object-cover" alt={`photo-${i + 1}`} />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                      <Button type="button" size="sm" onClick={() => placePhotoOnMap(photo, i)} className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 h-auto">
+                      <Button type="button" size="sm" onClick={() => placePhotoOnMap(photoSrc, i)} className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 h-auto">
                         <MapIcon size={14} className="mr-1" />
                         Placer
                       </Button>
-                      <Button type="button" size="sm" variant="destructive" onClick={() => deletePhoto(photo.id)} className="text-xs px-2 py-1 h-auto">
+                      <Button type="button" size="sm" variant="destructive" onClick={() => deletePhoto(i, photoSrc)} className="text-xs px-2 py-1 h-auto">
                         <X size={14} className="mr-1" />
                         Suppr.
                       </Button>
                     </div>
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] p-1 truncate">{photo.name}</div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] p-1 truncate">Photo {i + 1}</div>
                     <div className="absolute top-1 left-1 bg-blue-600 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs font-bold">{i + 1}</div>
                   </>
+
+
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-[11px] text-gray-500">Vide</div>
                 )}

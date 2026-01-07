@@ -99,10 +99,10 @@ export function ControlPanel() {
                             </button>
                             <button
                                 onClick={() => setLeftSide(leftSide === 'appentis' ? 'none' : 'appentis')}
-                                disabled={buildingType === 'monopente'}
+                                disabled={buildingType === 'monopente' || buildingType.startsWith('asymetrique')}
                                 className={`flex-1 py-1.5 rounded text-xs font-bold uppercase border transition-all ${leftSide === 'appentis'
                                     ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
-                                    : buildingType === 'monopente'
+                                    : (buildingType === 'monopente' || buildingType.startsWith('asymetrique'))
                                         ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
                                         : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
                                     }`}
@@ -127,10 +127,10 @@ export function ControlPanel() {
                             </button>
                             <button
                                 onClick={() => setRightSide(rightSide === 'appentis' ? 'none' : 'appentis')}
-                                disabled={buildingType === 'monopente'}
+                                disabled={buildingType === 'monopente' || buildingType.startsWith('asymetrique')}
                                 className={`flex-1 py-1.5 rounded text-xs font-bold uppercase border transition-all ${rightSide === 'appentis'
                                     ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
-                                    : buildingType === 'monopente'
+                                    : (buildingType === 'monopente' || buildingType.startsWith('asymetrique'))
                                         ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
                                         : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
                                     }`}
@@ -221,11 +221,11 @@ export function ControlPanel() {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                        <span className="text-slate-700">Pente: <strong>{roofPitch}°</strong></span>
+                        <span className="text-slate-700">Pente: <strong>{buildingType.startsWith('asymetrique') ? 15 : roofPitch}°</strong></span>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                        <span className="text-slate-700">H. Égout: <strong>{eaveHeight}m</strong></span>
+                        <span className="text-slate-700">H. Égout: <strong>{buildingType.startsWith('asymetrique') ? 4 : eaveHeight}m</strong></span>
                     </div>
                 </div>
             </div>

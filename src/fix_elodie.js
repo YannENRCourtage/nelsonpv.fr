@@ -15,6 +15,7 @@ const createElodie = async () => {
                 canAccessCRM: true,
                 canAccessEditor: true,
                 canAccessSimulator: true,
+                canAccessConfigurateur: true,
                 canViewAllProjects: false
             },
             isActive: true,
