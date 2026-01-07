@@ -52,9 +52,16 @@ export function PortalFrame({
 
     // Determine Geometry params based on Type
     if (isAsymetrique2) {
-        // Asymmetrical 2 Zones: 3 columns
-        // INVERTED proportions vs asymetrique_1: apex at 3/4 from LEFT
-        // Fixed values from user specs
+        // Asymmetrical 2 Zones: SAME shape as asymetrique_1 + intermediate column
+        // Apex at 1/4 from LEFT (right side is 3/4, left side is 1/4)
+        const mainPitch = 15 * (Math.PI / 180);
+
+        // SAME proportions as asymetrique_1
+        rightSpan = width * 0.75;  // Right side is LONGER (3/4)
+        leftSpan = width * 0.25;   // Left side is SHORTER (1/4)
+        apexX = -width / 2 + leftSpan; // Apex at 1/4 from left
+
+        // Fixed heights
         rightEaveHeight = 4.0;
 
         // Determine specific values based on width
@@ -62,44 +69,33 @@ export function PortalFrame({
             // 25.5m width
             effectiveRidgeHeight = 8.9;
             leftEaveHeight = 6.9;
+            middleColumnX = width / 2 - 12.4; // 12.4m from right sablière
         } else if (Math.abs(width - 29.1) < 0.1) {
             // 29.1m width
             effectiveRidgeHeight = 9.8;
             leftEaveHeight = 7.9;
             middleColumnX = width / 2 - 16.0; // 16m from right sablière
         } else {
-            // Fallback (shouldn't happen)
+            // Fallback
             effectiveRidgeHeight = ridgeHeight;
             leftEaveHeight = 6.9;
-            middleColumnX = -width / 4;
+            middleColumnX = 0;
         }
 
-        // CORRECTED: Apex at 3/4 from LEFT (inverted from asymetrique_1)
-        leftSpan = width * 0.75;  // Left side is longer (3/4)
-        rightSpan = width * 0.25; // Right side is shorter (1/4)
-        apexX = -width / 2 + leftSpan; // = width/4 (positive, towards right from center)
-
-        // Both slopes are 15° as per user specification
-        const mainPitch = 15 * (Math.PI / 180);
-
-        // Calculate angles based on actual height differences
-        // Left section: from left eave to apex (upward slope)
-        const leftSectionRise = effectiveRidgeHeight - leftEaveHeight;
-        lAngle = Math.atan(leftSectionRise / leftSpan);
-
-        // Right section: from apex to right eave (downward slope)
-        const rightSectionRise = effectiveRidgeHeight - rightEaveHeight;
-        rAngle = Math.atan(rightSectionRise / rightSpan);
+        // Both slopes are 15°
+        rAngle = mainPitch;
+        lAngle = mainPitch;
 
         // Calculate middle column height
-        // Middle column is on the right side (between apex and right eave)
+        // Middle column is on the RIGHT side (between right eave and apex)
         // Distance from right eave to middle column
         const distRightToMiddle = width / 2 - middleColumnX;
-        // Distance from right eave to apex
+        // Distance from right eave to apex (full right span)
         const distRightToApex = rightSpan;
 
-        // Linear interpolation
+        // Linear interpolation along the right slope
         const ratio = distRightToMiddle / distRightToApex;
+        const rightSectionRise = effectiveRidgeHeight - rightEaveHeight;
         middleColumnHeight = rightEaveHeight + (rightSectionRise * ratio);
 
         // Calculate section angles for rafters
@@ -113,8 +109,10 @@ export function PortalFrame({
         const middleSectionRise = effectiveRidgeHeight - middleColumnHeight;
         middleSectionAngle = Math.atan(middleSectionRise / middleSectionSpan);
 
+        // Left section: from apex down to left eave
         leftSectionSpan = leftSpan;
-        leftSectionAngle = lAngle;
+        const leftSectionRise = effectiveRidgeHeight - leftEaveHeight;
+        leftSectionAngle = Math.atan(leftSectionRise / leftSectionSpan);
 
     } else if (isAsymetrique) {
         // Asymmetrical: Right Eave 4.0m, Left/Right Slope 15°.
@@ -383,8 +381,8 @@ export function PortalFrame({
     if (isAsymetrique2) {
         // Calculate column heights with offsets
         const rafterDepth = 0.35;
-        const leftRafterVert = rafterDepth / Math.cos(lAngle);
-        const rightRafterVert = rafterDepth / Math.cos(rAngle);
+        const leftRafterVert = rafterDepth / Math.cos(leftSectionAngle);
+        const rightRafterVert = rafterDepth / Math.cos(rightSectionAngle);
         const middleRafterVert = rafterDepth / Math.cos(middleSectionAngle);
 
         const leftColOffset = leftRafterVert - 0.20;
@@ -395,19 +393,19 @@ export function PortalFrame({
         const rightColHeight = rightEaveHeight + rightColOffset;
         const middleColHeightFinal = middleColumnHeight + middleColOffset;
 
-        // Create VERTICAL column geometries (angle = 0)
+        // Create VERTICAL column geometries
         const leftColumnGeo = createSlantedColumn(baseColumnProfile, 0, false, leftColHeight);
         const rightColumnGeo = createSlantedColumn(baseColumnProfile, 0, false, rightColHeight);
         const middleColumnGeo = createSlantedColumn(baseColumnProfile, 0, false, middleColHeightFinal);
 
         // Calculate rafter lengths
-        // Left section: from left column to apex
-        const leftSectionRafterLength = (leftSectionSpan + horizontalOverhang) / Math.cos(lAngle);
+        // Left section: from left column down to apex (short side)
+        const leftSectionRafterLength = (leftSectionSpan + horizontalOverhang) / Math.cos(leftSectionAngle);
 
-        // Right section part 1: from right column to middle column
-        const rightSectionRafterLength = (rightSectionSpan + horizontalOverhang) / Math.cos(rAngle);
+        // Right section part 1: from right column up to middle column
+        const rightSectionRafterLength = (rightSectionSpan + horizontalOverhang) / Math.cos(rightSectionAngle);
 
-        // Middle section: from middle column to apex
+        // Middle section: from middle column up to apex
         const middleSectionRafterLength = (middleSectionSpan + horizontalOverhang / 2) / Math.cos(middleSectionAngle);
 
         return (
@@ -415,7 +413,7 @@ export function PortalFrame({
                 {/* Left Column - VERTICAL */}
                 <mesh geometry={leftColumnGeo} material={steelMaterial} position={[-width / 2, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
 
-                {/* Middle Column - VERTICAL (Intermediate) */}
+                {/* Middle Column - VERTICAL (on right side, intermediate) */}
                 <mesh geometry={middleColumnGeo} material={steelMaterial} position={[middleColumnX, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
 
                 {/* Right Column - VERTICAL */}
@@ -423,27 +421,27 @@ export function PortalFrame({
 
                 {/* Main Apex Assembly at Ridge (Diamond Gusset) */}
                 <group position={[apexX, effectiveRidgeHeight, 0]}>
-                    {createApexHaunchAssemblySCREB(lAngle, middleSectionAngle)}
+                    {createApexHaunchAssemblySCREB(leftSectionAngle, middleSectionAngle)}
                 </group>
 
                 {/* Intermediate Apex at Middle Column */}
                 <group position={[middleColumnX, middleColHeightFinal, 0]}>
-                    {createApexHaunchAssemblySCREB(middleSectionAngle, rAngle)}
+                    {createApexHaunchAssemblySCREB(middleSectionAngle, rightSectionAngle)}
                 </group>
 
-                {/* Left Rafter (from left column to main apex) - slopes UP */}
-                <group position={[-width / 2, leftColHeight, 0]} rotation={[0, 0, lAngle]}>
+                {/* Left Rafter (from apex down to left column) - short side */}
+                <group position={[-width / 2, leftColHeight, 0]} rotation={[0, 0, leftSectionAngle]}>
                     {createRafterAssembly(leftSectionRafterLength - 0.05, false)}
                 </group>
 
-                {/* Middle Rafter (from middle column to main apex) - slopes UP */}
+                {/* Middle Rafter (from middle column up to apex) */}
                 <group position={[middleColumnX, middleColHeightFinal, 0]} rotation={[0, 0, middleSectionAngle]}>
                     {createRafterAssembly(middleSectionRafterLength - 0.05, false)}
                 </group>
 
-                {/* Right Rafter (from right column to middle column) - slopes UP */}
-                <group position={[width / 2, rightColHeight, 0]} rotation={[0, 0, -rAngle]}>
-                    {createRafterAssembly(rightSectionRafterLength - 0.05, true)}
+                {/* Right Rafter (from right column up to middle column) */}
+                <group position={[width / 2, rightColHeight, 0]} rotation={[0, 0, rightSectionAngle]}>
+                    {createRafterAssembly(rightSectionRafterLength - 0.05, false)}
                 </group>
 
             </group>
