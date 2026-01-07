@@ -382,14 +382,11 @@ export function PortalFrame({
         const rightColHeight = rightEaveHeight + rightColOffset;
         const middleColHeightFinal = middleColumnHeight + middleColOffset;
 
-        // Create column geometries
-        const leftColumnGeo = useMemo(() => createSlantedColumn(baseColumnProfile, lAngle, false, leftColHeight), [baseColumnProfile, leftColHeight, lAngle]);
-        const rightColumnGeo = useMemo(() => createSlantedColumn(baseColumnProfile, -rAngle, true, rightColHeight), [baseColumnProfile, rightColHeight, rAngle]);
-        const middleColumnGeo = useMemo(() => {
-            // Middle column needs to accommodate angles on both sides
-            // For simplicity, make it vertical with appropriate height
-            return createSlantedColumn(baseColumnProfile, 0, false, middleColHeightFinal);
-        }, [baseColumnProfile, middleColHeightFinal]);
+        // Create column geometries directly (no useMemo inside conditional)
+        const leftColumnGeo = createSlantedColumn(baseColumnProfile, lAngle, false, leftColHeight);
+        const rightColumnGeo = createSlantedColumn(baseColumnProfile, -rAngle, true, rightColHeight);
+        // Middle column vertical with appropriate height
+        const middleColumnGeo = createSlantedColumn(baseColumnProfile, 0, false, middleColHeightFinal);
 
         // Calculate rafter lengths
         // Right section: from right column to middle column
