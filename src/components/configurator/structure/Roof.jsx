@@ -146,14 +146,14 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         const section3Length = leftSpan / Math.cos(mainSlope);
         const section3RoofLength = section3Length; // No overhang on left
 
-        // Create geometries for 3 sections
-        const section1Profile = useMemo(() => createTrapezoidalProfile(section1RoofLength, 0.035, 0.25), [section1RoofLength]);
-        const section2Profile = useMemo(() => createTrapezoidalProfile(section2RoofLength, 0.035, 0.25), [section2RoofLength]);
-        const section3Profile = useMemo(() => createTrapezoidalProfile(section3RoofLength, 0.035, 0.25), [section3RoofLength]);
+        // Create geometries for 3 sections (directly, no useMemo in conditional)
+        const section1Profile = createTrapezoidalProfile(section1RoofLength, 0.035, 0.25);
+        const section2Profile = createTrapezoidalProfile(section2RoofLength, 0.035, 0.25);
+        const section3Profile = createTrapezoidalProfile(section3RoofLength, 0.035, 0.25);
 
-        const section1Geo = useMemo(() => new THREE.ExtrudeGeometry(section1Profile, { depth: length + 1.0, bevelEnabled: false }), [section1Profile, length]);
-        const section2Geo = useMemo(() => new THREE.ExtrudeGeometry(section2Profile, { depth: length + 1.0, bevelEnabled: false }), [section2Profile, length]);
-        const section3Geo = useMemo(() => new THREE.ExtrudeGeometry(section3Profile, { depth: length + 1.0, bevelEnabled: false }), [section3Profile, length]);
+        const section1Geo = new THREE.ExtrudeGeometry(section1Profile, { depth: length + 1.0, bevelEnabled: false });
+        const section2Geo = new THREE.ExtrudeGeometry(section2Profile, { depth: length + 1.0, bevelEnabled: false });
+        const section3Geo = new THREE.ExtrudeGeometry(section3Profile, { depth: length + 1.0, bevelEnabled: false });
 
         // Positioning helper
         const getOffsetProps = (slopeLen, angle, isRight, overhang) => {
