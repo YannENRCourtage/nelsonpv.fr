@@ -179,9 +179,13 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         const leftAngle = isWidth29 ? 15 * (Math.PI / 180) : 17 * (Math.PI / 180);
 
         // Left Offset Logic
-        // Base was -0.25 (from step 478). For 25.5m: Lower by 20cm -> -0.45.
+        // Base was -0.25 (from step 478).
+        // For 25.5m: Lower by 20cm -> -0.45.
+        // For 29.1m: Raise by 10cm -> -0.25 + 0.10 = -0.15.
         const leftRefOffset = -0.25;
-        const leftOffset = isWidth25 ? leftRefOffset - 0.20 : leftRefOffset;
+        let leftOffset = leftRefOffset;
+        if (isWidth25) leftOffset = leftRefOffset - 0.20;
+        if (isWidth29) leftOffset = leftRefOffset + 0.10; // -0.15
 
         const section1Props = getOffsetProps(section1Length, rightAngle, true, section1Overhang);
         const section2Props = getOffsetProps(section2Length, rightAngle, true, 0.25);
