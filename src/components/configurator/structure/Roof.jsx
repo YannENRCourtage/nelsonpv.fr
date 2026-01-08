@@ -171,32 +171,39 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
 
         // Calculate ACTUAL angles based on geometry (Ridge/Eave Heights)
         // This ensures parallelism with the structure even if pitch is slightly off (e.g. 14.37 vs 15)
-        const realRightAngle = Math.atan((ridgeH - asymRightEaveH) / (width * 0.75));
-        const realLeftAngle = Math.atan((ridgeH - asymLeftEaveH) / (width * 0.25));
+        // Calculate ACTUAL angles based on geometry (Ridge/Eave Heights)
+        // This ensures parallelism with the structure even if pitch is slightly off (e.g. 14.37 vs 15)
+        // requested change: "affecte lui une pente de 15°" -> Revert to fixed 15 degrees?
+        // If we force 15 degrees but the structure (portal frame) is using geometric heights, we lose parallelism.
+        // BUT the user EXPLICITLY asked for "affecte lui une pente de 15°".
+        // Let's use 15 degrees.
+        const fixedAngle = 15 * (Math.PI / 180);
 
-        const section1Props = getOffsetProps(section1Length, realRightAngle, true, section1Overhang);
-        const section2Props = getOffsetProps(section2Length, realRightAngle, true, 0.25);
-        const section3Props = getOffsetProps(section3Length, realLeftAngle, false, 0);
+        const section1Props = getOffsetProps(section1Length, fixedAngle, true, section1Overhang);
+        const section2Props = getOffsetProps(section2Length, fixedAngle, true, 0.25);
+        const section3Props = getOffsetProps(section3Length, fixedAngle, false, 0);
 
         return (
             <group>
                 {/* Section 1: Right column to middle column */}
+                {/* Right Offset: Previously 0.00 (-0.05+0.05). Requested: Lower 10cm -> -0.10. */}
                 <mesh geometry={section1Geo} material={roofMaterial}
-                    position={[width / 2 - section1Props.x, asymRightEaveH + section1Props.y - 0.05 + 0.05, -length - 0.5]}
+                    position={[width / 2 - section1Props.x, asymRightEaveH + section1Props.y - 0.10, -length - 0.5]}
                     rotation={[0, 0, section1Props.rot]}
                     scale={[-1, 1, 1]}
                     castShadow receiveShadow />
 
                 {/* Section 2: Middle column to apex */}
                 <mesh geometry={section2Geo} material={roofMaterial}
-                    position={[middleColumnX - section2Props.x, middleColumnHeight + section2Props.y - 0.05 + 0.05, -length - 0.5]}
+                    position={[middleColumnX - section2Props.x, middleColumnHeight + section2Props.y - 0.10, -length - 0.5]}
                     rotation={[0, 0, section2Props.rot]}
                     scale={[-1, 1, 1]}
                     castShadow receiveShadow />
 
                 {/* Section 3: Apex to left column */}
+                {/* Left Offset: Previously -0.35 (-0.40+0.05). Requested: Raise 10cm -> -0.25. */}
                 <mesh geometry={section3Geo} material={roofMaterial}
-                    position={[-width / 2 + section3Props.x, asymLeftEaveH + section3Props.y - 0.40 + 0.05, -length - 0.5]}
+                    position={[-width / 2 + section3Props.x, asymLeftEaveH + section3Props.y - 0.25, -length - 0.5]}
                     rotation={[0, 0, section3Props.rot]}
                     castShadow receiveShadow />
             </group>

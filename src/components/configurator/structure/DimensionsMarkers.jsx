@@ -114,10 +114,24 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         if (buildingType === 'monopente') {
             // Right Side
             x = rightSide !== 'none' ? width / 2 + 1.5 : width / 2 + 3.0;
-        } else if (buildingType === 'asymetrique_1') {
-            // Right Side (Fixed at 4.0m)
+        } else if (buildingType === 'asymetrique_1' || buildingType === 'asymetrique_2') {
+            // Right Side (Fixed at 4.0m) - handled here for simple display logic, 
+            // but for Asym 2 we use a specific marker elsewhere? 
+            // Actually Asym 1 uses standard logic for Right (4m), Asym 2 uses specific Right (4m).
+            // But this block is for the "Primary Eave Height" marker.
+            // For Asym 1, primary is Right (4m).
+            // For Asym 2, primary is Right (4m) too? No, user said "Remove 5.5m indication on left".
+            // The standard marker (lines 122-123) is Left Side for Sym/Mono?
+
+            // Let's refine:
+            // Sym/Default -> Left Side (eaveHeight)
+            // Monopente -> Right Side (eaveHeight)
+            // Asym 1 -> Right Side (4.0m)
+            // Asym 2 -> Right Side (4.0m) ? User said "Retire l'indication de 5.5m pour la sablière gauche".
+            // So we want to ensure NO marker is drawn on the left here.
+
             h = 4.0;
-            x = rightSide !== 'none' ? width / 2 + 1.5 : width / 2 + 3.0;
+            x = rightSide !== 'none' ? width / 2 + 1.5 : width / 2 + 3.0; // Show on Right for Asym 1 & 2
         } else {
             // Left Side (Standard Sym)
             x = leftSide !== 'none' ? -width / 2 - 1.5 : -width / 2 - 3.0;
