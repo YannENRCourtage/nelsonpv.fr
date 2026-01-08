@@ -171,10 +171,17 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
 
         // Calculate ACTUAL angles based on geometry (Ridge/Eave Heights)
         // This ensures parallelism with the structure even if pitch is slightly off (e.g. 14.37 vs 15)
-        // NEW REQUEST: "affecte une pente de 17° à la couverture qui descend vers la gauche"
+        // NEW REQUEST (Step 542 & 562): Width-dependent adjustments
+        const isWidth29 = Math.abs(width - 29.1) < 0.1;
+        const isWidth25 = Math.abs(width - 25.5) < 0.1;
 
         const rightAngle = 15 * (Math.PI / 180);
-        const leftAngle = 17 * (Math.PI / 180);
+        const leftAngle = isWidth29 ? 15 * (Math.PI / 180) : 17 * (Math.PI / 180);
+
+        // Left Offset Logic
+        // Base was -0.25 (from step 478). For 25.5m: Lower by 20cm -> -0.45.
+        const leftRefOffset = -0.25;
+        const leftOffset = isWidth25 ? leftRefOffset - 0.20 : leftRefOffset;
 
         const section1Props = getOffsetProps(section1Length, rightAngle, true, section1Overhang);
         const section2Props = getOffsetProps(section2Length, rightAngle, true, 0.25);
