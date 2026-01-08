@@ -175,7 +175,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         const isWidth29 = Math.abs(width - 29.1) < 0.1;
         const isWidth25 = Math.abs(width - 25.5) < 0.1;
 
-        const rightAngle = 15 * (Math.PI / 180);
+        const rightAngle = 14 * (Math.PI / 180);
         const leftAngle = isWidth29 ? 15 * (Math.PI / 180) : 17 * (Math.PI / 180);
 
         // Left Offset Logic
