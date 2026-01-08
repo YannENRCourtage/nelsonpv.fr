@@ -480,25 +480,27 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </Text>
             </group>
 
-            {/* 3. EAVE HEIGHT (Left) */}
-            <group>
-                <Line points={heightPoints[0]} color={lineColor} lineWidth={lineWidth} />
-                <Line points={heightPoints[1]} color={lineColor} lineWidth={lineWidth} />
-                <mesh position={heightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                <mesh position={heightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                <Text
-                    position={[xEave - 0.5, heightEnd.y / 2, 0]}
-                    rotation={[0, 0, Math.PI / 2]} // Vertical text to match others
-                    fontSize={0.8}
-                    color={textColor}
-                    anchorX="center"
-                    anchorY="middle"
-                    outlineWidth={0.1}
-                    outlineColor="#ffffff"
-                >
-                    {buildingType === 'asymetrique_1' ? '4 m' : `${parseFloat(eaveHeight.toFixed(2))} m`}
-                </Text>
-            </group>
+            {/* 3. EAVE HEIGHT (Left/Standard) - EXCLUDE Asym 2 (has specific markers) */}
+            {heightPoints && buildingType !== 'asymetrique_2' && (
+                <group>
+                    <Line points={heightPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={heightPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={heightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={heightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text
+                        position={[xEave - 0.5, heightEnd.y / 2, 0]}
+                        rotation={[0, 0, Math.PI / 2]} // Vertical text to match others
+                        fontSize={0.8}
+                        color={textColor}
+                        anchorX="center"
+                        anchorY="middle"
+                        outlineWidth={0.1}
+                        outlineColor="#ffffff"
+                    >
+                        {buildingType === 'asymetrique_1' ? '4 m' : `${parseFloat(eaveHeight.toFixed(2))} m`}
+                    </Text>
+                </group>
+            )}
 
             {/* 4. RIDGE HEIGHT */}
             <group>
@@ -651,7 +653,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             <Text
                 position={[
                     width / 4,
-                    ridgeHeight + 0.0, // Lowered by another 1m (previous was +1.0)
+                    ridgeHeight - 1.0, // Lowered by another 1m (now -1.0 from ridge)
                     -length / 2,
                 ]}
                 rotation={[-Math.PI / 2, 0, Math.PI / 2]} // 90° Counter-clockwise Horizontal
