@@ -109,6 +109,19 @@ export default function ProjectEditor() {
   const [activeLayers, setActiveLayers] = useState(new Set());
   const [remountKey, setRemountKey] = useState(0);
 
+  useEffect(() => {
+    const handleForceReset = () => {
+      setCaptures([null, null, null, null]);
+      setPhotos([]);
+      setSymbolToPlace(null);
+      setActiveTab('map');
+      setRemountKey(k => k + 1);
+      window.dispatchEvent(new CustomEvent('map:reset'));
+    };
+    window.addEventListener('project:editor-reset', handleForceReset);
+    return () => window.removeEventListener('project:editor-reset', handleForceReset);
+  }, []);
+
 
   useEffect(() => {
     const loadProject = async () => {

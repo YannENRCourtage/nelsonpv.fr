@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, Outlet, NavLink, useNavigate, useMatch } from 'react-router-dom';
 import Footer from './Footer.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
@@ -16,6 +16,16 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover.jsx';
 import NotificationBell from './NotificationBell.jsx';
 import { ref, getDownloadURL } from "firebase/storage";
 import { storage } from "@/config/firebase.js";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const toastStyle = { className: "bg-white text-gray-900 p-4 border border-gray-300 rounded-lg shadow-lg" };
 
@@ -228,7 +238,8 @@ function Header() {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const isProjectPage = useMatch("/project/:projectId/edit");
-  const { project, saveProject } = useProject();
+  const { project, saveProject, setProject } = useProject();
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
 
 
   const handleLogout = async () => {
@@ -240,7 +251,84 @@ function Header() {
     }
   };
 
-  // ...
+  const startNewProject = () => {
+    const newProject = {
+      id: `proj_${Date.now()}`,
+      name: '',
+      firstName: '',
+      email: '',
+      phone: '',
+      address: '',
+      zip: '',
+      city: '',
+      gps: '',
+      type: 'Construction',
+      status: 'Nouveau',
+      user: project?.user || '',
+      projectSize: '',
+      comments: '',
+      captures: [null, null, null, null],
+      photos: [],
+      features: null,
+      createdAt: new Date().toISOString()
+    };
+
+    setProject(newProject);
+    // Force reset map and editor state
+    window.dispatchEvent(new CustomEvent('project:editor-reset'));
+    navigate('/project/new/edit');
+  };
+
+  const handleEditorClick = (e) => {
+    if (isProjectPage) {
+      e.preventDefault();
+      setShowSaveDialog(true);
+    } else {
+      // Even if not on project page, ensure we start fresh if clicking "Editeur de projet"
+      // But NavLink default behavior is just navigation.
+      // We want to force a RESET.
+      // E.g. if we are on CRM and click Editor, we want a BLANK editor, not the last loaded project state (if any persisted).
+      // Standard Link to /project/new/edit should trigger the useEffect in ProjectEditor to reset IF the ID changes.
+      // If we want to accept the user requirement "A chaque fois que je clique sur Editeur de projet, cela doit me ramener sur une page vierge",
+      // it is safer to force the reset manually here too.
+      e.preventDefault();
+      startNewProject();
+    }
+  };
+
+  const handleSaveAndContinue = async () => {
+    if (saveProject) {
+      try {
+        await saveProject();
+        toast({
+          ...toastStyle,
+          title: "Projet sauvegardé !",
+          description: "Vos modifications ont été enregistrées.",
+          variant: "default"
+        });
+        startNewProject();
+      } catch (error) {
+        console.error("Erreur sauvegarde projet:", error);
+        toast({
+          ...toastStyle,
+          title: "Erreur de sauvegarde",
+          description: "Impossible de sauvegarder le projet.",
+          variant: "destructive"
+        });
+      } finally {
+        setShowSaveDialog(false);
+      }
+    } else {
+      startNewProject();
+      setShowSaveDialog(false);
+    }
+  };
+
+  const handleDiscardAndContinue = () => {
+    startNewProject();
+    setShowSaveDialog(false);
+  };
+
 
   const handleSave = async () => {
     if (saveProject) {
@@ -300,7 +388,13 @@ function Header() {
           </Link>
           <nav className="app-header__nav">
             <NavLink to="/crm" className={({ isActive }) => isActive ? 'nav-link active crm' : 'nav-link crm'}>CRM</NavLink>
-            <NavLink to="/project/new/edit" className={({ isActive }) => isActive ? 'nav-link active editeur' : 'nav-link editeur'}>Editeur de projet</NavLink>
+            <NavLink
+              to="/project/new/edit"
+              onClick={handleEditorClick}
+              className={({ isActive }) => isActive ? 'nav-link active editeur' : 'nav-link editeur'}
+            >
+              Editeur de projet
+            </NavLink>
 
             {(user?.role === 'admin' || user?.permissions?.canAccessConfigurator) && (
               <NavLink to="/configurateur" className={({ isActive }) => isActive ? 'nav-link active configurateur' : 'nav-link configurateur'}>Configurateur</NavLink>
@@ -352,6 +446,26 @@ function Header() {
           </Button>
         </div>
       </div>
+
+      <AlertDialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Voulez-vous sauvegarder les modifications ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vous êtes sur le point de quitter cette page. Voulez-vous sauvegarder vos modifications avant de créer un nouveau projet ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDiscardAndContinue}>Non</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => {
+              e.preventDefault();
+              handleSaveAndContinue();
+            }}>
+              Oui
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>
   );
 }
