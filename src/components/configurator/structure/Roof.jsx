@@ -177,21 +177,21 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
             <group>
                 {/* Section 1: Right column to middle column */}
                 <mesh geometry={section1Geo} material={roofMaterial}
-                    position={[width / 2 - section1Props.x, asymRightEaveH + section1Props.y, -length - 0.5]}
+                    position={[width / 2 - section1Props.x, asymRightEaveH + section1Props.y - 0.2, -length - 0.5]}
                     rotation={[0, 0, section1Props.rot]}
                     scale={[-1, 1, 1]}
                     castShadow receiveShadow />
 
                 {/* Section 2: Middle column to apex */}
                 <mesh geometry={section2Geo} material={roofMaterial}
-                    position={[middleColumnX - section2Props.x, middleColumnHeight + section2Props.y, -length - 0.5]}
+                    position={[middleColumnX - section2Props.x, middleColumnHeight + section2Props.y - 0.2, -length - 0.5]}
                     rotation={[0, 0, section2Props.rot]}
                     scale={[-1, 1, 1]}
                     castShadow receiveShadow />
 
                 {/* Section 3: Apex to left column */}
                 <mesh geometry={section3Geo} material={roofMaterial}
-                    position={[-width / 2 + section3Props.x, asymLeftEaveH + section3Props.y + 0.10, -length - 0.5]}
+                    position={[-width / 2 + section3Props.x, asymLeftEaveH + section3Props.y + 0.10 - 0.2, -length - 0.5]}
                     rotation={[0, 0, section3Props.rot]}
                     castShadow receiveShadow />
             </group>
