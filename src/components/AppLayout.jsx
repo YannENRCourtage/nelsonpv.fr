@@ -270,10 +270,14 @@ function Header() {
       captures: [null, null, null, null],
       photos: [],
       features: null,
+      chatLines: [],
+      seismicZone: '',
+      snowZone: '',
+      windZone: '',
       createdAt: new Date().toISOString()
     };
 
-    setProject(newProject);
+    setProject(() => newProject);
     // Force reset map and editor state
     window.dispatchEvent(new CustomEvent('project:editor-reset'));
     navigate('/project/new/edit');

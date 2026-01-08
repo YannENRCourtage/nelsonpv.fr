@@ -127,7 +127,31 @@ export default function ProjectEditor() {
     const loadProject = async () => {
       // If creating new project, set init state
       if (projectId === 'new') {
-        setProject({ id: `proj_${Date.now()}`, name: '', status: 'Nouveau', createdAt: new Date().toISOString() });
+        const emptyProject = {
+          id: `proj_${Date.now()}`,
+          name: '',
+          firstName: '',
+          email: '',
+          phone: '',
+          address: '',
+          zip: '',
+          city: '',
+          gps: '',
+          type: 'Construction',
+          status: 'Nouveau',
+          user: project?.user || '',
+          projectSize: '',
+          comments: '',
+          captures: [null, null, null, null],
+          photos: [],
+          features: null,
+          chatLines: [],
+          seismicZone: '',
+          snowZone: '',
+          windZone: '',
+          createdAt: new Date().toISOString()
+        };
+        setProject(() => emptyProject);
         setRemountKey(k => k + 1);
         return;
       }
@@ -395,11 +419,15 @@ export default function ProjectEditor() {
       captures: [null, null, null, null],
       photos: [],
       features: null,
+      chatLines: [],
+      seismicZone: '',
+      snowZone: '',
+      windZone: '',
       createdAt: new Date().toISOString()
     };
 
     // Reset all state
-    setProject(newProject);
+    setProject(() => newProject);
     setCaptures([null, null, null, null]);
     setPhotos([]);
     setSymbolToPlace(null);
