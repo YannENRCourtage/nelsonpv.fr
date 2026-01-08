@@ -129,16 +129,16 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
         const leftSectionLength = leftSectionSpan / Math.cos(leftSectionAngle);
         const numPurlinsLeft = Math.floor(leftSectionLength / purlinSpacing);
 
-        // Section 2: Middle column to apex
-        const middleSectionSpan = distLeftToApex - distLeftToMiddle;
+        // Section 2: Apex to middle column (first part of right slope)
+        const middleSectionSpan = distApexToMiddle;
         const middleSectionRise = ridge - middleHeight;
         const middleSectionAngle = Math.atan(middleSectionRise / middleSectionSpan);
         const middleSectionLength = middleSectionSpan / Math.cos(middleSectionAngle);
         const numPurlinsMiddle = Math.floor(middleSectionLength / purlinSpacing);
 
-        // Section 3: Apex to right column
-        const rightSectionSpan = width - distLeftToApex;
-        const rightSectionRise = ridge - rightEave;
+        // Section 3: Middle column to right eave (second part of right slope)
+        const rightSectionSpan = rightSpan - distApexToMiddle;
+        const rightSectionRise = middleHeight - rightEave;
         const rightSectionAngle = Math.atan(rightSectionRise / rightSectionSpan);
         const rightSectionLength = rightSectionSpan / Math.cos(rightSectionAngle);
         const numPurlinsRight = Math.floor(rightSectionLength / purlinSpacing);
