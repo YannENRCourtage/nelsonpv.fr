@@ -171,17 +171,14 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
 
         // Calculate ACTUAL angles based on geometry (Ridge/Eave Heights)
         // This ensures parallelism with the structure even if pitch is slightly off (e.g. 14.37 vs 15)
-        // Calculate ACTUAL angles based on geometry (Ridge/Eave Heights)
-        // This ensures parallelism with the structure even if pitch is slightly off (e.g. 14.37 vs 15)
-        // requested change: "affecte lui une pente de 15°" -> Revert to fixed 15 degrees?
-        // If we force 15 degrees but the structure (portal frame) is using geometric heights, we lose parallelism.
-        // BUT the user EXPLICITLY asked for "affecte lui une pente de 15°".
-        // Let's use 15 degrees.
-        const fixedAngle = 15 * (Math.PI / 180);
+        // NEW REQUEST: "affecte une pente de 17° à la couverture qui descend vers la gauche"
 
-        const section1Props = getOffsetProps(section1Length, fixedAngle, true, section1Overhang);
-        const section2Props = getOffsetProps(section2Length, fixedAngle, true, 0.25);
-        const section3Props = getOffsetProps(section3Length, fixedAngle, false, 0);
+        const rightAngle = 15 * (Math.PI / 180);
+        const leftAngle = 17 * (Math.PI / 180);
+
+        const section1Props = getOffsetProps(section1Length, rightAngle, true, section1Overhang);
+        const section2Props = getOffsetProps(section2Length, rightAngle, true, 0.25);
+        const section3Props = getOffsetProps(section3Length, leftAngle, false, 0);
 
         return (
             <group>
