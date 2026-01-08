@@ -131,64 +131,6 @@ export function Bracing({ width, length, bayCount, baySpacing, eaveHeight, roofP
             bracings.push(createRod(R_Apex_Start, R_Eave_End, `roof-R-Asym-${i}-2`));
 
         } else {
-            // Asymmetrical 2 Zones: 3 sections
-            // Middle column at 13.1m from left
-            const middleColumnX = -width / 2 + 13.1;
-
-            // Calculate heights based on width
-            let leftEave, ridge;
-            const rightEave = 4.0;
-            if (Math.abs(width - 25.5) < 0.1) {
-                leftEave = 6.9;
-                ridge = 8.9;
-            } else if (Math.abs(width - 29.1) < 0.1) {
-                leftEave = 7.9;
-                ridge = 9.8;
-            } else {
-                const mainPitch = 15 * (Math.PI / 180);
-                const apexDistFromLeft = width * 0.75;
-                const rightSlopeDist = width - apexDistFromLeft;
-                ridge = rightEave + (rightSlopeDist * Math.tan(mainPitch));
-                leftEave = ridge - ((width * 0.25) * Math.tan(mainPitch));
-            }
-
-            // Calculate middle column height
-            const distLeftToMiddle = 13.1;
-            const distLeftToApex = width * 0.75;
-            const ratio = distLeftToMiddle / distLeftToApex;
-            const middleHeight = leftEave + ((ridge - leftEave) * ratio);
-
-            const apexX = -width / 2 + distLeftToApex;
-            const rafterOffset = 0.15;
-
-            // Left Section: Left column to middle column
-            const L_Eave_Start = new THREE.Vector3(-width / 2, leftEave + rafterOffset, zStart);
-            const L_Middle_Start = new THREE.Vector3(middleColumnX - 0.1, middleHeight, zStart);
-            const L_Eave_End = new THREE.Vector3(-width / 2, leftEave + rafterOffset, zEnd);
-            const L_Middle_End = new THREE.Vector3(middleColumnX - 0.1, middleHeight, zEnd);
-
-            bracings.push(createRod(L_Eave_Start, L_Middle_End, `roof-L2-${i}-1`));
-            bracings.push(createRod(L_Middle_Start, L_Eave_End, `roof-L2-${i}-2`));
-
-            // Middle Section: Middle column to apex
-            const M_Middle_Start = new THREE.Vector3(middleColumnX + 0.1, middleHeight, zStart);
-            const M_Apex_Start = new THREE.Vector3(apexX - 0.1, ridge, zStart);
-            const M_Middle_End = new THREE.Vector3(middleColumnX + 0.1, middleHeight, zEnd);
-            const M_Apex_End = new THREE.Vector3(apexX - 0.1, ridge, zEnd);
-
-            bracings.push(createRod(M_Middle_Start, M_Apex_End, `roof-M2-${i}-1`));
-            bracings.push(createRod(M_Apex_Start, M_Middle_End, `roof-M2-${i}-2`));
-
-            // Right Section: Apex to right column
-            const R_Apex_Start = new THREE.Vector3(apexX + 0.1, ridge, zStart);
-            const R_Eave_Start = new THREE.Vector3(width / 2, rightEave + rafterOffset, zStart);
-            const R_Apex_End = new THREE.Vector3(apexX + 0.1, ridge, zEnd);
-            const R_Eave_End = new THREE.Vector3(width / 2, rightEave + rafterOffset, zEnd);
-
-            bracings.push(createRod(R_Apex_Start, R_Eave_End, `roof-R2-${i}-1`));
-            bracings.push(createRod(R_Eave_Start, R_Apex_End, `roof-R2-${i}-2`));
-
-        } else {
             // Symmetrical: Two Crosses (Left->Center, Right->Center)
             // Center Height = symRidgeHeight
 
