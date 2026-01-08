@@ -649,7 +649,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             <Text
                 position={[
                     width / 4,
-                    ridgeHeight + 1.0, // 1m above ridge (lowered from 2m)
+                    ridgeHeight + 0.0, // Lowered by another 1m (previous was +1.0)
                     -length / 2,
                 ]}
                 rotation={[-Math.PI / 2, 0, Math.PI / 2]} // 90° Counter-clockwise Horizontal
