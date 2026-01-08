@@ -112,13 +112,15 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
             leftEave = ridge - ((width * 0.25) * Math.tan(mainPitch));
         }
 
-        const apexX = -width / 2 + (width * 0.75);
+        const apexX = -width / 2 + (width * 0.25); // Apex at 1/4 from left
 
         // Calculate middle column height
+        // Middle column is in RIGHT section between apex and right eave
         const distLeftToMiddle = 13.1;
-        const distLeftToApex = width * 0.75;
-        const ratio = distLeftToMiddle / distLeftToApex;
-        const middleHeight = leftEave + ((ridge - leftEave) * ratio);
+        const distApexToMiddle = distLeftToMiddle - (width * 0.25);
+        const rightSpan = width * 0.75;
+        const ratio = distApexToMiddle / rightSpan;
+        const middleHeight = ridge - ((ridge - rightEave) * ratio);
 
         // Section 1: Left column to middle column
         const leftSectionSpan = distLeftToMiddle;

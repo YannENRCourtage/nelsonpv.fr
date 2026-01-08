@@ -336,16 +336,18 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
         const middleColX = -width / 2 + 13.1;
         const leftWallX = -width / 2;
-        const zFront = 3.0;
+        const zFront = 1.5; // Offset toward building
 
         // Width marker from left wall to middle column
+        // Left to middle marker with gap in middle
         const wStart = new THREE.Vector3(leftWallX, 0.1, zFront);
         const wEnd = new THREE.Vector3(middleColX, 0.1, zFront);
         const wMid = new THREE.Vector3(leftWallX + 6.55, 0.1, zFront);
+        const textGap = 1.5; // Larger gap for text clarity
 
         const wPoints = [
-            [wStart, new THREE.Vector3(wMid.x - gapSize / 2, 0.1, zFront)],
-            [new THREE.Vector3(wMid.x + gapSize / 2, 0.1, zFront), wEnd]
+            [wStart, new THREE.Vector3(wMid.x - textGap, 0.1, zFront)],
+            [new THREE.Vector3(wMid.x + textGap, 0.1, zFront), wEnd]
         ];
 
         return {
@@ -354,6 +356,41 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             distance: 13.1
         };
     }, [buildingType, width, gapSize]);
+
+    // 3e. Middle Column to Right Distance (Asymm 2 Zones ONLY)
+    const asym2RightDistData = useMemo(() => {
+        if (buildingType !== 'asymetrique_2') return null;
+
+        const middleColX = -width / 2 + 13.1;
+        const rightWallX = width / 2;
+        const zFront = 1.5; // Same offset as left marker
+
+        // Determine distance based on width
+        let distValue;
+        if (Math.abs(width - 25.5) < 0.1) {
+            distValue = 12.4;
+        } else if (Math.abs(width - 29.1) < 0.1) {
+            distValue = 16.0;
+        } else {
+            distValue = width - 13.1; // Fallback
+        }
+
+        const rStart = new THREE.Vector3(middleColX, 0.1, zFront);
+        const rEnd = new THREE.Vector3(rightWallX, 0.1, zFront);
+        const rMid = new THREE.Vector3(middleColX + distValue / 2, 0.1, zFront);
+        const textGap = 1.5;
+
+        const rPoints = [
+            [rStart, new THREE.Vector3(rMid.x - textGap, 0.1, zFront)],
+            [new THREE.Vector3(rMid.x + textGap, 0.1, zFront), rEnd]
+        ];
+
+        return {
+            rStart, rEnd, rMid,
+            widthPoints: rPoints,
+            distance: distValue
+        };
+    }, [buildingType, width]);
 
     // 7. Surface Area
     const surfaceArea = useMemo(() => {
@@ -503,7 +540,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={asym2MiddleColData.wStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={asym2MiddleColData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[asym2MiddleColData.wMid.x, 0.2, 3.5]}
+                        position={[asym2MiddleColData.wMid.x, 0.2, 1.5]}
                         rotation={[-Math.PI / 2, 0, 0]}
                         fontSize={0.8}
                         color={textColor}
@@ -513,6 +550,28 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         outlineColor="#ffffff"
                     >
                         {`13.1 m`}
+                    </Text>
+                </group>
+            )}
+
+            {/* 8. ASYMMETRIC 2 ZONES RIGHT DISTANCE (Middle to Right) */}
+            {asym2RightDistData && (
+                <group>
+                    <Line points={asym2RightDistData.widthPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={asym2RightDistData.widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={asym2RightDistData.rStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={asym2RightDistData.rEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text
+                        position={[asym2RightDistData.rMid.x, 0.2, 1.5]}
+                        rotation={[-Math.PI / 2, 0, 0]}
+                        fontSize={0.8}
+                        color={textColor}
+                        anchorX="center"
+                        anchorY="bottom"
+                        outlineWidth={0.1}
+                        outlineColor="#ffffff"
+                    >
+                        {`${asym2RightDistData.distance} m`}
                     </Text>
                 </group>
             )}
