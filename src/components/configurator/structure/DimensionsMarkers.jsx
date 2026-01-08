@@ -653,7 +653,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             <Text
                 position={[
                     width / 4,
-                    ridgeHeight - 1.0, // Lowered by another 1m (now -1.0 from ridge)
+                    buildingType === 'symetrique' ? ridgeHeight + 1.0 : ridgeHeight - 1.0,
                     -length / 2,
                 ]}
                 rotation={[-Math.PI / 2, 0, Math.PI / 2]} // 90° Counter-clockwise Horizontal
