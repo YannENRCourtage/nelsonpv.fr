@@ -188,6 +188,13 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
         }
     }
 
+    // Calculate coverage Vertical Offset
+    // Base is 0.35.
+    // For asym_2 right, add 0.15 -> 0.50.
+    const baseCoverY = 0.35;
+    const extraCoverY = (buildingType === 'asymetrique_2' && side === 'right') ? 0.15 : 0;
+    const finalCoverY = baseCoverY + extraCoverY;
+
     return (
         <group
             position={[groupPosX, startHeight, 0]}
@@ -197,15 +204,12 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
             <mesh
                 geometry={roofGeometry}
                 material={roofMaterial}
-                // Updated Position (Phase 30 maintained):
-                // 1. Shifted (shiftX, shiftY) based on new 55% logic.
-                // 2. Raised by 5cm (+0.05 in Y) relative to previous baseline. Total +0.35.
                 position={[
                     shiftX,
-                    shiftY + 0.35,
+                    shiftY + finalCoverY,
                     -length - 0.5
                 ]}
-                rotation={[0, 0, -angleRad]} // Rotate down 10 deg
+                rotation={[0, 0, -angleRad]} // Rotate down
                 castShadow
                 receiveShadow
             />
@@ -214,7 +218,7 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
             <group
                 position={[
                     shiftX,
-                    shiftY + 0.35, // Matches the "Raised by 5cm" + "0.30" logic?
+                    shiftY + finalCoverY,
                     -length / 2
                 ]}
                 rotation={[0, 0, -angleRad]}
