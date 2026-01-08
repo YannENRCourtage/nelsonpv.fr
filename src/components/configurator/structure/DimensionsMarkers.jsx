@@ -330,6 +330,31 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         };
     }, [rightSide, rightWidth, rightHeight, width, gapSize, buildingType, ridgeHeight]);
 
+    // 3d. Middle Column Distance (Asymmetrical 2 Zones ONLY)
+    const asym2MiddleColData = useMemo(() => {
+        if (buildingType !== 'asymetrique_2') return null;
+
+        const middleColX = -width / 2 + 13.1;
+        const leftWallX = -width / 2;
+        const zFront = 3.0;
+
+        // Width marker from left wall to middle column
+        const wStart = new THREE.Vector3(leftWallX, 0.1, zFront);
+        const wEnd = new THREE.Vector3(middleColX, 0.1, zFront);
+        const wMid = new THREE.Vector3(leftWallX + 6.55, 0.1, zFront);
+
+        const wPoints = [
+            [wStart, new THREE.Vector3(wMid.x - gapSize / 2, 0.1, zFront)],
+            [new THREE.Vector3(wMid.x + gapSize / 2, 0.1, zFront), wEnd]
+        ];
+
+        return {
+            wStart, wEnd, wMid,
+            widthPoints: wPoints,
+            distance: 13.1
+        };
+    }, [buildingType, width, gapSize]);
+
     // 7. Surface Area
     const surfaceArea = useMemo(() => {
         const totalWidth = width + leftWidth + rightWidth;
@@ -466,6 +491,28 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={leftExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text position={[leftExtData.xH, leftExtData.extHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
                         {buildingType === 'monopente' ? '3 m' : `${parseFloat(Number(leftExtData.extHeight).toFixed(2))} m`}
+                    </Text>
+                </group>
+            )}
+
+            {/* 7. ASYMMETRIC 2 ZONES MIDDLE COLUMN DISTANCE */}
+            {asym2MiddleColData && (
+                <group>
+                    <Line points={asym2MiddleColData.widthPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={asym2MiddleColData.widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={asym2MiddleColData.wStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={asym2MiddleColData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text
+                        position={[asym2MiddleColData.wMid.x, 0.2, 3.5]}
+                        rotation={[-Math.PI / 2, 0, 0]}
+                        fontSize={0.8}
+                        color={textColor}
+                        anchorX="center"
+                        anchorY="bottom"
+                        outlineWidth={0.1}
+                        outlineColor="#ffffff"
+                    >
+                        {`13.1 m`}
                     </Text>
                 </group>
             )}

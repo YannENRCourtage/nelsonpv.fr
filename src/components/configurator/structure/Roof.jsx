@@ -113,15 +113,8 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         const ridgeH = 4.0 + (w * 0.75 * Math.tan(mainSlope));
         const asymLeftEaveH = ridgeH - (w * 0.25 * Math.tan(mainSlope));
 
-        // Determine middle column position
-        let middleColumnX;
-        if (Math.abs(width - 25.5) < 0.1) {
-            middleColumnX = width / 2 - 12.4;
-        } else if (Math.abs(width - 29.1) < 0.1) {
-            middleColumnX = width / 2 - 16.0;
-        } else {
-            middleColumnX = 0;
-        }
+        // Determine middle column position - always at 13.1m from left
+        let middleColumnX = -width / 2 + 13.1;
 
         // Calculate middle column height
         const distRightToMiddle = width / 2 - middleColumnX;

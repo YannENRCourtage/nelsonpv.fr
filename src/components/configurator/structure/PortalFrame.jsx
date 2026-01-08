@@ -56,44 +56,48 @@ export function PortalFrame({
         // All rafters point RIGHTWARD toward the apex
         const mainPitch = 15 * (Math.PI / 180);
 
-        // Apex is on the RIGHT side
-        leftSpan = width * 0.75;  // Left side is LONGER (3/4) - goes UP to apex
-        rightSpan = width * 0.25; // Right side is SHORTER (1/4) - goes DOWN from apex
-        apexX = -width / 2 + leftSpan; // = width/4 (apex on right side)
-
         // Fixed heights
         rightEaveHeight = 4.0;
 
-        // Determine specific values based on width
+        // Middle column is ALWAYS at 13.1m from the left wall post
+        middleColumnX = -width / 2 + 13.1;
+
+        // Calculate distances
+        const distLeftToMiddle = 13.1; // From left wall to middle column
+        const distMiddleToRight = width - 13.1; // From middle column to right wall
+
+        // Calculate the apex position (where the two slopes meet)
+        // The apex is where the slope from the left and the slope from the right meet
+        // We need to find where these two 15° slopes intersect
+
+        // For 25.5m width:
         if (Math.abs(width - 25.5) < 0.1) {
-            // 25.5m width
+            leftEaveHeight = 6.9;
             effectiveRidgeHeight = 8.9;
-            leftEaveHeight = 6.9;
-            middleColumnX = -width / 2 + 6.0; // 6m from left sablière
         } else if (Math.abs(width - 29.1) < 0.1) {
-            // 29.1m width
-            effectiveRidgeHeight = 9.8;
             leftEaveHeight = 7.9;
-            middleColumnX = -width / 2 + 6.0; // 6m from left sablière
+            effectiveRidgeHeight = 9.8;
         } else {
-            // Fallback
-            effectiveRidgeHeight = ridgeHeight;
+            // Fallback: calculate based on 15° slope from right
             leftEaveHeight = 6.9;
-            middleColumnX = 0;
+            // Assume apex is at 3/4 of width from left
+            const apexDistFromLeft = width * 0.75;
+            const rightSlopeDist = width - apexDistFromLeft;
+            effectiveRidgeHeight = rightEaveHeight + (rightSlopeDist * Math.tan(mainPitch));
         }
+
+        // Calculate apex position
+        leftSpan = width * 0.75;  // Apex is at 3/4 from left
+        rightSpan = width * 0.25;
+        apexX = -width / 2 + leftSpan;
 
         // Both slopes are 15°
         rAngle = mainPitch;
         lAngle = mainPitch;
 
-        // Calculate middle column height
-        // Middle column is on the LEFT side (between left eave and apex)
-        // Distance from left eave to middle column
-        const distLeftToMiddle = middleColumnX - (-width / 2);
-        // Distance from left eave to apex (full left span)
+        // Calculate middle column height using linear interpolation
+        // The middle column is on the left section (between left eave and apex)
         const distLeftToApex = leftSpan;
-
-        // Linear interpolation along the left slope (going up from left to apex)
         const ratio = distLeftToMiddle / distLeftToApex;
         const leftSectionRise = effectiveRidgeHeight - leftEaveHeight;
         middleColumnHeight = leftEaveHeight + (leftSectionRise * ratio);
