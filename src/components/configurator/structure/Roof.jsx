@@ -198,9 +198,8 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
                     castShadow receiveShadow />
 
                 {/* Section 3: Apex to left column */}
-                {/* Left Offset: Previously -0.35 (-0.40+0.05). Requested: Raise 10cm -> -0.25. */}
                 <mesh geometry={section3Geo} material={roofMaterial}
-                    position={[-width / 2 + section3Props.x, asymLeftEaveH + section3Props.y - 0.25, -length - 0.5]}
+                    position={[-width / 2 + section3Props.x, asymLeftEaveH + section3Props.y + leftOffset, -length - 0.5]}
                     rotation={[0, 0, section3Props.rot]}
                     castShadow receiveShadow />
             </group>
