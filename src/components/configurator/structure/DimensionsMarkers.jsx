@@ -153,6 +153,19 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
             // Apex
             x = -width / 2 + (width * 0.25);
+        } else if (buildingType === 'asymetrique_2') {
+            // Asym 2 Ridge: at apex (1/4 from left)
+            if (Math.abs(width - 25.5) < 0.1) {
+                h = 8.9;
+            } else if (Math.abs(width - 29.1) < 0.1) {
+                h = 9.8;
+            } else {
+                const rAngle = 15 * (Math.PI / 180);
+                h = 4.0 + (width * 0.75 * Math.tan(rAngle));
+            }
+
+            // Apex at 1/4 from left
+            x = -width / 2 + (width * 0.25);
         }
 
         const z = 0;
@@ -208,6 +221,28 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             ]
         };
     }, [buildingType, width, leftSide, gapSize]);
+
+    // 3d. Right Eave Height (Asymmetrical 2 Zones ONLY)
+    const asym2RightEaveData = useMemo(() => {
+        if (buildingType !== 'asymetrique_2') return null;
+
+        const h = 4.0; // Fixed right eave height
+        const x = width / 2 + 1.5; // Right side, outside
+
+        const start = new THREE.Vector3(x, 0, 0);
+        const end = new THREE.Vector3(x, h, 0);
+        const mid = new THREE.Vector3(x, h / 2, 0);
+
+        return {
+            xRight: x,
+            hVal: h,
+            start, end,
+            points: [
+                [start, new THREE.Vector3(mid.x, mid.y - gapSize / 2, mid.z)],
+                [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
+            ]
+        };
+    }, [buildingType, width, gapSize]);
 
     // 6. Text Markers (HTML Overlay logic could be here, or just returning points)
     // The visual rendering is done by <Text> components in the parent or here if we added them.
