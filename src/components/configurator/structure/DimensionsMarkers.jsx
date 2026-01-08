@@ -501,6 +501,19 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </group>
             )}
 
+            {/* 4c. ASYM 2 RIGHT EAVE HEIGHT */}
+            {asym2RightEaveData && (
+                <group>
+                    <Line points={asym2RightEaveData.points[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={asym2RightEaveData.points[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={asym2RightEaveData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={asym2RightEaveData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text position={[asym2RightEaveData.xRight + 0.5, asym2RightEaveData.hVal / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                        {`4 m`}
+                    </Text>
+                </group>
+            )}
+
 
 
             {/* 5. RIGHT EXTENSION (If Exists) */}
