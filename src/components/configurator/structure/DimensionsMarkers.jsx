@@ -628,10 +628,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             <Text
                 position={[
                     width / 4,
-                    ridgeHeight - (width / 4) * Math.tan((roofPitch * Math.PI) / 180) + 1.5, // Raised by 50cm (1.0 -> 1.5)
+                    ridgeHeight + 2.0, // 2m above ridge for visibility
                     -length / 2,
                 ]}
-                rotation={[-Math.PI / 2, 0, Math.PI / 2]} // 180° Horizontal
+                rotation={[-Math.PI / 2, 0, 0]} // Horizontal (parallel to ground)
                 fontSize={3}
                 color="#ffffff"
                 anchorX="center"
