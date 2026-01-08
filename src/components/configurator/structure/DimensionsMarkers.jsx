@@ -188,7 +188,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // 3c. Left Eave Height (Asymmetrical ONLY)
     const asymLeftEaveData = useMemo(() => {
-        if (buildingType !== 'asymetrique_1') return null;
+        if (buildingType !== 'asymetrique_1' && buildingType !== 'asymetrique_2') return null;
 
         // Dynamic Calculation: Ridge - Left Drop
         const rightEave = 4.0;
@@ -196,13 +196,20 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const rAngle = 15 * (Math.PI / 180);
         const ridge = rightEave + (rSpan * Math.tan(rAngle));
 
-        // Exact Logic
-        let h = 6.4;
-        if (Math.abs(width - 20) < 0.5) h = 7.4;
-        else if (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5) h = 6.4;
-        else {
-            // Fallback
-            h = ridge - ((width * 0.25) * Math.tan(15 * Math.PI / 180));
+        let h;
+        if (buildingType === 'asymetrique_2') {
+            if (Math.abs(width - 25.5) < 0.1) h = 6.9;
+            else if (Math.abs(width - 29.1) < 0.1) h = 7.9;
+            else h = 6.9; // Fallback
+        } else {
+            // Asym 1
+            h = 6.4;
+            if (Math.abs(width - 20) < 0.5) h = 7.4;
+            else if (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5) h = 6.4;
+            else {
+                // Fallback
+                h = ridge - ((width * 0.25) * Math.tan(15 * Math.PI / 180));
+            }
         }
 
         const x = leftSide !== 'none' ? -width / 2 - 1.5 : -width / 2 - 3.0;
