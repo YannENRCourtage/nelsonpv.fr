@@ -88,6 +88,98 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
             }
         }
     }
+    // --- ASYMMETRICAL 2 ZONES GENERATION ---
+    else if (buildingType === 'asymetrique_2') {
+        const w = width;
+        const rightEave = 4.0;
+        let leftEave, ridge;
+
+        // Heights based on width
+        if (Math.abs(width - 25.5) < 0.1) {
+            leftEave = 6.9;
+            ridge = 8.9;
+        } else if (Math.abs(width - 29.1) < 0.1) {
+            leftEave = 7.9;
+            ridge = 9.8;
+        } else {
+            const rAngle = 15 * (Math.PI / 180);
+            ridge = rightEave + (w * 0.75 * Math.tan(rAngle));
+            leftEave = ridge - (w * 0.25 * Math.tan(rAngle));
+        }
+
+        // Apex at 1/4 from left
+        const apexX = -w / 2 + (w * 0.25);
+
+        // Left slope: left eave to apex (1/4 of width)
+        const leftSpan = w * 0.25;
+        const lRise = ridge - leftEave;
+        const lAngle = Math.atan(lRise / leftSpan);
+
+        // Right slope: apex to right eave (3/4 of width)
+        const rightSpan = w * 0.75;
+        const rRise = ridge - rightEave;
+        const rAngle = Math.atan(rRise / rightSpan);
+
+        // --- Left Side (Short - 1/4) ---
+        const leftSlopeLen = leftSpan / Math.cos(lAngle);
+        const numPurlinsLeft = Math.floor(leftSlopeLen / purlinSpacing);
+
+        for (let bayIndex = 0; bayIndex < bayCount; bayIndex++) {
+            const zStart = -bayIndex * baySpacing;
+
+            for (let i = 0; i <= numPurlinsLeft; i++) {
+                const dist = i * purlinSpacing;
+                const xLocal = dist * Math.cos(lAngle);
+                const yLocal = dist * Math.sin(lAngle);
+                const xPerp = -perpOffset * Math.sin(lAngle);
+                const yPerp = perpOffset * Math.cos(lAngle);
+
+                purlins.push(
+                    <mesh
+                        key={`Bay${bayIndex}-L-${i}`}
+                        geometry={bayGeometry}
+                        material={material}
+                        position={[
+                            -halfWidth + xLocal + xPerp,
+                            leftEave + yLocal + yPerp,
+                            zStart
+                        ]}
+                        rotation={[0, Math.PI, -lAngle]}
+                    />
+                );
+            }
+        }
+
+        // --- Right Side (Long - 3/4) ---
+        const rightSlopeLen = rightSpan / Math.cos(rAngle);
+        const numPurlinsRight = Math.floor(rightSlopeLen / purlinSpacing);
+
+        for (let bayIndex = 0; bayIndex < bayCount; bayIndex++) {
+            const zStart = -bayIndex * baySpacing;
+
+            for (let i = 0; i <= numPurlinsRight; i++) {
+                const dist = i * purlinSpacing;
+                const xLocal = dist * Math.cos(rAngle);
+                const yLocal = dist * Math.sin(rAngle);
+                const xPerp = perpOffset * Math.sin(rAngle);
+                const yPerp = perpOffset * Math.cos(rAngle);
+
+                purlins.push(
+                    <mesh
+                        key={`Bay${bayIndex}-R-${i}`}
+                        geometry={bayGeometry}
+                        material={material}
+                        position={[
+                            apexX + xLocal + xPerp,
+                            ridge - yLocal + yPerp,
+                            zStart
+                        ]}
+                        rotation={[0, Math.PI, rAngle]}
+                    />
+                );
+            }
+        }
+    }
     // --- ASYMMETRICAL GENERATION ---
     else if (buildingType === 'asymetrique_1') {
         const w = width;
