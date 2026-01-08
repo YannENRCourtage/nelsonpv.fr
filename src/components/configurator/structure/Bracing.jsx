@@ -130,8 +130,7 @@ export function Bracing({ width, length, bayCount, baySpacing, eaveHeight, roofP
             bracings.push(createRod(R_Eave_Start, R_Apex_End, `roof-R-Asym-${i}-1`));
             bracings.push(createRod(R_Apex_Start, R_Eave_End, `roof-R-Asym-${i}-2`));
 
-
-        } else if (buildingType === 'asymetrique_2') {
+        } else {
             // Asymmetrical 2 Zones: 3 sections
             // Middle column at 13.1m from left
             const middleColumnX = -width / 2 + 13.1;
