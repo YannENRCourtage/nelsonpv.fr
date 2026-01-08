@@ -169,9 +169,14 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
             };
         };
 
-        const section1Props = getOffsetProps(section1Length, mainSlope, true, section1Overhang);
-        const section2Props = getOffsetProps(section2Length, mainSlope, true, 0.25);
-        const section3Props = getOffsetProps(section3Length, mainSlope, false, 0);
+        // Calculate ACTUAL angles based on geometry (Ridge/Eave Heights)
+        // This ensures parallelism with the structure even if pitch is slightly off (e.g. 14.37 vs 15)
+        const realRightAngle = Math.atan((ridgeH - asymRightEaveH) / (width * 0.75));
+        const realLeftAngle = Math.atan((ridgeH - asymLeftEaveH) / (width * 0.25));
+
+        const section1Props = getOffsetProps(section1Length, realRightAngle, true, section1Overhang);
+        const section2Props = getOffsetProps(section2Length, realRightAngle, true, 0.25);
+        const section3Props = getOffsetProps(section3Length, realLeftAngle, false, 0);
 
         return (
             <group>

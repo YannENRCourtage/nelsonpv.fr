@@ -37,6 +37,8 @@ export function Bracing({ width, length, bayCount, baySpacing, eaveHeight, roofP
         let yTopRight = eaveHeight - 0.5;
         if (buildingType === 'asymetrique_1') {
             yTopRight = 3.9;
+        } else if (buildingType === 'asymetrique_2') {
+            yTopRight -= 1.0; // Reduce by 1m as requested
         }
 
         // Coordinates for Left Wall (-width/2)
