@@ -631,7 +631,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     ridgeHeight + 2.0, // 2m above ridge for visibility
                     -length / 2,
                 ]}
-                rotation={[-Math.PI / 2, 0, 0]} // Horizontal (parallel to ground)
+                rotation={[-Math.PI / 2, 0, Math.PI / 2]} // 90° Counter-clockwise Horizontal
                 fontSize={3}
                 color="#ffffff"
                 anchorX="center"
