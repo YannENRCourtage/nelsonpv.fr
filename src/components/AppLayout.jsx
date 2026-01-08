@@ -461,10 +461,13 @@ function Header() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleDiscardAndContinue}>Non</AlertDialogCancel>
-            <AlertDialogAction onClick={(e) => {
-              e.preventDefault();
-              handleSaveAndContinue();
-            }}>
+            <AlertDialogAction
+              className="bg-blue-500 text-black hover:bg-blue-600"
+              onClick={(e) => {
+                e.preventDefault();
+                handleSaveAndContinue();
+              }}
+            >
               Oui
             </AlertDialogAction>
           </AlertDialogFooter>
