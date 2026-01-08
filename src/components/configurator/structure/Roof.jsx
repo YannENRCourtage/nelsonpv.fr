@@ -187,6 +187,16 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         if (isWidth25) leftOffset = leftRefOffset - 0.20;
         if (isWidth29) leftOffset = leftRefOffset + 0.10; // -0.15
 
+        // Right Offset Logic
+        // Base was -0.10 (from step 471).
+        // NEW REQUEST:
+        // For 25.5m: Raise by 10cm -> -0.10 + 0.10 = 0.00.
+        // For 29.1m: Raise by 20cm -> -0.10 + 0.20 = +0.10.
+        const rightRefOffset = -0.10;
+        let rightOffset = rightRefOffset;
+        if (isWidth25) rightOffset = rightRefOffset + 0.10;
+        if (isWidth29) rightOffset = rightRefOffset + 0.20;
+
         const section1Props = getOffsetProps(section1Length, rightAngle, true, section1Overhang);
         const section2Props = getOffsetProps(section2Length, rightAngle, true, 0.25);
         const section3Props = getOffsetProps(section3Length, leftAngle, false, 0);
@@ -194,16 +204,15 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         return (
             <group>
                 {/* Section 1: Right column to middle column */}
-                {/* Right Offset: Previously 0.00 (-0.05+0.05). Requested: Lower 10cm -> -0.10. */}
                 <mesh geometry={section1Geo} material={roofMaterial}
-                    position={[width / 2 - section1Props.x, asymRightEaveH + section1Props.y - 0.10, -length - 0.5]}
+                    position={[width / 2 - section1Props.x, asymRightEaveH + section1Props.y + rightOffset, -length - 0.5]}
                     rotation={[0, 0, section1Props.rot]}
                     scale={[-1, 1, 1]}
                     castShadow receiveShadow />
 
                 {/* Section 2: Middle column to apex */}
                 <mesh geometry={section2Geo} material={roofMaterial}
-                    position={[middleColumnX - section2Props.x, middleColumnHeight + section2Props.y - 0.10, -length - 0.5]}
+                    position={[middleColumnX - section2Props.x, middleColumnHeight + section2Props.y + rightOffset, -length - 0.5]}
                     rotation={[0, 0, section2Props.rot]}
                     scale={[-1, 1, 1]}
                     castShadow receiveShadow />
