@@ -114,7 +114,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         if (buildingType === 'monopente') {
             // Right Side
             x = rightSide !== 'none' ? width / 2 + 1.5 : width / 2 + 3.0;
-        } else if (buildingType === 'asymetrique_1' || buildingType === 'asymetrique_2') {
+        } else if (buildingType === 'asymetrique_2') {
+            return { heightPoints: null, heightStart: null, heightEnd: null, xEave: null };
+        } else if (buildingType === 'asymetrique_1') {
             // Right Side (Fixed at 4.0m) - handled here for simple display logic, 
             // but for Asym 2 we use a specific marker elsewhere? 
             // Actually Asym 1 uses standard logic for Right (4m), Asym 2 uses specific Right (4m).
