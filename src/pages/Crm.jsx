@@ -463,6 +463,11 @@ export default function Crm() {
   // Colors helpers
   const getUserColor = (name) => {
     if (!name) return 'bg-slate-100 text-slate-600';
+
+    // Hardcoded overrides
+    if (name.toLowerCase().includes('nicolas')) return 'bg-yellow-100 text-yellow-800';
+    if (name.toLowerCase().includes('yann')) return 'bg-blue-100 text-blue-800';
+
     // Monday-style palette
     const colors = [
       'bg-indigo-100 text-indigo-700', // Blue-ish
@@ -1431,33 +1436,38 @@ export default function Crm() {
                     </td>
                     <td className="px-6 py-4">
                       {(() => {
-                        // Récupérer le nom de l'utilisateur depuis le projet
-                        const projectUser = project.assignedUser || project.createdByFirstName || (typeof project.user === 'string' ? project.user : null);
+                        let projectUser = project.assignedUser || project.createdByFirstName || (typeof project.user === 'string' ? project.user : null);
+                        let photoURL = null;
 
-                        // Si pas trouvé, essayer de retrouver l'utilisateur via createdBy
-                        if (!projectUser && project.createdBy && users.length > 0) {
-                          const userFromList = users.find(u => u.id === project.createdBy);
-                          return <UserAvatar
-                            name={userFromList?.firstName || userFromList?.displayName || null}
-                            photoURL={userFromList?.photoURL}
-                          />;
+                        // Si pas trouvé (ou valeur par défaut), essayer via createdBy
+                        if (!projectUser || projectUser === 'Utilisateur' || projectUser === 'Non assigné') {
+                          if (project.createdBy && users.length > 0) {
+                            const userFromList = users.find(u => u.id === project.createdBy);
+                            if (userFromList) {
+                              projectUser = userFromList.firstName || userFromList.displayName;
+                              photoURL = userFromList.photoURL;
+                            }
+                          }
                         }
 
-                        // Trouver le photoURL de l'utilisateur par son nom
-                        const userWithPhoto = users.find(u =>
-                          (u.firstName && u.firstName.toLowerCase() === projectUser?.toLowerCase()) ||
-                          (u.displayName && u.displayName.toLowerCase() === projectUser?.toLowerCase())
-                        );
+                        // Chercher photo si nom connu
+                        if (projectUser && !photoURL && users.length > 0) {
+                          const userWithPhoto = users.find(u =>
+                            (u.firstName && u.firstName.toLowerCase() === projectUser.toLowerCase()) ||
+                            (u.displayName && u.displayName.toLowerCase() === projectUser.toLowerCase())
+                          );
+                          if (userWithPhoto) photoURL = userWithPhoto.photoURL;
+                        }
 
                         return (
-                          <div className={`flex items-center gap-2 px-2 py-1 rounded-full ${getUserColor(projectUser)} w-fit`}>
-                            <div className="w-6 h-6 rounded-full overflow-hidden bg-white/20 flex-shrink-0">
-                              {userWithPhoto?.photoURL ?
-                                <img src={userWithPhoto.photoURL} className="w-full h-full object-cover" /> :
+                          <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full ${getUserColor(projectUser)} w-fit pr-5 text-left`}>
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
+                              {photoURL ?
+                                <img src={photoURL} className="w-full h-full object-cover" /> :
                                 <span className="flex items-center justify-center w-full h-full text-xs font-bold">{projectUser?.[0]}</span>
                               }
                             </div>
-                            <span className="text-xs font-semibold pr-1 truncate max-w-[100px]">{projectUser || 'Non assigné'}</span>
+                            <span className="text-sm font-bold truncate max-w-[120px]">{projectUser || 'Non assigné'}</span>
                           </div>
                         );
                       })()}
