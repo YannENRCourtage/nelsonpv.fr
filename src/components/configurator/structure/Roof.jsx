@@ -217,10 +217,14 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         // USER REQUEST 10/01/2026 Round 2:
         // "Abaisse la hauteur de la couverture 1 de 10cm" -> Left -> leftOffset - 0.10
         // "Remonte la couverture 2 de 5cm" -> Middle -> section2Offset + 0.05
+        // USER REQUEST 10/01/2026 Round 3:
+        // "Remonte la hauteur de la couverture 1 de 5cm" -> Left -> +0.05
+        // "Remonte la couverture 2 de 2cm" -> Middle -> +0.02
+        // "Abaisse la couverture 3 de 30cm" -> Right -> -0.30
 
-        section2Offset = section2Offset - 0.20 + 0.05;
-        section1Offset = section1Offset + 0.10;
-        leftOffset -= 0.10;
+        section2Offset = section2Offset - 0.20 + 0.05 + 0.02;
+        section1Offset = section1Offset + 0.10 - 0.30;
+        leftOffset = leftOffset - 0.10 + 0.05;
 
         const section1Props = getOffsetProps(section1Length, section1Angle, true, section1Overhang);
         const section2Props = getOffsetProps(section2Length, rightAngle, true, 0.25);
