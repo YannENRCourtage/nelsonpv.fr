@@ -193,9 +193,27 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         // For 25.5m: Raise by 10cm -> -0.10 + 0.10 = 0.00.
         // For 29.1m: Raise by 20cm -> -0.10 + 0.20 = +0.10.
         const rightRefOffset = -0.10;
-        let rightOffset = rightRefOffset;
-        if (isWidth25) rightOffset = rightRefOffset + 0.10;
-        if (isWidth29) rightOffset = rightRefOffset + 0.20;
+
+        // Split Offsets for Section 1 (Right) and Section 2 (Middle)
+        let section1Offset = rightRefOffset; // Right (Cover 3)
+        let section2Offset = rightRefOffset; // Middle (Cover 2)
+
+        if (isWidth25) {
+            // 25.5m Base logic: +10cm
+            section1Offset += 0.10;
+            section2Offset += 0.10;
+        }
+        if (isWidth29) {
+            // 29.1m Base logic: +20cm
+            section1Offset += 0.20;
+            section2Offset += 0.20;
+        }
+
+        // USER REQUEST 10/01/2026: 
+        // "Abaisse la hauteur de la couverture 2 de 20cm" -> Middle (Section 2) -> -0.20
+        // "Augmente la hauteur de la couverture 3 de 10cm" -> Right (Section 1) -> +0.10
+        section2Offset -= 0.20;
+        section1Offset += 0.10;
 
         const section1Props = getOffsetProps(section1Length, rightAngle, true, section1Overhang);
         const section2Props = getOffsetProps(section2Length, rightAngle, true, 0.25);
@@ -203,25 +221,53 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
 
         return (
             <group>
-                {/* Section 1: Right column to middle column */}
+                {/* Section 1 (Right/Cover 3): Right column to middle column */}
                 <mesh geometry={section1Geo} material={roofMaterial}
-                    position={[width / 2 - section1Props.x, asymRightEaveH + section1Props.y + rightOffset, -length - 0.5]}
+                    position={[width / 2 - section1Props.x, asymRightEaveH + section1Props.y + section1Offset, -length - 0.5]}
                     rotation={[0, 0, section1Props.rot]}
                     scale={[-1, 1, 1]}
                     castShadow receiveShadow />
 
-                {/* Section 2: Middle column to apex */}
+                {/* Solar Section 1 */}
+                <group position={[width / 2 - section1Props.x, asymRightEaveH + section1Props.y + section1Offset, -length / 2]}
+                    rotation={[0, 0, section1Props.rot]}
+                    scale={[-1, 1, 1]}> {/* Scale needed for mirroring? SolarPanels generates locally positive X. 
+                                            If we mirror X (-1), then panels might be flipped. 
+                                            Actually SolarPanels aligns with width. 
+                                            Roof mesh uses scale [-1, 1, 1] to flip the trapezoid geometry? 
+                                            Yes, trapezoid is 0 to L. We need it from R to L.
+                                            Let's apply scale to Solar Group too or ensure rotation handles it.
+                                            Right Side rotation is -Angle. 
+                                            If we scale -1 on X for the group, it should match the roof mesh. */}
+                    <SolarPanels surfaceWidth={section1RoofLength} surfaceLength={length + 1.0} />
+                </group>
+
+                {/* Section 2 (Middle/Cover 2): Middle column to apex */}
                 <mesh geometry={section2Geo} material={roofMaterial}
-                    position={[middleColumnX - section2Props.x, middleColumnHeight + section2Props.y + rightOffset, -length - 0.5]}
+                    position={[middleColumnX - section2Props.x, middleColumnHeight + section2Props.y + section2Offset, -length - 0.5]}
                     rotation={[0, 0, section2Props.rot]}
                     scale={[-1, 1, 1]}
                     castShadow receiveShadow />
 
-                {/* Section 3: Apex to left column */}
+                {/* Solar Section 2 */}
+                <group position={[middleColumnX - section2Props.x, middleColumnHeight + section2Props.y + section2Offset, -length / 2]}
+                    rotation={[0, 0, section2Props.rot]}
+                    scale={[-1, 1, 1]}>
+                    <SolarPanels surfaceWidth={section2RoofLength} surfaceLength={length + 1.0} />
+                </group>
+
+                {/* Section 3 (Left/Cover 1): Apex to left column */}
                 <mesh geometry={section3Geo} material={roofMaterial}
                     position={[-width / 2 + section3Props.x, asymLeftEaveH + section3Props.y + leftOffset, -length - 0.5]}
                     rotation={[0, 0, section3Props.rot]}
                     castShadow receiveShadow />
+
+                {/* Solar Section 3 */}
+                <group position={[-width / 2 + section3Props.x, asymLeftEaveH + section3Props.y + leftOffset, -length / 2]}
+                    rotation={[0, 0, section3Props.rot]}>
+                    <SolarPanels surfaceWidth={section3RoofLength} surfaceLength={length + 1.0} />
+                </group>
+
             </group>
         );
     }
