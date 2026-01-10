@@ -176,6 +176,8 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         const isWidth25 = Math.abs(width - 25.5) < 0.1;
 
         const rightAngle = 14 * (Math.PI / 180);
+        // NEW REQUEST 10/01/2026: Cover 3 (Section 1) pitch 16°
+        const section1Angle = 16 * (Math.PI / 180);
         const leftAngle = isWidth29 ? 15 * (Math.PI / 180) : 17 * (Math.PI / 180);
 
         // Left Offset Logic
@@ -209,13 +211,18 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
             section2Offset += 0.20;
         }
 
-        // USER REQUEST 10/01/2026: 
+        // USER REQUEST 10/01/2026 Round 1: 
         // "Abaisse la hauteur de la couverture 2 de 20cm" -> Middle (Section 2) -> -0.20
         // "Augmente la hauteur de la couverture 3 de 10cm" -> Right (Section 1) -> +0.10
-        section2Offset -= 0.20;
-        section1Offset += 0.10;
+        // USER REQUEST 10/01/2026 Round 2:
+        // "Abaisse la hauteur de la couverture 1 de 10cm" -> Left -> leftOffset - 0.10
+        // "Remonte la couverture 2 de 5cm" -> Middle -> section2Offset + 0.05
 
-        const section1Props = getOffsetProps(section1Length, rightAngle, true, section1Overhang);
+        section2Offset = section2Offset - 0.20 + 0.05;
+        section1Offset = section1Offset + 0.10;
+        leftOffset -= 0.10;
+
+        const section1Props = getOffsetProps(section1Length, section1Angle, true, section1Overhang);
         const section2Props = getOffsetProps(section2Length, rightAngle, true, 0.25);
         const section3Props = getOffsetProps(section3Length, leftAngle, false, 0);
 
