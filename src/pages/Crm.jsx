@@ -365,15 +365,54 @@ export default function Crm() {
     color: user?.role === 'admin' ? 'bg-indigo-600' : 'bg-blue-600'
   };
 
-  // Calculate monthly percentage changes
-  const calculateTrend = (current, previous) => {
-    if (!previous || previous === 0) return { trend: 'N/A', trendPositive: true };
-    const change = ((current - previous) / previous) * 100;
+  // Calculate weekly percentage changes
+  const calculateWeeklyGrowth = (currentCount, items, type) => {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    let previousCount = currentCount;
+
+    if (type === 'contacts') {
+      // For contacts, we assume growth is just new contacts created
+      // Previous = Current - CreatedLastWeek
+      const newThisWeek = items.filter(c => new Date(c.createdAt?.toDate?.() || c.createdAt || 0) > oneWeekAgo).length;
+      previousCount = currentCount - newThisWeek;
+    } else if (type === 'projects_in_progress') {
+      // Approximation: 
+      // Inflow: Projects created this week that are 'En cours' (or just created and assumed active? rarely)
+      // Or better: Projects with status 'En cours' don't track when they entered that status.
+      // We'll trust "Active Objects" didn't change much unless a new one was created or an old one finished.
+      // Prev = Current - (CreatedThisWeek & EnCours) + (TerminatedThisWeek)
+      // This is very rough. Let's just track "New Projects" as growth for the "En cours" stock is tricky.
+      // Alternative: Just count how many were modified this week? No.
+      // Let's go with:
+      // Prev = Current - CreatedThisWeek (that are currently en cours) + CompletedThisWeek (that were likely en cours)
+      const createdAndActive = items.filter(p => p.status === 'En cours' && new Date(p.createdAt?.toDate?.() || p.createdAt || 0) > oneWeekAgo).length;
+      const completedRecently = items.filter(p => (p.status === 'Terminé' || p.status === 'terminé') && new Date(p.updatedAt?.toDate?.() || p.updatedAt || 0) > oneWeekAgo).length;
+
+      previousCount = currentCount - createdAndActive + completedRecently;
+
+    } else if (type === 'tasks_in_progress') {
+      // Prev = Current - CreatedThisWeek + CompletedThisWeek
+      const createdAndActive = items.filter(t => !t.completed && new Date(t.createdAt?.toDate?.() || t.createdAt || 0) > oneWeekAgo).length;
+      const completedRecently = items.filter(t => t.completed && new Date(t.updatedAt?.toDate?.() || t.updatedAt || 0) > oneWeekAgo).length;
+      previousCount = currentCount - createdAndActive + completedRecently;
+
+    } else if (type === 'projects_completed') {
+      // Prev = Current - CompletedThisWeek
+      const completedRecently = items.filter(p => (p.status === 'Terminé' || p.status === 'terminé') && new Date(p.updatedAt?.toDate?.() || p.updatedAt || 0) > oneWeekAgo).length;
+      previousCount = currentCount - completedRecently;
+    }
+
+    if (previousCount === 0) return { trend: '100%', trendPositive: true }; // Infinite growth if started from 0
+
+    const change = ((currentCount - previousCount) / previousCount) * 100;
     return {
       trend: `${change > 0 ? '+' : ''}${Math.round(change)}%`,
       trendPositive: change >= 0
     };
   };
+
 
   const currentKpiValues = {
     contacts: contacts.length,
@@ -387,7 +426,7 @@ export default function Crm() {
       icon: Users,
       label: 'Contacts',
       value: currentKpiValues.contacts.toString(),
-      ...calculateTrend(currentKpiValues.contacts, monthlyKpis?.contacts),
+      ...calculateWeeklyGrowth(currentKpiValues.contacts, contacts, 'contacts'),
       color: 'bg-blue-500',
       bgLight: 'bg-blue-50',
       height: 'h-48'
@@ -396,7 +435,7 @@ export default function Crm() {
       icon: FolderHeart,
       label: 'Projets en cours',
       value: currentKpiValues.projectsInProgress.toString(),
-      ...calculateTrend(currentKpiValues.projectsInProgress, monthlyKpis?.projectsInProgress),
+      ...calculateWeeklyGrowth(currentKpiValues.projectsInProgress, projects, 'projects_in_progress'),
       color: 'bg-green-500',
       bgLight: 'bg-green-50',
       height: 'h-48'
@@ -405,7 +444,7 @@ export default function Crm() {
       icon: CheckSquare,
       label: 'Tâches en cours',
       value: currentKpiValues.tasksInProgress.toString(),
-      ...calculateTrend(currentKpiValues.tasksInProgress, monthlyKpis?.tasksInProgress),
+      ...calculateWeeklyGrowth(currentKpiValues.tasksInProgress, tasks, 'tasks_in_progress'),
       color: 'bg-orange-500',
       bgLight: 'bg-orange-50',
       height: 'h-48'
@@ -414,12 +453,48 @@ export default function Crm() {
       icon: CheckCircle2,
       label: 'Projets terminés',
       value: currentKpiValues.projectsCompleted.toString(),
-      ...calculateTrend(currentKpiValues.projectsCompleted, monthlyKpis?.projectsCompleted),
+      ...calculateWeeklyGrowth(currentKpiValues.projectsCompleted, projects, 'projects_completed'),
       color: 'bg-purple-500',
       bgLight: 'bg-purple-50',
       height: 'h-48'
     },
   ];
+
+  // Colors helpers
+  const getUserColor = (name) => {
+    if (!name) return 'bg-slate-100 text-slate-600';
+    // Monday-style palette
+    const colors = [
+      'bg-indigo-100 text-indigo-700', // Blue-ish
+      'bg-pink-100 text-pink-700',     // Pink-ish
+      'bg-amber-100 text-amber-700',   // Orange-ish
+      'bg-emerald-100 text-emerald-700', // Green-ish
+      'bg-cyan-100 text-cyan-700',     // Cyan-ish
+      'bg-fuchsia-100 text-fuchsia-700' // Purple-ish
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  const getStatusColor = (status) => {
+    const s = (status || 'Nouveau').toLowerCase();
+    if (s === 'terminé' || s === 'termine') return 'bg-green-400 text-white'; // Monday 'Done' green is solid usually
+    if (s === 'en cours') return 'bg-blue-400 text-white'; // Monday 'Working on it' is orange/blue
+    if (s === 'nouveau' || s === 'draft') return 'bg-slate-400 text-white';
+    if (s === 'abandonné') return 'bg-red-400 text-white';
+    return 'bg-slate-200 text-slate-800'; // Default gray
+  };
+
+  const getTypeColor = (type) => {
+    const t = (type || '').toLowerCase();
+    if (t.includes('construction')) return 'bg-purple-400 text-white';
+    if (t.includes('rénovation') || t.includes('renovation')) return 'bg-orange-400 text-white';
+    if (t.includes('location')) return 'bg-teal-400 text-white';
+    return 'bg-gray-300 text-gray-800';
+  };
 
 
   const navItems = [
@@ -873,8 +948,19 @@ export default function Crm() {
                             (u.displayName && u.displayName.toLowerCase() === contactCreator?.toLowerCase())
                           );
 
-                          return <UserAvatar name={contactCreator} photoURL={userWithPhoto?.photoURL} />;
+                          return (
+                            <div className={`flex items-center gap-2 px-2 py-1 rounded-full ${getUserColor(contactCreator)} w-fit`}>
+                              <div className="w-6 h-6 rounded-full overflow-hidden bg-white/20 flex-shrink-0">
+                                {userWithPhoto?.photoURL ?
+                                  <img src={userWithPhoto.photoURL} className="w-full h-full object-cover" /> :
+                                  <span className="flex items-center justify-center w-full h-full text-xs font-bold">{contactCreator?.[0]}</span>
+                                }
+                              </div>
+                              <span className="text-xs font-semibold pr-1 truncate max-w-[100px]">{contactCreator || 'Utilisateur'}</span>
+                            </div>
+                          );
                         })()}
+
                       </td>
                       <td className="px-6 py-4 text-slate-600 text-sm">{contact.email}</td>
                       <td className="px-6 py-4 text-slate-600 text-sm">{contact.phone}</td>
@@ -882,11 +968,8 @@ export default function Crm() {
                       <td className="px-6 py-4 text-slate-600 text-sm">{project?.zip || '-'}</td>
                       <td className="px-6 py-4 text-slate-600">{contact.city}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${contact.status === 'Client' ? 'bg-green-100 text-green-700' :
-                          contact.status === 'En cours' ? 'bg-blue-100 text-blue-700' :
-                            (contact.status === 'Terminé' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700') // Default/Draft/Nouveau -> Slate
-                          }`}>
-                          {contact.status === 'draft' ? 'Nouveau' : contact.status}
+                        <span className={`px-3 py-1.5 rounded-full text-xs font-bold text-center shadow-sm w-full block max-w-[120px] ${getStatusColor(contact.status)}`}>
+                          {contact.status === 'draft' ? 'Nouveau' : (contact.status || 'Nouveau')}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -1361,7 +1444,17 @@ export default function Crm() {
                           (u.displayName && u.displayName.toLowerCase() === projectUser?.toLowerCase())
                         );
 
-                        return <UserAvatar name={projectUser} photoURL={userWithPhoto?.photoURL} />;
+                        return (
+                          <div className={`flex items-center gap-2 px-2 py-1 rounded-full ${getUserColor(projectUser)} w-fit`}>
+                            <div className="w-6 h-6 rounded-full overflow-hidden bg-white/20 flex-shrink-0">
+                              {userWithPhoto?.photoURL ?
+                                <img src={userWithPhoto.photoURL} className="w-full h-full object-cover" /> :
+                                <span className="flex items-center justify-center w-full h-full text-xs font-bold">{projectUser?.[0]}</span>
+                              }
+                            </div>
+                            <span className="text-xs font-semibold pr-1 truncate max-w-[100px]">{projectUser || 'Non assigné'}</span>
+                          </div>
+                        );
                       })()}
                     </td>
                     <td className="px-6 py-4 text-slate-600">{project.address || '-'}</td>
@@ -1369,16 +1462,12 @@ export default function Crm() {
                     <td className="px-6 py-4 text-slate-600">{project.city || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{project.gps || '-'}</td>
                     <td className="px-6 py-4">
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold shadow-sm block text-center ${getTypeColor(project.type)}`}>
                         {project.type || 'Construction'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${project.status === 'Terminé' ? 'bg-green-100 text-green-700' :
-                        project.status === 'En cours' ? 'bg-blue-100 text-blue-700' :
-                          project.status === 'Abandonné' ? 'bg-red-100 text-red-700' :
-                            'bg-slate-100 text-slate-700' // Nouveau
-                        }`}>
+                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold shadow-sm block text-center ${getStatusColor(project.status)}`}>
                         {project.status === 'draft' ? 'Nouveau' : (project.status || 'Nouveau')}
                       </span>
                     </td>
