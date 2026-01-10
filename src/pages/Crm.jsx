@@ -930,33 +930,38 @@ export default function Crm() {
                       <td className="px-6 py-4 font-medium text-slate-900">{contact.name}</td>
                       <td className="px-6 py-4">
                         {(() => {
-                          // Essayer de récupérer le nom de l'utilisateur depuis le contact
-                          const contactCreator = contact.createdByFirstName || contact.user;
+                          let contactCreator = contact.createdByFirstName || contact.user;
+                          let photoURL = null;
 
-                          // Si pas trouvé, essayer de retrouver l'utilisateur via son ID
-                          if (!contactCreator && contact.createdBy && users.length > 0) {
-                            const userFromList = users.find(u => u.id === contact.createdBy);
-                            return <UserAvatar
-                              name={userFromList?.firstName || userFromList?.displayName || null}
-                              photoURL={userFromList?.photoURL}
-                            />;
+                          // Si la valeur est "Utilisateur" (valeur par défaut legacy), essayer de trouver mieux
+                          if (!contactCreator || contactCreator === 'Utilisateur') {
+                            if (contact.createdBy && users.length > 0) {
+                              const userFromList = users.find(u => u.id === contact.createdBy);
+                              if (userFromList) {
+                                contactCreator = userFromList.firstName || userFromList.displayName;
+                                photoURL = userFromList.photoURL;
+                              }
+                            }
                           }
 
-                          // Trouver le photoURL de l'utilisateur par son nom
-                          const userWithPhoto = users.find(u =>
-                            (u.firstName && u.firstName.toLowerCase() === contactCreator?.toLowerCase()) ||
-                            (u.displayName && u.displayName.toLowerCase() === contactCreator?.toLowerCase())
-                          );
+                          // Si on a un nom, on cherche sa photo si on ne l'a pas encore
+                          if (contactCreator && !photoURL && users.length > 0) {
+                            const userWithPhoto = users.find(u =>
+                              (u.firstName && u.firstName.toLowerCase() === contactCreator.toLowerCase()) ||
+                              (u.displayName && u.displayName.toLowerCase() === contactCreator.toLowerCase())
+                            );
+                            if (userWithPhoto) photoURL = userWithPhoto.photoURL;
+                          }
 
                           return (
-                            <div className={`flex items-center gap-2 px-2 py-1 rounded-full ${getUserColor(contactCreator)} w-fit`}>
-                              <div className="w-6 h-6 rounded-full overflow-hidden bg-white/20 flex-shrink-0">
-                                {userWithPhoto?.photoURL ?
-                                  <img src={userWithPhoto.photoURL} className="w-full h-full object-cover" /> :
+                            <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full ${getUserColor(contactCreator)} w-fit pr-5 text-left`}>
+                              <div className="w-8 h-8 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
+                                {photoURL ?
+                                  <img src={photoURL} className="w-full h-full object-cover" /> :
                                   <span className="flex items-center justify-center w-full h-full text-xs font-bold">{contactCreator?.[0]}</span>
                                 }
                               </div>
-                              <span className="text-xs font-semibold pr-1 truncate max-w-[100px]">{contactCreator || 'Utilisateur'}</span>
+                              <span className="text-sm font-semibold truncate max-w-[120px]">{contactCreator || 'Utilisateur'}</span>
                             </div>
                           );
                         })()}
