@@ -308,9 +308,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             const drop = 4.0 * Math.tan((13 * Math.PI) / 180);
             extHeight = 4.0 - drop;
         } else if (buildingType === 'asymetrique_1' && leftSide === 'auvent') {
-            // Asym Left Auvent: 5.4m (16/16.4) or 6.05m (20)
-            // USER REQUEST 12/01/2026: Lower by 15cm + 20cm = 35cm for 20m width
-            if (Math.abs(width - 20) < 0.5) extHeight = 6.05; // 6.4 - 0.35 = 6.05
+            // Asym Left Auvent: 5.4m (16/16.4) or 6.4m (20)
+            // USER REQUEST 12/01/2026: Dimension corrected back to 6.4m for 20m width
+            if (Math.abs(width - 20) < 0.5) extHeight = 6.4; // Back to original height
             else if (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5) extHeight = 5.4;
         } else if (buildingType === 'asymetrique_2' && leftSide === 'auvent') {
             // USER REQUEST 12/01/2026: Asym 2 Left Auvent: 5.9m (25.5m) or 6.9m (29.1m)
@@ -663,7 +663,14 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             <Text
                 position={[
                     width / 4,
-                    buildingType === 'symetrique' ? ridgeHeight + 1.0 : ridgeHeight - 1.0,
+                    (() => {
+                        // USER REQUEST 12/01/2026: Raise surface area by 20cm for asymetrique_1 16.4m width
+                        let baseHeight = buildingType === 'symetrique' ? ridgeHeight + 1.0 : ridgeHeight - 1.0;
+                        if (buildingType === 'asymetrique_1' && (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5)) {
+                            baseHeight += 0.20; // Raise by 20cm for 16.4m width
+                        }
+                        return baseHeight;
+                    })(),
                     -length / 2,
                 ]}
                 rotation={[-Math.PI / 2, 0, Math.PI / 2]} // 90° Counter-clockwise Horizontal
