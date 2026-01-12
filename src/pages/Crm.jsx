@@ -1299,11 +1299,6 @@ export default function Crm() {
   const renderProjects = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">Projets</h2>
-          <p className="text-slate-500">Gérez les projets de construction et location de toitures</p>
-        </div>
-
         <div className="flex gap-4 items-center">
           <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
             <button
