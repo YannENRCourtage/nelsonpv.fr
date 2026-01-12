@@ -1300,7 +1300,6 @@ export default function Crm() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Projets</h2>
           <p className="text-slate-500 text-sm">Gérer les projets de construction et de location de toitures</p>
         </div>
 
