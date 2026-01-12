@@ -359,7 +359,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
             <group>
                 {/* Left Side */}
                 <mesh geometry={asymLeftGeo} material={roofMaterial}
-                    position={[-width / 2 + lProps.x, asymLeftEaveH + lProps.y + 0.10 + (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5 ? -0.12 : 0), -length - 0.5]}
+                    position={[-width / 2 + lProps.x, asymLeftEaveH + lProps.y + 0.10 + (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5 ? -0.12 : 0) + (Math.abs(width - 20) < 0.5 ? -0.05 : 0), -length - 0.5]}
                     rotation={[0, 0, lProps.rot]}
                     castShadow receiveShadow />
 

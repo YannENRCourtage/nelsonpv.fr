@@ -49,7 +49,11 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
         const rAngle = 15 * (Math.PI / 180); // Fixed 15 (Reference)
 
         // Exact Logic for 16.4/20
-        if (Math.abs(w - 20) < 0.5) { asymLeftEave = 7.4; }
+        if (Math.abs(w - 20) < 0.5) {
+            asymLeftEave = 7.4;
+            // USER REQUEST 12/01/2026: Lower left awning by 30cm for 20m width
+            asymLeftEave -= 0.30; // 7.4 - 0.30 = 7.1
+        }
         else if (Math.abs(w - 16.4) < 0.5 || Math.abs(w - 16) < 0.5) { asymLeftEave = 6.4; }
         else {
             // Fallback
@@ -265,11 +269,12 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
 
     if (buildingType === 'asymetrique_2') {
         // USER REQUEST 12/01/2026: Awning cover adjustments for asymétrique 2 zones
-        // Right awning: lower by 15cm, Left awning: lower by 10cm
+        // Right awning: lower by 15cm + 10cm = 25cm total
+        // Left awning: lower by 10cm + 5cm = 15cm total
         if (side === 'right') {
-            roofY = -0.10 + 0.15 - 0.15; // +15cm then -15cm = -0.10 (baseline)
+            roofY = -0.10 + 0.15 - 0.15 - 0.10; // +15 -15 -10 = -0.20
         } else {
-            roofY = -0.10 + 0.15 - 0.10; // +15cm then -10cm = -0.05
+            roofY = -0.10 + 0.15 - 0.10 - 0.05; // +15 -10 -5 = -0.10
         }
     } else if (buildingType === 'symetrique') {
         // Symmetric: Raise both awnings by 4cm
