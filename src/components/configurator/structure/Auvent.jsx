@@ -264,8 +264,13 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     let roofY = -0.10; // Default baseline
 
     if (buildingType === 'asymetrique_2') {
-        // USER REQUEST 12/01/2026: Raise awning cover by 15cm for asymétrique 2 zones
-        roofY = -0.10 + 0.15; // +0.05
+        // USER REQUEST 12/01/2026: Awning cover adjustments for asymétrique 2 zones
+        // Right awning: lower by 15cm, Left awning: lower by 10cm
+        if (side === 'right') {
+            roofY = -0.10 + 0.15 - 0.15; // +15cm then -15cm = -0.10 (baseline)
+        } else {
+            roofY = -0.10 + 0.15 - 0.10; // +15cm then -10cm = -0.05
+        }
     } else if (buildingType === 'symetrique') {
         // Symmetric: Raise both awnings by 4cm
         roofY = -0.10 + 0.04; // -0.06
