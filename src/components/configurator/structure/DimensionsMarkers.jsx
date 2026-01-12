@@ -312,6 +312,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             // USER REQUEST 12/01/2026: Lower by 15cm for 20m width
             if (Math.abs(width - 20) < 0.5) extHeight = 6.25; // 6.4 - 0.15 = 6.25
             else if (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5) extHeight = 5.4;
+        } else if (buildingType === 'asymetrique_2' && leftSide === 'auvent') {
+            // USER REQUEST 12/01/2026: Asym 2 Left Auvent: 5.9m (25.5m) or 6.9m (29.1m)
+            if (Math.abs(width - 25.5) < 0.1) extHeight = 5.9;
+            else if (Math.abs(width - 29.1) < 0.1) extHeight = 6.9;
+            else extHeight = 5.9; // Fallback
         }
 
         // Logic for Left side: Start -Width/2, End -Width/2 - ExtWidth
@@ -356,6 +361,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             extHeight = ridgeHeight - 1.0;
         } else if (buildingType === 'asymetrique_1' && rightSide === 'auvent') {
             // Right Auvent Tip: 3.0m
+            extHeight = 3.0;
+        } else if (buildingType === 'asymetrique_2' && rightSide === 'auvent') {
+            // USER REQUEST 12/01/2026: Right Auvent for asymétrique 2 zones = 3m
             extHeight = 3.0;
         } else if (buildingType === 'symetrique' && rightSide === 'auvent') {
             // Sym Right Auvent: Low Point ~4.8m (High 5.5 - Rise)
