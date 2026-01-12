@@ -228,6 +228,9 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         // "Réhausse la couverture 3 de 3cm pour 29.1m uniquement" -> Right (29.1m only) -> +0.03
         // USER REQUEST 12/01/2026 (Round 3):
         // "Réhausse la couverture 3 de 8cm pour 25.5m uniquement" -> Right (25.5m only) -> +0.08
+        // USER REQUEST 12/01/2026 (Round 4):
+        // "Réhausse couvertures 2 et 3 de 4cm pour 25.5m" -> Middle & Right (25.5m) -> +0.04 each
+        // "Réhausse couverture 1 de 5cm pour 29.1m" -> Left (29.1m) -> +0.05
 
         section2Offset = section2Offset - 0.20 + 0.05 + 0.02;
         section1Offset = section1Offset + 0.10 - 0.30;
@@ -235,11 +238,12 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
 
         // Additional adjustments for specific widths
         if (isWidth29) {
-            leftOffset += 0.05; // Additional 5cm raise for Cover 1 at 29.1m
+            leftOffset += 0.05 + 0.05; // Additional 5cm + 5cm raise for Cover 1 at 29.1m (total +10cm)
             section1Offset += 0.03; // Additional 3cm raise for Cover 3 at 29.1m
         }
         if (isWidth25) {
-            section1Offset += 0.08; // Additional 8cm raise for Cover 3 at 25.5m
+            section1Offset += 0.08 + 0.04; // Additional 8cm + 4cm raise for Cover 3 at 25.5m (total +12cm)
+            section2Offset += 0.04; // Additional 4cm raise for Cover 2 at 25.5m
         }
 
         const section1Props = getOffsetProps(section1Length, section1Angle, true, section1Overhang);

@@ -20,7 +20,27 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     let angleRad = 5 * (Math.PI / 180); // Default 5 deg
     let startHeight = eaveHeight;
 
-    if (buildingType === 'asymetrique_1') {
+    if (buildingType === 'asymetrique_2') {
+        // USER REQUEST 12/01/2026: Asymétrique 2 zones awnings
+        // Angle: 15° for both sides
+        angleRad = 15 * (Math.PI / 180);
+        const w = buildingWidth;
+
+        if (side === 'right') {
+            // Right awning: top at 4m
+            startHeight = 4.0;
+        } else {
+            // Left awning: top at 6.9m (25.5m) or 7.9m (29.1m)
+            if (Math.abs(w - 25.5) < 0.1) {
+                startHeight = 6.9;
+            } else if (Math.abs(w - 29.1) < 0.1) {
+                startHeight = 7.9;
+            } else {
+                // Fallback for other widths
+                startHeight = 6.9;
+            }
+        }
+    } else if (buildingType === 'asymetrique_1') {
         const asymRightEave = 4.0;
         let asymLeftEave = 6.4;
         const w = buildingWidth;
@@ -243,7 +263,10 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     // Roof Y Position logic with all adjustments
     let roofY = -0.10; // Default baseline
 
-    if (buildingType === 'symetrique') {
+    if (buildingType === 'asymetrique_2') {
+        // USER REQUEST 12/01/2026: Raise awning cover by 15cm for asymétrique 2 zones
+        roofY = -0.10 + 0.15; // +0.05
+    } else if (buildingType === 'symetrique') {
         // Symmetric: Raise both awnings by 4cm
         roofY = -0.10 + 0.04; // -0.06
     } else if (buildingType === 'asymetrique_1') {
