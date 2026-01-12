@@ -249,8 +249,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     // 3d. Right Eave Height (Asymmetrical 2 Zones ONLY)
     const asym2RightEaveData = useMemo(() => {
         if (buildingType !== 'asymetrique_2') return null;
-        // USER REQUEST 12/01/2026: Right sablière height for asymmetric 2 zones = 3m
-        const h = 3.0; // Fixed right eave height
+        // USER REQUEST 12/01/2026: Right sablière height for asymmetric 2 zones = 4m (BUILDING, not awning)
+        const h = 4.0; // Fixed right eave height for BUILDING
         const x = width / 2 + 1.5; // Right side, outside
 
         const start = new THREE.Vector3(x, 0, 0);
@@ -544,7 +544,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={asym2RightEaveData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={asym2RightEaveData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text position={[asym2RightEaveData.xRight + 0.5, asym2RightEaveData.hVal / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                        {`3 m`}
+                        {`4 m`}
                     </Text>
                 </group>
             )}

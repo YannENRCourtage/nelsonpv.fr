@@ -110,10 +110,13 @@ export function Bracing({ width, length, bayCount, baySpacing, eaveHeight, roofP
             // Offset to match Rafter
             let rafterOffset = 0.15;
             // USER REQUEST 12/01/2026: Lower bracing by 20cm for 20m width only
+            let leftRafterOffset = rafterOffset;
             if (Math.abs(w - 20) < 0.5) {
                 rafterOffset -= 0.20; // Lower by 20cm
+                // USER REQUEST 12/01/2026 Round 2: Lower left bracing by additional 10cm
+                leftRafterOffset -= 0.30; // Total -30cm for left side
             }
-            const leftStartH = asymLeftEave + rafterOffset;
+            const leftStartH = asymLeftEave + leftRafterOffset;
             const rightStartH = asymRightEave + rafterOffset;
             const apexY = asymRidge;
             const apexX = -width / 2 + (width * 0.25);
