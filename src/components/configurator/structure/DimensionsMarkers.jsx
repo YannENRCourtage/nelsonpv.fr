@@ -308,8 +308,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             const drop = 4.0 * Math.tan((13 * Math.PI) / 180);
             extHeight = 4.0 - drop;
         } else if (buildingType === 'asymetrique_1' && leftSide === 'auvent') {
-            // Asym Left Auvent: 5.4m (16/16.4) or 6.4m (20)
-            if (Math.abs(width - 20) < 0.5) extHeight = 6.4;
+            // Asym Left Auvent: 5.4m (16/16.4) or 6.25m (20)
+            // USER REQUEST 12/01/2026: Lower by 15cm for 20m width
+            if (Math.abs(width - 20) < 0.5) extHeight = 6.25; // 6.4 - 0.15 = 6.25
             else if (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5) extHeight = 5.4;
         }
 

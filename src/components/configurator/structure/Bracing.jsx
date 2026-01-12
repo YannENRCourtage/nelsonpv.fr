@@ -108,7 +108,11 @@ export function Bracing({ width, length, bayCount, baySpacing, eaveHeight, roofP
             }
 
             // Offset to match Rafter
-            const rafterOffset = 0.15;
+            let rafterOffset = 0.15;
+            // USER REQUEST 12/01/2026: Lower bracing by 20cm for 20m width only
+            if (Math.abs(w - 20) < 0.5) {
+                rafterOffset -= 0.20; // Lower by 20cm
+            }
             const leftStartH = asymLeftEave + rafterOffset;
             const rightStartH = asymRightEave + rafterOffset;
             const apexY = asymRidge;
