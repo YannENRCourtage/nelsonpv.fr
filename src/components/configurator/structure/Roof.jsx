@@ -221,10 +221,17 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         // "Remonte la hauteur de la couverture 1 de 5cm" -> Left -> +0.05
         // "Remonte la couverture 2 de 2cm" -> Middle -> +0.02
         // "Abaisse la couverture 3 de 30cm" -> Right -> -0.30
+        // USER REQUEST 12/01/2026:
+        // "Réhausse la couverture 1 de 5cm pour 29.1m uniquement" -> Left (29.1m only) -> +0.05
 
         section2Offset = section2Offset - 0.20 + 0.05 + 0.02;
         section1Offset = section1Offset + 0.10 - 0.30;
         leftOffset = leftOffset - 0.10 + 0.05;
+
+        // Additional adjustment for 29.1m width only
+        if (isWidth29) {
+            leftOffset += 0.05; // Additional 5cm raise for Cover 1 at 29.1m
+        }
 
         const section1Props = getOffsetProps(section1Length, section1Angle, true, section1Overhang);
         const section2Props = getOffsetProps(section2Length, rightAngle, true, 0.25);
