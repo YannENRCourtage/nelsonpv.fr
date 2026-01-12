@@ -214,10 +214,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
         let h;
         if (buildingType === 'asymetrique_2') {
-            // USER REQUEST 12/01/2026: Updated sablière heights
-            if (Math.abs(width - 25.5) < 0.1) h = 5.9; // 25.5m width
-            else if (Math.abs(width - 29.1) < 0.1) h = 6.9; // 29.1m width
-            else h = 5.9; // Fallback
+            // USER REQUEST 12/01/2026: Updated sablière heights for BUILDING
+            if (Math.abs(width - 25.5) < 0.1) h = 6.9; // 25.5m width (was 5.9m)
+            else if (Math.abs(width - 29.1) < 0.1) h = 7.9; // 29.1m width (was 6.9m)
+            else h = 6.9; // Fallback
         } else {
             // Asym 1
             h = 6.4;
@@ -308,9 +308,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             const drop = 4.0 * Math.tan((13 * Math.PI) / 180);
             extHeight = 4.0 - drop;
         } else if (buildingType === 'asymetrique_1' && leftSide === 'auvent') {
-            // Asym Left Auvent: 5.4m (16/16.4) or 6.25m (20)
-            // USER REQUEST 12/01/2026: Lower by 15cm for 20m width
-            if (Math.abs(width - 20) < 0.5) extHeight = 6.25; // 6.4 - 0.15 = 6.25
+            // Asym Left Auvent: 5.4m (16/16.4) or 6.05m (20)
+            // USER REQUEST 12/01/2026: Lower by 15cm + 20cm = 35cm for 20m width
+            if (Math.abs(width - 20) < 0.5) extHeight = 6.05; // 6.4 - 0.35 = 6.05
             else if (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5) extHeight = 5.4;
         } else if (buildingType === 'asymetrique_2' && leftSide === 'auvent') {
             // USER REQUEST 12/01/2026: Asym 2 Left Auvent: 5.9m (25.5m) or 6.9m (29.1m)
