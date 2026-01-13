@@ -13,8 +13,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const lineColor = "#000000";
     const lineWidth = 2;
     const gapSize = 3.0;
+    const isOmbriere = buildingType.startsWith('ombriere');
 
-    // Widths
     // Widths
     const getExtWidth = (type) => {
         if (type === 'appentis') return 9.3;
