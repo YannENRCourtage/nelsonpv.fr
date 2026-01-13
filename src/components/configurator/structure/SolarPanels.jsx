@@ -109,7 +109,7 @@ export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof", forceF
             for (let iz = 0; iz < selectedLayout.colsZ; iz++) {
                 instances.push({
                     x: startX + ix * (selectedLayout.dimX + effectiveGap),
-                    y: 0.05, // Slightly above roof surface
+                    y: forceFullCoverage ? 0.20 : 0.05, // Slightly above roof surface (Higher for Ombriere)
                     z: startZ + iz * (selectedLayout.dimZ + effectiveGap)
                 });
             }

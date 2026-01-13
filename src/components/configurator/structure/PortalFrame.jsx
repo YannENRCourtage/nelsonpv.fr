@@ -563,7 +563,7 @@ export function PortalFrame({
                 {/* Rafter */}
                 {/* Centered at [0, centerHeight, 0], rotated */}
                 <group position={[0, centerHeight, 0]} rotation={[0, 0, rotZ]}>
-                    <mesh geometry={rafterGeo} material={steelMaterial} position={[0, 0, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow />
+                    <mesh geometry={rafterGeo} material={steelMaterial} position={[rafterLen / 2, 0, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow />
 
                     {/* End Plates / Caps if needed */}
                 </group>

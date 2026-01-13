@@ -416,6 +416,10 @@ function Header() {
               </NavLink>
             )}
 
+            <NavLink to="/odoo" className={({ isActive }) => isActive ? 'nav-link active odoo' : 'nav-link odoo'}>
+              ODOO
+            </NavLink>
+
             {user?.role === 'admin' && (
               <NavLink to="/admin" className={({ isActive }) => isActive ? 'nav-link active admin' : 'nav-link admin'}>
                 <Shield className="w-4 h-4 mr-1 inline-block" />

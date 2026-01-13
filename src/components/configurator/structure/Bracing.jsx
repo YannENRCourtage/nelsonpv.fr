@@ -12,6 +12,8 @@ export function Bracing({ width, length, bayCount, baySpacing, eaveHeight, roofP
         roughness: 0.4
     }), []);
 
+    if (buildingType.startsWith('ombriere')) return null;
+
     const isMonopente = buildingType === 'monopente';
     const angleRad = (roofPitch * Math.PI) / 180;
     // Recalculate sym ridge height if needed, OR use passed ridgeHeight if reliable.

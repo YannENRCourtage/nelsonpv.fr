@@ -11,6 +11,7 @@ import Admin from './pages/Admin.jsx';
 import ProfitabilitySimulator from './pages/ProfitabilitySimulator.jsx';
 import Configurateur from './pages/Configurateur.jsx';
 import CDP from './pages/CDP.jsx';
+import Odoo from './pages/Odoo.jsx';
 import { Toaster } from './components/ui/toaster.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
 import { DndProvider } from 'react-dnd';
@@ -106,6 +107,14 @@ function AppContent() {
             element={
               <ProtectedRoute requiredPermission="canAccessEditor">
                 <ProjectEditor />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="odoo"
+            element={
+              <ProtectedRoute>
+                <Odoo />
               </ProtectedRoute>
             }
           />
