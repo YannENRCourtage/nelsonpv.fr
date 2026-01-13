@@ -117,6 +117,12 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         if (buildingType === 'monopente') {
             // Right Side
             x = rightSide !== 'none' ? width / 2 + 1.5 : width / 2 + 3.0;
+        } else if (buildingType === 'ombriere_vl_simple_droite') {
+            // Low side Right. Eave Marker on Right.
+            x = width / 2 + 1.5;
+        } else if (buildingType === 'ombriere_vl_simple_gauche') {
+            // Low side Left. Eave Marker on Left.
+            x = -width / 2 - 1.5;
         } else if (buildingType === 'asymetrique_2') {
             return { heightPoints: null, heightStart: null, heightEnd: null, xEave: null };
         } else if (buildingType === 'asymetrique_1') {
@@ -163,6 +169,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
         if (buildingType === 'monopente') {
             x = -width / 2 - 1.5; // Left Side
+        } else if (buildingType === 'ombriere_vl_simple_droite') {
+            // Slope Down-Right. Ridge is HIGH LEFT.
+            // Eave (Low Right) is on Right.
+            // So Ridge Marker should be on LEFT.
+            x = -width / 2 - 1.5;
+        } else if (buildingType === 'ombriere_vl_simple_gauche') {
+            // Slope Down-Left. Ridge is HIGH RIGHT.
+            // Eave (Low Left) is on Left.
+            // So Ridge Marker should be on RIGHT.
+            x = width / 2 + 1.5;
         } else if (buildingType === 'asymetrique_1') {
             // Asym Ridge: Exact
             const rAngle = 15 * (Math.PI / 180);

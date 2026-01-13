@@ -88,6 +88,123 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
             }
         }
     }
+    // --- OMBRIÈRE GENERATION ---
+    else if (buildingType.startsWith('ombriere')) {
+        const isDroite = buildingType === 'ombriere_vl_simple_droite';
+        // Droite: High Left, Low Right. Slope 10 deg.
+        // Gauche: High Right, Low Left. Slope 10 deg.
+
+        const angleDeg = 10;
+        const angleRad = (angleDeg * Math.PI) / 180;
+
+        // Slope Length (Hypotenuse)
+        // Cover full width
+        const slopeLength = width / Math.cos(angleRad);
+
+        const numPurlins = Math.floor(slopeLength / purlinSpacing);
+
+        // Rafter center height (approx)
+        // Logic should match Roof/Solar placement.
+        // Roof placed at `centerHeight + lift`.
+        // Purlins should be under the panels (or just under "roof" surface which effectively is the panels here).
+        // Let's assume Purlins sit ON TOP of rafters.
+        // Rafter top is at `centerHeight + 0.2` (if depth=0.4).
+        // Current Roof logic in `Roof.jsx`: `centerHeight + lift (0.2)`. 
+        // So Purlins should be around `centerHeight + 0.2`.
+
+        const centerHeight = (eaveHeight + ridgeHeight) / 2;
+        // Adjust for perp offset (+ purlin height logic)
+        // perpOffset = 0.2 + 0.07 ...
+        // We just need them to sit on the rafter line.
+
+        const rafterTopY = centerHeight + 0.2; // Top of IPE400
+
+        for (let bayIndex = 0; bayIndex < bayCount; bayIndex++) {
+            const zStart = -bayIndex * baySpacing;
+
+            for (let i = 0; i <= numPurlins; i++) {
+                // Dist from High Point or Low Point?
+                // Let's do Center-out or Edge-to-Edge.
+                // Let's start from LEFT (-width/2) for consistency, but adjust Y.
+
+                // If Droite (High Left): 
+                // At x = -width/2, y = High. 
+                // local x goes 0 to width.
+                // angle is -10 deg.
+
+                // If Gauche (High Right):
+                // At x = -width/2, y = Low.
+                // angle is +10 deg.
+
+                const dist = i * purlinSpacing;
+
+                // Let's center the pattern so it looks symmetric
+                // Start X = -slopeLength/2 + dist?
+                // Current logic usually starts from an edge.
+                // Let's stick to Edge to Edge (Left to Right).
+
+                // Effective X (horizontal) = -width/2 + (i * spacingX)
+                // Spacing X = purlinSpacing * cos(angle)
+
+                const spacingX = purlinSpacing * Math.cos(angleRad);
+                const currentX = -width / 2 + (i * spacingX); // Rough approx, loop count might differ
+
+                // More accurate: Run along slope `s` from -slopeLength/2 to +slopeLength/2
+                const s = -slopeLength / 2 + (i * purlinSpacing);
+                // If i goes 0 to numPurlins, we cover [0, L].
+                // Shift to [-L/2, L/2].
+                const sCentered = s + (purlinSpacing / 2); // Adjustment to center?
+                // Let's just mapping [0, L] to [-W/2, W/2]
+                // s goes 0 to L.
+                // x = (s - L/2) * cos(angle)
+                // y = (s - L/2) * sin(angle)
+
+                // If Droite (Angle -10):
+                // slopes down.
+                // x = (s - L/2) * cos(-10) = (s - L/2) * cos(10)
+                // y = (s - L/2) * sin(-10) = -(s - L/2) * sin(10)
+
+                // If Gauche (Angle +10):
+                // slopes up.
+                // x = (s - L/2)
+                // y = (s - L/2) * sin(10)
+
+                const angleSign = isDroite ? -1 : 1;
+                const effectiveAngle = angleSign * angleRad;
+
+                // Position along slope, centered on 0,0 (Rafter Center)
+                // We iterate `i` from 0 to numPurlins.
+                // Total span `numPurlins * purlinSpacing`.
+                // Center it.
+                const totalSpan = numPurlins * purlinSpacing;
+                const startS = -totalSpan / 2;
+                const currentS = startS + (i * purlinSpacing);
+
+                const xLocal = currentS * Math.cos(effectiveAngle);
+                const yLocal = currentS * Math.sin(effectiveAngle);
+
+                // Add Perpendicular Offset (Up from rafter)
+                // Normal to slope `a`: (-sin a, cos a)
+                // perpOffset ~ 0.27
+                const nx = -Math.sin(effectiveAngle) * perpOffset;
+                const ny = Math.cos(effectiveAngle) * perpOffset;
+
+                purlins.push(
+                    <mesh
+                        key={`Bay${bayIndex}-Omb-${i}`}
+                        geometry={bayGeometry}
+                        material={material}
+                        position={[
+                            xLocal + nx, // Centered X + offset
+                            centerHeight + yLocal + ny, // Centered Y + slope + offset
+                            zStart
+                        ]}
+                        rotation={[0, Math.PI, effectiveAngle]}
+                    />
+                );
+            }
+        }
+    }
     // --- ASYMMETRICAL 2 ZONES GENERATION ---
     else if (buildingType === 'asymetrique_2') {
         const w = width;

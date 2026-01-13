@@ -87,7 +87,7 @@ export const useConfiguratorStore = create((set, get) => ({
                 if (state.rightSide === 'appentis') updates.rightSide = 'none';
             } else if (type === 'ombriere_vl_simple_gauche' || type === 'ombriere_vl_simple_droite') {
                 updates.eaveHeight = 2.93;
-                updates.roofPitch = 12.2;
+                updates.roofPitch = 10;
                 updates.hasSolar = true; // Auto solar
                 updates.leftSide = 'none';
                 updates.rightSide = 'none';
