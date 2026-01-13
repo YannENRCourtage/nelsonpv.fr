@@ -456,49 +456,33 @@ export function PortalFrame({
     if (isOmbriereSimple) {
         const isDroite = buildingType === 'ombriere_vl_simple_droite'; // Pente descendant vers la droite (Haut à Gauche)
 
-        // Dimensions based on User Image for 'width = 6.9'
-        // Image: Left Height 4.425, Right Height 2.930. Width 6.923.
-        // Base Distances: 1.053 (Edge-Strut1), 1.700 (Strut1-Strut2), 4.170 (Strut2-Edge)
-        // Ratio check: 1.05/6.9 ~ 0.15, 1.7/6.9 ~ 0.25, 4.17/6.9 ~ 0.60.
-
-        // Slope Angle
-        // Droite: Negative rotation (Down to Right) ? 
-        // In 3D: Rotation Z. Positive = CounterClockwise.
-        // Droite (High Left, Low Right) => Rotation -Angle.
-        // Gauche (High Right, Low Left) => Rotation +Angle.
-
+        // Slope Logic:
+        // BOTH Types now use "Simple Droite" geometry (High Left, Low Right) per user request.
+        // "supprimes l'ombrière telle que tu l'as faite et remplace là par la même ombrière que la simple droite"
+        // So RotZ is ALWAYS Negative (Down to Right).
         const slopeRad = (roofPitch * Math.PI) / 180;
-        const rotZ = isDroite ? -slopeRad : slopeRad;
+        const rotZ = -slopeRad; // Fixed to Down-Right for both
 
         // Rafter
         const rafterLen = width / Math.cos(slopeRad); // ~7m
         const rafterGeo = createRafterGeo(rafterLen);
 
-        // Struts (Jambes de Force)
-        // Modeled as Tubes (BoxGeometry for now)
-        // Positioned relative to "Base Center".
-        // Let's determine Base X in local coords (where 0 is center of building width)
+        // Strut Shifting Logic:
+        // "Droite": Shift 1m Left (towards Faitage/High Side). Faitage is Left. -> Offset -1.0
+        // "Gauche": Shift 1m Right (towards Sablière/Low Side). Sablière is Right. -> Offset +1.0
+        const strutShift = isDroite ? -1.0 : 1.0;
 
-        // Local Coords: Left Edge = -width/2, Right Edge = +width/2.
-
-        // Attachments on Rafter (Horizontal projection distances from High Side)
-        // High Side is Left for Droite, Right for Gauche.
-        // Dist1 = 1.053, Dist2 = 1.053 + 1.700 = 2.753.
-
-        // User Request: "Les poteaux verticaux en V doivent être centrés horizontalement sous la charpente"
-        // User Request 13/01/2026: "le bas des poteaux verticaux doivent être écartés d'1m"
-
-        // Define Strut Positions
+        // Base Strut Positions (Centered relative to 0)
         // Bottom: Spaced by 1m (+/- 0.5)
-        const xBot1 = -0.5;
-        const xBot2 = 0.5;
-
-        // Top: Widen attachment to create V shape (e.g. +/- 1.5m)
-        const xTop1 = -1.5;
-        const xTop2 = 1.5;
+        // Top: Spaced by 3m (+/- 1.5) to create V
+        // Apply Shift
+        const xBot1 = -0.5 + strutShift;
+        const xBot2 = 0.5 + strutShift;
+        const xTop1 = -1.5 + strutShift;
+        const xTop2 = 1.5 + strutShift;
 
         // Base Horizontal Position (Reference only, mesh removed)
-        const baseX = 0;
+        const baseX = 0; // The whole group is at 'position', struts are local to that.
         const baseHeight = 0.5;
 
         // Rafter Underside Equation
@@ -508,16 +492,16 @@ export function PortalFrame({
         // Custom Strut Creator
         const createStrut = (xBot, xTop) => {
             const yTarget = centerHeight + (xTop * Math.tan(rotZ)) - 0.2;
-            const start = new THREE.Vector3(xBot, baseHeight, 0); // Bottom is spaced
+            const start = new THREE.Vector3(xBot, baseHeight, 0);
             const end = new THREE.Vector3(xTop, yTarget, 0);
-            const len = start.distanceTo(end);
-            const tubeGeo = new THREE.BoxGeometry(0.15, len, 0.15);
             const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+            const len = start.distanceTo(end);
 
-            // Rotation
             const dx = end.x - start.x;
             const dy = end.y - start.y;
             const angle = -Math.atan2(dx, dy);
+
+            const tubeGeo = new THREE.BoxGeometry(0.15, len, 0.15);
 
             return (
                 <mesh geometry={tubeGeo} material={steelMaterial} position={mid} rotation={[0, 0, angle]} castShadow />
@@ -526,8 +510,6 @@ export function PortalFrame({
 
         return (
             <group position={position}>
-                {/* Concrete Base REMOVED per user request */}
-
                 {/* Struts */}
                 {createStrut(xBot1, xTop1)}
                 {createStrut(xBot2, xTop2)}
@@ -555,7 +537,7 @@ export function PortalFrame({
                         return (
                             <mesh position={mid} rotation={[0, 0, angle]} castShadow>
                                 <boxGeometry args={[0.05, len, 0.05]} />
-                                <meshStandardMaterial color="#4A5568" roughnes={0.8} />
+                                <meshStandardMaterial color="#4A5568" roughness={0.8} />
                             </mesh>
                         );
                     };
@@ -574,7 +556,6 @@ export function PortalFrame({
                     <mesh geometry={rafterGeo} material={steelMaterial} position={[rafterLen / 2, 0, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow />
                 </group>
 
-                {/* Connections (Bolts/Plates at strut tops) - Simplified */}
             </group>
         );
 

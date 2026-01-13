@@ -27,6 +27,9 @@ import {
 import { LayoutGrid, List as ListIcon, Trash2, ArrowLeft, ArrowRight, MoreHorizontal } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 
+import ContactModal from '@/components/crm/ContactModal.jsx';
+import UserAvatar from '@/components/UserAvatar.jsx';
+
 // --- CONSTANTS ---
 const DEFAULT_STAGES = [
     "Réaliser la DP/PC",
@@ -38,6 +41,18 @@ const DEFAULT_STAGES = [
     "Mandater le Géomètre",
     "Mandater le Notaire"
 ];
+
+// Define colors for stages
+const STAGE_COLORS = {
+    "Réaliser la DP/PC": "bg-blue-100 text-blue-800 border-blue-200",
+    "Récupérer l'ARE": "bg-indigo-100 text-indigo-800 border-indigo-200",
+    "Récupérer l'accord ou refus Mairie": "bg-purple-100 text-purple-800 border-purple-200",
+    "Déposer la demande sur le portail ENEDIS": "bg-green-100 text-green-800 border-green-200",
+    "Récupérer l'accord ou refus ENEDIS": "bg-emerald-100 text-emerald-800 border-emerald-200",
+    "Mandater l'huissier": "bg-orange-100 text-orange-800 border-orange-200",
+    "Mandater le Géomètre": "bg-amber-100 text-amber-800 border-amber-200",
+    "Mandater le Notaire": "bg-red-100 text-red-800 border-red-200"
+};
 
 const EXCLUDED_PROJECTS = [
     "Projet sans nom",
@@ -89,11 +104,13 @@ const DraggableCard = ({ project, onClick }) => {
                     <Clock size={12} />
                     <span>{project.deadline ? format(new Date(project.deadline), 'dd/MM', { locale: fr }) : '--:--'}</span>
                 </div>
-                <Avatar className="w-6 h-6">
-                    <AvatarFallback className="text-[10px] bg-green-100 text-green-700">
-                        {project.assignedUser ? project.assignedUser.substring(0, 2).toUpperCase() : 'NA'}
-                    </AvatarFallback>
-                </Avatar>
+                <UserAvatar
+                    name={project.assignedUser ? project.assignedUser : (project.createdBy || 'NA')}
+                    photoURL={null}
+                    showName={false}
+                    size="w-6 h-6"
+                    textSize="text-[10px]"
+                />
             </div>
         </div>
     );
@@ -112,24 +129,31 @@ const Column = ({ title, projects, onDropProject, onCardClick, count }) => {
     const ref = React.useRef(null);
     drop(ref);
 
+    // Apply color if defined, else default
+    const colorClass = STAGE_COLORS[title] || "bg-gray-100 text-gray-700";
+
     return (
         <div
             ref={ref}
             className={`flex-shrink-0 w-80 flex flex-col h-full rounded-lg mr-4 transition-colors ${isOver ? 'bg-gray-100' : 'bg-gray-50/50'}`}
         >
-            <div className="p-3 flex justify-between items-center border-b border-gray-100 bg-white rounded-t-lg sticky top-0 z-10">
-                <h3 className="font-semibold text-gray-700 text-sm truncate max-w-[200px]" title={title}>{title}</h3>
+            <div className={`p-3 flex justify-between items-center border-b border-white/50 rounded-t-lg sticky top-0 z-10 ${colorClass}`}>
+                <h3 className="font-semibold text-sm truncate max-w-[200px]" title={title}>{title}</h3>
                 <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{count}</span>
-                    <Plus size={16} className="text-gray-400 cursor-pointer hover:text-gray-600" />
+                    <span className="text-xs font-bold bg-white/50 px-2 py-0.5 rounded-full">{count}</span>
+                    <Plus size={16} className="cursor-pointer hover:scale-110 transition-transform" />
                 </div>
             </div>
             <div className="p-2 flex-1 overflow-y-auto min-h-0 custom-scrollbar">
-                {count > 0 && (
-                    <div className="h-1 w-full bg-gray-200 rounded-full mb-3 overflow-hidden">
-                        <div className="h-full bg-teal-500" style={{ width: '100%' }}></div>
-                    </div>
+                {count > 0 && !colorClass.includes('bg-gray-100') && (
+                    // Hide progress bar style if we use full header color? User asked for header background color.
+                    // The previous progress bar might be redundant or can stay. Let's keep it but maybe adjust?
+                    // Actually, if we color the header, the "teal bar" below might clash. Let's remove it for cleaner look as requested "Distinct background colors to each Kanban stage header".
+                    <></>
                 )}
+                {/* Re-adding the bar if count > 0 but making it cleaner or removing it? 
+                    The original code had a teal bar. I will remove it to focus on header color. 
+                 */}
                 {projects.map(p => (
                     <DraggableCard key={p.id} project={p} onClick={onCardClick} />
                 ))}
@@ -164,15 +188,15 @@ const TaskTab = ({ project, activeTab, onUpdate, user }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newTask, setNewTask] = useState({ name: "", comment: "", assignedTo: "" });
 
-    // Filter tasks for current tab
-    const tasks = (project.odooTasks || []).filter(t => t.type === activeTab);
+    // Filter tasks for current tab (Since we removed other tabs, show ALL or just generic Tasks)
+    const tasks = (project.odooTasks || []).filter(t => t.type === 'Tâches' || !t.type);
 
     const handleAddTask = () => {
         if (!newTask.name) return;
 
         const task = {
             id: Date.now(),
-            type: activeTab,
+            type: "Tâches",
             name: newTask.name,
             comment: newTask.comment,
             assignedTo: newTask.assignedTo,
@@ -184,12 +208,6 @@ const TaskTab = ({ project, activeTab, onUpdate, user }) => {
         const updatedTasks = [...(project.odooTasks || []), task];
         onUpdate(project.id, { odooTasks: updatedTasks });
 
-        // Mock Notification
-        if (newTask.assignedTo) {
-            console.log(`NOTIFICATION: ${newTask.assignedTo} a reçu une nouvelle tâche : ${newTask.name}`);
-            // In a real app, calls apiService.sendNotification(...)
-        }
-
         setIsAdding(false);
         setNewTask({ name: "", comment: "", assignedTo: "" });
     };
@@ -197,7 +215,7 @@ const TaskTab = ({ project, activeTab, onUpdate, user }) => {
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold text-gray-700">{activeTab}</h3>
+                <h3 className="font-semibold text-gray-700">Liste des tâches</h3>
                 <Button onClick={() => setIsAdding(!isAdding)} size="sm" variant="outline" className="border-purple-200 text-purple-700 hover:bg-purple-50">
                     {isAdding ? "Annuler" : "+ Ajouter"}
                 </Button>
@@ -205,24 +223,42 @@ const TaskTab = ({ project, activeTab, onUpdate, user }) => {
 
             {isAdding && (
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3 mb-4 animate-in fade-in slide-in-from-top-2">
-                    <div>
-                        <label className="text-xs font-medium text-gray-500 mb-1 block">Action</label>
-                        <select
-                            className="w-full text-sm border-gray-300 rounded-md p-2"
-                            value={newTask.name}
-                            onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
-                        >
-                            <option value="">Sélectionner une action...</option>
-                            {STANDARD_TASKS.map(t => <option key={t} value={t}>{t}</option>)}
-                            <option value="Autre">Autre (Saisie libre)</option>
-                        </select>
-                        {newTask.name === "Autre" && (
-                            <Input
-                                className="mt-2"
-                                placeholder="Nom de l'action"
+                    <div className="flex gap-4">
+                        <div className="flex-1">
+                            <label className="text-xs font-medium text-gray-500 mb-1 block">Action</label>
+                            <select
+                                className="w-full text-sm border-gray-300 rounded-md p-2 h-9"
+                                value={newTask.name}
                                 onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
-                            />
-                        )}
+                            >
+                                <option value="">Sélectionner une action...</option>
+                                {STANDARD_TASKS.map(t => <option key={t} value={t}>{t}</option>)}
+                                <option value="Autre">Autre (Saisie libre)</option>
+                            </select>
+                            {newTask.name === "Autre" && (
+                                <Input
+                                    className="mt-2"
+                                    placeholder="Nom de l'action"
+                                    onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
+                                />
+                            )}
+                        </div>
+                        <div className="w-1/3">
+                            <label className="text-xs font-medium text-gray-500 mb-1 block">Assigner à</label>
+                            <Select
+                                value={newTask.assignedTo}
+                                onValueChange={(val) => setNewTask({ ...newTask, assignedTo: val })}
+                            >
+                                <SelectTrigger className="w-full bg-white border-gray-300 h-9">
+                                    <SelectValue placeholder="Utilisateur" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {TEAM_MEMBERS.map(member => (
+                                        <SelectItem key={member} value={member}>{member}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
                     <div>
@@ -235,23 +271,6 @@ const TaskTab = ({ project, activeTab, onUpdate, user }) => {
                         />
                     </div>
 
-                    <div>
-                        <label className="text-xs font-medium text-gray-500 mb-1 block">Assigner à</label>
-                        <Select
-                            value={newTask.assignedTo}
-                            onValueChange={(val) => setNewTask({ ...newTask, assignedTo: val })}
-                        >
-                            <SelectTrigger className="w-full bg-white border-gray-300">
-                                <SelectValue placeholder="Sélectionner un utilisateur" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {TEAM_MEMBERS.map(member => (
-                                    <SelectItem key={member} value={member}>{member}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
                     <Button onClick={handleAddTask} className="w-full bg-purple-600 hover:bg-purple-700 text-white">
                         Valider la tâche
                     </Button>
@@ -261,7 +280,7 @@ const TaskTab = ({ project, activeTab, onUpdate, user }) => {
             <div className="space-y-3">
                 {tasks.length === 0 && !isAdding && (
                     <div className="p-8 border-2 border-dashed border-gray-100 rounded-lg text-center text-gray-400">
-                        Aucune tâche dans cette section.
+                        Aucune tâche
                     </div>
                 )}
                 {tasks.map(task => (
@@ -270,14 +289,16 @@ const TaskTab = ({ project, activeTab, onUpdate, user }) => {
                             <div className="font-medium text-gray-800">{task.name}</div>
                             {task.comment && <div className="text-sm text-gray-500 mt-1">{task.comment}</div>}
                             <div className="text-xs text-gray-400 mt-2 flex items-center gap-2">
+                                <UserAvatar name={task.createdBy} size="w-4 h-4" textSize="text-[8px]" showName={false} />
                                 <span>Par {task.createdBy}</span>
                                 <span>•</span>
                                 <span>{format(new Date(task.createdAt), 'dd MMM yyyy', { locale: fr })}</span>
                             </div>
                         </div>
                         {task.assignedTo && (
-                            <div className="bg-purple-50 text-purple-700 text-xs px-2 py-1 rounded-full font-medium border border-purple-100">
-                                @{task.assignedTo}
+                            <div className="flex items-center gap-1 bg-purple-50 text-purple-700 text-xs px-2 py-1 rounded-full font-medium border border-purple-100">
+                                <UserAvatar name={task.assignedTo} size="w-4 h-4" textSize="text-[8px]" showName={false} />
+                                {task.assignedTo}
                             </div>
                         )}
                     </div>
@@ -295,6 +316,38 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
     const messagesEndRef = React.useRef(null);
     const [activeTab, setActiveTab] = useState("Tâches");
 
+    // Activity / Chat
+    const [showContactModal, setShowContactModal] = useState(false);
+
+    // Helpers for Edit Customer
+    const [editingContact, setEditingContact] = useState(null);
+    const handleEditClient = () => {
+        // Mock contact object from project data
+        setEditingContact({
+            id: project.id, // Using project ID as proxy for now if no dedicated contact ID
+            name: project.clientName || `${project.firstName || ''} ${project.name || ''}`.trim(),
+            email: project.email,
+            phone: project.phone,
+            company: project.company,
+            city: project.city,
+            status: "Client"
+        });
+        setShowContactModal(true);
+    };
+
+    const handleSaveContact = (updatedContact) => {
+        // Sync back to project
+        onUpdate(project.id, {
+            clientName: updatedContact.name,
+            firstName: updatedContact.name.split(' ')[0],
+            name: updatedContact.name.split(' ').slice(1).join(' '),
+            email: updatedContact.email,
+            phone: updatedContact.phone,
+            city: updatedContact.city
+        });
+        setShowContactModal(false);
+    };
+
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
@@ -306,16 +359,14 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
     const handleSendMessage = () => {
         if (!newMessage.trim()) return;
 
-        // Use current user info
         const authorName = user?.firstName ? `${user.firstName} ${user.name || ''}`.trim() : (user?.displayName || "Utilisateur");
-        const authorInitial = authorName.charAt(0).toUpperCase();
 
         const msg = {
             id: Date.now(),
             author: authorName,
-            authorInitial: authorInitial,
             content: newMessage,
-            date: new Date().toISOString()
+            date: new Date().toISOString(),
+            type: 'message'
         };
         const updatedChat = [...(project.odooChat || []), msg];
         onUpdate(project.id, { odooChat: updatedChat });
@@ -323,7 +374,15 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-white">
+        <div className="flex flex-col h-full bg-white relative">
+            <ContactModal
+                show={showContactModal}
+                onClose={() => setShowContactModal(false)}
+                editingContact={editingContact}
+                setEditingContact={setEditingContact}
+                onSave={handleSaveContact}
+            />
+
             {/* Header / Breadcrumbs */}
             <div className="border-b px-6 py-3 flex justify-between items-center bg-white shrink-0 shadow-sm z-10">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -355,17 +414,6 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
                             ))}
                         </SelectContent>
                     </Select>
-
-                    <div className="flex gap-2">
-                        {project.assignedUser ? (
-                            <div className="flex items-center gap-2 bg-purple-50 px-3 py-1 rounded-full border border-purple-100">
-                                <Avatar className="w-5 h-5"><AvatarFallback className="text-[10px] bg-purple-200 text-purple-800">{project.assignedUser.substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
-                                <span className="text-xs font-semibold text-purple-800">{project.assignedUser}</span>
-                            </div>
-                        ) : (
-                            <span className="text-xs text-gray-400 italic">Non assigné</span>
-                        )}
-                    </div>
                 </div>
             </div >
 
@@ -376,20 +424,8 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
                                 {project.clientName || `${project.firstName || ''} ${project.name || ''}`.trim()}
-                                <span className="text-gray-400 font-normal text-lg">#{String(project.id).substring(5, 12)}...</span>
+                                <span className="text-gray-400 font-normal text-lg">#{String(project.id).substring(5, 13)}...</span>
                             </h1>
-
-                            {/* Project Manager Display - Requested Requirement */}
-                            {project.assignedUser && (
-                                <div className="mt-2 text-sm text-gray-500 flex items-center gap-1">
-                                    <User size={14} />
-                                    En charge : <span className="font-medium text-gray-700">{project.assignedUser}</span>
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex gap-2">
-                            <Button variant="outline" size="sm" className="text-gray-600 border-gray-300">Stand By</Button>
-                            <Button variant="outline" size="sm" className="text-gray-600 border-gray-300">A assigner</Button>
                         </div>
                     </div>
 
@@ -402,15 +438,34 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
                             <div className="grid grid-cols-3 gap-2 items-center">
                                 <label className="font-medium text-gray-500">Chef de projet</label>
                                 <div className="col-span-2">
-                                    {/* Assignment Input */}
-                                    <div className="relative">
-                                        <Input
-                                            value={project.assignedUser || ''}
-                                            onChange={(e) => onUpdate(project.id, { assignedUser: e.target.value })}
-                                            className="h-8 max-w-[200px]"
-                                            placeholder="Assigner un utilisateur"
-                                        />
-                                    </div>
+                                    <Select
+                                        value={project.assignedUser || ''}
+                                        onValueChange={(val) => onUpdate(project.id, { assignedUser: val })}
+                                    >
+                                        <SelectTrigger className="h-8 w-full">
+                                            <div className="flex items-center gap-2">
+                                                {project.assignedUser && <UserAvatar name={project.assignedUser} size="w-5 h-5" textSize="text-[10px]" showName={false} />}
+                                                <span>{project.assignedUser || "Assigner un chef de projet"}</span>
+                                            </div>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {TEAM_MEMBERS.map(m => (
+                                                <SelectItem key={m} value={m}>
+                                                    <div className="flex items-center gap-2">
+                                                        <UserAvatar name={m} size="w-5 h-5" textSize="text-[10px]" showName={false} />
+                                                        {m}
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 items-center">
+                                <label className="font-medium text-gray-500">Commercial</label>
+                                <div className="col-span-2 flex items-center gap-2">
+                                    <UserAvatar name={project.createdBy || 'Yann'} size="w-6 h-6" textSize="text-xs" showName={false} />
+                                    <span className="text-gray-900">{project.createdBy || 'Yann'}</span>
                                 </div>
                             </div>
                             <div className="grid grid-cols-3 gap-2 items-center">
@@ -427,10 +482,13 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
 
                         <div className="space-y-5">
                             <div className="grid grid-cols-3 gap-2 items-center">
-                                <label className="font-medium text-gray-500">Client facturé</label>
-                                <div className="col-span-2 font-medium text-purple-700 flex items-center gap-2 cursor-pointer hover:underline">
+                                <label className="font-medium text-gray-500">Client</label>
+                                <div
+                                    className="col-span-2 font-medium text-purple-700 flex items-center gap-2 cursor-pointer hover:underline"
+                                    onClick={handleEditClient}
+                                >
                                     <Avatar className="w-5 h-5"><AvatarFallback className="bg-purple-100 text-purple-700 text-[10px]">CL</AvatarFallback></Avatar>
-                                    {project.firstName} {project.name}
+                                    {project.clientName || `${project.firstName} ${project.name}`}
                                 </div>
                             </div>
                             <div className="grid grid-cols-3 gap-2 items-center">
@@ -447,7 +505,7 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
                     {/* Tabs */}
                     <div className="mt-10">
                         <div className="flex gap-8 border-b border-gray-200">
-                            {["Tâches", "Visite Technique", "Installation"].map(tab => (
+                            {["Tâches", "Activités"].map(tab => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
@@ -458,32 +516,52 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
                             ))}
                         </div>
                         <div className="py-6">
-                            <TaskTab
-                                project={project}
-                                activeTab={activeTab}
-                                onUpdate={onUpdate}
-                                user={user}
-                            />
+                            {activeTab === "Tâches" && (
+                                <TaskTab
+                                    project={project}
+                                    activeTab={activeTab}
+                                    onUpdate={onUpdate}
+                                    user={user}
+                                />
+                            )}
+                            {activeTab === "Activités" && (
+                                <div className="space-y-4">
+                                    {(project.odooChat || []).map((msg, i) => (
+                                        <div key={i} className="flex gap-4 group">
+                                            <UserAvatar name={msg.author} size="w-10 h-10" textSize="text-sm" />
+                                            <div className="flex-1 space-y-1">
+                                                <div className="flex justify-between items-baseline">
+                                                    <span className="font-semibold text-gray-900 text-sm">{msg.author}</span>
+                                                    <span className="text-xs text-gray-400">
+                                                        {format(new Date(msg.date), 'dd MMM yyyy, HH:mm', { locale: fr })}
+                                                    </span>
+                                                </div>
+                                                <div className="bg-white p-3.5 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 text-sm text-gray-700 leading-relaxed">
+                                                    {msg.content}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {(!project.odooChat || project.odooChat.length === 0) && (
+                                        <div className="text-gray-400 text-center py-8">Aucune activité récente.</div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                {/* Chatter (Sidebar) - Full Height */}
+                {/* Chatter (Sidebar) - Simplified */}
                 <div className="w-[450px] bg-gray-50/80 flex flex-col border-l border-gray-200 shrink-0 h-full backdrop-blur-sm">
                     <div className="p-3 border-b border-gray-200 flex gap-2 justify-end shrink-0 bg-white/50">
-                        <Button variant="ghost" size="sm" className="text-gray-600">Activités</Button>
-                        <Button variant="ghost" size="sm" className="text-gray-600">Note</Button>
                         <Button size="sm" className="bg-purple-700 hover:bg-purple-800 text-white shadow-sm">Envoyer message</Button>
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-5 space-y-6">
+                        {/* We show same chat here for consistency */}
                         {(project.odooChat || []).map((msg, i) => (
                             <div key={i} className="flex gap-4 group">
-                                <Avatar className="w-10 h-10 mt-1 shadow-sm border border-white">
-                                    <AvatarFallback className="bg-gradient-to-br from-purple-100 to-blue-100 text-gray-700">
-                                        {msg.authorInitial || msg.author?.charAt(0) || '?'}
-                                    </AvatarFallback>
-                                </Avatar>
+                                <UserAvatar name={msg.author} size="w-8 h-8" textSize="text-xs" showName={false} />
                                 <div className="flex-1 space-y-1">
                                     <div className="flex justify-between items-baseline">
                                         <span className="font-semibold text-gray-900 text-sm">{msg.author}</span>
@@ -491,7 +569,7 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
                                             {format(new Date(msg.date), 'dd MMM yyyy, HH:mm', { locale: fr })}
                                         </span>
                                     </div>
-                                    <div className="bg-white p-3.5 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 text-sm text-gray-700 leading-relaxed">
+                                    <div className="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 text-sm text-gray-700 leading-relaxed">
                                         {msg.content}
                                     </div>
                                 </div>
@@ -502,15 +580,7 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
 
                     <div className="p-4 bg-white border-t border-gray-200 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)] z-10">
                         <div className="flex gap-3">
-                            <Avatar className="w-9 h-9">
-                                {user?.photoURL ? (
-                                    <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
-                                ) : (
-                                    <AvatarFallback className="bg-gray-100 text-gray-600 text-xs">
-                                        {user?.displayName ? user.displayName.substring(0, 2).toUpperCase() : 'MOI'}
-                                    </AvatarFallback>
-                                )}
-                            </Avatar>
+                            <UserAvatar name={user?.displayName || "Moi"} size="w-9 h-9" textSize="text-xs" showName={false} />
                             <div className="flex-1 relative">
                                 <Input
                                     placeholder="Écrire un commentaire..."
@@ -612,7 +682,9 @@ const NewProjectDialog = ({ onClose, onAddProject, projects, stages }) => {
 // --- MAIN PAGE ---
 export default function Odoo() {
     const { projects, setProjects } = useProjects();
+    const { user } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
+    const [filterAssigned, setFilterAssigned] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Stages State (Persisted)
@@ -665,8 +737,15 @@ export default function Odoo() {
                 (p.zip && p.zip.includes(q))
             );
         }
+
+        // 3. Assigned Filter
+        if (filterAssigned && user) {
+            const userName = user.firstName || user.displayName;
+            list = list.filter(p => p.assignedUser === userName || p.assignedUser === "Moi" || p.assignedUser === user.displayName);
+        }
+
         return list;
-    }, [projects, searchQuery, stages]);
+    }, [projects, searchQuery, stages, filterAssigned, user]);
 
 
     const updateProjectList = (updatedProject) => {
@@ -751,19 +830,31 @@ export default function Odoo() {
             <div className="h-16 bg-white border-b flex items-center px-6 justify-between shrink-0 shadow-sm z-20">
                 <div className="flex items-center gap-6">
                     <h1 className="text-xl font-bold text-gray-800 tracking-tight">Tableau de bord</h1>
-                    <Dialog open={isNewProjectOpen} onOpenChange={setIsNewProjectOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="secondary" size="sm" className="bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-100 font-medium">
-                                <Plus size={16} className="mr-1.5" /> Nouveau Dossier
-                            </Button>
-                        </DialogTrigger>
-                        <NewProjectDialog
-                            onClose={() => setIsNewProjectOpen(false)}
-                            projects={projects || []}
-                            stages={stages}
-                            onAddProject={handleAddProjectToStage}
-                        />
-                    </Dialog>
+                    <div className="flex gap-2">
+                        <div className="relative">
+                            <Dialog open={isNewProjectOpen} onOpenChange={setIsNewProjectOpen}>
+                                <DialogTrigger asChild>
+                                    <Button variant="secondary" size="sm" className="bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-100 font-medium">
+                                        <Plus size={16} className="mr-1.5" /> Nouveau Dossier
+                                    </Button>
+                                </DialogTrigger>
+                                <NewProjectDialog
+                                    onClose={() => setIsNewProjectOpen(false)}
+                                    projects={projects || []}
+                                    stages={stages}
+                                    onAddProject={handleAddProjectToStage}
+                                />
+                            </Dialog>
+                        </div>
+                        <Button
+                            variant={filterAssigned ? "default" : "outline"}
+                            size="sm"
+                            className={filterAssigned ? "bg-purple-600 hover:bg-purple-700" : "text-gray-600 border-gray-300"}
+                            onClick={() => setFilterAssigned(!filterAssigned)}
+                        >
+                            <User size={14} className="mr-1.5" /> Assignés à moi
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-3 flex-1 max-w-lg mx-8 relative">
