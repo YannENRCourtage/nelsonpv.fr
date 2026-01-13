@@ -414,6 +414,7 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
         const msg = {
             id: Date.now(),
             author: authorName,
+            uid: user?.uid, // Add UID for accurate identification
             content: newMessage,
             date: new Date().toISOString(),
             type: 'message'
@@ -532,7 +533,7 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
                                 <label className="text-xs font-medium text-gray-500 uppercase">GPS</label>
                                 <div className="text-gray-900 text-sm flex items-center gap-1.5">
                                     <MapPin size={14} className="text-gray-400" />
-                                    {project.lat && project.lng ? `${project.lat}, ${project.lng}` : '-'}
+                                    {project.gps || (project.lat && project.lng ? `${project.lat}, ${project.lng}` : '-')}
                                 </div>
                             </div>
 
@@ -610,26 +611,32 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
                             )}
                             {activeTab === "Activités" && (
                                 <div className="space-y-4">
-                                    {(project.odooChat || []).map((msg, i) => (
-                                        <div key={i} className="flex gap-4 group">
-                                            <UserAvatar
-                                                name={msg.author.includes('Moi') ? (user?.displayName || 'Moi') : msg.author}
-                                                photoURL={msg.author.includes('Moi') ? user?.photoURL : null}
-                                                size="w-10 h-10" textSize="text-sm"
-                                            />
-                                            <div className="flex-1 space-y-1">
-                                                <div className="flex justify-between items-baseline">
-                                                    <span className="font-semibold text-gray-900 text-sm">{msg.author}</span>
-                                                    <span className="text-xs text-gray-400">
-                                                        {format(new Date(msg.date), 'dd MMM yyyy, HH:mm', { locale: fr })}
-                                                    </span>
-                                                </div>
-                                                <div className="bg-white p-3.5 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 text-sm text-gray-700 leading-relaxed">
-                                                    {msg.content}
+                                    {(project.odooChat || []).map((msg, i) => {
+                                        const isMe = (user?.uid && msg.uid === user.uid) || msg.author === "Moi" || (user && msg.author === (user.firstName ? `${user.firstName} ${user.name || ''}`.trim() : user.displayName));
+                                        return (
+                                            <div key={i} className={`flex gap-4 group ${isMe ? 'flex-row-reverse' : ''}`}>
+                                                <UserAvatar
+                                                    name={isMe ? (user?.displayName || 'Moi') : msg.author}
+                                                    photoURL={isMe ? user?.photoURL : null}
+                                                    size="w-10 h-10" textSize="text-sm"
+                                                />
+                                                <div className={`flex-1 space-y-1 ${isMe ? 'text-right' : ''}`}>
+                                                    <div className={`flex items-baseline gap-2 ${isMe ? 'flex-row-reverse' : 'justify-between'}`}>
+                                                        <span className="font-semibold text-gray-900 text-sm">{msg.author}</span>
+                                                        <span className="text-xs text-gray-400">
+                                                            {format(new Date(msg.date), 'dd MMM yyyy, HH:mm', { locale: fr })}
+                                                        </span>
+                                                    </div>
+                                                    <div className={`p-3.5 rounded-2xl shadow-sm border text-sm leading-relaxed inline-block text-left ${isMe
+                                                        ? 'bg-blue-600 text-white rounded-tr-none border-blue-600'
+                                                        : 'bg-white rounded-tl-none border-gray-100 text-gray-700'
+                                                        }`}>
+                                                        {msg.content}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                     {(!project.odooChat || project.odooChat.length === 0) && (
                                         <div className="text-gray-400 text-center py-8">Aucune activité récente.</div>
                                     )}
@@ -646,26 +653,32 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-5 space-y-6">
-                        {(project.odooChat || []).map((msg, i) => (
-                            <div key={i} className="flex gap-4 group">
-                                <UserAvatar
-                                    name={msg.author.includes('Moi') ? (user?.displayName || 'Moi') : msg.author}
-                                    photoURL={msg.author.includes('Moi') ? user?.photoURL : null}
-                                    size="w-8 h-8" textSize="text-xs" showName={false}
-                                />
-                                <div className="flex-1 space-y-1">
-                                    <div className="flex justify-between items-baseline">
-                                        <span className="font-semibold text-gray-900 text-sm">{msg.author}</span>
-                                        <span className="text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {format(new Date(msg.date), 'dd MMM yyyy, HH:mm', { locale: fr })}
-                                        </span>
-                                    </div>
-                                    <div className="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 text-sm text-gray-700 leading-relaxed">
-                                        {msg.content}
+                        {(project.odooChat || []).map((msg, i) => {
+                            const isMe = (user?.uid && msg.uid === user.uid) || msg.author === "Moi" || (user && msg.author === (user.firstName ? `${user.firstName} ${user.name || ''}`.trim() : user.displayName));
+                            return (
+                                <div key={i} className={`flex gap-4 group ${isMe ? 'flex-row-reverse' : ''}`}>
+                                    <UserAvatar
+                                        name={isMe ? (user?.displayName || 'Moi') : msg.author}
+                                        photoURL={isMe ? user?.photoURL : null}
+                                        size="w-8 h-8" textSize="text-xs" showName={false}
+                                    />
+                                    <div className={`flex-1 space-y-1 ${isMe ? 'text-right' : ''}`}>
+                                        <div className={`flex items-baseline gap-2 ${isMe ? 'flex-row-reverse' : 'justify-between'}`}>
+                                            <span className="font-semibold text-gray-900 text-sm">{msg.author}</span>
+                                            <span className="text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                {format(new Date(msg.date), 'dd MMM yyyy, HH:mm', { locale: fr })}
+                                            </span>
+                                        </div>
+                                        <div className={`p-3 rounded-2xl shadow-sm border text-sm leading-relaxed inline-block text-left ${isMe
+                                            ? 'bg-blue-600 text-white rounded-tr-none border-blue-600'
+                                            : 'bg-white rounded-tl-none border-gray-100 text-gray-700'
+                                            }`}>
+                                            {msg.content}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                         <div ref={messagesEndRef} />
                     </div>
 
