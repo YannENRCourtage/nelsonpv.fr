@@ -695,7 +695,7 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
                 </div>
             </div>
         </div>
-        </div >
+
     );
 };
 
