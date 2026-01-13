@@ -352,8 +352,17 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         // FIX: Override height
         let extHeight = leftHeight;
         if (buildingType === 'monopente' && leftSide === 'auvent') {
-            const drop = 4.0 * Math.tan((13 * Math.PI) / 180);
-            extHeight = 4.0 - drop;
+            // Monopente Left Auvent
+            // Height is the Tip Height.
+            if (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5) {
+                extHeight = 7.4;
+            } else if (Math.abs(width - 12.7) < 0.5) {
+                extHeight = 6.4;
+            } else {
+                // Fallback for monopente
+                const drop = 4.0 * Math.tan((13 * Math.PI) / 180);
+                extHeight = 4.0 - drop;
+            }
         } else if (buildingType === 'asymetrique_1' && leftSide === 'auvent') {
             // Asym Left Auvent: 5.4m (16/16.4) or 6.4m (20)
             // USER REQUEST 12/01/2026: Dimension corrected back to 6.4m for 20m width
@@ -405,7 +414,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
         let extHeight = rightHeight;
         if (buildingType === 'monopente' && rightSide === 'auvent') {
-            extHeight = ridgeHeight - 1.0;
+            // Monopente Right Auvent: Tip at 3.0m
+            extHeight = 3.0;
         } else if (buildingType === 'asymetrique_1' && rightSide === 'auvent') {
             // Right Auvent Tip: 3.0m
             extHeight = 3.0;

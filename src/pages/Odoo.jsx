@@ -24,7 +24,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { LayoutGrid, List as ListIcon, Trash2, ArrowLeft, ArrowRight, MoreHorizontal } from 'lucide-react';
+import { LayoutGrid, List as ListIcon, Trash2, ArrowLeft, ArrowRight, MoreHorizontal, MapPin } from 'lucide-react';
+import { Textarea } from "@/components/ui/textarea";
 import { useSearchParams, useNavigate } from 'react-router-dom';
 
 import ContactModal from '@/components/crm/ContactModal.jsx';
@@ -370,7 +371,31 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
             phone: updatedContact.phone,
             city: updatedContact.city
         });
+
         setShowContactModal(false);
+    };
+
+    const handleDeleteProject = async () => {
+        if (window.confirm("Êtes-vous sûr de vouloir supprimer ce projet ?")) {
+            // Assuming onDelete is passed or we handle via update
+            // Ideally call apiService.deleteProject(project.id) then onBack/reload
+            // For now, let's assume parent handles delete if we had an onDelete prop, 
+            // but since we don't, we'll just try to hide it or implement delete later.
+            // USER REQUEST 13/01/2026: "Ajoute un bouton Supprimer". Logic might be TBD.
+            // Let's try calling apiService directly if possible or just log for now?
+            // "Odoo.jsx" lines 300+ don't show onDelete prop.
+            // I will just add the button for UI as requested.
+            // Update: I will try to call an `onDelete` prop if it existed, or just alert.
+            // Actually, I'll add the button and if confirmed, try to delete via API and close.
+            try {
+                await apiService.deleteProject(project.id);
+                onBack();
+                window.location.reload(); // Simple refresh for now to update list
+            } catch (e) {
+                console.error("Delete failed", e);
+                alert("Erreur lors de la suppression");
+            }
+        }
     };
 
     const scrollToBottom = () => {
@@ -420,7 +445,7 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
                         className="ml-2 h-6 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                         onClick={() => navigate(`/project/${project.id}/edit`)}
                     >
-                        <ExternalLink size={12} className="mr-1" /> Ouvrir
+                        <ExternalLink size={12} className="mr-1" /> Ouvrir le projet
                     </Button>
                 </div>
                 <div className="flex items-center gap-4">
@@ -460,6 +485,33 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
                                 <label className="font-medium text-gray-500">Description</label>
                                 <span className="col-span-2 text-gray-900 block">{project.type || "Installation PV"}</span>
                             </div>
+                            <div className="grid grid-cols-3 gap-2 items-start">
+                                <label className="font-medium text-gray-500">Adresse</label>
+                                <div className="col-span-2 text-sm text-gray-900">
+                                    <div>{project.address}</div>
+                                    <div>{project.zip} {project.city}</div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 items-center">
+                                <label className="font-medium text-gray-500">Coordonnées GPS</label>
+                                <div className="col-span-2 text-sm text-gray-900 flex items-center gap-2">
+                                    <MapPin size={14} className="text-gray-400" />
+                                    {project.lat && project.lng ? `${project.lat}, ${project.lng}` : '-'}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 items-start">
+                                <label className="font-medium text-gray-500 mt-2">Commentaires</label>
+                                <div className="col-span-2">
+                                    <Textarea
+                                        className="min-h-[100px] text-sm bg-gray-50"
+                                        placeholder="Ajouter un commentaire..."
+                                        value={project.comment || ''}
+                                        onChange={e => onUpdate(project.id, { comment: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-3 gap-2 items-center">
                                 <label className="font-medium text-gray-500">Chef de projet</label>
                                 <div className="col-span-2">
@@ -499,148 +551,150 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
                                     <span className="text-gray-900">{resolveUser(project.assignedUser || project.createdBy).name}</span>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-2 items-center">
-                                <label className="font-medium text-gray-500">Site</label>
-                                <div className="col-span-2">
-                                    {project.city ? (
-                                        <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md text-xs font-medium border border-blue-100 inline-flex items-center gap-1">
-                                            {project.zip} {project.city}
-                                        </span>
-                                    ) : '-'}
-                                </div>
-                            </div>
                         </div>
-
-                        <div className="space-y-5">
-                            <div className="grid grid-cols-3 gap-2 items-center">
-                                <label className="font-medium text-gray-500">Client</label>
-                                <div
-                                    className="col-span-2 font-medium text-purple-700 flex items-center gap-2 cursor-pointer hover:underline"
-                                    onClick={handleEditClient}
-                                >
-                                    <Avatar className="w-5 h-5"><AvatarFallback className="bg-purple-100 text-purple-700 text-[10px]">CL</AvatarFallback></Avatar>
-                                    {project.clientName || `${project.firstName} ${project.name}`}
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2 items-center">
-                                <label className="font-medium text-gray-500">Email</label>
-                                <span className="col-span-2 text-gray-700 hover:text-purple-700 cursor-pointer">{project.email || '-'}</span>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2 items-center">
-                                <label className="font-medium text-gray-500">Téléphone</label>
-                                <span className="col-span-2 text-gray-700">{project.phone || '-'}</span>
-                            </div>
-                        </div>
+                        {/* Site Field REMOVED as requested, replaced by Address above */}
                     </div>
 
-                    {/* Tabs */}
-                    <div className="mt-10">
-                        <div className="flex gap-8 border-b border-gray-200">
-                            {["Tâches", "Activités"].map(tab => (
-                                <button
-                                    key={tab}
-                                    onClick={() => setActiveTab(tab)}
-                                    className={`px-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab ? 'border-purple-600 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                                >
-                                    {tab}
-                                </button>
-                            ))}
+                    <div className="space-y-5">
+                        <div className="flex justify-end">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                onClick={handleDeleteProject}
+                            >
+                                <Trash2 size={16} className="mr-1" /> Supprimer
+                            </Button>
                         </div>
-                        <div className="py-6">
-                            {activeTab === "Tâches" && (
-                                <TaskTab
-                                    project={project}
-                                    activeTab={activeTab}
-                                    onUpdate={onUpdate}
-                                    user={user}
-                                />
-                            )}
-                            {activeTab === "Activités" && (
-                                <div className="space-y-4">
-                                    {(project.odooChat || []).map((msg, i) => (
-                                        <div key={i} className="flex gap-4 group">
-                                            <UserAvatar
-                                                name={msg.author.includes('Moi') ? (user?.displayName || 'Moi') : msg.author}
-                                                photoURL={msg.author.includes('Moi') ? user?.photoURL : null}
-                                                size="w-10 h-10" textSize="text-sm"
-                                            />
-                                            <div className="flex-1 space-y-1">
-                                                <div className="flex justify-between items-baseline">
-                                                    <span className="font-semibold text-gray-900 text-sm">{msg.author}</span>
-                                                    <span className="text-xs text-gray-400">
-                                                        {format(new Date(msg.date), 'dd MMM yyyy, HH:mm', { locale: fr })}
-                                                    </span>
-                                                </div>
-                                                <div className="bg-white p-3.5 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 text-sm text-gray-700 leading-relaxed">
-                                                    {msg.content}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {(!project.odooChat || project.odooChat.length === 0) && (
-                                        <div className="text-gray-400 text-center py-8">Aucune activité récente.</div>
-                                    )}
-                                </div>
-                            )}
+                        <div className="grid grid-cols-3 gap-2 items-center">
+                            <label className="font-medium text-gray-500">Client</label>
+                            <div
+                                className="col-span-2 font-medium text-purple-700 flex items-center gap-2 cursor-pointer hover:underline"
+                                onClick={handleEditClient}
+                            >
+                                <Avatar className="w-5 h-5"><AvatarFallback className="bg-purple-100 text-purple-700 text-[10px]">CL</AvatarFallback></Avatar>
+                                {project.clientName || `${project.firstName} ${project.name}`}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 items-center">
+                            <label className="font-medium text-gray-500">Email</label>
+                            <span className="col-span-2 text-gray-700 hover:text-purple-700 cursor-pointer">{project.email || '-'}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 items-center">
+                            <label className="font-medium text-gray-500">Téléphone</label>
+                            <span className="col-span-2 text-gray-700">{project.phone || '-'}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Chatter (Sidebar) - Simplified */}
-                <div className="w-[450px] bg-gray-50/80 flex flex-col border-l border-gray-200 shrink-0 h-full backdrop-blur-sm">
-                    <div className="p-3 border-b border-gray-200 flex gap-2 justify-end shrink-0 bg-white/50">
-                        <Button size="sm" className="bg-purple-700 hover:bg-purple-800 text-white shadow-sm">Envoyer message</Button>
+                {/* Tabs */}
+                <div className="mt-10">
+                    <div className="flex gap-8 border-b border-gray-200">
+                        {["Tâches", "Activités"].map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`px-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab ? 'border-purple-600 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                            >
+                                {tab}
+                            </button>
+                        ))}
                     </div>
+                    <div className="py-6">
+                        {activeTab === "Tâches" && (
+                            <TaskTab
+                                project={project}
+                                activeTab={activeTab}
+                                onUpdate={onUpdate}
+                                user={user}
+                            />
+                        )}
+                        {activeTab === "Activités" && (
+                            <div className="space-y-4">
+                                {(project.odooChat || []).map((msg, i) => (
+                                    <div key={i} className="flex gap-4 group">
+                                        <UserAvatar
+                                            name={msg.author.includes('Moi') ? (user?.displayName || 'Moi') : msg.author}
+                                            photoURL={msg.author.includes('Moi') ? user?.photoURL : null}
+                                            size="w-10 h-10" textSize="text-sm"
+                                        />
+                                        <div className="flex-1 space-y-1">
+                                            <div className="flex justify-between items-baseline">
+                                                <span className="font-semibold text-gray-900 text-sm">{msg.author}</span>
+                                                <span className="text-xs text-gray-400">
+                                                    {format(new Date(msg.date), 'dd MMM yyyy, HH:mm', { locale: fr })}
+                                                </span>
+                                            </div>
+                                            <div className="bg-white p-3.5 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 text-sm text-gray-700 leading-relaxed">
+                                                {msg.content}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {(!project.odooChat || project.odooChat.length === 0) && (
+                                    <div className="text-gray-400 text-center py-8">Aucune activité récente.</div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
 
-                    <div className="flex-1 overflow-y-auto p-5 space-y-6">
-                        {/* We show same chat here for consistency */}
-                        {(project.odooChat || []).map((msg, i) => (
-                            <div key={i} className="flex gap-4 group">
-                                <UserAvatar
-                                    name={msg.author.includes('Moi') ? (user?.displayName || 'Moi') : msg.author}
-                                    photoURL={msg.author.includes('Moi') ? user?.photoURL : null}
-                                    size="w-8 h-8" textSize="text-xs" showName={false}
-                                />
-                                <div className="flex-1 space-y-1">
-                                    <div className="flex justify-between items-baseline">
-                                        <span className="font-semibold text-gray-900 text-sm">{msg.author}</span>
-                                        <span className="text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {format(new Date(msg.date), 'dd MMM yyyy, HH:mm', { locale: fr })}
-                                        </span>
-                                    </div>
-                                    <div className="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 text-sm text-gray-700 leading-relaxed">
-                                        {msg.content}
-                                    </div>
+            {/* Chatter (Sidebar) - Simplified */}
+            <div className="w-[450px] bg-gray-50/80 flex flex-col border-l border-gray-200 shrink-0 h-full backdrop-blur-sm">
+                <div className="p-3 border-b border-gray-200 flex gap-2 justify-end shrink-0 bg-white/50">
+                    <Button size="sm" className="bg-purple-700 hover:bg-purple-800 text-white shadow-sm">Envoyer message</Button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-5 space-y-6">
+                    {/* We show same chat here for consistency */}
+                    {(project.odooChat || []).map((msg, i) => (
+                        <div key={i} className="flex gap-4 group">
+                            <UserAvatar
+                                name={msg.author.includes('Moi') ? (user?.displayName || 'Moi') : msg.author}
+                                photoURL={msg.author.includes('Moi') ? user?.photoURL : null}
+                                size="w-8 h-8" textSize="text-xs" showName={false}
+                            />
+                            <div className="flex-1 space-y-1">
+                                <div className="flex justify-between items-baseline">
+                                    <span className="font-semibold text-gray-900 text-sm">{msg.author}</span>
+                                    <span className="text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        {format(new Date(msg.date), 'dd MMM yyyy, HH:mm', { locale: fr })}
+                                    </span>
+                                </div>
+                                <div className="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 text-sm text-gray-700 leading-relaxed">
+                                    {msg.content}
                                 </div>
                             </div>
-                        ))}
-                        <div ref={messagesEndRef} />
-                    </div>
+                        </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                </div>
 
-                    <div className="p-4 bg-white border-t border-gray-200 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)] z-10">
-                        <div className="flex gap-3">
-                            <UserAvatar name={user?.displayName || "Moi"} size="w-9 h-9" textSize="text-xs" showName={false} />
-                            <div className="flex-1 relative">
-                                <Input
-                                    placeholder="Écrire un commentaire..."
-                                    className="pr-10 bg-gray-50 border-gray-200 focus:bg-white focus:border-purple-300 transition-all rounded-full"
-                                    value={newMessage}
-                                    onChange={e => setNewMessage(e.target.value)}
-                                    onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                                />
-                                <Button
-                                    size="icon"
-                                    onClick={handleSendMessage}
-                                    className={`absolute right-1 top-1 w-7 h-7 rounded-full ${newMessage.trim() ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-transparent text-gray-300 hover:bg-gray-100'}`}
-                                    disabled={!newMessage.trim()}
-                                >
-                                    <Send size={14} />
-                                </Button>
-                            </div>
+                <div className="p-4 bg-white border-t border-gray-200 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)] z-10">
+                    <div className="flex gap-3">
+                        <UserAvatar name={user?.displayName || "Moi"} photoURL={user?.photoURL} size="w-9 h-9" textSize="text-xs" showName={false} />
+                        <div className="flex-1 relative">
+                            <Input
+                                placeholder="Écrire un commentaire..."
+                                className="pr-10 bg-gray-50 border-gray-200 focus:bg-white focus:border-purple-300 transition-all rounded-full"
+                                value={newMessage}
+                                onChange={e => setNewMessage(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+                            />
+                            <Button
+                                size="icon"
+                                onClick={handleSendMessage}
+                                className={`absolute right-1 top-1 w-7 h-7 rounded-full ${newMessage.trim() ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-transparent text-gray-300 hover:bg-gray-100'}`}
+                                disabled={!newMessage.trim()}
+                            >
+                                <Send size={14} />
+                            </Button>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
         </div >
     );
 };

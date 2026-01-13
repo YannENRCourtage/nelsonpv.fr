@@ -88,15 +88,28 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
                 startHeight = (tipHeight + rise) - 0.60; // Lowered by 60cm total
             }
         } else {
-            // Monopente (Default 5 deg)
-            angleRad = 5 * (Math.PI / 180);
+            // Monopente (Force 15 deg)
+            angleRad = 15 * (Math.PI / 180);
             const rise = auventWidth * Math.tan(angleRad);
+
             if (side === 'right') {
+                // Right: High Point descending to Tip at 3.0m
+                // High = Tip + Rise
                 startHeight = 3.0 + rise;
             } else {
-                let tipHeight = 5.4;
-                if (Math.abs(buildingWidth - 20) < 0.5) tipHeight = 6.4;
-                else if (Math.abs(buildingWidth - 16) < 0.5 || Math.abs(buildingWidth - 16.4) < 0.5) tipHeight = 5.4;
+                // Left: Different Tip Targets based on Width
+                let tipHeight = 6.4; // Default/Fallback for ~12.7m
+
+                // Width 16.4m -> Tip 7.4m
+                if (Math.abs(buildingWidth - 16.4) < 0.5 || Math.abs(buildingWidth - 16) < 0.5) {
+                    tipHeight = 7.4;
+                }
+                // Width 12.7m -> Tip 6.4m (Already default, but explicit check)
+                else if (Math.abs(buildingWidth - 12.7) < 0.5) {
+                    tipHeight = 6.4;
+                }
+
+                // High = Tip + Rise
                 startHeight = tipHeight + rise;
             }
         }
