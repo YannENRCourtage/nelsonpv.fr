@@ -17,7 +17,7 @@ const MARGIN = 0.50; // 50cm margin
  * @param {number} pitch - Roof pitch in degrees (for potential info display, mostly handled by parent rotation)
  * @param {string} side - 'left' or 'right'
  */
-export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof" }) {
+export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof", forceFullCoverage = false }) {
     const { hasSolar } = useConfiguratorStore(useConfiguratorValues);
 
     // Geometry & Material (Memoized)
@@ -35,10 +35,13 @@ export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof" }) {
     const frameMaterial = useMemo(() => new THREE.MeshBasicMaterial({ color: '#c0c0c0' }), []);
 
     // Layout Optimization (Calepinage)
+    const effectiveGap = forceFullCoverage ? 0 : GAP;
+    const effectiveMargin = forceFullCoverage ? 0 : MARGIN;
+
     // We try to fit as many panels as possible within the margins.
     // Usable Area
-    const usableWidth = surfaceWidth - (2 * MARGIN);
-    const usableLength = surfaceLength - (2 * MARGIN);
+    const usableWidth = surfaceWidth - (2 * effectiveMargin);
+    const usableLength = surfaceLength - (2 * effectiveMargin);
 
     // Calculate Counts (Portrait)
     // Along X (Slope Width): We place Panels by their Width (1.134) or Height (1.762)?
@@ -63,13 +66,13 @@ export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof" }) {
         // Unit Size X: 1.134 + 0.01 (Gap)
         // Unit Size Z: 1.762 + 0.01 (Gap)
 
-        const countX_A = Math.floor((usableWidth + GAP) / (PANEL_WIDTH + GAP));
-        const countZ_A = Math.floor((usableLength + GAP) / (PANEL_HEIGHT + GAP));
+        const countX_A = Math.floor((usableWidth + effectiveGap) / (PANEL_WIDTH + effectiveGap));
+        const countZ_A = Math.floor((usableLength + effectiveGap) / (PANEL_HEIGHT + effectiveGap));
         const total_A = countX_A * countZ_A;
 
         // Try Option B: Panel Height (1.762) along Slope (X), Panel Width (1.134) along Ridge (Z)
-        const countX_B = Math.floor((usableWidth + GAP) / (PANEL_HEIGHT + GAP));
-        const countZ_B = Math.floor((usableLength + GAP) / (PANEL_WIDTH + GAP));
+        const countX_B = Math.floor((usableWidth + effectiveGap) / (PANEL_HEIGHT + effectiveGap));
+        const countZ_B = Math.floor((usableLength + effectiveGap) / (PANEL_WIDTH + effectiveGap));
         const total_B = countX_B * countZ_B;
 
         let selectedLayout = {};
@@ -96,8 +99,8 @@ export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof" }) {
         const instances = [];
 
         // Centering offset
-        const totalGridWidth = selectedLayout.rowsX * selectedLayout.dimX + (selectedLayout.rowsX - 1) * GAP;
-        const totalGridLength = selectedLayout.colsZ * selectedLayout.dimZ + (selectedLayout.colsZ - 1) * GAP;
+        const totalGridWidth = selectedLayout.rowsX * selectedLayout.dimX + (selectedLayout.rowsX - 1) * effectiveGap;
+        const totalGridLength = selectedLayout.colsZ * selectedLayout.dimZ + (selectedLayout.colsZ - 1) * effectiveGap;
 
         const startX = -totalGridWidth / 2 + selectedLayout.dimX / 2;
         const startZ = -totalGridLength / 2 + selectedLayout.dimZ / 2;
@@ -105,9 +108,9 @@ export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof" }) {
         for (let ix = 0; ix < selectedLayout.rowsX; ix++) {
             for (let iz = 0; iz < selectedLayout.colsZ; iz++) {
                 instances.push({
-                    x: startX + ix * (selectedLayout.dimX + GAP),
+                    x: startX + ix * (selectedLayout.dimX + effectiveGap),
                     y: 0.05, // Slightly above roof surface
-                    z: startZ + iz * (selectedLayout.dimZ + GAP)
+                    z: startZ + iz * (selectedLayout.dimZ + effectiveGap)
                 });
             }
         }

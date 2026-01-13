@@ -74,6 +74,36 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     // RENDER LOGIC
     // ==========================================
 
+    // --- 0. OMBRIÈRE VL SIMPLE ---
+    const isOmbriereSimple = buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche';
+
+    if (isOmbriereSimple) {
+        const isDroite = buildingType === 'ombriere_vl_simple_droite';
+
+        // Exact same calculation as PortalFrame (12.2 deg usually)
+        const slopeRad = (roofPitch * Math.PI) / 180;
+        const rotZ = isDroite ? -slopeRad : slopeRad;
+
+        // Length of slope (Hypotenuse)
+        // Adjust for overhangs? Rafter was `width / cos`. 
+        // User requested "Toute la surface". We cover the rafter length.
+        const slopeLen = width / Math.cos(slopeRad);
+
+        // Center position (Top of Rafter)
+        // Rafter center height = (eave + ridge)/2
+        // Rafter Depth (assumed 0.3-0.4?).
+        // If Rafter is centered at `centerHeight`, its top is `centerHeight + depth/2`.
+        // Let's assume depth 0.3 + mount 0.05 => 0.2 lift.
+        const centerHeight = (eaveHeight + ridgeHeight) / 2;
+        const lift = 0.2;
+
+        return (
+            <group position={[0, centerHeight + lift, -length / 2]} rotation={[0, 0, rotZ]}>
+                <SolarPanels surfaceWidth={slopeLen} surfaceLength={length + 1.0} forceFullCoverage={true} />
+            </group>
+        );
+    }
+
     // --- A. MONOPENTE ---
     if (isMonopente) {
         // Offset Logic

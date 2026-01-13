@@ -85,6 +85,12 @@ export const useConfiguratorStore = create((set, get) => ({
                 const state = get();
                 if (state.leftSide === 'appentis') updates.leftSide = 'none';
                 if (state.rightSide === 'appentis') updates.rightSide = 'none';
+            } else if (type === 'ombriere_vl_simple_gauche' || type === 'ombriere_vl_simple_droite') {
+                updates.eaveHeight = 2.93;
+                updates.roofPitch = 12.2;
+                updates.hasSolar = true; // Auto solar
+                updates.leftSide = 'none';
+                updates.rightSide = 'none';
             } else {
                 updates.eaveHeight = 5.5;
                 updates.roofPitch = 10; // Reset to 10° for Symmetrical/Asymmetrical

@@ -446,7 +446,137 @@ export function PortalFrame({
                 </group>
 
             </group>
+
         );
+    }
+
+    // --- OMBRIÈRE VL SIMPLE (V-Shape Structure) ---
+    const isOmbriereSimple = buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche';
+
+    if (isOmbriereSimple) {
+        const isDroite = buildingType === 'ombriere_vl_simple_droite'; // Pente descendant vers la droite (Haut à Gauche)
+
+        // Dimensions based on User Image for 'width = 6.9'
+        // Image: Left Height 4.425, Right Height 2.930. Width 6.923.
+        // Base Distances: 1.053 (Edge-Strut1), 1.700 (Strut1-Strut2), 4.170 (Strut2-Edge)
+        // Ratio check: 1.05/6.9 ~ 0.15, 1.7/6.9 ~ 0.25, 4.17/6.9 ~ 0.60.
+
+        // Slope Angle
+        // Droite: Negative rotation (Down to Right) ? 
+        // In 3D: Rotation Z. Positive = CounterClockwise.
+        // Droite (High Left, Low Right) => Rotation -Angle.
+        // Gauche (High Right, Low Left) => Rotation +Angle.
+
+        const slopeRad = (roofPitch * Math.PI) / 180;
+        const rotZ = isDroite ? -slopeRad : slopeRad;
+
+        // Rafter
+        const rafterLen = width / Math.cos(slopeRad); // ~7m
+        const rafterGeo = createRafterGeo(rafterLen);
+
+        // Struts (Jambes de Force)
+        // Modeled as Tubes (BoxGeometry for now)
+        // Positioned relative to "Base Center".
+        // Let's determine Base X in local coords (where 0 is center of building width)
+
+        // Local Coords: Left Edge = -width/2, Right Edge = +width/2.
+
+        // Attachments on Rafter (Horizontal projection distances from High Side)
+        // High Side is Left for Droite, Right for Gauche.
+        // Dist1 = 1.053, Dist2 = 1.053 + 1.700 = 2.753.
+
+        let xAttach1, xAttach2; // Local X
+        if (isDroite) {
+            // High side Left (-width/2)
+            xAttach1 = -width / 2 + 1.053;
+            xAttach2 = -width / 2 + 2.753;
+        } else {
+            // High side Right (+width/2)
+            xAttach1 = width / 2 - 1.053;
+            xAttach2 = width / 2 - 2.753;
+        }
+
+        // Base Horizontal Position
+        // Centered between attachments? Or explicit?
+        // Let's center the base between the two strut attachments at the bottom.
+        // But the struts might not be parallel or symmetric.
+        // Image shows V shape. Converging to a single block.
+        // Let's assume the Block Center is the midpoint of attachments x-position (simple approximation)
+        // Block X = (xAttach1 + xAttach2) / 2
+
+        const baseX = (xAttach1 + xAttach2) / 2;
+        const baseWidth = 1.0; // Concrete block width
+        const baseHeight = 0.5;
+
+        // Struts Geometry
+        // We need start point (Base Top) and end point (Rafter Underside).
+        // Base Top Point: [baseX, baseHeight, 0]
+
+        // Rafter Underside Equation
+        // Center of Rafter at [0, ridgeHeight - something?, 0] ?
+        // Or Center of Rafter at [0, (High+Low)/2, 0]?
+        // Let's anchor Rafter Center at [0, centerHeight, 0].
+        // eaveHeight is Low Side. ridgeHeight is High Side.
+        const centerHeight = (eaveHeight + ridgeHeight) / 2;
+
+        // Calculate strut length and angle
+        const createStrut = (xTarget, isFront) => {
+            // Target on Rafter (Underside)
+            // Rafter Equation: y = centerHeight + x * tan(rotZ) (approx)
+            // Minus half rafter depth (0.2)
+            const yTarget = centerHeight + (xTarget * Math.tan(rotZ)) - 0.2;
+
+            const start = new THREE.Vector3(baseX, baseHeight, 0);
+            const end = new THREE.Vector3(xTarget, yTarget, 0);
+
+            const len = start.distanceTo(end);
+
+            // Tube 150x150mm
+            const tubeGeo = new THREE.BoxGeometry(0.15, len, 0.15);
+
+            // Calculate Midpoint and Rotation
+            const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+
+            // Rotation (Angle with Y axis)
+            const dx = end.x - start.x;
+            const dy = end.y - start.y;
+            const angle = -Math.atan2(dx, dy); // Box is Y-aligned
+
+            return (
+                <mesh
+                    geometry={tubeGeo}
+                    material={steelMaterial}
+                    position={mid}
+                    rotation={[0, 0, angle]}
+                    castShadow
+                />
+            );
+        };
+
+        return (
+            <group position={position}>
+                {/* Concrete Base */}
+                <mesh position={[baseX, baseHeight / 2, 0]} castShadow receiveShadow>
+                    <boxGeometry args={[1.5, baseHeight, 0.8]} />
+                    <meshStandardMaterial color="#999999" roughness={0.9} />
+                </mesh>
+
+                {/* Struts */}
+                {createStrut(xAttach1)}
+                {createStrut(xAttach2)}
+
+                {/* Rafter */}
+                {/* Centered at [0, centerHeight, 0], rotated */}
+                <group position={[0, centerHeight, 0]} rotation={[0, 0, rotZ]}>
+                    <mesh geometry={rafterGeo} material={steelMaterial} position={[0, 0, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow />
+
+                    {/* End Plates / Caps if needed */}
+                </group>
+
+                {/* Connections (Bolts/Plates at strut tops) - Simplified */}
+            </group>
+        );
+
     }
 
     return (
