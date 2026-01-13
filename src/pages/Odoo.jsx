@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useProjects } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, Clock, Plus, Activity, Send, User, ChevronDown, ExternalLink } from 'lucide-react';
+import { Search, Clock, Plus, Send, User, ChevronDown, ExternalLink } from 'lucide-react';
 import { useDrag, useDrop } from 'react-dnd';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,10 +16,19 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { LayoutGrid, List as ListIcon, Trash2, ArrowLeft, ArrowRight, MoreHorizontal } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 
 // --- CONSTANTS ---
-const STAGES = [
+const DEFAULT_STAGES = [
     "Réaliser la DP/PC",
     "Récupérer l'ARE",
     "Récupérer l'accord ou refus Mairie",
@@ -28,6 +37,17 @@ const STAGES = [
     "Mandater l'huissier",
     "Mandater le Géomètre",
     "Mandater le Notaire"
+];
+
+const EXCLUDED_PROJECTS = [
+    "Projet sans nom",
+    "PLANTE",
+    "LECONTE", // Double entries mentioned by user
+    "RECKINGER",
+    "PARC ANIMALIER D'ECOUVES",
+    "DURIEUX PEYRON",
+    "DUCAM",
+    "MARTINEZ"
 ];
 
 // --- COMPONENTS ---
@@ -268,7 +288,7 @@ const TaskTab = ({ project, activeTab, onUpdate, user }) => {
 };
 
 // 4. PROJECT DETAIL VIEW
-const ProjectDetail = ({ project, onBack, onUpdate }) => {
+const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [newMessage, setNewMessage] = useState("");
@@ -321,14 +341,14 @@ const ProjectDetail = ({ project, onBack, onUpdate }) => {
                 </div>
                 <div className="flex items-center gap-4">
                     <Select
-                        value={project.odooStage || STAGES[0]}
+                        value={project.odooStage || stages[0]}
                         onValueChange={(val) => onUpdate(project.id, { odooStage: val })}
                     >
                         <SelectTrigger className="w-[280px] h-8 text-xs font-medium bg-gray-50 border-gray-300">
                             <SelectValue placeholder="Sélectionner une étape" />
                         </SelectTrigger>
                         <SelectContent className="max-h-[300px]">
-                            {STAGES.map(stage => (
+                            {stages.map(stage => (
                                 <SelectItem key={stage} value={stage} className="text-xs">
                                     {stage}
                                 </SelectItem>
@@ -517,11 +537,98 @@ const ProjectDetail = ({ project, onBack, onUpdate }) => {
 };
 
 
+// --- NEW PROJECT DIALOG ---
+const NewProjectDialog = ({ onClose, onAddProject, projects, stages }) => {
+    const [search, setSearch] = useState("");
+    const [selectedProject, setSelectedProject] = useState(null);
+    const [selectedStage, setSelectedStage] = useState(stages[0]);
+
+    // Show all projects here, even excluded ones
+    const filtered = projects.filter(p => !p.odooStage && (p.name?.toLowerCase().includes(search.toLowerCase()) || p.clientName?.toLowerCase().includes(search.toLowerCase())));
+
+    const handleConfirm = () => {
+        if (selectedProject && selectedStage) {
+            onAddProject(selectedProject.id, selectedStage);
+            onClose();
+        }
+    };
+
+    return (
+        <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+                <DialogTitle>Ajouter un dossier au tableau</DialogTitle>
+                <DialogDescription>
+                    Recherchez un projet existant pour l'ajouter à une étape du tableau Odoo.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Rechercher un projet</label>
+                    <Input
+                        placeholder="Nom, Client..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                    />
+                </div>
+
+                {search && (
+                    <div className="border rounded-md max-h-[200px] overflow-y-auto">
+                        {filtered.map(p => (
+                            <div
+                                key={p.id}
+                                className={`p-2 text-sm cursor-pointer hover:bg-gray-50 flex justify-between items-center ${selectedProject?.id === p.id ? 'bg-purple-50 border-purple-200' : ''}`}
+                                onClick={() => setSelectedProject(p)}
+                            >
+                                <span className="font-medium">{p.name || "Projet sans nom"}</span>
+                                <span className="text-xs text-gray-500">{p.clientName}</span>
+                            </div>
+                        ))}
+                        {filtered.length === 0 && <div className="p-2 text-sm text-gray-400">Aucun projet trouvé</div>}
+                    </div>
+                )}
+
+                {selectedProject && (
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Sélectionner une étape</label>
+                        <Select value={selectedStage} onValueChange={setSelectedStage}>
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {stages.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
+            </div>
+            <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={onClose}>Annuler</Button>
+                <Button onClick={handleConfirm} disabled={!selectedProject}>Ajouter le dossier</Button>
+            </div>
+        </DialogContent>
+    );
+};
+
 // --- MAIN PAGE ---
 export default function Odoo() {
     const { projects, setProjects } = useProjects();
     const [searchQuery, setSearchQuery] = useState('');
     const [searchParams, setSearchParams] = useSearchParams();
+
+    // Stages State (Persisted)
+    const [stages, setStages] = useState(() => {
+        const saved = localStorage.getItem('odoo_stages');
+        return saved ? JSON.parse(saved) : DEFAULT_STAGES;
+    });
+
+    const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
+    const [newStageName, setNewStageName] = useState("");
+    const [isAddingStage, setIsAddingStage] = useState(false);
+
+    // Save Stages
+    useEffect(() => {
+        localStorage.setItem('odoo_stages', JSON.stringify(stages));
+    }, [stages]);
 
     // Derived state from URL
     const selectedProjectId = searchParams.get('project');
@@ -531,6 +638,25 @@ export default function Odoo() {
 
     const filteredProjects = useMemo(() => {
         let list = projects || [];
+
+        // 1. Valid Projects Only (Default Filtering)
+        list = list.filter(p => {
+            // If searched, show everything matching
+            if (searchQuery) return true;
+
+            // If actively in a stage, show it
+            if (p.odooStage && stages.includes(p.odooStage)) return true;
+
+            // Check Exclusion List
+            // Explicit check: if project name is in exclusion list OR matched via substring specific logic if needed
+            // Using exact match on Name or "Projet sans nom" logic
+            const name = p.name || "Projet sans nom";
+            if (EXCLUDED_PROJECTS.some(excluded => name.includes(excluded))) return false;
+
+            return true;
+        });
+
+        // 2. Search Filter
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
             list = list.filter(p =>
@@ -540,7 +666,7 @@ export default function Odoo() {
             );
         }
         return list;
-    }, [projects, searchQuery]);
+    }, [projects, searchQuery, stages]);
 
 
     const updateProjectList = (updatedProject) => {
@@ -556,24 +682,17 @@ export default function Odoo() {
     };
 
     const handleDropProject = (projectId, newStage) => {
-        // Find project
         const project = projects.find(p => p.id === projectId);
-        if (!project) return;
-        if (project.odooStage === newStage) return;
+        if (!project || project.odooStage === newStage) return;
 
         const updated = { ...project, odooStage: newStage };
-
-        // Optimistic Update
         updateProjectList(updated);
-
-        // API Call
         saveToApi(projectId, { odooStage: newStage });
     };
 
     const handleUpdateDetail = (id, patch) => {
         const project = projects.find(p => p.id === id);
         if (!project) return;
-
         const updated = { ...project, ...patch };
         updateProjectList(updated);
         saveToApi(id, patch);
@@ -587,12 +706,41 @@ export default function Odoo() {
         setSearchParams({});
     };
 
+    // Stage Management
+    const moveStage = (index, direction) => {
+        const newStages = [...stages];
+        if (direction === 'left' && index > 0) {
+            [newStages[index - 1], newStages[index]] = [newStages[index], newStages[index - 1]];
+        } else if (direction === 'right' && index < stages.length - 1) {
+            [newStages[index + 1], newStages[index]] = [newStages[index], newStages[index + 1]];
+        }
+        setStages(newStages);
+    };
+
+    const handleAddStage = () => {
+        if (newStageName.trim()) {
+            setStages([...stages, newStageName.trim()]);
+            setNewStageName("");
+            setIsAddingStage(false);
+        }
+    };
+
+    const handleAddProjectToStage = (projectId, stage) => {
+        const project = projects.find(p => p.id === projectId);
+        if (project) {
+            const updated = { ...project, odooStage: stage };
+            updateProjectList(updated);
+            saveToApi(projectId, { odooStage: stage });
+        }
+    };
+
     if (selectedProject) {
         return (
             <ProjectDetail
                 project={selectedProject}
                 onBack={handleBack}
                 onUpdate={handleUpdateDetail}
+                stages={stages}
             />
         );
     }
@@ -603,9 +751,19 @@ export default function Odoo() {
             <div className="h-16 bg-white border-b flex items-center px-6 justify-between shrink-0 shadow-sm z-20">
                 <div className="flex items-center gap-6">
                     <h1 className="text-xl font-bold text-gray-800 tracking-tight">Tableau de bord</h1>
-                    <Button variant="secondary" size="sm" className="bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-100 font-medium">
-                        <Plus size={16} className="mr-1.5" /> Nouveau
-                    </Button>
+                    <Dialog open={isNewProjectOpen} onOpenChange={setIsNewProjectOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="secondary" size="sm" className="bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-100 font-medium">
+                                <Plus size={16} className="mr-1.5" /> Nouveau Dossier
+                            </Button>
+                        </DialogTrigger>
+                        <NewProjectDialog
+                            onClose={() => setIsNewProjectOpen(false)}
+                            projects={projects || []}
+                            stages={stages}
+                            onAddProject={handleAddProjectToStage}
+                        />
+                    </Dialog>
                 </div>
 
                 <div className="flex items-center gap-3 flex-1 max-w-lg mx-8 relative">
@@ -619,28 +777,61 @@ export default function Odoo() {
                 </div>
 
                 <div className="flex items-center gap-3 text-gray-500">
-                    <Button variant="ghost" size="icon" className="text-gray-400 hover:text-purple-600 hover:bg-purple-50"><Activity size={20} /></Button>
-                    <div className="h-8 w-[1px] bg-gray-200 mx-1"></div>
-                    <Avatar className="w-9 h-9 border border-gray-100 shadow-sm"><AvatarFallback className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white">AD</AvatarFallback></Avatar>
+                    <Button variant="ghost" size="icon" className="text-gray-400 hover:text-purple-600 hover:bg-purple-50">
+                        <ListIcon size={20} />
+                    </Button>
+                    {/* AD Avatar Removed */}
                 </div>
             </div>
 
             {/* Kanban Board */}
             <div className="flex-1 overflow-x-auto overflow-y-hidden p-6">
-                <div className="flex h-full pb-2">
-                    {STAGES.map(stage => {
+                <div className="flex h-full pb-2 relative">
+                    {stages.map((stage, index) => {
                         const stageProjects = filteredProjects.filter(p => (p.odooStage || STAGES[0]) === stage);
                         return (
-                            <Column
-                                key={stage}
-                                title={stage}
-                                projects={stageProjects}
-                                count={stageProjects.length}
-                                onDropProject={handleDropProject}
-                                onCardClick={handleSelectProject}
-                            />
+                            <div key={stage} className="group relative">
+                                {/* Header Controls (Hover) */}
+                                <div className="absolute top-0 right-6 z-20 opacity-0 group-hover:opacity-100 transition-opacity flex bg-white rounded-md shadow-sm border p-0.5">
+                                    <button onClick={() => moveStage(index, 'left')} disabled={index === 0} className="p-1 hover:bg-gray-100 text-gray-400 hover:text-gray-700 disabled:opacity-30"><ArrowLeft size={12} /></button>
+                                    <button onClick={() => moveStage(index, 'right')} disabled={index === stages.length - 1} className="p-1 hover:bg-gray-100 text-gray-400 hover:text-gray-700 disabled:opacity-30"><ArrowRight size={12} /></button>
+                                </div>
+
+                                <Column
+                                    title={stage}
+                                    projects={stageProjects}
+                                    count={stageProjects.length}
+                                    onDropProject={handleDropProject}
+                                    onCardClick={handleSelectProject}
+                                />
+                            </div>
                         );
                     })}
+
+                    {/* Add Stage Column */}
+                    <div className="flex-shrink-0 w-80 h-full rounded-lg mr-4 bg-gray-50/50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-purple-300 hover:bg-purple-50/50 transition-colors">
+                        {isAddingStage ? (
+                            <div className="p-4 w-full">
+                                <Input
+                                    autoFocus
+                                    placeholder="Nom de l'étape"
+                                    className="mb-2 bg-white"
+                                    value={newStageName}
+                                    onChange={e => setNewStageName(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && handleAddStage()}
+                                />
+                                <div className="flex gap-2 justify-end">
+                                    <Button size="sm" variant="ghost" onClick={() => setIsAddingStage(false)}>Annuler</Button>
+                                    <Button size="sm" onClick={handleAddStage}>Ajouter</Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <Button variant="ghost" className="w-full h-full" onClick={() => setIsAddingStage(true)}>
+                                <Plus size={24} className="mb-2 opacity-50" />
+                                <span className="font-medium">Ajouter une étape</span>
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
