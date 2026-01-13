@@ -49,6 +49,9 @@ export default function Admin() {
       canAccessCRM: false,
       canAccessEditor: false,
       canAccessSimulator: false,
+      canAccessConfigurator: false, // Default false
+      canAccessOdoo: false,         // Default false
+      canAccessCDP: false,          // Default false
       canViewAllProjects: false,
     }
   });
@@ -90,6 +93,9 @@ export default function Admin() {
           canAccessCRM: user.permissions?.canAccessCRM || false,
           canAccessEditor: user.permissions?.canAccessEditor || false,
           canAccessSimulator: user.permissions?.canAccessSimulator || false,
+          canAccessConfigurator: user.permissions?.canAccessConfigurator || false,
+          canAccessOdoo: user.permissions?.canAccessOdoo || false,
+          canAccessCDP: user.permissions?.canAccessCDP || false,
           canViewAllProjects: user.permissions?.canViewAllProjects || false,
         }
       });
@@ -106,6 +112,9 @@ export default function Admin() {
           canAccessCRM: false,
           canAccessEditor: false,
           canAccessSimulator: false,
+          canAccessConfigurator: false, // default false
+          canAccessOdoo: false,         // default false
+          canAccessCDP: false,          // default false
           canViewAllProjects: false,
         }
       });
@@ -301,8 +310,17 @@ export default function Admin() {
                       {user.permissions?.canAccessEditor && (
                         <span className="px-2 py-1 rounded bg-orange-50 text-orange-700 text-xs border border-orange-200">Éditeur</span>
                       )}
+                      {user.permissions?.canAccessConfigurator && (
+                        <span className="px-2 py-1 rounded bg-indigo-50 text-indigo-700 text-xs border border-indigo-200">Config</span>
+                      )}
+                      {user.permissions?.canAccessOdoo && (
+                        <span className="px-2 py-1 rounded bg-purple-50 text-purple-700 text-xs border border-purple-200">Odoo</span>
+                      )}
                       {user.permissions?.canAccessSimulator && (
                         <span className="px-2 py-1 rounded bg-green-50 text-green-700 text-xs border border-green-200">Simulateur</span>
+                      )}
+                      {user.permissions?.canAccessCDP && (
+                        <span className="px-2 py-1 rounded bg-yellow-50 text-yellow-700 text-xs border border-yellow-200">CDP</span>
                       )}
                       {user.permissions?.canViewAllProjects && (
                         <span className="px-2 py-1 rounded bg-slate-100 text-slate-700 text-xs border border-slate-200">Tout voir</span>
@@ -410,6 +428,24 @@ export default function Admin() {
                   checked={formData.permissions.canAccessSimulator}
                   onCheckedChange={(c) => handlePermissionChange('canAccessSimulator', c)}
                   label="Accès Simulateur"
+                />
+                <ToggleSwitch
+                  id="perm-configurator"
+                  checked={formData.permissions.canAccessConfigurator}
+                  onCheckedChange={(c) => handlePermissionChange('canAccessConfigurator', c)}
+                  label="Accès Configurateur"
+                />
+                <ToggleSwitch
+                  id="perm-odoo"
+                  checked={formData.permissions.canAccessOdoo}
+                  onCheckedChange={(c) => handlePermissionChange('canAccessOdoo', c)}
+                  label="Accès ODOO"
+                />
+                <ToggleSwitch
+                  id="perm-cdp"
+                  checked={formData.permissions.canAccessCDP}
+                  onCheckedChange={(c) => handlePermissionChange('canAccessCDP', c)}
+                  label="Accès CDP"
                 />
                 <ToggleSwitch
                   id="perm-viewall"

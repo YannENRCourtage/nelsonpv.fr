@@ -391,14 +391,19 @@ function Header() {
             <img src="https://horizons-cdn.hostinger.com/350bc103-daf8-48b5-9a02-076489f36a7d/338201d787e373b4c0b156cb07a5b792.png" alt="NELSON par ENR Courtage" />
           </Link>
           <nav className="app-header__nav">
-            <NavLink to="/crm" className={({ isActive }) => isActive ? 'nav-link active crm' : 'nav-link crm'}>CRM</NavLink>
-            <NavLink
-              to="/project/new/edit"
-              onClick={handleEditorClick}
-              className={({ isActive }) => isActive ? 'nav-link active editeur' : 'nav-link editeur'}
-            >
-              Editeur de projet
-            </NavLink>
+            {(user?.role === 'admin' || user?.permissions?.canAccessCRM !== false) && (
+              <NavLink to="/crm" className={({ isActive }) => isActive ? 'nav-link active crm' : 'nav-link crm'}>CRM</NavLink>
+            )}
+
+            {(user?.role === 'admin' || user?.permissions?.canAccessEditor !== false) && (
+              <NavLink
+                to="/project/new/edit"
+                onClick={handleEditorClick}
+                className={({ isActive }) => isActive ? 'nav-link active editeur' : 'nav-link editeur'}
+              >
+                Editeur de projet
+              </NavLink>
+            )}
 
             {(user?.role === 'admin' || user?.permissions?.canAccessConfigurator) && (
               <NavLink to="/configurateur" className={({ isActive }) => isActive ? 'nav-link active configurateur' : 'nav-link configurateur'}>Configurateur</NavLink>
@@ -409,16 +414,18 @@ function Header() {
               <NavLink to="/simulator" className={({ isActive }) => isActive ? 'nav-link active simulateur' : 'nav-link simulateur'}>Simulateur</NavLink>
             )}
 
-            {/* CDP Link (Admin only) */}
-            {user?.role === 'admin' && (
+            {/* CDP Link (Admin only or explicit permission) */}
+            {(user?.role === 'admin' || user?.permissions?.canAccessCDP) && (
               <NavLink to="/cdp" className={({ isActive }) => isActive ? 'nav-link active cdp' : 'nav-link cdp'}>
                 CDP
               </NavLink>
             )}
 
-            <NavLink to="/odoo" className={({ isActive }) => isActive ? 'nav-link active odoo' : 'nav-link odoo'}>
-              ODOO
-            </NavLink>
+            {(user?.role === 'admin' || user?.permissions?.canAccessOdoo) && (
+              <NavLink to="/odoo" className={({ isActive }) => isActive ? 'nav-link active odoo' : 'nav-link odoo'}>
+                ODOO
+              </NavLink>
+            )}
 
             {user?.role === 'admin' && (
               <NavLink to="/admin" className={({ isActive }) => isActive ? 'nav-link active admin' : 'nav-link admin'}>

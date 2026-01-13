@@ -127,32 +127,58 @@ export const onAuthChange = (callback) => {
 };
 
 /**
- * Create new user (Admin only)
+ * Create new user (Admin only) - Uses a secondary app to avoid logging out the admin
  * @param {string} email - User email
  * @param {string} password - User password
  * @param {Object} userData - Additional user data
  * @returns {Promise<Object>} Created user data
  */
 export const createUser = async (email, password, userData) => {
+    let secondaryApp = null;
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        // Import firebase dependencies dynamically or assume they are available from the existing imports
+        // We need initializeApp to create a secondary instance
+        const { initializeApp, getApp, deleteApp } = await import('firebase/app');
+        const { getAuth, createUserWithEmailAndPassword: createUserSecondary, signOut: signOutSecondary } = await import('firebase/auth');
+        const { firebaseConfig } = await import('@/config/firebase.js');
+
+        // Create a unique name for the secondary app to prevent conflicts
+        const appName = `secondaryApp-${Date.now()}`;
+        secondaryApp = initializeApp(firebaseConfig, appName);
+        const secondaryAuth = getAuth(secondaryApp);
+
+        // Create user on the secondary auth instance
+        const userCredential = await createUserSecondary(secondaryAuth, email, password);
         const user = userCredential.user;
 
-        // Create user document in Firestore
+        // Immediately sign out from secondary app to be safe (though it doesn't affect main app)
+        await signOutSecondary(secondaryAuth);
+
+        // Create user document in Firestore using the MAIN app's db (where admin is logged in)
+        // Since we are still logged in as Admin on 'db', this write should succeed if rules allow admin write.
         const userDocData = {
             email: user.email,
             displayName: userData.displayName || email.split('@')[0],
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || '',
             role: userData.role || 'user',
             permissions: userData.permissions || {
                 canAccessCRM: false,
                 canAccessEditor: false,
                 canAccessSimulator: false,
+                canAccessConfigurator: false, // Default explicit
+                canAccessOdoo: false,         // Default explicit
+                canAccessCDP: false,          // Default explicit
                 canViewAllProjects: false
             },
             createdAt: new Date(),
             updatedAt: new Date(),
             isActive: true
         };
+
+        // Ensure we handle potentially undefined name fields
+        if (!userDocData.firstName) delete userDocData.firstName;
+        if (!userDocData.lastName) delete userDocData.lastName;
 
         await setDoc(doc(db, 'users', user.uid), userDocData);
 
@@ -163,6 +189,16 @@ export const createUser = async (email, password, userData) => {
     } catch (error) {
         console.error('Create user error:', error);
         throw error;
+    } finally {
+        // Clean up secondary app
+        if (secondaryApp) {
+            const { deleteApp } = await import('firebase/app');
+            try {
+                await deleteApp(secondaryApp);
+            } catch (e) {
+                console.warn("Failed to delete secondary app:", e);
+            }
+        }
     }
 };
 
