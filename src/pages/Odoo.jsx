@@ -68,7 +68,7 @@ const EXCLUDED_PROJECTS = [
 // --- COMPONENTS ---
 
 // 1. KANBAN CARD
-const DraggableCard = ({ project, onClick }) => {
+const DraggableCard = ({ project, onClick, getUserName }) => {
     const [{ isDragging }, drag] = useDrag(() => ({
         type: 'PROJECT_CARD',
         item: { id: project.id },
@@ -79,6 +79,16 @@ const DraggableCard = ({ project, onClick }) => {
 
     const ref = React.useRef(null);
     drag(ref);
+
+    // Get First Name from generic helper if available, else fallback to existing logic
+    // Existing logic was: ((project.createdBy || 'Yann').split(' ')[0])
+    // New logic: getUserName(project.createdBy) -> returns First Name
+
+    // Note: getUserName might not be passed if not updated yet in parent, so handle gracefully
+    // But we update parent in same flow.
+
+    const createdByRaw = project.createdBy || 'Yann';
+    const displayFirstName = getUserName ? getUserName(createdByRaw) : createdByRaw.split(' ')[0];
 
     return (
         <div
@@ -106,10 +116,10 @@ const DraggableCard = ({ project, onClick }) => {
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-[10px] font-medium text-gray-600">
-                        {((project.createdBy || 'Yann').split(' ')[0])}
+                        {displayFirstName}
                     </span>
                     <UserAvatar
-                        name={project.createdBy || 'Yann'}
+                        name={displayFirstName}
                         photoURL={null}
                         showName={false}
                         size="w-6 h-6"
@@ -122,7 +132,7 @@ const DraggableCard = ({ project, onClick }) => {
 };
 
 // 2. KANBAN COLUMN
-const Column = ({ title, stageId, projects, onDropProject, onCardClick, count }) => {
+const Column = ({ title, stageId, projects, onDropProject, onCardClick, count, getUserName }) => {
     // Reduced width to fit 8 columns on screen (approx 200-220px each)
     // removed w-[350px] fixed width
     const [{ isOver }, drop] = useDrop(() => ({
@@ -164,7 +174,7 @@ const Column = ({ title, stageId, projects, onDropProject, onCardClick, count })
                     The original code had a teal bar. I will remove it to focus on header color. 
                  */}
                 {projects.map(p => (
-                    <DraggableCard key={p.id} project={p} onClick={onCardClick} />
+                    <DraggableCard key={p.id} project={p} onClick={onCardClick} getUserName={getUserName} />
                 ))}
             </div>
         </div>
@@ -318,7 +328,7 @@ const TaskTab = ({ project, activeTab, onUpdate, user }) => {
 };
 
 // 4. PROJECT DETAIL VIEW
-const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
+const ProjectDetail = ({ project, onBack, onUpdate, stages, getUserName }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [newMessage, setNewMessage] = useState("");
@@ -473,8 +483,8 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
                             <div className="grid grid-cols-3 gap-2 items-center">
                                 <label className="font-medium text-gray-500">Commercial</label>
                                 <div className="col-span-2 flex items-center gap-2">
-                                    <UserAvatar name={project.createdBy || 'Yann'} size="w-6 h-6" textSize="text-xs" showName={false} />
-                                    <span className="text-gray-900">{(project.createdBy || 'Yann').split(' ')[0]}</span>
+                                    <UserAvatar name={getUserName(project.createdBy)} size="w-6 h-6" textSize="text-xs" showName={false} />
+                                    <span className="text-gray-900">{getUserName(project.createdBy)}</span>
                                 </div>
                             </div>
                             <div className="grid grid-cols-3 gap-2 items-center">
@@ -731,6 +741,49 @@ export default function Odoo() {
         localStorage.setItem('odoo_stages', JSON.stringify(stages));
     }, [stages]);
 
+    // Users Map for ID -> Name Resolution
+    const [usersMap, setUsersMap] = useState({});
+
+    useEffect(() => {
+        const loadUsers = async () => {
+            try {
+                const users = await apiService.getUsers();
+                const map = {};
+                users.forEach(u => {
+                    const firstName = u.firstName || (u.displayName || '').split(' ')[0] || 'Utilisateur';
+                    map[u.uid] = firstName;
+                    // Also map by ID if needed or full name? 
+                    // Requirement: "Yann (firstname) et non l'ID"
+                });
+                setUsersMap(map);
+            } catch (error) {
+                console.error("Failed to load users for Odoo mapping", error);
+            }
+        };
+        loadUsers();
+    }, []);
+
+    const getUserName = (uidOrName) => {
+        if (!uidOrName) return 'Yann'; // Default fallback
+        // Check if it's a known UID
+        if (usersMap[uidOrName]) return usersMap[uidOrName];
+
+        // If not found in map, it might be already a name (legacy data)
+        // Check if it looks like an ID (long alphanumeric)?
+        // For now, if no match, assume it's a name or return it as is, but try to split if it looks like "Yann ..."
+        // Actually the prompt says: "au lieu de mettre T7AU... tu mets Yann"
+        // So if we receive T7AU..., and we don't have it in map, what to do?
+        // Fallback to "Utilisateur" or generic? Or just return valid string.
+
+        // If the string starts with generic ID pattern (no spaces, > 20 chars)? 
+        if (uidOrName.length > 20 && !uidOrName.includes(' ')) {
+            // It's likely an ID that we failed to resolve.
+            return 'Utilisateur';
+        }
+
+        return uidOrName.split(' ')[0]; // Return first part if it's a name
+    };
+
     // Derived state from URL
     const selectedProjectId = searchParams.get('project');
     const selectedProject = useMemo(() => {
@@ -849,6 +902,7 @@ export default function Odoo() {
                 onBack={handleBack}
                 onUpdate={handleUpdateDetail}
                 stages={stages}
+                getUserName={getUserName}
             />
         );
     }
@@ -923,6 +977,7 @@ export default function Odoo() {
                                     count={stageProjects.length}
                                     onDropProject={handleDropProject}
                                     onCardClick={handleSelectProject}
+                                    getUserName={getUserName}
                                 />
                             </div>
                         );
