@@ -9,7 +9,8 @@ const TYPE_WIDTHS_MAP = {
     'asymetrique_1': [16.4, 20.0],
     'asymetrique_2': [25.5, 29.1],
     'monopente': [12.7, 16.4],
-    'ombriere_vl_simple': [6.0],
+    'ombriere_vl_simple_gauche': [6.9],
+    'ombriere_vl_simple_droite': [6.9],
     'ombriere_vl_double': [9.1, 11.3],
     'ombriere_pl': [15.8, 20.2, 24.6]
 };
@@ -34,7 +35,8 @@ const WIDTH_HEIGHT_MAP = {
     // Monopente
     12.7: 6.6,
     // Ombrière VL simple (Low pitch?)
-    6.0: 4.5, // Arbitrary
+    6.0: 4.5, // Legacy
+    6.9: 4.5, // New Width
     // Ombrière VL double
     9.1: 5.0,
     11.3: 5.5,

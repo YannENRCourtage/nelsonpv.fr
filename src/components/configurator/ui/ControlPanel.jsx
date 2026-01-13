@@ -54,7 +54,8 @@ export function ControlPanel() {
                     <option value="asymetrique_1">Asymétrique 1 zone</option>
                     <option value="asymetrique_2">Asymétrique 2 zones</option>
                     <option value="monopente">Monopente</option>
-                    <option value="ombriere_vl_simple">Ombrière VL simple</option>
+                    <option value="ombriere_vl_simple_gauche">Ombrière VL simple gauche</option>
+                    <option value="ombriere_vl_simple_droite">Ombrière VL simple droite</option>
                     <option value="ombriere_vl_double">Ombrière VL double</option>
                     <option value="ombriere_pl">Ombrière PL</option>
                 </select>
