@@ -311,6 +311,9 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
                 roofY = -0.10 - 0.15; // -0.25
             }
         }
+    } else if (buildingType === 'monopente') {
+        // Monopente: Lower awning coverage by 12cm
+        roofY = -0.10 - 0.12;
     }
 
     return (

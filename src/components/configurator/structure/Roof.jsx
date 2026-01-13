@@ -119,11 +119,11 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
                 <mesh
                     geometry={monoGeometry}
                     material={roofMaterial}
-                    position={[offX, centerY + offY + 0.20, -length - 0.5]}
+                    position={[offX, centerY + offY + 0.02, -length - 0.5]}
                     rotation={[0, 0, -monoSlopeAngle]} // Negative Angle
                     castShadow receiveShadow
                 />
-                <group position={[offX, centerY + offY + 0.20, -length / 2]} rotation={[0, 0, -monoSlopeAngle]}>
+                <group position={[offX, centerY + offY + 0.02, -length / 2]} rotation={[0, 0, -monoSlopeAngle]}>
                     <SolarPanels surfaceWidth={monoSlopeLength} surfaceLength={length + 1.0} />
                 </group>
             </group>
