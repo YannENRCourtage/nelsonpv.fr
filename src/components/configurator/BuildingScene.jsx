@@ -85,7 +85,14 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false }, ref)
             {!isCapturing && (
                 <>
                     {/* Grid Removed as requested */}
-                    <ContactShadows resolution={1024} scale={50} blur={2} opacity={0.5} far={10} color="#000000" />
+                    <ContactShadows
+                        resolution={1024}
+                        scale={Math.max(config.length * 2, config.width * 2, 50)}
+                        blur={2}
+                        opacity={0.5}
+                        far={10}
+                        color="#000000"
+                    />
                 </>
             )}
         </Canvas>

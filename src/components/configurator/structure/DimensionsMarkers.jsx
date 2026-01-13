@@ -526,7 +526,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         outlineWidth={0.1}
                         outlineColor="#ffffff"
                     >
-                        {buildingType === 'asymetrique_1' ? '4 m' : `${parseFloat(eaveHeight.toFixed(2))} m`}
+                        {buildingType === 'asymetrique_1' ? '4 m' : isOmbriere ? '2.9 m' : `${parseFloat(eaveHeight.toFixed(2))} m`}
                     </Text>
                 </group>
             )}
@@ -687,6 +687,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         let baseHeight = buildingType === 'symetrique' ? ridgeHeight + 1.0 : ridgeHeight - 1.0;
                         if (buildingType === 'asymetrique_1' && (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5)) {
                             baseHeight += 0.20; // Raise by 20cm for 16.4m width
+                        }
+                        // USER REQUEST 13/01/2026: Raise surface area by 1m for ombriere
+                        if (buildingType === 'ombriere') {
+                            baseHeight += 1.0;
                         }
                         return baseHeight;
                     })(),

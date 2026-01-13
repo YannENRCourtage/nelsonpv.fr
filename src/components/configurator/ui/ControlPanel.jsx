@@ -79,69 +79,71 @@ export function ControlPanel() {
             </div>
 
             {/* ========== OPTIONS STRUCTURE - EXTENSIONS (Compact) ========== */}
-            <div className="param-group mb-6">
-                <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider flex items-center gap-2">
-                    <span>🏗️</span> Extensions
-                </label>
+            {!buildingType.startsWith('ombriere') && (
+                <div className="param-group mb-6">
+                    <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider flex items-center gap-2">
+                        <span>🏗️</span> Extensions
+                    </label>
 
-                <div className="space-y-3 p-3 border border-slate-300 rounded-lg bg-white">
-                    {/* Côté Gauche */}
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-500 w-12 uppercase">Gch</span>
-                        <div className="flex-1 flex gap-2">
-                            <button
-                                onClick={() => setLeftSide(leftSide === 'auvent' ? 'none' : 'auvent')}
-                                className={`flex-1 py-1.5 rounded text-xs font-bold uppercase border transition-all ${leftSide === 'auvent'
-                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                    : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                                    }`}
-                            >
-                                Auvent
-                            </button>
-                            <button
-                                onClick={() => setLeftSide(leftSide === 'appentis' ? 'none' : 'appentis')}
-                                disabled={buildingType === 'monopente' || buildingType.startsWith('asymetrique')}
-                                className={`flex-1 py-1.5 rounded text-xs font-bold uppercase border transition-all ${leftSide === 'appentis'
-                                    ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
-                                    : (buildingType === 'monopente' || buildingType.startsWith('asymetrique'))
-                                        ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
+                    <div className="space-y-3 p-3 border border-slate-300 rounded-lg bg-white">
+                        {/* Côté Gauche */}
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-500 w-12 uppercase">Gch</span>
+                            <div className="flex-1 flex gap-2">
+                                <button
+                                    onClick={() => setLeftSide(leftSide === 'auvent' ? 'none' : 'auvent')}
+                                    className={`flex-1 py-1.5 rounded text-xs font-bold uppercase border transition-all ${leftSide === 'auvent'
+                                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                                         : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                                    }`}
-                            >
-                                Appentis
-                            </button>
+                                        }`}
+                                >
+                                    Auvent
+                                </button>
+                                <button
+                                    onClick={() => setLeftSide(leftSide === 'appentis' ? 'none' : 'appentis')}
+                                    disabled={buildingType === 'monopente' || buildingType.startsWith('asymetrique')}
+                                    className={`flex-1 py-1.5 rounded text-xs font-bold uppercase border transition-all ${leftSide === 'appentis'
+                                        ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                                        : (buildingType === 'monopente' || buildingType.startsWith('asymetrique'))
+                                            ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
+                                            : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                                        }`}
+                                >
+                                    Appentis
+                                </button>
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Côté Droit */}
-                    <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
-                        <span className="text-xs font-bold text-slate-500 w-12 uppercase">Drt</span>
-                        <div className="flex-1 flex gap-2">
-                            <button
-                                onClick={() => setRightSide(rightSide === 'auvent' ? 'none' : 'auvent')}
-                                className={`flex-1 py-1.5 rounded text-xs font-bold uppercase border transition-all ${rightSide === 'auvent'
-                                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                    : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                                    }`}
-                            >
-                                Auvent
-                            </button>
-                            <button
-                                onClick={() => setRightSide(rightSide === 'appentis' ? 'none' : 'appentis')}
-                                disabled={buildingType === 'monopente' || buildingType.startsWith('asymetrique')}
-                                className={`flex-1 py-1.5 rounded text-xs font-bold uppercase border transition-all ${rightSide === 'appentis'
-                                    ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
-                                    : (buildingType === 'monopente' || buildingType.startsWith('asymetrique'))
-                                        ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
+                        {/* Côté Droit */}
+                        <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
+                            <span className="text-xs font-bold text-slate-500 w-12 uppercase">Drt</span>
+                            <div className="flex-1 flex gap-2">
+                                <button
+                                    onClick={() => setRightSide(rightSide === 'auvent' ? 'none' : 'auvent')}
+                                    className={`flex-1 py-1.5 rounded text-xs font-bold uppercase border transition-all ${rightSide === 'auvent'
+                                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                                         : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                                    }`}
-                            >
-                                Appentis
-                            </button>
+                                        }`}
+                                >
+                                    Auvent
+                                </button>
+                                <button
+                                    onClick={() => setRightSide(rightSide === 'appentis' ? 'none' : 'appentis')}
+                                    disabled={buildingType === 'monopente' || buildingType.startsWith('asymetrique')}
+                                    className={`flex-1 py-1.5 rounded text-xs font-bold uppercase border transition-all ${rightSide === 'appentis'
+                                        ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                                        : (buildingType === 'monopente' || buildingType.startsWith('asymetrique'))
+                                            ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
+                                            : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                                        }`}
+                                >
+                                    Appentis
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* ========== ESPACEMENT TRAVÉES ========== */}
             <div className="param-group mb-6">

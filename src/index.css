@@ -55,6 +55,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -108,13 +109,16 @@ body,
 }
 
 .nav-link:hover {
-  background-color: hsl(var(--accent)); /* Corrected to use direct color variable */
-  color: hsl(var(--accent-foreground)); /* Corrected to use direct color variable */
+  background-color: hsl(var(--accent));
+  /* Corrected to use direct color variable */
+  color: hsl(var(--accent-foreground));
+  /* Corrected to use direct color variable */
 }
 
 .nav-link.active.projects {
   @apply bg-blue-100 text-blue-800;
 }
+
 .dark .nav-link.active.projects {
   @apply bg-blue-900/50 text-blue-300;
 }
@@ -122,6 +126,7 @@ body,
 .nav-link.active.crm {
   @apply bg-green-100 text-green-800;
 }
+
 .dark .nav-link.active.crm {
   @apply bg-green-900/50 text-green-300;
 }
@@ -130,16 +135,66 @@ body,
 .nav-link.active.admin {
   @apply bg-yellow-100 text-yellow-800;
 }
+
 .dark .nav-link.active.admin {
   @apply bg-yellow-900/50 text-yellow-300;
 }
 
 /* ODOO styles */
+.nav-link.active.crm {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.dark .nav-link.active.crm {
+  @apply bg-blue-900/50 text-blue-300;
+}
+
+.nav-link.active.editeur {
+  @apply bg-orange-100 text-orange-800;
+}
+
+.dark .nav-link.active.editeur {
+  @apply bg-orange-900/50 text-orange-300;
+}
+
+.nav-link.active.configurateur {
+  @apply bg-cyan-100 text-cyan-800;
+}
+
+.dark .nav-link.active.configurateur {
+  @apply bg-cyan-900/50 text-cyan-300;
+}
+
+.nav-link.active.simulateur {
+  @apply bg-green-100 text-green-800;
+}
+
+.dark .nav-link.active.simulateur {
+  @apply bg-green-900/50 text-green-300;
+}
+
+.nav-link.active.cdp {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.dark .nav-link.active.cdp {
+  @apply bg-yellow-900/50 text-yellow-300;
+}
+
 .nav-link.active.odoo {
   @apply bg-purple-100 text-purple-800;
 }
+
 .dark .nav-link.active.odoo {
   @apply bg-purple-900/50 text-purple-300;
+}
+
+.nav-link.active.admin {
+  @apply bg-gray-100 text-gray-800;
+}
+
+.dark .nav-link.active.admin {
+  @apply bg-gray-800 text-gray-300;
 }
 
 /* Leaflet Styles */
@@ -160,36 +215,51 @@ body,
   z-index: 500 !important;
 }
 
-.leaflet-control.leaflet-bar, .leaflet-control-geocoder.leaflet-bar {
+.leaflet-control.leaflet-bar,
+.leaflet-control-geocoder.leaflet-bar {
   background-color: hsl(var(--card));
   color: hsl(var(--card-foreground));
   border: 1px solid hsl(var(--border));
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  border-radius: 0.5rem; /* Equivalent to rounded-lg */
+  border-radius: 0.5rem;
+  /* Equivalent to rounded-lg */
 }
+
 .leaflet-control-geocoder-form input {
   background-color: hsl(var(--card));
   color: hsl(var(--card-foreground));
 }
 
-.leaflet-popup-content-wrapper, .leaflet-popup-tip {
-    background-color: hsl(var(--popover));
-    color: hsl(var(--popover-foreground));
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
 }
+
 .leaflet-popup-content-wrapper {
   @apply rounded-lg;
 }
+
 .leaflet-popup-close-button {
-    color: var(--foreground) !important;
+  color: var(--foreground) !important;
 }
 
-.measure-label { 
+.measure-label {
   @apply bg-background/95 border border-border px-2 py-1 rounded-md text-xs text-foreground shadow-sm;
 }
 
-.cursor-crosshair .leaflet-grab { cursor: crosshair !important; } 
-.cursor-pointer .leaflet-interactive { cursor: no-drop !important; } 
-.cursor-move .leaflet-marker-draggable { cursor: move !important; cursor: grab !important; }
+.cursor-crosshair .leaflet-grab {
+  cursor: crosshair !important;
+}
+
+.cursor-pointer .leaflet-interactive {
+  cursor: no-drop !important;
+}
+
+.cursor-move .leaflet-marker-draggable {
+  cursor: move !important;
+  cursor: grab !important;
+}
 
 /* Toast high z-index */
 [data-sonner-toaster] {

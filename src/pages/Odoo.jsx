@@ -118,7 +118,156 @@ const Column = ({ title, projects, onDropProject, onCardClick, count }) => {
     );
 };
 
-// 3. PROJECT DETAIL VIEW
+// 3. TASK TAB COMPONENT
+const STANDARD_TASKS = [
+    "Vérifier la toiture",
+    "Confirmer le rendez-vous client",
+    "Commander le matériel",
+    "Envoyer le dossier Mairie",
+    "Relancer ENEDIS",
+    "Préparer le chantier",
+    "Installer les panneaux",
+    "Raccorder l'onduleur",
+    "Vérifier la mise à la terre"
+];
+
+const TEAM_MEMBERS = [
+    "Yann",
+    "Elodie",
+    "Nico",
+    "Jack",
+    "Véronique",
+    "Aurélien"
+];
+
+const TaskTab = ({ project, activeTab, onUpdate, user }) => {
+    const [isAdding, setIsAdding] = useState(false);
+    const [newTask, setNewTask] = useState({ name: "", comment: "", assignedTo: "" });
+
+    // Filter tasks for current tab
+    const tasks = (project.odooTasks || []).filter(t => t.type === activeTab);
+
+    const handleAddTask = () => {
+        if (!newTask.name) return;
+
+        const task = {
+            id: Date.now(),
+            type: activeTab,
+            name: newTask.name,
+            comment: newTask.comment,
+            assignedTo: newTask.assignedTo,
+            createdBy: user?.displayName || "Utilisateur",
+            createdAt: new Date().toISOString(),
+            status: "pending"
+        };
+
+        const updatedTasks = [...(project.odooTasks || []), task];
+        onUpdate(project.id, { odooTasks: updatedTasks });
+
+        // Mock Notification
+        if (newTask.assignedTo) {
+            console.log(`NOTIFICATION: ${newTask.assignedTo} a reçu une nouvelle tâche : ${newTask.name}`);
+            // In a real app, calls apiService.sendNotification(...)
+        }
+
+        setIsAdding(false);
+        setNewTask({ name: "", comment: "", assignedTo: "" });
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="font-semibold text-gray-700">{activeTab}</h3>
+                <Button onClick={() => setIsAdding(!isAdding)} size="sm" variant="outline" className="border-purple-200 text-purple-700 hover:bg-purple-50">
+                    {isAdding ? "Annuler" : "+ Ajouter"}
+                </Button>
+            </div>
+
+            {isAdding && (
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3 mb-4 animate-in fade-in slide-in-from-top-2">
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 mb-1 block">Action</label>
+                        <select
+                            className="w-full text-sm border-gray-300 rounded-md p-2"
+                            value={newTask.name}
+                            onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
+                        >
+                            <option value="">Sélectionner une action...</option>
+                            {STANDARD_TASKS.map(t => <option key={t} value={t}>{t}</option>)}
+                            <option value="Autre">Autre (Saisie libre)</option>
+                        </select>
+                        {newTask.name === "Autre" && (
+                            <Input
+                                className="mt-2"
+                                placeholder="Nom de l'action"
+                                onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
+                            />
+                        )}
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 mb-1 block">Commentaire</label>
+                        <textarea
+                            className="w-full text-sm border-gray-300 rounded-md p-2 h-20 resize-none"
+                            placeholder="Détails supplémentaires..."
+                            value={newTask.comment}
+                            onChange={(e) => setNewTask({ ...newTask, comment: e.target.value })}
+                        />
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 mb-1 block">Assigner à</label>
+                        <Select
+                            value={newTask.assignedTo}
+                            onValueChange={(val) => setNewTask({ ...newTask, assignedTo: val })}
+                        >
+                            <SelectTrigger className="w-full bg-white border-gray-300">
+                                <SelectValue placeholder="Sélectionner un utilisateur" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {TEAM_MEMBERS.map(member => (
+                                    <SelectItem key={member} value={member}>{member}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <Button onClick={handleAddTask} className="w-full bg-purple-600 hover:bg-purple-700 text-white">
+                        Valider la tâche
+                    </Button>
+                </div>
+            )}
+
+            <div className="space-y-3">
+                {tasks.length === 0 && !isAdding && (
+                    <div className="p-8 border-2 border-dashed border-gray-100 rounded-lg text-center text-gray-400">
+                        Aucune tâche dans cette section.
+                    </div>
+                )}
+                {tasks.map(task => (
+                    <div key={task.id} className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm flex justify-between items-start">
+                        <div>
+                            <div className="font-medium text-gray-800">{task.name}</div>
+                            {task.comment && <div className="text-sm text-gray-500 mt-1">{task.comment}</div>}
+                            <div className="text-xs text-gray-400 mt-2 flex items-center gap-2">
+                                <span>Par {task.createdBy}</span>
+                                <span>•</span>
+                                <span>{format(new Date(task.createdAt), 'dd MMM yyyy', { locale: fr })}</span>
+                            </div>
+                        </div>
+                        {task.assignedTo && (
+                            <div className="bg-purple-50 text-purple-700 text-xs px-2 py-1 rounded-full font-medium border border-purple-100">
+                                @{task.assignedTo}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+// 4. PROJECT DETAIL VIEW
 const ProjectDetail = ({ project, onBack, onUpdate }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -288,23 +437,13 @@ const ProjectDetail = ({ project, onBack, onUpdate }) => {
                                 </button>
                             ))}
                         </div>
-                        <div className="py-6 text-gray-500 text-sm">
-                            {/* Placeholder Content */}
-                            {activeTab === 'Tâches' && (
-                                <div className="p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center">
-                                    Aucune tâche définie pour ce projet.
-                                </div>
-                            )}
-                            {activeTab === 'Visite Technique' && (
-                                <div className="p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center">
-                                    Aucune visite technique programmée.
-                                </div>
-                            )}
-                            {activeTab === 'Installation' && (
-                                <div className="p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300 text-center">
-                                    Détails d'installation à venir.
-                                </div>
-                            )}
+                        <div className="py-6">
+                            <TaskTab
+                                project={project}
+                                activeTab={activeTab}
+                                onUpdate={onUpdate}
+                                user={user}
+                            />
                         </div>
                     </div>
                 </div>
@@ -344,7 +483,13 @@ const ProjectDetail = ({ project, onBack, onUpdate }) => {
                     <div className="p-4 bg-white border-t border-gray-200 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)] z-10">
                         <div className="flex gap-3">
                             <Avatar className="w-9 h-9">
-                                <AvatarFallback className="bg-gray-100 text-gray-600 text-xs">MOI</AvatarFallback>
+                                {user?.photoURL ? (
+                                    <img src={user.photoURL} alt="User" className="w-full h-full object-cover" />
+                                ) : (
+                                    <AvatarFallback className="bg-gray-100 text-gray-600 text-xs">
+                                        {user?.displayName ? user.displayName.substring(0, 2).toUpperCase() : 'MOI'}
+                                    </AvatarFallback>
+                                )}
                             </Avatar>
                             <div className="flex-1 relative">
                                 <Input
