@@ -41,7 +41,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     // 1. Width Arrow
     const { widthPoints, widthStart, widthEnd } = useMemo(() => {
         const isOmbriere = buildingType.startsWith('ombriere');
-        const yHeight = isOmbriere ? 1.5 : 0.1; // Raised by 1.4m for Ombriere to be visible above car height/structure
+        const yHeight = isOmbriere ? 0.1 : 0.1; // Ground level for Ombriere per user request (was 1.5)
 
         const zFront = 3.0;
         const start = new THREE.Vector3(-width / 2, yHeight, zFront);

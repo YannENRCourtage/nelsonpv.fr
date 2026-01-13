@@ -126,11 +126,20 @@ body,
   @apply bg-green-900/50 text-green-300;
 }
 
+/* Admin styles */
 .nav-link.active.admin {
   @apply bg-yellow-100 text-yellow-800;
 }
 .dark .nav-link.active.admin {
   @apply bg-yellow-900/50 text-yellow-300;
+}
+
+/* ODOO styles */
+.nav-link.active.odoo {
+  @apply bg-purple-100 text-purple-800;
+}
+.dark .nav-link.active.odoo {
+  @apply bg-purple-900/50 text-purple-300;
 }
 
 /* Leaflet Styles */

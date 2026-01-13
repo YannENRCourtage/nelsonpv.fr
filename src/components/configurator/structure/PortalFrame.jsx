@@ -486,86 +486,56 @@ export function PortalFrame({
         // Dist1 = 1.053, Dist2 = 1.053 + 1.700 = 2.753.
 
         // User Request: "Les poteaux verticaux en V doivent être centrés horizontalement sous la charpente"
-        let xAttach1, xAttach2; // Local X
-        // Centered around 0. Spacing 1.7m.
-        xAttach1 = -0.85;
-        xAttach2 = 0.85;
+        // User Request 13/01/2026: "le bas des poteaux verticaux doivent être écartés d'1m"
 
-        // Base Horizontal Position
-        // Centered between attachments? Or explicit?
-        // Let's center the base between the two strut attachments at the bottom.
-        // But the struts might not be parallel or symmetric.
-        // Image shows V shape. Converging to a single block.
-        // Let's assume the Block Center is the midpoint of attachments x-position (simple approximation)
-        // Block X = (xAttach1 + xAttach2) / 2
+        // Define Strut Positions
+        // Bottom: Spaced by 1m (+/- 0.5)
+        const xBot1 = -0.5;
+        const xBot2 = 0.5;
 
+        // Top: Widen attachment to create V shape (e.g. +/- 1.5m)
+        const xTop1 = -1.5;
+        const xTop2 = 1.5;
+
+        // Base Horizontal Position (Reference only, mesh removed)
         const baseX = 0;
-        const baseWidth = 1.0; // Concrete block width
         const baseHeight = 0.5;
 
-        // Struts Geometry
-        // We need start point (Base Top) and end point (Rafter Underside).
-        // Base Top Point: [baseX, baseHeight, 0]
-
         // Rafter Underside Equation
-        // Center of Rafter at [0, ridgeHeight - something?, 0] ?
-        // Or Center of Rafter at [0, (High+Low)/2, 0]?
-        // Let's anchor Rafter Center at [0, centerHeight, 0].
-        // eaveHeight is Low Side. ridgeHeight is High Side.
+        // Center of Rafter at [0, centerHeight, 0]
         const centerHeight = (eaveHeight + ridgeHeight) / 2;
 
-        // Calculate strut length and angle
-        const createStrut = (xTarget, isFront) => {
-            // Target on Rafter (Underside)
-            // Rafter Equation: y = centerHeight + x * tan(rotZ) (approx)
-            // Minus half rafter depth (0.2)
-            const yTarget = centerHeight + (xTarget * Math.tan(rotZ)) - 0.2;
-
-            const start = new THREE.Vector3(baseX, baseHeight, 0);
-            const end = new THREE.Vector3(xTarget, yTarget, 0);
-
+        // Custom Strut Creator
+        const createStrut = (xBot, xTop) => {
+            const yTarget = centerHeight + (xTop * Math.tan(rotZ)) - 0.2;
+            const start = new THREE.Vector3(xBot, baseHeight, 0); // Bottom is spaced
+            const end = new THREE.Vector3(xTop, yTarget, 0);
             const len = start.distanceTo(end);
-
-            // Tube 150x150mm
             const tubeGeo = new THREE.BoxGeometry(0.15, len, 0.15);
-
-            // Calculate Midpoint and Rotation
             const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
 
-            // Rotation (Angle with Y axis)
+            // Rotation
             const dx = end.x - start.x;
             const dy = end.y - start.y;
-            const angle = -Math.atan2(dx, dy); // Box is Y-aligned
+            const angle = -Math.atan2(dx, dy);
 
             return (
-                <mesh
-                    geometry={tubeGeo}
-                    material={steelMaterial}
-                    position={mid}
-                    rotation={[0, 0, angle]}
-                    castShadow
-                />
+                <mesh geometry={tubeGeo} material={steelMaterial} position={mid} rotation={[0, 0, angle]} castShadow />
             );
         };
 
         return (
             <group position={position}>
-                {/* Concrete Base */}
-                <mesh position={[baseX, baseHeight / 2, 0]} castShadow receiveShadow>
-                    <boxGeometry args={[1.5, baseHeight, 0.8]} />
-                    <meshStandardMaterial color="#999999" roughness={0.9} />
-                </mesh>
+                {/* Concrete Base REMOVED per user request */}
 
                 {/* Struts */}
-                {createStrut(xAttach1)}
-                {createStrut(xAttach2)}
+                {createStrut(xBot1, xTop1)}
+                {createStrut(xBot2, xTop2)}
 
                 {/* Rafter */}
                 {/* Centered at [0, centerHeight, 0], rotated */}
                 <group position={[0, centerHeight, 0]} rotation={[0, 0, rotZ]}>
                     <mesh geometry={rafterGeo} material={steelMaterial} position={[rafterLen / 2, 0, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow />
-
-                    {/* End Plates / Caps if needed */}
                 </group>
 
                 {/* Connections (Bolts/Plates at strut tops) - Simplified */}
