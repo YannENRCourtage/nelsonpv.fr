@@ -352,12 +352,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         // FIX: Override height
         let extHeight = leftHeight;
         if (buildingType === 'monopente' && leftSide === 'auvent') {
-            // Monopente Left Auvent
-            // Height is the Tip Height.
+            // Monopente Left Awning: Specific User Requests
             if (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5) {
-                extHeight = 7.4;
+                extHeight = 7.4; // Fixed 7.4m for 16.4m
             } else if (Math.abs(width - 12.7) < 0.5) {
-                extHeight = 6.4;
+                extHeight = 6.4; // Fixed 6.4m for 12.7m
             } else {
                 // Fallback for monopente
                 const drop = 4.0 * Math.tan((13 * Math.PI) / 180);
