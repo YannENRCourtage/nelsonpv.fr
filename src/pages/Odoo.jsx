@@ -469,78 +469,76 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
 
             <div className="flex flex-1 overflow-hidden">
                 {/* Main Content (Form) */}
-                <div className="flex-1 overflow-y-auto p-8 border-r border-gray-200 bg-white">
-                    <div className="flex justify-between items-start mb-8">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                                {project.clientName || `${project.firstName || ''} ${project.name || ''}`.trim()}
-                                <span className="text-gray-400 font-normal text-lg">#{String(project.id).substring(5, 13)}...</span>
-                            </h1>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-x-12 gap-y-6 text-sm">
-                        <div className="space-y-5">
-                            <div className="grid grid-cols-3 gap-2 items-start">
-                                <label className="font-medium text-gray-500">Description</label>
-                                <span className="col-span-2 text-gray-900 block">{project.type || "Installation PV"}</span>
+                <div className="flex-1 overflow-y-auto bg-white min-w-0">
+                    <div className="p-8 pb-20">
+                        <div className="flex justify-between items-start mb-8 border-b border-gray-100 pb-5">
+                            <div className="flex items-center gap-4 w-full">
+                                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                                    {project.clientName || `${project.firstName || ''} ${project.name || ''}`.trim()}
+                                    <span className="text-gray-400 font-normal text-lg">#{String(project.id).substring(5, 13)}...</span>
+                                </h1>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="ml-4 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors h-8 w-8"
+                                    onClick={handleDeleteProject}
+                                    title="Supprimer le projet"
+                                >
+                                    <Trash2 size={18} />
+                                </Button>
                             </div>
-                            <div className="grid grid-cols-3 gap-2 items-start">
-                                <label className="font-medium text-gray-500">Adresse</label>
-                                <div className="col-span-2 text-sm text-gray-900">
-                                    <div>{project.address}</div>
-                                    <div>{project.zip} {project.city}</div>
+                        </div>
+
+                        {/* Client Info (Top Left) */}
+                        <div className="bg-purple-50/60 rounded-xl p-5 mb-8 border border-purple-100">
+                            <div className="flex items-center gap-2 mb-4">
+                                <UserAvatar name="Client" size="w-5 h-5" className="bg-purple-200 text-purple-700" showName={false} />
+                                <h3 className="text-sm font-bold text-purple-900 uppercase tracking-wider">Client</h3>
+                            </div>
+                            <div className="grid grid-cols-3 gap-8">
+                                <div
+                                    className="font-medium text-lg text-purple-700 flex items-center gap-2 cursor-pointer hover:underline"
+                                    onClick={handleEditClient}
+                                >
+                                    {project.clientName || `${project.firstName} ${project.name}`}
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-xs font-medium text-gray-500 uppercase mb-1">Email</span>
+                                    <span className="text-gray-900 hover:text-purple-700 cursor-pointer">{project.email || '-'}</span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-xs font-medium text-gray-500 uppercase mb-1">Téléphone</span>
+                                    <span className="text-gray-900">{project.phone || '-'}</span>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-2 items-center">
-                                <label className="font-medium text-gray-500">Coordonnées GPS</label>
-                                <div className="col-span-2 text-sm text-gray-900 flex items-center gap-2">
+                        </div>
+
+                        {/* Project Fields Grid */}
+                        <div className="grid grid-cols-12 gap-6 mb-12">
+                            <div className="col-span-4 space-y-1.5">
+                                <label className="text-xs font-medium text-gray-500 uppercase">Description</label>
+                                <div className="font-medium text-gray-900">{project.type || "Installation PV"}</div>
+                            </div>
+
+                            <div className="col-span-4 space-y-1.5">
+                                <label className="text-xs font-medium text-gray-500 uppercase">Adresse</label>
+                                <div className="text-gray-900 text-sm leading-snug">
+                                    {project.address}<br />
+                                    {project.zip} {project.city}
+                                </div>
+                            </div>
+
+                            <div className="col-span-4 space-y-1.5">
+                                <label className="text-xs font-medium text-gray-500 uppercase">GPS</label>
+                                <div className="text-gray-900 text-sm flex items-center gap-1.5">
                                     <MapPin size={14} className="text-gray-400" />
                                     {project.lat && project.lng ? `${project.lat}, ${project.lng}` : '-'}
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-2 items-start">
-                                <label className="font-medium text-gray-500 mt-2">Commentaires</label>
-                                <div className="col-span-2">
-                                    <Textarea
-                                        className="min-h-[100px] text-sm bg-gray-50"
-                                        placeholder="Ajouter un commentaire..."
-                                        value={project.comment || ''}
-                                        onChange={e => onUpdate(project.id, { comment: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-2 items-center">
-                                <label className="font-medium text-gray-500">Chef de projet</label>
-                                <div className="col-span-2">
-                                    <Select
-                                        value={project.assignedUser || ''}
-                                        onValueChange={(val) => onUpdate(project.id, { assignedUser: val })}
-                                    >
-                                        <SelectTrigger className="h-8 w-full">
-                                            <div className="flex items-center gap-2">
-                                                {project.assignedUser && <UserAvatar name={project.assignedUser} size="w-5 h-5" textSize="text-[10px]" showName={false} />}
-                                                <span>{project.assignedUser || "Assigner un chef de projet"}</span>
-                                            </div>
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {TEAM_MEMBERS.map(m => (
-                                                <SelectItem key={m} value={m}>
-                                                    <div className="flex items-center gap-2">
-                                                        <UserAvatar name={m} size="w-5 h-5" textSize="text-[10px]" showName={false} />
-                                                        {m}
-                                                    </div>
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2 items-center">
-                                <label className="font-medium text-gray-500">Commercial</label>
-                                <div className="col-span-2 flex items-center gap-2">
+                            <div className="col-span-4 space-y-1.5">
+                                <label className="text-xs font-medium text-gray-500 uppercase">Commercial</label>
+                                <div className="flex items-center gap-2">
                                     <UserAvatar
                                         name={resolveUser(project.assignedUser || project.createdBy).name}
                                         photoURL={resolveUser(project.assignedUser || project.createdBy).photoURL}
@@ -548,148 +546,149 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
                                         textSize="text-xs"
                                         showName={false}
                                     />
-                                    <span className="text-gray-900">{resolveUser(project.assignedUser || project.createdBy).name}</span>
+                                    <span className="text-sm text-gray-900">{resolveUser(project.assignedUser || project.createdBy).name}</span>
                                 </div>
                             </div>
-                        </div>
-                        {/* Site Field REMOVED as requested, replaced by Address above */}
-                    </div>
 
-                    <div className="space-y-5">
-                        <div className="flex justify-end">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                onClick={handleDeleteProject}
-                            >
-                                <Trash2 size={16} className="mr-1" /> Supprimer
-                            </Button>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 items-center">
-                            <label className="font-medium text-gray-500">Client</label>
-                            <div
-                                className="col-span-2 font-medium text-purple-700 flex items-center gap-2 cursor-pointer hover:underline"
-                                onClick={handleEditClient}
-                            >
-                                <Avatar className="w-5 h-5"><AvatarFallback className="bg-purple-100 text-purple-700 text-[10px]">CL</AvatarFallback></Avatar>
-                                {project.clientName || `${project.firstName} ${project.name}`}
+                            <div className="col-span-4 space-y-1.5">
+                                <label className="text-xs font-medium text-gray-500 uppercase">Chef de projet</label>
+                                <Select
+                                    value={project.assignedUser || ''}
+                                    onValueChange={(val) => onUpdate(project.id, { assignedUser: val })}
+                                >
+                                    <SelectTrigger className="h-8 w-full bg-white border-gray-200">
+                                        <div className="flex items-center gap-2 text-sm">
+                                            {project.assignedUser && <UserAvatar name={project.assignedUser} size="w-4 h-4" textSize="text-[9px]" showName={false} />}
+                                            <span className="truncate">{project.assignedUser || "Assigner"}</span>
+                                        </div>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {TEAM_MEMBERS.map(m => (
+                                            <SelectItem key={m} value={m}>
+                                                <div className="flex items-center gap-2">
+                                                    <UserAvatar name={m} size="w-4 h-4" textSize="text-[9px]" showName={false} />
+                                                    {m}
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="col-span-12 mt-2 space-y-2">
+                                <label className="text-xs font-medium text-gray-500 uppercase">Commentaires</label>
+                                <Textarea
+                                    className="min-h-[80px] text-sm bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+                                    placeholder="Ajouter une note..."
+                                    value={project.comment || ''}
+                                    onChange={e => onUpdate(project.id, { comment: e.target.value })}
+                                />
                             </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 items-center">
-                            <label className="font-medium text-gray-500">Email</label>
-                            <span className="col-span-2 text-gray-700 hover:text-purple-700 cursor-pointer">{project.email || '-'}</span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 items-center">
-                            <label className="font-medium text-gray-500">Téléphone</label>
-                            <span className="col-span-2 text-gray-700">{project.phone || '-'}</span>
-                        </div>
-                    </div>
-                </div>
 
-                {/* Tabs */}
-                <div className="mt-10">
-                    <div className="flex gap-8 border-b border-gray-200">
-                        {["Tâches", "Activités"].map(tab => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`px-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab ? 'border-purple-600 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                            >
-                                {tab}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="py-6">
-                        {activeTab === "Tâches" && (
-                            <TaskTab
-                                project={project}
-                                activeTab={activeTab}
-                                onUpdate={onUpdate}
-                                user={user}
-                            />
-                        )}
-                        {activeTab === "Activités" && (
-                            <div className="space-y-4">
-                                {(project.odooChat || []).map((msg, i) => (
-                                    <div key={i} className="flex gap-4 group">
-                                        <UserAvatar
-                                            name={msg.author.includes('Moi') ? (user?.displayName || 'Moi') : msg.author}
-                                            photoURL={msg.author.includes('Moi') ? user?.photoURL : null}
-                                            size="w-10 h-10" textSize="text-sm"
-                                        />
-                                        <div className="flex-1 space-y-1">
-                                            <div className="flex justify-between items-baseline">
-                                                <span className="font-semibold text-gray-900 text-sm">{msg.author}</span>
-                                                <span className="text-xs text-gray-400">
-                                                    {format(new Date(msg.date), 'dd MMM yyyy, HH:mm', { locale: fr })}
-                                                </span>
-                                            </div>
-                                            <div className="bg-white p-3.5 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 text-sm text-gray-700 leading-relaxed">
-                                                {msg.content}
+                        {/* Tabs */}
+                        <div className="border-t border-gray-100 pt-6">
+                            <div className="flex gap-8 border-b border-gray-200 mb-6">
+                                {["Tâches", "Activités"].map(tab => (
+                                    <button
+                                        key={tab}
+                                        onClick={() => setActiveTab(tab)}
+                                        className={`px-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab ? 'border-purple-600 text-purple-700' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                                    >
+                                        {tab}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {activeTab === "Tâches" && (
+                                <TaskTab
+                                    project={project}
+                                    activeTab={activeTab}
+                                    onUpdate={onUpdate}
+                                    user={user}
+                                />
+                            )}
+                            {activeTab === "Activités" && (
+                                <div className="space-y-4">
+                                    {(project.odooChat || []).map((msg, i) => (
+                                        <div key={i} className="flex gap-4 group">
+                                            <UserAvatar
+                                                name={msg.author.includes('Moi') ? (user?.displayName || 'Moi') : msg.author}
+                                                photoURL={msg.author.includes('Moi') ? user?.photoURL : null}
+                                                size="w-10 h-10" textSize="text-sm"
+                                            />
+                                            <div className="flex-1 space-y-1">
+                                                <div className="flex justify-between items-baseline">
+                                                    <span className="font-semibold text-gray-900 text-sm">{msg.author}</span>
+                                                    <span className="text-xs text-gray-400">
+                                                        {format(new Date(msg.date), 'dd MMM yyyy, HH:mm', { locale: fr })}
+                                                    </span>
+                                                </div>
+                                                <div className="bg-white p-3.5 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 text-sm text-gray-700 leading-relaxed">
+                                                    {msg.content}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                                {(!project.odooChat || project.odooChat.length === 0) && (
-                                    <div className="text-gray-400 text-center py-8">Aucune activité récente.</div>
-                                )}
-                            </div>
-                        )}
+                                    ))}
+                                    {(!project.odooChat || project.odooChat.length === 0) && (
+                                        <div className="text-gray-400 text-center py-8">Aucune activité récente.</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Chatter (Sidebar) - Simplified */}
-            <div className="w-[450px] bg-gray-50/80 flex flex-col border-l border-gray-200 shrink-0 h-full backdrop-blur-sm">
-                <div className="p-3 border-b border-gray-200 flex gap-2 justify-end shrink-0 bg-white/50">
-                    <Button size="sm" className="bg-purple-700 hover:bg-purple-800 text-white shadow-sm">Envoyer message</Button>
-                </div>
+                {/* Sidebar (Right) */}
+                <div className="w-[450px] bg-gray-50 border-l border-gray-200 flex flex-col shrink-0 h-full">
+                    <div className="p-3 border-b border-gray-200 flex gap-2 justify-end shrink-0 bg-white/50">
+                        <Button size="sm" className="bg-purple-700 hover:bg-purple-800 text-white shadow-sm">Envoyer message</Button>
+                    </div>
 
-                <div className="flex-1 overflow-y-auto p-5 space-y-6">
-                    {/* We show same chat here for consistency */}
-                    {(project.odooChat || []).map((msg, i) => (
-                        <div key={i} className="flex gap-4 group">
-                            <UserAvatar
-                                name={msg.author.includes('Moi') ? (user?.displayName || 'Moi') : msg.author}
-                                photoURL={msg.author.includes('Moi') ? user?.photoURL : null}
-                                size="w-8 h-8" textSize="text-xs" showName={false}
-                            />
-                            <div className="flex-1 space-y-1">
-                                <div className="flex justify-between items-baseline">
-                                    <span className="font-semibold text-gray-900 text-sm">{msg.author}</span>
-                                    <span className="text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        {format(new Date(msg.date), 'dd MMM yyyy, HH:mm', { locale: fr })}
-                                    </span>
-                                </div>
-                                <div className="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 text-sm text-gray-700 leading-relaxed">
-                                    {msg.content}
+                    <div className="flex-1 overflow-y-auto p-5 space-y-6">
+                        {(project.odooChat || []).map((msg, i) => (
+                            <div key={i} className="flex gap-4 group">
+                                <UserAvatar
+                                    name={msg.author.includes('Moi') ? (user?.displayName || 'Moi') : msg.author}
+                                    photoURL={msg.author.includes('Moi') ? user?.photoURL : null}
+                                    size="w-8 h-8" textSize="text-xs" showName={false}
+                                />
+                                <div className="flex-1 space-y-1">
+                                    <div className="flex justify-between items-baseline">
+                                        <span className="font-semibold text-gray-900 text-sm">{msg.author}</span>
+                                        <span className="text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {format(new Date(msg.date), 'dd MMM yyyy, HH:mm', { locale: fr })}
+                                        </span>
+                                    </div>
+                                    <div className="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 text-sm text-gray-700 leading-relaxed">
+                                        {msg.content}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                    </div>
 
-                <div className="p-4 bg-white border-t border-gray-200 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)] z-10">
-                    <div className="flex gap-3">
-                        <UserAvatar name={user?.displayName || "Moi"} photoURL={user?.photoURL} size="w-9 h-9" textSize="text-xs" showName={false} />
-                        <div className="flex-1 relative">
-                            <Input
-                                placeholder="Écrire un commentaire..."
-                                className="pr-10 bg-gray-50 border-gray-200 focus:bg-white focus:border-purple-300 transition-all rounded-full"
-                                value={newMessage}
-                                onChange={e => setNewMessage(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                            />
-                            <Button
-                                size="icon"
-                                onClick={handleSendMessage}
-                                className={`absolute right-1 top-1 w-7 h-7 rounded-full ${newMessage.trim() ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-transparent text-gray-300 hover:bg-gray-100'}`}
-                                disabled={!newMessage.trim()}
-                            >
-                                <Send size={14} />
-                            </Button>
+                    <div className="p-4 bg-white border-t border-gray-200 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)] z-10">
+                        <div className="flex gap-3">
+                            <UserAvatar name={user?.displayName || "Moi"} photoURL={user?.photoURL} size="w-9 h-9" textSize="text-xs" showName={false} />
+                            <div className="flex-1 relative">
+                                <Input
+                                    placeholder="Écrire un commentaire..."
+                                    className="pr-10 bg-gray-50 border-gray-200 focus:bg-white focus:border-purple-300 transition-all rounded-full"
+                                    value={newMessage}
+                                    onChange={e => setNewMessage(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+                                />
+                                <Button
+                                    size="icon"
+                                    onClick={handleSendMessage}
+                                    className={`absolute right-1 top-1 w-7 h-7 rounded-full ${newMessage.trim() ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-transparent text-gray-300 hover:bg-gray-100'}`}
+                                    disabled={!newMessage.trim()}
+                                >
+                                    <Send size={14} />
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
