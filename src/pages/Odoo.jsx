@@ -88,7 +88,13 @@ const DraggableCard = ({ project, onClick, getUserName }) => {
     // But we update parent in same flow.
 
     const createdByRaw = project.createdBy || 'Yann';
-    const displayFirstName = getUserName ? getUserName(createdByRaw) : createdByRaw.split(' ')[0];
+    // Priority: Assigned User > Commercial Name > Created By
+    // But project.assignedUser is the 'Chef de projet' in Odoo, user wants this for 'Commercial' slot in card?
+    // User said: "c'est Nicolas à qui est affecté le projet... Il doit donc être indiqué Nicolas"
+
+    // Resolve user object
+    const effectiveUserIdentifier = project.assignedUser || project.assignedTo || createdByRaw;
+    const displayUser = getUserName ? getUserName(effectiveUserIdentifier) : { name: effectiveUserIdentifier, photoURL: null };
 
     return (
         <div
@@ -116,11 +122,11 @@ const DraggableCard = ({ project, onClick, getUserName }) => {
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-[10px] font-medium text-gray-600">
-                        {displayFirstName}
+                        {displayUser.name}
                     </span>
                     <UserAvatar
-                        name={displayFirstName}
-                        photoURL={null}
+                        name={displayUser.name}
+                        photoURL={displayUser.photoURL}
                         showName={false}
                         size="w-6 h-6"
                         textSize="text-[10px]"
@@ -328,7 +334,7 @@ const TaskTab = ({ project, activeTab, onUpdate, user }) => {
 };
 
 // 4. PROJECT DETAIL VIEW
-const ProjectDetail = ({ project, onBack, onUpdate, stages, getUserName }) => {
+const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [newMessage, setNewMessage] = useState("");
@@ -483,8 +489,14 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, getUserName }) => {
                             <div className="grid grid-cols-3 gap-2 items-center">
                                 <label className="font-medium text-gray-500">Commercial</label>
                                 <div className="col-span-2 flex items-center gap-2">
-                                    <UserAvatar name={getUserName(project.createdBy)} size="w-6 h-6" textSize="text-xs" showName={false} />
-                                    <span className="text-gray-900">{getUserName(project.createdBy)}</span>
+                                    <UserAvatar
+                                        name={resolveUser(project.assignedUser || project.createdBy).name}
+                                        photoURL={resolveUser(project.assignedUser || project.createdBy).photoURL}
+                                        size="w-6 h-6"
+                                        textSize="text-xs"
+                                        showName={false}
+                                    />
+                                    <span className="text-gray-900">{resolveUser(project.assignedUser || project.createdBy).name}</span>
                                 </div>
                             </div>
                             <div className="grid grid-cols-3 gap-2 items-center">
@@ -741,21 +753,36 @@ export default function Odoo() {
         localStorage.setItem('odoo_stages', JSON.stringify(stages));
     }, [stages]);
 
-    // Users Map for ID -> Name Resolution
-    const [usersMap, setUsersMap] = useState({});
+    // Users Map for ID -> Name/Photo Resolution
+    const [usersMap, setUsersMap] = useState({}); // UID -> { name, photoURL }
+    const [nameMap, setNameMap] = useState({});   // Name -> { name, photoURL }
 
     useEffect(() => {
         const loadUsers = async () => {
             try {
                 const users = await apiService.getUsers();
-                const map = {};
+                const uMap = {};
+                const nMap = {};
                 users.forEach(u => {
                     const firstName = u.firstName || (u.displayName || '').split(' ')[0] || 'Utilisateur';
-                    map[u.uid] = firstName;
-                    // Also map by ID if needed or full name? 
-                    // Requirement: "Yann (firstname) et non l'ID"
+                    const fullObj = {
+                        name: firstName,
+                        photoURL: u.photoURL,
+                        fullName: u.displayName || firstName
+                    };
+                    uMap[u.uid] = fullObj;
+
+                    // Populate Name Map for legacy string matching
+                    if (u.displayName) nMap[u.displayName.toLowerCase()] = fullObj;
+                    if (u.firstName) nMap[u.firstName.toLowerCase()] = fullObj;
+                    // Also map "Nicolas" if displayName is "Nicolas DESAINT"
+                    if (u.displayName) {
+                        const firstPart = u.displayName.split(' ')[0].toLowerCase();
+                        if (!nMap[firstPart]) nMap[firstPart] = fullObj;
+                    }
                 });
-                setUsersMap(map);
+                setUsersMap(uMap);
+                setNameMap(nMap);
             } catch (error) {
                 console.error("Failed to load users for Odoo mapping", error);
             }
@@ -763,25 +790,25 @@ export default function Odoo() {
         loadUsers();
     }, []);
 
-    const getUserName = (uidOrName) => {
-        if (!uidOrName) return 'Yann'; // Default fallback
-        // Check if it's a known UID
-        if (usersMap[uidOrName]) return usersMap[uidOrName];
+    const resolveUser = (identifier) => {
+        const defaultUser = { name: 'Yann', photoURL: null };
+        if (!identifier) return defaultUser;
 
-        // If not found in map, it might be already a name (legacy data)
-        // Check if it looks like an ID (long alphanumeric)?
-        // For now, if no match, assume it's a name or return it as is, but try to split if it looks like "Yann ..."
-        // Actually the prompt says: "au lieu de mettre T7AU... tu mets Yann"
-        // So if we receive T7AU..., and we don't have it in map, what to do?
-        // Fallback to "Utilisateur" or generic? Or just return valid string.
+        // 1. Try UID match
+        if (usersMap[identifier]) return usersMap[identifier];
 
-        // If the string starts with generic ID pattern (no spaces, > 20 chars)? 
-        if (uidOrName.length > 20 && !uidOrName.includes(' ')) {
-            // It's likely an ID that we failed to resolve.
-            return 'Utilisateur';
+        // 2. Try Name match
+        const lowerId = identifier.toLowerCase();
+        if (nameMap[lowerId]) return nameMap[lowerId];
+
+        // 3. Fallback handling
+        // If it looks like an ID (>20 chars) but not found -> 'Utilisateur'
+        if (identifier.length > 20 && !identifier.includes(' ')) {
+            return { name: 'Utilisateur', photoURL: null };
         }
 
-        return uidOrName.split(' ')[0]; // Return first part if it's a name
+        // 4. It is likely just a name string (legacy)
+        return { name: identifier.split(' ')[0], photoURL: null };
     };
 
     // Derived state from URL
@@ -902,7 +929,7 @@ export default function Odoo() {
                 onBack={handleBack}
                 onUpdate={handleUpdateDetail}
                 stages={stages}
-                getUserName={getUserName}
+                resolveUser={resolveUser}
             />
         );
     }
@@ -977,7 +1004,7 @@ export default function Odoo() {
                                     count={stageProjects.length}
                                     onDropProject={handleDropProject}
                                     onCardClick={handleSelectProject}
-                                    getUserName={getUserName}
+                                    getUserName={resolveUser}
                                 />
                             </div>
                         );
