@@ -40,10 +40,13 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // 1. Width Arrow
     const { widthPoints, widthStart, widthEnd } = useMemo(() => {
+        const isOmbriere = buildingType.startsWith('ombriere');
+        const yHeight = isOmbriere ? 1.5 : 0.1; // Raised by 1.4m for Ombriere to be visible above car height/structure
+
         const zFront = 3.0;
-        const start = new THREE.Vector3(-width / 2, 0.1, zFront);
-        const end = new THREE.Vector3(width / 2, 0.1, zFront);
-        const mid = new THREE.Vector3(0, 0.1, zFront);
+        const start = new THREE.Vector3(-width / 2, yHeight, zFront);
+        const end = new THREE.Vector3(width / 2, yHeight, zFront);
+        const mid = new THREE.Vector3(0, yHeight, zFront);
         return {
             widthStart: start,
             widthEnd: end,
@@ -52,7 +55,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(mid.x + gapSize / 2, mid.y, mid.z), end]
             ]
         };
-    }, [width, gapSize]);
+    }, [width, gapSize, buildingType]);
 
     // 2. Length Arrow (Right Side)
     const { lengthPoints, lengthStart, lengthEnd, xSide } = useMemo(() => {

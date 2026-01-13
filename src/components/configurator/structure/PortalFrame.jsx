@@ -485,16 +485,11 @@ export function PortalFrame({
         // High Side is Left for Droite, Right for Gauche.
         // Dist1 = 1.053, Dist2 = 1.053 + 1.700 = 2.753.
 
+        // User Request: "Les poteaux verticaux en V doivent être centrés horizontalement sous la charpente"
         let xAttach1, xAttach2; // Local X
-        if (isDroite) {
-            // High side Left (-width/2)
-            xAttach1 = -width / 2 + 1.053;
-            xAttach2 = -width / 2 + 2.753;
-        } else {
-            // High side Right (+width/2)
-            xAttach1 = width / 2 - 1.053;
-            xAttach2 = width / 2 - 2.753;
-        }
+        // Centered around 0. Spacing 1.7m.
+        xAttach1 = -0.85;
+        xAttach2 = 0.85;
 
         // Base Horizontal Position
         // Centered between attachments? Or explicit?
@@ -504,7 +499,7 @@ export function PortalFrame({
         // Let's assume the Block Center is the midpoint of attachments x-position (simple approximation)
         // Block X = (xAttach1 + xAttach2) / 2
 
-        const baseX = (xAttach1 + xAttach2) / 2;
+        const baseX = 0;
         const baseWidth = 1.0; // Concrete block width
         const baseHeight = 0.5;
 
