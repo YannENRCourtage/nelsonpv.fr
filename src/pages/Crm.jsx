@@ -1299,9 +1299,7 @@ export default function Crm() {
   const renderProjects = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-slate-500 text-sm">Gérer les projets de construction et de location de toitures</p>
-        </div>
+        <div></div>
 
         <div className="flex gap-4 items-center">
           <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
@@ -1850,7 +1848,7 @@ export default function Crm() {
             <p className="text-slate-600">
               {activeTab === 'dashboard' && 'Vue d\'ensemble de votre activité'}
               {activeTab === 'contacts' && 'Gérez vos contacts et leurs projets'}
-
+              {activeTab === 'projects' && 'Gérer les projets de construction et de location de toitures'}
               {activeTab === 'tasks' && 'Organisez vos tâches quotidiennes'}
               {activeTab === 'calendar' && 'Planifiez vos rendez-vous'}
               {activeTab === 'reports' && 'Analysez vos performances'}
