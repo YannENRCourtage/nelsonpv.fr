@@ -36,6 +36,7 @@
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
+    "date-fns": "^4.1.0",
     "docusign-esign": "^8.5.0",
     "docx-templates": "^4.15.0",
     "docxtemplater": "^3.67.6",
