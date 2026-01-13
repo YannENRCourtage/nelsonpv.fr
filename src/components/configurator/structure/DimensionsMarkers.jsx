@@ -121,8 +121,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             // Low side Right. Eave Marker on Right.
             x = width / 2 + 1.5;
         } else if (buildingType === 'ombriere_vl_simple_gauche') {
-            // Low side Left. Eave Marker on Left.
-            x = -width / 2 - 1.5;
+            // Low side Right (Unified High Left -> Low Right).
+            x = width / 2 + 1.5;
         } else if (buildingType === 'asymetrique_2') {
             return { heightPoints: null, heightStart: null, heightEnd: null, xEave: null };
         } else if (buildingType === 'asymetrique_1') {
@@ -507,6 +507,38 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         };
     }, [buildingType, width]);
 
+    // 8. Roof Slope Labels (Faitage/Sablière for Ombrière)
+    const roofSlopeData = useMemo(() => {
+        const isOmbriereLocal = buildingType.startsWith('ombriere');
+        if (!isOmbriereLocal) return null;
+
+        // Both are High Left -> Low Right.
+        // H_Left = Ridge. H_Right = Eave.
+
+        // Points for the dimension line (offset above roof)
+        const xLeft = -width / 2;
+        const xRight = width / 2;
+        const zDim = 3.5;
+
+        const yLeft = ridgeHeight + 0.8;
+        const yRight = eaveHeight + 0.8;
+
+        // Start/End points
+        const pStart = new THREE.Vector3(xLeft, yLeft, zDim); // High (Left)
+        const pEnd = new THREE.Vector3(xRight, yRight, zDim); // Low (Right)
+
+        // Label positions
+        // Faitage at High Point (Left)
+        // Sabliers at Low Point (Right)
+
+        return {
+            pStart, pEnd,
+            labelStart: "Faitage",
+            labelEnd: "Sablière",
+            slopeText: `${roofPitch || 15}°`
+        };
+    }, [buildingType, width, ridgeHeight, eaveHeight, roofPitch]);
+
     // 7. Surface Area
     const surfaceArea = useMemo(() => {
         const totalWidth = width + leftWidth + rightWidth;
@@ -735,6 +767,25 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             >
                 {`${surfaceArea} m²`}
             </Text>
+            {/* 9. ROOF SLOPE LABELS (Faitage/Sablière) */}
+            {roofSlopeData && (
+                <group>
+                    {/* Line following slope */}
+                    <Line points={[roofSlopeData.pStart, roofSlopeData.pEnd]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={roofSlopeData.pStart}><sphereGeometry args={[0.08]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={roofSlopeData.pEnd}><sphereGeometry args={[0.08]} /><meshBasicMaterial color={lineColor} /></mesh>
+
+                    {/* Faitage Label (Left/High) */}
+                    <Text position={[roofSlopeData.pStart.x, roofSlopeData.pStart.y + 0.3, roofSlopeData.pStart.z]} rotation={[0, 0, 0]} fontSize={0.7} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.08} outlineColor="#ffffff">
+                        {roofSlopeData.labelStart}
+                    </Text>
+
+                    {/* Sablière Label (Right/Low) */}
+                    <Text position={[roofSlopeData.pEnd.x, roofSlopeData.pEnd.y + 0.3, roofSlopeData.pEnd.z]} rotation={[0, 0, 0]} fontSize={0.7} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.08} outlineColor="#ffffff">
+                        {roofSlopeData.labelEnd}
+                    </Text>
+                </group>
+            )}
         </group>
     );
 }

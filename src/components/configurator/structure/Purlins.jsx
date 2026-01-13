@@ -90,11 +90,10 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
     }
     // --- OMBRIÈRE GENERATION ---
     else if (buildingType.startsWith('ombriere')) {
-        const isDroite = buildingType === 'ombriere_vl_simple_droite';
-        // Droite: High Left, Low Right. Slope 10 deg.
-        // Gauche: High Right, Low Left. Slope 10 deg.
+        // Droite: High Left, Low Right. Slope 10 deg (or roofPitch).
+        // Gauche: High Left, Low Right (Unified).
 
-        const angleDeg = 10;
+        const angleDeg = roofPitch || 15;
         const angleRad = (angleDeg * Math.PI) / 180;
 
         // Slope Length (Hypotenuse)
@@ -132,10 +131,6 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
                 // local x goes 0 to width.
                 // angle is -10 deg.
 
-                // If Gauche (High Right):
-                // At x = -width/2, y = Low.
-                // angle is +10 deg.
-
                 const dist = i * purlinSpacing;
 
                 // Let's center the pattern so it looks symmetric
@@ -144,32 +139,24 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
                 // Let's stick to Edge to Edge (Left to Right).
 
                 // Effective X (horizontal) = -width/2 + (i * spacingX)
-                // Spacing X = purlinSpacing * cos(angle)
+                // Spacing X = purlinSpacing * Math.cos(angleRad)
 
                 const spacingX = purlinSpacing * Math.cos(angleRad);
                 const currentX = -width / 2 + (i * spacingX); // Rough approx, loop count might differ
 
                 // More accurate: Run along slope `s` from -slopeLength/2 to +slopeLength/2
-                const s = -slopeLength / 2 + (i * purlinSpacing);
+                // s = -slopeLength / 2 + (i * purlinSpacing);
                 // If i goes 0 to numPurlins, we cover [0, L].
                 // Shift to [-L/2, L/2].
-                const sCentered = s + (purlinSpacing / 2); // Adjustment to center?
-                // Let's just mapping [0, L] to [-W/2, W/2]
-                // s goes 0 to L.
-                // x = (s - L/2) * cos(angle)
-                // y = (s - L/2) * sin(angle)
+                // const sCentered = s + (purlinSpacing / 2); // Adjustment to center? No need.
 
                 // If Droite (Angle -10):
                 // slopes down.
-                // x = (s - L/2) * cos(-10) = (s - L/2) * cos(10)
-                // y = (s - L/2) * sin(-10) = -(s - L/2) * sin(10)
+                // x = (s - L/2) * cos(-10)
+                // y = (s - L/2) * sin(-10)
 
-                // If Gauche (Angle +10):
-                // slopes up.
-                // x = (s - L/2)
-                // y = (s - L/2) * sin(10)
-
-                const angleSign = isDroite ? -1 : 1;
+                // FORCE DOWN to RIGHT (-angle).
+                const angleSign = -1;
                 const effectiveAngle = angleSign * angleRad;
 
                 // Position along slope, centered on 0,0 (Rafter Center)

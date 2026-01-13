@@ -104,13 +104,18 @@ const DraggableCard = ({ project, onClick }) => {
                     <Clock size={12} />
                     <span>{project.deadline ? format(new Date(project.deadline), 'dd/MM', { locale: fr }) : '--:--'}</span>
                 </div>
-                <UserAvatar
-                    name={project.assignedUser ? project.assignedUser : (project.createdBy || 'NA')}
-                    photoURL={null}
-                    showName={false}
-                    size="w-6 h-6"
-                    textSize="text-[10px]"
-                />
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-medium text-gray-600">
+                        {((project.createdBy || 'Yann').split(' ')[0])}
+                    </span>
+                    <UserAvatar
+                        name={project.createdBy || 'Yann'}
+                        photoURL={null}
+                        showName={false}
+                        size="w-6 h-6"
+                        textSize="text-[10px]"
+                    />
+                </div>
             </div>
         </div>
     );
@@ -139,7 +144,7 @@ const Column = ({ title, stageId, projects, onDropProject, onCardClick, count })
             ref={ref} // Using ref here
             className={`flex flex-col rounded-xl transition-colors duration-200 h-full backdrop-blur-sm select-none
             ${isOver ? "bg-purple-50/50 ring-2 ring-purple-400 ring-inset" : "bg-gray-50/50"}
-            flex-1 min-w-[200px] max-w-[300px]
+            flex-1 min-w-[180px]
             `}
         >    <div className={`p-3 flex justify-between items-center border-b border-white/50 rounded-t-lg sticky top-0 z-10 ${colorClass}`}>
                 <h3 className="font-semibold text-sm truncate max-w-[200px]" title={title}>{title}</h3>
@@ -437,7 +442,7 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
                         <div className="space-y-5">
                             <div className="grid grid-cols-3 gap-2 items-start">
                                 <label className="font-medium text-gray-500">Description</label>
-                                <span className="col-span-2 text-gray-900 block">{project.description || "Installation PV"}</span>
+                                <span className="col-span-2 text-gray-900 block">{project.type || "Installation PV"}</span>
                             </div>
                             <div className="grid grid-cols-3 gap-2 items-center">
                                 <label className="font-medium text-gray-500">Chef de projet</label>
@@ -469,7 +474,7 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
                                 <label className="font-medium text-gray-500">Commercial</label>
                                 <div className="col-span-2 flex items-center gap-2">
                                     <UserAvatar name={project.createdBy || 'Yann'} size="w-6 h-6" textSize="text-xs" showName={false} />
-                                    <span className="text-gray-900">{project.createdBy || 'Yann'}</span>
+                                    <span className="text-gray-900">{(project.createdBy || 'Yann').split(' ')[0]}</span>
                                 </div>
                             </div>
                             <div className="grid grid-cols-3 gap-2 items-center">
@@ -532,7 +537,11 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
                                 <div className="space-y-4">
                                     {(project.odooChat || []).map((msg, i) => (
                                         <div key={i} className="flex gap-4 group">
-                                            <UserAvatar name={msg.author} size="w-10 h-10" textSize="text-sm" />
+                                            <UserAvatar
+                                                name={msg.author.includes('Moi') ? (user?.displayName || 'Moi') : msg.author}
+                                                photoURL={msg.author.includes('Moi') ? user?.photoURL : null}
+                                                size="w-10 h-10" textSize="text-sm"
+                                            />
                                             <div className="flex-1 space-y-1">
                                                 <div className="flex justify-between items-baseline">
                                                     <span className="font-semibold text-gray-900 text-sm">{msg.author}</span>
@@ -565,7 +574,11 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages }) => {
                         {/* We show same chat here for consistency */}
                         {(project.odooChat || []).map((msg, i) => (
                             <div key={i} className="flex gap-4 group">
-                                <UserAvatar name={msg.author} size="w-8 h-8" textSize="text-xs" showName={false} />
+                                <UserAvatar
+                                    name={msg.author.includes('Moi') ? (user?.displayName || 'Moi') : msg.author}
+                                    photoURL={msg.author.includes('Moi') ? user?.photoURL : null}
+                                    size="w-8 h-8" textSize="text-xs" showName={false}
+                                />
                                 <div className="flex-1 space-y-1">
                                     <div className="flex justify-between items-baseline">
                                         <span className="font-semibold text-gray-900 text-sm">{msg.author}</span>
@@ -933,9 +946,8 @@ export default function Odoo() {
                                 </div>
                             </div>
                         ) : (
-                            <Button variant="ghost" className="w-full h-full" onClick={() => setIsAddingStage(true)}>
-                                <Plus size={24} className="mb-2 opacity-50" />
-                                <span className="font-medium">Ajouter une étape</span>
+                            <Button variant="ghost" className="w-full h-full text-gray-400 hover:text-purple-600" onClick={() => setIsAddingStage(true)}>
+                                <span className="font-medium text-3xl">+</span>
                             </Button>
                         )}
                     </div>

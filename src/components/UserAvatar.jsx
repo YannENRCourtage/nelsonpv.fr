@@ -5,10 +5,11 @@ const UserAvatar = ({ name, email, showName = true, photoURL = null, size = "w-8
 
     if (!cleanName) return <span className="text-slate-400">-</span>;
 
-    // Local overrides for specific users
     const localAvatars = {
         'Nicolas DESAINT': '/avatars/nicolas_desaint.jpg',
-        'nicolas desaint': '/avatars/nicolas_desaint.jpg', // Case insensitive check helper
+        'nicolas desaint': '/avatars/nicolas_desaint.jpg',
+        'Yann': '/avatars/yann.jpg',
+        'yann': '/avatars/yann.jpg'
     };
 
     // Si photoURL est fourni, l'utiliser en priorité. SINON vérifier local override.
