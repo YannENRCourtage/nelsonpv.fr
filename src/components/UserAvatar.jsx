@@ -5,13 +5,21 @@ const UserAvatar = ({ name, email, showName = true, photoURL = null, size = "w-8
 
     if (!cleanName) return <span className="text-slate-400">-</span>;
 
-    // Si photoURL est fourni, l'utiliser en priorité
-    if (photoURL) {
+    // Local overrides for specific users
+    const localAvatars = {
+        'Nicolas DESAINT': '/avatars/nicolas_desaint.jpg',
+        'nicolas desaint': '/avatars/nicolas_desaint.jpg', // Case insensitive check helper
+    };
+
+    // Si photoURL est fourni, l'utiliser en priorité. SINON vérifier local override.
+    const finalPhotoURL = photoURL || localAvatars[cleanName] || localAvatars[cleanName.toLowerCase()];
+
+    if (finalPhotoURL) {
         return (
             <div className="flex items-center gap-2" title={cleanName}>
                 <div className={`${size} rounded-full overflow-hidden border border-slate-200 flex-shrink-0`}>
                     <img
-                        src={photoURL}
+                        src={finalPhotoURL}
                         alt={cleanName}
                         className="w-full h-full object-cover"
                         onError={(e) => {

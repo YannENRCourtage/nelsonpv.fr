@@ -175,11 +175,39 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             // So Ridge Marker should be on LEFT.
             x = -width / 2 - 1.5;
         } else if (buildingType === 'ombriere_vl_simple_gauche') {
-            // Slope Down-Left. Ridge is HIGH RIGHT.
-            // Eave (Low Left) is on Left.
-            // So Ridge Marker should be on RIGHT.
-            x = width / 2 + 1.5;
-        } else if (buildingType === 'asymetrique_1') {
+            // Updated 13/01: Slope Down-Right (same as Droite).
+            // Ridge is HIGH LEFT. Eave (Low Right) is on Right.
+            x = -width / 2 - 1.5; // Set Ridge Marker to Left side for 'gauche'
+        }
+        // USER REQUEST 13/01/2026: Swap markers for 'gauche'.
+        // 'ombriere_vl_simple_droite': High Left (Ridge), Low Right (Eave). (Already handled by standard logic if slopes are negative?)
+        // 'ombriere_vl_simple_gauche': High Left (Ridge), Low Right (Eave).
+
+        // The user wants:
+        // Droite: Unchanged (Ridge Left 4.5m, Eave Right 2.9m)
+        // Gauche: "Inverse aussi... indications". Ridge Left (4.5m), Eave Right (2.9m).
+
+        // WAIT. If they are geometrically identical (High Left -> Low Right), then the markers should correspond to geometry.
+        // If geometry is High Left, then Ridge IS Left.
+        // Previously I might have forced them differently.
+
+        // Let's explicitly set based on type to be sure.
+
+        // The provided code block for `startText` and `endText` seems to be for text labels,
+        // not for determining the `x` coordinate of the ridge line itself.
+        // The `x` coordinate for the ridge marker for ombriere_vl_simple_gauche was already set to `width / 2 + 1.5` (Right side).
+        // If the user wants the ridge marker for 'gauche' to be on the LEFT (like 'droite'),
+        // then the `x` value needs to be changed here.
+        // Based on the comment "Ridge Left (4.5m), Eave Right (2.9m)" for 'gauche',
+        // it implies the ridge marker should be on the left side for 'gauche' as well.
+        if (buildingType === 'ombriere_vl_simple_gauche') {
+            x = -width / 2 - 1.5; // Set Ridge Marker to Left side for 'gauche'
+        }
+        // The `startText` and `endText` variables are not used in this `useMemo` block,
+        // which is responsible for calculating the line points, not the text content.
+        // This part of the provided snippet is likely intended for the text rendering logic.
+
+        else if (buildingType === 'asymetrique_1') {
             // Asym Ridge: Exact
             const rAngle = 15 * (Math.PI / 180);
             h = 4.0 + (width * 0.75 * Math.tan(rAngle));

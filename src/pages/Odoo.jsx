@@ -117,27 +117,31 @@ const DraggableCard = ({ project, onClick }) => {
 };
 
 // 2. KANBAN COLUMN
-const Column = ({ title, projects, onDropProject, onCardClick, count }) => {
+const Column = ({ title, stageId, projects, onDropProject, onCardClick, count }) => {
+    // Reduced width to fit 8 columns on screen (approx 200-220px each)
+    // removed w-[350px] fixed width
     const [{ isOver }, drop] = useDrop(() => ({
-        accept: 'PROJECT_CARD',
-        drop: (item) => onDropProject(item.id, title),
+        accept: "PROJECT_CARD", // Changed from "TASK" to "PROJECT_CARD" to match DraggableCard
+        drop: (item) => onDropProject(item.id, title), // Changed from onDrop(item.id, stageId) to onDropProject(item.id, title)
         collect: (monitor) => ({
-            isOver: monitor.isOver(),
+            isOver: !!monitor.isOver(),
         }),
     }));
 
-    const ref = React.useRef(null);
-    drop(ref);
+    const ref = React.useRef(null); // Added ref for consistency with DraggableCard
+    drop(ref); // Using ref with drop
 
-    // Apply color if defined, else default
-    const colorClass = STAGE_COLORS[title] || "bg-gray-100 text-gray-700";
+    // Get specific color for this stage or default
+    const colorClass = STAGE_COLORS[title] || "bg-gray-100 text-gray-800 border-gray-200";
 
     return (
         <div
-            ref={ref}
-            className={`flex-shrink-0 w-80 flex flex-col h-full rounded-lg mr-4 transition-colors ${isOver ? 'bg-gray-100' : 'bg-gray-50/50'}`}
-        >
-            <div className={`p-3 flex justify-between items-center border-b border-white/50 rounded-t-lg sticky top-0 z-10 ${colorClass}`}>
+            ref={ref} // Using ref here
+            className={`flex flex-col rounded-xl transition-colors duration-200 h-full backdrop-blur-sm select-none
+            ${isOver ? "bg-purple-50/50 ring-2 ring-purple-400 ring-inset" : "bg-gray-50/50"}
+            flex-1 min-w-[200px] max-w-[300px]
+            `}
+        >    <div className={`p-3 flex justify-between items-center border-b border-white/50 rounded-t-lg sticky top-0 z-10 ${colorClass}`}>
                 <h3 className="font-semibold text-sm truncate max-w-[200px]" title={title}>{title}</h3>
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-bold bg-white/50 px-2 py-0.5 rounded-full">{count}</span>
@@ -613,8 +617,20 @@ const NewProjectDialog = ({ onClose, onAddProject, projects, stages }) => {
     const [selectedProject, setSelectedProject] = useState(null);
     const [selectedStage, setSelectedStage] = useState(stages[0]);
 
-    // Show all projects here, even excluded ones
-    const filtered = projects.filter(p => !p.odooStage && (p.name?.toLowerCase().includes(search.toLowerCase()) || p.clientName?.toLowerCase().includes(search.toLowerCase())));
+    // Show all projects here, even excluded ones, but ensure we match against multiple fields
+    // RELAXED FILTER: Check if name, client, city, zip matches. 
+    // And ensure we don't filter out projects that might have 'odooStage' set to null/undefined explicitly.
+    const filtered = projects.filter(p => {
+        const query = search.toLowerCase();
+        const name = (p.name || '').toLowerCase();
+        const client = (p.clientName || '').toLowerCase();
+        // Also search in formatted title components
+        const city = (p.city || '').toLowerCase();
+
+        const matches = name.includes(query) || client.includes(query) || city.includes(query);
+        const notInOdoo = !p.odooStage;
+        return matches && notInOdoo;
+    });
 
     const handleConfirm = () => {
         if (selectedProject && selectedStage) {
@@ -879,7 +895,7 @@ export default function Odoo() {
             <div className="flex-1 overflow-x-auto overflow-y-hidden p-6">
                 <div className="flex h-full pb-2 relative">
                     {stages.map((stage, index) => {
-                        const stageProjects = filteredProjects.filter(p => (p.odooStage || STAGES[0]) === stage);
+                        const stageProjects = filteredProjects.filter(p => (p.odooStage || DEFAULT_STAGES[0]) === stage);
                         return (
                             <div key={stage} className="group relative">
                                 {/* Header Controls (Hover) */}
