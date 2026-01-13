@@ -532,6 +532,42 @@ export function PortalFrame({
                 {createStrut(xBot1, xTop1)}
                 {createStrut(xBot2, xTop2)}
 
+                {/* SAINT ANDREW'S CROSS (Croix de Saint-André) */}
+                {(() => {
+                    // Start/End points for the X
+                    // Diagonals: Bot1 -> Top2 AND Bot2 -> Top1
+                    const yTop1 = centerHeight + (xTop1 * Math.tan(rotZ)) - 0.2;
+                    const yTop2 = centerHeight + (xTop2 * Math.tan(rotZ)) - 0.2;
+
+                    const pBot1 = new THREE.Vector3(xBot1, baseHeight + 0.5, 0); // Start slightly higher than base
+                    const pBot2 = new THREE.Vector3(xBot2, baseHeight + 0.5, 0);
+
+                    const pTop1 = new THREE.Vector3(xTop1, yTop1 - 0.5, 0); // End slightly lower than top
+                    const pTop2 = new THREE.Vector3(xTop2, yTop2 - 0.5, 0);
+
+                    const createBar = (start, end) => {
+                        const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+                        const len = start.distanceTo(end);
+                        const dx = end.x - start.x;
+                        const dy = end.y - start.y;
+                        const angle = -Math.atan2(dx, dy);
+                        // Thinner profile for cross bracing (e.g., 5cm)
+                        return (
+                            <mesh position={mid} rotation={[0, 0, angle]} castShadow>
+                                <boxGeometry args={[0.05, len, 0.05]} />
+                                <meshStandardMaterial color="#4A5568" roughnes={0.8} />
+                            </mesh>
+                        );
+                    };
+
+                    return (
+                        <group>
+                            {createBar(pBot1, pTop2)}
+                            {createBar(pBot2, pTop1)}
+                        </group>
+                    );
+                })()}
+
                 {/* Rafter */}
                 {/* Centered at [0, centerHeight, 0], rotated */}
                 <group position={[0, centerHeight, 0]} rotation={[0, 0, rotZ]}>
