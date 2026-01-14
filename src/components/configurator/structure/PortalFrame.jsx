@@ -600,8 +600,13 @@ export function PortalFrame({
         // Use dimensions that look correct for centering (similar to Double)
         // Base width = 1.7m => +/- 0.85
         // Top width = 2.25m => +/- 1.125
-        const baseHalf = 1.7 / 2;
+        let baseHalf = 1.7 / 2;
         const topHalf = 2.25 / 2;
+
+        // USER REQUEST 14/01/2026: 11.3m Double specific spacing (2.2m width)
+        if (isOmbriereDouble && Math.abs(width - 11.3) < 0.1) {
+            baseHalf = 2.2 / 2; // 1.1m
+        }
 
         // USER REQUEST 14/01/2026: Shift struts for Ombrière VL Simple
         let offsetX = 0;
@@ -614,7 +619,8 @@ export function PortalFrame({
         xTop2 = topHalf + offsetX;
 
         // Base Horizontal Position
-        const baseHeight = 0.5;
+        // USER REQUEST 14/01/2026: "Obliques jusqu'au sol" -> Base 0.
+        const baseHeight = 0.0;
 
         // Rafter Underside Equation
         // Center of Rafter at [0, centerHeight, 0] of the GROUP.
@@ -626,7 +632,17 @@ export function PortalFrame({
         // In store we set: 9.1m -> 3.0m (Low/Right). 
         // So Center Height = 3.0 + (Width/2 * tan(slope)).
         const midRise = (width / 2) * Math.tan(slopeRad);
-        const centerHeight = eaveHeight + midRise;
+        let centerHeight = eaveHeight + midRise;
+
+        // USER REQUEST 14/01/2026: Height Adjustments
+        // Ombrière VL Double: Lower by 1m.
+        if (isOmbriereDouble) {
+            centerHeight -= 1.0;
+        }
+        // Ombrière VL Simple: Raise by 30cm.
+        if (isOmbriereSimple) {
+            centerHeight += 0.30;
+        }
 
         // Custom Strut Creator
         const createStrut = (xBot, xTop) => {
