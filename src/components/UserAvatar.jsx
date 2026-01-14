@@ -8,8 +8,14 @@ const UserAvatar = ({ name, email, showName = true, photoURL = null, size = "w-8
     const localAvatars = {
         'Nicolas DESAINT': '/avatars/nicolas_desaint.jpg',
         'nicolas desaint': '/avatars/nicolas_desaint.jpg',
+        'Nicolas': '/avatars/nico.png',
+        'Nico': '/avatars/nico.png',
+        'NicolasNMD': '/avatars/nico.png',
         'Yann': '/avatars/yann.jpg',
-        'yann': '/avatars/yann.jpg'
+        'yann': '/avatars/yann.jpg',
+        'Véronique': '/avatars/veronique.png',
+        'Véro': '/avatars/veronique.png',
+        'véro': '/avatars/veronique.png'
     };
 
     // Si photoURL est fourni, l'utiliser en priorité. SINON vérifier local override.
