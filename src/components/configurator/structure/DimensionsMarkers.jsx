@@ -246,6 +246,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             else if (Math.abs(width - 11.3) < 0.1) h = 4.7;
         }
 
+        // USER REQUEST 14/01/2026: Specific Ridge Heights for Ombrière VL Simple
+        if (buildingType === 'ombriere_vl_simple_gauche') h = 4.4;
+        if (buildingType === 'ombriere_vl_simple_droite') h = 4.7;
+
         const z = 0;
         const start = new THREE.Vector3(x, 0, z);
         const end = new THREE.Vector3(x, h, z);
@@ -542,6 +546,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             if (Math.abs(width - 9.1) < 0.1) return '3 m';
             if (Math.abs(width - 11.3) < 0.1) return '2.8 m';
         }
+        if (buildingType === 'ombriere_vl_simple_droite') return '3.7 m';
         if (isOmbriere) return '2.9 m';
         return `${parseFloat(eaveHeight.toFixed(2))} m`;
     };
@@ -583,7 +588,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={crossHeightData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
                         position={[0.5, crossHeightData.hVal / 2, 0]} // Text slightly to right of center marker
-                        rotation={[0, 0, Math.PI / 2]}
+                        rotation={[0, 0, 0]}
                         fontSize={0.8}
                         color={textColor}
                         anchorX="center"
@@ -597,7 +602,6 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             )}
 
             {/* ... (Rest of Renders) ... */}
-
 
             {/* 4. RIDGE HEIGHT */}
             <group>
