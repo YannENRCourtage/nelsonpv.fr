@@ -86,12 +86,12 @@ export function Structure() {
     return (
         <group>
             {config.buildingType === 'symetrique' && (
-                <RidgeFlashing len={length} h={calculatedRidgeHeight + 0.5} angle={angleRad} />
+                <RidgeFlashing len={length + 1.0} h={calculatedRidgeHeight + 0.5} angle={angleRad} />
             )}
             {(config.buildingType === 'asymetrique_1' || config.buildingType === 'asymetrique_2') && (
                 <RidgeFlashing
-                    len={length}
-                    h={calculatedRidgeHeight} // Standard height for Asymmetrical
+                    len={length + 1.0}
+                    h={calculatedRidgeHeight + 1.0} // Raised 1m as requested
                     angle={15 * Math.PI / 180} // 15 degrees
                     x={-width * 0.25} // Apex position
                 />
