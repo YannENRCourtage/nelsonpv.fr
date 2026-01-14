@@ -91,7 +91,18 @@ export function Structure() {
             {(config.buildingType === 'asymetrique_1' || config.buildingType === 'asymetrique_2') && (
                 <RidgeFlashing
                     len={length + 1.0}
-                    h={calculatedRidgeHeight + 1.0} // Raised 1m as requested
+                    h={(() => {
+                        // Base for Asym is calculatedRidgeHeight + 1.0
+                        let h = calculatedRidgeHeight + 1.0;
+                        if (config.buildingType === 'asymetrique_1') {
+                            if (Math.abs(width - 20) < 0.5) h += 0.20; // +20cm
+                            else if (Math.abs(width - 16.4) < 0.5) h -= 0.08; // -8cm
+                        } else if (config.buildingType === 'asymetrique_2') {
+                            if (Math.abs(width - 25.5) < 0.5) h -= 0.40; // -40cm
+                            else if (Math.abs(width - 29.1) < 0.5) h -= 0.30; // -30cm
+                        }
+                        return h;
+                    })()}
                     angle={15 * Math.PI / 180} // 15 degrees
                     x={-width * 0.25} // Apex position
                 />
