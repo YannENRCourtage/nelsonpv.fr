@@ -668,7 +668,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={leftExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={leftExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text position={[leftExtData.xH, leftExtData.extHeight / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                        {buildingType === 'monopente' ? '3 m' : `${parseFloat(Number(leftExtData.extHeight).toFixed(2))} m`}
+                        {`${parseFloat(Number(leftExtData.extHeight).toFixed(2))} m`}
                     </Text>
                 </group>
             )}
