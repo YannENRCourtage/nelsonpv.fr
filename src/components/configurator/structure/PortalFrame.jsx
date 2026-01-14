@@ -616,6 +616,11 @@ export function PortalFrame({
 
         // ...
 
+        // USER REQUEST 14/01/2026: Shift struts for Ombrière VL Simple
+        let offsetX = 0;
+        if (buildingType === 'ombriere_vl_simple_gauche') offsetX = -1.0;
+        if (buildingType === 'ombriere_vl_simple_droite') offsetX = 1.0;
+
         // Use localTopHalf
         xTop1 = -localTopHalf + offsetX;
         xTop2 = localTopHalf + offsetX;
