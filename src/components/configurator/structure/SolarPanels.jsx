@@ -51,30 +51,3 @@ export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof", forceF
         </group>
     );
 }
-
-// Side Effect for Global Stats could be done via a Store Action if we want to sum them up.
-// For now, let's just render.
-
-if (!hasSolar || !layout) return null;
-
-return (
-    <group>
-        {layout.instances.map((pos, idx) => (
-            <mesh
-                key={idx}
-                geometry={panelGeometry}
-                position={[pos.x, pos.y, pos.z]}
-                rotation={[0, 0, 0]} // Aligned with local roof
-                castShadow
-            >
-                <meshStandardMaterial attach="material" color="#1a1a2a" roughness={0.2} metalness={0.9} />
-                {/* Add borders logic if refined rendering is needed */}
-                <lineSegments>
-                    <edgesGeometry args={[panelGeometry]} />
-                    <lineBasicMaterial color="#444" />
-                </lineSegments>
-            </mesh>
-        ))}
-    </group>
-);
-}
