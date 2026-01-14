@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { getIPEProfileParams } from '../utils/profiles.js';
 
-export function LongitudinalBeams({ width, length, eaveHeight, ridgeHeight, buildingType }) {
+export function LongitudinalBeams({ width, length, eaveHeight, ridgeHeight, buildingType, roofPitch }) {
     const isMonopente = buildingType === 'monopente';
 
     // Material (Galvanized Steel)

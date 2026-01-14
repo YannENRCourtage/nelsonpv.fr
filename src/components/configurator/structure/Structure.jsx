@@ -126,6 +126,7 @@ export function Structure() {
                 eaveHeight={eaveHeight}
                 ridgeHeight={calculatedRidgeHeight}
                 buildingType={config.buildingType}
+                roofPitch={roofPitch}
             />
 
             {/* --- EXTENSIONS GAUCHE --- */}
