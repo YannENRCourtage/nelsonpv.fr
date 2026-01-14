@@ -549,6 +549,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             if (Math.abs(width - 11.3) < 0.1) return '2.8 m';
         }
         if (buildingType === 'ombriere_vl_simple_droite') return '3.7 m';
+        if (buildingType === 'ombriere_pl') {
+            if (Math.abs(width - 15.8) < 0.1) return '6 m';
+            if (Math.abs(width - 20.2) < 0.1) return '6.5 m';
+            if (Math.abs(width - 24.6) < 0.1) return '7 m';
+        }
         if (isOmbriere) return '2.9 m';
         return `${parseFloat(eaveHeight.toFixed(2))} m`;
     };
