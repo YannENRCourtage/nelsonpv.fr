@@ -69,7 +69,7 @@ const EXCLUDED_PROJECTS = [
 // --- COMPONENTS ---
 
 // 1. KANBAN CARD
-const DraggableCard = ({ project, onClick, getUserName }) => {
+const DraggableCard = ({ project, onClick, getUserName, className }) => {
     const [{ isDragging }, drag] = useDrag(() => ({
         type: 'PROJECT_CARD',
         item: { id: project.id },
@@ -81,19 +81,7 @@ const DraggableCard = ({ project, onClick, getUserName }) => {
     const ref = React.useRef(null);
     drag(ref);
 
-    // Get First Name from generic helper if available, else fallback to existing logic
-    // Existing logic was: ((project.createdBy || 'Yann').split(' ')[0])
-    // New logic: getUserName(project.createdBy) -> returns First Name
-
-    // Note: getUserName might not be passed if not updated yet in parent, so handle gracefully
-    // But we update parent in same flow.
-
     const createdByRaw = project.createdBy || 'Yann';
-    // Priority: Assigned User > Commercial Name > Created By
-    // But project.assignedUser is the 'Chef de projet' in Odoo, user wants this for 'Commercial' slot in card?
-    // User said: "c'est Nicolas à qui est affecté le projet... Il doit donc être indiqué Nicolas"
-
-    // Resolve user object
     const effectiveUserIdentifier = project.assignedUser || project.assignedTo || createdByRaw;
     const displayUser = getUserName ? getUserName(effectiveUserIdentifier) : { name: effectiveUserIdentifier, photoURL: null };
 
@@ -101,7 +89,7 @@ const DraggableCard = ({ project, onClick, getUserName }) => {
         <div
             ref={ref}
             onClick={() => onClick(project)}
-            className={`bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all mb-2 ${isDragging ? 'opacity-50' : 'opacity-100'}`}
+            className={`bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all ${className || 'mb-2 h-max'} ${isDragging ? 'opacity-50' : 'opacity-100'}`}
         >
             <div className="flex justify-between items-start mb-2">
                 <h4 className="text-sm font-semibold text-gray-800 line-clamp-2" title={project.name}>
@@ -139,24 +127,21 @@ const DraggableCard = ({ project, onClick, getUserName }) => {
 };
 
 // 2. KANBAN COLUMN
-const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count, getUserName, onRename }) => {
-    // Reduced width to fit 8 columns on screen (approx 200-220px each)
-    // removed w-[350px] fixed width
+const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count, getUserName, onRename, viewMode }) => {
     const [{ isOver }, drop] = useDrop(() => ({
-        accept: "PROJECT_CARD", // Changed from "TASK" to "PROJECT_CARD" to match DraggableCard
-        drop: (item) => onDropProject(item.id, title), // Changed from onDrop(item.id, stageId) to onDropProject(item.id, title)
+        accept: "PROJECT_CARD",
+        drop: (item) => onDropProject(item.id, title),
         collect: (monitor) => ({
             isOver: !!monitor.isOver(),
         }),
     }));
 
-    const ref = React.useRef(null); // Added ref for consistency with DraggableCard
-    drop(ref); // Using ref with drop
+    const ref = React.useRef(null);
+    drop(ref);
 
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(title);
 
-    // Sync title to editValue when prop changes
     useEffect(() => {
         setEditValue(title);
     }, [title]);
@@ -170,7 +155,7 @@ const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count
         if (onRename && editValue !== title) {
             onRename(title, editValue);
         } else {
-            setEditValue(title); // Revert if no change or empty?
+            setEditValue(title);
         }
     };
 
@@ -183,51 +168,63 @@ const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count
         }
     };
 
+    // Responsive Classes based on viewMode
+    const containerClasses = viewMode === 'list'
+        ? "flex flex-row items-stretch rounded-xl transition-colors duration-200 w-full mb-4 min-h-[160px]"
+        : "flex flex-col rounded-xl transition-colors duration-200 h-full backdrop-blur-sm select-none flex-1 min-w-[200px]";
+
+    const headerClasses = viewMode === 'list'
+        ? `p-4 flex flex-col justify-center items-start border-r border-white/50 rounded-l-xl w-60 shrink-0 ${colorClass}`
+        : `p-3 flex justify-between items-center border-b border-white/50 rounded-t-lg sticky top-0 z-10 ${colorClass}`;
+
+    const contentClasses = viewMode === 'list'
+        ? "p-3 flex-1 flex flex-row items-center gap-3 overflow-x-auto min-w-0 custom-scrollbar-horizontal"
+        : "p-2 flex-1 overflow-y-auto min-h-0 custom-scrollbar";
+
+    const bgClass = isOver ? "bg-purple-50/50 ring-2 ring-purple-400 ring-inset" : "bg-gray-50/50";
+
     return (
-        <div
-            ref={ref} // Using ref here
-            className={`flex flex-col rounded-xl transition-colors duration-200 h-full backdrop-blur-sm select-none
-            ${isOver ? "bg-purple-50/50 ring-2 ring-purple-400 ring-inset" : "bg-gray-50/50"}
-            flex-1 min-w-[180px]
-            `}
-        >    <div className={`p-3 flex justify-between items-center border-b border-white/50 rounded-t-lg sticky top-0 z-10 ${colorClass}`}>
-                {isEditing ? (
-                    <input
-                        autoFocus
-                        className="font-semibold text-sm bg-white/80 border border-black/10 rounded px-1.5 py-0.5 w-full mr-2 text-black focus:outline-none focus:ring-1 focus:ring-black/20"
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onBlur={handleCommitEdit}
-                        onKeyDown={handleKeyDown}
-                        onClick={(e) => e.stopPropagation()} // Prevent drag/drop interference if any
-                    />
-                ) : (
-                    <h3
-                        className="font-semibold text-sm truncate max-w-[200px] cursor-pointer hover:underline hover:opacity-80 transition-opacity"
-                        title="Cliquer pour modifier"
-                        onClick={handleStartEdit}
-                    >
-                        {title}
-                    </h3>
-                )}
-                <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold bg-white/50 px-2 py-0.5 rounded-full">{count}</span>
-                    <Plus size={16} className="cursor-pointer hover:scale-110 transition-transform" />
+        <div ref={ref} className={`${containerClasses} ${bgClass}`}>
+            <div className={headerClasses}>
+                <div className={`flex ${viewMode === 'list' ? 'flex-col gap-2 w-full' : 'justify-between w-full items-center'}`}>
+                    {isEditing ? (
+                        <input
+                            autoFocus
+                            className="font-semibold text-sm bg-white/80 border border-black/10 rounded px-1.5 py-0.5 w-full text-black focus:outline-none focus:ring-1 focus:ring-black/20"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={handleCommitEdit}
+                            onKeyDown={handleKeyDown}
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    ) : (
+                        <h3
+                            className="font-semibold text-sm truncate cursor-pointer hover:underline hover:opacity-80 transition-opacity"
+                            title="Cliquer pour modifier"
+                            onClick={handleStartEdit}
+                        >
+                            {title}
+                        </h3>
+                    )}
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold bg-white/50 px-2 py-0.5 rounded-full">{count}</span>
+                        {/* Plus icon removed as requested */}
+                    </div>
                 </div>
             </div>
-            <div className="p-2 flex-1 overflow-y-auto min-h-0 custom-scrollbar">
-                {count > 0 && !colorClass.includes('bg-gray-100') && (
-                    // Hide progress bar style if we use full header color? User asked for header background color.
-                    // The previous progress bar might be redundant or can stay. Let's keep it but maybe adjust?
-                    // Actually, if we color the header, the "teal bar" below might clash. Let's remove it for cleaner look as requested "Distinct background colors to each Kanban stage header".
-                    <></>
-                )}
-                {/* Re-adding the bar if count > 0 but making it cleaner or removing it? 
-                    The original code had a teal bar. I will remove it to focus on header color. 
-                 */}
+            <div className={contentClasses}>
                 {projects.map(p => (
-                    <DraggableCard key={p.id} project={p} onClick={onCardClick} getUserName={getUserName} />
+                    <DraggableCard
+                        key={p.id}
+                        project={p}
+                        onClick={onCardClick}
+                        getUserName={getUserName}
+                        className={viewMode === 'list' ? 'w-[280px] shrink-0 h-full mb-0' : 'w-full mb-2'}
+                    />
                 ))}
+                {projects.length === 0 && viewMode === 'list' && (
+                    <div className="text-gray-400 text-sm italic pl-2">Aucun projet</div>
+                )}
             </div>
         </div>
     );
@@ -1078,6 +1075,9 @@ export default function Odoo() {
         });
     };
 
+    // View Mode State: 'kanban' or 'list'
+    const [viewMode, setViewMode] = useState('kanban');
+
     if (selectedProject) {
         return (
             <ProjectDetail
@@ -1134,27 +1134,35 @@ export default function Odoo() {
                 </div>
 
                 <div className="flex items-center gap-3 text-gray-500">
-                    <Button variant="ghost" size="icon" className="text-gray-400 hover:text-purple-600 hover:bg-purple-50">
-                        <ListIcon size={20} />
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`hover:bg-purple-50 ${viewMode === 'list' ? 'text-purple-600 bg-purple-50' : 'text-gray-400'}`}
+                        onClick={() => setViewMode(viewMode === 'kanban' ? 'list' : 'kanban')}
+                        title={viewMode === 'kanban' ? "Vue Liste" : "Vue Colonnes"}
+                    >
+                        {viewMode === 'kanban' ? <ListIcon size={20} /> : <LayoutGrid size={20} />}
                     </Button>
                     {/* AD Avatar Removed */}
                 </div>
             </div>
 
-            {/* Kanban Board */}
-            <div className="flex-1 overflow-x-auto overflow-y-hidden p-6">
-                <div className="flex h-full pb-2 relative">
+            {/* Board Content */}
+            <div className={`flex-1 p-6 ${viewMode === 'list' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-x-auto overflow-y-hidden'}`}>
+                <div className={`${viewMode === 'list' ? 'flex flex-col pb-10 space-y-4' : 'flex h-full pb-2 gap-4 relative'}`}>
                     {stages.map((stage, index) => {
                         const stageProjects = filteredProjects.filter(p => (p.odooStage || DEFAULT_STAGES[0]) === stage);
                         const stageColor = getStageColor(stage, index);
 
                         return (
-                            <div key={stage} className="group relative">
-                                {/* Header Controls (Hover) */}
-                                <div className="absolute top-0 right-6 z-20 opacity-0 group-hover:opacity-100 transition-opacity flex bg-white rounded-md shadow-sm border p-0.5">
-                                    <button onClick={() => moveStage(index, 'left')} disabled={index === 0} className="p-1 hover:bg-gray-100 text-gray-400 hover:text-gray-700 disabled:opacity-30"><ArrowLeft size={12} /></button>
-                                    <button onClick={() => moveStage(index, 'right')} disabled={index === stages.length - 1} className="p-1 hover:bg-gray-100 text-gray-400 hover:text-gray-700 disabled:opacity-30"><ArrowRight size={12} /></button>
-                                </div>
+                            <div key={stage} className={`group relative ${viewMode === 'kanban' ? 'h-full flex-shrink-0' : ''}`}>
+                                {/* Header Controls (Hover) - Only in Kanban for now or adapts? */}
+                                {viewMode === 'kanban' && (
+                                    <div className="absolute top-0 right-6 z-20 opacity-0 group-hover:opacity-100 transition-opacity flex bg-white rounded-md shadow-sm border p-0.5">
+                                        <button onClick={() => moveStage(index, 'left')} disabled={index === 0} className="p-1 hover:bg-gray-100 text-gray-400 hover:text-gray-700 disabled:opacity-30"><ArrowLeft size={12} /></button>
+                                        <button onClick={() => moveStage(index, 'right')} disabled={index === stages.length - 1} className="p-1 hover:bg-gray-100 text-gray-400 hover:text-gray-700 disabled:opacity-30"><ArrowRight size={12} /></button>
+                                    </div>
+                                )}
 
                                 <Column
                                     title={stage}
@@ -1165,34 +1173,61 @@ export default function Odoo() {
                                     onCardClick={handleSelectProject}
                                     getUserName={resolveUser}
                                     onRename={handleRenameStage}
+                                    viewMode={viewMode}
                                 />
                             </div>
                         );
                     })}
 
-                    {/* Add Stage Column */}
-                    <div className="flex-shrink-0 w-80 h-full rounded-lg mr-4 bg-gray-50/50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-purple-300 hover:bg-purple-50/50 transition-colors">
-                        {isAddingStage ? (
-                            <div className="p-4 w-full">
-                                <Input
-                                    autoFocus
-                                    placeholder="Nom de l'étape"
-                                    className="mb-2 bg-white"
-                                    value={newStageName}
-                                    onChange={e => setNewStageName(e.target.value)}
-                                    onKeyDown={e => e.key === 'Enter' && handleAddStage()}
-                                />
-                                <div className="flex gap-2 justify-end">
-                                    <Button size="sm" variant="ghost" onClick={() => setIsAddingStage(false)}>Annuler</Button>
-                                    <Button size="sm" onClick={handleAddStage}>Ajouter</Button>
+                    {/* Add Stage Column (Hidden in List Mode for now to keep it clean?) 
+                        Or render as a "New Stage" row? 
+                        User didn't specify. Standard is usually separate button in List.
+                        Let's keep it compatible if possible, or hide it.
+                    */}
+                    {viewMode === 'kanban' && (
+                        <div className="flex-shrink-0 w-80 h-full rounded-lg bg-gray-50/50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-purple-300 hover:bg-purple-50/50 transition-colors">
+                            {isAddingStage ? (
+                                <div className="p-4 w-full">
+                                    <Input
+                                        autoFocus
+                                        placeholder="Nom de l'étape"
+                                        className="mb-2 bg-white"
+                                        value={newStageName}
+                                        onChange={e => setNewStageName(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && handleAddStage()}
+                                    />
+                                    <div className="flex gap-2 justify-end">
+                                        <Button size="sm" variant="ghost" onClick={() => setIsAddingStage(false)}>Annuler</Button>
+                                        <Button size="sm" onClick={handleAddStage}>Ajouter</Button>
+                                    </div>
                                 </div>
-                            </div>
-                        ) : (
-                            <Button variant="ghost" className="w-full h-full text-gray-400 hover:text-purple-600" onClick={() => setIsAddingStage(true)}>
-                                <span className="font-medium text-3xl">+</span>
-                            </Button>
-                        )}
-                    </div>
+                            ) : (
+                                <Button variant="ghost" className="w-full h-full text-gray-400 hover:text-purple-600" onClick={() => setIsAddingStage(true)}>
+                                    <span className="font-medium text-3xl">+</span>
+                                </Button>
+                            )}
+                        </div>
+                    )}
+                    {viewMode === 'list' && (
+                        <div className="rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center p-4 text-gray-400 hover:border-purple-300 hover:bg-purple-50/50 transition-colors cursor-pointer" onClick={() => setIsAddingStage(true)}>
+                            {isAddingStage ? (
+                                <div className="flex gap-2 w-full max-w-md">
+                                    <Input
+                                        autoFocus
+                                        placeholder="Nom de la nouvelle étape"
+                                        className="bg-white"
+                                        value={newStageName}
+                                        onChange={e => setNewStageName(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && handleAddStage()}
+                                    />
+                                    <Button size="sm" onClick={handleAddStage}>Ajouter</Button>
+                                    <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setIsAddingStage(false); }}>Annuler</Button>
+                                </div>
+                            ) : (
+                                <span className="font-medium flex items-center gap-2"><Plus size={16} /> Ajouter une étape</span>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
