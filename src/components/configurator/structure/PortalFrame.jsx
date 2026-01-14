@@ -753,14 +753,15 @@ export function PortalFrame({
                         elements.push(createBar(sBot2, sTop1, 0.02, true));
 
                     } else {
-                        // --- Standard Double Logic (Existing fallback) ---
-                        const dBot1 = new THREE.Vector3(xBot1, baseHeight + 0.1, 0);
-                        const dBot2 = new THREE.Vector3(xBot2, baseHeight + 0.1, 0);
-                        const dTop1 = new THREE.Vector3(xTop1, yTop1 - 0.1, 0);
-                        const dTop2 = new THREE.Vector3(xTop2, yTop2 - 0.1, 0);
+                        // --- Standard Double Logic (9.1m - Image 1) ---
+                        // Full Cross, Thin Cylinders (Same as Simple VL)
+                        const dBot1 = new THREE.Vector3(xBot1, baseHeight, 0);
+                        const dBot2 = new THREE.Vector3(xBot2, baseHeight, 0);
+                        const dTop1 = new THREE.Vector3(xTop1, yTop1, 0);
+                        const dTop2 = new THREE.Vector3(xTop2, yTop2, 0);
 
-                        elements.push(createBar(dBot1, dTop2));
-                        elements.push(createBar(dBot2, dTop1));
+                        elements.push(createBar(dBot1, dTop2, 0.02, true));
+                        elements.push(createBar(dBot2, dTop1, 0.02, true));
                     }
 
                     return <group>{elements}</group>;
