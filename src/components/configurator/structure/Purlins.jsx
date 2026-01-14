@@ -115,6 +115,9 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
         if (buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche') {
             centerHeight -= 0.40;
         }
+        if (buildingType === 'ombriere_vl_double' && Math.abs(width - 11.3) < 0.1) {
+            centerHeight += 0.25;
+        }
         // Adjust for perp offset (+ purlin height logic)
         // perpOffset = 0.2 + 0.07 ...
         // We just need them to sit on the rafter line.

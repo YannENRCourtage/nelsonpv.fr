@@ -489,10 +489,15 @@ export function PortalFrame({
         const baseHalf = 1.7 / 2;
         const topHalf = 2.25 / 2;
 
-        xBot1 = -baseHalf;
-        xBot2 = baseHalf;
-        xTop1 = -topHalf;
-        xTop2 = topHalf;
+        // USER REQUEST 14/01/2026: Shift struts for Ombrière VL Simple
+        let offsetX = 0;
+        if (buildingType === 'ombriere_vl_simple_gauche') offsetX = -1.0;
+        if (buildingType === 'ombriere_vl_simple_droite') offsetX = 1.0;
+
+        xBot1 = -baseHalf + offsetX;
+        xBot2 = baseHalf + offsetX;
+        xTop1 = -topHalf + offsetX;
+        xTop2 = topHalf + offsetX;
 
         // Base Horizontal Position
         const baseHeight = 0.5;

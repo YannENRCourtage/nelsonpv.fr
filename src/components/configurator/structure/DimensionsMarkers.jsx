@@ -735,6 +735,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         // USER REQUEST 13/01/2026: Raise surface area by 1m for ombriere (adjusted down -1m from 2.5)
                         if (buildingType.startsWith('ombriere')) {
                             baseHeight += 1.5;
+                            if (buildingType === 'ombriere_vl_double') {
+                                baseHeight += 1.0; // Raise by additional 1m for Double
+                            }
                         }
                         return baseHeight;
                     })(),

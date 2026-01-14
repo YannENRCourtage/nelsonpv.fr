@@ -97,7 +97,10 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         // User Request: Raise by 60cm for Double.
         const centerHeight = (eaveHeight + ridgeHeight) / 2;
         let lift = 0.25;
-        if (isOmbriereDouble) lift += 0.60;
+        if (isOmbriereDouble) {
+            lift += 0.60;
+            if (Math.abs(width - 11.3) < 0.1) lift += 0.25; // 11.3m specific raise
+        }
         if (isOmbriereSimple) lift -= 0.40;
 
         return (
