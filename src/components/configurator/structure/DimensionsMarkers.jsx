@@ -530,8 +530,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 hVal: h,
                 start, end,
                 points: [
-                    [start, new THREE.Vector3(mid.x, mid.y - gapSize / 2, mid.z)],
-                    [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
+                    [start, mid], // Continuous line (no gap)
+                    [mid, end]
                 ]
             };
         }
@@ -587,7 +587,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={crossHeightData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={crossHeightData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[0.5, crossHeightData.hVal / 2, 0]} // Text slightly to right of center marker
+                        position={[-0.5, crossHeightData.hVal / 2, 0]} // Text to LEFT (-0.5) instead of Right (0.5)
                         rotation={[0, 0, 0]}
                         fontSize={0.8}
                         color={textColor}
