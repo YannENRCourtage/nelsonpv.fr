@@ -173,32 +173,10 @@ const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count
         }
     };
 
-    // Resizing Logic
-    const handleMouseDown = (e) => {
-        e.preventDefault();
-        const startX = e.clientX;
-        const startWidth = width || 250; // Default width if not set
-
-        const handleMouseMove = (moveEvent) => {
-            const newWidth = Math.max(200, startWidth + (moveEvent.clientX - startX));
-            if (onResize) onResize(title, newWidth);
-        };
-
-        const handleMouseUp = () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
-
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-    };
-
     // Responsive Classes based on viewMode
     const containerClasses = viewMode === 'list'
         ? "flex flex-row items-stretch rounded-xl transition-colors duration-200 w-full mb-4 min-h-[160px]"
-        : "flex flex-col rounded-xl transition-colors duration-200 h-full backdrop-blur-sm select-none shrink-0"; // Removed flex-1, added shrink-0
-
-    const dynamicStyle = viewMode === 'kanban' ? { width: `${width || 250}px` } : {};
+        : "flex flex-col rounded-xl transition-colors duration-200 h-full backdrop-blur-sm select-none flex-1 min-w-[200px]";
 
     const headerClasses = viewMode === 'list'
         ? `p-4 flex flex-col justify-center items-start border-r border-white/50 rounded-l-xl w-60 shrink-0 ${colorClass}`
@@ -211,7 +189,7 @@ const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count
     const bgClass = isOver ? "bg-purple-50/50 ring-2 ring-purple-400 ring-inset" : "bg-gray-50/50";
 
     return (
-        <div ref={ref} className={`${containerClasses} ${bgClass}`} style={dynamicStyle}>
+        <div ref={ref} className={`${containerClasses} ${bgClass}`}>
             <div className={`${headerClasses} relative group`}>
                 <div className={`flex ${viewMode === 'list' ? 'flex-col gap-2 w-full' : 'justify-between w-full items-center'}`}>
                     {isEditing ? (
@@ -237,13 +215,6 @@ const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count
                         <span className="text-xs font-bold bg-white/50 px-2 py-0.5 rounded-full">{count}</span>
                     </div>
                 </div>
-                {/* Resizer Handle */}
-                {viewMode === 'kanban' && (
-                    <div
-                        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-gray-400/50 active:bg-blue-500 transition-colors z-20"
-                        onMouseDown={handleMouseDown}
-                    />
-                )}
             </div>
             <div className={contentClasses}>
                 {projects.map(p => (
@@ -476,6 +447,10 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
+
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
 
     useEffect(() => {
         scrollToBottom();
@@ -1035,13 +1010,19 @@ export default function Odoo() {
         }
     };
 
-    const handleDropProject = (projectId, newStage) => {
-        const project = projects.find(p => p.id === projectId);
-        if (!project || project.odooStage === newStage) return;
+    const handleDropProject = async (projectId, newStage) => {
+        // Optimistic UI Update
+        const updatedProjects = projects.map(p =>
+            p.id === projectId ? { ...p, odooStage: newStage } : p
+        );
+        setProjects(updatedProjects);
 
-        const updated = { ...project, odooStage: newStage };
-        updateProjectList(updated);
-        saveToApi(projectId, { odooStage: newStage });
+        try {
+            await apiService.updateProject(projectId, { odooStage: newStage });
+        } catch (error) {
+            console.error("Failed to update project stage", error);
+            // Revert on error could be implemented here
+        }
     };
 
     const handleUpdateDetail = (id, patch) => {
