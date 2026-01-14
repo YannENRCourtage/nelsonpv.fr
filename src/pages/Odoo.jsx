@@ -139,7 +139,7 @@ const DraggableCard = ({ project, onClick, getUserName }) => {
 };
 
 // 2. KANBAN COLUMN
-const Column = ({ title, stageId, projects, onDropProject, onCardClick, count, getUserName }) => {
+const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count, getUserName, onRename }) => {
     // Reduced width to fit 8 columns on screen (approx 200-220px each)
     // removed w-[350px] fixed width
     const [{ isOver }, drop] = useDrop(() => ({
@@ -153,8 +153,35 @@ const Column = ({ title, stageId, projects, onDropProject, onCardClick, count, g
     const ref = React.useRef(null); // Added ref for consistency with DraggableCard
     drop(ref); // Using ref with drop
 
-    // Get specific color for this stage or default
-    const colorClass = STAGE_COLORS[title] || "bg-gray-100 text-gray-800 border-gray-200";
+    const [isEditing, setIsEditing] = useState(false);
+    const [editValue, setEditValue] = useState(title);
+
+    // Sync title to editValue when prop changes
+    useEffect(() => {
+        setEditValue(title);
+    }, [title]);
+
+    const handleStartEdit = () => {
+        setIsEditing(true);
+    };
+
+    const handleCommitEdit = () => {
+        setIsEditing(false);
+        if (onRename && editValue !== title) {
+            onRename(title, editValue);
+        } else {
+            setEditValue(title); // Revert if no change or empty?
+        }
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            handleCommitEdit();
+        } else if (e.key === 'Escape') {
+            setIsEditing(false);
+            setEditValue(title);
+        }
+    };
 
     return (
         <div
@@ -164,7 +191,25 @@ const Column = ({ title, stageId, projects, onDropProject, onCardClick, count, g
             flex-1 min-w-[180px]
             `}
         >    <div className={`p-3 flex justify-between items-center border-b border-white/50 rounded-t-lg sticky top-0 z-10 ${colorClass}`}>
-                <h3 className="font-semibold text-sm truncate max-w-[200px]" title={title}>{title}</h3>
+                {isEditing ? (
+                    <input
+                        autoFocus
+                        className="font-semibold text-sm bg-white/80 border border-black/10 rounded px-1.5 py-0.5 w-full mr-2 text-black focus:outline-none focus:ring-1 focus:ring-black/20"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={handleCommitEdit}
+                        onKeyDown={handleKeyDown}
+                        onClick={(e) => e.stopPropagation()} // Prevent drag/drop interference if any
+                    />
+                ) : (
+                    <h3
+                        className="font-semibold text-sm truncate max-w-[200px] cursor-pointer hover:underline hover:opacity-80 transition-opacity"
+                        title="Cliquer pour modifier"
+                        onClick={handleStartEdit}
+                    >
+                        {title}
+                    </h3>
+                )}
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-bold bg-white/50 px-2 py-0.5 rounded-full">{count}</span>
                     <Plus size={16} className="cursor-pointer hover:scale-110 transition-transform" />
@@ -988,6 +1033,51 @@ export default function Odoo() {
         }
     };
 
+    // === NEW: RENAME STAGE & COLOR LOGIC ===
+    const COLOR_PALETTE = [
+        "bg-blue-100 text-blue-800 border-blue-200",
+        "bg-indigo-100 text-indigo-800 border-indigo-200",
+        "bg-purple-100 text-purple-800 border-purple-200",
+        "bg-green-100 text-green-800 border-green-200",
+        "bg-emerald-100 text-emerald-800 border-emerald-200",
+        "bg-orange-100 text-orange-800 border-orange-200",
+        "bg-amber-100 text-amber-800 border-amber-200",
+        "bg-red-100 text-red-800 border-red-200",
+        "bg-cyan-100 text-cyan-800 border-cyan-200",
+        "bg-teal-100 text-teal-800 border-teal-200",
+        "bg-lime-100 text-lime-800 border-lime-200",
+        "bg-rose-100 text-rose-800 border-rose-200"
+    ];
+
+    const getStageColor = (stageName, index) => {
+        if (STAGE_COLORS[stageName]) return STAGE_COLORS[stageName];
+        // Dynamic assignment based on index
+        return COLOR_PALETTE[index % COLOR_PALETTE.length];
+    };
+
+    const handleRenameStage = (oldName, newName) => {
+        const trimmedNewName = newName.trim();
+        if (!trimmedNewName || trimmedNewName === oldName) return;
+        if (stages.includes(trimmedNewName)) {
+            alert("Une étape avec ce nom existe déjà.");
+            return;
+        }
+
+        // 1. Update Stages List
+        const updatedStages = stages.map(s => s === oldName ? trimmedNewName : s);
+        setStages(updatedStages);
+
+        // 2. Update Projects in this Stage
+        const projectsInStage = projects.filter(p => p.odooStage === oldName);
+        projectsInStage.forEach(p => {
+            const updated = { ...p, odooStage: trimmedNewName };
+            // Update local state one by one
+            setProjects(prev => prev.map(current => current.id === p.id ? updated : current));
+            // Trigger API update
+            saveToApi(p.id, { odooStage: trimmedNewName });
+        });
+    };
+
     if (selectedProject) {
         return (
             <ProjectDetail
@@ -1056,6 +1146,8 @@ export default function Odoo() {
                 <div className="flex h-full pb-2 relative">
                     {stages.map((stage, index) => {
                         const stageProjects = filteredProjects.filter(p => (p.odooStage || DEFAULT_STAGES[0]) === stage);
+                        const stageColor = getStageColor(stage, index);
+
                         return (
                             <div key={stage} className="group relative">
                                 {/* Header Controls (Hover) */}
@@ -1066,11 +1158,13 @@ export default function Odoo() {
 
                                 <Column
                                     title={stage}
+                                    colorClass={stageColor}
                                     projects={stageProjects}
                                     count={stageProjects.length}
                                     onDropProject={handleDropProject}
                                     onCardClick={handleSelectProject}
                                     getUserName={resolveUser}
+                                    onRename={handleRenameStage}
                                 />
                             </div>
                         );

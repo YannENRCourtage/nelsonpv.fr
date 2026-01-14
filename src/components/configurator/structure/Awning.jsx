@@ -23,25 +23,19 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
     if (buildingType === 'asymetrique_2' && side === 'right') {
         startHeight = 4.0;
         angleRad = (15 * Math.PI) / 180;
-        // Calculate endHeight based on width and angle, OR if user implied specific end height.
-        // User: "au plus bas à 3m".
-        // If width is 9.3m, 4 - 9.3 * tan(15) = 4 - 9.3 * 0.267 = 4 - 2.49 = ~1.5m.
-        // User said "au plus bas à 3m". This implies the width might be narrower OR the slope is defined by heights.
-        // Geometric constraint: if H1=4, H2=3, Angle=15, then W = (4-3)/tan(15) = 1/0.2679 = 3.73m.
-        // If we force width=9.3 and Angle=15, we can't respect EndHeight=3.
-        // If we force H1=4 and H2=3, Angle is atan(1/9.3) = 6 deg.
-        // Priority: "pente de 15°".
-        // Let's assume the width adapts OR the 3m is just a description of the 'limit' but maybe not the exact end?
-        // Or maybe for this building type, the awning is smaller?
-        // Let's keep 9.3m width and 15 deg pitch for now as standard awning dimensions usually prevail, 
-        // unless I should shorten it. But "au plus bas à 3m" is very specific.
-        // If we interpret "max 4m, min 3m", maybe it means it fits WITHIN that?
-        // Let's stick to startHeight 4.0 and angle 15. The end height will fall where it may.
-        // Wait, "auvent droit doit être au plus haut à 4m et au plus bas à 3m". 
-        // This likely defines the GEOMETRY. W = (4-3)/tan(15) = 3.73m.
-        // I will SET THE WIDTH to 3.73m if asym_2 right.
         awningWidth = (4.0 - 3.0) / Math.tan(angleRad); // approx 3.73m
         endHeight = 3.0;
+    } else if (buildingType === 'monopente' && side === 'left') {
+        // Specific heights requested for Monopente Left Awning
+        // Width 12.7m -> Sablière 6.4m
+        // Width 16.4m -> Sablière 7.4m
+        if (Math.abs(buildingWidth - 12.7) < 0.2) {
+            endHeight = 6.4;
+        } else if (Math.abs(buildingWidth - 16.4) < 0.2) {
+            endHeight = 7.4;
+        }
+        // Note: This overrides the default endHeight calculation.
+        // We assume startHeight (eaveHeight) provided is correct for the attachment point.
     } else {
         // Standard calculation for others if needed?
         // endHeight is currently hardcoded 3.87 in original code line 20, 
