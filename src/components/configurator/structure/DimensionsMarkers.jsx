@@ -123,6 +123,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         } else if (buildingType === 'ombriere_vl_simple_gauche') {
             // Low side Right (Unified High Left -> Low Right).
             x = width / 2 + 1.5;
+        } else if (buildingType === 'ombriere_vl_double') {
+            // User Request: Shift right sablière indication 3m to the right
+            x = width / 2 + 3.0;
         } else if (buildingType === 'asymetrique_2') {
             return { heightPoints: null, heightStart: null, heightEnd: null, xEave: null };
         } else if (buildingType === 'asymetrique_1') {

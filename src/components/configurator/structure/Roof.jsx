@@ -98,6 +98,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         const centerHeight = (eaveHeight + ridgeHeight) / 2;
         let lift = 0.25;
         if (isOmbriereDouble) lift += 0.60;
+        if (isOmbriereSimple) lift -= 0.40;
 
         return (
             <group position={[0, centerHeight + lift, -length / 2]} rotation={[0, 0, rotZ]}>

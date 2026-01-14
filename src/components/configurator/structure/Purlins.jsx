@@ -111,7 +111,10 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
         // Current Roof logic in `Roof.jsx`: `centerHeight + lift (0.2)`. 
         // So Purlins should be around `centerHeight + 0.2`.
 
-        const centerHeight = (eaveHeight + ridgeHeight) / 2;
+        let centerHeight = (eaveHeight + ridgeHeight) / 2;
+        if (buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche') {
+            centerHeight -= 0.40;
+        }
         // Adjust for perp offset (+ purlin height logic)
         // perpOffset = 0.2 + 0.07 ...
         // We just need them to sit on the rafter line.

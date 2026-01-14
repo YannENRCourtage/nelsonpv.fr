@@ -57,8 +57,8 @@ export function Structure() {
             // In Structure loop: zPos = -i * baySpacing. So building spans 0 to -Length.
             // ExtrudeGeometry defaults +Z.
             // Rotate Y PI -> +Z becomes -Z.
-            // Position: [0, h, 0]
-            <mesh geometry={geo} material={mat} position={[x, h, 0]} rotation={[0, Math.PI, 0]} castShadow />
+            // Position: [x, h, 0.5] to center on length (since len is L+1, and structure is 0 to -L)
+            <mesh geometry={geo} material={mat} position={[x, h, 0.5]} rotation={[0, Math.PI, 0]} castShadow />
         );
     };
 
