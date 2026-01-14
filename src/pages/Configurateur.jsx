@@ -423,10 +423,13 @@ export default function Configurateur() {
                     <button
                         onClick={async () => {
                             if (!canvasRef.current) return;
-                            setIsCapturing(true); // Trigger re-render with transparency (via prop above)
+                            setIsCapturing(true); // Trigger re-render with transparency
+                            console.log("setIsCapturing(true) called"); // Log for debugging
 
-                            // Wait for re-render
-                            await new Promise(r => setTimeout(r, 100));
+                            // Wait for re-render and clear color update
+                            // Increased delay to ensure React commit has occurred and Three.js frame is ready with new background state
+                            await new Promise(r => setTimeout(r, 250));
+                            console.log("Delay finished, attempting capture."); // Log for debugging
 
                             // Capture
                             const imgData = canvasRef.current.toDataURL('image/png');
