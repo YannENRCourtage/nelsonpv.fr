@@ -126,9 +126,24 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
             // Lift 0.25 puts it 5cm above rafter. Good.
         }
 
+        let xShift = 0;
+        let yShift = 0;
+        if (isOmbrierePL) {
+            // Shift along Rotated Axis.
+            // slopeLen = width / cos.
+            // shift = slopeLen * 0.5.
+            // This shift is in Local X of the Rotated Group.
+            // We can just add it to the position logic inside the group or shift the group?
+            // The group is at `rotation={[0, 0, rotZ]}`.
+            // If we shift inside: `position={[xShift, 0, 0]}`.
+            xShift = slopeLen * 0.5;
+        }
+
         return (
             <group position={[0, centerHeight + lift, -length / 2]} rotation={[0, 0, rotZ]}>
-                <SolarPanels surfaceWidth={slopeLen} surfaceLength={length + 1.0} forceFullCoverage={true} />
+                <group position={[xShift, 0, 0]}>
+                    <SolarPanels surfaceWidth={slopeLen} surfaceLength={length + 1.0} forceFullCoverage={true} />
+                </group>
             </group>
         );
     }

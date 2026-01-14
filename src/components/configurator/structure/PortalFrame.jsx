@@ -549,8 +549,11 @@ export function PortalFrame({
 
                 {/* Rafter (Single Piece) */}
                 <group position={[0, centerHeight, 0]} rotation={[0, 0, rotZ]}>
-                    {/* Rafter is centered in local X, so just place it */}
-                    <mesh geometry={rafterGeo} material={steelMaterial} position={[0, 0, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow />
+                    {/* Rafter is centered in local X.
+                         USER REQUEST 14/01/2026: Shift 50% to right along slope.
+                         rafterLen is full length. 50% shift = rafterLen * 0.5.
+                      */}
+                    <mesh geometry={rafterGeo} material={steelMaterial} position={[isOmbrierePL ? (rafterLen * 0.5) : 0, 0, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow />
                 </group>
 
                 {/* No struts (Bracons) for PL based on images? 
