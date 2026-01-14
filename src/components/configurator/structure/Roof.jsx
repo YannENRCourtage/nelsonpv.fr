@@ -74,10 +74,11 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     // RENDER LOGIC
     // ==========================================
 
-    // --- 0. OMBRIÈRE VL SIMPLE ---
+    // --- 0. OMBRIÈRE VL SIMPLE & DOUBLE ---
     const isOmbriereSimple = buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche';
+    const isOmbriereDouble = buildingType === 'ombriere_vl_double';
 
-    if (isOmbriereSimple) {
+    if (isOmbriereSimple || isOmbriereDouble) {
         // Exact same calculation as PortalFrame (12.2 deg usually)
         const slopeRad = (roofPitch * Math.PI) / 180;
         const rotZ = -slopeRad; // Fixed to Down-Right (High Left) for BOTH

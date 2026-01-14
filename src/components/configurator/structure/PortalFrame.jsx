@@ -450,48 +450,89 @@ export function PortalFrame({
         );
     }
 
-    // --- OMBRIÈRE VL SIMPLE (V-Shape Structure) ---
+    // --- OMBRIÈRE VL SIMPLE & DOUBLE (V-Shape Structure) ---
     const isOmbriereSimple = buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche';
+    const isOmbriereDouble = buildingType === 'ombriere_vl_double';
 
-    if (isOmbriereSimple) {
+    if (isOmbriereSimple || isOmbriereDouble) {
         const isDroite = buildingType === 'ombriere_vl_simple_droite'; // Pente descendant vers la droite (Haut à Gauche)
 
         // Slope Logic:
-        // BOTH Types now use "Simple Droite" geometry (High Left, Low Right) per user request.
-        // "supprimes l'ombrière telle que tu l'as faite et remplace là par la même ombrière que la simple droite"
-        // So RotZ is ALWAYS Negative (Down to Right).
+        // Simple Droite & Double: Down-Right (Negative RotZ)
+        // Simple Gauche: Up-Right? No, user said "same as simple droite" for Double? 
+        // Logic for Simple was unified to -slopeRad.
+        // For Double, let's stick to -slopeRad (High Left, Low Right).
+
         const slopeRad = (roofPitch * Math.PI) / 180;
-        const rotZ = -slopeRad; // Fixed to Down-Right for both
+        const rotZ = -slopeRad; // Fixed to Down-Right
 
         // Rafter
-        const rafterLen = width / Math.cos(slopeRad); // ~7m
+        // Length covers entire width adjusted for slope
+        const rafterLen = width / Math.cos(slopeRad);
         const rafterGeo = createRafterGeo(rafterLen);
 
         // Strut Shifting Logic:
-        // "Droite": Shift 1m Left (towards Faitage/High Side). Faitage is Left. -> Offset -1.0
-        // "Gauche": Shift 1m Right (towards Sablière/Low Side). Sablière is Right. -> Offset +1.0
-        const strutShift = isDroite ? -1.0 : 1.0;
+        // Simple "Droite": Shift -1.0
+        // Simple "Gauche": Shift +1.0
+        // Double: Centered (Shift 0) ? Or adjusted?
+        // Images for 9m/11m show a V-shape. 
+        // Base width ~1.7m. Top width ~2.2m.
+        // Center of V is aligned with center of column/foundation.
+        let strutShift = 0;
+        if (isOmbriereSimple) {
+            strutShift = isDroite ? -1.0 : 1.0;
+        }
+        // Double stays 0 (centered).
 
-        // Base Strut Positions (Centered relative to 0)
-        // Bottom: Spaced by 1m (+/- 0.5)
-        // Top: Spaced by 3m (+/- 1.5) to create V
-        // Apply Shift
-        const xBot1 = -0.5 + strutShift;
-        const xBot2 = 0.5 + strutShift;
-        const xTop1 = -1.5 + strutShift;
-        const xTop2 = 1.5 + strutShift;
+        // Base Strut Positions (Centered relative to strutShift)
+        // Base width = 1.7m => +/- 0.85
+        // Top width = 2.2m (approx from image) => +/- 1.1
 
-        // Base Horizontal Position (Reference only, mesh removed)
-        const baseX = 0; // The whole group is at 'position', struts are local to that.
+        // For Simple: Base +/- 0.5 (1m), Top +/- 1.5 (3m).
+        // Let's adopt the Double specs for Double type.
+
+        let xBot1, xBot2, xTop1, xTop2;
+
+        if (isOmbriereDouble) {
+            const baseHalf = 1.7 / 2; // 0.85
+            const topHalf = 2.25 / 2; // 1.125 (matches image 2250mm)
+
+            xBot1 = -baseHalf;
+            xBot2 = baseHalf;
+            xTop1 = -topHalf;
+            xTop2 = topHalf;
+        } else {
+            // Simple Defaults
+            xBot1 = -0.5 + strutShift;
+            xBot2 = 0.5 + strutShift;
+            xTop1 = -1.5 + strutShift;
+            xTop2 = 1.5 + strutShift;
+        }
+
+        // Base Horizontal Position
         const baseHeight = 0.5;
 
         // Rafter Underside Equation
-        // Center of Rafter at [0, centerHeight, 0]
-        const centerHeight = (eaveHeight + ridgeHeight) / 2;
+        // Center of Rafter at [0, centerHeight, 0] of the GROUP.
+        // EaveHeight usually refers to the lowest point. 
+        // For "Simple Droite", Eave is Right. Ridge is Left.
+        // centerHeight = eaveHeight + (width/2 * tan) ?
+
+        // However, `eaveHeight` prop passed in is usually the one set in store.
+        // In store we set: 9.1m -> 3.0m (Low/Right). 
+        // So Center Height = 3.0 + (Width/2 * tan(slope)).
+        const midRise = (width / 2) * Math.tan(slopeRad);
+        const centerHeight = eaveHeight + midRise;
 
         // Custom Strut Creator
         const createStrut = (xBot, xTop) => {
+            // Calculate exact Y at intersection with slanted rafter underside
+            // Rafter line: y = centerHeight + x * tan(rotZ) 
+            // (rotZ is negative, so x positive -> y lower)
+            // Strut top is at xTop.
+            // Offset -0.2 (approx rafter half thickness/connection)
             const yTarget = centerHeight + (xTop * Math.tan(rotZ)) - 0.2;
+
             const start = new THREE.Vector3(xBot, baseHeight, 0);
             const end = new THREE.Vector3(xTop, yTarget, 0);
             const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
@@ -516,19 +557,11 @@ export function PortalFrame({
 
                 {/* SAINT ANDREW'S CROSS (Croix de Saint-André) */}
                 {(() => {
-                    // Start/End points for the X
-                    // Diagonals: Bot1 -> Top2 AND Bot2 -> Top1
-                    // Adjusted to touch posts top/bottom (reduced offsets from 0.5 to 0.05/0.1)
-                    // "toucher les poteaux ... sans les traverser"
-
                     const yTop1 = centerHeight + (xTop1 * Math.tan(rotZ)) - 0.2;
                     const yTop2 = centerHeight + (xTop2 * Math.tan(rotZ)) - 0.2;
 
-                    // Start from almost the bottom (baseHeight is floor/base)
                     const pBot1 = new THREE.Vector3(xBot1, baseHeight + 0.1, 0);
                     const pBot2 = new THREE.Vector3(xBot2, baseHeight + 0.1, 0);
-
-                    // End almost at the top (under rafter)
                     const pTop1 = new THREE.Vector3(xTop1, yTop1 - 0.1, 0);
                     const pTop2 = new THREE.Vector3(xTop2, yTop2 - 0.1, 0);
 
@@ -538,7 +571,6 @@ export function PortalFrame({
                         const dx = end.x - start.x;
                         const dy = end.y - start.y;
                         const angle = -Math.atan2(dx, dy);
-                        // Thinner profile for cross bracing (e.g., 5cm)
                         return (
                             <mesh position={mid} rotation={[0, 0, angle]} castShadow>
                                 <boxGeometry args={[0.05, len, 0.05]} />
@@ -558,8 +590,14 @@ export function PortalFrame({
                 {/* Rafter */}
                 {/* Centered at [0, centerHeight, 0], rotated */}
                 <group position={[0, centerHeight, 0]} rotation={[0, 0, rotZ]}>
-                    <mesh geometry={rafterGeo} material={steelMaterial} position={[rafterLen / 2, 0, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow />
+                    <mesh geometry={rafterGeo} material={steelMaterial} position={[0, 0, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow />
                 </group>
+
+                {/* Foundation Block (Optional visual) */}
+                <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
+                    <boxGeometry args={[2.5, 0.5, 1.0]} />
+                    <meshStandardMaterial color="#888888" />
+                </mesh>
 
             </group>
         );

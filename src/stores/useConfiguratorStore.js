@@ -37,9 +37,9 @@ const WIDTH_HEIGHT_MAP = {
     // Ombrière VL simple (Low pitch?)
     6.0: 4.5, // Legacy
     6.9: 4.5, // New Width
-    // Ombrière VL double
-    9.1: 5.0,
-    11.3: 5.5,
+    // Ombrière VL double (Hauteur Basse / Egout)
+    9.1: 3.0,
+    11.3: 2.8,
     // Ombrière PL
     15.8: 6.0,
     20.2: 6.5,
@@ -89,6 +89,13 @@ export const useConfiguratorStore = create((set, get) => ({
                 updates.eaveHeight = 2.93;
                 updates.roofPitch = 10;
                 updates.hasSolar = true; // Auto solar
+                updates.leftSide = 'none';
+                updates.rightSide = 'none';
+            } else if (type === 'ombriere_vl_double') {
+                // Set default height based on default width (9.1m -> 3.0m)
+                updates.eaveHeight = WIDTH_HEIGHT_MAP[defaultWidth];
+                updates.roofPitch = 10;
+                updates.hasSolar = true;
                 updates.leftSide = 'none';
                 updates.rightSide = 'none';
             } else {
