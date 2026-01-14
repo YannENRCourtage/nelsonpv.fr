@@ -604,22 +604,20 @@ export function PortalFrame({
         // Base width = 1.7m => +/- 0.85
         // Top width = 2.25m => +/- 1.125
         let baseHalf = 1.7 / 2;
-        const topHalf = 2.25 / 2;
-
-        // USER REQUEST 14/01/2026: 11.3m Double specific spacing (2.2m width)
+        // USER REQUEST 14/01/2026: 11.3m Double specific spacing (2.2m width base)
+        // User wants "légèrement oblique". Current Top 2.25m, Base 2.2m -> Too vertical.
+        // Let's widen the top to 2.6m (TopHalf 1.3) to give it a V shape.
+        let localTopHalf = topHalf;
         if (isOmbriereDouble && Math.abs(width - 11.3) < 0.1) {
             baseHalf = 2.2 / 2; // 1.1m
+            localTopHalf = 2.6 / 2; // 1.3m -> Creates obliqueness
         }
 
-        // USER REQUEST 14/01/2026: Shift struts for Ombrière VL Simple
-        let offsetX = 0;
-        if (buildingType === 'ombriere_vl_simple_gauche') offsetX = -1.0;
-        if (buildingType === 'ombriere_vl_simple_droite') offsetX = 1.0;
+        // ...
 
-        xBot1 = -baseHalf + offsetX;
-        xBot2 = baseHalf + offsetX;
-        xTop1 = -topHalf + offsetX;
-        xTop2 = topHalf + offsetX;
+        // Use localTopHalf
+        xTop1 = -localTopHalf + offsetX;
+        xTop2 = localTopHalf + offsetX;
 
         // Base Horizontal Position
         // USER REQUEST 14/01/2026: "Obliques jusqu'au sol" -> Base 0.
