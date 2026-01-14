@@ -327,6 +327,7 @@ export default function Configurateur() {
                         ref={canvasRef}
                         viewMode={viewMode}
                         isCapturing={isCapturing}
+                        transparent={isCapturing && !showPDFModal} // Hacky but effective: if capturing but NOT for PDF modal, it's for image
                     />
                 </div>
 
@@ -416,6 +417,35 @@ export default function Configurateur() {
                     >
                         <span>📄</span>
                         <span>Générer l'Offre</span>
+                    </button>
+
+                    {/* Download Image Button */}
+                    <button
+                        onClick={async () => {
+                            if (!canvasRef.current) return;
+                            setIsCapturing(true); // Trigger re-render with transparency (via prop above)
+
+                            // Wait for re-render
+                            await new Promise(r => setTimeout(r, 100));
+
+                            // Capture
+                            const imgData = canvasRef.current.toDataURL('image/png');
+
+                            // Create Download Link
+                            const link = document.createElement('a');
+                            link.href = imgData;
+                            link.download = `vue_${viewMode === '3D' ? '3d' : '2d'}_${new Date().getTime()}.png`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+
+                            setIsCapturing(false);
+                        }}
+                        className="w-full bg-white text-slate-700 font-bold py-3 px-4 rounded-xl shadow-sm border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-2 text-sm"
+                        title="Télécharger l'image (sans fond)"
+                    >
+                        <Download className="w-5 h-5" />
+                        <span>Télécharger image</span>
                     </button>
 
                     {/* Fullscreen Toggle (Integrated) */}

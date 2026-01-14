@@ -646,8 +646,12 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Jours">Jours</SelectItem>
-                                            <SelectItem value="Heures">Heures</SelectItem>
+                                            <SelectItem value="Jours">
+                                                {project.timeLimitValue == 1 ? 'Jour' : 'Jours'}
+                                            </SelectItem>
+                                            <SelectItem value="Heures">
+                                                {project.timeLimitValue == 1 ? 'Heure' : 'Heures'}
+                                            </SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

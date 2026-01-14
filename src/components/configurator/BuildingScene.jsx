@@ -9,7 +9,7 @@ import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
  * @param {string} viewMode - '3D', '2D_FRONT', '2D_GABLE'
  * @param {boolean} isCapturing - Optimizations for PDF capture (e.g. white background, no helper grids)
  */
-const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false }, ref) => {
+const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transparent = false }, ref) => {
     const config = useConfiguratorValues();
 
     // Camera settings based on mode
@@ -22,10 +22,10 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false }, ref)
         <Canvas
             ref={ref}
             shadows
-            gl={{ preserveDrawingBuffer: true, antialias: true }} // Essential for PDF capture
+            gl={{ preserveDrawingBuffer: true, antialias: true, alpha: true }} // Essential for PDF capture
             style={{ borderRadius: '1rem', height: '100%', width: '100%' }}
         >
-            <color attach="background" args={[bgColor]} />
+            {!transparent && <color attach="background" args={[bgColor]} />}
 
             {/* Lighting: Photorealism setup for Heavy Industry */}
             <ambientLight intensity={0.5} />
