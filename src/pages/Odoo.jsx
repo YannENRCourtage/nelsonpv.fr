@@ -253,7 +253,9 @@ const TEAM_MEMBERS = [
     "Nico",
     "Jack",
     "Véronique",
-    "Aurélien"
+    "Aurélien",
+    "NicolasNMD",
+    "Laurent"
 ];
 
 const TaskTab = ({ project, activeTab, onUpdate, user }) => {
@@ -591,13 +593,13 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
                                 <label className="text-xs font-medium text-gray-500 uppercase">Commercial</label>
                                 <div className="flex items-center gap-2">
                                     <UserAvatar
-                                        name={resolveUser(project.assignedUser || project.createdBy).name}
-                                        photoURL={resolveUser(project.assignedUser || project.createdBy).photoURL}
+                                        name={resolveUser(project.createdBy).name}
+                                        photoURL={resolveUser(project.createdBy).photoURL}
                                         size="w-6 h-6"
                                         textSize="text-xs"
                                         showName={false}
                                     />
-                                    <span className="text-sm text-gray-900">{resolveUser(project.assignedUser || project.createdBy).name}</span>
+                                    <span className="text-sm text-gray-900">{resolveUser(project.createdBy).name}</span>
                                 </div>
                             </div>
 

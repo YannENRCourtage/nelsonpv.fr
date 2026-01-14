@@ -12,10 +12,22 @@ const firebaseConfig = {
     appId: "1:845980346264:web:68be82f07a359daf422ded"
 };
 
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 async function removeComment() {
+    try {
+        console.log("Signing in as Nicolas...");
+        await signInWithEmailAndPassword(auth, "ndesaint@eternasol.com", "NicolasNMD");
+        console.log("Signed in.");
+    } catch (e) {
+        console.error("Auth failed:", e.message);
+        process.exit(1);
+    }
+
     console.log("Searching for project DURIEUX PEYROU...");
 
     // Search for project by checking various name fields
@@ -52,7 +64,7 @@ async function removeComment() {
     const updatedChat = targetProject.odooChat.filter(msg => {
         const content = (msg.content || "").toLowerCase();
         // Check for specific content or variations
-        if (content.includes("je suis nul")) {
+        if (content.includes("je suis nul") || content.includes("nul")) {
             console.log("Found message to remove:", msg);
             return false; // Remove
         }
@@ -70,8 +82,6 @@ async function removeComment() {
             console.log("Successfully removed message.");
         } catch (error) {
             console.error("Error updating document:", error);
-            // Note: This might fail if strict rules require auth, but 'create_nicolas_user.js' suggested rules might prevent it.
-            // If it fails, I'll log it.
         }
     }
 
