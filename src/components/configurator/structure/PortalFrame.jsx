@@ -604,6 +604,7 @@ export function PortalFrame({
         // Base width = 1.7m => +/- 0.85
         // Top width = 2.25m => +/- 1.125
         let baseHalf = 1.7 / 2;
+        const topHalf = 2.25 / 2;
         // USER REQUEST 14/01/2026: 11.3m Double specific spacing (2.2m width base)
         // User wants "légèrement oblique". Current Top 2.25m, Base 2.2m -> Too vertical.
         // Let's widen the top to 2.6m (TopHalf 1.3) to give it a V shape.
