@@ -107,6 +107,10 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         // USER REQUEST 14/01/2026: Global Height Adjustments
         // Ombrière VL Double: Lower by 1m -> Raise back 80cm => Net -0.20m.
         if (isOmbriereDouble) centerHeight -= 0.20;
+        // USER REQUEST 14/01/2026: Global Height Adjustments
+        // Ombrière VL Double: Net -0.20m.
+        // Simple: +0.65m (0.30 Base + 0.35 Extra).
+        if (isOmbriereDouble) centerHeight -= 0.20;
         // Ombrière VL Simple: Raise by 30cm -> Raise additonal 35cm => Net +0.65m.
         if (isOmbriereSimple) centerHeight += 0.65;
 

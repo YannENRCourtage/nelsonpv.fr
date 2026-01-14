@@ -642,9 +642,9 @@ export function PortalFrame({
         if (isOmbriereDouble) {
             centerHeight -= 0.20;
         }
-        // Ombrière VL Simple: Raise by 30cm, then Raise by additional 35cm. Total = +0.65m.
+        // Ombrière VL Simple: Raise by 30cm (Base). Coverage/Purlins raised further (+35cm) in their components.
         if (isOmbriereSimple) {
-            centerHeight += 0.65;
+            centerHeight += 0.30;
         }
 
         // Custom Strut Creator
