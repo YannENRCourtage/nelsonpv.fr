@@ -94,8 +94,9 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         // If Rafter is centered at `centerHeight`, its top is `centerHeight + depth/2`.
         // Let's assume depth 0.4 (IPE400) -> Half is 0.2.
         // We want panels ON TOP, so lift = 0.2 + mount height (e.g. 0.05).
-        const centerHeight = (eaveHeight + ridgeHeight) / 2;
-        const lift = 0.25;
+        // User Request: Raise by 60cm for Double.
+        let lift = 0.25;
+        if (isOmbriereDouble) lift += 0.60;
 
         return (
             <group position={[0, centerHeight + lift, -length / 2]} rotation={[0, 0, rotZ]}>

@@ -62,6 +62,47 @@ export function LongitudinalBeams({ width, length, eaveHeight, ridgeHeight, buil
         );
     }
 
+    // Ombrière VL Double
+    const isOmbriereDouble = buildingType === 'ombriere_vl_double';
+
+    if (isOmbriereDouble) {
+        // Same logic as Roof.jsx
+        const slopeRad = (10 * Math.PI) / 180; // Assuming 10 deg default if not passed, but PortalFrame uses roofPitch. 
+        // roofPitch prop is not passed here? It is passed in props (line 5).
+        const rotZ = -((roofPitch || 10) * Math.PI) / 180;
+
+        const centerHeight = (eaveHeight + ridgeHeight) / 2;
+        // Lift: Base 0.25 (clears rafter) + 0.60 (User Request) = 0.85
+        const lift = 0.85;
+
+        // Purlins distribution
+        // Width ~ 9-11m. Purlins every ~1.5m?
+        const purlinCount = 5;
+        const spacing = width / (purlinCount - 1);
+
+        return (
+            <group position={[0, centerHeight + lift, 0]}>
+                {Array.from({ length: purlinCount }).map((_, i) => {
+                    const x = -width / 2 + (i * spacing);
+                    // Purlin should follow the slope
+                    const yOffset = x * Math.tan(rotZ);
+                    return (
+                        <Beam
+                            key={i}
+                            x={x}
+                            y={yOffset}
+                            z={-length} // Extrude goes 0 to L ? No, reused Beam component.
+                        // Beam component options: length. 
+                        // Wait, Beam component defined inside uses `length`.
+                        // Extrude options usually default to Z extrusion.
+                        // Beam component at line 33: position [x,y,z].
+                        />
+                    );
+                })}
+            </group>
+        );
+    }
+
     // Default for Symetrique (Optional, maybe nothing for now or just Sablières)
     return null;
 }

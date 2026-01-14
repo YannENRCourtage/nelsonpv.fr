@@ -918,16 +918,32 @@ export default function Odoo() {
                         fullName: u.displayName || firstName
                     };
                     uMap[u.uid] = fullObj;
+                    uMap[u.id] = fullObj; // Map ID as well
 
-                    // Populate Name Map for legacy string matching
+                    // Populate Name Map
                     if (u.displayName) nMap[u.displayName.toLowerCase()] = fullObj;
                     if (u.firstName) nMap[u.firstName.toLowerCase()] = fullObj;
-                    // Also map "Nicolas" if displayName is "Nicolas DESAINT"
-                    if (u.displayName) {
-                        const firstPart = u.displayName.split(' ')[0].toLowerCase();
-                        if (!nMap[firstPart]) nMap[firstPart] = fullObj;
+
+                    // Specific Aliases / Logic
+                    if (u.firstName === 'Véronique' || (u.displayName && u.displayName.includes('Véronique'))) {
+                        nMap['véronique'] = fullObj;
+                        nMap['vero'] = fullObj;
+                    }
+                    if (u.firstName === 'Nicolas' || u.displayName === 'Nicolas DESAINT') {
+                        nMap['nico'] = fullObj; // Map 'nico' to Nicolas Desaint if needed? 
+                        // Or if 'Nico' is a separate user check list.
+                        // But usually 'Nico' refers to the creator.
                     }
                 });
+
+                // Manual overrides if needed based on known issues
+                const vero = users.find(u => u.firstName === 'Véronique' || (u.displayName && u.displayName.includes('Véronique')));
+                if (vero) {
+                    const veroObj = { name: 'Véro', photoURL: vero.photoURL, fullName: vero.displayName };
+                    nMap['véronique'] = veroObj;
+                    nMap['véro'] = veroObj;
+                }
+
                 setUsersMap(uMap);
                 setNameMap(nMap);
             } catch (error) {
@@ -941,20 +957,21 @@ export default function Odoo() {
         const defaultUser = { name: 'Yann', photoURL: null };
         if (!identifier) return defaultUser;
 
-        // 1. Try UID match
+        // 1. Try UID/ID match
         if (usersMap[identifier]) return usersMap[identifier];
 
         // 2. Try Name match
         const lowerId = identifier.toLowerCase();
         if (nameMap[lowerId]) return nameMap[lowerId];
 
-        // 3. Fallback handling
+        // 3. Fallback logic
         // If it looks like an ID (>20 chars) but not found -> 'Utilisateur'
         if (identifier.length > 20 && !identifier.includes(' ')) {
+            // Check if we can find it via partial scan or it's a legacy ID?
             return { name: 'Utilisateur', photoURL: null };
         }
 
-        // 4. It is likely just a name string (legacy)
+        // 4. Legacy string name
         return { name: identifier.split(' ')[0], photoURL: null };
     };
 

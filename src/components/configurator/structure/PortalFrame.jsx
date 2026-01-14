@@ -472,42 +472,27 @@ export function PortalFrame({
         const rafterGeo = createRafterGeo(rafterLen);
 
         // Strut Shifting Logic:
-        // Simple "Droite": Shift -1.0
-        // Simple "Gauche": Shift +1.0
-        // Double: Centered (Shift 0) ? Or adjusted?
-        // Images for 9m/11m show a V-shape. 
-        // Base width ~1.7m. Top width ~2.2m.
-        // Center of V is aligned with center of column/foundation.
+        // User Request: "Toutes les ombrières VL ... charpentes doivent être centrées"
+        // So we Force strutShift = 0 for both Simple and Double.
         let strutShift = 0;
-        if (isOmbriereSimple) {
-            strutShift = isDroite ? -1.0 : 1.0;
-        }
-        // Double stays 0 (centered).
 
         // Base Strut Positions (Centered relative to strutShift)
-        // Base width = 1.7m => +/- 0.85
-        // Top width = 2.2m (approx from image) => +/- 1.1
-
-        // For Simple: Base +/- 0.5 (1m), Top +/- 1.5 (3m).
-        // Let's adopt the Double specs for Double type.
+        // User Request: Center everything.
+        // We will use the standard dimensions. 
+        // For Simple, previously we had specific offsets. Now we center.
 
         let xBot1, xBot2, xTop1, xTop2;
 
-        if (isOmbriereDouble) {
-            const baseHalf = 1.7 / 2; // 0.85
-            const topHalf = 2.25 / 2; // 1.125 (matches image 2250mm)
+        // Use dimensions that look correct for centering (similar to Double)
+        // Base width = 1.7m => +/- 0.85
+        // Top width = 2.25m => +/- 1.125
+        const baseHalf = 1.7 / 2;
+        const topHalf = 2.25 / 2;
 
-            xBot1 = -baseHalf;
-            xBot2 = baseHalf;
-            xTop1 = -topHalf;
-            xTop2 = topHalf;
-        } else {
-            // Simple Defaults
-            xBot1 = -0.5 + strutShift;
-            xBot2 = 0.5 + strutShift;
-            xTop1 = -1.5 + strutShift;
-            xTop2 = 1.5 + strutShift;
-        }
+        xBot1 = -baseHalf;
+        xBot2 = baseHalf;
+        xTop1 = -topHalf;
+        xTop2 = topHalf;
 
         // Base Horizontal Position
         const baseHeight = 0.5;
@@ -639,14 +624,9 @@ export function PortalFrame({
                     <mesh geometry={rafterGeo} material={steelMaterial} position={[0, 0, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow />
                 </group>
 
-                {/* Foundation Block (Hidden for Ombrière Double) */}
-                {!isOmbriereDouble && (
-                    <mesh position={[0, 0.25, 0]} castShadow receiveShadow>
-                        <boxGeometry args={[2.5, 0.5, 1.0]} />
-                        <meshStandardMaterial color="#888888" />
-                    </mesh>
-                )}
-
+                {/* Foundation Block (Hidden for ALL Ombrière VL as requested) */}
+                {/* User request: "Les plots bétons ne doit pas apparaîtrent" (implied for all VL) */}
+                {/* We remove the block mesh conditional entirely or ensure it's false */}
             </group>
         );
 
