@@ -684,16 +684,12 @@ export function PortalFrame({
 
                 {/* Custom 11.3m Horizontal Bar & Cross Logic */}
                 {(() => {
-                    const is11m = Math.abs(width - 11.3) < 0.1;
+                    const is11m = isOmbriereDouble && Math.abs(width - 11.3) < 0.1;
                     const yHoriz = 2.2;
 
                     // Standard Top Points (Under Rafter)
                     const yTop1 = centerHeight + (xTop1 * Math.tan(rotZ)) - 0.2;
                     const yTop2 = centerHeight + (xTop2 * Math.tan(rotZ)) - 0.2;
-
-                    // Calculate X positions at Y=2.2 for Horizontal Bar (if 11.3m)
-                    // Strut 1: (xBot1, baseHeight) -> (xTop1, yTop1)
-                    // x(y) = xBot + (y - baseH) * ((xTop - xBot) / (yTop - baseH))
 
                     const getXatY = (xBot, yBot, xTop, yTop, y) => {
                         if (y < yBot) return xBot;
@@ -701,39 +697,22 @@ export function PortalFrame({
                         return xBot + (y - yBot) * ((xTop - xBot) / (yTop - yBot));
                     };
 
-                    let crossStartY = baseHeight + 0.1;
-                    let pBot1 = new THREE.Vector3(xBot1, crossStartY, 0);
-                    let pBot2 = new THREE.Vector3(xBot2, crossStartY, 0);
-
-                    // If 11.3m, we have a horizontal bar at 2.2m
-                    // And the cross starts FROM there.
-                    if (is11m) {
-                        const xH1 = getXatY(xBot1, baseHeight, xTop1, yTop1, yHoriz);
-                        const xH2 = getXatY(xBot2, baseHeight, xTop2, yTop2, yHoriz);
-
-                        // Define Horizontal Bar Geometry
-                        // Bar between (xH1, 2.2, 0) and (xH2, 2.2, 0)
-                        const barLen = Math.abs(xH2 - xH1);
-                        const barCenter = (xH1 + xH2) / 2;
-
-                        // Update Cross Start Points
-                        crossStartY = yHoriz; // Start cross from horizontal bar
-                        pBot1 = new THREE.Vector3(xH1, crossStartY, 0);
-                        pBot2 = new THREE.Vector3(xH2, crossStartY, 0);
-
-                        // Render Horizontal Bar immediately here or return in group
-                        // Let's return distinct elements
-                    }
-
-                    const pTop1 = new THREE.Vector3(xTop1, yTop1 - 0.1, 0);
-                    const pTop2 = new THREE.Vector3(xTop2, yTop2 - 0.1, 0);
-
-                    const createBar = (start, end, thick = 0.05) => {
+                    const createBar = (start, end, thick = 0.05, isCylinder = false) => {
                         const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
                         const len = start.distanceTo(end);
                         const dx = end.x - start.x;
                         const dy = end.y - start.y;
                         const angle = -Math.atan2(dx, dy);
+
+                        if (isCylinder) {
+                            return (
+                                <mesh position={mid} rotation={[0, 0, angle]} castShadow key={mid.x}>
+                                    <cylinderGeometry args={[thick, thick, len, 8]} />
+                                    <meshStandardMaterial color="#4A5568" roughness={0.8} />
+                                </mesh>
+                            );
+                        }
+
                         return (
                             <mesh position={mid} rotation={[0, 0, angle]} castShadow key={mid.x}>
                                 <boxGeometry args={[thick, len, thick]} />
@@ -744,18 +723,45 @@ export function PortalFrame({
 
                     const elements = [];
 
-                    // Horizontal Bar for 11.3m
                     if (is11m) {
+                        // --- 11.3m Double Logic ---
                         const xH1 = getXatY(xBot1, baseHeight, xTop1, yTop1, yHoriz);
                         const xH2 = getXatY(xBot2, baseHeight, xTop2, yTop2, yHoriz);
                         const hStart = new THREE.Vector3(xH1, yHoriz, 0);
                         const hEnd = new THREE.Vector3(xH2, yHoriz, 0);
-                        elements.push(createBar(hStart, hEnd, 0.10)); // Thicker horizontal bar
-                    }
+                        elements.push(createBar(hStart, hEnd, 0.10)); // Horizontal
 
-                    // Cross Bars
-                    elements.push(createBar(pBot1, pTop2));
-                    elements.push(createBar(pBot2, pTop1));
+                        // Upper Cross
+                        const cBot1 = new THREE.Vector3(xH1, yHoriz, 0);
+                        const cBot2 = new THREE.Vector3(xH2, yHoriz, 0);
+                        const cTop1 = new THREE.Vector3(xTop1, yTop1 - 0.1, 0);
+                        const cTop2 = new THREE.Vector3(xTop2, yTop2 - 0.1, 0);
+
+                        elements.push(createBar(cBot1, cTop2));
+                        elements.push(createBar(cBot2, cTop1));
+
+                    } else if (isOmbriereSimple) {
+                        // --- Simple VL Logic (Full Cross requested) ---
+                        // Full length from Base to Top
+                        const sBot1 = new THREE.Vector3(xBot1, baseHeight, 0);
+                        const sBot2 = new THREE.Vector3(xBot2, baseHeight, 0);
+                        const sTop1 = new THREE.Vector3(xTop1, yTop1, 0);
+                        const sTop2 = new THREE.Vector3(xTop2, yTop2, 0);
+
+                        // Thinner Cylinder (Cable/Tie style)
+                        elements.push(createBar(sBot1, sTop2, 0.02, true));
+                        elements.push(createBar(sBot2, sTop1, 0.02, true));
+
+                    } else {
+                        // --- Standard Double Logic (Existing fallback) ---
+                        const dBot1 = new THREE.Vector3(xBot1, baseHeight + 0.1, 0);
+                        const dBot2 = new THREE.Vector3(xBot2, baseHeight + 0.1, 0);
+                        const dTop1 = new THREE.Vector3(xTop1, yTop1 - 0.1, 0);
+                        const dTop2 = new THREE.Vector3(xTop2, yTop2 - 0.1, 0);
+
+                        elements.push(createBar(dBot1, dTop2));
+                        elements.push(createBar(dBot2, dTop1));
+                    }
 
                     return <group>{elements}</group>;
                 })()}
