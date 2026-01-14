@@ -107,7 +107,12 @@ const DraggableCard = ({ project, onClick, getUserName, className }) => {
             <div className="flex justify-between items-center mt-3">
                 <div className="flex items-center gap-1 text-xs text-gray-400">
                     <Clock size={12} />
-                    <span>{project.deadline ? format(new Date(project.deadline), 'dd/MM', { locale: fr }) : '--:--'}</span>
+                    <span>
+                        {project.timeLimitValue
+                            ? `${project.timeLimitValue} ${project.timeLimitUnit || 'Jours'}`
+                            : (project.deadline ? format(new Date(project.deadline), 'dd/MM', { locale: fr }) : '--:--')
+                        }
+                    </span>
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-[10px] font-medium text-gray-600">
@@ -127,7 +132,7 @@ const DraggableCard = ({ project, onClick, getUserName, className }) => {
 };
 
 // 2. KANBAN COLUMN
-const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count, getUserName, onRename, viewMode }) => {
+const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count, getUserName, onRename, viewMode, width, onResize }) => {
     const [{ isOver }, drop] = useDrop(() => ({
         accept: "PROJECT_CARD",
         drop: (item) => onDropProject(item.id, title),
@@ -168,10 +173,32 @@ const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count
         }
     };
 
+    // Resizing Logic
+    const handleMouseDown = (e) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startWidth = width || 250; // Default width if not set
+
+        const handleMouseMove = (moveEvent) => {
+            const newWidth = Math.max(200, startWidth + (moveEvent.clientX - startX));
+            if (onResize) onResize(title, newWidth);
+        };
+
+        const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    };
+
     // Responsive Classes based on viewMode
     const containerClasses = viewMode === 'list'
         ? "flex flex-row items-stretch rounded-xl transition-colors duration-200 w-full mb-4 min-h-[160px]"
-        : "flex flex-col rounded-xl transition-colors duration-200 h-full backdrop-blur-sm select-none flex-1 min-w-[200px]";
+        : "flex flex-col rounded-xl transition-colors duration-200 h-full backdrop-blur-sm select-none shrink-0"; // Removed flex-1, added shrink-0
+
+    const dynamicStyle = viewMode === 'kanban' ? { width: `${width || 250}px` } : {};
 
     const headerClasses = viewMode === 'list'
         ? `p-4 flex flex-col justify-center items-start border-r border-white/50 rounded-l-xl w-60 shrink-0 ${colorClass}`
@@ -184,8 +211,8 @@ const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count
     const bgClass = isOver ? "bg-purple-50/50 ring-2 ring-purple-400 ring-inset" : "bg-gray-50/50";
 
     return (
-        <div ref={ref} className={`${containerClasses} ${bgClass}`}>
-            <div className={headerClasses}>
+        <div ref={ref} className={`${containerClasses} ${bgClass}`} style={dynamicStyle}>
+            <div className={`${headerClasses} relative group`}>
                 <div className={`flex ${viewMode === 'list' ? 'flex-col gap-2 w-full' : 'justify-between w-full items-center'}`}>
                     {isEditing ? (
                         <input
@@ -199,18 +226,24 @@ const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count
                         />
                     ) : (
                         <h3
-                            className="font-semibold text-sm truncate cursor-pointer hover:underline hover:opacity-80 transition-opacity"
+                            className="font-semibold text-sm whitespace-normal break-words cursor-pointer hover:underline hover:opacity-80 transition-opacity"
                             title="Cliquer pour modifier"
                             onClick={handleStartEdit}
                         >
                             {title}
                         </h3>
                     )}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
                         <span className="text-xs font-bold bg-white/50 px-2 py-0.5 rounded-full">{count}</span>
-                        {/* Plus icon removed as requested */}
                     </div>
                 </div>
+                {/* Resizer Handle */}
+                {viewMode === 'kanban' && (
+                    <div
+                        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-gray-400/50 active:bg-blue-500 transition-colors z-20"
+                        onMouseDown={handleMouseDown}
+                    />
+                )}
             </div>
             <div className={contentClasses}>
                 {projects.map(p => (
@@ -616,6 +649,31 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
                                         ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+
+                            <div className="col-span-4 space-y-1.5">
+                                <label className="text-xs font-medium text-gray-500 uppercase">Délai</label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        type="number"
+                                        className="h-8 text-sm bg-white border-gray-200"
+                                        placeholder="0"
+                                        value={project.timeLimitValue || ''}
+                                        onChange={(e) => onUpdate(project.id, { timeLimitValue: e.target.value })}
+                                    />
+                                    <Select
+                                        value={project.timeLimitUnit || 'Jours'}
+                                        onValueChange={(val) => onUpdate(project.id, { timeLimitUnit: val })}
+                                    >
+                                        <SelectTrigger className="h-8 w-[100px] bg-white border-gray-200 text-xs">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Jours">Jours</SelectItem>
+                                            <SelectItem value="Heures">Heures</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
 
                             <div className="col-span-12 mt-2 space-y-2">
