@@ -43,9 +43,12 @@ export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof", forceF
     return (
         <group>
             {instances.map((pos, idx) => (
-                <mesh key={idx} geometry={panelGeometry} position={[pos.x, pos.y, pos.z]} /*...*/ >
+                <mesh key={idx} geometry={panelGeometry} position={[pos.x, pos.y, pos.z]} castShadow>
                     <meshStandardMaterial attach="material" color="#1a1a2a" roughness={0.2} metalness={0.9} />
-                    {/* ... Borders ... */}
+                    <lineSegments>
+                        <edgesGeometry args={[panelGeometry]} />
+                        <lineBasicMaterial color="#888" linewidth={1} />
+                    </lineSegments>
                 </mesh>
             ))}
         </group>

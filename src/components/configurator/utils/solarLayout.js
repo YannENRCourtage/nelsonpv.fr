@@ -2,7 +2,7 @@
 // Solar Panel Constants
 const PANEL_WIDTH = 1.134;
 const PANEL_HEIGHT = 1.762;
-const GAP = 0.00; // Default gap
+const GAP = 0.02; // Default gap (2cm) for grid effect
 const MARGIN = 0.50; // Default margin
 
 export function calculateSolarLayout(surfaceWidth, surfaceLength, forceFullCoverage = false) {
