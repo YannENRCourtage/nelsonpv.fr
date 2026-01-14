@@ -517,6 +517,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // 10. NEW: Cross Height Marker for Ombrière VL Double 11.3m
 
+    // 10. NEW: Cross Height Marker for Ombrière VL Double 11.3m
+
     const crossHeightData = useMemo(() => {
         if (buildingType === 'ombriere_vl_double' && Math.abs(width - 11.3) < 0.1) {
             const h = 2.2;
@@ -530,8 +532,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 hVal: h,
                 start, end,
                 points: [
-                    [start, mid], // Continuous line (no gap)
-                    [mid, end]
+                    [start, new THREE.Vector3(mid.x, mid.y - gapSize / 2, mid.z)],
+                    [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
                 ]
             };
         }
@@ -587,7 +589,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={crossHeightData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={crossHeightData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[-0.5, crossHeightData.hVal / 2, 0]} // Text to LEFT (-0.5) instead of Right (0.5)
+                        position={[0, crossHeightData.hVal / 2, 0]} // Text shifted 50cm RIGHT (from -0.5 to 0)
                         rotation={[0, 0, 0]}
                         fontSize={0.8}
                         color={textColor}
