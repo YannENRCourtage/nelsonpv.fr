@@ -1235,6 +1235,7 @@ export default function Crm() {
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Nom Projet</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Client</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Commercial</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Affectation</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Adresse</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Code Postal</th>
@@ -1274,6 +1275,33 @@ export default function Crm() {
                         const firstName = project.firstName || '';
                         const clientName = `${name} ${firstName}`.trim() || 'Sans nom';
                         return <span className="text-slate-900 font-medium">{clientName}</span>;
+                      })()}
+                    </td>
+                    <td className="px-6 py-4">
+                      {(() => {
+                        // Commercial = Creator
+                        let creatorName = project.createdByFirstName || project.user || 'Inconnu';
+                        let photoURL = null;
+
+                        if (project.createdBy && users.length > 0) {
+                          const creator = users.find(u => u.id === project.createdBy);
+                          if (creator) {
+                            creatorName = creator.firstName || creator.displayName;
+                            photoURL = creator.photoURL;
+                          }
+                        }
+
+                        return (
+                          <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full ${getUserColor(creatorName)} w-fit pr-5 text-left`}>
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
+                              {photoURL ?
+                                <img src={photoURL} className="w-full h-full object-cover" /> :
+                                <span className="flex items-center justify-center w-full h-full text-xs font-bold">{creatorName?.[0]}</span>
+                              }
+                            </div>
+                            <span className="text-sm font-bold truncate max-w-[120px]">{creatorName}</span>
+                          </div>
+                        );
                       })()}
                     </td>
                     <td className="px-6 py-4">

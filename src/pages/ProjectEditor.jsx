@@ -489,30 +489,59 @@ export default function ProjectEditor() {
                 Remise à zéro
               </Button>
             </div>
-            <div className="flex gap-4">
-              <Select value={p.assignedUser || 'Yann'} onValueChange={(v) => updateProject({ assignedUser: v })}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Yann">Yann</SelectItem>
-                  <SelectItem value="Jack">Jack</SelectItem>
-                  <SelectItem value="Nicolas">Nicolas</SelectItem>
-                  <SelectItem value="Elodie">Elodie</SelectItem>
-                  <SelectItem value="Contact">Contact</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={p.status || 'Nouveau'} onValueChange={(v) => updateProject({ status: v })}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Nouveau">Nouveau</SelectItem>
-                  <SelectItem value="En cours">En cours</SelectItem>
-                  <SelectItem value="Terminé">Terminé</SelectItem>
-                  <SelectItem value="Abandonné">Abandonné</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex gap-4 items-end">
+              <div>
+                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Commercial</label>
+                <div className="h-10 px-3 py-2 bg-gray-100 border border-gray-200 rounded-md text-sm font-medium text-gray-700 flex items-center min-w-[120px]">
+                  {(() => {
+                    // Try to resolve createdBy using projectUsers locally if available
+                    // Note: projectUsers is state in this component
+                    const creatorId = p.createdBy;
+                    let creatorName = p.createdByFirstName || p.user || 'Yann';
+
+                    if (creatorId && projectUsers.length > 0) {
+                      const u = projectUsers.find(user => user.id === creatorId);
+                      if (u) creatorName = u.firstName || u.displayName || creatorName;
+                    }
+                    return creatorName;
+                  })()}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Chef de projet</label>
+                <Select value={p.assignedUser || 'Yann'} onValueChange={(v) => updateProject({ assignedUser: v })}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Yann">Yann</SelectItem>
+                    <SelectItem value="Jack">Jack</SelectItem>
+                    <SelectItem value="Nicolas">Nicolas</SelectItem>
+                    <SelectItem value="NicolasNMD">NicolasNMD</SelectItem>
+                    <SelectItem value="Laurent">Laurent</SelectItem>
+                    <SelectItem value="Elodie">Elodie</SelectItem>
+                    <SelectItem value="Véronique">Véronique</SelectItem>
+                    <SelectItem value="Aurélien">Aurélien</SelectItem>
+                    <SelectItem value="Contact">Contact</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Statut</label>
+                <Select value={p.status || 'Nouveau'} onValueChange={(v) => updateProject({ status: v })}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Nouveau">Nouveau</SelectItem>
+                    <SelectItem value="En cours">En cours</SelectItem>
+                    <SelectItem value="Terminé">Terminé</SelectItem>
+                    <SelectItem value="Abandonné">Abandonné</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
