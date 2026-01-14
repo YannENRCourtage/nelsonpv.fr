@@ -123,7 +123,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         } else if (buildingType === 'ombriere_vl_simple_gauche') {
             // Low side Right (Unified High Left -> Low Right).
             x = width / 2 + 1.5;
-        } else if (buildingType === 'ombriere_vl_double') {
+        } else if (buildingType === 'ombriere_vl_double' || buildingType === 'ombriere_pl') {
             // User Request (Images): Match positions of Simple Gauche
             // Previously set to +3.0, now reverting/adjusting to +1.5 to match Simple Gauche.
             x = width / 2 + 1.5;
@@ -206,7 +206,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         // it implies the ridge marker should be on the left side for 'gauche' as well.
         if (buildingType === 'ombriere_vl_simple_gauche') {
             x = -width / 2 - 1.5; // Set Ridge Marker to Left side for 'gauche'
-        } else if (buildingType === 'ombriere_vl_double') {
+        } else if (buildingType === 'ombriere_vl_double' || buildingType === 'ombriere_pl') {
             // Match 'simple_gauche': Ridge Left, Eave Right.
             x = -width / 2 - 1.5;
         }
@@ -249,6 +249,17 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         // USER REQUEST 14/01/2026: Specific Ridge Heights for Ombrière VL Simple
         if (buildingType === 'ombriere_vl_simple_gauche') h = 4.4;
         if (buildingType === 'ombriere_vl_simple_droite') h = 4.7;
+
+        // OMBRIÈRE PL
+        if (buildingType === 'ombriere_pl') {
+            // Eave (Low) at Right. Ridge (High) at Left.
+            // Ridge = Eave + Width * tan(10deg)
+            // Eaves: 15.8->6.0, 20.2->6.5, 24.6->7.0
+            const tan10 = Math.tan(10 * Math.PI / 180);
+            if (Math.abs(width - 15.8) < 0.1) h = 6.0 + (15.8 * tan10);
+            else if (Math.abs(width - 20.2) < 0.1) h = 6.5 + (20.2 * tan10);
+            else if (Math.abs(width - 24.6) < 0.1) h = 7.0 + (24.6 * tan10);
+        }
 
         const z = 0;
         const start = new THREE.Vector3(x, 0, z);
