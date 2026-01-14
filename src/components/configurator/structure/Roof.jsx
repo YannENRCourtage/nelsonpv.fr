@@ -100,10 +100,20 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         // For PL: Rafters are centered at `eave + (width/2)*tan(slope)`.
         // We can re-calculate centerHeight reliably from Eave here to match PortalFrame exactly.
         const midRise = (width / 2) * Math.tan(slopeRad);
-        const centerHeight = eaveHeight + midRise;
+
+        // Base Center Height (Matches PortalFrame base logic)
+        let centerHeight = eaveHeight + midRise;
+
+        // USER REQUEST 14/01/2026: Global Height Adjustments
+        // Ombrière VL Double: Lower by 1m.
+        if (isOmbriereDouble) centerHeight -= 1.0;
+        // Ombrière VL Simple: Raise by 30cm.
+        if (isOmbriereSimple) centerHeight += 0.30;
 
         let lift = 0.25;
         if (isOmbriereDouble) {
+            // Previous logic added +0.60 relative to structure. 
+            // We keep this because the structure moved down, so the relative cover position is same.
             lift += 0.60;
             if (Math.abs(width - 11.3) < 0.1) lift += 0.25; // 11.3m specific raise
         }

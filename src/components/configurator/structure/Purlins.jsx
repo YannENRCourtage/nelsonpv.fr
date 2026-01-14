@@ -108,6 +108,10 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
         const midRise = (width / 2) * Math.tan(angleRad);
         let centerHeight = eaveHeight + midRise;
 
+        // USER REQUEST 14/01/2026: Match Height Adjustments
+        if (buildingType === 'ombriere_vl_double') centerHeight -= 1.0;
+        if (buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche') centerHeight += 0.30;
+
         if (buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche') {
             centerHeight -= 0.40;
         }
