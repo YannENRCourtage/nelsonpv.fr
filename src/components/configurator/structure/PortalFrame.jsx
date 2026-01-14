@@ -450,6 +450,120 @@ export function PortalFrame({
         );
     }
 
+    // --- OMBRIÈRE PL (Poids Lourd - Vertical Cols, Monopente 10°) ---
+    const isOmbrierePL = buildingType === 'ombriere_pl';
+
+    if (isOmbrierePL) {
+        // Shared Params
+        const slopeRad = (roofPitch * Math.PI) / 180;
+        const rotZ = -slopeRad; // Descending to right (Monopente standard here seems 10 deg)
+        // Check images: Image 1 (15.8m) -> High Left, Low Right.
+
+        // Rafter Length (Full Width / cos(slope))
+        const rafterLen = width / Math.cos(slopeRad);
+        const rafterGeo = createRafterGeo(rafterLen);
+
+        // Column Positions logic
+        // We center the structure at x=0
+
+        let columns = [];
+
+        if (Math.abs(width - 15.8) < 0.1) {
+            // 15.8m Spec: 2 Columns, 8m spacing.
+            // Centered: -4m and +4m
+            columns = [-4.0, 4.0];
+        } else if (Math.abs(width - 20.2) < 0.1) {
+            // 20.2m Spec: 3 Columns?
+            // Image 2: "20530" Total. Spans: 4018 (Overhang) + 8000 + 8000 + (Right overhang implied small?)
+            // Wait, Image 2: Left Overhang 4018. Col 1. Span 8000. Col 2. Span 8000. Col 3. Right Overhang?
+            // Actually Image 2 dimensions: 4018 + 8000 + 8000 + ??
+            // Total 20.2m. 4+8+8 = 20. So tiny right overhang? 
+            // Or maybe 4.0m Left Overhang, then 8m, then 8m. 
+            // Positions relative to LEFT (-width/2):
+            // x1 = -width/2 + 4.1 (approx)
+            // x2 = x1 + 8
+            // x3 = x2 + 8
+
+            // Let's center the standard "8m+8m" block? 
+            // If total width is 20.2.
+            // Let's try to match the image visual. 
+            // Image 2: Large overhang on Left (High side). 
+            // Columns at: x1, x2, x3. 
+            // Distance x1-x2 = 8m. x2-x3 = 8m.
+            // Left overhang ~4m.
+            // 4.1 + 8 + 8 = 20.1. (+0.1 margin). 
+            // So roughly: Overhang 4.1, Span 8, Span 8, Overhang ~0.1 (flush right?).
+            // Let's center the whole thing? No, markers usually relative to structure.
+            // If we center the building at 0.
+            // Width 20.2. Left = -10.1. Right = 10.1.
+            // Col 1 = -10.1 + 4.1 = -6.0.
+            // Col 2 = -6.0 + 8.0 = 2.0.
+            // Col 3 = 2.0 + 8.0 = 10.0 (Almost at Edge).
+            columns = [-6.0, 2.0, 10.0];
+
+        } else if (Math.abs(width - 24.6) < 0.1) {
+            // 24.6m Spec: 3 Columns.
+            // Image 3: 4325 + 8000 + 8000 + 4325.
+            // Symmetric 2 spans + 2 overhangs.
+            // Center is middle column.
+            columns = [-8.0, 0.0, 8.0];
+        } else {
+            // Fallback for custom widths: 2 columns centered 
+            columns = [-4.0, 4.0];
+        }
+
+        // Height Logic
+        // Ridge Height (Left/High) vs Eave Height (Right/Low).
+        // eaveHeight in store usually refers to the lowest point (Sablière).
+        // For PL, we likely set Eave (Low) and calculate Ridge.
+        // Store for 15.8m -> Eave 6.0m? (Need to check store values)
+        // Store for 20.2m -> Eave 6.5m?
+        // Store for 24.6m -> Eave 7.0m?
+
+        // Rafter Equation from Center of Group (0,0):
+        // Height(x) = C - x * tan(angle) (Since angle is positive slope from left? No, rotZ is negative).
+        // Let's define Pivot at the Right Eave (Lowest Point).
+        // PivotX = width/2. Y = eaveHeight.
+        // Height(x) = eaveHeight + (width/2 - x) * tan(slope)
+
+        // Create Columns
+        const createVerticalCol = (xPos) => {
+            // Calculate Top Height at this X
+            const topY = eaveHeight + (width / 2 - xPos) * Math.tan(slopeRad);
+            // Column Geometry
+            const colGeo = createSlantedColumn(baseColumnProfile, 0, false, topY - 0.2); // -0.2 for rafter connection
+            return (
+                <mesh key={xPos} geometry={colGeo} material={steelMaterial} position={[xPos, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} castShadow />
+            );
+        };
+
+        // Center Height (for Rafter positioning)
+        // Rafter group is at [0, centerHeight, 0] rotated by rotZ.
+        // CenterHeight is height at x=0.
+        const centerHeight = eaveHeight + (width / 2) * Math.tan(slopeRad);
+
+        return (
+            <group position={position}>
+                {/* Columns */}
+                {columns.map(x => createVerticalCol(x))}
+
+                {/* Rafter (Single Piece) */}
+                <group position={[0, centerHeight, 0]} rotation={[0, 0, rotZ]}>
+                    {/* Rafter is centered in local X, so just place it */}
+                    <mesh geometry={rafterGeo} material={steelMaterial} position={[0, 0, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow />
+                </group>
+
+                {/* No struts (Bracons) for PL based on images? 
+                    Images show bracing (Croix de St André) between columns but no diagonal struts (bracons) under rafters? 
+                    Actually Image 1 shows a small knee brace (jarret) or simple connection. 
+                    Images 2 & 3 show large cross bracing between columns.
+                    Let's stick to simple columns + rafter for now unless "croix" requested. 
+                    The "V" shape struts of VL are NOT present.
+                */}
+            </group>
+        );
+    }
+
     // --- OMBRIÈRE VL SIMPLE & DOUBLE (V-Shape Structure) ---
     const isOmbriereSimple = buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche';
     const isOmbriereDouble = buildingType === 'ombriere_vl_double';

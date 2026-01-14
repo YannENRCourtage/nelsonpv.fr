@@ -74,11 +74,12 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     // RENDER LOGIC
     // ==========================================
 
-    // --- 0. OMBRIÈRE VL SIMPLE & DOUBLE ---
+    // --- 0. OMBRIÈRE VL SIMPLE & DOUBLE & PL ---
     const isOmbriereSimple = buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche';
     const isOmbriereDouble = buildingType === 'ombriere_vl_double';
+    const isOmbrierePL = buildingType === 'ombriere_pl';
 
-    if (isOmbriereSimple || isOmbriereDouble) {
+    if (isOmbriereSimple || isOmbriereDouble || isOmbrierePL) {
         // Exact same calculation as PortalFrame (12.2 deg usually)
         const slopeRad = (roofPitch * Math.PI) / 180;
         const rotZ = -slopeRad; // Fixed to Down-Right (High Left) for BOTH
@@ -95,13 +96,25 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         // Let's assume depth 0.4 (IPE400) -> Half is 0.2.
         // We want panels ON TOP, so lift = 0.2 + mount height (e.g. 0.05).
         // User Request: Raise by 60cm for Double.
-        const centerHeight = (eaveHeight + ridgeHeight) / 2;
+
+        // For PL: Rafters are centered at `eave + (width/2)*tan(slope)`.
+        // We can re-calculate centerHeight reliably from Eave here to match PortalFrame exactly.
+        const midRise = (width / 2) * Math.tan(slopeRad);
+        const centerHeight = eaveHeight + midRise;
+
         let lift = 0.25;
         if (isOmbriereDouble) {
             lift += 0.60;
             if (Math.abs(width - 11.3) < 0.1) lift += 0.25; // 11.3m specific raise
         }
         if (isOmbriereSimple) lift -= 0.40;
+
+        // PL Lift: Default 0.25 seems okay (Just on top of rafter)
+        if (isOmbrierePL) {
+            // Check if we need specific lift. 
+            // Simple Rafter is 0.4m depth. Center at 0. Top at +0.2.
+            // Lift 0.25 puts it 5cm above rafter. Good.
+        }
 
         return (
             <group position={[0, centerHeight + lift, -length / 2]} rotation={[0, 0, rotZ]}>

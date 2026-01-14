@@ -104,20 +104,34 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
 
         // Rafter center height (approx)
         // Logic should match Roof/Solar placement.
-        // Roof placed at `centerHeight + lift`.
-        // Purlins should be under the panels (or just under "roof" surface which effectively is the panels here).
-        // Let's assume Purlins sit ON TOP of rafters.
-        // Rafter top is at `centerHeight + 0.2` (if depth=0.4).
-        // Current Roof logic in `Roof.jsx`: `centerHeight + lift (0.2)`. 
-        // So Purlins should be around `centerHeight + 0.2`.
+        // Calculate based on Eave and Width to match PortalFrame exactly.
+        const midRise = (width / 2) * Math.tan(angleRad);
+        let centerHeight = eaveHeight + midRise;
 
-        let centerHeight = (eaveHeight + ridgeHeight) / 2;
         if (buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche') {
             centerHeight -= 0.40;
         }
-        if (buildingType === 'ombriere_vl_double' && Math.abs(width - 11.3) < 0.1) {
-            centerHeight += 0.25;
+        if (buildingType === 'ombriere_vl_double') {
+            // VL Double base adjustment to match roof lift? 
+            // Roof has lift +0.60 + 0.25 = 0.85 (inc 0.2 rafter).
+            // centerHeight in Roof was calculated same way.
+            // If we want Purlins to be ON TOP of Rafters:
+            // Rafter Top = centerHeight + ~0.2.
+            // Purlin should be at ~ centerHeight + 0.2.
+            // BUT VL Double had "lift += 0.60". 
+            // This suggests the entire structure (or just roof?) was lifted. 
+            // Wait, PortalFrame draws Rafter at `centerHeight`. 
+            // If Roof is lifted +0.60 relative to that, there's a gap?
+            // Ah, VL Double has struts. The Rafter might be higher?
+            // Let's stick to simple placement on top of Rafter for PL.
+            // For PL, Rafter is at `centerHeight`.
+            // Purlins at `centerHeight + 0.2` (half depth).
         }
+
+        if (buildingType === 'ombriere_vl_double' && Math.abs(width - 11.3) < 0.1) {
+            centerHeight += 0.25; // Match Roof specific lift
+        }
+
         // Adjust for perp offset (+ purlin height logic)
         // perpOffset = 0.2 + 0.07 ...
         // We just need them to sit on the rafter line.
