@@ -1,3 +1,6 @@
+import React, { useMemo } from 'react';
+import * as THREE from 'three';
+import { useConfiguratorStore, useConfiguratorValues } from '../../../stores/useConfiguratorStore';
 import { calculateSolarLayout } from '../utils/solarLayout';
 
 // ... (Constants preserved if needed, but logic moved) ...
