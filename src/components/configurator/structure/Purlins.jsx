@@ -172,9 +172,16 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
 
                 // Add Perpendicular Offset (Up from rafter)
                 // Normal to slope `a`: (-sin a, cos a)
-                // perpOffset ~ 0.27
-                const nx = -Math.sin(effectiveAngle) * perpOffset;
-                const ny = Math.cos(effectiveAngle) * perpOffset;
+                // perpOffset ~ 0.27 normally. 
+                // For Double: Lift 0.85 + SolarMargin 0.20 - PanelThick 0.02 - PurlinH 0.07 (Top to Center) = ~0.96
+                const customOffset = (width >= 9 && width <= 12) ? 0.96 : perpOffset;
+                // Note: using width range or explicit building type check context if available, 
+                // but here we are in 'ombriere' block.
+                // Re-check buildingType prop available in scope? Yes.
+                const appliedOffset = (buildingType === 'ombriere_vl_double') ? 0.96 : perpOffset;
+
+                const nx = -Math.sin(effectiveAngle) * appliedOffset;
+                const ny = Math.cos(effectiveAngle) * appliedOffset;
 
                 purlins.push(
                     <mesh

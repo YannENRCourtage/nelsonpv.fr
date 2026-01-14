@@ -19,7 +19,7 @@ export function Structure() {
 
     // Ridge Flashing (Bande Lisse Faîtière)
     // 1m wide (0.5m each side), spanning length.
-    const RidgeFlashing = ({ len, h, angle }) => {
+    const RidgeFlashing = ({ len, h, angle, x = 0 }) => {
         // Material
         const mat = useMemo(() => new THREE.MeshStandardMaterial({
             color: '#4A4A4A', // Dark Grey / Anthracite often used for flashings
@@ -58,7 +58,7 @@ export function Structure() {
             // ExtrudeGeometry defaults +Z.
             // Rotate Y PI -> +Z becomes -Z.
             // Position: [0, h, 0]
-            <mesh geometry={geo} material={mat} position={[0, h, 0]} rotation={[0, Math.PI, 0]} castShadow />
+            <mesh geometry={geo} material={mat} position={[x, h, 0]} rotation={[0, Math.PI, 0]} castShadow />
         );
     };
 
@@ -86,7 +86,15 @@ export function Structure() {
     return (
         <group>
             {config.buildingType === 'symetrique' && (
-                <RidgeFlashing len={length} h={calculatedRidgeHeight} angle={angleRad} />
+                <RidgeFlashing len={length} h={calculatedRidgeHeight + 0.5} angle={angleRad} />
+            )}
+            {(config.buildingType === 'asymetrique_1' || config.buildingType === 'asymetrique_2') && (
+                <RidgeFlashing
+                    len={length}
+                    h={calculatedRidgeHeight} // Standard height for Asymmetrical
+                    angle={15 * Math.PI / 180} // 15 degrees
+                    x={-width * 0.25} // Apex position
+                />
             )}
             {frames}
             <Purlins

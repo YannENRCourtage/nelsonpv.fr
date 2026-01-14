@@ -694,6 +694,13 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
                                 <div className="space-y-4">
                                     {(project.odooChat || []).map((msg, i) => {
                                         const isMe = (user?.uid && msg.uid === user.uid) || msg.author === "Moi" || (user && msg.author === (user.firstName ? `${user.firstName} ${user.name || ''}`.trim() : user.displayName));
+
+                                        const handleDeleteMessage = async (msgId) => {
+                                            if (!window.confirm("Supprimer ce message ?")) return;
+                                            const updatedChat = (project.odooChat || []).filter(m => m.id !== msgId);
+                                            onUpdate(project.id, { odooChat: updatedChat });
+                                        };
+
                                         return (
                                             <div key={i} className={`flex gap-4 group ${isMe ? 'flex-row-reverse' : ''}`}>
                                                 <UserAvatar
@@ -707,6 +714,15 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
                                                         <span className="text-xs text-gray-400">
                                                             {format(new Date(msg.date), 'dd MMM yyyy, HH:mm', { locale: fr })}
                                                         </span>
+                                                        {(isMe || user?.role === 'admin') && (
+                                                            <button
+                                                                onClick={() => handleDeleteMessage(msg.id)}
+                                                                className="text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                                                title="Supprimer"
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                     <div className={`p-3.5 rounded-2xl shadow-sm border text-sm leading-relaxed inline-block text-left ${isMe
                                                         ? 'bg-blue-600 text-white rounded-tr-none border-blue-600'
