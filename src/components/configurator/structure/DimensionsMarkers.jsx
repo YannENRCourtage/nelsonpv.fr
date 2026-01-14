@@ -124,8 +124,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             // Low side Right (Unified High Left -> Low Right).
             x = width / 2 + 1.5;
         } else if (buildingType === 'ombriere_vl_double') {
-            // User Request: Shift right sablière indication 3m to the right
-            x = width / 2 + 3.0;
+            // User Request (Images): Match positions of Simple Gauche
+            // Previously set to +3.0, now reverting/adjusting to +1.5 to match Simple Gauche.
+            x = width / 2 + 1.5;
         } else if (buildingType === 'asymetrique_2') {
             return { heightPoints: null, heightStart: null, heightEnd: null, xEave: null };
         } else if (buildingType === 'asymetrique_1') {
@@ -205,6 +206,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         // it implies the ridge marker should be on the left side for 'gauche' as well.
         if (buildingType === 'ombriere_vl_simple_gauche') {
             x = -width / 2 - 1.5; // Set Ridge Marker to Left side for 'gauche'
+        } else if (buildingType === 'ombriere_vl_double') {
+            // Match 'simple_gauche': Ridge Left, Eave Right.
+            x = -width / 2 - 1.5;
         }
         // The `startText` and `endText` variables are not used in this `useMemo` block,
         // which is responsible for calculating the line points, not the text content.
