@@ -110,9 +110,9 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
 
         // USER REQUEST 14/01/2026: Match Height Adjustments
         // Double: -0.70m. 
-        // Simple: +0.65m.
+        // Simple: +0.55m (Lowered 10cm from +0.65m).
         if (buildingType === 'ombriere_vl_double') centerHeight -= 0.70;
-        if (buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche') centerHeight += 0.65;
+        if (buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche') centerHeight += 0.55;
 
         if (buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche') {
             centerHeight -= 0.40;
