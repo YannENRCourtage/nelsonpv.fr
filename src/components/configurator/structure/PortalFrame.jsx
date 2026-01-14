@@ -638,13 +638,13 @@ export function PortalFrame({
         let centerHeight = eaveHeight + midRise;
 
         // USER REQUEST 14/01/2026: Height Adjustments
-        // Ombrière VL Double: Lower by 1m.
+        // Ombrière VL Double: Lower by 1m, then Raise by 0.80m. Net = -0.20m.
         if (isOmbriereDouble) {
-            centerHeight -= 1.0;
+            centerHeight -= 0.20;
         }
-        // Ombrière VL Simple: Raise by 30cm.
+        // Ombrière VL Simple: Raise by 30cm, then Raise by additional 35cm. Total = +0.65m.
         if (isOmbriereSimple) {
-            centerHeight += 0.30;
+            centerHeight += 0.65;
         }
 
         // Custom Strut Creator
