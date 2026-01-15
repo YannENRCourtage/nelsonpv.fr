@@ -1305,42 +1305,14 @@ export default function Crm() {
                       })()}
                     </td>
                     <td className="px-6 py-4">
-                      {(() => {
-                        let projectUser = project.assignedUser || project.createdByFirstName || (typeof project.user === 'string' ? project.user : null);
-                        let photoURL = null;
+                      const projectUser = project.assignedUser || project.createdByFirstName || (typeof project.user === 'string' ? project.user : 'Utilisateur');
 
-                        // Si pas trouvé (ou valeur par défaut), essayer via createdBy
-                        if (!projectUser || projectUser === 'Utilisateur' || projectUser === 'Non assigné') {
-                          if (project.createdBy && users.length > 0) {
-                            const userFromList = users.find(u => u.id === project.createdBy);
-                            if (userFromList) {
-                              projectUser = userFromList.firstName || userFromList.displayName;
-                              photoURL = userFromList.photoURL;
-                            }
-                          }
-                        }
-
-                        // Chercher photo si nom connu
-                        if (projectUser && !photoURL && users.length > 0) {
-                          const userWithPhoto = users.find(u =>
-                            (u.firstName && u.firstName.toLowerCase() === projectUser.toLowerCase()) ||
-                            (u.displayName && u.displayName.toLowerCase() === projectUser.toLowerCase())
-                          );
-                          if (userWithPhoto) photoURL = userWithPhoto.photoURL;
-                        }
-
-                        return (
-                          <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full ${getUserColor(projectUser)} w-fit pr-5 text-left`}>
-                            <div className="w-8 h-8 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
-                              {photoURL ?
-                                <img src={photoURL} className="w-full h-full object-cover" /> :
-                                <span className="flex items-center justify-center w-full h-full text-xs font-bold">{projectUser?.[0]}</span>
-                              }
-                            </div>
-                            <span className="text-sm font-bold truncate max-w-[120px]">{projectUser || 'Non assigné'}</span>
-                          </div>
-                        );
-                      })()}
+                      return (
+                      <div className="flex items-center gap-3 w-fit pr-5 text-left">
+                        <UserAvatar name={projectUser} size="w-8 h-8" showName={false} />
+                        <span className="text-sm font-bold truncate max-w-[120px]">{projectUser === 'Utilisateur' ? 'Non assigné' : projectUser}</span>
+                      </div>
+                      );
                     </td>
                     <td className="px-6 py-4 text-slate-600">{project.address || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{project.zip || '-'}</td>

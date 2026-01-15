@@ -13,9 +13,10 @@ const UserAvatar = ({ name, email, showName = true, photoURL = null, size = "w-8
         'NicolasNMD': '/avatars/nicolas_nmd_avatar.jpg',
         'Yann': '/avatars/yann.jpg',
         'yann': '/avatars/yann.jpg',
-        'Véronique': '/avatars/veronique.png',
-        'Véro': '/avatars/veronique.png',
-        'véro': '/avatars/veronique.png',
+        'Véronique': '/avatars/veronique.jpg',
+        'Véro': '/avatars/veronique.jpg',
+        'véronique': '/avatars/veronique.jpg', // ensuring lowercase match too
+        'véro': '/avatars/veronique.jpg',
         'Elodie': '/avatars/elodie.jpg',
         'Jack': '/avatars/jack.jpg',
         'Laurent': '/avatars/laurent.jpg',
