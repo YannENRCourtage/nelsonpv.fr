@@ -120,8 +120,8 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
 
         // USER REQUEST 15/01/2026: Specific adjustments for VL Double
         if (buildingType === 'ombriere_vl_double') {
-            if (Math.abs(width - 9.1) < 0.1) centerHeight -= 0.30;
-            else if (Math.abs(width - 11.3) < 0.1) centerHeight -= 0.50;
+            if (Math.abs(width - 9.1) < 0.1) centerHeight -= 0.40; // Total -40cm
+            else if (Math.abs(width - 11.3) < 0.1) centerHeight -= 0.65; // Total -65cm
         }
         if (buildingType === 'ombriere_vl_double') {
             // VL Double base adjustment to match roof lift? 

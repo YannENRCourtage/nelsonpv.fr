@@ -534,7 +534,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         if (buildingType === 'ombriere_vl_double' && Math.abs(width - 11.3) < 0.1) {
             const h = 2.2;
             const x = 0; // Center
-            const z = 0;
+            const z = 0.3; // USER REQUEST 15/01/2026: Move forward by 30cm
             const start = new THREE.Vector3(x, 0, z);
             const end = new THREE.Vector3(x, h, z);
             const mid = new THREE.Vector3(x, h / 2, z);
@@ -595,7 +595,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Line points={lengthPoints[1]} color={lineColor} lineWidth={lineWidth} />
                     <mesh position={lengthStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={lengthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text position={[xSide + 0.5, 0.2, -length / 2]} rotation={[-Math.PI / 2, 0, -Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                    <Text
+                        position={[xSide + 0.5, 0.2, -length / 2]}
+                        rotation={buildingType.startsWith('ombriere') ? [-Math.PI / 2, 0, Math.PI / 2] : [-Math.PI / 2, 0, -Math.PI / 2]}
+                        fontSize={0.8}
+                        color={textColor}
+                        anchorX="center"
+                        anchorY="bottom"
+                        outlineWidth={0.1}
+                        outlineColor="#ffffff"
+                    >
                         {`${length} m`}
                     </Text>
                 </group>
