@@ -5,7 +5,7 @@ import { calculateSolarLayout } from '../utils/solarLayout';
 
 // ... (Constants preserved if needed, but logic moved) ...
 
-export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof", forceFullCoverage = false }) {
+export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof", forceFullCoverage = false, stretchToFit = false }) {
     const { hasSolar } = useConfiguratorStore(useConfiguratorValues);
 
     // Geometry & Material (Memoized)
@@ -40,8 +40,12 @@ export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof", forceF
         }
     }
 
+    // Stretch Logic
+    const scaleX = stretchToFit && totalGridWidth > 0 ? surfaceWidth / totalGridWidth : 1;
+    const scaleZ = stretchToFit && totalGridLength > 0 ? surfaceLength / totalGridLength : 1;
+
     return (
-        <group>
+        <group scale={[scaleX, 1, scaleZ]}>
             {instances.map((pos, idx) => (
                 <mesh key={idx} geometry={panelGeometry} position={[pos.x, pos.y, pos.z]} castShadow>
                     <meshStandardMaterial attach="material" color="#1a1a2a" roughness={0.2} metalness={0.9} />
