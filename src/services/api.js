@@ -39,12 +39,24 @@ class ApiService {
     async getProjects() {
         try {
             const user = await this._getCurrentUser();
-            // Check for Admin role or explicit permission
-            const canViewAll = user.role === 'admin' || user.permissions?.canViewAllProjects;
+            // Validated by user: everyone should see everything for Odoo sync
+            const canViewAll = true;
             return await firestoreService.listProjects(user.uid, canViewAll);
         } catch (error) {
             console.error("Error getting projects:", error);
             return [];
+        }
+    }
+
+    async subscribeToProjects(callback) {
+        try {
+            const user = await this._getCurrentUser();
+            // Validated by user: everyone should see everything for Odoo sync
+            const canViewAll = true;
+            return firestoreService.subscribeToProjects(user.uid, canViewAll, callback);
+        } catch (error) {
+            console.error("Error subscribing to projects:", error);
+            return () => { };
         }
     }
 

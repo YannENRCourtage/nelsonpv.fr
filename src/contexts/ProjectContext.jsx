@@ -62,37 +62,41 @@ export function ProjectProvider({ children }) {
   }, []);
 
   // Charger les projets depuis l'API au montage
+  // Subscription to real-time updates from Firestore
   useEffect(() => {
-    const fetchProjects = async () => {
+    let unsubscribe = () => { };
+
+    const setupSubscription = async () => {
       setLoading(true);
       try {
-        const apiProjects = await apiService.getProjects();
-        const localProjects = loadAllProjectsFromLS();
-
-        if (Array.isArray(apiProjects)) {
-          // MIGRATION : DÉSACTIVÉE pour éviter la réapparition des projets supprimés
-          // On fait confiance à l'API comme source de vérité.
-          /*
-          const missingInApi = localProjects.filter(lp => !apiProjects.find(ap => ap.id === lp.id));
-
-          if (missingInApi.length > 0) {
-            console.log("Migration : Envoi des projets locaux vers l'API...", missingInApi);
-            // ... (code supprimé pour éviter la résurrection)
-          }
-          */
-
-          // On prend la vérité serveur
-          setProjects(apiProjects);
-        }
+        console.log("Setting up real-time project subscription...");
+        unsubscribe = await apiService.subscribeToProjects((updatedProjects) => {
+          console.log("Projects updated from Firestore:", updatedProjects.length);
+          // Directly update state; setProjects handles LS sync
+          setProjects(updatedProjects);
+          setLoading(false);
+        });
       } catch (err) {
-        console.error("Failed to fetch projects from API:", err);
+        console.error("Failed to subscribe to projects:", err);
         setError(err);
-        // Fallback sur LS (déjà chargé par useState)
-      } finally {
         setLoading(false);
+
+        // Fallback: try one-time fetch if subscription fails
+        try {
+          const fallbackData = await apiService.getProjects();
+          setProjects(fallbackData);
+        } catch (e) {
+          console.error("Fallback fetch failed", e);
+        }
       }
     };
-    fetchProjects();
+
+    setupSubscription();
+
+    return () => {
+      console.log("Unsubscribing from projects...");
+      unsubscribe();
+    };
   }, [setProjects]);
 
   // Écouter les changements du localStorage (sync entre onglets)
