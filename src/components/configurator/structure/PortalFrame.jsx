@@ -623,7 +623,8 @@ export function PortalFrame({
                     const intersectX = (yTop1 * x2 + yTop2 * x1) / (yTop1 + yTop2);
 
                     // 2. Horizontal Beam
-                    const beamGeo = <mesh position={[intersectX, intersectY, 0]} castShadow>
+                    // USER REQUEST 15/01/2026: Shift 50cm left.
+                    const beamGeo = <mesh position={[intersectX - 0.5, intersectY, 0]} castShadow>
                         <boxGeometry args={[span, 0.15, 0.15]} />
                         <meshStandardMaterial color="#8a949b" metalness={0.6} roughness={0.4} />
                     </mesh>;

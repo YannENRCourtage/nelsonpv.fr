@@ -145,9 +145,17 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
             xShift = 0;
         }
 
+        const backingMesh = isOmbrierePL ? (
+            <mesh position={[0, 0.15, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[slopeLen, length + 1.0]} />
+                <meshBasicMaterial color="#000000" side={THREE.DoubleSide} />
+            </mesh>
+        ) : null;
+
         return (
             <group position={[0, centerHeight + lift, -length / 2]} rotation={[0, 0, rotZ]}>
                 <group position={[xShift, 0, 0]}>
+                    {backingMesh}
                     <SolarPanels surfaceWidth={slopeLen} surfaceLength={length + 1.0} forceFullCoverage={true} />
                 </group>
             </group>
