@@ -642,7 +642,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={crossHeightData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={crossHeightData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[0, crossHeightData.hVal / 2, 0]} // Text shifted 50cm RIGHT (from -0.5 to 0)
+                        position={[0, crossHeightData.hVal / 2, 0.3]} // Text shifted to Z=0.3 to match lines
                         rotation={[0, 0, 0]}
                         fontSize={0.8}
                         color={textColor}

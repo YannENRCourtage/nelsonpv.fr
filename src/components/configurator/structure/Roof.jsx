@@ -120,10 +120,10 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
             lift += 0.60;
             if (Math.abs(width - 11.3) < 0.1) {
                 lift += 0.25; // Previous raise
-                lift -= 0.45; // USER REQUEST 15/01/2026: Lower by 45cm total (-30 -15)
+                lift -= 0.40; // USER REQUEST 15/01/2026: Lower by 40cm total (-30 -15 +5)
             }
             if (Math.abs(width - 9.1) < 0.1) {
-                lift -= 0.20; // USER REQUEST 15/01/2026: Lower by 20cm
+                lift -= 0.15; // USER REQUEST 15/01/2026: Lower by 15cm (-20 +5)
             }
         }
         if (isOmbriereSimple) lift -= 0.40;
