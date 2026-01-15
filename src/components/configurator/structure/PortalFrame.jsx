@@ -572,94 +572,53 @@ export function PortalFrame({
     const isOmbriereDouble = buildingType === 'ombriere_vl_double';
 
     if (isOmbriereSimple || isOmbriereDouble) {
-        const isDroite = buildingType === 'ombriere_vl_simple_droite'; // Pente descendant vers la droite (Haut à Gauche)
+        const isDroite = buildingType === 'ombriere_vl_simple_droite';
 
         // Slope Logic:
-        // Simple Droite & Double: Down-Right (Negative RotZ)
-        // Simple Gauche: Up-Right? No, user said "same as simple droite" for Double? 
-        // Logic for Simple was unified to -slopeRad.
-        // For Double, let's stick to -slopeRad (High Left, Low Right).
-
+        // Combined to always slope down-right for these types
         const slopeRad = (roofPitch * Math.PI) / 180;
         const rotZ = -slopeRad; // Fixed to Down-Right
 
         // Rafter
-        // Length covers entire width adjusted for slope
         const rafterLen = width / Math.cos(slopeRad);
         const rafterGeo = createRafterGeo(rafterLen);
 
-        // Strut Shifting Logic:
-        // User Request: "Toutes les ombrières VL ... charpentes doivent être centrées"
-        // So we Force strutShift = 0 for both Simple and Double.
+        // Strut Shifting Logic (From Backup)
+        // "Droite": Shift 1m Left (towards Faitage). 
+        // "Gauche": Shift 1m Right (towards Sablière).
+        // "Double": Centered (0).
         let strutShift = 0;
+        if (buildingType === 'ombriere_vl_simple_gauche') strutShift = 1.0;
+        if (buildingType === 'ombriere_vl_simple_droite') strutShift = -1.0;
 
-        // Base Strut Positions (Centered relative to strutShift)
-        // User Request: Center everything.
-        // We will use the standard dimensions. 
-        // For Simple, previously we had specific offsets. Now we center.
-
-        let xBot1, xBot2, xTop1, xTop2;
-
-        // Use dimensions that look correct for centering (similar to Double)
-        // Base width = 1.7m => +/- 0.85
-        // Top width = 2.25m => +/- 1.125
-        let baseHalf = 1.7 / 2;
-        const topHalf = 2.25 / 2;
-        // USER REQUEST 14/01/2026: 11.3m Double specific spacing (2.2m width base)
-        // User wants "légèrement oblique". Current Top 2.25m, Base 2.2m -> Too vertical.
-        // Let's widen the top to 2.6m (TopHalf 1.3) to give it a V shape.
-        let localTopHalf = topHalf;
-        if (isOmbriereDouble && Math.abs(width - 11.3) < 0.1) {
-            baseHalf = 2.2 / 2; // 1.1m
-            localTopHalf = 2.6 / 2; // 1.3m -> Creates obliqueness
-        }
-
-        // ...
-
-        // USER REQUEST 14/01/2026: Shift struts for Ombrière VL Simple
-        let offsetX = 0;
-        if (buildingType === 'ombriere_vl_simple_gauche') offsetX = -1.0;
-        if (buildingType === 'ombriere_vl_simple_droite') offsetX = 1.0;
-
-        // Use localTopHalf
-        xTop1 = -localTopHalf + offsetX;
-        xTop2 = localTopHalf + offsetX;
+        // Base Strut Positions (From Backup Dimensions)
+        // Bottom: Spaced by 1m (+/- 0.5)
+        // Top: Spaced by 3m (+/- 1.5) to create V
+        const xBot1 = -0.5 + strutShift;
+        const xBot2 = 0.5 + strutShift;
+        const xTop1 = -1.5 + strutShift;
+        const xTop2 = 1.5 + strutShift;
 
         // Base Horizontal Position
-        // USER REQUEST 14/01/2026: "Obliques jusqu'au sol" -> Base 0.
+        // USER REQUEST: "Obliques jusqu'au sol" -> Base 0.0
         const baseHeight = 0.0;
 
-        // Rafter Underside Equation
-        // Center of Rafter at [0, centerHeight, 0] of the GROUP.
-        // EaveHeight usually refers to the lowest point. 
-        // For "Simple Droite", Eave is Right. Ridge is Left.
-        // centerHeight = eaveHeight + (width/2 * tan) ?
-
-        // However, `eaveHeight` prop passed in is usually the one set in store.
-        // In store we set: 9.1m -> 3.0m (Low/Right). 
-        // So Center Height = 3.0 + (Width/2 * tan(slope)).
+        // Center Height Logic
+        // Calculate based on eaveHeight + rise to midpoint
         const midRise = (width / 2) * Math.tan(slopeRad);
         let centerHeight = eaveHeight + midRise;
 
-        // USER REQUEST 14/01/2026: Height Adjustments
-        // Ombrière VL Double: Lower by 1m, then Raise by 0.80m. Net = -0.20m.
+        // Height Adjustments
         if (isOmbriereDouble) {
             centerHeight -= 0.20;
         }
-        // Ombrière VL Simple: Raise by 30cm (Base). Coverage/Purlins raised further (+35cm) in their components.
         if (isOmbriereSimple) {
             centerHeight += 0.30;
         }
 
         // Custom Strut Creator
         const createStrut = (xBot, xTop) => {
-            // Calculate exact Y at intersection with slanted rafter underside
-            // Rafter line: y = centerHeight + x * tan(rotZ) 
-            // (rotZ is negative, so x positive -> y lower)
-            // Strut top is at xTop.
-            // Offset -0.2 (approx rafter half thickness/connection)
             const yTarget = centerHeight + (xTop * Math.tan(rotZ)) - 0.2;
-
             const start = new THREE.Vector3(xBot, baseHeight, 0);
             const end = new THREE.Vector3(xTop, yTarget, 0);
             const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
@@ -682,89 +641,40 @@ export function PortalFrame({
                 {createStrut(xBot1, xTop1)}
                 {createStrut(xBot2, xTop2)}
 
-                {/* Custom 11.3m Horizontal Bar & Cross Logic */}
+                {/* SAINT ANDREW'S CROSS (Croix de Saint-André) - Logic from Backup */}
                 {(() => {
-                    const is11m = isOmbriereDouble && Math.abs(width - 11.3) < 0.1;
-                    const yHoriz = 2.2;
-
-                    // Standard Top Points (Under Rafter)
                     const yTop1 = centerHeight + (xTop1 * Math.tan(rotZ)) - 0.2;
                     const yTop2 = centerHeight + (xTop2 * Math.tan(rotZ)) - 0.2;
 
-                    const getXatY = (xBot, yBot, xTop, yTop, y) => {
-                        if (y < yBot) return xBot;
-                        if (y > yTop) return xTop;
-                        return xBot + (y - yBot) * ((xTop - xBot) / (yTop - yBot));
-                    };
+                    // Start from almost the bottom
+                    const pBot1 = new THREE.Vector3(xBot1, baseHeight + 0.1, 0);
+                    const pBot2 = new THREE.Vector3(xBot2, baseHeight + 0.1, 0);
 
-                    const createBar = (start, end, thick = 0.05, isCylinder = false) => {
+                    // End almost at the top
+                    const pTop1 = new THREE.Vector3(xTop1, yTop1 - 0.1, 0);
+                    const pTop2 = new THREE.Vector3(xTop2, yTop2 - 0.1, 0);
+
+                    const createBar = (start, end) => {
                         const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
                         const len = start.distanceTo(end);
                         const dx = end.x - start.x;
                         const dy = end.y - start.y;
                         const angle = -Math.atan2(dx, dy);
-
-                        if (isCylinder) {
-                            return (
-                                <mesh position={mid} rotation={[0, 0, angle]} castShadow key={mid.x}>
-                                    <cylinderGeometry args={[thick, thick, len, 8]} />
-                                    <meshStandardMaterial color="#4A5568" roughness={0.8} />
-                                </mesh>
-                            );
-                        }
-
+                        // Thinner profile for cross bracing (e.g., 5cm)
                         return (
-                            <mesh position={mid} rotation={[0, 0, angle]} castShadow key={mid.x}>
-                                <boxGeometry args={[thick, len, thick]} />
+                            <mesh position={mid} rotation={[0, 0, angle]} castShadow>
+                                <boxGeometry args={[0.05, len, 0.05]} />
                                 <meshStandardMaterial color="#4A5568" roughness={0.8} />
                             </mesh>
                         );
                     };
 
-                    const elements = [];
-
-                    if (is11m) {
-                        // --- 11.3m Double Logic ---
-                        const xH1 = getXatY(xBot1, baseHeight, xTop1, yTop1, yHoriz);
-                        const xH2 = getXatY(xBot2, baseHeight, xTop2, yTop2, yHoriz);
-                        const hStart = new THREE.Vector3(xH1, yHoriz, 0);
-                        const hEnd = new THREE.Vector3(xH2, yHoriz, 0);
-                        elements.push(createBar(hStart, hEnd, 0.10)); // Horizontal
-
-                        // Upper Cross
-                        const cBot1 = new THREE.Vector3(xH1, yHoriz, 0);
-                        const cBot2 = new THREE.Vector3(xH2, yHoriz, 0);
-                        const cTop1 = new THREE.Vector3(xTop1, yTop1 - 0.1, 0);
-                        const cTop2 = new THREE.Vector3(xTop2, yTop2 - 0.1, 0);
-
-                        elements.push(createBar(cBot1, cTop2));
-                        elements.push(createBar(cBot2, cTop1));
-
-                    } else if (isOmbriereSimple) {
-                        // --- Simple VL Logic (Full Cross requested) ---
-                        // Full length from Base to Top
-                        const sBot1 = new THREE.Vector3(xBot1, baseHeight, 0);
-                        const sBot2 = new THREE.Vector3(xBot2, baseHeight, 0);
-                        const sTop1 = new THREE.Vector3(xTop1, yTop1, 0);
-                        const sTop2 = new THREE.Vector3(xTop2, yTop2, 0);
-
-                        // Thinner Cylinder (Cable/Tie style)
-                        elements.push(createBar(sBot1, sTop2, 0.02, true));
-                        elements.push(createBar(sBot2, sTop1, 0.02, true));
-
-                    } else {
-                        // --- Standard Double Logic (9.1m - Image 1) ---
-                        // Full Cross, Thin Cylinders (Same as Simple VL)
-                        const dBot1 = new THREE.Vector3(xBot1, baseHeight, 0);
-                        const dBot2 = new THREE.Vector3(xBot2, baseHeight, 0);
-                        const dTop1 = new THREE.Vector3(xTop1, yTop1, 0);
-                        const dTop2 = new THREE.Vector3(xTop2, yTop2, 0);
-
-                        elements.push(createBar(dBot1, dTop2, 0.02, true));
-                        elements.push(createBar(dBot2, dTop1, 0.02, true));
-                    }
-
-                    return <group>{elements}</group>;
+                    return (
+                        <group>
+                            {createBar(pBot1, pTop2)}
+                            {createBar(pBot2, pTop1)}
+                        </group>
+                    );
                 })()}
 
                 {/* Rafter */}
@@ -774,8 +684,6 @@ export function PortalFrame({
                 </group>
 
                 {/* Foundation Block (Hidden for ALL Ombrière VL as requested) */}
-                {/* User request: "Les plots bétons ne doit pas apparaîtrent" (implied for all VL) */}
-                {/* We remove the block mesh conditional entirely or ensure it's false */}
             </group>
         );
 
