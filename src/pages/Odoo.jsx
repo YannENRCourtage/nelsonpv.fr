@@ -99,7 +99,7 @@ const DraggableCard = ({ project, onClick, getUserName, className }) => {
             </div>
 
             <div className="text-xs text-gray-500 mb-2">
-                <p className="line-clamp-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">{project.type || "Type non défini"}</p>
+                <p className="line-clamp-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">{project.type || "Construction"}</p>
                 <p className="mt-1 font-medium text-gray-700">{project.clientName || `${project.firstName || ''} ${project.name || ''}`.trim()}</p>
                 {project.city && <p className="text-xs mt-0.5 text-gray-400">{project.city} {project.zip}</p>}
             </div>
@@ -586,7 +586,7 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
                         <div className="grid grid-cols-12 gap-6 mb-12">
                             <div className="col-span-4 space-y-1.5">
                                 <label className="text-xs font-medium text-gray-500 uppercase">Description</label>
-                                <div className="font-medium text-gray-900">{project.type || "Installation PV"}</div>
+                                <div className="font-medium text-gray-900">{project.type || "Construction"}</div>
                             </div>
 
                             <div className="col-span-4 space-y-1.5">
