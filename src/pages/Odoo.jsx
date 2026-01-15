@@ -1008,12 +1008,6 @@ export default function Odoo() {
             // If actively in a stage, show it
             if (p.odooStage && stages.includes(p.odooStage)) return true;
 
-            // Check Exclusion List
-            // Explicit check: if project name is in exclusion list OR matched via substring specific logic if needed
-            // Using exact match on Name or "Projet sans nom" logic
-            const name = p.name || "Projet sans nom";
-            if (EXCLUDED_PROJECTS.some(excluded => name.includes(excluded))) return false;
-
             return true;
         });
 
