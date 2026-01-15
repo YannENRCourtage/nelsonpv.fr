@@ -154,7 +154,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
                         forceFullCoverage={true}
                         stretchToFit={isOmbrierePL}
                         customGap={
-                            (isOmbrierePL && Math.abs(width - 20.2) < 0.1) ? -0.45 :
+                            (isOmbrierePL && Math.abs(width - 20.2) < 0.1) ? -0.55 :
                                 (isOmbrierePL && Math.abs(width - 24.6) < 0.1) ? -0.25 :
                                     (isOmbriereDouble && Math.abs(width - 11.3) < 0.1) ? -0.15 : null
                         }
