@@ -8,9 +8,9 @@ const UserAvatar = ({ name, email, showName = true, photoURL = null, size = "w-8
     const localAvatars = {
         'Nicolas DESAINT': '/avatars/nicolas_desaint.jpg',
         'nicolas desaint': '/avatars/nicolas_desaint.jpg',
-        'Nicolas': '/avatars/nico.png',
-        'Nico': '/avatars/nico.png',
-        'NicolasNMD': '/avatars/nico.png',
+        'Nicolas': '/avatars/nico_avatar.jpg',
+        'Nico': '/avatars/nico_avatar.jpg',
+        'NicolasNMD': '/avatars/nicolas_nmd_avatar.jpg',
         'Yann': '/avatars/yann.jpg',
         'yann': '/avatars/yann.jpg',
         'Véronique': '/avatars/veronique.png',
