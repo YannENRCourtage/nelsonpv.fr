@@ -1291,9 +1291,7 @@ export default function Crm() {
 
                         // Avatar lookup
                         let photoURL = null;
-                        if (localAvatars[creatorName]) {
-                          photoURL = localAvatars[creatorName];
-                        } else if (!project.commercial && creatorId && users.length > 0) {
+                        if (!project.commercial && creatorId && users.length > 0) {
                           const creator = users.find(u => u.id === creatorId);
                           if (creator && creator.photoURL) {
                             photoURL = creator.photoURL;
