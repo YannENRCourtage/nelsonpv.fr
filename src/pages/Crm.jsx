@@ -1279,14 +1279,23 @@ export default function Crm() {
                     </td>
                     <td className="px-6 py-4">
                       {(() => {
-                        // Commercial = Creator
-                        let creatorName = project.createdByFirstName || project.user || 'Inconnu';
-                        let photoURL = null;
+                        const name = project.name || '';
+                        const creatorId = project.createdBy;
+                        let creatorName = project.commercial || project.createdByFirstName || project.user || 'Yann';
 
-                        if (project.createdBy && users.length > 0) {
-                          const creator = users.find(u => u.id === project.createdBy);
-                          if (creator) {
-                            creatorName = creator.firstName || creator.displayName;
+                        // If NOT explicit commercial override, try to resolve user from ID
+                        if (!project.commercial && creatorId && users.length > 0) {
+                          const u = users.find(user => user.id === creatorId);
+                          if (u) creatorName = u.firstName || u.displayName || creatorName;
+                        }
+
+                        // Avatar lookup
+                        let photoURL = null;
+                        if (localAvatars[creatorName]) {
+                          photoURL = localAvatars[creatorName];
+                        } else if (!project.commercial && creatorId && users.length > 0) {
+                          const creator = users.find(u => u.id === creatorId);
+                          if (creator && creator.photoURL) {
                             photoURL = creator.photoURL;
                           }
                         }
@@ -1294,10 +1303,7 @@ export default function Crm() {
                         return (
                           <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full ${getUserColor(creatorName)} w-fit pr-5 text-left`}>
                             <div className="w-8 h-8 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
-                              {photoURL ?
-                                <img src={photoURL} className="w-full h-full object-cover" /> :
-                                <span className="flex items-center justify-center w-full h-full text-xs font-bold">{creatorName?.[0]}</span>
-                              }
+                              <UserAvatar name={creatorName} photoURL={photoURL} size="w-full h-full" showName={false} />
                             </div>
                             <span className="text-sm font-bold truncate max-w-[120px]">{creatorName}</span>
                           </div>

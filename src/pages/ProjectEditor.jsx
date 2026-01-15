@@ -492,20 +492,34 @@ export default function ProjectEditor() {
             <div className="flex gap-4 items-end">
               <div>
                 <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Commercial</label>
-                <div className="h-10 px-3 py-2 bg-gray-100 border border-gray-200 rounded-md text-sm font-medium text-gray-700 flex items-center min-w-[120px]">
-                  {(() => {
-                    // Try to resolve createdBy using projectUsers locally if available
-                    // Note: projectUsers is state in this component
-                    const creatorId = p.createdBy;
+                <Select
+                  value={p.commercial || (function () {
+                    // Fallback to createdByUser logic if no explicit commercial set
                     let creatorName = p.createdByFirstName || p.user || 'Yann';
-
+                    const creatorId = p.createdBy;
                     if (creatorId && projectUsers.length > 0) {
                       const u = projectUsers.find(user => user.id === creatorId);
                       if (u) creatorName = u.firstName || u.displayName || creatorName;
                     }
                     return creatorName;
                   })()}
-                </div>
+                  onValueChange={(v) => updateProject({ commercial: v })}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Yann">Yann</SelectItem>
+                    <SelectItem value="Jack">Jack</SelectItem>
+                    <SelectItem value="Nicolas">Nicolas</SelectItem>
+                    <SelectItem value="NicolasNMD">NicolasNMD</SelectItem>
+                    <SelectItem value="Laurent">Laurent</SelectItem>
+                    <SelectItem value="Elodie">Elodie</SelectItem>
+                    <SelectItem value="Véronique">Véronique</SelectItem>
+                    <SelectItem value="Aurélien">Aurélien</SelectItem>
+                    <SelectItem value="Contact">Contact</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
