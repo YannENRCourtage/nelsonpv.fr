@@ -138,14 +138,10 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         let xShift = 0;
         let yShift = 0;
         if (isOmbrierePL) {
-            // Shift along Rotated Axis.
-            // slopeLen = width / cos.
-            // shift = slopeLen * 0.5.
-            // This shift is in Local X of the Rotated Group.
-            // We can just add it to the position logic inside the group or shift the group?
-            // The group is at `rotation={[0, 0, rotZ]}`.
-            // If we shift inside: `position={[xShift, 0, 0]}`.
-            xShift = slopeLen * 0.5;
+            // Rotation is handled by group.
+            // USER REQUEST 15/01/2026: Shift 50% Left.
+            // Previous was `xShift = slopeLen * 0.5`. Removing it (setting to 0) shifts it left by half-width.
+            xShift = 0;
         }
 
         return (
