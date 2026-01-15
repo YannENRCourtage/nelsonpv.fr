@@ -1306,12 +1306,13 @@ export default function Crm() {
                     </td>
                     <td className="px-6 py-4">
                       {(() => {
-                        const projectUser = project.assignedUser || project.createdByFirstName || (typeof project.user === 'string' ? project.user : 'Utilisateur');
+                        // Default to 'Yann' to match Project Editor behavior if assignedUser is missing
+                        const projectUser = project.assignedUser || 'Yann';
 
                         return (
                           <div className="flex items-center gap-3 w-fit pr-5 text-left">
                             <UserAvatar name={projectUser} size="w-8 h-8" showName={false} />
-                            <span className="text-sm font-bold truncate max-w-[120px]">{projectUser === 'Utilisateur' ? 'Non assigné' : projectUser}</span>
+                            <span className="text-sm font-bold truncate max-w-[120px]">{projectUser}</span>
                           </div>
                         );
                       })()}
