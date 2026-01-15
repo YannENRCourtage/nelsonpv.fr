@@ -117,6 +117,12 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
         if (buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche') {
             centerHeight -= 0.40;
         }
+
+        // USER REQUEST 15/01/2026: Specific adjustments for VL Double
+        if (buildingType === 'ombriere_vl_double') {
+            if (Math.abs(width - 9.1) < 0.1) centerHeight -= 0.30;
+            else if (Math.abs(width - 11.3) < 0.1) centerHeight -= 0.50;
+        }
         if (buildingType === 'ombriere_vl_double') {
             // VL Double base adjustment to match roof lift? 
             // Roof has lift +0.60 + 0.25 = 0.85 (inc 0.2 rafter).

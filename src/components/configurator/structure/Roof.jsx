@@ -118,7 +118,10 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
             // Previous logic added +0.60 relative to structure. 
             // We keep this because the structure moved down, so the relative cover position is same.
             lift += 0.60;
-            if (Math.abs(width - 11.3) < 0.1) lift += 0.25; // 11.3m specific raise
+            if (Math.abs(width - 11.3) < 0.1) {
+                lift += 0.25; // Previous raise
+                lift -= 0.30; // USER REQUEST 15/01/2026: Lower by 30cm
+            }
         }
         if (isOmbriereSimple) lift -= 0.40;
 

@@ -575,7 +575,31 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     return (
         <group>
-            {/* ... (Existing Renders) ... */}
+            {/* 1. WIDTH MARKER */}
+            {widthPoints && (
+                <group>
+                    <Line points={widthPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={widthStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={widthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text position={[0, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                        {`${width} m`}
+                    </Text>
+                </group>
+            )}
+
+            {/* 2. LENGTH MARKER */}
+            {lengthPoints && (
+                <group>
+                    <Line points={lengthPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={lengthPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={lengthStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={lengthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text position={[xSide + 0.5, 0.2, -length / 2]} rotation={[-Math.PI / 2, 0, -Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                        {`${length} m`}
+                    </Text>
+                </group>
+            )}
 
             {/* 3. EAVE HEIGHT (Left/Standard) - EXCLUDE Asym 2 (has specific markers) */}
             {heightPoints && buildingType !== 'asymetrique_2' && (

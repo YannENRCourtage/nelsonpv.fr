@@ -641,14 +641,60 @@ export function PortalFrame({
                 {createStrut(xBot1, xTop1)}
                 {createStrut(xBot2, xTop2)}
 
+                {/* HORIZONTAL BAR (Double 11.3m only) */}
+                {(() => {
+                    if (isOmbriereDouble && Math.abs(width - 11.3) < 0.1) {
+                        const hBarHeight = 2.2;
+                        const yTop1 = centerHeight + (xTop1 * Math.tan(rotZ)) - 0.2;
+                        const yTop2 = centerHeight + (xTop2 * Math.tan(rotZ)) - 0.2;
+
+                        // Interpolate X at hBarHeight
+                        const t1 = (hBarHeight - baseHeight) / (yTop1 - baseHeight);
+                        const xL = xBot1 + (xTop1 - xBot1) * t1;
+
+                        const t2 = (hBarHeight - baseHeight) / (yTop2 - baseHeight);
+                        const xR = xBot2 + (xTop2 - xBot2) * t2;
+
+                        const len = Math.abs(xR - xL);
+                        const cx = (xL + xR) / 2;
+
+                        return (
+                            <mesh position={[cx, hBarHeight, 0]} castShadow>
+                                <boxGeometry args={[len + 0.15, 0.15, 0.15]} />
+                                <meshStandardMaterial color="#8a949b" metalness={0.6} roughness={0.4} />
+                            </mesh>
+                        );
+                    }
+                    return null;
+                })()}
+
                 {/* SAINT ANDREW'S CROSS (Croix de Saint-André) - Logic from Backup */}
                 {(() => {
                     const yTop1 = centerHeight + (xTop1 * Math.tan(rotZ)) - 0.2;
                     const yTop2 = centerHeight + (xTop2 * Math.tan(rotZ)) - 0.2;
 
-                    // Start from almost the bottom
-                    const pBot1 = new THREE.Vector3(xBot1, baseHeight + 0.1, 0);
-                    const pBot2 = new THREE.Vector3(xBot2, baseHeight + 0.1, 0);
+
+
+                    // Start from base or Horizontal Bar
+                    let startY = baseHeight + 0.1;
+                    if (isOmbriereDouble && Math.abs(width - 11.3) < 0.1) {
+                        startY = 2.2 + 0.15 / 2; // Top of horizontal bar
+                    }
+
+                    const pBot1 = new THREE.Vector3(xBot1, startY, 0);
+                    const pBot2 = new THREE.Vector3(xBot2, startY, 0);
+
+                    // Update X positions for pBot if starting higher (interpolated)
+                    if (startY > baseHeight + 0.2) {
+                        // Interpolate X at startY
+                        const t1 = (startY - baseHeight) / (yTop1 - baseHeight);
+                        pBot1.x = xBot1 + (xTop1 - xBot1) * t1;
+
+                        const t2 = (startY - baseHeight) / (yTop2 - baseHeight);
+                        pBot2.x = xBot2 + (xTop2 - xBot2) * t2;
+                        pBot1.y = startY;
+                        pBot2.y = startY;
+                    }
 
                     // End almost at the top
                     const pTop1 = new THREE.Vector3(xTop1, yTop1 - 0.1, 0);
