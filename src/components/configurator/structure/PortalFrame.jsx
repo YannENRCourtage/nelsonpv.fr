@@ -556,6 +556,59 @@ export function PortalFrame({
                     <mesh geometry={rafterGeo} material={steelMaterial} position={[isOmbrierePL ? (rafterLen * 0.5) : 0, 0, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow />
                 </group>
 
+                {/* BRACING (Croix de St André) for 15.8m PL */}
+                {Math.abs(width - 15.8) < 0.1 && (() => {
+                    // Columns at -4 and +4.
+                    const x1 = -4.0;
+                    const x2 = 4.0;
+                    // Calculate Top Heights (under rafter)
+                    const yTop1 = eaveHeight + (width / 2 - x1) * Math.tan(slopeRad) - 0.2;
+                    const yTop2 = eaveHeight + (width / 2 - x2) * Math.tan(slopeRad) - 0.2;
+                    const yBot = 0.0;
+
+                    // 1. Calculate Intersection Height for Horizontal Beam
+                    // yTop2 < yTop1 (slope down to right)
+                    // Line 1 (x1,0) to (x2, yTop2) -> y = (yTop2 / 8) * (x + 4)
+                    // Line 2 (x2,0) to (x1, yTop1) -> y = (yTop1 / -8) * (x - 4)
+                    // Intersection X: 4 * (yTop1 - yTop2) / (yTop1 + yTop2)
+                    const intersectX = 4 * (yTop1 - yTop2) / (yTop1 + yTop2);
+                    const intersectY = (yTop2 / 8) * (intersectX + 4);
+
+                    // 2. Horizontal Beam
+                    const beamGeo = <mesh position={[0, intersectY, 0]} castShadow>
+                        <boxGeometry args={[8.0, 0.15, 0.15]} />
+                        <meshStandardMaterial color="#8a949b" metalness={0.6} roughness={0.4} />
+                    </mesh>;
+
+                    // 3. Cross Bracing
+                    const p1Bot = new THREE.Vector3(x1, yBot + 0.1, 0);
+                    const p2Bot = new THREE.Vector3(x2, yBot + 0.1, 0);
+                    const p1Top = new THREE.Vector3(x1, yTop1 - 0.1, 0);
+                    const p2Top = new THREE.Vector3(x2, yTop2 - 0.1, 0);
+
+                    const createBar = (start, end) => {
+                        const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+                        const len = start.distanceTo(end);
+                        const dx = end.x - start.x;
+                        const dy = end.y - start.y;
+                        const angle = -Math.atan2(dx, dy);
+                        return (
+                            <mesh position={mid} rotation={[0, 0, angle]} castShadow>
+                                <boxGeometry args={[0.05, len, 0.05]} />
+                                <meshStandardMaterial color="#4A5568" roughness={0.8} />
+                            </mesh>
+                        );
+                    };
+
+                    return (
+                        <group>
+                            {beamGeo}
+                            {createBar(p1Bot, p2Top)}
+                            {createBar(p2Bot, p1Top)}
+                        </group>
+                    );
+                })()}
+
                 {/* No struts (Bracons) for PL based on images? 
                     Images show bracing (Croix de St André) between columns but no diagonal struts (bracons) under rafters? 
                     Actually Image 1 shows a small knee brace (jarret) or simple connection. 

@@ -823,6 +823,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             if (buildingType === 'ombriere_vl_double') {
                                 baseHeight += 1.0; // Raise by additional 1m for Double
                             }
+                            if (buildingType === 'ombriere_pl') {
+                                baseHeight += 1.0; // USER REQUEST 15/01/2026: Raise by 1m for PL
+                            }
                         }
                         return baseHeight;
                     })(),
