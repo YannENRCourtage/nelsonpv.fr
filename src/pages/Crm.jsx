@@ -1304,15 +1304,16 @@ export default function Crm() {
                         );
                       })()}
                     </td>
-                    <td className="px-6 py-4">
-                      const projectUser = project.assignedUser || project.createdByFirstName || (typeof project.user === 'string' ? project.user : 'Utilisateur');
+                      {(() => {
+                        const projectUser = project.assignedUser || project.createdByFirstName || (typeof project.user === 'string' ? project.user : 'Utilisateur');
 
-                      return (
-                      <div className="flex items-center gap-3 w-fit pr-5 text-left">
-                        <UserAvatar name={projectUser} size="w-8 h-8" showName={false} />
-                        <span className="text-sm font-bold truncate max-w-[120px]">{projectUser === 'Utilisateur' ? 'Non assigné' : projectUser}</span>
-                      </div>
-                      );
+                        return (
+                          <div className="flex items-center gap-3 w-fit pr-5 text-left">
+                            <UserAvatar name={projectUser} size="w-8 h-8" showName={false} />
+                            <span className="text-sm font-bold truncate max-w-[120px]">{projectUser === 'Utilisateur' ? 'Non assigné' : projectUser}</span>
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-6 py-4 text-slate-600">{project.address || '-'}</td>
                     <td className="px-6 py-4 text-slate-600">{project.zip || '-'}</td>
@@ -1361,46 +1362,46 @@ export default function Crm() {
                     </td>
                   </tr>
                 ))}
-                {projects.length === 0 && (
-                  <tr>
-                    <td colSpan="7" className="px-6 py-8 text-center text-slate-500">
-                      Aucun projet trouvé. Créez votre premier projet !
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+              {projects.length === 0 && (
+                <tr>
+                  <td colSpan="7" className="px-6 py-8 text-center text-slate-500">
+                    Aucun projet trouvé. Créez votre premier projet !
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
           </div>
-        ) : (
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.filter(p =>
-              (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-              (p.city || '').toLowerCase().includes(searchTerm.toLowerCase())
-            ).map((project) => (
-              <div key={project.id} className="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="font-bold text-lg text-slate-800">{project.projectSize || project.name || 'Projet'}</div>
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                    {project.type || 'Standard'}
-                  </span>
-                </div>
-                <div className="text-sm text-slate-600 mb-4">
-                  <div>{project.name} {project.firstName}</div>
-                  <div className="flex items-center gap-1 mt-1"><MapPin size={14} /> {project.city || '?'}</div>
-                </div>
-                <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
-                  <Button size="sm" className="flex-1 bg-blue-600" onClick={() => navigate(`/project/${project.id}/edit`)}>Ouvrir</Button>
-                  <Button size="sm" variant="ghost" className="text-red-500" onClick={() => {
-                    if (window.confirm("Supprimer ce projet ?")) {
-                      toast({ title: "Info", description: "Suppression non implémentée depuis cette vue." });
-                    }
-                  }}><Trash2 size={16} /></Button>
-                </div>
-              </div>
-            ))}
+      ) : (
+      <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {projects.filter(p =>
+          (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (p.city || '').toLowerCase().includes(searchTerm.toLowerCase())
+        ).map((project) => (
+          <div key={project.id} className="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+            <div className="flex justify-between items-start mb-2">
+              <div className="font-bold text-lg text-slate-800">{project.projectSize || project.name || 'Projet'}</div>
+              <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                {project.type || 'Standard'}
+              </span>
+            </div>
+            <div className="text-sm text-slate-600 mb-4">
+              <div>{project.name} {project.firstName}</div>
+              <div className="flex items-center gap-1 mt-1"><MapPin size={14} /> {project.city || '?'}</div>
+            </div>
+            <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
+              <Button size="sm" className="flex-1 bg-blue-600" onClick={() => navigate(`/project/${project.id}/edit`)}>Ouvrir</Button>
+              <Button size="sm" variant="ghost" className="text-red-500" onClick={() => {
+                if (window.confirm("Supprimer ce projet ?")) {
+                  toast({ title: "Info", description: "Suppression non implémentée depuis cette vue." });
+                }
+              }}><Trash2 size={16} /></Button>
+            </div>
           </div>
-        )}
+        ))}
       </div>
+        )}
+    </div>
     </div >
   );
 
