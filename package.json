@@ -33,6 +33,7 @@
     "@react-leaflet/core": "^2.1.0",
     "@react-three/drei": "^9.88.17",
     "@react-three/fiber": "^8.15.19",
+    "@vercel/analytics": "^1.6.1",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
