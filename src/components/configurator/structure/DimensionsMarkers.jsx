@@ -594,7 +594,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={lengthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
                         position={[xSide + 0.5, 0.2, -length / 2]}
-                        rotation={buildingType.startsWith('ombriere') ? [-Math.PI / 2, 0, Math.PI / 2] : [-Math.PI / 2, 0, -Math.PI / 2]}
+                        rotation={[-Math.PI / 2, 0, Math.PI / 2]}
                         fontSize={0.8}
                         color={textColor}
                         anchorX="center"
