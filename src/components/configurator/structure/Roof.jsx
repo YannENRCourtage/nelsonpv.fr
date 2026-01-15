@@ -155,7 +155,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
                         stretchToFit={isOmbrierePL}
                         customGap={(() => {
                             // Specific fix for Ombrière PL 20.2m (all bay counts)
-                            if (isOmbrierePL && Math.abs(width - 20.2) < 0.1) return -0.15;
+                            if (isOmbrierePL && Math.abs(width - 20.2) < 0.1) return -0.25;
                             // Fix for PL 24.6m
                             if (isOmbrierePL && Math.abs(width - 24.6) < 0.1) return -0.06;
                             // Fix for VL Double 11.3m
