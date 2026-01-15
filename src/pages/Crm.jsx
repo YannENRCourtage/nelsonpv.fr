@@ -1403,7 +1403,8 @@ export default function Crm() {
           </div>
         )}
       </div>
-      );
+    </div>
+  );
 
   // Rendu des Rapports
   const renderReports = () => {
@@ -1412,22 +1413,22 @@ export default function Crm() {
     const projectsCompleted = projects.filter(p => p.status === 'Terminé').length;
     const projectConversionRate = projectsTotal > 0 ? (projectsCompleted / projectsTotal * 100).toFixed(1) : '0';
 
-      const contactsTotal = contacts.length;
+    const contactsTotal = contacts.length;
     const contactsClients = contacts.filter(c => c.status === 'Client').length;
     const contactConversionRate = contactsTotal > 0 ? (contactsClients / contactsTotal * 100).toFixed(1) : '0';
 
-      const statusDistribution = [
-      {name: 'Nouveau', count: projects.filter(p => !p.status || p.status === 'Nouveau' || p.status === 'draft').length, color: 'bg-blue-500' },
-      {name: 'En cours', count: projects.filter(p => p.status === 'En cours').length, color: 'bg-yellow-500' },
-      {name: 'Terminé', count: projects.filter(p => p.status === 'Terminé').length, color: 'bg-green-500' },
-      ];
+    const statusDistribution = [
+      { name: 'Nouveau', count: projects.filter(p => !p.status || p.status === 'Nouveau' || p.status === 'draft').length, color: 'bg-blue-500' },
+      { name: 'En cours', count: projects.filter(p => p.status === 'En cours').length, color: 'bg-yellow-500' },
+      { name: 'Terminé', count: projects.filter(p => p.status === 'Terminé').length, color: 'bg-green-500' },
+    ];
 
-      // Group projects by User
-      const userStats = { };
+    // Group projects by User
+    const userStats = {};
     projects.forEach(p => {
       // Priorité : assignedUser > createdByFirstName > user > 'Non assigné'
       const u = p.user || p.assignedUser || p.createdByFirstName || 'Non assigné';
-      if (!userStats[u]) userStats[u] = {name: u, nouveau: 0, enCours: 0, termine: 0, score: 0 };
+      if (!userStats[u]) userStats[u] = { name: u, nouveau: 0, enCours: 0, termine: 0, score: 0 };
 
       const pStatus = p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau');
 
@@ -1441,13 +1442,13 @@ export default function Crm() {
       }
     });
 
-      const usersList = Object.values(userStats);
+    const usersList = Object.values(userStats);
     const sortedByNew = [...usersList].sort((a, b) => b.nouveau - a.nouveau);
     const sortedByRunning = [...usersList].sort((a, b) => b.enCours - a.enCours);
     const sortedByFinished = [...usersList].sort((a, b) => b.termine - a.termine);
     const sortedByOpp = [...usersList].sort((a, b) => b.score - a.score);
 
-      const RankingCard = ({title, icon: Icon, data, countKey, colorBg, colorText, colorBorder }) => (
+    const RankingCard = ({ title, icon: Icon, data, countKey, colorBg, colorText, colorBorder }) => (
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col h-full">
         <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
           <Icon className={`w-5 h-5 ${colorText}`} />
@@ -1470,9 +1471,9 @@ export default function Crm() {
           )}
         </div>
       </div>
-      );
+    );
 
-      return (
+    return (
       <div className="space-y-6">
         {/* KPIs Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1606,137 +1607,137 @@ export default function Crm() {
           </div>
         </div>
       </div>
-      );
+    );
   };
 
-      // Les modales sont maintenant rendues directement dans le JSX principal ou via des composants externes
+  // Les modales sont maintenant rendues directement dans le JSX principal ou via des composants externes
 
 
-      return (
-      <div className="flex h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100" >
-        {/* Sidebar */}
-        < div className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex flex-col shadow-2xl" >
-          {/* Logo */}
-          < div className="p-6 border-b border-slate-700" >
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              CRM Pro
-            </h1>
-            <p className="text-xs text-slate-400 mt-1">Gestion clients</p>
-          </div >
-
-          {/* Navigation */}
-          < nav className="flex-1 p-4 space-y-1" >
-            {
-              navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg shadow-blue-500/50'
-                      : 'hover:bg-slate-700/50'
-                      }`}
-                  >
-                    <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                    <span className={`font-medium ${isActive ? 'text-white' : 'text-slate-300'}`}>
-                      {item.label}
-                    </span>
-                  </button>
-                );
-              })
-            }
-          </nav >
-
-          {/* User Profile */}
-          < div className="p-4 border-t border-slate-700" >
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-700/50">
-              <div className={`${currentUser.color} w-20 h-20 rounded-full flex items-center justify-center text-white font-bold overflow-hidden`}>
-                {currentUser.photoURL ? (
-                  <img src={currentUser.photoURL} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  currentUser.avatar
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-white text-sm truncate">{currentUser.name}</p>
-                <p className="text-xs text-slate-400">{currentUser.role}</p>
-              </div>
-            </div>
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={() => setShowSettingsModal(true)}
-                className="flex-1 p-2 hover:bg-slate-700/50 rounded-lg transition-colors"
-                title="Paramètres"
-              >
-                <Settings className="w-4 h-4 mx-auto text-slate-400" />
-              </button>
-              <button
-                onClick={handleLogout}
-                className="flex-1 p-2 hover:bg-red-500/10 rounded-lg transition-colors"
-                title="Déconnexion"
-              >
-                <LogOut className="w-4 h-4 mx-auto text-red-400" />
-              </button>
-            </div>
-          </div >
+  return (
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100" >
+      {/* Sidebar */}
+      < div className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex flex-col shadow-2xl" >
+        {/* Logo */}
+        < div className="p-6 border-b border-slate-700" >
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            CRM Pro
+          </h1>
+          <p className="text-xs text-slate-400 mt-1">Gestion clients</p>
         </div >
 
-        {/* Main Content */}
-        < div className="flex-1 overflow-y-auto" >
-          <div className="p-6">
-            {/* Header */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-slate-900 mb-2">
-                {navItems.find(item => item.id === activeTab)?.label}
-              </h1>
-              <p className="text-slate-600">
-                {activeTab === 'dashboard' && 'Vue d\'ensemble de votre activité'}
-                {activeTab === 'contacts' && 'Gérez vos contacts et leurs projets'}
-                {activeTab === 'projects' && 'Gérer les projets de construction et de location de toitures'}
-                {activeTab === 'tasks' && 'Organisez vos tâches quotidiennes'}
-                {activeTab === 'calendar' && 'Planifiez vos rendez-vous'}
-                {activeTab === 'reports' && 'Analysez vos performances'}
-              </p>
+        {/* Navigation */}
+        < nav className="flex-1 p-4 space-y-1" >
+          {
+            navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg shadow-blue-500/50'
+                    : 'hover:bg-slate-700/50'
+                    }`}
+                >
+                  <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                  <span className={`font-medium ${isActive ? 'text-white' : 'text-slate-300'}`}>
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })
+          }
+        </nav >
+
+        {/* User Profile */}
+        < div className="p-4 border-t border-slate-700" >
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-700/50">
+            <div className={`${currentUser.color} w-20 h-20 rounded-full flex items-center justify-center text-white font-bold overflow-hidden`}>
+              {currentUser.photoURL ? (
+                <img src={currentUser.photoURL} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                currentUser.avatar
+              )}
             </div>
-
-            {/* Content */}
-            {activeTab === 'dashboard' && renderDashboard()}
-            {activeTab === 'contacts' && renderContacts()}
-            {activeTab === 'projects' && renderProjects()}
-
-            {activeTab === 'tasks' && renderTasks()}
-            {activeTab === 'calendar' && renderCalendar()}
-            {activeTab === 'reports' && renderReports()}
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-white text-sm truncate">{currentUser.name}</p>
+              <p className="text-xs text-slate-400">{currentUser.role}</p>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="flex-1 p-2 hover:bg-slate-700/50 rounded-lg transition-colors"
+              title="Paramètres"
+            >
+              <Settings className="w-4 h-4 mx-auto text-slate-400" />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex-1 p-2 hover:bg-red-500/10 rounded-lg transition-colors"
+              title="Déconnexion"
+            >
+              <LogOut className="w-4 h-4 mx-auto text-red-400" />
+            </button>
           </div>
         </div >
-
-        {/* Modals */}
-        {/* Modals */}
-        <ContactModal
-          show={showContactModal}
-          onClose={() => { setShowContactModal(false); setEditingContact(null); }}
-          editingContact={editingContact}
-          setEditingContact={setEditingContact}
-          onSave={handleSaveContact}
-          contacts={contacts}
-        />
-        <TaskModal
-          show={showTaskModal}
-          onClose={() => { setShowTaskModal(false); setEditingTask(null); }}
-          editingTask={editingTask}
-          setEditingTask={setEditingTask}
-          onSave={handleSaveTask}
-          contacts={contacts}
-        />
-
-        <UserSettingsModal
-          show={showSettingsModal}
-          onClose={() => setShowSettingsModal(false)}
-          currentUser={currentUser}
-          onUpdate={handleUserUpdate}
-        />
       </div >
-      );
+
+      {/* Main Content */}
+      < div className="flex-1 overflow-y-auto" >
+        <div className="p-6">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">
+              {navItems.find(item => item.id === activeTab)?.label}
+            </h1>
+            <p className="text-slate-600">
+              {activeTab === 'dashboard' && 'Vue d\'ensemble de votre activité'}
+              {activeTab === 'contacts' && 'Gérez vos contacts et leurs projets'}
+              {activeTab === 'projects' && 'Gérer les projets de construction et de location de toitures'}
+              {activeTab === 'tasks' && 'Organisez vos tâches quotidiennes'}
+              {activeTab === 'calendar' && 'Planifiez vos rendez-vous'}
+              {activeTab === 'reports' && 'Analysez vos performances'}
+            </p>
+          </div>
+
+          {/* Content */}
+          {activeTab === 'dashboard' && renderDashboard()}
+          {activeTab === 'contacts' && renderContacts()}
+          {activeTab === 'projects' && renderProjects()}
+
+          {activeTab === 'tasks' && renderTasks()}
+          {activeTab === 'calendar' && renderCalendar()}
+          {activeTab === 'reports' && renderReports()}
+        </div>
+      </div >
+
+      {/* Modals */}
+      {/* Modals */}
+      <ContactModal
+        show={showContactModal}
+        onClose={() => { setShowContactModal(false); setEditingContact(null); }}
+        editingContact={editingContact}
+        setEditingContact={setEditingContact}
+        onSave={handleSaveContact}
+        contacts={contacts}
+      />
+      <TaskModal
+        show={showTaskModal}
+        onClose={() => { setShowTaskModal(false); setEditingTask(null); }}
+        editingTask={editingTask}
+        setEditingTask={setEditingTask}
+        onSave={handleSaveTask}
+        contacts={contacts}
+      />
+
+      <UserSettingsModal
+        show={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        currentUser={currentUser}
+        onUpdate={handleUserUpdate}
+      />
+    </div >
+  );
 }
