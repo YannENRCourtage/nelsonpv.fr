@@ -247,8 +247,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         }
 
         // USER REQUEST 14/01/2026: Specific Ridge Heights for Ombrière VL Simple
-        if (buildingType === 'ombriere_vl_simple_gauche') h = 4.4;
-        if (buildingType === 'ombriere_vl_simple_droite') h = 4.7;
+        if (buildingType === 'ombriere_vl_simple_gauche') h = 4.7; // was 4.4, requested 4.7
+        if (buildingType === 'ombriere_vl_simple_droite') h = 4.1; // was 4.7, requested 4.1
 
         // OMBRIÈRE PL
         if (buildingType === 'ombriere_pl') {
@@ -560,7 +560,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             if (Math.abs(width - 9.1) < 0.1) return '3 m';
             if (Math.abs(width - 11.3) < 0.1) return '2.8 m';
         }
-        if (buildingType === 'ombriere_vl_simple_droite') return '3.7 m';
+        if (buildingType === 'ombriere_vl_simple_droite') return '2.9 m'; // Requested 2.9m
+        if (buildingType === 'ombriere_vl_simple_gauche') return '3.7 m'; // Requested 3.7m
         if (buildingType === 'ombriere_pl') {
             if (Math.abs(width - 15.8) < 0.1) return '5.1 m';
             if (Math.abs(width - 20.2) < 0.1) return '5.7 m';
