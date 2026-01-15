@@ -5,8 +5,8 @@ const PANEL_HEIGHT = 1.762;
 const GAP = 0.02; // Default gap (2cm) for grid effect
 const MARGIN = 0.50; // Default margin
 
-export function calculateSolarLayout(surfaceWidth, surfaceLength, forceFullCoverage = false) {
-    const effectiveGap = forceFullCoverage ? 0 : GAP;
+export function calculateSolarLayout(surfaceWidth, surfaceLength, forceFullCoverage = false, customGap = null) {
+    const effectiveGap = customGap !== null ? customGap : (forceFullCoverage ? 0 : GAP);
     const effectiveMargin = forceFullCoverage ? 0 : MARGIN;
 
     const usableWidth = surfaceWidth - (2 * effectiveMargin);

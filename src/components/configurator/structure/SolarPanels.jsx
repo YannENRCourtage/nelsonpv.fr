@@ -5,18 +5,18 @@ import { calculateSolarLayout } from '../utils/solarLayout';
 
 // ... (Constants preserved if needed, but logic moved) ...
 
-export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof", forceFullCoverage = false, stretchToFit = false }) {
+export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof", forceFullCoverage = false, stretchToFit = false, customGap = null }) {
     const { hasSolar } = useConfiguratorStore(useConfiguratorValues);
 
     // Geometry & Material (Memoized)
     const panelGeometry = useMemo(() => new THREE.BoxGeometry(1.134, 0.04, 1.762), []);
-    // ...
+    // Materials ...
 
     const layout = useMemo(() => {
         if (!hasSolar) return null;
 
-        return calculateSolarLayout(surfaceWidth, surfaceLength, forceFullCoverage);
-    }, [hasSolar, surfaceWidth, surfaceLength, forceFullCoverage]);
+        return calculateSolarLayout(surfaceWidth, surfaceLength, forceFullCoverage, customGap);
+    }, [hasSolar, surfaceWidth, surfaceLength, forceFullCoverage, customGap]);
 
     // ...
 
