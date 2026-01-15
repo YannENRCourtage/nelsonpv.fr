@@ -87,7 +87,8 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         // Length of slope (Hypotenuse)
         // Adjust for overhangs? Rafter was `width / cos`. 
         // User requested "Toute la surface". We cover the rafter length.
-        const slopeLen = width / Math.cos(slopeRad);
+        // USER REQUEST 15/01/2026: Extend coverage by 50cm on each side -> +1.0m total.
+        const slopeLen = (width / Math.cos(slopeRad)) + 1.0;
 
         // Center position (Top of Rafter)
         // Rafter center height = (eave + ridge)/2
