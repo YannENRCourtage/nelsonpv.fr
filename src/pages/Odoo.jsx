@@ -99,7 +99,7 @@ const DraggableCard = ({ project, onClick, getUserName, className }) => {
             </div>
 
             <div className="text-xs text-gray-500 mb-2">
-                <p className="line-clamp-1">{project.description || project.commercialName || "Pas de description"}</p>
+                <p className="line-clamp-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">{project.type || "Type non défini"}</p>
                 <p className="mt-1 font-medium text-gray-700">{project.clientName || `${project.firstName || ''} ${project.name || ''}`.trim()}</p>
                 {project.city && <p className="text-xs mt-0.5 text-gray-400">{project.city} {project.zip}</p>}
             </div>
@@ -114,18 +114,11 @@ const DraggableCard = ({ project, onClick, getUserName, className }) => {
                         }
                     </span>
                 </div>
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium border border-green-200">
-                        <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                        </span>
-                        Live Sync
-                    </div>
-                    <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-nelsonBlue hover:bg-blue-700 text-white gap-2">
-                        <Plus size={16} />
-                        Nouveau Dossier
-                    </Button>    <UserAvatar
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-medium text-gray-600">
+                        {displayUser.name}
+                    </span>
+                    <UserAvatar
                         name={displayUser.name}
                         photoURL={displayUser.photoURL}
                         showName={false}
@@ -139,7 +132,7 @@ const DraggableCard = ({ project, onClick, getUserName, className }) => {
 };
 
 // 2. KANBAN COLUMN
-const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count, getUserName, onRename, viewMode, width, onResize }) => {
+const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count, getUserName, onRename, viewMode, width, onResize, onNewProject }) => {
     const [{ isOver }, drop] = useDrop(() => ({
         accept: "PROJECT_CARD",
         drop: (item) => onDropProject(item.id, title),
@@ -183,7 +176,7 @@ const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count
     // Responsive Classes based on viewMode
     const containerClasses = viewMode === 'list'
         ? "flex flex-row items-stretch rounded-xl transition-colors duration-200 w-full mb-4 min-h-[160px]"
-        : "flex flex-col rounded-xl transition-colors duration-200 h-full backdrop-blur-sm select-none flex-1 min-w-[200px]";
+        : "flex flex-col rounded-xl transition-colors duration-200 h-full backdrop-blur-sm select-none flex-1 min-w-[200px] group";
 
     const headerClasses = viewMode === 'list'
         ? `p-4 flex flex-col justify-center items-start border-r border-white/50 rounded-l-xl w-60 shrink-0 ${colorClass}`
@@ -191,13 +184,13 @@ const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count
 
     const contentClasses = viewMode === 'list'
         ? "p-3 flex-1 flex flex-row items-center gap-3 overflow-x-auto min-w-0 custom-scrollbar-horizontal"
-        : "p-2 flex-1 overflow-y-auto min-h-0 custom-scrollbar";
+        : "p-2 flex-1 overflow-y-auto min-h-0 custom-scrollbar relative";
 
     const bgClass = isOver ? "bg-purple-50/50 ring-2 ring-purple-400 ring-inset" : "bg-gray-50/50";
 
     return (
         <div ref={ref} className={`${containerClasses} ${bgClass}`}>
-            <div className={`${headerClasses} relative group`}>
+            <div className={`${headerClasses} relative`}>
                 <div className={`flex ${viewMode === 'list' ? 'flex-col gap-2 w-full' : 'justify-between w-full items-center'}`}>
                     {isEditing ? (
                         <input
@@ -223,7 +216,23 @@ const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count
                     </div>
                 </div>
             </div>
+
+            {/* Add Button Overlay (visible on hover) */}
+            {viewMode !== 'list' && (
+                <div className="absolute top-12 left-0 right-0 z-20 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto">
+                    <button
+                        onClick={() => onNewProject && onNewProject(title)}
+                        className="w-full py-1.5 bg-nelsonBlue/90 hover:bg-nelsonBlue text-white text-xs font-medium rounded shadow-sm backdrop-blur-sm flex items-center justify-center gap-1 transition-all transform active:scale-95"
+                    >
+                        <Plus size={14} />
+                        Nouveau Dossier
+                    </button>
+                </div>
+            )}
+
             <div className={contentClasses}>
+                {viewMode !== 'list' && <div className="h-8 w-full shrink-0" />} {/* Spacer for button */}
+
                 {projects.map(p => (
                     <DraggableCard
                         key={p.id}
@@ -816,90 +825,6 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
 };
 
 
-// --- NEW PROJECT DIALOG ---
-const NewProjectDialog = ({ onClose, onAddProject, projects, stages }) => {
-    const [search, setSearch] = useState("");
-    const [selectedProject, setSelectedProject] = useState(null);
-    const [selectedStage, setSelectedStage] = useState(stages[0]);
-
-    // Show all projects here, even excluded ones, but ensure we match against multiple fields
-    // RELAXED FILTER: Check if name, client, city, zip matches. 
-    // And ensure we don't filter out projects that might have 'odooStage' set to null/undefined explicitly.
-    const filtered = projects.filter(p => {
-        const query = search.toLowerCase();
-        const name = (p.name || '').toLowerCase();
-        const client = (p.clientName || '').toLowerCase();
-        // Also search in formatted title components
-        const city = (p.city || '').toLowerCase();
-
-        const matches = name.includes(query) || client.includes(query) || city.includes(query);
-        const notInOdoo = !p.odooStage;
-        return matches && notInOdoo;
-    });
-
-    const handleConfirm = () => {
-        if (selectedProject && selectedStage) {
-            onAddProject(selectedProject.id, selectedStage);
-            onClose();
-        }
-    };
-
-    return (
-        <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-                <DialogTitle>Ajouter un dossier au tableau</DialogTitle>
-                <DialogDescription>
-                    Recherchez un projet existant pour l'ajouter à une étape du tableau Odoo.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                    <label className="text-sm font-medium">Rechercher un projet</label>
-                    <Input
-                        placeholder="Nom, Client..."
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                    />
-                </div>
-
-                {search && (
-                    <div className="border rounded-md max-h-[200px] overflow-y-auto">
-                        {filtered.map(p => (
-                            <div
-                                key={p.id}
-                                className={`p-2 text-sm cursor-pointer hover:bg-gray-50 flex justify-between items-center ${selectedProject?.id === p.id ? 'bg-purple-50 border-purple-200' : ''}`}
-                                onClick={() => setSelectedProject(p)}
-                            >
-                                <span className="font-medium">{p.name || "Projet sans nom"}</span>
-                                <span className="text-xs text-gray-500">{p.clientName}</span>
-                            </div>
-                        ))}
-                        {filtered.length === 0 && <div className="p-2 text-sm text-gray-400">Aucun projet trouvé</div>}
-                    </div>
-                )}
-
-                {selectedProject && (
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Sélectionner une étape</label>
-                        <Select value={selectedStage} onValueChange={setSelectedStage}>
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {stages.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                )}
-            </div>
-            <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={onClose}>Annuler</Button>
-                <Button onClick={handleConfirm} disabled={!selectedProject}>Ajouter le dossier</Button>
-            </div>
-        </DialogContent>
-    );
-};
-
 // --- MAIN PAGE ---
 export default function Odoo() {
     const { projects, setProjects } = useProjects();
@@ -1157,6 +1082,15 @@ export default function Odoo() {
     // View Mode State: 'kanban' or 'list'
     const [viewMode, setViewMode] = useState('kanban');
 
+    // Default stage for new project dialog from column context
+    const [defaultStage, setDefaultStage] = useState(stages[0]);
+
+    const handleNewProject = (stage) => {
+        if (stage) setDefaultStage(stage);
+        else setDefaultStage(stages[0]);
+        setIsNewProjectOpen(true);
+    };
+
     if (selectedProject) {
         return (
             <ProjectDetail
@@ -1175,22 +1109,8 @@ export default function Odoo() {
             <div className="h-16 bg-white border-b flex items-center px-6 justify-between shrink-0 shadow-sm z-20">
                 <div className="flex items-center gap-6">
                     <h1 className="text-xl font-bold text-gray-800 tracking-tight">Tableau de bord</h1>
+                    {/* Header Buttons Removed as requested */}
                     <div className="flex gap-2">
-                        <div className="relative">
-                            <Dialog open={isNewProjectOpen} onOpenChange={setIsNewProjectOpen}>
-                                <DialogTrigger asChild>
-                                    <Button variant="secondary" size="sm" className="bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-100 font-medium">
-                                        <Plus size={16} className="mr-1.5" /> Nouveau Dossier
-                                    </Button>
-                                </DialogTrigger>
-                                <NewProjectDialog
-                                    onClose={() => setIsNewProjectOpen(false)}
-                                    projects={projects || []}
-                                    stages={stages}
-                                    onAddProject={handleAddProjectToStage}
-                                />
-                            </Dialog>
-                        </div>
                         <Button
                             variant={filterAssigned ? "default" : "outline"}
                             size="sm"
@@ -1235,7 +1155,7 @@ export default function Odoo() {
 
                         return (
                             <div key={stage} className={`group relative ${viewMode === 'kanban' ? 'h-full flex-shrink-0' : ''}`}>
-                                {/* Header Controls (Hover) - Only in Kanban for now or adapts? */}
+                                {/* Header Controls (Hover) */}
                                 {viewMode === 'kanban' && (
                                     <div className="absolute top-0 right-6 z-20 opacity-0 group-hover:opacity-100 transition-opacity flex bg-white rounded-md shadow-sm border p-0.5">
                                         <button onClick={() => moveStage(index, 'left')} disabled={index === 0} className="p-1 hover:bg-gray-100 text-gray-400 hover:text-gray-700 disabled:opacity-30"><ArrowLeft size={12} /></button>
@@ -1253,16 +1173,13 @@ export default function Odoo() {
                                     getUserName={resolveUser}
                                     onRename={handleRenameStage}
                                     viewMode={viewMode}
+                                    onNewProject={handleNewProject}
                                 />
                             </div>
                         );
                     })}
 
-                    {/* Add Stage Column (Hidden in List Mode for now to keep it clean?) 
-                        Or render as a "New Stage" row? 
-                        User didn't specify. Standard is usually separate button in List.
-                        Let's keep it compatible if possible, or hide it.
-                    */}
+                    {/* Add Stage Column (Hidden in List Mode) */}
                     {viewMode === 'kanban' && (
                         <div className="flex-shrink-0 w-80 h-full rounded-lg bg-gray-50/50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-purple-300 hover:bg-purple-50/50 transition-colors">
                             {isAddingStage ? (
@@ -1309,6 +1226,107 @@ export default function Odoo() {
                     )}
                 </div>
             </div>
+
+            {/* Global Creation Dialog (Controlled by state) */}
+            <Dialog open={isNewProjectOpen} onOpenChange={setIsNewProjectOpen}>
+                <NewProjectDialog
+                    onClose={() => setIsNewProjectOpen(false)}
+                    projects={projects || []}
+                    stages={stages}
+                    onAddProject={handleAddProjectToStage}
+                    defaultStage={defaultStage}
+                />
+            </Dialog>
         </div>
     );
 }
+
+
+// --- NEW PROJECT DIALOG ---
+const NewProjectDialog = ({ onClose, onAddProject, projects, stages, defaultStage }) => {
+    const [search, setSearch] = useState("");
+    const [selectedProject, setSelectedProject] = useState(null);
+    const [selectedStage, setSelectedStage] = useState(defaultStage || stages[0]);
+
+    useEffect(() => {
+        if (defaultStage) setSelectedStage(defaultStage);
+    }, [defaultStage]);
+
+    // Show all projects here, even excluded ones, but ensure we match against multiple fields
+    // RELAXED FILTER: Check if name, client, city, zip matches. 
+    // And ensure we don't filter out projects that might have 'odooStage' set to null/undefined explicitly.
+    const filtered = projects.filter(p => {
+        const query = search.toLowerCase();
+        const name = (p.name || '').toLowerCase();
+        const client = (p.clientName || '').toLowerCase();
+        // Also search in formatted title components
+        const city = (p.city || '').toLowerCase();
+
+        const matches = name.includes(query) || client.includes(query) || city.includes(query);
+        const notInOdoo = !p.odooStage;
+        return matches && notInOdoo;
+    });
+
+    const handleConfirm = () => {
+        if (selectedProject && selectedStage) {
+            onAddProject(selectedProject.id, selectedStage);
+            onClose();
+        }
+    };
+
+    return (
+        <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+                <DialogTitle>Ajouter un dossier au tableau</DialogTitle>
+                <DialogDescription>
+                    Recherchez un projet existant pour l'ajouter à une étape du tableau Odoo.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Rechercher un projet</label>
+                    <Input
+                        placeholder="Nom, Client..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                    />
+                </div>
+
+                {search && (
+                    <div className="border rounded-md max-h-[200px] overflow-y-auto">
+                        {filtered.map(p => (
+                            <div
+                                key={p.id}
+                                className={`p-2 text-sm cursor-pointer hover:bg-gray-50 flex justify-between items-center ${selectedProject?.id === p.id ? 'bg-purple-50 border-purple-200' : ''}`}
+                                onClick={() => setSelectedProject(p)}
+                            >
+                                <span className="font-medium">{p.name || "Projet sans nom"}</span>
+                                <span className="text-xs text-gray-500">{p.clientName}</span>
+                            </div>
+                        ))}
+                        {filtered.length === 0 && <div className="p-2 text-sm text-gray-400">Aucun projet trouvé</div>}
+                    </div>
+                )}
+
+                {selectedProject && (
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Sélectionner une étape</label>
+                        <Select value={selectedStage} onValueChange={setSelectedStage}>
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {stages.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
+            </div>
+            <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={onClose}>Annuler</Button>
+                <Button onClick={handleConfirm} disabled={!selectedProject || !selectedStage}>Confirmer</Button>
+            </div>
+        </DialogContent>
+    );
+};
+
