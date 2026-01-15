@@ -139,7 +139,7 @@ const Column = ({ title, colorClass, projects, onDropProject, onCardClick, count
         collect: (monitor) => ({
             isOver: !!monitor.isOver(),
         }),
-    }));
+    }), [onDropProject, title]);
 
     const ref = React.useRef(null);
     drop(ref);
