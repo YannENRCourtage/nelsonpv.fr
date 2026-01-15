@@ -252,13 +252,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
         // OMBRIÈRE PL
         if (buildingType === 'ombriere_pl') {
-            // Eave (Low) at Right. Ridge (High) at Left.
-            // Ridge = Eave + Width * tan(10deg)
-            // Eaves: 15.8->6.0, 20.2->6.5, 24.6->7.0
-            const tan10 = Math.tan(10 * Math.PI / 180);
-            if (Math.abs(width - 15.8) < 0.1) h = 6.0 + (15.8 * tan10);
-            else if (Math.abs(width - 20.2) < 0.1) h = 6.5 + (20.2 * tan10);
-            else if (Math.abs(width - 24.6) < 0.1) h = 7.0 + (24.6 * tan10);
+            // USER REQUEST 15/01/2026: Specific Ridge Heights
+            if (Math.abs(width - 15.8) < 0.1) h = 7.9;
+            else if (Math.abs(width - 20.2) < 0.1) h = 9.3;
+            else if (Math.abs(width - 24.6) < 0.1) h = 9.3;
         }
 
         const z = 0;
@@ -565,9 +562,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         }
         if (buildingType === 'ombriere_vl_simple_droite') return '3.7 m';
         if (buildingType === 'ombriere_pl') {
-            if (Math.abs(width - 15.8) < 0.1) return '6 m';
-            if (Math.abs(width - 20.2) < 0.1) return '6.5 m';
-            if (Math.abs(width - 24.6) < 0.1) return '7 m';
+            if (Math.abs(width - 15.8) < 0.1) return '5.1 m';
+            if (Math.abs(width - 20.2) < 0.1) return '5.7 m';
+            if (Math.abs(width - 24.6) < 0.1) return '5 m';
         }
         if (isOmbriere) return '2.9 m';
         return `${parseFloat(eaveHeight.toFixed(2))} m`;
