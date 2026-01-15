@@ -551,275 +551,319 @@ export function PortalFrame({
                 <group position={[0, centerHeight, 0]} rotation={[0, 0, rotZ]}>
                     {/* Rafter is centered in local X.
                          USER REQUEST 14/01/2026: Shift 50% to right along slope.
-                         rafterLen is full length. 50% shift = rafterLen * 0.5.
-                      */}
-                    <mesh geometry={rafterGeo} material={steelMaterial} position={[isOmbrierePL ? (rafterLen * 0.5) : 0, 0, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow />
-                </group>
 
-                {/* BRACING (Croix de St André) for 15.8m PL */}
-                {Math.abs(width - 15.8) < 0.1 && (() => {
-                    // Columns at -4 and +4.
-                    const x1 = -4.0;
-                    const x2 = 4.0;
-                    // Calculate Top Heights (under rafter)
-                    const yTop1 = eaveHeight + (width / 2 - x1) * Math.tan(slopeRad) - 0.2;
-                    const yTop2 = eaveHeight + (width / 2 - x2) * Math.tan(slopeRad) - 0.2;
-                    const yBot = 0.0;
+                {/* BRACING (Croix de St André) for PL 15.8m, 20.2m, 24.6m */}
+                    {(Math.abs(width - 15.8) < 0.1 || Math.abs(width - 20.2) < 0.1 || Math.abs(width - 24.6) < 0.1) && (() => {
+                        let x1, x2;
 
-                    // 1. Calculate Intersection Height for Horizontal Beam
-                    // yTop2 < yTop1 (slope down to right)
-                    // Line 1 (x1,0) to (x2, yTop2) -> y = (yTop2 / 8) * (x + 4)
-                    // Line 2 (x2,0) to (x1, yTop1) -> y = (yTop1 / -8) * (x - 4)
-                    // Intersection X: 4 * (yTop1 - yTop2) / (yTop1 + yTop2)
-                    const intersectX = 4 * (yTop1 - yTop2) / (yTop1 + yTop2);
-                    const intersectY = (yTop2 / 8) * (intersectX + 4);
+                        if (Math.abs(width - 15.8) < 0.1) {
+                            // 15.8m: Columns at -4, 4. Bracing between them.
+                            x1 = -4.0;
+                            x2 = 4.0;
+                        } else if (Math.abs(width - 20.2) < 0.1) {
+                            // 20.2m: Columns at -6, 2, 10. Bracing between RIGHT pair (2 and 10).
+                            x1 = 2.0;
+                            x2 = 10.0;
+                        } else if (Math.abs(width - 24.6) < 0.1) {
+                            // 24.6m: Columns at -8, 0, 8. Bracing between RIGHT pair (0 and 8).
+                            x1 = 0.0;
+                            x2 = 8.0;
+                        }
 
-                    // 2. Horizontal Beam
-                    const beamGeo = <mesh position={[0, intersectY, 0]} castShadow>
-                        <boxGeometry args={[8.0, 0.15, 0.15]} />
-                        <meshStandardMaterial color="#8a949b" metalness={0.6} roughness={0.4} />
-                    </mesh>;
+                        // Calculate Top Heights (under rafter)
+                        const yTop1 = eaveHeight + (width / 2 - x1) * Math.tan(slopeRad) - 0.2;
+                        const yTop2 = eaveHeight + (width / 2 - x2) * Math.tan(slopeRad) - 0.2;
+                        const yBot = 0.0;
 
-                    // 3. Cross Bracing
-                    const p1Bot = new THREE.Vector3(x1, yBot + 0.1, 0);
-                    const p2Bot = new THREE.Vector3(x2, yBot + 0.1, 0);
-                    const p1Top = new THREE.Vector3(x1, yTop1 - 0.1, 0);
-                    const p2Top = new THREE.Vector3(x2, yTop2 - 0.1, 0);
+                        // 1. Calculate Intersection Height for Horizontal Beam
+                        // yTop2 < yTop1 (slope down to right)
+                        // Line 1 (x1,0) to (x2, yTop2) -> y = (yTop2 / 8) * (x - x1)
+                        // Line 2 (x2,0) to (x1, yTop1) -> y = (yTop1 / -8) * (x - x2)
+                        // Note: Span is always 8m (4 to -4, 10 to 2, 8 to 0).
+                        // Delta X = 8.
 
-                    const createBar = (start, end) => {
-                        const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-                        const len = start.distanceTo(end);
-                        const dx = end.x - start.x;
-                        const dy = end.y - start.y;
-                        const angle = -Math.atan2(dx, dy);
+                        // Intersection X relative to x1:
+                        // x_rel = 8 * yTop1 / (yTop1 + yTop2) ? No.
+                        // Standard intersection of two lines from (0,0)-(w,h2) and (w,0)-(0,h1).
+                        // x_int = w * h1 / (h1 + h2)  (distance from 2nd point, i.e. x2)
+                        // y_int = h1 * h2 / (h1 + h2)
+
+                        const h1 = yTop1;
+                        const h2 = yTop2;
+                        // intersectY is simplified formula for trapezoid visuals
+                        const intersectY = (h1 * h2) / (h1 + h2);
+
+                        // X coord of intersection
+                        // x_int_from_x1 = 8 * h1 / (h1 + h2) -> This is distance from x1.
+
+                        const span = Math.abs(x2 - x1); // Should be 8.
+
+                        // But wait, the previous code had specific intersectX logic.
+                        // Let's use the generic one now.
+                        // Also previous code IntersectY was `yTop2/8 * (intersectX + 4)` -> Re-calculating Y on line.
+                        // The generic formula `y = h1*h2/(h1+h2)` is cleaner.
+
+                        // However, x1 corresponds to yTop1? Yes.
+                        // So Line 1 is (x1, 0) to (x2, y2). NO.
+                        // Bracing is (Bottom1 to Top2) and (Bottom2 to Top1).
+                        // Point 1: (x1, 0). Point 2: (x2, y2). -> L1.
+                        // Point 3: (x2, 0). Point 4: (x1, y1). -> L2.
+                        // L1: y = (y2 / span) * (x - x1).
+                        // L2: y = (y1 / -span) * (x - x2).
+                        // Solve: (y2/S)(x-x1) = (-y1/S)(x-x2)
+                        // y2(x-x1) = -y1(x-x2)
+                        // y2*x - y2*x1 = -y1*x + y1*x2
+                        // x(y1+y2) = y1*x2 + y2*x1
+                        // x = (y1*x2 + y2*x1) / (y1+y2). Weighted average!
+
+                        const intersectX = (yTop1 * x2 + yTop2 * x1) / (yTop1 + yTop2);
+
+                        // 2. Horizontal Beam
+                        const beamGeo = <mesh position={[intersectX, intersectY, 0]} castShadow>
+                            <boxGeometry args={[span, 0.15, 0.15]} />
+                            <meshStandardMaterial color="#8a949b" metalness={0.6} roughness={0.4} />
+                        </mesh>;
+
+                        // 3. Cross Bracing
+                        const p1Bot = new THREE.Vector3(x1, yBot + 0.1, 0);
+                        const p2Bot = new THREE.Vector3(x2, yBot + 0.1, 0);
+                        const p1Top = new THREE.Vector3(x1, yTop1 - 0.1, 0);
+                        const p2Top = new THREE.Vector3(x2, yTop2 - 0.1, 0);
+
+                        const createBar = (start, end) => {
+                            const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+                            const len = start.distanceTo(end);
+                            const dx = end.x - start.x;
+                            const dy = end.y - start.y;
+                            const angle = -Math.atan2(dx, dy);
+                            return (
+                                <mesh position={mid} rotation={[0, 0, angle]} castShadow>
+                                    <boxGeometry args={[0.05, len, 0.05]} />
+                                    <meshStandardMaterial color="#4A5568" roughness={0.8} />
+                                </mesh>
+                            );
+                        };
+
                         return (
-                            <mesh position={mid} rotation={[0, 0, angle]} castShadow>
-                                <boxGeometry args={[0.05, len, 0.05]} />
-                                <meshStandardMaterial color="#4A5568" roughness={0.8} />
-                            </mesh>
+                            <group>
+                                {beamGeo}
+                                {createBar(p1Bot, p2Top)}
+                                {createBar(p2Bot, p1Top)}
+                            </group>
                         );
-                    };
+                    })()}
 
-                    return (
-                        <group>
-                            {beamGeo}
-                            {createBar(p1Bot, p2Top)}
-                            {createBar(p2Bot, p1Top)}
-                        </group>
-                    );
-                })()}
-
-                {/* No struts (Bracons) for PL based on images? 
+                    {/* No struts (Bracons) for PL based on images? 
                     Images show bracing (Croix de St André) between columns but no diagonal struts (bracons) under rafters? 
                     Actually Image 1 shows a small knee brace (jarret) or simple connection. 
                     Images 2 & 3 show large cross bracing between columns.
                     Let's stick to simple columns + rafter for now unless "croix" requested. 
                     The "V" shape struts of VL are NOT present.
                 */}
-            </group>
-        );
+                </group>
+                );
     }
 
-    // --- OMBRIÈRE VL SIMPLE & DOUBLE (V-Shape Structure) ---
-    const isOmbriereSimple = buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche';
-    const isOmbriereDouble = buildingType === 'ombriere_vl_double';
+                // --- OMBRIÈRE VL SIMPLE & DOUBLE (V-Shape Structure) ---
+                const isOmbriereSimple = buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche';
+                const isOmbriereDouble = buildingType === 'ombriere_vl_double';
 
-    if (isOmbriereSimple || isOmbriereDouble) {
+                if (isOmbriereSimple || isOmbriereDouble) {
         const isDroite = buildingType === 'ombriere_vl_simple_droite';
 
-        // Slope Logic:
-        // Combined to always slope down-right for these types
-        const slopeRad = (roofPitch * Math.PI) / 180;
-        const rotZ = -slopeRad; // Fixed to Down-Right
+                // Slope Logic:
+                // Combined to always slope down-right for these types
+                const slopeRad = (roofPitch * Math.PI) / 180;
+                const rotZ = -slopeRad; // Fixed to Down-Right
 
-        // Rafter
-        const rafterLen = width / Math.cos(slopeRad);
-        const rafterGeo = createRafterGeo(rafterLen);
+                // Rafter
+                const rafterLen = width / Math.cos(slopeRad);
+                const rafterGeo = createRafterGeo(rafterLen);
 
-        // Strut Shifting Logic (From Backup)
-        // "Droite": Shift 1m Left (towards Faitage). 
-        // "Gauche": Shift 1m Right (towards Sablière).
-        // "Double": Centered (0).
-        let strutShift = 0;
-        if (buildingType === 'ombriere_vl_simple_gauche') strutShift = 1.0;
-        if (buildingType === 'ombriere_vl_simple_droite') strutShift = -1.0;
+                // Strut Shifting Logic (From Backup)
+                // "Droite": Shift 1m Left (towards Faitage). 
+                // "Gauche": Shift 1m Right (towards Sablière).
+                // "Double": Centered (0).
+                let strutShift = 0;
+                if (buildingType === 'ombriere_vl_simple_gauche') strutShift = 1.0;
+                if (buildingType === 'ombriere_vl_simple_droite') strutShift = -1.0;
 
-        // Base Strut Positions (From Backup Dimensions)
-        // Bottom: Spaced by 1m (+/- 0.5)
-        // Top: Spaced by 3m (+/- 1.5) to create V
-        const xBot1 = -0.5 + strutShift;
-        const xBot2 = 0.5 + strutShift;
-        const xTop1 = -1.5 + strutShift;
-        const xTop2 = 1.5 + strutShift;
+                // Base Strut Positions (From Backup Dimensions)
+                // Bottom: Spaced by 1m (+/- 0.5)
+                // Top: Spaced by 3m (+/- 1.5) to create V
+                const xBot1 = -0.5 + strutShift;
+                const xBot2 = 0.5 + strutShift;
+                const xTop1 = -1.5 + strutShift;
+                const xTop2 = 1.5 + strutShift;
 
-        // Base Horizontal Position
-        // USER REQUEST: "Obliques jusqu'au sol" -> Base 0.0
-        const baseHeight = 0.0;
+                // Base Horizontal Position
+                // USER REQUEST: "Obliques jusqu'au sol" -> Base 0.0
+                const baseHeight = 0.0;
 
-        // Center Height Logic
-        // Calculate based on eaveHeight + rise to midpoint
-        const midRise = (width / 2) * Math.tan(slopeRad);
-        let centerHeight = eaveHeight + midRise;
+                // Center Height Logic
+                // Calculate based on eaveHeight + rise to midpoint
+                const midRise = (width / 2) * Math.tan(slopeRad);
+                let centerHeight = eaveHeight + midRise;
 
-        // Height Adjustments
-        if (isOmbriereDouble) {
-            centerHeight -= 0.20;
+                // Height Adjustments
+                if (isOmbriereDouble) {
+                    centerHeight -= 0.20;
         }
-        if (isOmbriereSimple) {
-            centerHeight += 0.30;
+                if (isOmbriereSimple) {
+                    centerHeight += 0.30;
         }
 
         // Custom Strut Creator
         const createStrut = (xBot, xTop) => {
             const yTarget = centerHeight + (xTop * Math.tan(rotZ)) - 0.2;
-            const start = new THREE.Vector3(xBot, baseHeight, 0);
-            const end = new THREE.Vector3(xTop, yTarget, 0);
-            const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-            const len = start.distanceTo(end);
+                const start = new THREE.Vector3(xBot, baseHeight, 0);
+                const end = new THREE.Vector3(xTop, yTarget, 0);
+                const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+                const len = start.distanceTo(end);
 
-            const dx = end.x - start.x;
-            const dy = end.y - start.y;
-            const angle = -Math.atan2(dx, dy);
+                const dx = end.x - start.x;
+                const dy = end.y - start.y;
+                const angle = -Math.atan2(dx, dy);
 
-            const tubeGeo = new THREE.BoxGeometry(0.15, len, 0.15);
+                const tubeGeo = new THREE.BoxGeometry(0.15, len, 0.15);
 
-            return (
+                return (
                 <mesh geometry={tubeGeo} material={steelMaterial} position={mid} rotation={[0, 0, angle]} castShadow />
-            );
+                );
         };
 
-        return (
-            <group position={position}>
-                {/* Struts */}
-                {createStrut(xBot1, xTop1)}
-                {createStrut(xBot2, xTop2)}
+                return (
+                <group position={position}>
+                    {/* Struts */}
+                    {createStrut(xBot1, xTop1)}
+                    {createStrut(xBot2, xTop2)}
 
-                {/* HORIZONTAL BAR (Double 11.3m only) */}
-                {(() => {
-                    if (isOmbriereDouble && Math.abs(width - 11.3) < 0.1) {
-                        const hBarHeight = 2.2;
+                    {/* HORIZONTAL BAR (Double 11.3m only) */}
+                    {(() => {
+                        if (isOmbriereDouble && Math.abs(width - 11.3) < 0.1) {
+                            const hBarHeight = 2.2;
+                            const yTop1 = centerHeight + (xTop1 * Math.tan(rotZ)) - 0.2;
+                            const yTop2 = centerHeight + (xTop2 * Math.tan(rotZ)) - 0.2;
+
+                            // Interpolate X at hBarHeight
+                            const t1 = (hBarHeight - baseHeight) / (yTop1 - baseHeight);
+                            const xL = xBot1 + (xTop1 - xBot1) * t1;
+
+                            const t2 = (hBarHeight - baseHeight) / (yTop2 - baseHeight);
+                            const xR = xBot2 + (xTop2 - xBot2) * t2;
+
+                            const len = Math.abs(xR - xL);
+                            const cx = (xL + xR) / 2;
+
+                            return (
+                                <mesh position={[cx, hBarHeight, 0]} castShadow>
+                                    <boxGeometry args={[len + 0.15, 0.15, 0.15]} />
+                                    <meshStandardMaterial color="#8a949b" metalness={0.6} roughness={0.4} />
+                                </mesh>
+                            );
+                        }
+                        return null;
+                    })()}
+
+                    {/* SAINT ANDREW'S CROSS (Croix de Saint-André) - Logic from Backup */}
+                    {(() => {
                         const yTop1 = centerHeight + (xTop1 * Math.tan(rotZ)) - 0.2;
                         const yTop2 = centerHeight + (xTop2 * Math.tan(rotZ)) - 0.2;
 
-                        // Interpolate X at hBarHeight
-                        const t1 = (hBarHeight - baseHeight) / (yTop1 - baseHeight);
-                        const xL = xBot1 + (xTop1 - xBot1) * t1;
 
-                        const t2 = (hBarHeight - baseHeight) / (yTop2 - baseHeight);
-                        const xR = xBot2 + (xTop2 - xBot2) * t2;
 
-                        const len = Math.abs(xR - xL);
-                        const cx = (xL + xR) / 2;
+                        // Start from base or Horizontal Bar
+                        let startY = baseHeight + 0.1;
+                        if (isOmbriereDouble && Math.abs(width - 11.3) < 0.1) {
+                            startY = 2.2 + 0.15 / 2; // Top of horizontal bar
+                        }
+
+                        const pBot1 = new THREE.Vector3(xBot1, startY, 0);
+                        const pBot2 = new THREE.Vector3(xBot2, startY, 0);
+
+                        // Update X positions for pBot if starting higher (interpolated)
+                        if (startY > baseHeight + 0.2) {
+                            // Interpolate X at startY
+                            const t1 = (startY - baseHeight) / (yTop1 - baseHeight);
+                            pBot1.x = xBot1 + (xTop1 - xBot1) * t1;
+
+                            const t2 = (startY - baseHeight) / (yTop2 - baseHeight);
+                            pBot2.x = xBot2 + (xTop2 - xBot2) * t2;
+                            pBot1.y = startY;
+                            pBot2.y = startY;
+                        }
+
+                        // End almost at the top
+                        const pTop1 = new THREE.Vector3(xTop1, yTop1 - 0.1, 0);
+                        const pTop2 = new THREE.Vector3(xTop2, yTop2 - 0.1, 0);
+
+                        const createBar = (start, end) => {
+                            const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+                            const len = start.distanceTo(end);
+                            const dx = end.x - start.x;
+                            const dy = end.y - start.y;
+                            const angle = -Math.atan2(dx, dy);
+                            // Thinner profile for cross bracing (e.g., 5cm)
+                            return (
+                                <mesh position={mid} rotation={[0, 0, angle]} castShadow>
+                                    <boxGeometry args={[0.05, len, 0.05]} />
+                                    <meshStandardMaterial color="#4A5568" roughness={0.8} />
+                                </mesh>
+                            );
+                        };
 
                         return (
-                            <mesh position={[cx, hBarHeight, 0]} castShadow>
-                                <boxGeometry args={[len + 0.15, 0.15, 0.15]} />
-                                <meshStandardMaterial color="#8a949b" metalness={0.6} roughness={0.4} />
-                            </mesh>
+                            <group>
+                                {createBar(pBot1, pTop2)}
+                                {createBar(pBot2, pTop1)}
+                            </group>
                         );
-                    }
-                    return null;
-                })()}
+                    })()}
 
-                {/* SAINT ANDREW'S CROSS (Croix de Saint-André) - Logic from Backup */}
-                {(() => {
-                    const yTop1 = centerHeight + (xTop1 * Math.tan(rotZ)) - 0.2;
-                    const yTop2 = centerHeight + (xTop2 * Math.tan(rotZ)) - 0.2;
+                    {/* Rafter */}
+                    {/* Centered at [0, centerHeight, 0], rotated */}
+                    <group position={[0, centerHeight, 0]} rotation={[0, 0, rotZ]}>
+                        <mesh geometry={rafterGeo} material={steelMaterial} position={[rafterLen / 2, 0, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow />
+                    </group>
 
-
-
-                    // Start from base or Horizontal Bar
-                    let startY = baseHeight + 0.1;
-                    if (isOmbriereDouble && Math.abs(width - 11.3) < 0.1) {
-                        startY = 2.2 + 0.15 / 2; // Top of horizontal bar
-                    }
-
-                    const pBot1 = new THREE.Vector3(xBot1, startY, 0);
-                    const pBot2 = new THREE.Vector3(xBot2, startY, 0);
-
-                    // Update X positions for pBot if starting higher (interpolated)
-                    if (startY > baseHeight + 0.2) {
-                        // Interpolate X at startY
-                        const t1 = (startY - baseHeight) / (yTop1 - baseHeight);
-                        pBot1.x = xBot1 + (xTop1 - xBot1) * t1;
-
-                        const t2 = (startY - baseHeight) / (yTop2 - baseHeight);
-                        pBot2.x = xBot2 + (xTop2 - xBot2) * t2;
-                        pBot1.y = startY;
-                        pBot2.y = startY;
-                    }
-
-                    // End almost at the top
-                    const pTop1 = new THREE.Vector3(xTop1, yTop1 - 0.1, 0);
-                    const pTop2 = new THREE.Vector3(xTop2, yTop2 - 0.1, 0);
-
-                    const createBar = (start, end) => {
-                        const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-                        const len = start.distanceTo(end);
-                        const dx = end.x - start.x;
-                        const dy = end.y - start.y;
-                        const angle = -Math.atan2(dx, dy);
-                        // Thinner profile for cross bracing (e.g., 5cm)
-                        return (
-                            <mesh position={mid} rotation={[0, 0, angle]} castShadow>
-                                <boxGeometry args={[0.05, len, 0.05]} />
-                                <meshStandardMaterial color="#4A5568" roughness={0.8} />
-                            </mesh>
-                        );
-                    };
-
-                    return (
-                        <group>
-                            {createBar(pBot1, pTop2)}
-                            {createBar(pBot2, pTop1)}
-                        </group>
-                    );
-                })()}
-
-                {/* Rafter */}
-                {/* Centered at [0, centerHeight, 0], rotated */}
-                <group position={[0, centerHeight, 0]} rotation={[0, 0, rotZ]}>
-                    <mesh geometry={rafterGeo} material={steelMaterial} position={[rafterLen / 2, 0, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow />
+                    {/* Foundation Block (Hidden for ALL Ombrière VL as requested) */}
                 </group>
-
-                {/* Foundation Block (Hidden for ALL Ombrière VL as requested) */}
-            </group>
-        );
+                );
 
     }
 
-    return (
-        <group position={position}>
-            {/* Columns (Rendered same as start, assuming mostly sym verticality or accept cut angle diff) */}
-            <mesh geometry={leftColumnGeo} material={steelMaterial} position={[-width / 2, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
-            <mesh geometry={rightColumnGeo} material={steelMaterial} position={[width / 2, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
+                return (
+                <group position={position}>
+                    {/* Columns (Rendered same as start, assuming mostly sym verticality or accept cut angle diff) */}
+                    <mesh geometry={leftColumnGeo} material={steelMaterial} position={[-width / 2, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
+                    <mesh geometry={rightColumnGeo} material={steelMaterial} position={[width / 2, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
 
-            {/* Apex Assembly (Diamond Gusset) */}
-            {/* Positioned at the ridge apex.
+                    {/* Apex Assembly (Diamond Gusset) */}
+                    {/* Positioned at the ridge apex.
                 We subtract a small offset to align the diamond center/top with the rafter intersection.
                 If (0,0) of diamond is Top Apex, we place it exactly at [apexX, effectiveRidgeHeight, 0].
              */}
-            <group position={[apexX, effectiveRidgeHeight, 0]}>
-                {createApexHaunchAssemblySCREB(lAngle, rAngle)}
-            </group>
+                    <group position={[apexX, effectiveRidgeHeight, 0]}>
+                        {createApexHaunchAssemblySCREB(lAngle, rAngle)}
+                    </group>
 
-            {/* Left Rafter */}
-            {/* Positioned at Left Column Eave, Rotated by lAngle */}
-            <group position={[-width / 2, leftColHeight, 0]} rotation={[0, 0, lAngle]}>
-                {/* Note: using `rightColHeight` as baseline for consistency with previous code, 
+                    {/* Left Rafter */}
+                    {/* Positioned at Left Column Eave, Rotated by lAngle */}
+                    <group position={[-width / 2, leftColHeight, 0]} rotation={[0, 0, lAngle]}>
+                        {/* Note: using `rightColHeight` as baseline for consistency with previous code, 
                      assuming eaves are level.
                      We use `createRafterAssembly` which creates rafter + eave haunch + plate.
                   */}
-                {createRafterAssembly(leftRafterLength - 0.05, false)}
-            </group>
+                        {createRafterAssembly(leftRafterLength - 0.05, false)}
+                    </group>
 
-            {/* Right Rafter */}
-            <group position={[width / 2, rightColHeight, 0]} rotation={[0, 0, -rAngle]}>
-                {createRafterAssembly(rightRafterLength - 0.05, true)}
-            </group>
+                    {/* Right Rafter */}
+                    <group position={[width / 2, rightColHeight, 0]} rotation={[0, 0, -rAngle]}>
+                        {createRafterAssembly(rightRafterLength - 0.05, true)}
+                    </group>
 
-        </group>
-    );
+                </group>
+                );
 }
 
 
