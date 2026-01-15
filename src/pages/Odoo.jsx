@@ -254,7 +254,8 @@ const TEAM_MEMBERS = [
     "Jack",
     "Véronique",
     "NicolasNMD",
-    "Laurent"
+    "Laurent",
+    "Philippe"
 ];
 
 const TaskTab = ({ project, activeTab, onUpdate, user }) => {
