@@ -39,7 +39,8 @@ class ApiService {
     async getProjects() {
         try {
             const user = await this._getCurrentUser();
-            const canViewAll = true;
+            // Check for Admin role or explicit permission
+            const canViewAll = user.role === 'admin' || user.permissions?.canViewAllProjects;
             return await firestoreService.listProjects(user.uid, canViewAll);
         } catch (error) {
             console.error("Error getting projects:", error);
@@ -119,7 +120,9 @@ class ApiService {
     async getContacts() {
         try {
             const user = await this._getCurrentUser();
-            const canViewAll = true;
+            // Check for Admin role or explicit permission (reusing project permission for now as it's the main "View All" switch)
+            // Or ideally use a separate permission if available. For now, let's assume 'canViewAllProjects' implies full CRM visibility or check role.
+            const canViewAll = user.role === 'admin' || user.permissions?.canViewAllProjects;
             return await firestoreService.listContacts(user.uid, canViewAll);
         } catch (error) {
             console.error("Error getting contacts:", error);
@@ -194,7 +197,7 @@ class ApiService {
     async getTasks() {
         try {
             const user = await this._getCurrentUser();
-            const canViewAll = true;
+            const canViewAll = user.role === 'admin' || user.permissions?.canViewAllProjects;
             return await firestoreService.listTasks(user.uid, canViewAll);
         } catch (error) {
             console.error("Error getting tasks:", error);
