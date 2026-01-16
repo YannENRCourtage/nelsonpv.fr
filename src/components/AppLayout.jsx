@@ -391,11 +391,11 @@ function Header() {
             <img src="https://horizons-cdn.hostinger.com/350bc103-daf8-48b5-9a02-076489f36a7d/338201d787e373b4c0b156cb07a5b792.png" alt="NELSON par ENR Courtage" />
           </Link>
           <nav className="app-header__nav">
-            {(user?.role === 'admin' || user?.permissions?.canAccessCRM !== false) && (
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessCRM !== false) && (
               <NavLink to="/crm" className={({ isActive }) => isActive ? 'nav-link active crm' : 'nav-link crm'}>CRM</NavLink>
             )}
 
-            {(user?.role === 'admin' || user?.permissions?.canAccessEditor !== false) && (
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessEditor !== false) && (
               <NavLink
                 to="/project/new/edit"
                 onClick={handleEditorClick}
@@ -405,29 +405,29 @@ function Header() {
               </NavLink>
             )}
 
-            {(user?.role === 'admin' || user?.permissions?.canAccessConfigurator) && (
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessConfigurator) && (
               <NavLink to="/configurateur" className={({ isActive }) => isActive ? 'nav-link active configurateur' : 'nav-link configurateur'}>Configurateur</NavLink>
             )}
 
             {/* Show Simulator if explicit permission is granted OR if admin (unless admin explicitly restricted) */}
-            {((user?.role === 'admin' && user?.permissions?.canAccessSimulator !== false) || user?.permissions?.canAccessSimulator) && (
+            {((user?.role === 'admin' || user?.role === 'Administrator') && user?.permissions?.canAccessSimulator !== false || user?.permissions?.canAccessSimulator) && (
               <NavLink to="/simulator" className={({ isActive }) => isActive ? 'nav-link active simulateur' : 'nav-link simulateur'}>Simulateur</NavLink>
             )}
 
             {/* CDP Link (Admin only or explicit permission) */}
-            {(user?.role === 'admin' || user?.permissions?.canAccessCDP) && (
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessCDP) && (
               <NavLink to="/cdp" className={({ isActive }) => isActive ? 'nav-link active cdp' : 'nav-link cdp'}>
                 CDP
               </NavLink>
             )}
 
-            {(user?.role === 'admin' || user?.permissions?.canAccessOdoo) && (
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessOdoo) && (
               <NavLink to="/odoo" className={({ isActive }) => isActive ? 'nav-link active odoo' : 'nav-link odoo'}>
                 ODOO
               </NavLink>
             )}
 
-            {user?.role === 'admin' && (
+            {(user?.role === 'admin' || user?.role === 'Administrator') && (
               <NavLink to="/admin" className={({ isActive }) => isActive ? 'nav-link active admin' : 'nav-link admin'}>
                 <Shield className="w-4 h-4 mr-1 inline-block" />
                 Admin

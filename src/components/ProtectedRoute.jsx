@@ -21,7 +21,7 @@ export const ProtectedRoute = ({ children, requiredRole, requiredPermission }) =
     }
 
     if (requiredPermission) {
-        const isAdmin = user?.role === 'admin';
+        const isAdmin = user?.role === 'admin' || user?.role === 'Administrator';
         const hasPermission = isAdmin || (user?.permissions?.[requiredPermission] === true);
         if (!hasPermission) {
             console.log(`Access denied: User ${user?.email} does not have permission ${requiredPermission}`, user?.permissions);
