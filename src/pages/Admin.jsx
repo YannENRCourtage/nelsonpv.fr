@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, Trash2, Edit, Plus, Shield, ShieldAlert, Mail, Eye, EyeOff, Link } from 'lucide-react';
+import { Loader2, Trash2, Edit, Plus, Shield, ShieldAlert, Mail, Eye, EyeOff, Link, FolderSync } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
 
@@ -234,6 +234,31 @@ export default function Admin() {
     }
   };
 
+  const handleInitOdooStages = async () => {
+    if (!window.confirm("Cela va réinitialiser les colonnes ODOO pour TOUS les utilisateurs. Continuer ?")) return;
+    try {
+      const stages = [
+        "Montage Administratif",
+        "Réaliser la DP/PC",
+        "Récupérer l'ARE",
+        "Récupérer l'accord ou refus Mairie",
+        "Déposer la demande sur le portail ENEDIS",
+        "Récupérer l'accord ou refus ENEDIS",
+        "Mandater l'huissier",
+        "Mandater le Géomètre",
+        "Mandater le Notaire"
+      ];
+      await setDoc(doc(db, 'config', 'odooStages'), {
+        stages: stages,
+        updatedAt: serverTimestamp()
+      });
+      toast({ title: "Succès", description: "Étapes ODOO réinitialisées et synchronisées !" });
+    } catch (error) {
+      console.error("Init ODOO failed:", error);
+      toast({ title: "Erreur", description: "Échec de l'initialisation ODOO : " + error.message, variant: "destructive" });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -258,6 +283,10 @@ export default function Admin() {
           <p className="text-slate-500 mt-1">Gérez les utilisateurs et leurs accès</p>
         </div>
         <div className="flex gap-2">
+          <Button onClick={handleInitOdooStages} variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50">
+            <FolderSync className="w-4 h-4 mr-2" />
+            Réinit. ODOO
+          </Button>
           <Button onClick={() => setIsRepairModalOpen(true)} variant="outline" className="text-amber-600 border-amber-200 hover:bg-amber-50">
             <Link className="w-4 h-4 mr-2" />
             Lier UID Existant
