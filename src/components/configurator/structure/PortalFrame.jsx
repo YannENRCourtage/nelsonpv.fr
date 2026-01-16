@@ -367,8 +367,9 @@ export function PortalFrame({
     // (Logic consolidated at top)
 
     // Rafter Lengths (Hypotenuse of span + overhang)
-    const leftRafterLength = (leftSpan + horizontalOverhang) / Math.cos(lAngle);
-    const rightRafterLength = (rightSpan + horizontalOverhang) / Math.cos(rAngle);
+    // For symmetric buildings: add 10cm extension towards sablière
+    const leftRafterLength = (leftSpan + horizontalOverhang + (isSymetrique ? 0.10 : 0)) / Math.cos(lAngle);
+    const rightRafterLength = (rightSpan + horizontalOverhang + (isSymetrique ? 0.10 : 0)) / Math.cos(rAngle);
 
     // Vertical offsets for connection at columns
     // The columns are cut at `angleRad` (for sym) or specific angle. 
