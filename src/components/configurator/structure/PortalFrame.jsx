@@ -206,8 +206,8 @@ export function PortalFrame({
     const leftColOffset = leftRafterVert - 0.20;
     const rightColOffset = rightRafterVert - 0.20;
 
-    const leftColHeight = (isMonopente ? ridgeHeight : leftEaveHeight) + leftColOffset + (isSymetrique ? 0.10 : 0);
-    const rightColHeight = rightEaveHeight + rightColOffset + (isSymetrique ? 0.10 : 0);
+    const leftColHeight = (isMonopente ? ridgeHeight : leftEaveHeight) + leftColOffset;
+    const rightColHeight = rightEaveHeight + rightColOffset;
 
     // Compatibility alias for existing components
     const angleRad = rAngle;
@@ -368,8 +368,8 @@ export function PortalFrame({
 
     // Rafter Lengths (Hypotenuse of span + overhang)
     // For symmetric buildings: add 10cm extension towards sablière
-    const leftRafterLength = (leftSpan + horizontalOverhang + (isSymetrique ? 0.10 : 0)) / Math.cos(lAngle);
-    const rightRafterLength = (rightSpan + horizontalOverhang + (isSymetrique ? 0.10 : 0)) / Math.cos(rAngle);
+    const leftRafterLength = (leftSpan + horizontalOverhang) / Math.cos(lAngle);
+    const rightRafterLength = (rightSpan + horizontalOverhang) / Math.cos(rAngle);
 
     // Vertical offsets for connection at columns
     // The columns are cut at `angleRad` (for sym) or specific angle. 
