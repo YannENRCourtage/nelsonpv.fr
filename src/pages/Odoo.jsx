@@ -33,6 +33,7 @@ import UserAvatar from '@/components/UserAvatar.jsx';
 
 // --- CONSTANTS ---
 const DEFAULT_STAGES = [
+    "Montage Administratif",
     "Réaliser la DP/PC",
     "Récupérer l'ARE",
     "Récupérer l'accord ou refus Mairie",
@@ -45,6 +46,7 @@ const DEFAULT_STAGES = [
 
 // Define colors for stages
 const STAGE_COLORS = {
+    "Montage Administratif": "bg-pink-100 text-pink-800 border-pink-200",
     "Réaliser la DP/PC": "bg-blue-100 text-blue-800 border-blue-200",
     "Récupérer l'ARE": "bg-indigo-100 text-indigo-800 border-indigo-200",
     "Récupérer l'accord ou refus Mairie": "bg-purple-100 text-purple-800 border-purple-200",
@@ -881,6 +883,19 @@ export default function Odoo() {
             return () => clearTimeout(timer);
         }
     }, [stages, stagesLoaded]);
+
+    // Auto-migration: Ensure "Montage Administratif" exists (for Admins only, to trigger the sync)
+    useEffect(() => {
+        if (stagesLoaded && user?.role === 'admin' && stages.length > 0) {
+            if (!stages.includes("Montage Administratif")) {
+                console.log("Auto-migrating: Adding missing 'Montage Administratif' stage...");
+                const newStages = ["Montage Administratif", ...stages];
+                setStages(newStages);
+                // The useEffect above will handle the saving to Firestore after debounce
+                toast({ title: "Mise à jour automatique", description: "La colonne 'Montage Administratif' a été ajoutée." });
+            }
+        }
+    }, [stages, stagesLoaded, user]);
 
     // Users Map for ID -> Name/Photo Resolution
     const [usersMap, setUsersMap] = useState({}); // UID -> { name, photoURL }
