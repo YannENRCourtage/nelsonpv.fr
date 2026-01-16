@@ -70,5 +70,11 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update, delete: if isAdmin();
     }
+
+    // Config collection - shared application configuration
+    match /config/{document} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated(); // Tous peuvent modifier pour sync temps réel
+    }
   }
 }

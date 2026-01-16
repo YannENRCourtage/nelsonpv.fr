@@ -833,20 +833,54 @@ export default function Odoo() {
     const [filterAssigned, setFilterAssigned] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
 
-    // Stages State (Persisted)
-    const [stages, setStages] = useState(() => {
-        const saved = localStorage.getItem('odoo_stages');
-        return saved ? JSON.parse(saved) : DEFAULT_STAGES;
-    });
+    // Stages State (Synced with Firestore)
+    const [stages, setStages] = useState(DEFAULT_STAGES);
+    const [stagesLoaded, setStagesLoaded] = useState(false);
 
     const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
     const [newStageName, setNewStageName] = useState("");
     const [isAddingStage, setIsAddingStage] = useState(false);
 
-    // Save Stages
+    // Load and sync stages from Firestore
     useEffect(() => {
-        localStorage.setItem('odoo_stages', JSON.stringify(stages));
-    }, [stages]);
+        const loadStages = async () => {
+            try {
+                // Subscribe to the global odooStages document
+                const unsubscribe = await apiService.subscribeToOdooStages((firestoreStages) => {
+                    if (firestoreStages && firestoreStages.length > 0) {
+                        setStages(firestoreStages);
+                    }
+                    setStagesLoaded(true);
+                });
+                return unsubscribe;
+            } catch (error) {
+                console.error('Failed to load ODOO stages:', error);
+                // Fallback to default stages
+                setStages(DEFAULT_STAGES);
+                setStagesLoaded(true);
+            }
+        };
+
+        const unsubPromise = loadStages();
+        return () => {
+            unsubPromise.then(unsub => unsub && unsub());
+        };
+    }, []);
+
+    // Save stages to Firestore when changed
+    useEffect(() => {
+        if (stagesLoaded && stages.length > 0) {
+            // Debounce to avoid too many writes
+            const timer = setTimeout(async () => {
+                try {
+                    await apiService.updateOdooStages(stages);
+                } catch (error) {
+                    console.error('Failed to save ODOO stages:', error);
+                }
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [stages, stagesLoaded]);
 
     // Users Map for ID -> Name/Photo Resolution
     const [usersMap, setUsersMap] = useState({}); // UID -> { name, photoURL }

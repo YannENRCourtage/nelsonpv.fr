@@ -4,7 +4,7 @@ import * as firestoreService from './firebase/firestore.service';
 import * as authService from './firebase/auth.service';
 import * as commentsService from './firebase/comments.service';
 import * as storageService from './firebase/storage.service';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { db } from '@/config/firebase.js';
 
 /**
@@ -398,6 +398,45 @@ class ApiService {
             return snapshot.data();
         }
         return null;
+    }
+
+    // ============================================================================
+    // ODOO STAGES (Shared Configuration)
+    // ============================================================================
+
+    async subscribeToOdooStages(callback) {
+        try {
+            const odooStagesRef = doc(db, 'config', 'odooStages');
+
+            return onSnapshot(odooStagesRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.data();
+                    callback(data.stages || []);
+                } else {
+                    // If document doesn't exist, return empty (will use defaults)
+                    callback([]);
+                }
+            }, (error) => {
+                console.error('Error subscribing to ODOO stages:', error);
+                callback([]);
+            });
+        } catch (error) {
+            console.error('Failed to subscribe to ODOO stages:', error);
+            return () => { }; // Return empty unsubscribe function
+        }
+    }
+
+    async updateOdooStages(stages) {
+        try {
+            const odooStagesRef = doc(db, 'config', 'odooStages');
+            await setDoc(odooStagesRef, {
+                stages: stages,
+                updatedAt: serverTimestamp()
+            });
+        } catch (error) {
+            console.error('Failed to update ODOO stages:', error);
+            throw error;
+        }
     }
 }
 
