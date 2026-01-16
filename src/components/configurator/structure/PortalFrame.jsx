@@ -40,6 +40,7 @@ export function PortalFrame({
     const isMonopente = buildingType === 'monopente';
     const isAsymetrique = buildingType === 'asymetrique_1'; // Corrected ID
     const isAsymetrique2 = buildingType === 'asymetrique_2'; // NEW: 2 zones
+    const isSymetrique = buildingType === 'symetrique';
 
     let leftSpan, rightSpan, lAngle, rAngle, effectiveRidgeHeight, apexX;
     let leftEaveHeight = eaveHeight; // Default
@@ -205,8 +206,8 @@ export function PortalFrame({
     const leftColOffset = leftRafterVert - 0.20;
     const rightColOffset = rightRafterVert - 0.20;
 
-    const leftColHeight = (isMonopente ? ridgeHeight : leftEaveHeight) + leftColOffset;
-    const rightColHeight = rightEaveHeight + rightColOffset;
+    const leftColHeight = (isMonopente ? ridgeHeight : leftEaveHeight) + leftColOffset + (isSymetrique ? 0.10 : 0);
+    const rightColHeight = rightEaveHeight + rightColOffset + (isSymetrique ? 0.10 : 0);
 
     // Compatibility alias for existing components
     const angleRad = rAngle;
