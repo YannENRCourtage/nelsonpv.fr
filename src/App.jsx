@@ -19,6 +19,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import DevErrorBoundary from './components/DevErrorBoundary.jsx';
 import TawkMessenger from './components/TawkMessenger.jsx';
 import CrispChat from './components/CrispChat.jsx';
+import GoogleAnalytics from './components/GoogleAnalytics.jsx';
 
 function AppContent() {
   const { isAuthenticated, user } = useAuth();
@@ -124,6 +125,7 @@ function AppContent() {
       </Routes>
       <Toaster />
       <CrispChat />
+      <GoogleAnalytics />
     </DndProvider>
   );
 }
