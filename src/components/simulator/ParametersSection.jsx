@@ -21,6 +21,28 @@ export default function ParametersSection({ params, onParamsChange }) {
         handleChange('power', e.target.value);
     };
 
+    // Convertir le point du pavé numérique en virgule
+    const handleKeyDown = (e) => {
+        if (e.key === '.' || e.key === 'Decimal') {
+            e.preventDefault();
+            const target = e.target;
+            const start = target.selectionStart;
+            const end = target.selectionEnd;
+            const value = target.value;
+
+            // Insérer une virgule à la position du curseur
+            const newValue = value.substring(0, start) + ',' + value.substring(end);
+            target.value = newValue;
+
+            // Repositionner le curseur après la virgule
+            target.setSelectionRange(start + 1, start + 1);
+
+            // Déclencher l'événement onChange manuellement
+            const event = new Event('input', { bubbles: true });
+            target.dispatchEvent(event);
+        }
+    };
+
     return (
         <div className="bg-white rounded-lg shadow-md p-6 h-full flex flex-col">
             <div className="flex items-center justify-between mb-6">
@@ -57,6 +79,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                         type="number"
                         value={params.power || 0}
                         onChange={(e) => handleChange('power', e.target.value)}
+                        onKeyDown={handleKeyDown}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
                 </div>
@@ -77,6 +100,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                                 production: power * prod
                             });
                         }}
+                        onKeyDown={handleKeyDown}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
                 </div>
@@ -99,6 +123,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                         step="0.001"
                         value={params.tarifTH || 0.12}
                         onChange={(e) => handleChange('tarifTH', e.target.value)}
+                        onKeyDown={handleKeyDown}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
                 </div>
@@ -111,6 +136,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                         step="0.005"
                         value={params.tarifACC || 0.12}
                         onChange={(e) => handleChange('tarifACC', e.target.value)}
+                        onKeyDown={handleKeyDown}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
                 </div>
@@ -135,6 +161,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                                         if (val < 0) val = 0;
                                         onParamsChange({ ...params, partACC: val, prixAchatACC: val / 100 });
                                     }}
+                                    onKeyDown={handleKeyDown}
                                     className="w-16 px-2 py-1 text-right text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent mr-1"
                                 />
                                 <span className="text-sm text-gray-600">%</span>
