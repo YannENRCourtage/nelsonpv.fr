@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, TrendingUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button.jsx';
 import { listSimulations, deleteSimulation } from '../services/firebase/simulations.service.js';
 import { toast } from "@/components/ui/use-toast.js";
@@ -82,7 +83,7 @@ export default function Finance() {
                         <TrendingUp className="h-8 w-8 text-teal-700" />
                         <div>
                             <h1 className="text-3xl font-bold text-teal-700">
-                                Finance - Simulations Sauvegardées
+                                Finance - Simulations Sauvegardées {simulations.length > 0 && `(${simulations.length})`}
                             </h1>
                             <p className="text-gray-600 mt-1">
                                 Historique des simulations financières rattachées aux projets
@@ -162,7 +163,12 @@ export default function Finance() {
                                     {simulations.map((sim) => (
                                         <tr key={sim.id} className="hover:bg-gray-50 transition-colors">
                                             <td className="px-3 py-4 text-sm text-gray-900 border-r border-gray-200">
-                                                <div className="font-medium">{sim.projectName}</div>
+                                                <Link
+                                                    to={`/project/${sim.projectId}/edit`}
+                                                    className="font-medium text-teal-600 hover:text-teal-800 hover:underline"
+                                                >
+                                                    {sim.projectName}
+                                                </Link>
                                             </td>
                                             <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
                                                 {formatNumber(sim.power, 0)}
