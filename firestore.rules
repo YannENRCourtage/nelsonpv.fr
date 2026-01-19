@@ -78,5 +78,14 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated(); // Tous peuvent modifier pour sync temps réel
     }
+    // Daily KPI - Monday tables ( Collaborative )
+    match /monday_tables/{tableId} {
+      allow read, write: if isAuthenticated();
+      
+      match /rows/{rowId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
   }
 }

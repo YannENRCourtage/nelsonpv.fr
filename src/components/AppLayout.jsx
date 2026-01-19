@@ -4,7 +4,7 @@ import Footer from './Footer.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useProject } from '../contexts/ProjectContext.jsx';
 import { Button } from './ui/button.jsx';
-import { LogOut, FileDown, Save, Bell, Users, Shield } from 'lucide-react';
+import { LogOut, FileDown, Save, Bell, Users, Shield, Grid, TrendingUp } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast.js";
 import jsPDF from "jspdf";
 import html2canvas from 'html2canvas';
@@ -428,11 +428,26 @@ function Header() {
             )}
 
             {(user?.role === 'admin' || user?.role === 'Administrator') && (
+              <NavLink to="/monday" className={({ isActive }) => isActive ? 'nav-link active monday' : 'nav-link monday'}>
+                <Grid className="w-4 h-4 mr-1 inline-block" />
+                Monday
+              </NavLink>
+            )}
+
+            {(user?.role === 'admin' || user?.role === 'Administrator') && (
+              <NavLink to="/finance" className={({ isActive }) => isActive ? 'nav-link active finance' : 'nav-link finance'}>
+                <TrendingUp className="w-4 h-4 mr-1 inline-block" />
+                Finance
+              </NavLink>
+            )}
+
+            {(user?.role === 'admin' || user?.role === 'Administrator') && (
               <NavLink to="/admin" className={({ isActive }) => isActive ? 'nav-link active admin' : 'nav-link admin'}>
                 <Shield className="w-4 h-4 mr-1 inline-block" />
                 Admin
               </NavLink>
             )}
+
           </nav>
         </div>
         <div className="flex items-center gap-4">

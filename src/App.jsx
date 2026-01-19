@@ -12,6 +12,8 @@ import ProfitabilitySimulator from './pages/ProfitabilitySimulator.jsx';
 import Configurateur from './pages/Configurateur.jsx';
 import CDP from './pages/CDP.jsx';
 import Odoo from './pages/Odoo.jsx';
+import Monday from './pages/Monday.jsx';
+import Finance from './pages/Finance.jsx';
 import { Toaster } from './components/ui/toaster.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
 import { DndProvider } from 'react-dnd';
@@ -116,6 +118,22 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <Odoo />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="monday"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <Monday />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="finance"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <Finance />
               </ProtectedRoute>
             }
           />

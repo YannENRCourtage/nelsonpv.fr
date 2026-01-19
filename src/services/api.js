@@ -4,7 +4,7 @@ import * as firestoreService from './firebase/firestore.service';
 import * as authService from './firebase/auth.service';
 import * as commentsService from './firebase/comments.service';
 import * as storageService from './firebase/storage.service';
-import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, onSnapshot, collection, query, writeBatch } from 'firebase/firestore';
 import { db } from '@/config/firebase.js';
 
 /**
@@ -31,6 +31,10 @@ class ApiService {
     async logout() {
         return await authService.signOut();
     }
+
+    // ============================================================================
+    // PROJECTS
+    // ============================================================================
 
     // ============================================================================
     // PROJECTS
@@ -64,47 +68,52 @@ class ApiService {
         return await firestoreService.getProject(id);
     }
 
-    async createProject(data) {
+    async createProject(data, skipLog = false) {
         const user = await this._getCurrentUser();
         const created = await firestoreService.createProject(data, user.uid);
 
-        await this.logActivity({
-            type: 'project',
-            action: 'create',
-            description: `${user.firstName || user.displayName || 'Un utilisateur'} a créé le projet ${created.name || 'Sans nom'}`,
-            userId: user.uid,
-            userName: user.firstName || user.displayName,
-            userPhotoURL: user.photoURL,
-            itemId: created.id
-        });
+        if (!skipLog) {
+            await this.logActivity({
+                type: 'project',
+                action: 'create',
+                description: `${user.firstName || user.displayName || 'Un utilisateur'} a créé le projet ${created.name || 'Sans nom'}`,
+                userId: user.uid,
+                userName: user.firstName || user.displayName,
+                userPhotoURL: user.photoURL,
+                itemId: created.id
+            });
+        }
 
         return created;
     }
 
-    async updateProject(id, data) {
+    async updateProject(id, data, skipLog = false) {
         const result = await firestoreService.updateProject(id, data);
 
         // Log update (debounced ideally, but direct for now)
-        try {
-            const user = await this._getCurrentUser();
-            // Fetch project name if not in data, or use generic
-            const projectName = data.name || (await this.getProject(id))?.name || 'Projet';
+        if (!skipLog) {
+            try {
+                const user = await this._getCurrentUser();
+                // Fetch project name if not in data, or use generic
+                // Optimization: if we already have the name in "data", use it. 
+                const projectName = data.name || (await this.getProject(id))?.name || 'Projet';
 
-            await this.logActivity({
-                type: 'project',
-                action: 'update',
-                description: `${user.firstName || user.displayName} a modifié le projet ${projectName}`,
-                userId: user.uid,
-                userName: user.firstName || user.displayName,
-                userPhotoURL: user.photoURL,
-                itemId: id
-            });
-        } catch (e) { console.error("Log fail", e); }
+                await this.logActivity({
+                    type: 'project',
+                    action: 'update',
+                    description: `${user.firstName || user.displayName} a modifié le projet ${projectName}`,
+                    userId: user.uid,
+                    userName: user.firstName || user.displayName,
+                    userPhotoURL: user.photoURL,
+                    itemId: id
+                });
+            } catch (e) { console.error("Log fail", e); }
+        }
 
         return result;
     }
 
-    async deleteProject(id) {
+    async deleteProject(id, skipLog = false) {
         const user = await this._getCurrentUser();
         // Get name before delete
         const project = await this.getProject(id);
@@ -112,15 +121,17 @@ class ApiService {
 
         const result = await firestoreService.deleteProject(id);
 
-        await this.logActivity({
-            type: 'project',
-            action: 'delete',
-            description: `${user.firstName || user.displayName} a supprimé le projet ${name}`,
-            userId: user.uid,
-            userName: user.firstName || user.displayName,
-            userPhotoURL: user.photoURL,
-            itemId: id
-        });
+        if (!skipLog) {
+            await this.logActivity({
+                type: 'project',
+                action: 'delete',
+                description: `${user.firstName || user.displayName} a supprimé le projet ${name}`,
+                userId: user.uid,
+                userName: user.firstName || user.displayName,
+                userPhotoURL: user.photoURL,
+                itemId: id
+            });
+        }
 
         return result;
     }
@@ -146,58 +157,64 @@ class ApiService {
         return await firestoreService.getContact(id);
     }
 
-    async createContact(data) {
+    async createContact(data, skipLog = false) {
         const user = await this._getCurrentUser();
         const created = await firestoreService.createContact(data, user.uid);
 
-        await this.logActivity({
-            type: 'contact',
-            action: 'create',
-            description: `${user.firstName || user.displayName} a créé le contact ${created.name}`,
-            userId: user.uid,
-            userName: user.firstName || user.displayName,
-            userPhotoURL: user.photoURL,
-            itemId: created.id
-        });
+        if (!skipLog) {
+            await this.logActivity({
+                type: 'contact',
+                action: 'create',
+                description: `${user.firstName || user.displayName} a créé le contact ${created.name}`,
+                userId: user.uid,
+                userName: user.firstName || user.displayName,
+                userPhotoURL: user.photoURL,
+                itemId: created.id
+            });
+        }
 
         return created;
     }
 
-    async updateContact(id, data) {
+    async updateContact(id, data, skipLog = false) {
         const result = await firestoreService.updateContact(id, data);
-        try {
-            const user = await this._getCurrentUser();
-            const contactName = data.name || (await this.getContact(id))?.name || 'Contact';
+        if (!skipLog) {
+            try {
+                const user = await this._getCurrentUser();
+                const contactName = data.name || (await this.getContact(id))?.name || 'Contact';
 
-            await this.logActivity({
-                type: 'contact',
-                action: 'update',
-                description: `${user.firstName || user.displayName} a modifié le contact ${contactName}`,
-                userId: user.uid,
-                userName: user.firstName || user.displayName,
-                userPhotoURL: user.photoURL,
-                itemId: id
-            });
-        } catch (e) { console.warn("Log activity failed", e); }
+                await this.logActivity({
+                    type: 'contact',
+                    action: 'update',
+                    description: `${user.firstName || user.displayName} a modifié le contact ${contactName}`,
+                    userId: user.uid,
+                    userName: user.firstName || user.displayName,
+                    userPhotoURL: user.photoURL,
+                    itemId: id
+                });
+            } catch (e) { console.warn("Log activity failed", e); }
+        }
         return result;
     }
 
-    async deleteContact(id) {
+    async deleteContact(id, skipLog = false) {
         const user = await this._getCurrentUser();
         const contact = await this.getContact(id);
         const name = contact?.name || id;
 
         const result = await firestoreService.deleteContact(id);
 
-        await this.logActivity({
-            type: 'contact',
-            action: 'delete',
-            description: `${user.firstName || user.displayName} a supprimé le contact ${name}`,
-            userId: user.uid,
-            userName: user.firstName || user.displayName,
-            userPhotoURL: user.photoURL,
-            itemId: id
-        });
+        if (!skipLog) {
+            await this.logActivity({
+                type: 'contact',
+                action: 'delete',
+                description: `${user.firstName || user.displayName} a supprimé le contact ${name}`,
+                userId: user.uid,
+                userName: user.firstName || user.displayName,
+                userPhotoURL: user.photoURL,
+                itemId: id
+            });
+        }
 
         return result;
     }
@@ -217,58 +234,64 @@ class ApiService {
         }
     }
 
-    async createTask(data) {
+    async createTask(data, skipLog = false) {
         const user = await this._getCurrentUser();
         const created = await firestoreService.createTask(data, user.uid);
 
-        await this.logActivity({
-            type: 'task',
-            action: 'create',
-            description: `${user.firstName || user.displayName} a créé la tâche : ${created.title}`,
-            userId: user.uid,
-            userName: user.firstName || user.displayName,
-            userPhotoURL: user.photoURL,
-            itemId: created.id
-        });
+        if (!skipLog) {
+            await this.logActivity({
+                type: 'task',
+                action: 'create',
+                description: `${user.firstName || user.displayName} a créé la tâche : ${created.title}`,
+                userId: user.uid,
+                userName: user.firstName || user.displayName,
+                userPhotoURL: user.photoURL,
+                itemId: created.id
+            });
+        }
 
         return created;
     }
 
-    async updateTask(id, data) {
+    async updateTask(id, data, skipLog = false) {
         const result = await firestoreService.updateTask(id, data);
-        try {
-            const user = await this._getCurrentUser();
-            const task = (await firestoreService.getTasks([id]))?.[0] || {};
-            // Warning: firestoreService doesn't have getTasks(ids), but getTasks() returns all. 
-            // Simplified:
-            const title = data.title || 'Tâche';
+        if (!skipLog) {
+            try {
+                const user = await this._getCurrentUser();
+                const task = (await firestoreService.getTasks([id]))?.[0] || {};
+                // Warning: firestoreService doesn't have getTasks(ids), but getTasks() returns all. 
+                // Simplified:
+                const title = data.title || 'Tâche';
 
-            await this.logActivity({
-                type: 'task',
-                action: 'update',
-                description: `${user.firstName || user.displayName} a modifié la tâche : ${title}`,
-                userId: user.uid,
-                userName: user.firstName || user.displayName,
-                userPhotoURL: user.photoURL,
-                itemId: id
-            });
-        } catch (e) { }
+                await this.logActivity({
+                    type: 'task',
+                    action: 'update',
+                    description: `${user.firstName || user.displayName} a modifié la tâche : ${title}`,
+                    userId: user.uid,
+                    userName: user.firstName || user.displayName,
+                    userPhotoURL: user.photoURL,
+                    itemId: id
+                });
+            } catch (e) { }
+        }
         return result;
     }
 
-    async deleteTask(taskId) {
+    async deleteTask(taskId, skipLog = false) {
         const user = await this._getCurrentUser();
         const result = await firestoreService.deleteTask(taskId);
 
-        await this.logActivity({
-            type: 'task',
-            action: 'delete',
-            description: `${user.firstName || user.displayName} a supprimé une tâche`,
-            userId: user.uid,
-            userName: user.firstName || user.displayName,
-            userPhotoURL: user.photoURL,
-            itemId: taskId
-        });
+        if (!skipLog) {
+            await this.logActivity({
+                type: 'task',
+                action: 'delete',
+                description: `${user.firstName || user.displayName} a supprimé une tâche`,
+                userId: user.uid,
+                userName: user.firstName || user.displayName,
+                userPhotoURL: user.photoURL,
+                itemId: taskId
+            });
+        }
 
         return result;
     }
@@ -398,6 +421,171 @@ class ApiService {
             return snapshot.data();
         }
         return null;
+    }
+
+    // ============================================================================
+    // MONDAY TABLES
+    // ============================================================================
+
+
+    subscribeToMondayTables(callback) {
+        try {
+            const q = query(collection(db, 'monday_tables'));
+            return onSnapshot(q, (snapshot) => {
+                const tables = snapshot.docs.map(doc => {
+                    // We don't fetch rows here anymore, just metadata (columns, name, etc.)
+                    // But legacy data might have rows field. We ignore it or handle it? 
+                    // Let's keep it simple.
+                    return { ...doc.data(), id: doc.id };
+                });
+                callback(tables);
+            });
+        } catch (error) {
+            console.error("Error subscribing to Monday tables:", error);
+            callback([]);
+            return () => { };
+        }
+    }
+
+    subscribeToMondayRows(tableId, callback) {
+        try {
+            const q = query(collection(db, 'monday_tables', tableId, 'rows'));
+            return onSnapshot(q, (snapshot) => {
+                const rows = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                callback(rows);
+            });
+        } catch (error) {
+            console.error("Error subscribing to rows:", error);
+            callback([]);
+            return () => { };
+        }
+    }
+
+    async addMondayRow(tableId, rowData) {
+        const rowRef = doc(collection(db, 'monday_tables', tableId, 'rows'));
+        // If rowData has an ID, use it? No, let Firestore generate or use setDoc if specific.
+        // Let's trust Firestore auto-id for simplicity unless we want to control sort order.
+        // Actually, if we want to keep order, we might need an index field.
+        // For now, let's just make it work.
+        const row = {
+            ...rowData,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        };
+        await setDoc(rowRef, row);
+        return { id: rowRef.id, ...row };
+    }
+
+    async updateMondayRow(tableId, rowId, data) {
+        const rowRef = doc(db, 'monday_tables', tableId, 'rows', rowId);
+        await updateDoc(rowRef, {
+            ...data,
+            updatedAt: serverTimestamp()
+        });
+    }
+
+    async deleteMondayRow(tableId, rowId) {
+        await deleteDoc(doc(db, 'monday_tables', tableId, 'rows', rowId));
+    }
+
+    async batchReplaceMondayRows(tableId, newRows) {
+        // Warning: This deletes ALL existing rows and adds new ones.
+        // Firestore batch limit is 500 operations.
+        // For large datasets, we need to chunk.
+
+        // 1. Delete existing (Optional? Or just add?)
+        // If we want "replace", we should delete.
+        // Fetch all IDs first.
+        const q = query(collection(db, 'monday_tables', tableId, 'rows'));
+        const snapshot = await import('firebase/firestore').then(m => m.getDocs(q));
+
+        // Delete in batches
+        const deleteBatches = [];
+        let currentBatch = writeBatch(db);
+        let count = 0;
+
+        snapshot.docs.forEach(doc => {
+            currentBatch.delete(doc.ref);
+            count++;
+            if (count >= 400) {
+                deleteBatches.push(currentBatch.commit());
+                currentBatch = writeBatch(db);
+                count = 0;
+            }
+        });
+        if (count > 0) deleteBatches.push(currentBatch.commit());
+        await Promise.all(deleteBatches);
+
+        const addBatches = [];
+        const newRowIds = []; // Fix: Declare array
+        currentBatch = writeBatch(db);
+        count = 0;
+
+        newRows.forEach(row => {
+            const { id, ...data } = row;
+            const newRef = doc(collection(db, 'monday_tables', tableId, 'rows'));
+            newRowIds.push(newRef.id); // Capture ID
+            currentBatch.set(newRef, {
+                ...data,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            });
+            count++;
+            if (count >= 400) {
+                addBatches.push(currentBatch.commit());
+                currentBatch = writeBatch(db);
+                count = 0;
+            }
+        });
+        if (count > 0) addBatches.push(currentBatch.commit());
+        await Promise.all(addBatches);
+
+        return newRowIds;
+    }
+
+    async batchDeleteMondayRows(tableId, rowIds) {
+        // Delete multiple rows by ID
+        const batchSize = 400;
+        const deleteBatches = [];
+        let currentBatch = writeBatch(db);
+        let count = 0;
+
+        for (const rowId of rowIds) {
+            const rowRef = doc(db, 'monday_tables', tableId, 'rows', rowId);
+            currentBatch.delete(rowRef);
+            count++;
+            if (count >= batchSize) {
+                deleteBatches.push(currentBatch.commit());
+                currentBatch = writeBatch(db);
+                count = 0;
+            }
+        }
+        if (count > 0) deleteBatches.push(currentBatch.commit());
+        await Promise.all(deleteBatches);
+    }
+
+    async createMondayTable(data) {
+        // data: { name: '...', columns: [], rows: [] }
+        const tableRef = doc(collection(db, 'monday_tables'));
+        const newTable = {
+            ...data,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        };
+        await setDoc(tableRef, newTable);
+        return { id: tableRef.id, ...newTable };
+    }
+
+    async updateMondayTable(id, data) {
+        const tableRef = doc(db, 'monday_tables', id);
+        await updateDoc(tableRef, {
+            ...data,
+            updatedAt: serverTimestamp()
+        });
+    }
+
+    async deleteMondayTable(id) {
+        await deleteDoc(doc(db, 'monday_tables', id));
     }
 
     // ============================================================================

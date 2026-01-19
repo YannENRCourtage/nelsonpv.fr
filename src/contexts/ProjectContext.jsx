@@ -267,9 +267,9 @@ export function ProjectProvider({ children }) {
         const existingContact = allContacts.find(c => c.projectId === projectId);
 
         if (existingContact) {
-          await apiService.updateContact(existingContact.id, contactData);
+          await apiService.updateContact(existingContact.id, contactData, true);
         } else {
-          await apiService.createContact(contactData);
+          await apiService.createContact(contactData, true);
         }
       } catch (contactError) {
         console.error("Erreur sauvegarde contact (non-bloquant):", contactError);

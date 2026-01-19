@@ -26,10 +26,11 @@ import html2canvas from "html2canvas";
 import SearchField from "./SearchField.jsx";
 import { toast } from "@/components/ui/use-toast.js";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer } from 'recharts';
-import { X as XIcon, Download, Save, Copy, RotateCw, MapPin, Maximize } from 'lucide-react';
+import { X as XIcon, Download, Save, Copy, RotateCw, MapPin, Maximize, Building, AlertCircle, FileText, Map as MapIcon } from 'lucide-react';
 import { mapData } from "@/lib/nomenclature.js";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
+import { urbanismeService } from "@/services/UrbanismeService";
 
 // --- Clé API IGN ---
 // 👇 COPIEZ VOTRE CLÉ API GÉOSERVICES IGN CI-DESSOUS 👇
@@ -127,6 +128,26 @@ const textIcon = (txt) => L.divIcon({
   className: "rounded bg-card/90 text-card-foreground px-2 py-[2px] border border-border shadow text-[13px] cursor-move",
   html: txt ? L.Util.escapeHTML(txt) : "",
 });
+
+const noteIcon = (txt) => L.divIcon({
+  className: "bg-transparent border-none cursor-move",
+  html: `<div style="
+    background: white;
+    border: 2px solid #2563eb;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #1e293b;
+    white-space: pre-wrap;
+    max-width: 300px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    font-weight: 500;
+    line-height: 1.4;
+  ">${txt ? L.Util.escapeHTML(txt).replace(/\n/g, '<br>') : ''}</div>`,
+  iconSize: null,
+  iconAnchor: [0, 0]
+});
+
 const symbolIcon = (emoji, number = null) => L.divIcon({
   html: `<div class="flex flex-col items-center cursor-grab relative">
            <div class="bg-white rounded-full p-2 shadow-lg border-2 border-border text-xl">${emoji}</div>
@@ -282,13 +303,19 @@ function TextInputPopup({ at, onCancel, onSubmit }) {
   const [value, setValue] = useState("");
   return (
     <Marker position={at} opacity={0}>
-      <Popup autoClose={false} closeOnClick={false} closeButton={false} autoPan={false}>
-        <form onSubmit={(e) => { e.preventDefault(); if (value.trim()) onSubmit(value.trim()); }} className="min-w-[260px] space-y-2">
-          <label className="text-sm text-muted-foreground">Texte</label>
-          <input className="w-full rounded border border-input bg-background px-2 py-1 text-sm text-foreground" value={value} onChange={(e) => setValue(e.target.value)} placeholder="Saisir le texte…" />
+      <Popup autoClose={false} closeOnClick={false} closeButton={false} autoPan={false} className="text-input-popup">
+        <form onSubmit={(e) => { e.preventDefault(); if (value.trim()) onSubmit(value.trim()); }} className="min-w-[260px] space-y-2 bg-white p-3 rounded-lg shadow-lg">
+          <label className="text-sm font-semibold text-gray-700">Ajouter un texte</label>
+          <input
+            autoFocus
+            className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="Saisir le texte…"
+          />
           <div className="flex gap-2 pt-1">
-            <button type="submit" className="rounded bg-blue-600 px-3 py-1 text-white text-sm">OK</button>
-            <button type="button" className="rounded bg-secondary px-3 py-1 text-sm text-secondary-foreground" onClick={onCancel}>Annuler</button>
+            <button type="submit" className="rounded bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-white text-sm font-medium transition-colors">Valider</button>
+            <button type="button" className="rounded bg-gray-200 hover:bg-gray-300 px-3 py-1.5 text-sm text-gray-700 font-medium transition-colors" onClick={onCancel}>Annuler</button>
           </div>
         </form>
       </Popup>
@@ -307,7 +334,91 @@ function useDeleteKey(onDelete) {
   }, [onDelete]);
 }
 
-function ContextMenu({ position, onAddText, onClose, onShowInfo, onSetTarget }) {
+function UrbanismePopup({ info, onClose }) {
+  if (!info) return null;
+  return (
+    <div className="absolute top-20 right-4 z-[2000] bg-white rounded-xl shadow-2xl border border-slate-200 w-80 max-h-[80vh] overflow-y-auto flex flex-col font-sans text-sm animate-in slide-in-from-right-10">
+      <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-xl">
+        <h3 className="font-bold text-slate-800 flex items-center gap-2">
+          <MapPin className="w-4 h-4 text-blue-600" />
+          Infos Urbanisme
+        </h3>
+        <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full transition-colors text-slate-500">
+          <XIcon className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="p-4 space-y-4">
+        {/* Status RNU */}
+        {info.isRNU && (
+          <div className="bg-orange-50 text-orange-800 p-3 rounded-lg border border-orange-100 flex items-start gap-2">
+            <div className="w-4 h-4 mt-0.5 flex-shrink-0">⚠️</div>
+            <div>
+              <p className="font-bold text-xs uppercase tracking-wide mb-1">Attention</p>
+              <p className="text-sm">Cette commune est soumise au <strong>Règlement National d'Urbanisme (RNU)</strong>.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Zones */}
+        <div>
+          <h4 className="font-semibold text-slate-700 mb-2 flex items-center gap-1">
+            <MapPin className="w-3 h-3" /> Zonage
+          </h4>
+          {info.zones.length > 0 ? (
+            <div className="space-y-2">
+              {info.zones.map((z, i) => (
+                <div key={i} className="bg-blue-50 p-2 rounded border border-blue-100 text-blue-900">
+                  <span className="font-bold text-base">{z.type}</span>
+                  {z.libelle && <p className="text-xs text-blue-700 mt-1">{z.libelle}</p>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-500 italic text-xs">Aucune zone spécifique détectée.</p>
+          )}
+        </div>
+
+        {/* Documents */}
+        <div>
+          <h4 className="font-semibold text-slate-700 mb-2 flex items-center gap-1">
+            <FileText className="w-3 h-3" /> Documents
+          </h4>
+          {info.documents.length > 0 ? (
+            <div className="space-y-2">
+              {info.documents.map((d, i) => (
+                <div key={i} className="border border-slate-100 rounded-lg p-2 hover:bg-slate-50 transition-colors">
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="font-bold text-slate-800 text-xs px-2 py-0.5 bg-slate-200 rounded-full">{d.type}</span>
+                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${d.status === 'vigueur' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{d.status}</span>
+                  </div>
+                  <p className="text-xs text-slate-600 font-medium line-clamp-2" title={d.name}>{d.name}</p>
+                  {d.downloadUrl ? (
+                    <a
+                      href={d.downloadUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors"
+                      title="Ouvrir le document dans un nouvel onglet"
+                    >
+                      <Download className="w-3 h-3" /> Télécharger le document
+                    </a>
+                  ) : (
+                    <span className="mt-2 text-xs text-gray-400 italic">Document non disponible</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-500 italic text-xs">Aucun document numérique disponible.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContextMenu({ position, onAddText, onAddNote, onClose, onCheckUrbanisme }) {
   const map = useMap();
   const menuRef = useRef(null);
   useEffect(() => {
@@ -316,32 +427,42 @@ function ContextMenu({ position, onAddText, onClose, onShowInfo, onSetTarget }) 
     return () => map.off('click', handleClickOutside);
   }, [map, onClose]);
 
-  const copyCoords = () => {
-    const coords = `${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`;
-    navigator.clipboard.writeText(coords).then(() => toast({ ...toastStyle, title: "Coordonnées copiées !", description: coords }));
-    onClose();
-  };
-
   return (
     <Marker position={position} opacity={0}>
       <Popup autoClose={false} closeOnClick={false} closeButton={false} autoPan={false} minWidth={150}>
         <div ref={menuRef} className="flex flex-col gap-1">
-          <button onClick={onSetTarget} className="text-left text-sm p-1 hover:bg-accent rounded font-semibold text-blue-600">Inspecter ce point</button>
-          <button onClick={onShowInfo} className="text-left text-sm p-1 hover:bg-accent rounded">Infos détaillées</button>
-          <button onClick={copyCoords} className="text-left text-sm p-1 hover:bg-accent rounded">Copier GPS</button>
-          <button onClick={onAddText} className="text-left text-sm p-1 hover:bg-accent rounded">Ajouter texte</button>
+          <button onClick={onCheckUrbanisme} className="text-left text-sm p-1 hover:bg-accent rounded flex items-center gap-2"><Building className="w-3 h-3" /> Voir Urbanisme (PLU)</button>
+          <button onClick={onAddText} className="text-left text-sm p-1 hover:bg-accent rounded">Ajouter texte simple</button>
+          <button onClick={onAddNote} className="text-left text-sm p-1 hover:bg-accent rounded flex items-center gap-2">📝 Ajouter note</button>
         </div>
       </Popup>
     </Marker>
   );
 }
 
-function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, photoToPlace, setPhotoToPlace, targetPos, setTargetPos }) {
+function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, photoToPlace, setPhotoToPlace, targetPos, setTargetPos }) {
   const [mousePos, setMousePos] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [ignoreNextClick, setIgnoreNextClick] = useState(false);
   const draggingRef = useRef(null);
+  const lastRightClickTime = useRef(0);
+  const lastRightClickPos = useRef(null);
   const map = useMap();
+  const [urbanismeInfo, setUrbanismeInfo] = useState(null);
+
+  const checkUrbanisme = async (latlng) => {
+    try {
+      toast({ title: "Urbanisme", description: "Recherche des informations en cours..." });
+      const info = await urbanismeService.getInfo(latlng.lat, latlng.lng);
+      setUrbanismeInfo(info);
+      if (info.zones.length === 0 && info.documents.length === 0 && !info.isRNU) {
+        toast({ title: "Urbanisme", description: "Aucune information trouvée pour ce point." });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Erreur", description: "Impossible de récupérer les infos d'urbanisme.", variant: "destructive" });
+    }
+  };
 
   useDeleteKey(() => {
     if (!selectedId) return;
@@ -531,7 +652,8 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
     },
     contextmenu(e) {
       e.originalEvent.preventDefault();
-      if (!draggingRef.current) setContextMenu({ position: e.latlng });
+      // Menu contextuel désactivé à la demande de l'utilisateur
+      // Plus d'encart lors du clic droit
     },
     mousemove(e) {
       setMousePos(e.latlng);
@@ -613,13 +735,14 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 
   return (
     <LayerGroup>
+      {urbanismeInfo && <UrbanismePopup info={urbanismeInfo} onClose={() => setUrbanismeInfo(null)} />}
       {features.map((f) => {
         const isSelected = selectedId === f.id;
         const baseEventHandlers = {
           click: (e) => { L.DomEvent.stop(e); if (mode === 'delete') setFeatures(fs => fs.filter(item => item.id !== f.id)); else setSelectedId(f.id); },
-          contextmenu: (e) => { L.DomEvent.stop(e); if (mode || draggingRef.current) return; draggingRef.current = { type: 'drag', featureId: f.id, startLatLng: e.latlng }; }
+          mousedown: (e) => { L.DomEvent.stop(e); if (mode || draggingRef.current) return; draggingRef.current = { type: 'drag', featureId: f.id, startLatLng: e.latlng }; }
         };
-        const shapeEventHandlers = { ...baseEventHandlers, mousedown: (e) => { L.DomEvent.stop(e); if (mode || draggingRef.current) return; draggingRef.current = { type: 'drag', featureId: f.id, startLatLng: e.latlng }; } };
+        const shapeEventHandlers = baseEventHandlers;
 
         if (f.type === "line") return <Polyline key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#2563eb", weight: 3, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatDistance(polylineLength(f.coords))}</Tooltip></Polyline>;
 
@@ -658,6 +781,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
           );
         }
         if (f.type === "text") return <Marker key={f.id} position={f.at} icon={textIcon(f.value)} draggable={false} eventHandlers={baseEventHandlers} />;
+        if (f.type === "note") return <Marker key={f.id} position={f.at} icon={noteIcon(f.value)} draggable={false} eventHandlers={baseEventHandlers} />;
         if (f.type === 'symbol' || f.type === 'photo') return <Marker key={f.id} position={f.at} icon={f.type === 'symbol' ? symbolIcon(f.emoji, f.number) : photoIcon(f.number)} draggable={false} eventHandlers={baseEventHandlers}><Tooltip>{f.type === 'symbol' ? f.label : `Photo ${f.number}`}</Tooltip></Marker>;
         return null;
       })}
@@ -747,7 +871,14 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       )}
 
       {askTextAt && <TextInputPopup at={askTextAt} onCancel={() => { setAskTextAt(null); setMode(null); }} onSubmit={(val) => { const id = crypto.randomUUID(); setFeatures((arr) => [...arr, { id, type: "text", at: askTextAt, value: val }]); setAskTextAt(null); setMode(null); }} />}
-      {contextMenu && <ContextMenu position={contextMenu.position} onAddText={() => { setAskTextAt(contextMenu.position); setContextMenu(null); }} onShowInfo={() => { showPointInfo(contextMenu.position); setContextMenu(null); }} onSetTarget={() => { setTargetPos(contextMenu.position); setContextMenu(null); }} onClose={() => setContextMenu(null)} />}
+      {askNoteAt && <TextInputPopup at={askNoteAt} onCancel={() => { setAskNoteAt(null); setMode(null); }} onSubmit={(val) => { const id = crypto.randomUUID(); setFeatures((arr) => [...arr, { id, type: "note", at: askNoteAt, value: val }]); setAskNoteAt(null); setMode(null); }} />}
+      {contextMenu && <ContextMenu
+        position={contextMenu.position}
+        onAddText={() => { setAskTextAt(contextMenu.position); setContextMenu(null); }}
+        onAddNote={() => { setAskNoteAt(contextMenu.position); setContextMenu(null); }}
+        onCheckUrbanisme={() => { checkUrbanisme(contextMenu.position); setContextMenu(null); }}
+        onClose={() => setContextMenu(null)}
+      />}
     </LayerGroup>
   );
 }
@@ -1480,7 +1611,7 @@ function MiniMap() {
 
 function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
   const map = useMap();
-  const [info, setInfo] = useState({ lat: 0, lng: 0, alt: '...', address: '...', parcel: '...' });
+  const [info, setInfo] = useState({ lat: 0, lng: 0, alt: '...', address: '...', parcel: '...', zoning: '...' });
   const [loading, setLoading] = useState(false);
 
   // Initialize target at center if not set
@@ -1499,7 +1630,8 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
         lng: hoverInfo.lng,
         alt: `${hoverInfo.altitude.toFixed(1)} m`,
         address: 'Point du profil', // Ou laisser l'ancienne adresse si on veut
-        parcel: '...'
+        parcel: '...',
+        zoning: '...'
       }));
       return;
     }
@@ -1510,12 +1642,12 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
     // Affiche "..." pendant le chargement, puis "N/A" si la clé est manquante/invalide.
 
     const updateInfo = async () => {
-      setInfo(prev => ({ ...prev, lat: targetPos.lat, lng: targetPos.lng, alt: '...', address: '...', parcel: '...' }));
+      setInfo(prev => ({ ...prev, lat: targetPos.lat, lng: targetPos.lng, alt: '...', address: '...', parcel: '...', zoning: '...' }));
       setLoading(true);
 
       try {
         // Lancer toutes les requêtes en parallèle pour optimiser la vitesse
-        const [altRes, addrRes, parcRes] = await Promise.allSettled([
+        const [altRes, addrRes, parcRes, urbanRes] = await Promise.allSettled([
           fetch(`https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json?resource=ign_rge_alti_wld&lon=${targetPos.lng}&lat=${targetPos.lat}&zonly=false`)
             .then(r => r.json()),
           // Adresse : API Adresse
@@ -1523,7 +1655,9 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
             .then(r => r.json()),
           // Parcelle cadastrale : API Carto IGN
           fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom={"type":"Point","coordinates":[${targetPos.lng},${targetPos.lat}]}`)
-            .then(r => r.json())
+            .then(r => r.json()),
+          // Urbanisme : utilise le service déjà intégré
+          urbanismeService.getInfo(targetPos.lat, targetPos.lng)
         ]);
 
         // Traiter l'altitude
@@ -1542,7 +1676,29 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
           ? `${parcRes.value.features[0].properties.section} ${parcRes.value.features[0].properties.numero}`
           : 'N/A';
 
-        setInfo(prev => ({ ...prev, alt, address, parcel }));
+        // Traiter le zonage urbanistique
+        let zoning = 'N/A';
+        if (urbanRes.status === 'fulfilled' && urbanRes.value) {
+          const urbanData = urbanRes.value;
+          const zone = urbanData.zones?.[0]?.type || null;
+          let docType = null;
+
+          if (urbanData.isRNU) {
+            docType = 'RNU';
+          } else if (urbanData.documents?.[0]) {
+            docType = urbanData.documents[0].type; // PLU, PLUi, CC, etc.
+          }
+
+          if (zone && docType) {
+            zoning = `${zone} / ${docType}`;
+          } else if (zone) {
+            zoning = zone;
+          } else if (docType) {
+            zoning = docType;
+          }
+        }
+
+        setInfo(prev => ({ ...prev, alt, address, parcel, zoning }));
       } catch (e) {
         console.error("Info fetch error", e);
       } finally {
@@ -1611,6 +1767,11 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
       <div className="flex justify-between items-center border-t pt-1 text-gray-600">
         <span className="flex items-center gap-1" title="Altitude">⛰️ {info.alt}</span>
         <span className="flex items-center gap-1" title="Parcelle">🏷️ {info.parcel}</span>
+      </div>
+
+      {/* Zonage urbanistique */}
+      <div className="flex items-center gap-1 border-t pt-1 text-gray-600 mt-1">
+        <span className="flex items-center gap-1" title="Zonage urbanistique">🏛️ <strong>Zonage:</strong> {info.zoning}</span>
       </div>
     </div>
   );
@@ -2160,6 +2321,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
   const [features, setFeatures] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [askTextAt, setAskTextAt] = useState(null);
+  const [askNoteAt, setAskNoteAt] = useState(null);
   const [pointInfo, setPointInfo] = useState(null);
   const [altimetryProfile, setAltimetryProfile] = useState(null);
   const [rectangleStart, setRectangleStart] = useState(null);
@@ -2316,6 +2478,8 @@ export default function MapElements({ style = {}, project, setProject, onAddress
             setSelectedId={setSelectedId}
             askTextAt={askTextAt}
             setAskTextAt={setAskTextAt}
+            askNoteAt={askNoteAt}
+            setAskNoteAt={setAskNoteAt}
             symbolToPlace={symbolToPlace}
             setSymbolToPlace={setSymbolToPlace}
             setPointInfo={setPointInfo}

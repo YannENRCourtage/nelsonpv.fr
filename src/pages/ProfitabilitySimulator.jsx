@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileDown } from 'lucide-react';
+import { FileDown, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import ParametersSection from '../components/simulator/ParametersSection';
 import ProjectCostsSection from '../components/simulator/ProjectCostsSection';
@@ -8,6 +8,11 @@ import CumulativeGainsChart from '../components/simulator/CumulativeGainsChart';
 import BusinessPlanTable from '../components/simulator/BusinessPlanTable';
 import { calculateAllMetrics, calculateEstimatedProduction } from '../lib/profitabilityCalculations';
 import { generateSimulatorPDF } from '../components/simulator/SimulatorPDFGenerator';
+import SaveSimulationModal from '../components/simulator/SaveSimulationModal';
+import { createSimulation } from '../services/firebase/simulations.service';
+import { useAuth } from '../contexts/AuthContext';
+import { toast } from "@/components/ui/use-toast.js";
+
 
 const DEFAULT_PARAMS = {
     power: 120,
@@ -38,6 +43,7 @@ const DEFAULT_COSTS = {
 };
 
 export default function ProfitabilitySimulator() {
+    const { user } = useAuth();
     const [params, setParams] = useState(DEFAULT_PARAMS);
     const [costs, setCosts] = useState(DEFAULT_COSTS);
     const [metrics, setMetrics] = useState({
@@ -50,6 +56,8 @@ export default function ProfitabilitySimulator() {
         paybackWithACC: 0,
         averageDSCR: 0
     });
+    const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+
 
     // Load saved defaults
     useEffect(() => {
@@ -150,6 +158,45 @@ export default function ProfitabilitySimulator() {
         });
     };
 
+    const handleSaveSimulation = async (project) => {
+        try {
+            const simulationData = {
+                projectId: project.id,
+                projectName: `${project.name || ''} ${project.zip || ''} ${project.city || ''}`.trim() || 'Projet sans nom',
+                // Paramètres
+                power: params.power,
+                productible: params.power > 0 ? params.production / params.power : 1200,
+                tarifTB: params.tarifTH,
+                tarifACC: params.tarifACC,
+                partACC: params.partACC || (params.prixAchatACC * 100),
+                // Coûts
+                totalCost: metrics.totalCost,
+                // Métriques financières
+                tri: metrics.tri,
+                averageDSCR: metrics.averageDSCR,
+                paybackWithoutACC: metrics.paybackWithoutACC,
+                paybackWithACC: metrics.paybackWithACC
+            };
+
+            await createSimulation(simulationData, user?.id);
+
+            toast({
+                title: "Simulation sauvegardée !",
+                description: `La simulation a été rattachée au projet "${simulationData.projectName}".`,
+                variant: "default",
+                className: "bg-white text-gray-900 p-4 border border-gray-300 rounded-lg shadow-lg"
+            });
+        } catch (error) {
+            console.error('Erreur sauvegarde simulation:', error);
+            toast({
+                title: "Erreur",
+                description: "Impossible de sauvegarder la simulation.",
+                variant: "destructive"
+            });
+        }
+    };
+
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
             <div className="w-full px-4 sm:px-6 lg:px-8" id="profitability-simulator-content">
@@ -165,14 +212,24 @@ export default function ProfitabilitySimulator() {
                                     Projetez les gains et la rentabilité de votre projet solaire.
                                 </p>
                             </div>
-                            <Button
-                                onClick={handleGeneratePDF}
-                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-full"
-                                data-html2canvas-ignore="true"
-                            >
-                                <FileDown className="h-5 w-5 mr-2" />
-                                Générer PDF
-                            </Button>
+                            <div className="flex gap-3">
+                                <Button
+                                    onClick={() => setIsSaveModalOpen(true)}
+                                    className="bg-green-600 hover:bg-green-700 text-white rounded-full"
+                                    data-html2canvas-ignore="true"
+                                >
+                                    <Save className="h-5 w-5 mr-2" />
+                                    Sauvegarder
+                                </Button>
+                                <Button
+                                    onClick={handleGeneratePDF}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-full"
+                                    data-html2canvas-ignore="true"
+                                >
+                                    <FileDown className="h-5 w-5 mr-2" />
+                                    Générer PDF
+                                </Button>
+                            </div>
                         </div>
                     </div>
 
@@ -216,6 +273,13 @@ export default function ProfitabilitySimulator() {
                     <BusinessPlanTable businessPlan={metrics.businessPlan} />
                 </div>
             </div>
+
+            {/* Modal de sauvegarde */}
+            <SaveSimulationModal
+                isOpen={isSaveModalOpen}
+                onClose={() => setIsSaveModalOpen(false)}
+                onSave={handleSaveSimulation}
+            />
         </div>
     );
 }

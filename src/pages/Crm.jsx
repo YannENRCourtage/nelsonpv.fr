@@ -389,7 +389,6 @@ export default function Crm() {
       if (editingContact.id && contacts.find(c => c.id === editingContact.id)) {
         await apiService.updateContact(editingContact.id, editingContact);
         setContacts(contacts.map(c => c.id === editingContact.id ? editingContact : c));
-        await apiService.logActivity({ type: 'contact', action: 'update', description: `${userName} a modifié le contact ${editingContact.name}`, userId: user?.uid, userName, userPhotoURL: currentUser.photoURL, itemId: editingContact.id });
       } else {
         // Ajouter le nom de l'utilisateur au contact avant la création
         const contactWithUser = {
@@ -399,7 +398,6 @@ export default function Crm() {
         };
         const newContact = await apiService.createContact(contactWithUser);
         setContacts([...contacts, newContact]);
-        await apiService.logActivity({ type: 'contact', action: 'create', description: `${userName} a créé le contact ${editingContact.name}`, userId: user?.uid, userName, userPhotoURL: currentUser.photoURL, itemId: newContact.id });
       }
       refreshActivities();
       setShowContactModal(false);
@@ -416,7 +414,6 @@ export default function Crm() {
     try {
       await apiService.deleteContact(String(id));
       setContacts(prev => prev.filter(c => c.id !== id));
-      await apiService.logActivity({ type: 'contact', action: 'delete', description: `${currentUser.name} a supprimé le contact ${contact?.name || id}`, userId: user?.uid, userName: currentUser.name, userPhotoURL: currentUser.photoURL, itemId: id });
       refreshActivities();
       toast({ title: "Succès", description: "Contact supprimé." });
     } catch (error) {
@@ -434,7 +431,6 @@ export default function Crm() {
 
     try {
       await apiService.deleteTask(taskId);
-      await apiService.logActivity({ type: 'task', action: 'delete', description: `${currentUser.name} a supprimé la tâche : ${task?.title || taskId}`, userId: user?.uid, userName: currentUser.name, userPhotoURL: currentUser.photoURL, itemId: taskId });
       refreshActivities();
       toast({ title: "Tâche supprimée" });
     } catch (error) {
@@ -457,7 +453,6 @@ export default function Crm() {
 
     try {
       await apiService.deleteProject(projectId);
-      await apiService.logActivity({ type: 'project', action: 'delete', description: `${currentUser.name} a supprimé le projet : ${project?.name || projectId}`, userId: user?.uid, userName: currentUser.name, userPhotoURL: currentUser.photoURL, itemId: projectId });
 
       // Force refresh data from server to be sure
       const freshProjects = await apiService.getProjects();
@@ -493,11 +488,9 @@ export default function Crm() {
       if (editingTask.id && tasks.find(t => t.id === editingTask.id)) {
         await apiService.updateTask(editingTask.id, editingTask);
         setTasks(tasks.map(t => t.id === editingTask.id ? editingTask : t));
-        await apiService.logActivity({ type: 'task', action: 'update', description: `${userName} a modifié la tâche : ${editingTask.title}`, userId: user?.uid, userName, userPhotoURL: currentUser.photoURL, itemId: editingTask.id });
       } else {
         const newTask = await apiService.createTask(editingTask);
         setTasks([...tasks, newTask]);
-        await apiService.logActivity({ type: 'task', action: 'create', description: `${userName} a créé la tâche : ${editingTask.title}`, userId: user?.uid, userName, userPhotoURL: currentUser.photoURL, itemId: newTask.id });
       }
       refreshActivities();
       setShowTaskModal(false);
@@ -1140,11 +1133,80 @@ export default function Crm() {
     );
   };
 
+  // Filtered Projects Logic (Lifted for Count)
+  const filteredProjects = projects.filter(p => {
+    // Search
+    const matchesSearch = (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.city || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+    // User
+    const projectUser = p.assignedUser || p.createdByFirstName || (typeof p.user === 'string' ? p.user : null);
+    const matchesUser = filterUser === 'all' || projectUser === filterUser;
+
+    // Type
+    const matchesType = filterType === 'all' || (p.type || 'Construction') === filterType;
+
+    // Status
+    const currentStatus = p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau');
+    const matchesStatus = filterStatus === 'all' || currentStatus === filterStatus;
+
+    return matchesSearch && matchesUser && matchesType && matchesStatus;
+  });
+
   // Rendu de la liste des Projets
   const renderProjects = () => (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div></div>
+      <div className="flex items-center justify-between gap-6">
+        <div className="flex items-center gap-4 flex-1">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Rechercher..."
+              className="w-full pl-10 pr-4 py-2 bg-white shadow-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          {/* Filtre Utilisateur */}
+          <select
+            value={filterUser}
+            onChange={(e) => setFilterUser(e.target.value)}
+            className="px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          >
+            <option value="all">Tous les utilisateurs</option>
+            {users.map(u => (
+              <option key={u.id} value={u.firstName || u.displayName}>{u.firstName || u.displayName || 'Utilisateur'}</option>
+            ))}
+          </select>
+
+          {/* Filtre Type */}
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          >
+            <option value="all">Tous les types</option>
+            <option value="Construction">Construction</option>
+            <option value="Rénovation">Rénovation</option>
+            <option value="Construction & Rénovation">Construction & Rénovation</option>
+            <option value="Location">Location</option>
+          </select>
+
+          {/* Filtre Statut */}
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          >
+            <option value="all">Tous les statuts</option>
+            <option value="Nouveau">Nouveau</option>
+            <option value="En cours">En cours</option>
+            <option value="Terminé">Terminé</option>
+            <option value="Abandonné">Abandonné</option>
+          </select>
+        </div>
 
         <div className="flex gap-4 items-center">
           <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
@@ -1175,59 +1237,6 @@ export default function Crm() {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-200">
-          <div className="flex gap-4 items-center">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Rechercher..."
-                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            {/* Filtre Utilisateur */}
-            <select
-              value={filterUser}
-              onChange={(e) => setFilterUser(e.target.value)}
-              className="px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            >
-              <option value="all">Tous les utilisateurs</option>
-              {users.map(u => (
-                <option key={u.id} value={u.firstName || u.displayName}>{u.firstName || u.displayName || 'Utilisateur'}</option>
-              ))}
-            </select>
-
-            {/* Filtre Type */}
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            >
-              <option value="all">Tous les types</option>
-              <option value="Construction">Construction</option>
-              <option value="Rénovation">Rénovation</option>
-              <option value="Construction & Rénovation">Construction & Rénovation</option>
-              <option value="Location">Location</option>
-            </select>
-
-            {/* Filtre Statut */}
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="Nouveau">Nouveau</option>
-              <option value="En cours">En cours</option>
-              <option value="Terminé">Terminé</option>
-              <option value="Abandonné">Abandonné</option>
-            </select>
-          </div>
-        </div>
-
         {viewMode === 'list' ? (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -1247,24 +1256,7 @@ export default function Crm() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {projects.filter(p => {
-                  // Filtre par recherche textuelle
-                  const matchesSearch = (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    (p.city || '').toLowerCase().includes(searchTerm.toLowerCase());
-
-                  // Filtre par utilisateur
-                  const projectUser = p.assignedUser || p.createdByFirstName || (typeof p.user === 'string' ? p.user : null);
-                  const matchesUser = filterUser === 'all' || projectUser === filterUser;
-
-                  // Filtre par type
-                  const matchesType = filterType === 'all' || (p.type || 'Construction') === filterType;
-
-                  // Filtre par statut
-                  const currentStatus = p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau');
-                  const matchesStatus = filterStatus === 'all' || currentStatus === filterStatus;
-
-                  return matchesSearch && matchesUser && matchesType && matchesStatus;
-                }).map((project) => (
+                {filteredProjects.map((project) => (
                   <tr key={project.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 font-medium text-slate-900">
                       {[project.name, project.zip, project.city].filter(Boolean).join(' ').toUpperCase() || 'Sans nom'}
@@ -1368,7 +1360,7 @@ export default function Crm() {
                     </td>
                   </tr>
                 ))}
-                {projects.length === 0 && (
+                {filteredProjects.length === 0 && (
                   <tr>
                     <td colSpan="7" className="px-6 py-8 text-center text-slate-500">
                       Aucun projet trouvé. Créez votre premier projet !
@@ -1380,10 +1372,7 @@ export default function Crm() {
           </div>
         ) : (
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.filter(p =>
-              (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-              (p.city || '').toLowerCase().includes(searchTerm.toLowerCase())
-            ).map((project) => (
+            {filteredProjects.map((project) => (
               <div key={project.id} className="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start mb-2">
                   <div className="font-bold text-lg text-slate-800">{project.projectSize || project.name || 'Projet'}</div>
@@ -1696,6 +1685,8 @@ export default function Crm() {
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-slate-900 mb-2">
               {navItems.find(item => item.id === activeTab)?.label}
+              {activeTab === 'contacts' && <span className="text-slate-400 font-normal ml-2 text-2xl">({filteredContacts.length})</span>}
+              {activeTab === 'projects' && <span className="text-slate-400 font-normal ml-2 text-2xl">({filteredProjects.length})</span>}
             </h1>
             <p className="text-slate-600">
               {activeTab === 'dashboard' && 'Vue d\'ensemble de votre activité'}
