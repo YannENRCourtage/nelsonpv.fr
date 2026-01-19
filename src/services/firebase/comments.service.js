@@ -311,3 +311,47 @@ export const getUsersForMentions = async () => {
         throw error;
     }
 };
+
+/**
+ * Create a notification when a project is assigned to a user
+ * @param {string} projectId - Project ID
+ * @param {string} projectName - Project name for display
+ * @param {string} assignedUserName - Name of the user being assigned (e.g., "NicolasNMD")
+ * @param {string} assignedByName - Name of the user doing the assignment (e.g., "Véronique")
+ * @returns {Promise<void>}
+ */
+export const createProjectAssignmentNotification = async (projectId, projectName, assignedUserName, assignedByName) => {
+    try {
+        // Get all users to resolve the assignedUserName to a UID
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // Find the user being assigned by matching firstName, displayName, or email
+        const assignedUser = users.find(u =>
+            (u.firstName && u.firstName === assignedUserName) ||
+            (u.displayName && u.displayName === assignedUserName) ||
+            (u.email && u.email.toLowerCase().startsWith(assignedUserName.toLowerCase()))
+        );
+
+        if (!assignedUser) {
+            console.warn(`[Project Assignment] User "${assignedUserName}" not found, notification not created`);
+            return;
+        }
+
+        // Create the notification
+        await addDoc(collection(db, 'notifications'), {
+            userId: assignedUser.id,
+            projectId,
+            type: 'assignment',
+            message: `Vous avez été affecté(e) au projet ${projectName || 'sans nom'}`,
+            assignedBy: assignedByName,
+            read: false,
+            createdAt: serverTimestamp()
+        });
+
+        console.log(`[Project Assignment] Notification created for user ${assignedUserName} (${assignedUser.id}) for project ${projectId}`);
+    } catch (error) {
+        console.error('Create project assignment notification error:', error);
+        // Don't throw - notification creation should not block project assignment
+    }
+};

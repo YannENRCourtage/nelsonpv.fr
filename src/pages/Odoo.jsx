@@ -30,6 +30,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 
 import ContactModal from '@/components/crm/ContactModal.jsx';
 import UserAvatar from '@/components/UserAvatar.jsx';
+import { createProjectAssignmentNotification } from '@/services/firebase/comments.service.js';
 
 // --- CONSTANTS ---
 const DEFAULT_STAGES = [
@@ -1039,12 +1040,34 @@ export default function Odoo() {
         }
     };
 
-    const handleUpdateDetail = (id, patch) => {
+    const handleUpdateDetail = async (id, patch) => {
         const project = projects.find(p => p.id === id);
         if (!project) return;
+
+        // Check if assignedUser is being changed
+        const isAssignmentChange = patch.assignedUser && patch.assignedUser !== project.assignedUser;
+
         const updated = { ...project, ...patch };
         updateProjectList(updated);
         saveToApi(id, patch);
+
+        // Create notification if project is being assigned to a user
+        if (isAssignmentChange && user) {
+            const projectName = project.name || project.firstName || 'CONSOLI';
+            const assignedByName = user.firstName || user.displayName || 'Un utilisateur';
+
+            try {
+                await createProjectAssignmentNotification(
+                    id,
+                    projectName,
+                    patch.assignedUser,
+                    assignedByName
+                );
+            } catch (error) {
+                console.error('Failed to create assignment notification:', error);
+                // Don't block the assignment if notification fails
+            }
+        }
     };
 
     const handleSelectProject = (project) => {
