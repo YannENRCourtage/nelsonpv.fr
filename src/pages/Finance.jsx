@@ -135,6 +135,30 @@ export default function Finance() {
                                             <div className="text-xs font-normal opacity-90">(%)</div>
                                         </th>
                                         <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
+                                            <div className="leading-tight">Installation</div>
+                                            <div className="text-xs font-normal opacity-90">(€)</div>
+                                        </th>
+                                        <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
+                                            <div className="leading-tight">Charpente</div>
+                                            <div className="text-xs font-normal opacity-90">(€)</div>
+                                        </th>
+                                        <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
+                                            <div className="leading-tight">Couverture</div>
+                                            <div className="text-xs font-normal opacity-90">(€)</div>
+                                        </th>
+                                        <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
+                                            <div className="leading-tight">Fondations</div>
+                                            <div className="text-xs font-normal opacity-90">(€)</div>
+                                        </th>
+                                        <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
+                                            <div className="leading-tight">Raccordement</div>
+                                            <div className="text-xs font-normal opacity-90">(€)</div>
+                                        </th>
+                                        <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
+                                            <div className="leading-tight">Développement</div>
+                                            <div className="text-xs font-normal opacity-90">(€)</div>
+                                        </th>
+                                        <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
                                             <div className="leading-tight">Coût total</div>
                                             <div className="text-xs font-normal opacity-90">du projet</div>
                                         </th>
@@ -185,6 +209,24 @@ export default function Finance() {
                                             <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
                                                 {formatNumber(sim.partACC, 0)} %
                                             </td>
+                                            <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
+                                                {formatCurrency(sim.installation)}
+                                            </td>
+                                            <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
+                                                {formatCurrency(sim.charpente)}
+                                            </td>
+                                            <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
+                                                {formatCurrency(sim.couverture)}
+                                            </td>
+                                            <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
+                                                {formatCurrency(sim.fondations)}
+                                            </td>
+                                            <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
+                                                {formatCurrency(sim.raccordement)}
+                                            </td>
+                                            <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
+                                                {formatCurrency(sim.developpement)}
+                                            </td>
                                             <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200 font-medium">
                                                 {formatCurrency(sim.totalCost)}
                                             </td>
@@ -217,18 +259,6 @@ export default function Finance() {
                         </div>
                     )}
                 </div>
-
-                {/* Statistiques */}
-                {simulations.length > 0 && (
-                    <div className="mt-6 bg-white rounded-lg shadow-md p-6">
-                        <h2 className="text-lg font-semibold text-gray-800 mb-2">
-                            Statistiques
-                        </h2>
-                        <p className="text-gray-600">
-                            Total de simulations : <span className="font-bold text-teal-700">{simulations.length}</span>
-                        </p>
-                    </div>
-                )}
             </div>
         </div>
     );

@@ -170,7 +170,14 @@ export default function ProfitabilitySimulator() {
                 tarifTB: params.tarifTH,
                 tarifACC: params.tarifACC,
                 partACC: params.partACC || (params.prixAchatACC * 100),
-                // Coûts
+                // Coûts détaillés
+                installation: costs.installation || 0,
+                charpente: costs.charpente || 0,
+                couverture: costs.couverture || 0,
+                fondations: costs.fondations || 0,
+                raccordement: costs.raccordement || 0,
+                developpement: costs.developpement || 0,
+                // Coût total
                 totalCost: metrics.totalCost,
                 // Métriques financières
                 tri: metrics.tri,
