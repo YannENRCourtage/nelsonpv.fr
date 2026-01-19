@@ -78,6 +78,14 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated(); // Tous peuvent modifier pour sync temps réel
     }
+    
+    // Financial Simulations - Admin only
+    match /financial_simulations/{simulationId} {
+      allow read: if isAuthenticated(); // Tous peuvent lire
+      allow create: if isAuthenticated(); // Tous peuvent créer
+      allow update, delete: if isAdmin(); // Seuls les admins peuvent modifier/supprimer
+    }
+    
     // Daily KPI - Monday tables ( Collaborative )
     match /monday_tables/{tableId} {
       allow read, write: if isAuthenticated();
