@@ -193,6 +193,8 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
     const [selectedRowIds, setSelectedRowIds] = useState(new Set());
     const [columnWidths, setColumnWidths] = useState(data.columnWidths || {});
     const [isResizing, setIsResizing] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const rowsPerPage = 200;
 
     // Helpers
     const [newColName, setNewColName] = useState('');
@@ -273,6 +275,19 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
 
         return ordered;
     }, [rows, rowOrder, searchTerm, filters]);
+
+    // --- Pagination ---
+    const totalPages = Math.ceil(displayedRows.length / rowsPerPage);
+    const paginatedRows = useMemo(() => {
+        const startIndex = (currentPage - 1) * rowsPerPage;
+        const endIndex = startIndex + rowsPerPage;
+        return displayedRows.slice(startIndex, endIndex);
+    }, [displayedRows, currentPage, rowsPerPage]);
+
+    // Reset to page 1 when filters or search change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, filters]);
 
 
     // --- Actions ---
@@ -493,7 +508,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
     };
 
     // Specific Filters requested
-    const specificFilters = ['COURTIER', 'SOURCE DE INFO', 'DPT', 'SOURCE DU CONTACT'];
+    const specificFilters = ['NOM', 'COURTIER', 'SOURCE DE INFO', 'DPT', 'SOURCE DU CONTACT'];
 
     return (
         <div className="flex flex-col h-full">
@@ -622,7 +637,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {displayedRows.map((row, index) => (
+                        {paginatedRows.map((row, index) => (
                             <DraggableRow
                                 key={row.id}
                                 index={index}
@@ -637,7 +652,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                                 onBlur={() => persistRow(row.id, row)}
                             />
                         ))}
-                        {displayedRows.length === 0 && (
+                        {paginatedRows.length === 0 && (
                             <tr>
                                 <td colSpan={columns.length + 3} className="px-6 py-10 text-center text-slate-500">
                                     {rows.length === 0
@@ -649,6 +664,60 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                     </tbody>
                 </table>
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-slate-200 rounded-b-xl">
+                    <div className="text-sm text-slate-600">
+                        Affichage de {((currentPage - 1) * rowsPerPage) + 1} à {Math.min(currentPage * rowsPerPage, displayedRows.length)} sur {displayedRows.length} résultats
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
+                            className="h-8"
+                        >
+                            Précédent
+                        </Button>
+                        <div className="flex items-center gap-1">
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                let pageNum;
+                                if (totalPages <= 5) {
+                                    pageNum = i + 1;
+                                } else if (currentPage <= 3) {
+                                    pageNum = i + 1;
+                                } else if (currentPage >= totalPages - 2) {
+                                    pageNum = totalPages - 4 + i;
+                                } else {
+                                    pageNum = currentPage - 2 + i;
+                                }
+                                return (
+                                    <Button
+                                        key={pageNum}
+                                        size="sm"
+                                        variant={currentPage === pageNum ? "default" : "outline"}
+                                        onClick={() => setCurrentPage(pageNum)}
+                                        className="h-8 w-8 p-0"
+                                    >
+                                        {pageNum}
+                                    </Button>
+                                );
+                            })}
+                        </div>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={currentPage === totalPages}
+                            className="h-8"
+                        >
+                            Suivant
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
