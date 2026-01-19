@@ -77,6 +77,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                     </label>
                     <input
                         type="number"
+                        name="power"
                         value={params.power || 0}
                         onChange={(e) => handleChange('power', e.target.value)}
                         onKeyDown={handleKeyDown}
@@ -89,6 +90,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                     </label>
                     <input
                         type="number"
+                        name="productible"
                         value={params.productible || 1200}
                         onChange={(e) => {
                             const prod = parseFloat(e.target.value) || 0;
@@ -120,6 +122,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                     </label>
                     <input
                         type="number"
+                        name="tarifTH"
                         step="0.001"
                         value={params.tarifTH || 0.12}
                         onChange={(e) => handleChange('tarifTH', e.target.value)}
@@ -133,6 +136,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                     </label>
                     <input
                         type="number"
+                        name="tarifACC"
                         step="0.005"
                         value={params.tarifACC || 0.12}
                         onChange={(e) => handleChange('tarifACC', e.target.value)}
@@ -151,6 +155,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                             <div className="flex items-center">
                                 <input
                                     type="number"
+                                    name="partACC"
                                     min="0"
                                     max="100"
                                     value={params.partACC || 0}

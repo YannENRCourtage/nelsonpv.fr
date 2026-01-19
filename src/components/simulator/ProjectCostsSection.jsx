@@ -80,6 +80,7 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                             <div className="relative rounded-md shadow-sm">
                                 <input
                                     type="number"
+                                    name={field.key}
                                     value={costs[field.key] || 0}
                                     onChange={(e) => handleChange(field.key, e.target.value)}
                                     onKeyDown={handleKeyDown}
@@ -106,6 +107,7 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                                 <div className="relative rounded-md shadow-sm">
                                     <input
                                         type="number"
+                                        name={field.key}
                                         value={costs[field.key] || 0}
                                         onChange={(e) => handleChange(field.key, e.target.value)}
                                         onKeyDown={handleKeyDown}
