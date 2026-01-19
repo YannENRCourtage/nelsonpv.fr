@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, TrendingUp } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Trash2, TrendingUp, Edit } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button.jsx';
 import { listSimulations, deleteSimulation } from '../services/firebase/simulations.service.js';
 import { toast } from "@/components/ui/use-toast.js";
 
 export default function Finance() {
+    const navigate = useNavigate();
     const [simulations, setSimulations] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -51,6 +52,39 @@ export default function Finance() {
                 variant: "destructive"
             });
         }
+    };
+
+    const handleEdit = (simulation) => {
+        // Préparer les données pour le simulateur
+        const simulatorData = {
+            params: {
+                power: simulation.power || 120,
+                productible: simulation.productible || 1200,
+                production: (simulation.power || 120) * (simulation.productible || 1200),
+                tarifTH: simulation.tarifTB || 0.09,
+                tarifACC: simulation.tarifACC || 0.14,
+                partACC: simulation.partACC || 40,
+                prixAchatACC: 0
+            },
+            costs: {
+                installationRate: 0.50,
+                installation: simulation.installation || 0,
+                charpente: simulation.charpente || 0,
+                couverture: simulation.couverture || 0,
+                fondations: simulation.fondations || 0,
+                raccordement: simulation.raccordement || 0,
+                developpement: simulation.developpement || 0,
+                fraisCommerciaux: (simulation.power || 120) * 50,
+                soulte: 0,
+                maintenance: 10,
+                bardage: 0,
+                cheneaux: 0,
+                batterie: 0
+            }
+        };
+
+        // Naviguer vers le simulateur avec les données
+        navigate('/simulator', { state: { simulationData: simulatorData } });
     };
 
     const formatCurrency = (value) => {
@@ -243,14 +277,26 @@ export default function Finance() {
                                                 {formatYears(sim.paybackWithACC)}
                                             </td>
                                             <td className="px-3 py-4 text-center">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => handleDelete(sim.id)}
-                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleEdit(sim)}
+                                                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                        title="Modifier"
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => handleDelete(sim.id)}
+                                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                        title="Supprimer"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

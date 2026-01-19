@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileDown, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
+import { useLocation } from 'react-router-dom';
 import ParametersSection from '../components/simulator/ParametersSection';
 import ProjectCostsSection from '../components/simulator/ProjectCostsSection';
 import ProfitabilitySection from '../components/simulator/ProfitabilitySection';
@@ -45,6 +46,7 @@ const DEFAULT_COSTS = {
 
 export default function ProfitabilitySimulator() {
     const { user } = useAuth();
+    const location = useLocation();
     const [params, setParams] = useState(DEFAULT_PARAMS);
     const [costs, setCosts] = useState(DEFAULT_COSTS);
     const [metrics, setMetrics] = useState({
@@ -59,6 +61,23 @@ export default function ProfitabilitySimulator() {
     });
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
 
+    // Charger les données de simulation si passées via navigation (depuis Finance)
+    useEffect(() => {
+        if (location.state?.simulationData) {
+            const { params: simParams, costs: simCosts } = location.state.simulationData;
+            setParams(simParams);
+            setCosts(simCosts);
+
+            // Nettoyer l'état de navigation pour éviter de recharger au refresh
+            window.history.replaceState({}, document.title);
+
+            toast({
+                title: "Simulation chargée",
+                description: "Les données de la simulation ont été chargées avec succès.",
+                className: "bg-white text-gray-900 p-4 border border-gray-300 rounded-lg shadow-lg"
+            });
+        }
+    }, [location]);
 
     // Load saved defaults
     useEffect(() => {
