@@ -434,7 +434,7 @@ function Header() {
               </NavLink>
             )}
 
-            {(user?.role === 'admin' || user?.role === 'Administrator') && (
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessFinance) && (
               <NavLink to="/finance" className={({ isActive }) => isActive ? 'nav-link active finance' : 'nav-link finance'}>
                 <TrendingUp className="w-4 h-4 mr-1 inline-block" />
                 Finance
