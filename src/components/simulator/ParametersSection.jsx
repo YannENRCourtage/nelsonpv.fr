@@ -8,7 +8,8 @@ export default function ParametersSection({ params, onParamsChange }) {
     const [showTariffsModal, setShowTariffsModal] = useState(false);
 
     const handleChange = (field, value) => {
-        // Replace comma with dot for parsing, ensuring both separators work
+        // Replace both comma and dot with dot for parsing (normalize input)
+        // This allows users to type either . or , and it will work
         const normalized = String(value).replace(',', '.');
         onParamsChange({ ...params, [field]: parseFloat(normalized) || 0 });
     };
@@ -19,28 +20,6 @@ export default function ParametersSection({ params, onParamsChange }) {
 
     const handleSliderChange = (e) => {
         handleChange('power', e.target.value);
-    };
-
-    // Convertir le point du pavé numérique en virgule
-    const handleKeyDown = (e) => {
-        if (e.key === '.' || e.key === 'Decimal') {
-            e.preventDefault();
-            const target = e.target;
-            const start = target.selectionStart;
-            const end = target.selectionEnd;
-            const value = target.value;
-
-            // Insérer une virgule à la position du curseur
-            const newValue = value.substring(0, start) + ',' + value.substring(end);
-            target.value = newValue;
-
-            // Repositionner le curseur après la virgule
-            target.setSelectionRange(start + 1, start + 1);
-
-            // Déclencher l'événement onChange manuellement
-            const event = new Event('input', { bubbles: true });
-            target.dispatchEvent(event);
-        }
     };
 
     return (
@@ -80,7 +59,6 @@ export default function ParametersSection({ params, onParamsChange }) {
                         name="power"
                         value={params.power || 0}
                         onChange={(e) => handleChange('power', e.target.value)}
-                        onKeyDown={handleKeyDown}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
                 </div>
@@ -102,7 +80,6 @@ export default function ParametersSection({ params, onParamsChange }) {
                                 production: power * prod
                             });
                         }}
-                        onKeyDown={handleKeyDown}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
                 </div>
@@ -126,7 +103,6 @@ export default function ParametersSection({ params, onParamsChange }) {
                         step="0.001"
                         value={params.tarifTH || 0.12}
                         onChange={(e) => handleChange('tarifTH', e.target.value)}
-                        onKeyDown={handleKeyDown}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
                 </div>
@@ -140,7 +116,6 @@ export default function ParametersSection({ params, onParamsChange }) {
                         step="0.005"
                         value={params.tarifACC || 0.12}
                         onChange={(e) => handleChange('tarifACC', e.target.value)}
-                        onKeyDown={handleKeyDown}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
                 </div>
@@ -166,7 +141,6 @@ export default function ParametersSection({ params, onParamsChange }) {
                                         if (val < 0) val = 0;
                                         onParamsChange({ ...params, partACC: val, prixAchatACC: val / 100 });
                                     }}
-                                    onKeyDown={handleKeyDown}
                                     className="w-16 px-2 py-1 text-right text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent mr-1"
                                 />
                                 <span className="text-sm text-gray-600">%</span>

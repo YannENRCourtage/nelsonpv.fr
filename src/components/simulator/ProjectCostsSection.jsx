@@ -80,10 +80,8 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                             <div className="relative rounded-md shadow-sm">
                                 <input
                                     type="number"
-                                    name={field.key}
                                     value={costs[field.key] || 0}
                                     onChange={(e) => handleChange(field.key, e.target.value)}
-                                    onKeyDown={handleKeyDown}
                                     className="block w-full pl-3 pr-8 h-[45px] py-0 text-sm border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent flex items-center"
                                 />
                                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -107,10 +105,8 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                                 <div className="relative rounded-md shadow-sm">
                                     <input
                                         type="number"
-                                        name={field.key}
                                         value={costs[field.key] || 0}
                                         onChange={(e) => handleChange(field.key, e.target.value)}
-                                        onKeyDown={handleKeyDown}
                                         className="block w-full pl-3 pr-8 h-[45px] py-0 text-sm border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent flex items-center"
                                     />
                                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
