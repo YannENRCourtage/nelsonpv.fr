@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, TrendingUp, Edit } from 'lucide-react';
+import { Trash2, TrendingUp, Edit, Search } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button.jsx';
 import { listSimulations, deleteSimulation } from '../services/firebase/simulations.service.js';
@@ -9,6 +9,7 @@ export default function Finance() {
     const navigate = useNavigate();
     const [simulations, setSimulations] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         loadSimulations();
@@ -108,6 +109,11 @@ export default function Finance() {
         return (value || 0).toFixed(decimals);
     };
 
+    // Filtrer les simulations en fonction du terme de recherche
+    const filteredSimulations = simulations.filter(sim =>
+        sim.projectName?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
             <div className="w-full px-4 sm:px-6 lg:px-8">
@@ -126,18 +132,54 @@ export default function Finance() {
                     </div>
                 </div>
 
+                {/* Barre de recherche */}
+                <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+                    <div className="relative max-w-md">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Rechercher un projet..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 sm:text-sm transition-colors"
+                        />
+                        {searchTerm && (
+                            <button
+                                onClick={() => setSearchTerm('')}
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
+                    {searchTerm && (
+                        <p className="mt-2 text-sm text-gray-600">
+                            {filteredSimulations.length} résultat{filteredSimulations.length > 1 ? 's' : ''} trouvé{filteredSimulations.length > 1 ? 's' : ''}
+                        </p>
+                    )}
+                </div>
+
                 {/* Tableau des simulations */}
                 <div className="bg-white rounded-lg shadow-md overflow-hidden">
                     {isLoading ? (
                         <div className="p-8 text-center text-gray-500">
                             Chargement des simulations...
                         </div>
-                    ) : simulations.length === 0 ? (
+                    ) : filteredSimulations.length === 0 ? (
                         <div className="p-8 text-center text-gray-500">
                             <TrendingUp className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                            <p className="text-lg">Aucune simulation sauvegardée</p>
+                            <p className="text-lg">
+                                {searchTerm ? 'Aucun projet trouvé' : 'Aucune simulation sauvegardée'}
+                            </p>
                             <p className="text-sm mt-2">
-                                Les simulations créées depuis le Simulateur apparaîtront ici
+                                {searchTerm
+                                    ? 'Essayez de modifier votre recherche'
+                                    : 'Les simulations créées depuis le Simulateur apparaîtront ici'
+                                }
                             </p>
                         </div>
                     ) : (
@@ -218,7 +260,7 @@ export default function Finance() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {simulations.map((sim) => (
+                                    {filteredSimulations.map((sim) => (
                                         <tr key={sim.id} className="hover:bg-gray-50 transition-colors">
                                             <td className="px-3 py-4 text-sm text-gray-900 border-r border-gray-200">
                                                 <Link
