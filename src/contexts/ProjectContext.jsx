@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useMemo, useState, useCallback, useEffect } from "react";
 import { apiService } from "../services/api";
 import { uploadProjectCapture, uploadProjectPhoto } from "../services/firebase/storage.service";
+import { createProjectAssignmentNotification } from "../services/firebase/comments.service";
+import { useAuth } from "./AuthContext";
 
 /** Clef LS commune (liste projets) */
 const LS_KEY = "nelson:projects:v1";
@@ -46,6 +48,7 @@ const ProjectContext = createContext({
  * - page Client & Projet  => project + updateProject
  */
 export function ProjectProvider({ children }) {
+  const { user } = useAuth(); // Get current user for notification attribution
   const [projects, _setProjects] = useState(() => loadAllProjectsFromLS());
   const [project, _setProject] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -123,9 +126,29 @@ export function ProjectProvider({ children }) {
   }, []);
 
   /** Mises à jour partielles (patch) */
-  const updateProject = useCallback((patch) => {
+  const updateProject = useCallback(async (patch) => {
+    // Check if assignedUser is being changed
+    if (patch.assignedUser && project && patch.assignedUser !== project.assignedUser) {
+      // Create notification for the newly assigned user
+      const projectName = project.name || project.firstName || 'CONSOLI';
+      const assignedByName = user?.firstName || user?.displayName || 'Un utilisateur';
+
+      try {
+        await createProjectAssignmentNotification(
+          project.id,
+          projectName,
+          patch.assignedUser,
+          assignedByName
+        );
+        console.log(`[ProjectContext] Notification created for assignment to ${patch.assignedUser}`);
+      } catch (error) {
+        console.error('[ProjectContext] Failed to create assignment notification:', error);
+        // Don't block the update if notification fails
+      }
+    }
+
     _setProject((prev) => ({ ...(prev || {}), ...(patch || {}) }));
-  }, []);
+  }, [project, user]);
 
   /** Sauvegarde (API + LS backup) */
   /** Sauvegarde (API + LS backup) */
