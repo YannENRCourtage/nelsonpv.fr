@@ -29,6 +29,26 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
         onCostsChange({ ...costs, [field]: parseFloat(value) || 0 });
     };
 
+    // Intercepter le point du pavé numérique et le convertir en virgule
+    const handleKeyPress = (e) => {
+        if (e.key === '.' || e.key === 'Decimal') {
+            e.preventDefault();
+            const target = e.target;
+            const start = target.selectionStart;
+            const end = target.selectionEnd;
+            const currentValue = target.value;
+
+            const newValue = currentValue.substring(0, start) + ',' + currentValue.substring(end);
+            target.value = newValue;
+
+            const newPosition = start + 1;
+            target.setSelectionRange(newPosition, newPosition);
+
+            const inputEvent = new InputEvent('input', { bubbles: true, cancelable: true });
+            target.dispatchEvent(inputEvent);
+        }
+    };
+
     // Convertir le point du pavé numérique en virgule
     const handleKeyDown = (e) => {
         if (e.key === '.' || e.key === 'Decimal') {
@@ -82,6 +102,7 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                                     type="number"
                                     value={costs[field.key] || 0}
                                     onChange={(e) => handleChange(field.key, e.target.value)}
+                                    onKeyPress={handleKeyPress}
                                     className="block w-full pl-3 pr-8 h-[45px] py-0 text-sm border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent flex items-center"
                                 />
                                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -107,6 +128,7 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                                         type="number"
                                         value={costs[field.key] || 0}
                                         onChange={(e) => handleChange(field.key, e.target.value)}
+                                        onKeyPress={handleKeyPress}
                                         className="block w-full pl-3 pr-8 h-[45px] py-0 text-sm border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent flex items-center"
                                     />
                                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">

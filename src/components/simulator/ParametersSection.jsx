@@ -22,6 +22,32 @@ export default function ParametersSection({ params, onParamsChange }) {
         handleChange('power', e.target.value);
     };
 
+    // Intercepter le point du pavé numérique et le convertir en virgule
+    const handleKeyPress = (e) => {
+        // Si c'est un point (.), on empêche l'insertion et on insère une virgule
+        if (e.key === '.' || e.key === 'Decimal') {
+            e.preventDefault();
+            const target = e.target;
+            const start = target.selectionStart;
+            const end = target.selectionEnd;
+            const currentValue = target.value;
+
+            // Créer la nouvelle valeur avec une virgule
+            const newValue = currentValue.substring(0, start) + ',' + currentValue.substring(end);
+
+            // Mettre à jour manuellement
+            target.value = newValue;
+
+            // Repositionner le curseur
+            const newPosition = start + 1;
+            target.setSelectionRange(newPosition, newPosition);
+
+            // Déclencher manuellement l'événement input pour que React détecte le changement
+            const inputEvent = new InputEvent('input', { bubbles: true, cancelable: true });
+            target.dispatchEvent(inputEvent);
+        }
+    };
+
     return (
         <div className="bg-white rounded-lg shadow-md p-6 h-full flex flex-col">
             <div className="flex items-center justify-between mb-6">
@@ -59,6 +85,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                         name="power"
                         value={params.power || 0}
                         onChange={(e) => handleChange('power', e.target.value)}
+                        onKeyPress={handleKeyPress}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
                 </div>
@@ -80,6 +107,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                                 production: power * prod
                             });
                         }}
+                        onKeyPress={handleKeyPress}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
                 </div>
@@ -103,6 +131,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                         step="0.001"
                         value={params.tarifTH || 0.12}
                         onChange={(e) => handleChange('tarifTH', e.target.value)}
+                        onKeyPress={handleKeyPress}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
                 </div>
@@ -116,6 +145,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                         step="0.005"
                         value={params.tarifACC || 0.12}
                         onChange={(e) => handleChange('tarifACC', e.target.value)}
+                        onKeyPress={handleKeyPress}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
                 </div>
@@ -141,6 +171,7 @@ export default function ParametersSection({ params, onParamsChange }) {
                                         if (val < 0) val = 0;
                                         onParamsChange({ ...params, partACC: val, prixAchatACC: val / 100 });
                                     }}
+                                    onKeyPress={handleKeyPress}
                                     className="w-16 px-2 py-1 text-right text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent mr-1"
                                 />
                                 <span className="text-sm text-gray-600">%</span>
