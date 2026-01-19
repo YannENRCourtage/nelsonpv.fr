@@ -9,9 +9,10 @@ import BusinessPlanTable from '../components/simulator/BusinessPlanTable';
 import { calculateAllMetrics, calculateEstimatedProduction } from '../lib/profitabilityCalculations';
 import { generateSimulatorPDF } from '../components/simulator/SimulatorPDFGenerator';
 import SaveSimulationModal from '../components/simulator/SaveSimulationModal';
-import { createSimulation } from '../services/firebase/simulations.service';
+import { createSimulation } from '../services/firebase/simulations.service.js';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from "@/components/ui/use-toast.js";
+
 
 
 const DEFAULT_PARAMS = {

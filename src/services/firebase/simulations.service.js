@@ -8,10 +8,9 @@ import {
     updateDoc,
     deleteDoc,
     query,
-    orderBy,
     serverTimestamp
 } from 'firebase/firestore';
-import { db } from '@/config/firebase.js';
+import { db } from '../../config/firebase.js';
 
 /**
  * Crée une nouvelle simulation financière

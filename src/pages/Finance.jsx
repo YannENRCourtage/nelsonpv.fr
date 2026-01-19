@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trash2, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
-import { listSimulations, deleteSimulation } from '@/services/firebase/simulations.service';
+import { listSimulations, deleteSimulation } from '../services/firebase/simulations.service.js';
 import { toast } from "@/components/ui/use-toast.js";
 
 export default function Finance() {
