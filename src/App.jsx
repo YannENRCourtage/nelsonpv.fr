@@ -132,7 +132,7 @@ function AppContent() {
           <Route
             path="finance"
             element={
-              <ProtectedRoute requiredRole="admin">
+              <ProtectedRoute requiredPermission="canAccessFinance">
                 <Finance />
               </ProtectedRoute>
             }
