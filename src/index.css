@@ -189,6 +189,22 @@ body,
   @apply bg-purple-900/50 text-purple-300;
 }
 
+.nav-link.active.monday {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.dark .nav-link.active.monday {
+  @apply bg-blue-900/50 text-blue-300;
+}
+
+.nav-link.active.finance {
+  @apply bg-sky-100 text-sky-800;
+}
+
+.dark .nav-link.active.finance {
+  @apply bg-sky-900/50 text-sky-300;
+}
+
 .nav-link.active.admin {
   @apply bg-gray-100 text-gray-800;
 }
