@@ -531,23 +531,32 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                             <DropdownMenuContent className="w-56">
                                 <DropdownMenuLabel>Filtrer par...</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                {specificFilters.map(sf => (
-                                    columns.includes(sf) && (
+                                {specificFilters.map(sf => {
+                                    // Find column that matches (case insensitive or partial match)
+                                    const matchingCol = columns.find(col =>
+                                        col.toUpperCase() === sf.toUpperCase() ||
+                                        col.toUpperCase().includes(sf.toUpperCase()) ||
+                                        sf.toUpperCase().includes(col.toUpperCase())
+                                    );
+
+                                    if (!matchingCol) return null;
+
+                                    return (
                                         <div key={sf} className="px-2 py-1.5 text-sm">
-                                            <div className="font-medium text-slate-700 mb-1">{sf}</div>
+                                            <div className="font-medium text-slate-700 mb-1">{matchingCol}</div>
                                             <select
                                                 className="w-full text-xs p-1 border rounded"
-                                                value={filters[sf] || ''}
-                                                onChange={(e) => setFilters(prev => ({ ...prev, [sf]: e.target.value }))}
+                                                value={filters[matchingCol] || ''}
+                                                onChange={(e) => setFilters(prev => ({ ...prev, [matchingCol]: e.target.value }))}
                                             >
                                                 <option value="">Tous</option>
-                                                {getUniqueValues(sf).map(v => (
+                                                {getUniqueValues(matchingCol).map(v => (
                                                     <option key={v} value={v}>{v}</option>
                                                 ))}
                                             </select>
                                         </div>
-                                    )
-                                ))}
+                                    );
+                                })}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => setFilters({})} className="text-blue-600">
                                     Réinitialiser les filtres
