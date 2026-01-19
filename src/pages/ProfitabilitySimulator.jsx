@@ -179,7 +179,8 @@ export default function ProfitabilitySimulator() {
                 paybackWithACC: metrics.paybackWithACC
             };
 
-            await createSimulation(simulationData, user?.id);
+            // user.uid au lieu de user.id (Firebase Auth utilise uid)
+            await createSimulation(simulationData, user?.uid);
 
             toast({
                 title: "Simulation sauvegardée !",
