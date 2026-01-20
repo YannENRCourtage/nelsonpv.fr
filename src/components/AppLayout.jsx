@@ -414,6 +414,13 @@ function Header() {
               <NavLink to="/simulator" className={({ isActive }) => isActive ? 'nav-link active simulateur' : 'nav-link simulateur'}>Simulateur</NavLink>
             )}
 
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessFinance) && (
+              <NavLink to="/finance" className={({ isActive }) => isActive ? 'nav-link active finance' : 'nav-link finance'}>
+                <TrendingUp className="w-4 h-4 mr-1 inline-block" />
+                Finance
+              </NavLink>
+            )}
+
             {/* CDP Link (Admin only or explicit permission) */}
             {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessCDP) && (
               <NavLink to="/cdp" className={({ isActive }) => isActive ? 'nav-link active cdp' : 'nav-link cdp'}>
@@ -431,13 +438,6 @@ function Header() {
               <NavLink to="/monday" className={({ isActive }) => isActive ? 'nav-link active monday' : 'nav-link monday'}>
                 <Grid className="w-4 h-4 mr-1 inline-block" />
                 Monday
-              </NavLink>
-            )}
-
-            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessFinance) && (
-              <NavLink to="/finance" className={({ isActive }) => isActive ? 'nav-link active finance' : 'nav-link finance'}>
-                <TrendingUp className="w-4 h-4 mr-1 inline-block" />
-                Finance
               </NavLink>
             )}
 

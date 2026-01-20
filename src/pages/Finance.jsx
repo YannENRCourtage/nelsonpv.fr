@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, TrendingUp, Edit, Search } from 'lucide-react';
+import { Trash2, TrendingUp, Edit, Search, Download } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button.jsx';
 import { listSimulations, deleteSimulation } from '../services/firebase/simulations.service.js';
 import { toast } from "@/components/ui/use-toast.js";
+import * as XLSX from 'xlsx';
 
 export default function Finance() {
     const navigate = useNavigate();
     const [simulations, setSimulations] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedRows, setSelectedRows] = useState([]);
 
     useEffect(() => {
         loadSimulations();
@@ -109,6 +111,72 @@ export default function Finance() {
         return (value || 0).toFixed(decimals);
     };
 
+    const handleExport = () => {
+        if (selectedRows.length === 0) {
+            toast({
+                title: "Aucune sélection",
+                description: "Veuillez sélectionner au moins une ligne à exporter.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        // Préparer les données pour l'export
+        const dataToExport = selectedRows.map(sim => ({
+            'Projet': sim.projectName,
+            'Puissance (kWc)': sim.power || 0,
+            'Productible (kWh/kWc)': sim.productible || 0,
+            'Tarif TB (€/kWh)': sim.tarifTB || 0,
+            'Tarif ACC (€/kWh)': sim.tarifACC || 0,
+            'Part d\'ACC (%)': sim.partACC || 0,
+            'Installation (€)': sim.installation || 0,
+            'Charpente (€)': sim.charpente || 0,
+            'Couverture (€)': sim.couverture || 0,
+            'Fondations (€)': sim.fondations || 0,
+            'Raccordement (€)': sim.raccordement || 0,
+            'Développement (€)': sim.developpement || 0,
+            'Coût total (€)': sim.totalCost || 0,
+            'TRI (%)': sim.tri || 0,
+            'DSCR Moyen': sim.averageDSCR || 0,
+            'ROI Sans ACC (ans)': sim.paybackWithoutACC || 0,
+            'ROI Avec ACC (ans)': sim.paybackWithACC || 0
+        }));
+
+        // Créer le fichier Excel
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Simulations");
+
+        // Télécharger le fichier
+        const fileName = `simulations_finance_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+
+        toast({
+            title: "Export réussi",
+            description: `${selectedRows.length} simulation(s) exportée(s) avec succès.`,
+            className: "bg-white text-gray-900 p-4 border border-gray-300 rounded-lg shadow-lg"
+        });
+    };
+
+    const toggleRowSelection = (sim) => {
+        setSelectedRows(prev => {
+            const isSelected = prev.some(s => s.id === sim.id);
+            if (isSelected) {
+                return prev.filter(s => s.id !== sim.id);
+            } else {
+                return [...prev, sim];
+            }
+        });
+    };
+
+    const toggleAllRows = () => {
+        if (selectedRows.length === filteredSimulations.length) {
+            setSelectedRows([]);
+        } else {
+            setSelectedRows([...filteredSimulations]);
+        }
+    };
+
     // Filtrer les simulations en fonction du terme de recherche
     const filteredSimulations = simulations.filter(sim =>
         sim.projectName?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -132,29 +200,39 @@ export default function Finance() {
                     </div>
                 </div>
 
-                {/* Barre de recherche */}
+                {/* Barre de recherche et bouton Exporter */}
                 <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-                    <div className="relative max-w-md">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Search className="h-5 w-5 text-gray-400" />
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="relative flex-1 max-w-md">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Search className="h-5 w-5 text-gray-400" />
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Rechercher un projet..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 sm:text-sm transition-colors"
+                            />
+                            {searchTerm && (
+                                <button
+                                    onClick={() => setSearchTerm('')}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                                >
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            )}
                         </div>
-                        <input
-                            type="text"
-                            placeholder="Rechercher un projet..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 sm:text-sm transition-colors"
-                        />
-                        {searchTerm && (
-                            <button
-                                onClick={() => setSearchTerm('')}
-                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                            >
-                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        )}
+                        <Button
+                            onClick={handleExport}
+                            disabled={selectedRows.length === 0}
+                            className="bg-teal-700 hover:bg-teal-800 text-white disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        >
+                            <Download className="h-4 w-4 mr-2" />
+                            Exporter ({selectedRows.length})
+                        </Button>
                     </div>
                     {searchTerm && (
                         <p className="mt-2 text-sm text-gray-600">
@@ -187,6 +265,14 @@ export default function Finance() {
                             <table className="w-full">
                                 <thead className="bg-teal-700 text-white">
                                     <tr>
+                                        <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedRows.length === filteredSimulations.length && filteredSimulations.length > 0}
+                                                onChange={toggleAllRows}
+                                                className="w-4 h-4 cursor-pointer"
+                                            />
+                                        </th>
                                         <th className="px-3 py-4 text-left text-sm font-semibold border-r border-teal-600">
                                             <div className="leading-tight">Projet</div>
                                         </th>
@@ -262,6 +348,14 @@ export default function Finance() {
                                 <tbody className="divide-y divide-gray-200">
                                     {filteredSimulations.map((sim) => (
                                         <tr key={sim.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-3 py-4 text-center border-r border-gray-200">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedRows.some(s => s.id === sim.id)}
+                                                    onChange={() => toggleRowSelection(sim)}
+                                                    className="w-4 h-4 cursor-pointer"
+                                                />
+                                            </td>
                                             <td className="px-3 py-4 text-sm text-gray-900 border-r border-gray-200">
                                                 <Link
                                                     to={`/project/${sim.projectId}/edit`}
