@@ -4,7 +4,7 @@ import Footer from './Footer.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useProject } from '../contexts/ProjectContext.jsx';
 import { Button } from './ui/button.jsx';
-import { LogOut, FileDown, Save, Bell, Users, Shield, Grid, TrendingUp } from 'lucide-react';
+import { LogOut, FileDown, Save, Bell, Users, Shield, Grid, TrendingUp, Menu, X } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast.js";
 import jsPDF from "jspdf";
 import html2canvas from 'html2canvas';
@@ -240,6 +240,7 @@ function Header() {
   const isProjectPage = useMatch("/project/:projectId/edit");
   const { project, saveProject, setProject } = useProject();
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
 
   const handleLogout = async () => {
@@ -449,6 +450,15 @@ function Header() {
             )}
 
           </nav>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="mobile-menu-button"
+            aria-label="Toggle menu"
+          >
+            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
         </div>
         <div className="flex items-center gap-4">
           {isProjectPage ? (
@@ -476,6 +486,110 @@ function Header() {
           </Button>
         </div>
       </div>
+
+      {/* Mobile Navigation Overlay */}
+      {isMobileMenuOpen && (
+        <>
+          <div
+            className="mobile-menu-overlay"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <nav className="mobile-nav">
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessCRM !== false) && (
+              <NavLink
+                to="/crm"
+                className={({ isActive }) => isActive ? 'mobile-nav-link active crm' : 'mobile-nav-link crm'}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                CRM
+              </NavLink>
+            )}
+
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessEditor !== false) && (
+              <NavLink
+                to="/project/new/edit"
+                onClick={(e) => { handleEditorClick(e); setIsMobileMenuOpen(false); }}
+                className={({ isActive }) => isActive ? 'mobile-nav-link active editeur' : 'mobile-nav-link editeur'}
+              >
+                Editeur de projet
+              </NavLink>
+            )}
+
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessConfigurator) && (
+              <NavLink
+                to="/configurateur"
+                className={({ isActive }) => isActive ? 'mobile-nav-link active configurateur' : 'mobile-nav-link configurateur'}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Configurateur
+              </NavLink>
+            )}
+
+            {((user?.role === 'admin' || user?.role === 'Administrator') && user?.permissions?.canAccessSimulator !== false || user?.permissions?.canAccessSimulator) && (
+              <NavLink
+                to="/simulator"
+                className={({ isActive }) => isActive ? 'mobile-nav-link active simulateur' : 'mobile-nav-link simulateur'}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Simulateur
+              </NavLink>
+            )}
+
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessFinance) && (
+              <NavLink
+                to="/finance"
+                className={({ isActive }) => isActive ? 'mobile-nav-link active finance' : 'mobile-nav-link finance'}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <TrendingUp className="w-4 h-4 mr-2 inline-block" />
+                Finance
+              </NavLink>
+            )}
+
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessCDP) && (
+              <NavLink
+                to="/cdp"
+                className={({ isActive }) => isActive ? 'mobile-nav-link active cdp' : 'mobile-nav-link cdp'}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                CDP
+              </NavLink>
+            )}
+
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessOdoo) && (
+              <NavLink
+                to="/odoo"
+                className={({ isActive }) => isActive ? 'mobile-nav-link active odoo' : 'mobile-nav-link odoo'}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                ODOO
+              </NavLink>
+            )}
+
+            {(user?.role === 'admin' || user?.role === 'Administrator') && (
+              <NavLink
+                to="/monday"
+                className={({ isActive }) => isActive ? 'mobile-nav-link active monday' : 'mobile-nav-link monday'}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Grid className="w-4 h-4 mr-2 inline-block" />
+                Monday
+              </NavLink>
+            )}
+
+            {(user?.role === 'admin' || user?.role === 'Administrator') && (
+              <NavLink
+                to="/admin"
+                className={({ isActive }) => isActive ? 'mobile-nav-link active admin' : 'mobile-nav-link admin'}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Shield className="w-4 h-4 mr-2 inline-block" />
+                Admin
+              </NavLink>
+            )}
+          </nav>
+        </>
+      )}
 
       <AlertDialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
         <AlertDialogContent>
