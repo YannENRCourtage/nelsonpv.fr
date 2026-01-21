@@ -127,6 +127,7 @@ export default function Crm() {
   const [filterUser, setFilterUser] = useState('all'); // Filtre par utilisateur
   const [filterType, setFilterType] = useState('all'); // Filtre par type
   const [filterStatus, setFilterStatus] = useState('all'); // Filtre par statut
+  const [filterMyProjects, setFilterMyProjects] = useState(false); // Filtre "Mes Projets"
   const [monthlyKpis, setMonthlyKpis] = useState(null); // Store last month's KPI values
   const [isLoading, setIsLoading] = useState(true);
 
@@ -1151,7 +1152,17 @@ export default function Crm() {
     const currentStatus = p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau');
     const matchesStatus = filterStatus === 'all' || currentStatus === filterStatus;
 
-    return matchesSearch && matchesUser && matchesType && matchesStatus;
+    // Mes Projets
+    let matchesMyProjects = true;
+    // user is from useAuth(), assumed available in scope as 'user'
+    if (filterMyProjects && user) {
+      const isCreator = p.creatorId === user.uid;
+      const isCommercialName = p.commercial && (p.commercial === user.firstName || p.commercial === user.displayName || p.commercial === (user.firstName + ' ' + user.lastName).trim());
+      const isCommercialId = p.commercialId === user.uid;
+      matchesMyProjects = isCreator || isCommercialId || isCommercialName;
+    }
+
+    return matchesSearch && matchesUser && matchesType && matchesStatus && matchesMyProjects;
   });
 
   // Rendu de la liste des Projets
@@ -1196,6 +1207,7 @@ export default function Crm() {
           </select>
 
           {/* Filtre Statut */}
+          {/* Filtre Statut */}
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -1207,6 +1219,16 @@ export default function Crm() {
             <option value="Terminé">Terminé</option>
             <option value="Abandonné">Abandonné</option>
           </select>
+
+          {/* Filtre Mes Projets */}
+          <Button
+            variant={filterMyProjects ? "default" : "outline"}
+            onClick={() => setFilterMyProjects(!filterMyProjects)}
+            className={`h-9 ${filterMyProjects ? 'bg-blue-600 text-white' : 'text-slate-600'}`}
+          >
+            <UserCircle className="w-4 h-4 mr-2" />
+            Mes projets
+          </Button>
         </div>
 
         <div className="flex gap-4 items-center">

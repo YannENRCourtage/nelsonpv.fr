@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import MarkerClusterGroup from './MarkerClusterGroup';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Button } from '@/components/ui/button';
@@ -21,6 +20,8 @@ const blueIcon = createIcon('blue');
 const redIcon = createIcon('red');
 const greenIcon = createIcon('green');
 const orangeIcon = createIcon('orange');
+const goldIcon = createIcon('gold');
+const violetIcon = createIcon('violet');
 const greyIcon = createIcon('grey');
 
 function MapBounds({ bounds }) {
@@ -60,15 +61,21 @@ export default function ProjectsMap({ projects }) {
             }
 
             if (lat !== null && lng !== null) {
-                // Determine icon color based on status
-                let icon = blueIcon;
-                const status = (p.status || 'Nouveau').toLowerCase();
+                // Determine icon color based on TYPE
+                let icon = greyIcon;
+                const type = (p.type || '').toLowerCase();
 
-                if (status === 'terminé' || status === 'termine') icon = greenIcon;
-                else if (status === 'en cours') icon = orangeIcon;
-                else if (status === 'abandonné') icon = redIcon;
-                else if (status === 'draft' || status === 'nouveau') icon = blueIcon;
-                else icon = greyIcon;
+                if (type.includes('construction') && type.includes('rénovation')) {
+                    icon = orangeIcon;
+                } else if (type.includes('construction')) {
+                    icon = blueIcon;
+                } else if (type.includes('rénovation') || type.includes('renovation')) {
+                    icon = greenIcon;
+                } else if (type.includes('location')) {
+                    icon = violetIcon;
+                } else {
+                    icon = greyIcon;
+                }
 
                 validMarkers.push({ ...p, lat, lng, icon });
                 latLngs.push([lat, lng]);
@@ -104,40 +111,38 @@ export default function ProjectsMap({ projects }) {
 
                 {bounds && <MapBounds bounds={bounds} />}
 
-                <MarkerClusterGroup>
-                    {markers.map(project => (
-                        <Marker
-                            key={project.id}
-                            position={[project.lat, project.lng]}
-                            icon={project.icon}
-                        >
-                            <Popup>
-                                <div className="min-w-[200px]">
-                                    <h3 className="font-bold text-slate-900 text-lg mb-1">{project.name}</h3>
-                                    <div className="text-sm text-slate-600 mb-2 space-y-1">
-                                        <p className="flex items-center gap-1"><MapPin size={14} /> {project.city} ({project.zip})</p>
-                                        <p>Client: <span className="font-semibold">{project.clientName || `${project.firstName || ''} ${project.lastName || ''}`.trim() || 'N/A'}</span></p>
-                                        <p>Type: {project.type}</p>
-                                        <p>Statut: <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${project.status === 'Terminé' ? 'bg-green-100 text-green-700' :
-                                                project.status === 'En cours' ? 'bg-orange-100 text-orange-700' :
-                                                    'bg-blue-100 text-blue-700'
-                                            }`}>{project.status}</span></p>
-                                    </div>
-
-                                    <div className="pt-2 border-t border-slate-100 mt-2">
-                                        <Button
-                                            size="sm"
-                                            onClick={() => navigate(`/project/${project.id}/edit`)}
-                                            className="w-full bg-blue-600 hover:bg-blue-700"
-                                        >
-                                            Ouvrir le projet <ExternalLink size={14} className="ml-2" />
-                                        </Button>
-                                    </div>
+                {markers.map(project => (
+                    <Marker
+                        key={project.id}
+                        position={[project.lat, project.lng]}
+                        icon={project.icon}
+                    >
+                        <Popup>
+                            <div className="min-w-[200px]">
+                                <h3 className="font-bold text-slate-900 text-lg mb-1">{project.name}</h3>
+                                <div className="text-sm text-slate-600 mb-2 space-y-1">
+                                    <p className="flex items-center gap-1"><MapPin size={14} /> {project.city} ({project.zip})</p>
+                                    <p>Client: <span className="font-semibold">{project.clientName || `${project.firstName || ''} ${project.lastName || ''}`.trim() || 'N/A'}</span></p>
+                                    <p>Type: <span className="font-semibold" style={{ color: project.icon.options.iconUrl.includes('blue') ? '#2563eb' : project.icon.options.iconUrl.includes('green') ? '#16a34a' : project.icon.options.iconUrl.includes('orange') ? '#f97316' : '#6b7280' }}>{project.type}</span></p>
+                                    <p>Statut: <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${project.status === 'Terminé' ? 'bg-green-100 text-green-700' :
+                                            project.status === 'En cours' ? 'bg-orange-100 text-orange-700' :
+                                                'bg-blue-100 text-blue-700'
+                                        }`}>{project.status}</span></p>
                                 </div>
-                            </Popup>
-                        </Marker>
-                    ))}
-                </MarkerClusterGroup>
+
+                                <div className="pt-2 border-t border-slate-100 mt-2">
+                                    <Button
+                                        size="sm"
+                                        onClick={() => navigate(`/project/${project.id}/edit`)}
+                                        className="w-full bg-blue-600 hover:bg-blue-700"
+                                    >
+                                        Ouvrir le projet <ExternalLink size={14} className="ml-2" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </Popup>
+                    </Marker>
+                ))}
             </MapContainer>
         </div>
     );
