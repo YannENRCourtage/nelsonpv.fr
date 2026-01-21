@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge.jsx';
 import UserSettingsModal from '@/components/crm/UserSettingsModal.jsx';
 import ContactModal from '@/components/crm/ContactModal.jsx';
 import UserAvatar from '@/components/UserAvatar.jsx';
+import ProjectsMap from '@/components/crm/ProjectsMap.jsx';
 
 // UserAvatar replaced by import
 
@@ -1224,6 +1225,13 @@ export default function Crm() {
             >
               <List size={20} />
             </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className={`p-2 rounded-md transition-all ${viewMode === 'map' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+              title="Vue Carte"
+            >
+              <MapIcon size={20} />
+            </button>
           </div>
 
           <Button
@@ -1237,8 +1245,14 @@ export default function Crm() {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        {viewMode === 'list' ? (
+        {viewMode === 'map' ? (
+          <div className="p-4">
+            <ProjectsMap projects={filteredProjects} />
+          </div>
+        ) : viewMode === 'list' ? (
           <div className="overflow-x-auto">
+            {/* ... Existing Table Code ... */}
+
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
@@ -1283,10 +1297,19 @@ export default function Crm() {
 
                         // Avatar lookup
                         let photoURL = null;
-                        if (!project.commercial && creatorId && users.length > 0) {
-                          const creator = users.find(u => u.id === creatorId);
-                          if (creator && creator.photoURL) {
-                            photoURL = creator.photoURL;
+                        if (users.length > 0) {
+                          // Try to find by name exact match
+                          const userByName = users.find(u =>
+                            (u.firstName && u.firstName.toLowerCase() === creatorName.toLowerCase()) ||
+                            (u.displayName && u.displayName.toLowerCase() === creatorName.toLowerCase())
+                          );
+
+                          if (userByName?.photoURL) {
+                            photoURL = userByName.photoURL;
+                          } else if (!project.commercial && creatorId) {
+                            // Fallback to creator ID if no commercial override
+                            const creator = users.find(u => u.id === creatorId);
+                            if (creator?.photoURL) photoURL = creator.photoURL;
                           }
                         }
 
