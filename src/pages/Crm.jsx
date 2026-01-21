@@ -314,6 +314,8 @@ export default function Crm() {
     // Hardcoded overrides
     if (name.toLowerCase().includes('nicolas')) return 'bg-yellow-100 text-yellow-800';
     if (name.toLowerCase().includes('yann')) return 'bg-blue-100 text-blue-800';
+    if (name.toLowerCase().includes('jack')) return 'bg-yellow-100 text-yellow-800';
+    if (name.toLowerCase().includes('elodie')) return 'bg-pink-100 text-pink-700';
 
     // Monday-style palette
     const colors = [
