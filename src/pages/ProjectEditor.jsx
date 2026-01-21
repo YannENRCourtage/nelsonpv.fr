@@ -20,6 +20,7 @@ import { toast } from "@/components/ui/use-toast.js";
 import { cn } from "@/lib/utils";
 import PredefinedBuildingsPanel from "@/components/editor/PredefinedBuildingsPanel.jsx";
 import znzvData from "@/data/znzv.json";
+import { apiService } from "@/services/api";
 
 function SymbolBtn({ icon, label, type, emoji, onSelect, isSelected }) {
   return (
@@ -503,7 +504,15 @@ export default function ProjectEditor() {
                     }
                     return creatorName;
                   })()}
-                  onValueChange={(v) => updateProject({ commercial: v })}
+                  onValueChange={(v) => {
+                    const oldVal = p.commercial;
+                    updateProject({ commercial: v });
+                    if (v && v !== oldVal) {
+                      const assignedBy = currentUser?.firstName || currentUser?.displayName || 'Utilisateur';
+                      apiService.createAssignmentNotification(p.id, p.name, v, assignedBy);
+                      toast({ title: "Notification envoyée", description: `${v} a été notifié(e).` });
+                    }
+                  }}
                 >
                   <SelectTrigger className="w-[180px]">
                     <SelectValue />
@@ -524,7 +533,15 @@ export default function ProjectEditor() {
 
               <div>
                 <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Chef de projet</label>
-                <Select value={p.assignedUser || 'Yann'} onValueChange={(v) => updateProject({ assignedUser: v })}>
+                <Select value={p.assignedUser || 'Yann'} onValueChange={(v) => {
+                  const oldVal = p.assignedUser;
+                  updateProject({ assignedUser: v });
+                  if (v && v !== oldVal) {
+                    const assignedBy = currentUser?.firstName || currentUser?.displayName || 'Utilisateur';
+                    apiService.createAssignmentNotification(p.id, p.name, v, assignedBy);
+                    toast({ title: "Notification envoyée", description: `${v} a été notifié(e).` });
+                  }
+                }}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue />
                   </SelectTrigger>
@@ -587,7 +604,7 @@ export default function ProjectEditor() {
         <aside className="col-span-3 h-full">
           <ChatBox className="h-full" />
         </aside>
-      </div>
+      </div >
 
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-9 relative flex flex-col">

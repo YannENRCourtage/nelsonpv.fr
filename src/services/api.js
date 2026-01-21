@@ -21,6 +21,14 @@ class ApiService {
     }
 
     // ============================================================================
+    // NOTIFICATIONS & COMMENTS
+    // ============================================================================
+
+    async createAssignmentNotification(projectId, projectName, assignedUserName, assignedByName) {
+        return await commentsService.createProjectAssignmentNotification(projectId, projectName, assignedUserName, assignedByName);
+    }
+
+    // ============================================================================
     // AUTH
     // ============================================================================
 
