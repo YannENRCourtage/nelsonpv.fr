@@ -1156,10 +1156,24 @@ export default function Crm() {
     let matchesMyProjects = true;
     // user is from useAuth(), assumed available in scope as 'user'
     if (filterMyProjects && user) {
-      const isCreator = p.creatorId === user.uid;
-      const isCommercialName = p.commercial && (p.commercial === user.firstName || p.commercial === user.displayName || p.commercial === (user.firstName + ' ' + user.lastName).trim());
-      const isCommercialId = p.commercialId === user.uid;
-      matchesMyProjects = isCreator || isCommercialId || isCommercialName;
+      // Prepare user identifiers
+      const userId = user.uid;
+      const userFirst = user.firstName || '';
+      const userDisplay = user.displayName || '';
+      const userFull = `${userFirst} ${user.lastName || ''}`.trim();
+      const userNames = [userFirst, userDisplay, userFull].filter(Boolean).map(n => n.toLowerCase());
+      const isYann = userNames.includes('yann');
+
+      const isCreator = p.creatorId === userId;
+      const isCommercialId = p.commercialId === userId;
+      const isCommercialName = p.commercial && userNames.includes(p.commercial.toLowerCase());
+
+      // Affectation (Assigned User) logic
+      // Matches if assignedUser matches name OR if assignedUser is empty and user is Yann (default fallback)
+      const assignedVal = (p.assignedUser || '').toLowerCase();
+      const isAssigned = assignedVal ? userNames.includes(assignedVal) : isYann;
+
+      matchesMyProjects = isCreator || isCommercialId || isCommercialName || isAssigned;
     }
 
     return matchesSearch && matchesUser && matchesType && matchesStatus && matchesMyProjects;
