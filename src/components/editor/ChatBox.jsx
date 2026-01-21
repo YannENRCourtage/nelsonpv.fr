@@ -30,17 +30,29 @@ export default function ChatBox() {
     };
 
     // 1. Sauvegarde locale (Legacy UI)
-    updateProject({ chatLines: [...lines, newLine] });
+    const updatedLines = [...lines, newLine];
+    updateProject({ chatLines: updatedLines });
 
-    // 2. Sauvegarde backend pour Notifications (si projet existant)
+    // 2. Persistance immédiate (Auto-save)
+    if (project?.id) {
+      try {
+        // Import apiService dynamically if not available or assume global/import
+        const { apiService } = await import('@/services/api');
+        await apiService.updateProject(project.id, { chatLines: updatedLines }, true);
+      } catch (err) {
+        console.error("Failed to auto-save chat:", err);
+      }
+    }
+
+    // 3. Sauvegarde backend pour Notifications (si projet existant)
     if (project?.id) {
       try {
         // userId fallback
         const uid = user?.uid || user?.id || 'unknown';
         const uName = user?.name || user?.displayName || user?.firstName || 'Utilisateur';
 
-        // PASS ASSIGNED TO AND EMAIL
-        const assignedTo = project?.assignedTo || null;
+        // PASS COMMERCIAL as AssignedTo for notification
+        const assignedTo = project?.commercial || project?.assignedUser || null;
         await createComment(project.id, uid, uName, t, assignedTo, user?.email);
       } catch (err) {
         console.error("Failed to create notification comment:", err);
