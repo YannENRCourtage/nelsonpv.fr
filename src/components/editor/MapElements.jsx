@@ -136,8 +136,10 @@ const escapeHtml = (unsafe) => {
 };
 
 const textIcon = (txt) => L.divIcon({
-  className: "rounded bg-card/90 text-card-foreground px-2 py-[2px] border border-border shadow text-[13px] cursor-move",
-  html: txt ? escapeHtml(txt) : "",
+  className: "bg-transparent border-none",
+  html: `<div class="bg-white border border-gray-500 text-black px-2 py-1 shadow-sm rounded text-[13px] whitespace-nowrap font-medium">${txt ? escapeHtml(txt) : ""}</div>`,
+  iconSize: null, // Auto size
+  iconAnchor: [0, 0] // Top-left anchor
 });
 
 const noteIcon = (txt) => L.divIcon({
@@ -312,8 +314,17 @@ const pegmanIcon = L.divIcon({
 
 function TextInputPopup({ at, onCancel, onSubmit }) {
   const [value, setValue] = useState("");
+  const markerRef = useRef(null);
+
+  useEffect(() => {
+    // Open popup immediately on mount
+    if (markerRef.current) {
+      markerRef.current.openPopup();
+    }
+  }, []);
+
   return (
-    <Marker position={at} opacity={0}>
+    <Marker ref={markerRef} position={at} opacity={0}>
       <Popup autoClose={false} closeOnClick={false} closeButton={false} autoPan={false} className="text-input-popup">
         <form onSubmit={(e) => { e.preventDefault(); if (value.trim()) onSubmit(value.trim()); }} className="min-w-[260px] space-y-2 bg-white p-3 rounded-lg shadow-lg">
           <label className="text-sm font-semibold text-gray-700">Ajouter un texte</label>
