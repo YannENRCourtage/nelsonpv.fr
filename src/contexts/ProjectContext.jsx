@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { apiService } from "../services/api";
 import { uploadProjectCapture, uploadProjectPhoto } from "../services/firebase/storage.service";
 import { createProjectAssignmentNotification } from "../services/firebase/comments.service";
