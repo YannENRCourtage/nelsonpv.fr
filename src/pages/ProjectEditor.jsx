@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Building, X, FolderHeart as HomeIcon, Map as MapIcon, ExternalLink, RotateCcw } from 'lucide-react';
+import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Building, X, FolderHeart as HomeIcon, Map as MapIcon, ExternalLink, RotateCcw, Type } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import MapEditor from "../components/MapEditor";
 import StreetViewTab from "../components/StreetViewTab";
@@ -56,6 +56,8 @@ function SymbolsPanel({ onSymbolSelect, selectedSymbol }) {
     { type: "pdl", label: "PDL", icon: <Plug className="h-6 w-6 text-slate-700" />, emoji: "🔌" },
     { type: "neighbor", label: "Voisin", icon: <Users className="h-6 w-6 text-slate-700" />, emoji: "👥" },
     { type: "building", label: "Bâtiment", icon: <Building className="h-6 w-6 text-slate-700" />, emoji: "🏢" },
+    { type: "photo", label: "Photo", icon: <Camera className="h-6 w-6 text-slate-700" />, emoji: "📷" },
+    { type: "text", label: "Texte", icon: <Type className="h-6 w-6 text-slate-700" />, emoji: "T" },
   ];
 
   return (
@@ -102,8 +104,8 @@ export default function ProjectEditor() {
   }, []);
 
   const [captures, setCaptures] = useState([null, null, null, null]);
-  const [photos, setPhotos] = useState([]);
-  const fileRef = useRef(null);
+
+
   const [symbolToPlace, setSymbolToPlace] = useState(null);
   const [activeTab, setActiveTab] = useState('map');
   const [streetViewUrl, setStreetViewUrl] = useState('');
@@ -113,7 +115,8 @@ export default function ProjectEditor() {
   useEffect(() => {
     const handleForceReset = () => {
       setCaptures([null, null, null, null]);
-      setPhotos([]);
+
+
       setSymbolToPlace(null);
       setActiveTab('map');
       setRemountKey(k => k + 1);
@@ -144,7 +147,7 @@ export default function ProjectEditor() {
           projectSize: '',
           comments: '',
           captures: [null, null, null, null],
-          photos: [],
+
           features: null,
           chatLines: [],
           seismicZone: '',
@@ -189,8 +192,8 @@ export default function ProjectEditor() {
 
   useEffect(() => {
     if (project?.captures) setCaptures(project.captures);
-    if (project?.photos) setPhotos(project.photos);
   }, [project]);
+
 
   // ZNZV Lookup Effect (Robust Version)
   useEffect(() => {
@@ -228,41 +231,7 @@ export default function ProjectEditor() {
     }
   }, [project?.zip, updateProject]);
 
-  // Helper for Base64 conversion
-  const toBase64 = (file) => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = error => reject(error);
-  });
 
-  const handlePickPhotos = async (e) => {
-    const files = Array.from(e.target.files || []);
-    try {
-      const newPhotos = await Promise.all(files.map(file => toBase64(file)));
-      // Combine with existing (strings), limit to 16
-      const updatedPhotos = [...photos, ...newPhotos].slice(0, 16);
-      setPhotos(updatedPhotos);
-      updateProject({ photos: updatedPhotos });
-    } catch (err) {
-      console.error("Error processing photos", err);
-      toast({ title: "Erreur", description: "Impossible de traiter les photos.", variant: "destructive" });
-    }
-  };
-
-  const deletePhoto = (index, photoSrc) => {
-    const updatedPhotos = photos.filter((_, i) => i !== index);
-    setPhotos(updatedPhotos);
-    updateProject({ photos: updatedPhotos });
-    // Try to remove from map using photo source as ID (if that's what was used)
-    window.dispatchEvent(new CustomEvent("map:delete-feature-by-prop", { detail: { prop: 'photoId', value: photoSrc } }));
-  };
-
-  const placePhotoOnMap = (photoSrc, index) => {
-    // Use photo source (URL/Base64) as ID
-    window.dispatchEvent(new CustomEvent("map:place-photo", { detail: { id: photoSrc, number: index + 1 } }));
-    toast({ title: "Placer la photo", description: `Cliquez sur la carte pour placer la photo n°${index + 1}.` });
-  };
 
   const captureNow = () => {
     const emptySlot = captures.findIndex(c => c === null);
@@ -714,8 +683,8 @@ export default function ProjectEditor() {
                   setProject={setProject}
                   symbolToPlace={symbolToPlace}
                   setSymbolToPlace={setSymbolToPlace}
-                  photos={photos}
-                  setPhotos={setPhotos}
+
+
                 />
               </div>
 
@@ -896,52 +865,7 @@ export default function ProjectEditor() {
         </aside>
       </div >
 
-      <div className="mt-6 rounded-2xl bg-white p-4 shadow-sm">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold">Photos</h3>
-            <p className="text-sm text-gray-500">Jusqu’à 16 photos. Cliquez sur "Placer" pour les positionner sur la carte.</p>
-          </div>
-          <Button type="button" onClick={() => fileRef.current?.click()} className="bg-orange-500 hover:bg-orange-600 text-white">
-            <ImagePlus size={16} className="mr-2" />
-            Charger des photos
-          </Button>
-          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePickPhotos} />
-        </div>
-        <div className="grid grid-cols-8 gap-3">
-          {Array.from({ length: 16 }).map((_, i) => {
-            const photo = photos[i];
-            // Normalize: if object, take .id (legacy/fallback), else use string
-            const photoSrc = typeof photo === 'object' && photo !== null ? photo.id : photo;
 
-            return (
-              <div key={i} className="group relative aspect-[4/3] w-full overflow-hidden rounded-lg border bg-gray-100">
-                {photoSrc ? (
-                  <>
-                    <img src={photoSrc} className="h-full w-full object-cover" alt={`photo-${i + 1}`} />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                      <Button type="button" size="sm" onClick={() => placePhotoOnMap(photoSrc, i)} className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 h-auto">
-                        <MapIcon size={14} className="mr-1" />
-                        Placer
-                      </Button>
-                      <Button type="button" size="sm" variant="destructive" onClick={() => deletePhoto(i, photoSrc)} className="text-xs px-2 py-1 h-auto">
-                        <X size={14} className="mr-1" />
-                        Suppr.
-                      </Button>
-                    </div>
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] p-1 truncate">Photo {i + 1}</div>
-                    <div className="absolute top-1 left-1 bg-blue-600 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs font-bold">{i + 1}</div>
-                  </>
-
-
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-[11px] text-gray-500">Vide</div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div >
   );
 }

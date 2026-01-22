@@ -127,33 +127,24 @@ export function ProjectProvider({ children }) {
 
   /** Mises à jour partielles (patch) */
   const updateProject = useCallback(async (patch) => {
-    // Check if assignedUser is being changed
-    if (patch.assignedUser && project && patch.assignedUser !== project.assignedUser) {
-      // Create notification for the newly assigned user
-      const projectName = project.name || project.firstName || 'CONSOLI';
-      const assignedByName = user?.firstName || user?.displayName || 'Un utilisateur';
-
-      try {
-        await createProjectAssignmentNotification(
-          project.id,
-          projectName,
-          patch.assignedUser,
-          assignedByName
-        );
-        console.log(`[ProjectContext] Notification created for assignment to ${patch.assignedUser}`);
-      } catch (error) {
-        console.error('[ProjectContext] Failed to create assignment notification:', error);
-        // Don't block the update if notification fails
-      }
-    }
+    // Removed side-effect notification logic here to prevent "CONSOLI" bug and double notifications.
+    // Notifications are now handled explicitly in ProjectEditor.jsx or where assignment happens.
 
     _setProject((prev) => ({ ...(prev || {}), ...(patch || {}) }));
   }, [project, user]);
 
   /** Sauvegarde (API + LS backup) */
   /** Sauvegarde (API + LS backup) */
+  const isSaving = useRef(false);
+
   const saveProject = useCallback(async () => {
     if (!project) return;
+    if (isSaving.current) {
+      console.warn("Save already in progress, skipping...");
+      return;
+    }
+
+    isSaving.current = true;
 
     // 1. Sauvegarde optimiste dans LS
     const all = loadAllProjectsFromLS();
@@ -311,6 +302,8 @@ export function ProjectProvider({ children }) {
       console.error("CRITICAL API SAVE FAILURE:", err);
       // On propage l'erreur pour que l'UI puisse afficher un toast d'erreur
       throw err;
+    } finally {
+      isSaving.current = false;
     }
   }, [project, setProject]);
 

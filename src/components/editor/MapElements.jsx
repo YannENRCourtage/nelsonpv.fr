@@ -124,9 +124,20 @@ function calculateCustomAzimuth(a, b) {
 
 
 // --- Icons ---
+// Custom escape function to avoid Leaflet version issues
+const escapeHtml = (unsafe) => {
+  if (!unsafe) return "";
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
 const textIcon = (txt) => L.divIcon({
   className: "rounded bg-card/90 text-card-foreground px-2 py-[2px] border border-border shadow text-[13px] cursor-move",
-  html: txt ? L.Util.escapeHTML(txt) : "",
+  html: txt ? escapeHtml(txt) : "",
 });
 
 const noteIcon = (txt) => L.divIcon({
@@ -440,7 +451,7 @@ function ContextMenu({ position, onAddText, onAddNote, onClose, onCheckUrbanisme
   );
 }
 
-function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, photoToPlace, setPhotoToPlace, targetPos, setTargetPos }) {
+function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos }) {
   const [mousePos, setMousePos] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [ignoreNextClick, setIgnoreNextClick] = useState(false);
@@ -602,20 +613,27 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       if (contextMenu) setContextMenu(null);
       if (draggingRef.current && draggingRef.current.type === 'rotate') return;
       if (mode === 'delete') return;
-      if (photoToPlace) {
-        const id = crypto.randomUUID();
-        setFeatures(fs => [...fs, { id, type: 'photo', photoId: photoToPlace.id, number: photoToPlace.number, at: e.latlng }]);
-        setPhotoToPlace(null);
-        setMode(null);
-      } else if (symbolToPlace) {
-        const id = crypto.randomUUID();
-        let number = null;
-        if (symbolToPlace.type === 'building') {
-          const buildingCount = features.filter(f => f.symbolType === 'building').length;
-          number = buildingCount + 1;
+      if (symbolToPlace) {
+        if (symbolToPlace.type === 'photo') {
+          const id = crypto.randomUUID();
+          const photos = features.filter(f => f.type === 'photo');
+          const maxNum = photos.reduce((max, p) => Math.max(max, p.number || 0), 0);
+          const number = maxNum + 1;
+          setFeatures(fs => [...fs, { id, type: 'photo', at: e.latlng, number }]);
+          setSymbolToPlace(null);
+        } else if (symbolToPlace.type === 'text') {
+          setAskTextAt(e.latlng);
+          // Don't reset symbolToPlace to allow multiple text placements and avoid focus issues
+        } else {
+          const id = crypto.randomUUID();
+          let number = null;
+          if (symbolToPlace.type === 'building') {
+            const buildingCount = features.filter(f => f.symbolType === 'building').length;
+            number = buildingCount + 1;
+          }
+          setFeatures(fs => [...fs, { id, type: 'symbol', symbolType: symbolToPlace.type, label: symbolToPlace.label, at: e.latlng, emoji: symbolToPlace.emoji, number }]);
+          setSymbolToPlace(null);
         }
-        setFeatures(fs => [...fs, { id, type: 'symbol', symbolType: symbolToPlace.type, label: symbolToPlace.label, at: e.latlng, emoji: symbolToPlace.emoji, number }]);
-        setSymbolToPlace(null);
         setMode(null);
       } else if (mode === "text") {
         setAskTextAt(e.latlng);
@@ -1910,14 +1928,13 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
         }
       }
     };
-    const handlePlacePhoto = (e) => { setPhotoToPlace(e.detail); };
+
     const handleZoomIn = () => { map.zoomIn(); };
     const handleZoomOut = () => { map.zoomOut(); };
 
     // Correction du nom de l'événement écouté
     window.addEventListener("map:capture-request", handleCaptureRequest);
     window.addEventListener("map:goto-project-address", goToProjectAddress);
-    window.addEventListener("map:place-photo", handlePlacePhoto);
     window.addEventListener("map:zoom-in", handleZoomIn);
     window.addEventListener("map:zoom-out", handleZoomOut);
 
@@ -1926,11 +1943,10 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
     return () => {
       window.removeEventListener("map:capture-request", handleCaptureRequest);
       window.removeEventListener("map:goto-project-address", goToProjectAddress);
-      window.removeEventListener("map:place-photo", handlePlacePhoto);
       window.removeEventListener("map:zoom-in", handleZoomIn);
       window.removeEventListener("map:zoom-out", handleZoomOut);
     };
-  }, [map, project, onAddressFound, setPhotoToPlace]);
+  }, [map, project, onAddressFound]);
 
   useEffect(() => {
     const handleSearchResult = (e) => { onAddressSearched(e.location); };
@@ -2315,7 +2331,8 @@ function MapStateSync({ project, setProject }) {
   return null;
 }
 
-export default function MapElements({ style = {}, project, setProject, onAddressFound, onAddressSearched, setSymbolToPlace, symbolToPlace, setPhotos, photos }) {
+export default function MapElements({ style = {}, project, setProject, onAddressFound, onAddressSearched, setSymbolToPlace, symbolToPlace }) {
+
   const [mode, setMode] = useState(null);
   const [temp, setTemp] = useState([]);
   const [features, setFeatures] = useState([]);
@@ -2325,7 +2342,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
   const [pointInfo, setPointInfo] = useState(null);
   const [altimetryProfile, setAltimetryProfile] = useState(null);
   const [rectangleStart, setRectangleStart] = useState(null);
-  const [photoToPlace, setPhotoToPlace] = useState(null);
+
   const [targetPos, setTargetPos] = useState(null);
   const [map, setMap] = useState(null); // State for map instance
   const [hoverInfo, setHoverInfo] = useState(null); // New state for shared hover info
@@ -2431,7 +2448,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
           doubleClickZoom={false}
           zoomControl={false}
           preferCanvas={true} // Performance
-          className={mode === 'delete' ? 'cursor-pointer' : (symbolToPlace || photoToPlace ? 'cursor-crosshair' : 'cursor-default')}
+          className={mode === 'delete' ? 'cursor-pointer' : (symbolToPlace ? 'cursor-crosshair' : 'cursor-default')}
           placeholder={<div className="h-full w-full bg-gray-100 animate-pulse" />}
         >
           {/* Nouveau composant de synchro */}
@@ -2487,8 +2504,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
             setAltimetryProfile={setAltimetryProfile}
             rectangleStart={rectangleStart}
             setRectangleStart={setRectangleStart}
-            photoToPlace={photoToPlace}
-            setPhotoToPlace={setPhotoToPlace}
+
             targetPos={targetPos}
             setTargetPos={setTargetPos}
           />
@@ -2497,7 +2513,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
             project={project}
             onAddressFound={onAddressFound}
             onAddressSearched={onAddressSearched}
-            setPhotoToPlace={setPhotoToPlace}
+
             setFeatures={setFeaturesWrapper} // Use Wrapper
             onRightClick={(latlng) => setTargetPos(latlng)}
           />
