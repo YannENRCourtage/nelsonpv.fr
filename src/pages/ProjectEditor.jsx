@@ -570,7 +570,7 @@ export default function ProjectEditor() {
             </div>
 
             <div className="col-span-2">
-              <label className="text-sm font-medium">Azimut</label>
+              <label className="text-sm font-medium">Azimut toiture 1</label>
               <Select value={String(p.panelAspect || '0')} onValueChange={v => updateProject({ panelAspect: v })}>
                 <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
                 <SelectContent className="h-60">
@@ -584,13 +584,38 @@ export default function ProjectEditor() {
                       <SelectItem key={val} value={String(val)}>{label}</SelectItem>
                     );
                   })}
-                  <SelectItem value="180">180° (Nord)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
+            <div className="col-span-2">
+              <label className="text-sm font-medium">Pondération toiture 1</label>
+              <div className="flex gap-2 mt-1 items-center">
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={p.roofWeighting !== undefined ? p.roofWeighting : 50}
+                  onChange={e => {
+                    const val = parseInt(e.target.value) || 0;
+                    updateProject({ roofWeighting: Math.min(100, Math.max(0, val)) });
+                  }}
+                  className="w-20"
+                />
+                <span className="text-sm text-gray-600">%</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={p.roofWeighting !== undefined ? p.roofWeighting : 50}
+                  onChange={e => updateProject({ roofWeighting: parseInt(e.target.value) })}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+
             <div className="col-span-2 relative">
-              <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Productible solaire (kWh/kWc)">Productible (kWh/kWc)</label>
+              <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Productible solaire pondéré (kWh/kWc)">Productible (kWh/kWc)</label>
               <div className="flex gap-1 mt-1">
                 <Input value={p.solarYield || ''} readOnly placeholder="kWh/kWc" className="bg-gray-50" />
                 <Button
@@ -598,7 +623,7 @@ export default function ProjectEditor() {
                   variant="outline"
                   size="icon"
                   className="shrink-0"
-                  title="Calculer le productible"
+                  title="Calculer le productible des 2 toitures"
                   onClick={async () => {
                     if (!p.gps) {
                       toast({ title: "Erreur", description: "Veuillez renseigner les coordonnées GPS.", variant: "destructive" });
@@ -611,24 +636,54 @@ export default function ProjectEditor() {
                     }
 
                     const angle = p.panelAngle || 15;
-                    const aspect = p.panelAspect || 0;
+                    const aspect1 = parseFloat(p.panelAspect || 0);
+                    const weighting1 = p.roofWeighting !== undefined ? p.roofWeighting : 50;
+                    const weighting2 = 100 - weighting1;
 
-                    // Use proxy path to handle CORS via Vercel rewrites (prod) or Vite proxy (dev)
-                    const pvgisUrl = `/api/pvgis/PVcalc?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                    // Calculer l'azimut opposé pour la toiture 2
+                    const aspect2 = aspect1 >= 0 ? aspect1 - 180 : aspect1 + 180;
+
+                    toast({ title: "Calcul en cours...", description: `Interrogation PVGIS pour les 2 toitures (${aspect1}° et ${aspect2}°)` });
 
                     try {
-                      const res = await fetch(pvgisUrl);
+                      // Appels PVGIS en parallèle pour les deux toitures
+                      const pvgisUrl1 = `/api/pvgis/PVcalc?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect1}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                      const pvgisUrl2 = `/api/pvgis/PVcalc?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect2}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
 
-                      if (!res.ok) {
-                        const errText = await res.text().catch(() => '');
-                        throw new Error(`Erreur PVGIS: ${res.status} ${errText}`);
+                      const [res1, res2] = await Promise.all([
+                        fetch(pvgisUrl1),
+                        fetch(pvgisUrl2)
+                      ]);
+
+                      if (!res1.ok || !res2.ok) {
+                        const errText1 = !res1.ok ? await res1.text().catch(() => '') : '';
+                        const errText2 = !res2.ok ? await res2.text().catch(() => '') : '';
+                        throw new Error(`Erreur PVGIS: ${!res1.ok ? res1.status + ' ' + errText1 : res2.status + ' ' + errText2}`);
                       }
 
-                      const data = await res.json();
-                      if (data && data.outputs && data.outputs.totals && data.outputs.totals.E_y) {
-                        const val = data.outputs.totals.E_y.toFixed(2);
-                        updateProject({ solarYield: val });
-                        toast({ title: "Succès", description: `Productible calculé : ${val} kWh/kWc` });
+                      const [data1, data2] = await Promise.all([
+                        res1.json(),
+                        res2.json()
+                      ]);
+
+                      if (data1?.outputs?.totals?.E_y && data2?.outputs?.totals?.E_y) {
+                        const yield1 = parseFloat(data1.outputs.totals.E_y);
+                        const yield2 = parseFloat(data2.outputs.totals.E_y);
+
+                        // Calcul du productible pondéré
+                        const weightedYield = (yield1 * weighting1 + yield2 * weighting2) / 100;
+
+                        updateProject({
+                          solarYield: weightedYield.toFixed(2),
+                          solarYieldRoof1: yield1.toFixed(2),
+                          solarYieldRoof2: yield2.toFixed(2)
+                        });
+
+                        toast({
+                          title: "Succès",
+                          description: `Toiture 1 (${aspect1}°): ${yield1.toFixed(2)} kWh/kWc\nToiture 2 (${aspect2}°): ${yield2.toFixed(2)} kWh/kWc\nPondéré (${weighting1}%/${weighting2}%): ${weightedYield.toFixed(2)} kWh/kWc`,
+                          duration: 8000
+                        });
                       } else {
                         throw new Error("Format de réponse inattendu");
                       }
