@@ -21,5 +21,11 @@
             "destination": "/index.html"
         }
     ],
-    "headers": []
+    "headers": [],
+    "functions": {
+        "api/pvgis-proxy.js": {
+            "maxDuration": 60,
+            "memory": 1024
+        }
+    }
 }

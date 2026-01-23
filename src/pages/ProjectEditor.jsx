@@ -688,8 +688,13 @@ export default function ProjectEditor() {
                         throw new Error("Format de réponse inattendu");
                       }
                     } catch (e) {
-                      console.error(e);
-                      toast({ title: "Erreur", description: "Impossible de récupérer les données PVGIS. Vérifiez les coordonnées ou réessayez plus tard.", variant: "destructive" });
+                      console.error("PVGIS Error:", e);
+                      toast({
+                        title: "Erreur PVGIS",
+                        description: `Détail: ${e.message}`,
+                        variant: "destructive",
+                        duration: 10000
+                      });
                     }
                   }}
                 >
