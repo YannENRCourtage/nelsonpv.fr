@@ -111,6 +111,7 @@ export default function ProjectEditor() {
   const [streetViewUrl, setStreetViewUrl] = useState('');
   const [activeLayers, setActiveLayers] = useState(new Set());
   const [remountKey, setRemountKey] = useState(0);
+  const [isAngleDefaulted, setIsAngleDefaulted] = useState(false);
 
   useEffect(() => {
     const handleForceReset = () => {
@@ -420,6 +421,25 @@ export default function ProjectEditor() {
 
   const handleBuildingSelect = (building) => {
     window.dispatchEvent(new CustomEvent("map:place-building", { detail: { building } }));
+
+    // Auto-set inclination based on building code
+    if (building && building.code) {
+      const code = building.code;
+      let newAngle = null;
+      const firstLetter = code.charAt(0).toUpperCase();
+
+      if (['O', 'C', 'A'].includes(firstLetter)) {
+        newAngle = "15";
+      } else if (['K', 'H', 'Y', 'S'].includes(firstLetter)) {
+        newAngle = "10";
+      }
+
+      if (newAngle) {
+        updateProject({ panelAngle: newAngle });
+        setIsAngleDefaulted(true);
+        toast({ title: "Inclinaison ajustée", description: `Inclinaison mise à ${newAngle}° pour le modèle ${code}.` });
+      }
+    }
   };
 
   const goToProjectAddress = () => {
@@ -593,8 +613,15 @@ export default function ProjectEditor() {
               {/* Inclinaison */}
               <div>
                 <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Inclinaison">Inclinaison</label>
-                <Select value={String(p.panelAngle || '15')} onValueChange={v => updateProject({ panelAngle: v })}>
-                  <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
+                <Select
+                  value={String(p.panelAngle || '15')}
+                  onValueChange={v => {
+                    updateProject({ panelAngle: v });
+                    // If user manually changes it, remove the "defaulted" styling
+                    if (isAngleDefaulted) setIsAngleDefaulted(false);
+                  }}
+                >
+                  <SelectTrigger className={`mt-1 h-10 w-full ${isAngleDefaulted ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="10">10°</SelectItem>
                     <SelectItem value="15">15°</SelectItem>

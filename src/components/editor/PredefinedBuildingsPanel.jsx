@@ -291,12 +291,8 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect }) => {
   }, [selectedCode, auventCount, appentisCount]);
 
   const handleInsert = () => {
-    if (selectedBuildingData) {
-      window.dispatchEvent(
-        new CustomEvent("map:place-building", {
-          detail: { building: selectedBuildingData },
-        })
-      );
+    if (selectedBuildingData && onBuildingSelect) {
+      onBuildingSelect(selectedBuildingData);
     }
   };
 
