@@ -153,6 +153,8 @@ export default function ProjectEditor() {
           seismicZone: '',
           snowZone: '',
           windZone: '',
+          panelAspect: 0,
+          roofWeighting: 50,
           createdAt: new Date().toISOString()
         };
         setProject(() => emptyProject);
@@ -645,10 +647,10 @@ export default function ProjectEditor() {
                     readOnly
                     placeholder="kWh/kWc"
                     className={`min-w-0 ${p.solarYield
-                        ? (parseFloat(p.solarYield) >= 1120
-                          ? "bg-green-100 text-green-900 border-green-500"
-                          : "bg-red-100 text-red-900 border-red-500")
-                        : "bg-gray-50"
+                      ? (parseFloat(p.solarYield) >= 1120
+                        ? "bg-green-100 text-green-900 border-green-500"
+                        : "bg-red-100 text-red-900 border-red-500")
+                      : "bg-gray-50"
                       }`}
                   />
                   <Button

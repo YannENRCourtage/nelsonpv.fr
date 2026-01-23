@@ -134,6 +134,10 @@ const PDFGenerator = ({ project }) => {
               <span style={labelStyle}>Adresse du projet :</span>
               <span style={valueStyle}>{formatAddress()}</span>
             </div>
+            <div style={fieldStyle}>
+              <span style={labelStyle}>Productible pondéré :</span>
+              <span style={valueStyle}>{p.solarYield ? `${p.solarYield} kWh/kWc` : 'N/A'}</span>
+            </div>
           </div>
 
           {/* Colonne 2 */}
@@ -157,8 +161,8 @@ const PDFGenerator = ({ project }) => {
               <span style={valueStyle}>Neige : {p.snowZone || 'N/A'}  |  Vent : {p.windZone || 'N/A'}</span>
             </div>
             <div style={fieldStyle}>
-              <span style={labelStyle}>Productible & Séisme :</span>
-              <span style={valueStyle}>Prod. : {p.solarYield ? `${p.solarYield} kWh/kWc` : 'N/A'}  |  Séisme : {p.seismicZone || 'N/A'}</span>
+              <span style={labelStyle}>Zone de séisme :</span>
+              <span style={valueStyle}>{p.seismicZone || 'N/A'}</span>
             </div>
           </div>
         </div>
