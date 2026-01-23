@@ -613,8 +613,8 @@ export default function ProjectEditor() {
                     const angle = p.panelAngle || 15;
                     const aspect = p.panelAspect || 0;
 
-                    // Direct call to PVGIS API to avoid proxy issues
-                    const pvgisUrl = `https://re.jrc.ec.europa.eu/api/v5_2/PVcalc?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                    // Use proxy path to handle CORS via Vercel rewrites (prod) or Vite proxy (dev)
+                    const pvgisUrl = `/api/pvgis/PVcalc?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
 
                     try {
                       const res = await fetch(pvgisUrl);
