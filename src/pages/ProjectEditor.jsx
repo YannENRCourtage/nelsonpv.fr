@@ -463,16 +463,7 @@ export default function ProjectEditor() {
               <div>
                 <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Commercial</label>
                 <Select
-                  value={p.commercial || (function () {
-                    // Fallback to createdByUser logic if no explicit commercial set
-                    let creatorName = p.createdByFirstName || p.user || 'Yann';
-                    const creatorId = p.createdBy;
-                    if (creatorId && projectUsers.length > 0) {
-                      const u = projectUsers.find(user => user.id === creatorId);
-                      if (u) creatorName = u.firstName || u.displayName || creatorName;
-                    }
-                    return creatorName;
-                  })()}
+                  value={p.commercial || ''}
                   onValueChange={(v) => {
                     const oldVal = p.commercial;
                     updateProject({ commercial: v });
@@ -502,7 +493,7 @@ export default function ProjectEditor() {
 
               <div>
                 <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Chef de projet</label>
-                <Select value={p.assignedUser || 'Yann'} onValueChange={(v) => {
+                <Select value={p.assignedUser || ''} onValueChange={(v) => {
                   const oldVal = p.assignedUser;
                   updateProject({ assignedUser: v });
                   if (v && v !== oldVal) {
@@ -561,10 +552,96 @@ export default function ProjectEditor() {
             <div className="col-span-3"><label className="text-sm font-medium">Type de projet</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background"><option>Construction</option><option>Rénovation</option><option>Construction & Rénovation</option></select></div>
             <div className="col-span-6"><label className="text-sm font-medium">Projet</label><Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} className="mt-1" placeholder="Ex: 150m² ou 9kWc" /></div>
 
-            {/* ZNZV Fields */}
-            <div className="col-span-4"><label className="text-sm font-medium">Zone de séisme</label><Input value={p.seismicZone || ''} onChange={e => updateProject({ seismicZone: e.target.value })} className="mt-1" placeholder="Zone séisme" /></div>
-            <div className="col-span-4"><label className="text-sm font-medium">Zone de neige</label><Input value={p.snowZone || ''} onChange={e => updateProject({ snowZone: e.target.value })} className="mt-1" placeholder="Zone neige" /></div>
-            <div className="col-span-4"><label className="text-sm font-medium">Zone de vent</label><Input value={p.windZone || ''} onChange={e => updateProject({ windZone: e.target.value })} className="mt-1" placeholder="Zone vent" /></div>
+            {/* ZNZV Fields & PVGIS */}
+            <div className="col-span-2"><label className="text-sm font-medium">Zone de séisme</label><Input value={p.seismicZone || ''} onChange={e => updateProject({ seismicZone: e.target.value })} className="mt-1" placeholder="Zone séisme" /></div>
+            <div className="col-span-2"><label className="text-sm font-medium">Zone de neige</label><Input value={p.snowZone || ''} onChange={e => updateProject({ snowZone: e.target.value })} className="mt-1" placeholder="Zone neige" /></div>
+            <div className="col-span-2"><label className="text-sm font-medium">Zone de vent</label><Input value={p.windZone || ''} onChange={e => updateProject({ windZone: e.target.value })} className="mt-1" placeholder="Zone vent" /></div>
+
+            {/* PVGIS Integration */}
+            <div className="col-span-2">
+              <label className="text-sm font-medium">Inclinaison</label>
+              <Select value={String(p.panelAngle || '15')} onValueChange={v => updateProject({ panelAngle: v })}>
+                <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10°</SelectItem>
+                  <SelectItem value="15">15°</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="col-span-2">
+              <label className="text-sm font-medium">Azimut</label>
+              <Select value={String(p.panelAspect || '0')} onValueChange={v => updateProject({ panelAspect: v })}>
+                <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
+                <SelectContent className="h-60">
+                  {Array.from({ length: 72 }, (_, i) => -175 + i * 5).map(val => {
+                    let label = `${val}°`;
+                    if (val === 0) label += " (Sud)";
+                    else if (val === -90) label += " (Est)";
+                    else if (val === 90) label += " (Ouest)";
+                    else if (val === 180) label += " (Nord)";
+                    return (
+                      <SelectItem key={val} value={String(val)}>{label}</SelectItem>
+                    );
+                  })}
+                  <SelectItem value="180">180° (Nord)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="col-span-2 relative">
+              <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Productible solaire (kWh/kWc)">Productible (kWh/kWc)</label>
+              <div className="flex gap-1 mt-1">
+                <Input value={p.solarYield || ''} readOnly placeholder="kWh/kWc" className="bg-gray-50" />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0"
+                  title="Calculer le productible"
+                  onClick={async () => {
+                    if (!p.gps) {
+                      toast({ title: "Erreur", description: "Veuillez renseigner les coordonnées GPS.", variant: "destructive" });
+                      return;
+                    }
+                    const [lat, lon] = p.gps.split(',').map(s => parseFloat(s.trim()));
+                    if (isNaN(lat) || isNaN(lon)) {
+                      toast({ title: "Erreur", description: "Coordonnées GPS invalides.", variant: "destructive" });
+                      return;
+                    }
+
+                    const angle = p.panelAngle || 15;
+                    const aspect = p.panelAspect || 0;
+
+                    // Direct call to PVGIS API to avoid proxy issues
+                    const pvgisUrl = `https://re.jrc.ec.europa.eu/api/v5_2/PVcalc?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+
+                    try {
+                      const res = await fetch(pvgisUrl);
+
+                      if (!res.ok) {
+                        const errText = await res.text().catch(() => '');
+                        throw new Error(`Erreur PVGIS: ${res.status} ${errText}`);
+                      }
+
+                      const data = await res.json();
+                      if (data && data.outputs && data.outputs.totals && data.outputs.totals.E_y) {
+                        const val = data.outputs.totals.E_y.toFixed(2);
+                        updateProject({ solarYield: val });
+                        toast({ title: "Succès", description: `Productible calculé : ${val} kWh/kWc` });
+                      } else {
+                        throw new Error("Format de réponse inattendu");
+                      }
+                    } catch (e) {
+                      console.error(e);
+                      toast({ title: "Erreur", description: "Impossible de récupérer les données PVGIS. Vérifiez les coordonnées ou réessayez plus tard.", variant: "destructive" });
+                    }
+                  }}
+                >
+                  <Zap size={16} />
+                </Button>
+              </div>
+            </div>
 
             <div className="col-span-12"><label className="text-sm font-medium">Commentaires</label><textarea value={p.comments || ''} onChange={e => updateProject({ comments: e.target.value })} className="mt-1 h-24 w-full rounded-lg border px-3 py-2" placeholder="Commentaires" /></div>
           </div>

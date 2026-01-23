@@ -1323,48 +1323,39 @@ export default function Crm() {
                     </td>
                     <td className="px-6 py-4">
                       {(() => {
-                        const name = project.name || '';
-                        const creatorId = project.createdBy;
-                        let creatorName = project.commercial || project.createdByFirstName || project.user || 'Yann';
-
-                        // If NOT explicit commercial override, try to resolve user from ID
-                        if (!project.commercial && creatorId && users.length > 0) {
-                          const u = users.find(user => user.id === creatorId);
-                          if (u) creatorName = u.firstName || u.displayName || creatorName;
-                        }
+                        const commercial = project.commercial;
 
                         // Avatar lookup
                         let photoURL = null;
-                        if (users.length > 0) {
+                        if (users.length > 0 && commercial) {
                           // Try to find by name exact match
                           const userByName = users.find(u =>
-                            (u.firstName && u.firstName.toLowerCase() === creatorName.toLowerCase()) ||
-                            (u.displayName && u.displayName.toLowerCase() === creatorName.toLowerCase())
+                            (u.firstName && u.firstName.toLowerCase() === commercial.toLowerCase()) ||
+                            (u.displayName && u.displayName.toLowerCase() === commercial.toLowerCase())
                           );
 
                           if (userByName?.photoURL) {
                             photoURL = userByName.photoURL;
-                          } else if (!project.commercial && creatorId) {
-                            // Fallback to creator ID if no commercial override
-                            const creator = users.find(u => u.id === creatorId);
-                            if (creator?.photoURL) photoURL = creator.photoURL;
                           }
                         }
 
+                        if (!commercial) return <span className="text-slate-400 text-sm italic">-</span>;
+
                         return (
-                          <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full ${getUserColor(creatorName)} w-fit pr-5 text-left`}>
+                          <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full ${getUserColor(commercial)} w-fit pr-5 text-left`}>
                             <div className="w-8 h-8 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
-                              <UserAvatar name={creatorName} photoURL={photoURL} size="w-full h-full" showName={false} />
+                              <UserAvatar name={commercial} photoURL={photoURL} size="w-full h-full" showName={false} />
                             </div>
-                            <span className="text-sm font-bold truncate max-w-[120px]">{creatorName}</span>
+                            <span className="text-sm font-bold truncate max-w-[120px]">{commercial}</span>
                           </div>
                         );
                       })()}
                     </td>
                     <td className="px-6 py-4">
                       {(() => {
-                        // Default to 'Yann' to match Project Editor behavior if assignedUser is missing
-                        const projectUser = project.assignedUser || 'Yann';
+                        const projectUser = project.assignedUser;
+
+                        if (!projectUser) return <span className="text-slate-400 text-sm italic">-</span>;
 
                         return (
                           <div className="flex items-center gap-3 w-fit pr-5 text-left">

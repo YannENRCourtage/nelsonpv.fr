@@ -245,24 +245,50 @@ const getRatioColor = (ratio) => {
 
 const PredefinedBuildingsPanel = ({ onBuildingSelect }) => {
   const [selectedCode, setSelectedCode] = useState(null);
+  const [auventCount, setAuventCount] = useState(0);
+  const [appentisCount, setAppentisCount] = useState(0);
+
+  // Reset counters when selecting a new building
+  React.useEffect(() => {
+    setAuventCount(0);
+    setAppentisCount(0);
+  }, [selectedCode]);
 
   const selectedBuildingData = useMemo(() => {
     if (!selectedCode) return null;
     const building = buildingsData.find(b => b.code === selectedCode);
     if (!building) return null;
-    
+
     // For A*N and A*SN buildings, width is a string like '12,7 + 4'.
     // We will display it as is, but cannot use it for surface calculation.
     // The surface is provided directly in the data.
     const isSpecialWidth = typeof building.width === 'string';
-    
+
+    let currentWidth = building.width;
+    let extraWidth = 0;
+
+    // Calculate extra width from extensions
+    if (auventCount > 0) {
+      extraWidth += auventCount * 4;
+    }
+    if (appentisCount > 0) {
+      extraWidth += appentisCount * 9.3;
+    }
+
+    // Apply to current width if it's a number
+    if (!isSpecialWidth) {
+      currentWidth += extraWidth;
+    }
+
+    const calculatedSurface = building.surface ? (building.surface + (extraWidth * building.length)) : (building.length * currentWidth);
+
     return {
       ...building,
-      // Use provided surface, otherwise calculate it.
-      surface: building.surface || (building.length * building.width),
-      isSpecialWidth: isSpecialWidth
+      width: currentWidth,
+      surface: calculatedSurface,
+      isSpecialWidth: isSpecialWidth && extraWidth === 0
     };
-  }, [selectedCode]);
+  }, [selectedCode, auventCount, appentisCount]);
 
   const handleInsert = () => {
     if (selectedBuildingData) {
@@ -276,17 +302,45 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect }) => {
 
   return (
     <Card className="rounded-2xl shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between pb-2"> {/* Reduced pb-4 to pb-2 */}
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-semibold">Bâtiments prédéfinis</CardTitle>
-        <Button onClick={handleInsert} disabled={!selectedBuildingData} size="sm" className="bg-blue-600 hover:bg-blue-700">
-          <Building2 size={16} className="mr-2" />
-          Insérer
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant={auventCount > 0 ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              const next = (auventCount + 1) % 3;
+              if (next + appentisCount <= 2) setAuventCount(next);
+              else setAuventCount(0);
+            }}
+            disabled={!selectedCode}
+            className={auventCount > 0 ? "bg-amber-600 hover:bg-amber-700" : ""}
+          >
+            Auvent {auventCount > 0 && `(x${auventCount})`}
+          </Button>
+          <Button
+            variant={appentisCount > 0 ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              const next = (appentisCount + 1) % 3;
+              if (next + auventCount <= 2) setAppentisCount(next);
+              else setAppentisCount(0);
+            }}
+            disabled={!selectedCode}
+            className={appentisCount > 0 ? "bg-amber-600 hover:bg-amber-700" : ""}
+          >
+            Appentis {appentisCount > 0 && `(x${appentisCount})`}
+          </Button>
+          <Button onClick={handleInsert} disabled={!selectedBuildingData} size="sm" className="bg-blue-600 hover:bg-blue-700">
+            <Building2 size={16} className="mr-2" />
+            Insérer
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="flex items-center gap-4 mb-4">
           <div className="w-1/2">
-             <Select onValueChange={setSelectedCode} value={selectedCode || ''}>
+            <Select onValueChange={setSelectedCode} value={selectedCode || ''}>
               <SelectTrigger>
                 <SelectValue placeholder="Code..." />
               </SelectTrigger>
@@ -314,10 +368,18 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect }) => {
         {selectedBuildingData && (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <div className="flex justify-between"><span>Longueur:</span> <span className="font-semibold">{selectedBuildingData.length} m</span></div>
-                <div className="flex justify-between"><span>Puissance:</span> <span className="font-semibold">{selectedBuildingData.power} kWc</span></div>
-                <div className="flex justify-between"><span>Largeur:</span> <span className="font-semibold">{selectedBuildingData.width}{!selectedBuildingData.isSpecialWidth && ' m'}</span></div>
-                <div className="flex justify-between"><span>Surface:</span> <span className="font-semibold">{selectedBuildingData.surface.toFixed(0)} m²</span></div>
+              <div className="flex justify-between"><span>Longueur:</span> <span className="font-semibold">{selectedBuildingData.length} m</span></div>
+              <div className="flex justify-between"><span>Puissance:</span> <span className="font-semibold">{selectedBuildingData.power} kWc</span></div>
+              <div className="flex justify-between">
+                <span>Largeur:</span>
+                <span className="font-semibold">
+                  {typeof selectedBuildingData.width === 'number'
+                    ? selectedBuildingData.width.toFixed(2).replace(/[.,]00$/, "")
+                    : selectedBuildingData.width}
+                  m
+                </span>
+              </div>
+              <div className="flex justify-between"><span>Surface:</span> <span className="font-semibold">{selectedBuildingData.surface.toFixed(0)} m²</span></div>
             </div>
           </div>
         )}
