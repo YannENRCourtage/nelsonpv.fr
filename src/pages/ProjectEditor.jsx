@@ -646,9 +646,9 @@ export default function ProjectEditor() {
                     toast({ title: "Calcul en cours...", description: `Interrogation PVGIS pour les 2 toitures (${aspect1}° et ${aspect2}°)` });
 
                     try {
-                      // Appels PVGIS en parallèle pour les deux toitures
-                      const pvgisUrl1 = `/api/pvgis/PVcalc?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect1}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
-                      const pvgisUrl2 = `/api/pvgis/PVcalc?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect2}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                      // Appels PVGIS en parallèle pour les deux toitures via le proxy dédié
+                      const pvgisUrl1 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect1}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                      const pvgisUrl2 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect2}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
 
                       const [res1, res2] = await Promise.all([
                         fetch(pvgisUrl1),

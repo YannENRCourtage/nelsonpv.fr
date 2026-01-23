@@ -262,11 +262,11 @@ export default defineConfig({
 				changeOrigin: true,
 				rewrite: (path) => path.replace(/^\/sdis-proxy\/81/, '')
 			},
-			'/api/pvgis': {
-				target: 'https://re.jrc.ec.europa.eu/api/v5_2',
+			'/api/pvgis-proxy': {
+				target: 'https://re.jrc.ec.europa.eu/api/v5_2/PVcalc',
 				changeOrigin: true,
 				secure: true,
-				rewrite: (path) => path.replace(/^\/api\/pvgis/, '')
+				rewrite: (path) => path.replace(/^\/api\/pvgis-proxy/, '')
 			},
 			'/api': {
 				target: 'https://nelsonpv.fr',
