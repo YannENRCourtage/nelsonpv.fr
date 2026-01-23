@@ -548,7 +548,31 @@ export default function ProjectEditor() {
               <div className="flex-grow-[2]"><label className="text-sm font-medium">Ville</label><Input value={p.city || ''} onChange={e => updateProject({ city: e.target.value })} className="mt-1" placeholder="Ville" /></div>
             </div>
 
-            <div className="col-span-3"><label className="text-sm font-medium">Coordonnées GPS</label><Input value={p.gps || ''} onChange={e => updateProject({ gps: e.target.value })} className="mt-1" placeholder="Ex: 45.24, 4.36" /></div>
+            <div className="col-span-3">
+              <label className="text-sm font-medium">Coordonnées GPS</label>
+              <div className="flex gap-2 mt-1">
+                <Input
+                  placeholder="Latitude"
+                  value={p.gps ? p.gps.split(',')[0] : ''}
+                  onChange={e => {
+                    const lat = e.target.value;
+                    const lon = p.gps && p.gps.includes(',') ? p.gps.split(',')[1].trim() : '';
+                    updateProject({ gps: `${lat}, ${lon}` });
+                  }}
+                  title="Latitude"
+                />
+                <Input
+                  placeholder="Longitude"
+                  value={p.gps && p.gps.includes(',') ? p.gps.split(',')[1].trim() : ''}
+                  onChange={e => {
+                    const lat = p.gps ? p.gps.split(',')[0].trim() : '';
+                    const lon = e.target.value;
+                    updateProject({ gps: `${lat}, ${lon}` });
+                  }}
+                  title="Longitude"
+                />
+              </div>
+            </div>
             <div className="col-span-3"><label className="text-sm font-medium">Type de projet</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background"><option>Construction</option><option>Rénovation</option><option>Construction & Rénovation</option></select></div>
             <div className="col-span-6"><label className="text-sm font-medium">Projet</label><Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} className="mt-1" placeholder="Ex: 150m² ou 9kWc" /></div>
 
@@ -629,7 +653,9 @@ export default function ProjectEditor() {
                       toast({ title: "Erreur", description: "Veuillez renseigner les coordonnées GPS.", variant: "destructive" });
                       return;
                     }
-                    const [lat, lon] = p.gps.split(',').map(s => parseFloat(s.trim()));
+                    const parts = p.gps ? p.gps.split(',') : [];
+                    const lat = parseFloat(parts[0]?.trim());
+                    const lon = parseFloat(parts[1]?.trim());
                     if (isNaN(lat) || isNaN(lon)) {
                       toast({ title: "Erreur", description: "Coordonnées GPS invalides.", variant: "destructive" });
                       return;
@@ -666,9 +692,15 @@ export default function ProjectEditor() {
                         res2.json()
                       ]);
 
-                      if (data1?.outputs?.totals?.E_y && data2?.outputs?.totals?.E_y) {
-                        const yield1 = parseFloat(data1.outputs.totals.E_y);
-                        const yield2 = parseFloat(data2.outputs.totals.E_y);
+                      // Fonction helper pour extraire E_y (supporte outputs.totals.fixed.E_y ou outputs.totals.E_y)
+                      const getEy = (d) => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
+
+                      const yield1 = parseFloat(getEy(data1));
+                      const yield2 = parseFloat(getEy(data2));
+
+                      if (!isNaN(yield1) && !isNaN(yield2)) {
+                        const yield1Val = yield1.toFixed(2);
+                        const yield2Val = yield2.toFixed(2);
 
                         // Calcul du productible pondéré
                         const weightedYield = (yield1 * weighting1 + yield2 * weighting2) / 100;
