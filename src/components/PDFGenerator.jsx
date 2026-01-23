@@ -156,6 +156,10 @@ const PDFGenerator = ({ project }) => {
               <span style={labelStyle}>Zones Neige & Vent :</span>
               <span style={valueStyle}>Neige : {p.snowZone || 'N/A'}  |  Vent : {p.windZone || 'N/A'}</span>
             </div>
+            <div style={fieldStyle}>
+              <span style={labelStyle}>Productible & Séisme :</span>
+              <span style={valueStyle}>Prod. : {p.solarYield ? `${p.solarYield} kWh/kWc` : 'N/A'}  |  Séisme : {p.seismicZone || 'N/A'}</span>
+            </div>
           </div>
         </div>
 

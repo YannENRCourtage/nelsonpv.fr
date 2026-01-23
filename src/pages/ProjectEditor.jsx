@@ -640,7 +640,17 @@ export default function ProjectEditor() {
               <div className="relative">
                 <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Productible solaire pondéré (kWh/kWc)">Productible</label>
                 <div className="flex gap-1 mt-1">
-                  <Input value={p.solarYield || ''} readOnly placeholder="kWh/kWc" className="bg-gray-50 min-w-0" />
+                  <Input
+                    value={p.solarYield || ''}
+                    readOnly
+                    placeholder="kWh/kWc"
+                    className={`min-w-0 ${p.solarYield
+                        ? (parseFloat(p.solarYield) >= 1120
+                          ? "bg-green-100 text-green-900 border-green-500"
+                          : "bg-red-100 text-red-900 border-red-500")
+                        : "bg-gray-50"
+                      }`}
+                  />
                   <Button
                     type="button"
                     variant="outline"

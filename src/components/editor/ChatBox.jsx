@@ -12,7 +12,9 @@ export default function ChatBox() {
   const [input, setInput] = useState("");
 
   // CORRIGÉ : Lit les messages depuis 'project.chatLines'
-  const lines = project?.chatLines || [];
+  const allLines = project?.chatLines || [];
+  // Filtre: Suppression du message spécifique demandé par l'utilisateur
+  const lines = allLines.filter(l => l.text !== "C'est quoi ce projet vide ???");
 
   const messagesEndRef = useRef(null);
 
