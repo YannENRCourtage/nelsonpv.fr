@@ -577,161 +577,158 @@ export default function ProjectEditor() {
             <div className="col-span-6"><label className="text-sm font-medium">Projet</label><Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} className="mt-1" placeholder="Ex: 150m² ou 9kWc" /></div>
 
             {/* ZNZV Fields & PVGIS */}
-            <div className="col-span-2"><label className="text-sm font-medium">Zone de séisme</label><Input value={p.seismicZone || ''} onChange={e => updateProject({ seismicZone: e.target.value })} className="mt-1" placeholder="Zone séisme" /></div>
-            <div className="col-span-2"><label className="text-sm font-medium">Zone de neige</label><Input value={p.snowZone || ''} onChange={e => updateProject({ snowZone: e.target.value })} className="mt-1" placeholder="Zone neige" /></div>
-            <div className="col-span-2"><label className="text-sm font-medium">Zone de vent</label><Input value={p.windZone || ''} onChange={e => updateProject({ windZone: e.target.value })} className="mt-1" placeholder="Zone vent" /></div>
+            {/* Technical Fields Row - Compact Layout */}
+            <div className="col-span-12 grid grid-cols-7 gap-2 items-end">
+              {/* Séisme */}
+              <div><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de séisme">Séisme</label><Input value={p.seismicZone || ''} onChange={e => updateProject({ seismicZone: e.target.value })} className="mt-1" placeholder="Séisme" /></div>
 
-            {/* PVGIS Integration */}
-            <div className="col-span-2">
-              <label className="text-sm font-medium">Inclinaison</label>
-              <Select value={String(p.panelAngle || '15')} onValueChange={v => updateProject({ panelAngle: v })}>
-                <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10°</SelectItem>
-                  <SelectItem value="15">15°</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              {/* Neige */}
+              <div><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de neige">Neige</label><Input value={p.snowZone || ''} onChange={e => updateProject({ snowZone: e.target.value })} className="mt-1" placeholder="Neige" /></div>
 
-            <div className="col-span-2">
-              <label className="text-sm font-medium">Azimut toiture 1</label>
-              <Select value={String(p.panelAspect || '0')} onValueChange={v => updateProject({ panelAspect: v })}>
-                <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
-                <SelectContent className="h-60">
-                  {Array.from({ length: 72 }, (_, i) => -175 + i * 5).map(val => {
-                    let label = `${val}°`;
-                    if (val === 0) label += " (Sud)";
-                    else if (val === -90) label += " (Est)";
-                    else if (val === 90) label += " (Ouest)";
-                    else if (val === 180) label += " (Nord)";
-                    return (
-                      <SelectItem key={val} value={String(val)}>{label}</SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
+              {/* Vent */}
+              <div><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de vent">Vent</label><Input value={p.windZone || ''} onChange={e => updateProject({ windZone: e.target.value })} className="mt-1" placeholder="Vent" /></div>
 
-            <div className="col-span-2">
-              <label className="text-sm font-medium">Pondération toiture 1</label>
-              <div className="flex gap-2 mt-1 items-center">
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={p.roofWeighting !== undefined ? p.roofWeighting : 50}
-                  onChange={e => {
-                    const val = parseInt(e.target.value) || 0;
-                    updateProject({ roofWeighting: Math.min(100, Math.max(0, val)) });
-                  }}
-                  className="w-20"
-                />
-                <span className="text-sm text-gray-600">%</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={p.roofWeighting !== undefined ? p.roofWeighting : 50}
-                  onChange={e => updateProject({ roofWeighting: parseInt(e.target.value) })}
-                  className="flex-1"
-                />
+              {/* Inclinaison */}
+              <div>
+                <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Inclinaison">Inclinaison</label>
+                <Select value={String(p.panelAngle || '15')} onValueChange={v => updateProject({ panelAngle: v })}>
+                  <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10°</SelectItem>
+                    <SelectItem value="15">15°</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
 
-            <div className="col-span-2 relative">
-              <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Productible solaire pondéré (kWh/kWc)">Productible (kWh/kWc)</label>
-              <div className="flex gap-1 mt-1">
-                <Input value={p.solarYield || ''} readOnly placeholder="kWh/kWc" className="bg-gray-50" />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="shrink-0"
-                  title="Calculer le productible des 2 toitures"
-                  onClick={async () => {
-                    if (!p.gps) {
-                      toast({ title: "Erreur", description: "Veuillez renseigner les coordonnées GPS.", variant: "destructive" });
-                      return;
-                    }
-                    const parts = p.gps ? p.gps.split(',') : [];
-                    const lat = parseFloat(parts[0]?.trim());
-                    const lon = parseFloat(parts[1]?.trim());
-                    if (isNaN(lat) || isNaN(lon)) {
-                      toast({ title: "Erreur", description: "Coordonnées GPS invalides.", variant: "destructive" });
-                      return;
-                    }
+              {/* Azimut */}
+              <div>
+                <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Azimut toiture 1">Azimut</label>
+                <Select value={String(p.panelAspect || '0')} onValueChange={v => updateProject({ panelAspect: v })}>
+                  <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent className="h-60">
+                    {Array.from({ length: 72 }, (_, i) => -175 + i * 5).map(val => {
+                      let label = `${val}°`;
+                      if (val === 0) label += " (Sud)";
+                      else if (val === -90) label += " (Est)";
+                      else if (val === 90) label += " (Ouest)";
+                      else if (val === 180) label += " (Nord)";
+                      return (
+                        <SelectItem key={val} value={String(val)}>{label}</SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                    const angle = p.panelAngle || 15;
-                    const aspect1 = parseFloat(p.panelAspect || 0);
-                    const weighting1 = p.roofWeighting !== undefined ? p.roofWeighting : 50;
-                    const weighting2 = 100 - weighting1;
-
-                    // Calculer l'azimut opposé pour la toiture 2
-                    const aspect2 = aspect1 >= 0 ? aspect1 - 180 : aspect1 + 180;
-
-                    toast({ title: "Calcul en cours...", description: `Interrogation PVGIS pour les 2 toitures (${aspect1}° et ${aspect2}°)` });
-
-                    try {
-                      // Appels PVGIS en parallèle pour les deux toitures via le proxy dédié
-                      const pvgisUrl1 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect1}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
-                      const pvgisUrl2 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect2}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
-
-                      const [res1, res2] = await Promise.all([
-                        fetch(pvgisUrl1),
-                        fetch(pvgisUrl2)
-                      ]);
-
-                      if (!res1.ok || !res2.ok) {
-                        const errText1 = !res1.ok ? await res1.text().catch(() => '') : '';
-                        const errText2 = !res2.ok ? await res2.text().catch(() => '') : '';
-                        throw new Error(`Erreur PVGIS: ${!res1.ok ? res1.status + ' ' + errText1 : res2.status + ' ' + errText2}`);
-                      }
-
-                      const [data1, data2] = await Promise.all([
-                        res1.json(),
-                        res2.json()
-                      ]);
-
-                      // Fonction helper pour extraire E_y (supporte outputs.totals.fixed.E_y ou outputs.totals.E_y)
-                      const getEy = (d) => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
-
-                      const yield1 = parseFloat(getEy(data1));
-                      const yield2 = parseFloat(getEy(data2));
-
-                      if (!isNaN(yield1) && !isNaN(yield2)) {
-                        const yield1Val = yield1.toFixed(2);
-                        const yield2Val = yield2.toFixed(2);
-
-                        // Calcul du productible pondéré
-                        const weightedYield = (yield1 * weighting1 + yield2 * weighting2) / 100;
-
-                        updateProject({
-                          solarYield: weightedYield.toFixed(2),
-                          solarYieldRoof1: yield1.toFixed(2),
-                          solarYieldRoof2: yield2.toFixed(2)
-                        });
-
-                        toast({
-                          title: "Succès",
-                          description: `Toiture 1 (${aspect1}°): ${yield1.toFixed(2)} kWh/kWc\nToiture 2 (${aspect2}°): ${yield2.toFixed(2)} kWh/kWc\nPondéré (${weighting1}%/${weighting2}%): ${weightedYield.toFixed(2)} kWh/kWc`,
-                          duration: 8000
-                        });
-                      } else {
-                        throw new Error("Format de réponse inattendu");
-                      }
-                    } catch (e) {
-                      console.error("PVGIS Error:", e);
-                      toast({
-                        title: "Erreur PVGIS",
-                        description: `Détail: ${e.message}`,
-                        variant: "destructive",
-                        duration: 10000
-                      });
-                    }
-                  }}
+              {/* Pondération */}
+              <div>
+                <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Pondération toiture 1">Pondération</label>
+                <Select
+                  value={String(p.roofWeighting !== undefined ? p.roofWeighting : 50)}
+                  onValueChange={v => updateProject({ roofWeighting: parseInt(v) })}
                 >
-                  <Zap size={16} />
-                </Button>
+                  <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent className="h-60">
+                    {Array.from({ length: 11 }, (_, i) => i * 10).map(val => (
+                      <SelectItem key={val} value={String(val)}>{val}%</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Productible */}
+              <div className="relative">
+                <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Productible solaire pondéré (kWh/kWc)">Productible</label>
+                <div className="flex gap-1 mt-1">
+                  <Input value={p.solarYield || ''} readOnly placeholder="kWh/kWc" className="bg-gray-50 min-w-0" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0 aspect-square w-10 px-0"
+                    title="Calculer le productible des 2 toitures"
+                    onClick={async () => {
+                      if (!p.gps) {
+                        toast({ title: "Erreur", description: "Veuillez renseigner les coordonnées GPS.", variant: "destructive" });
+                        return;
+                      }
+                      const parts = p.gps ? p.gps.split(',') : [];
+                      const lat = parseFloat(parts[0]?.trim());
+                      const lon = parseFloat(parts[1]?.trim());
+                      if (isNaN(lat) || isNaN(lon)) {
+                        toast({ title: "Erreur", description: "Coordonnées GPS invalides.", variant: "destructive" });
+                        return;
+                      }
+
+                      const angle = p.panelAngle || 15;
+                      const aspect1 = parseFloat(p.panelAspect || 0);
+                      const weighting1 = p.roofWeighting !== undefined ? p.roofWeighting : 50;
+                      const weighting2 = 100 - weighting1;
+
+                      // Calculer l'azimut opposé pour la toiture 2
+                      const aspect2 = aspect1 >= 0 ? aspect1 - 180 : aspect1 + 180;
+
+                      toast({ title: "Calcul en cours...", description: `Interrogation PVGIS pour les 2 toitures (${aspect1}° et ${aspect2}°)` });
+
+                      try {
+                        // Appels PVGIS en parallèle pour les deux toitures via le proxy dédié
+                        const pvgisUrl1 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect1}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                        const pvgisUrl2 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect2}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+
+                        const [res1, res2] = await Promise.all([
+                          fetch(pvgisUrl1),
+                          fetch(pvgisUrl2)
+                        ]);
+
+                        if (!res1.ok || !res2.ok) {
+                          const errText1 = !res1.ok ? await res1.text().catch(() => '') : '';
+                          const errText2 = !res2.ok ? await res2.text().catch(() => '') : '';
+                          throw new Error(`Erreur PVGIS: ${!res1.ok ? res1.status + ' ' + errText1 : res2.status + ' ' + errText2}`);
+                        }
+
+                        const [data1, data2] = await Promise.all([
+                          res1.json(),
+                          res2.json()
+                        ]);
+
+                        // Fonction helper pour extraire E_y (supporte outputs.totals.fixed.E_y ou outputs.totals.E_y)
+                        const getEy = (d) => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
+
+                        const yield1 = parseFloat(getEy(data1));
+                        const yield2 = parseFloat(getEy(data2));
+
+                        if (!isNaN(yield1) && !isNaN(yield2)) {
+                          // Calcul du productible pondéré
+                          const weightedYield = (yield1 * weighting1 + yield2 * weighting2) / 100;
+
+                          updateProject({
+                            solarYield: weightedYield.toFixed(2),
+                            solarYieldRoof1: yield1.toFixed(2),
+                            solarYieldRoof2: yield2.toFixed(2)
+                          });
+
+                          toast({
+                            title: "Succès",
+                            description: `Toiture 1 (${aspect1}°): ${yield1.toFixed(2)} kWh/kWc\nToiture 2 (${aspect2}°): ${yield2.toFixed(2)} kWh/kWc\nPondéré (${weighting1}%/${weighting2}%): ${weightedYield.toFixed(2)} kWh/kWc`,
+                            duration: 8000
+                          });
+                        } else {
+                          throw new Error("Format de réponse inattendu");
+                        }
+                      } catch (e) {
+                        console.error("PVGIS Error:", e);
+                        toast({
+                          title: "Erreur PVGIS",
+                          description: `Détail: ${e.message}`,
+                          variant: "destructive",
+                          duration: 10000
+                        });
+                      }
+                    }}
+                  >
+                    <Zap size={16} />
+                  </Button>
+                </div>
               </div>
             </div>
 
