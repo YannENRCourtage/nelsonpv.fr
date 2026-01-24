@@ -451,8 +451,8 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange }) => {
               </SelectContent>
             </Select>
           </div>
-          <div className="w-1/2 text-sm flex justify-between items-center">
-            <span>Ratio:</span>
+          <div className="w-1/2 text-sm flex justify-end items-center gap-2">
+            <span className="text-gray-500">Ratio:</span>
             {selectedBuildingData ? (
               <span className={`font-bold ${getRatioColor(selectedBuildingData.ratio)}`}>
                 {selectedBuildingData.ratio.toFixed(2)} €
@@ -461,11 +461,6 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange }) => {
               <span className="font-semibold text-muted-foreground">-</span>
             )}
           </div>
-          {selectedBuildingData && (
-            <div className="text-sm font-medium text-gray-600">
-              Pondération: <span className="text-black">{selectedBuildingData.roofWeighting}%</span>
-            </div>
-          )}
         </div>
 
 
