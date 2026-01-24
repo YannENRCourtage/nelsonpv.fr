@@ -270,7 +270,7 @@ const getBuildingConfig = (code) => {
       config.allowAppentis = false;
       config.baseWeight = 90;
       config.getWeight = (auv, app) => {
-        const a = parseInt(auv) || 0;
+        const a = Number(auv) || 0;
         if (a === 2) return 70;
         return 90; // 0 or 1
       };
@@ -452,28 +452,34 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect }) => {
               <span className="font-semibold text-muted-foreground">-</span>
             )}
           </div>
-        </div>
-
-        {selectedBuildingData && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <div className="flex justify-between"><span>Longueur:</span> <span className="font-semibold">{selectedBuildingData.length} m</span></div>
-              <div className="flex justify-between"><span>Puissance:</span> <span className="font-semibold">{selectedBuildingData.power} kWc</span></div>
-              <div className="flex justify-between">
-                <span>Largeur:</span>
-                <span className="font-semibold">
-                  {typeof selectedBuildingData.width === 'number'
-                    ? selectedBuildingData.width.toFixed(2).replace(/[.,]00$/, "")
-                    : selectedBuildingData.width}
-                  m
-                </span>
-              </div>
-              <div className="flex justify-between"><span>Surface:</span> <span className="font-semibold">{selectedBuildingData.surface.toFixed(0)} m²</span></div>
+          {selectedBuildingData && (
+            <div className="text-sm font-medium text-gray-600">
+              Pondération: <span className="text-black">{selectedBuildingData.roofWeighting}%</span>
             </div>
+          )}
+        </div>
+      </div>
+
+      {selectedBuildingData && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <div className="flex justify-between"><span>Longueur:</span> <span className="font-semibold">{selectedBuildingData.length} m</span></div>
+            <div className="flex justify-between"><span>Puissance:</span> <span className="font-semibold">{selectedBuildingData.power} kWc</span></div>
+            <div className="flex justify-between">
+              <span>Largeur:</span>
+              <span className="font-semibold">
+                {typeof selectedBuildingData.width === 'number'
+                  ? selectedBuildingData.width.toFixed(2).replace(/[.,]00$/, "")
+                  : selectedBuildingData.width}
+                m
+              </span>
+            </div>
+            <div className="flex justify-between"><span>Surface:</span> <span className="font-semibold">{selectedBuildingData.surface.toFixed(0)} m²</span></div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </CardContent>
+    </Card >
   );
 };
 
