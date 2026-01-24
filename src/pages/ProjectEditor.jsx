@@ -451,10 +451,14 @@ export default function ProjectEditor() {
         updateProject(updates);
 
         let msg = "";
-        if (updates.panelAngle) msg += `Inclinaison mise à ${newAngle}°`;
-        if (updates.roofWeighting) msg += (msg ? " et " : "") + `Pondération mise à ${updates.roofWeighting}%`;
+        if (updates.panelAngle) msg += `Inclinaison: ${newAngle}°`;
 
-        toast({ title: "Configuration ajustée", description: `${msg} pour le modèle ${code}.` });
+        // Debug info included in user message for verification
+        if (updates.roofWeighting !== undefined) {
+          msg += (msg ? ", " : "") + `Pondération: ${updates.roofWeighting}% (Reçu: ${building.roofWeighting})`;
+        }
+
+        toast({ title: "Configuration appliquée", description: `${msg} pour le modèle ${code}.` });
       }
     }
   };
