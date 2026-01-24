@@ -331,16 +331,18 @@ const getBuildingConfig = (code) => {
   return config;
 };
 
-const PredefinedBuildingsPanel = ({ onBuildingSelect }) => {
+const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange }) => {
   const [selectedCode, setSelectedCode] = useState(null);
   const [auventCount, setAuventCount] = useState(0);
   const [appentisCount, setAppentisCount] = useState(0);
 
   // Reset counters when selecting a new building
-  React.useEffect(() => {
+  useEffect(() => {
     setAuventCount(0);
     setAppentisCount(0);
   }, [selectedCode]);
+
+
 
   const selectedBuildingData = useMemo(() => {
     if (!selectedCode) return null;
@@ -382,6 +384,13 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect }) => {
       roofWeighting
     };
   }, [selectedCode, auventCount, appentisCount]);
+
+  // Sync weighting with parent whenever it changes
+  React.useEffect(() => {
+    if (selectedBuildingData && onConfigChange && selectedBuildingData.roofWeighting !== undefined) {
+      onConfigChange(selectedBuildingData.roofWeighting);
+    }
+  }, [selectedBuildingData, onConfigChange]);
 
   const handleInsert = () => {
     if (selectedBuildingData && onBuildingSelect) {

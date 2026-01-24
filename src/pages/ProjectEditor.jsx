@@ -420,6 +420,13 @@ export default function ProjectEditor() {
     setSymbolToPlace(prev => prev?.type === symbol.type ? null : symbol);
   };
 
+  const handleBuildingConfigChange = (weighting) => {
+    const val = Number(weighting);
+    if (!isNaN(val) && project?.roofWeighting !== val) {
+      updateProject({ roofWeighting: val });
+    }
+  };
+
   const handleBuildingSelect = (building) => {
     // Auto-set inclination and weighting first (Priority to Data)
     if (building && building.code) {
@@ -1063,7 +1070,7 @@ export default function ProjectEditor() {
 
         <aside className="col-span-3 flex flex-col gap-6">
           <SymbolsPanel onSymbolSelect={handleSymbolSelect} selectedSymbol={symbolToPlace} />
-          <PredefinedBuildingsPanel onBuildingSelect={handleBuildingSelect} />
+          <PredefinedBuildingsPanel onBuildingSelect={handleBuildingSelect} onConfigChange={handleBuildingConfigChange} />
           <div className="rounded-2xl bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Capturer la vue</h3>
