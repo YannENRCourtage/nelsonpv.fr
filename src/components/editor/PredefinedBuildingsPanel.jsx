@@ -388,7 +388,7 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange }) => {
   // Sync weighting with parent whenever it changes
   React.useEffect(() => {
     if (selectedBuildingData && onConfigChange && selectedBuildingData.roofWeighting !== undefined) {
-      onConfigChange(selectedBuildingData.roofWeighting);
+      onConfigChange(selectedBuildingData);
     }
   }, [selectedBuildingData, onConfigChange]);
 

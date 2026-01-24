@@ -421,12 +421,15 @@ export default function ProjectEditor() {
     setSymbolToPlace(prev => prev?.type === symbol.type ? null : symbol);
   };
 
-  const handleBuildingConfigChange = (weighting) => {
-    const val = Number(weighting);
+  const handleBuildingConfigChange = (buildingData) => {
+    // 1. Update project weighting
+    const val = Number(buildingData.roofWeighting);
     if (!isNaN(val) && project?.roofWeighting !== val) {
       updateProject({ roofWeighting: val });
       setIsWeightingDefaulted(true);
     }
+    // 2. Update map dimensions
+    window.dispatchEvent(new CustomEvent('map:update-last-building', { detail: { building: buildingData } }));
   };
 
   const handleBuildingSelect = (building) => {

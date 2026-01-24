@@ -1901,8 +1901,75 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
 
       toast({ ...toastStyle, title: `Bâtiment ${building.code} ajouté`, description: `Azimut calculé : ${az}° (Sud)` });
     };
+
+    const handleUpdateLastBuilding = (e) => {
+      const { building } = e.detail;
+      setFeatures(prev => {
+        // Find last rectangle
+        const rects = prev.filter(f => f.type === 'rectangle');
+        if (rects.length === 0) return prev;
+        const lastRect = rects[rects.length - 1];
+
+        // Ensure it matches the expected building type if needed, but for now just update last
+        // Calculate new coords preserving center and angle
+        const center = centroid(lastRect.coords);
+        if (!center) return prev;
+
+        // Simple approximation for sizing in meters around center
+        // building.length is West-East (width on screen), building.width is North-South (height)
+        const halfL = building.length / 2;
+        const halfW = building.width / 2;
+
+        // Meters to degrees
+        const dLat = halfW / 111111;
+        const dLng = halfL / (111111 * Math.cos(toRad(center.lat)));
+
+        // Unrotated relative offsets (NW, NE, SE, SW)
+        const corners = [
+          { lat: dLat, lng: -dLng },  // NW
+          { lat: dLat, lng: dLng },   // NE
+          { lat: -dLat, lng: dLng },  // SE
+          { lat: -dLat, lng: -dLng }  // SW
+        ];
+
+        // Apply rotation
+        const angleRad = toRad(lastRect.angle || 0);
+        const cosA = Math.cos(angleRad);
+        const sinA = Math.sin(angleRad);
+
+        const newCoords = corners.map(c => {
+          // Rotate (x=lng, y=lat) - be careful with lat/lng vs x/y mapping
+          // Standard math rotation: x' = x cos - y sin, y' = x sin + y cos
+          // Here x is lng (East), y is lat (North)
+          // But wait, lat/lng ratio is different. We should rotate in meters, then convert.
+          // actually, the dLat/dLng used above are already scaled.
+          // Wait, rotation in lat/lng space distorts if not careful.
+          // Better: Rotate in meters, then convert to deg.
+
+          const xM = c.lng * (111111 * Math.cos(toRad(center.lat)));
+          const yM = c.lat * 111111;
+
+          const rotX = xM * cosA - yM * sinA;
+          const rotY = xM * sinA + yM * cosA;
+
+          return L.latLng(
+            center.lat + rotY / 111111,
+            center.lng + rotX / (111111 * Math.cos(toRad(center.lat)))
+          );
+        });
+
+        // Map back to new features list
+        return prev.map(f => f.id === lastRect.id ? { ...f, coords: newCoords, buildingName: building.code } : f);
+      });
+      console.log('Updated building dimensions:', building.length, 'x', building.width);
+    };
+
     window.addEventListener("map:place-building", handlePlaceBuilding);
-    return () => window.removeEventListener("map:place-building", handlePlaceBuilding);
+    window.addEventListener("map:update-last-building", handleUpdateLastBuilding);
+    return () => {
+      window.removeEventListener("map:place-building", handlePlaceBuilding);
+      window.removeEventListener("map:update-last-building", handleUpdateLastBuilding);
+    };
   }, [map, setFeatures]);
 
   useEffect(() => {
