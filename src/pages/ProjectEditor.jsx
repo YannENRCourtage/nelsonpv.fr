@@ -113,6 +113,7 @@ export default function ProjectEditor() {
   const [remountKey, setRemountKey] = useState(0);
   const [isAngleDefaulted, setIsAngleDefaulted] = useState(false);
   const [isAzimuthDefaulted, setIsAzimuthDefaulted] = useState(false);
+  const [isWeightingDefaulted, setIsWeightingDefaulted] = useState(false);
 
   useEffect(() => {
     const handleForceReset = () => {
@@ -424,6 +425,7 @@ export default function ProjectEditor() {
     const val = Number(weighting);
     if (!isNaN(val) && project?.roofWeighting !== val) {
       updateProject({ roofWeighting: val });
+      setIsWeightingDefaulted(true);
     }
   };
 
@@ -693,11 +695,14 @@ export default function ProjectEditor() {
                 <Select
                   key={`weight-${p.roofWeighting}`}
                   value={String(p.roofWeighting !== undefined ? p.roofWeighting : 50)}
-                  onValueChange={v => updateProject({ roofWeighting: parseInt(v) })}
+                  onValueChange={v => {
+                    updateProject({ roofWeighting: parseInt(v) });
+                    if (isWeightingDefaulted) setIsWeightingDefaulted(false);
+                  }}
                 >
-                  <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className={`mt-1 h-10 w-full ${isWeightingDefaulted ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
                   <SelectContent className="h-60">
-                    {Array.from({ length: 21 }, (_, i) => i * 5).map(val => (
+                    {Array.from({ length: 11 }, (_, i) => 50 + i * 5).map(val => (
                       <SelectItem key={val} value={String(val)}>{val}%</SelectItem>
                     ))}
                   </SelectContent>
