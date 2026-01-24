@@ -676,6 +676,7 @@ export default function ProjectEditor() {
               <div>
                 <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Pondération toiture 1">Pondération</label>
                 <Select
+                  key={`weight-${p.roofWeighting}`}
                   value={String(p.roofWeighting !== undefined ? p.roofWeighting : 50)}
                   onValueChange={v => updateProject({ roofWeighting: parseInt(v) })}
                 >
