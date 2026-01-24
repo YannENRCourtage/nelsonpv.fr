@@ -108,6 +108,36 @@ function formatDistance(m) { return m < 1000 ? `${Math.round(m)} m` : `${(m / 10
 function formatArea(m2) { return m2 >= 10000 ? `${(m2 / 10000).toFixed(2)} ha` : `${Math.round(m2)} m²`; }
 
 // Custom Azimuth Calculation: 0=South, 180=North, 90=West, -90=East
+function calculateAzimuthFromAngle(angle) {
+  // Angle 0 = South facing South.
+  // Angle comes from Leaflet rotation.
+  // Based on analysis:
+  // Rotation +90 (Top to West) -> South face faces East (-90).
+  // Rotation -90 (Top to East) -> South face faces West (90).
+  // So Azimuth ~= -Angle.
+
+  let az = -angle;
+
+  // Normalize to [-180, 180]
+  az = (az % 360);
+  if (az > 180) az -= 360;
+  if (az < -180) az += 360;
+
+  // User want "South" width edge. Range [-90, 90].
+  // If we are looking North (180) or roughly North, we switch to the opposite width edge.
+  if (az > 90) az -= 180;
+  if (az < -90) az += 180;
+
+  // Round to nearest 5
+  az = Math.round(az / 5) * 5;
+
+  // Handle -0
+  if (az === -0) az = 0;
+
+  return az;
+}
+
+// Custom Azimuth Calculation for Measuring Tool (2 Points)
 function calculateCustomAzimuth(a, b) {
   const lat1 = toRad(a.lat); const lat2 = toRad(b.lat);
   const dLng = toRad(b.lng - a.lng);
@@ -805,7 +835,47 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
               {/* Ligne de dimension explicite pour la capture */}
               <Polyline positions={[rotatedCoords[0], rotatedCoords[1], rotatedCoords[2], rotatedCoords[3], rotatedCoords[0]]} pathOptions={{ color: "#f59e0b", weight: 2, opacity: 1, fill: false }} />
               {rotatedCenter && <Marker position={rotatedCenter} opacity={0}><Tooltip permanent direction="center" className="measure-label">{f.buildingName && `${f.buildingName} - `} {formatDistance(height)} × {formatDistance(width)} ({formatArea(area)})</Tooltip></Marker>}
-              {isSelected && rotationHandlePos && <Marker position={rotationHandlePos} icon={rotationIcon} draggable={true} eventHandlers={{ dragstart: (e) => { L.DomEvent.stop(e); draggingRef.current = { type: 'rotate', featureId: f.id, center: center }; }, drag: (e) => { if (draggingRef.current?.type !== 'rotate' || !draggingRef.current.center) return; const centerPt = map.latLngToLayerPoint(draggingRef.current.center); const mousePt = map.latLngToLayerPoint(e.latlng); const newAngle = Math.atan2(mousePt.y - centerPt.y, mousePt.x - centerPt.x) * (180 / Math.PI) - 90; setFeatures(fs => fs.map(feat => feat.id === f.id ? { ...feat, angle: newAngle } : feat)); }, dragend: () => { draggingRef.current = null; } }} />}
+              {isSelected && rotationHandlePos && <Marker position={rotationHandlePos} icon={rotationIcon} draggable={true} eventHandlers={{
+                dragstart: (e) => { L.DomEvent.stop(e); draggingRef.current = { type: 'rotate', featureId: f.id, center: center }; },
+                drag: (e) => {
+                  if (draggingRef.current?.type !== 'rotate' || !draggingRef.current.center) return;
+                  const centerPt = map.latLngToLayerPoint(draggingRef.current.center);
+                  const mousePt = map.latLngToLayerPoint(e.latlng);
+                  const newAngle = Math.atan2(mousePt.y - centerPt.y, mousePt.x - centerPt.x) * (180 / Math.PI) - 90;
+                  setFeatures(fs => fs.map(feat => feat.id === f.id ? { ...feat, angle: newAngle } : feat));
+                },
+                dragend: (e) => {
+                  // Recalculate Azimuth on drag end
+                  if (draggingRef.current?.type === 'rotate' && f.buildingName) {
+                    // We need the latest angle. Since state update might be pending, we calculate it again or trust the last drag event?
+                    // Safer to calculate from current mouse position if possible, but dragend doesn't give mouse pos easily if outside map?
+                    // Actually, we can just find the feature in the updated features list if we used a ref, 
+                    // but here we are in the render loop.
+                    // IMPORTANT: 'f' here is the feature from the closure when this Marker was rendered. 
+                    // It does NOT have the 'newAngle' we just set in 'drag'.
+                    // However, 'drag' updates specific feature in 'setFeatures'.
+                    // We can't access the 'newAngle' easily without recalculating it or storing it in a ref.
+
+                    // Let's rely on the fact that 'drag' runs before 'dragend'.
+                    // We can try to calculate it one last time here?
+                    // Or better: update the Project State in 'drag' is too heavy (re-renders ProjectEditor).
+                    // So we must do it in dragend.
+
+                    // Helper to find the latest angle from the features state would be best, but 'features' here is from closure.
+                    // We can use the 'setFeatures' callback pattern to access the latest state!
+                    setFeatures(currentFeatures => {
+                      const updatedFeature = currentFeatures.find(feat => feat.id === f.id);
+                      if (updatedFeature) {
+                        const newAz = calculateAzimuthFromAngle(updatedFeature.angle);
+                        setProject(prev => ({ ...prev, panelAspect: newAz }));
+                        toast({ ...toastStyle, title: "Azimut mis à jour", description: `${newAz}°` });
+                      }
+                      return currentFeatures;
+                    });
+                  }
+                  draggingRef.current = null;
+                }
+              }} />}
             </Fragment>
           );
         }
@@ -1806,7 +1876,7 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
   );
 }
 
-function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace, onBuildingSelect, setFeatures }) {
+function MapEvents({ project, setProject, onAddressFound, onAddressSearched, setPhotoToPlace, onBuildingSelect, setFeatures }) {
   const map = useMap();
   useEffect(() => {
     const handlePlaceBuilding = (e) => {
@@ -1822,8 +1892,14 @@ function MapEvents({ project, onAddressFound, onAddressSearched, setPhotoToPlace
       const nw = L.latLng(ne.lat, sw.lng);
       const se = L.latLng(sw.lat, ne.lng);
       const id = crypto.randomUUID();
-      setFeatures(arr => [...arr, { id, type: "rectangle", buildingName: building.code, coords: [nw, ne, se, sw], angle: 0 }]);
-      toast({ ...toastStyle, title: `Bâtiment ${building.code} ajouté`, description: "Le bâtiment a été placé au centre de la carte." });
+      const initialAngle = 0;
+      setFeatures(arr => [...arr, { id, type: "rectangle", buildingName: building.code, coords: [nw, ne, se, sw], angle: initialAngle }]);
+
+      // Update Azimuth immediately
+      const az = calculateAzimuthFromAngle(initialAngle);
+      setProject(prev => ({ ...prev, panelAspect: az }));
+
+      toast({ ...toastStyle, title: `Bâtiment ${building.code} ajouté`, description: `Azimut calculé : ${az}° (Sud)` });
     };
     window.addEventListener("map:place-building", handlePlaceBuilding);
     return () => window.removeEventListener("map:place-building", handlePlaceBuilding);
@@ -2522,6 +2598,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
           <ZoomIndicator />
           <MapEvents
             project={project}
+            setProject={setProject}
             onAddressFound={onAddressFound}
             onAddressSearched={onAddressSearched}
 
