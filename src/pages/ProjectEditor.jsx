@@ -456,13 +456,15 @@ export default function ProjectEditor() {
       }
     }
 
-    // Then try to place on map (safely)
-    try {
-      window.dispatchEvent(new CustomEvent("map:place-building", { detail: { building } }));
-    } catch (err) {
-      console.error("Map placement error:", err);
-      toast({ title: "Erreur Carte", description: "Le bâtiment n'a pas pu être placé sur la carte.", variant: "destructive" });
-    }
+    // Then try to place on map (safely, decoupled from form update)
+    setTimeout(() => {
+      try {
+        window.dispatchEvent(new CustomEvent("map:place-building", { detail: { building } }));
+      } catch (err) {
+        console.error("Map placement error:", err);
+        toast({ title: "Erreur Carte", description: "Le bâtiment n'a pas pu être placé sur la carte.", variant: "destructive" });
+      }
+    }, 100);
   };
 
   const goToProjectAddress = () => {
