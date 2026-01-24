@@ -681,7 +681,7 @@ export default function ProjectEditor() {
                 >
                   <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
                   <SelectContent className="h-60">
-                    {Array.from({ length: 11 }, (_, i) => i * 10).map(val => (
+                    {Array.from({ length: 21 }, (_, i) => i * 5).map(val => (
                       <SelectItem key={val} value={String(val)}>{val}%</SelectItem>
                     ))}
                   </SelectContent>

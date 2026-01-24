@@ -284,15 +284,10 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect }) => {
         };
         break;
       case 'A': // ATLAS
-        config.allowAuvent = true;
+        config.allowAuvent = false;
         config.allowAppentis = false;
         config.baseWeight = 100;
-        config.getWeight = (auv, app) => {
-          if (auv === 0) return 100;
-          if (auv === 1) return 100;
-          if (auv === 2) return 90;
-          return 100;
-        };
+        config.getWeight = () => 100;
         break;
       case 'H': // HELIOS
         config.allowAuvent = true;
@@ -308,7 +303,7 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect }) => {
           return 50; // Fallback for other combinations
         };
         break;
-      case 'K': // KEREN (Assumed based on black cells in user image)
+      case 'K': // KEREN
         config.allowAuvent = false;
         config.allowAppentis = false;
         config.baseWeight = 65;
@@ -341,12 +336,16 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect }) => {
     const building = buildingsData.find(b => b.code === selectedCode);
     if (!building) return null;
 
-    // For A*N and A*SN buildings, width is a string like '12,7 + 4'.
-    // We will display it as is, but cannot use it for surface calculation.
-    // The surface is provided directly in the data.
-    const isSpecialWidth = typeof building.width === 'string';
+    let baseWidth = building.width;
 
-    let currentWidth = building.width;
+    // Handle string widths like "12,7 + 4"
+    if (typeof baseWidth === 'string') {
+      // Replace comma with dot, split by '+', sum parts
+      const parts = baseWidth.replace(',', '.').split('+').map(p => parseFloat(p.trim()));
+      baseWidth = parts.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
+    }
+
+    let currentWidth = baseWidth; // Start with the numeric base width
     let extraWidth = 0;
 
     // Calculate extra width from extensions
@@ -357,10 +356,7 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect }) => {
       extraWidth += appentisCount * 9.3;
     }
 
-    // Apply to current width if it's a number
-    if (!isSpecialWidth) {
-      currentWidth += extraWidth;
-    }
+    currentWidth += extraWidth;
 
     const calculatedSurface = building.surface ? (building.surface + (extraWidth * building.length)) : (building.length * currentWidth);
 
@@ -369,10 +365,10 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect }) => {
 
     return {
       ...building,
-      width: currentWidth,
+      width: currentWidth, // Always a number now
       surface: calculatedSurface,
-      isSpecialWidth: isSpecialWidth && extraWidth === 0,
-      roofWeighting // Export the calculated weighting
+      isSpecialWidth: false, // No longer treated as special/string since we parsed it
+      roofWeighting
     };
   }, [selectedCode, auventCount, appentisCount]);
 
