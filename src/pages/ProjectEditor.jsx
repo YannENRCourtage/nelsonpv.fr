@@ -421,9 +421,7 @@ export default function ProjectEditor() {
   };
 
   const handleBuildingSelect = (building) => {
-    window.dispatchEvent(new CustomEvent("map:place-building", { detail: { building } }));
-
-    // Auto-set inclination based on building code
+    // Auto-set inclination and weighting first (Priority to Data)
     if (building && building.code) {
       const code = building.code;
       let newAngle = null;
@@ -456,6 +454,14 @@ export default function ProjectEditor() {
 
         toast({ title: "Configuration appliquée", description: `${msg} pour le modèle ${code}.` });
       }
+    }
+
+    // Then try to place on map (safely)
+    try {
+      window.dispatchEvent(new CustomEvent("map:place-building", { detail: { building } }));
+    } catch (err) {
+      console.error("Map placement error:", err);
+      toast({ title: "Erreur Carte", description: "Le bâtiment n'a pas pu être placé sur la carte.", variant: "destructive" });
     }
   };
 
