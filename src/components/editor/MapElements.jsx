@@ -864,10 +864,16 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 
                     // Helper to find the latest angle from the features state would be best, but 'features' here is from closure.
                     // We can use the 'setFeatures' callback pattern to access the latest state!
+                    console.log('[AZIMUTH DEBUG] dragend triggered for building:', f.buildingName);
+                    console.log('[AZIMUTH DEBUG] draggingRef.current:', draggingRef.current);
                     setFeatures(currentFeatures => {
+                      console.log('[AZIMUTH DEBUG] Inside setFeatures callback');
                       const updatedFeature = currentFeatures.find(feat => feat.id === f.id);
+                      console.log('[AZIMUTH DEBUG] Found updated feature:', updatedFeature);
                       if (updatedFeature) {
                         const newAz = calculateAzimuthFromAngle(updatedFeature.angle);
+                        console.log('[AZIMUTH DEBUG] Calculated azimuth:', newAz, 'from angle:', updatedFeature.angle);
+                        console.log('[AZIMUTH DEBUG] setProject available?', typeof setProject);
                         setProject(prev => ({ ...prev, panelAspect: newAz }));
                         toast({ ...toastStyle, title: "Azimut mis à jour", description: `${newAz}°` });
                       }
