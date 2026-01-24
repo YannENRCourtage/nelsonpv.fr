@@ -443,8 +443,8 @@ export default function ProjectEditor() {
       }
 
       // Auto-set weighting if provided by the building panel logic
-      if (building.roofWeighting !== undefined) {
-        updates.roofWeighting = building.roofWeighting;
+      if (building.roofWeighting !== undefined && building.roofWeighting !== null) {
+        updates.roofWeighting = parseInt(building.roofWeighting);
       }
 
       if (Object.keys(updates).length > 0) {
