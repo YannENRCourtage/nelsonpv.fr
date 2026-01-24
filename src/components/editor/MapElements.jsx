@@ -491,7 +491,7 @@ function ContextMenu({ position, onAddText, onAddNote, onClose, onCheckUrbanisme
   );
 }
 
-function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos }) {
+function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject }) {
   const [mousePos, setMousePos] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [ignoreNextClick, setIgnoreNextClick] = useState(false);
@@ -2595,6 +2595,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
 
             targetPos={targetPos}
             setTargetPos={setTargetPos}
+            setProject={setProject}
           />
           <ZoomIndicator />
           <MapEvents
