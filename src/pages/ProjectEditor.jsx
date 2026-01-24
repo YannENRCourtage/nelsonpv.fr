@@ -435,10 +435,26 @@ export default function ProjectEditor() {
         newAngle = "10";
       }
 
+      const updates = {};
+
       if (newAngle) {
-        updateProject({ panelAngle: newAngle });
+        updates.panelAngle = newAngle;
         setIsAngleDefaulted(true);
-        toast({ title: "Inclinaison ajustée", description: `Inclinaison mise à ${newAngle}° pour le modèle ${code}.` });
+      }
+
+      // Auto-set weighting if provided by the building panel logic
+      if (building.roofWeighting !== undefined) {
+        updates.roofWeighting = building.roofWeighting;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        updateProject(updates);
+
+        let msg = "";
+        if (updates.panelAngle) msg += `Inclinaison mise à ${newAngle}°`;
+        if (updates.roofWeighting) msg += (msg ? " et " : "") + `Pondération mise à ${updates.roofWeighting}%`;
+
+        toast({ title: "Configuration ajustée", description: `${msg} pour le modèle ${code}.` });
       }
     }
   };

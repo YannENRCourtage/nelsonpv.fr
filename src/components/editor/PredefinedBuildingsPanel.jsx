@@ -248,6 +248,88 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect }) => {
   const [auventCount, setAuventCount] = useState(0);
   const [appentisCount, setAppentisCount] = useState(0);
 
+  const getBuildingConfig = (code) => {
+    if (!code) return { allowAuvent: false, allowAppentis: false, baseWeight: 50 };
+    const firstLetter = code.charAt(0).toUpperCase();
+
+    // Default configuration
+    let config = {
+      allowAuvent: false,
+      allowAppentis: false,
+      baseWeight: 50, // Default fallback
+      getWeight: () => 50
+    };
+
+    switch (firstLetter) {
+      case 'O': // ORION
+        config.allowAuvent = true;
+        config.allowAppentis = false;
+        config.baseWeight = 90;
+        config.getWeight = (auv, app) => {
+          if (auv === 0) return 90;
+          if (auv === 1) return 90;
+          if (auv === 2) return 70;
+          return 90;
+        };
+        break;
+      case 'C': // CYRUS
+        config.allowAuvent = true;
+        config.allowAppentis = false;
+        config.baseWeight = 70;
+        config.getWeight = (auv, app) => {
+          if (auv === 0) return 70;
+          if (auv === 1) return 75;
+          if (auv === 2) return 65;
+          return 70;
+        };
+        break;
+      case 'A': // ATLAS
+        config.allowAuvent = true;
+        config.allowAppentis = false;
+        config.baseWeight = 100;
+        config.getWeight = (auv, app) => {
+          if (auv === 0) return 100;
+          if (auv === 1) return 100;
+          if (auv === 2) return 90;
+          return 100;
+        };
+        break;
+      case 'H': // HELIOS
+        config.allowAuvent = true;
+        config.allowAppentis = true;
+        config.baseWeight = 50;
+        config.getWeight = (auv, app) => {
+          if (auv === 0 && app === 0) return 50;
+          if (auv === 0 && app === 1) return 65;
+          if (auv === 0 && app === 2) return 50;
+          if (auv === 1 && app === 0) return 55;
+          if (auv === 2 && app === 0) return 50;
+          if (auv === 1 && app === 1) return 60;
+          return 50; // Fallback for other combinations
+        };
+        break;
+      case 'K': // KEREN (Assumed based on black cells in user image)
+        config.allowAuvent = false;
+        config.allowAppentis = false;
+        config.baseWeight = 65;
+        config.getWeight = () => 65;
+        break;
+      case 'Y': // YOKO
+      case 'S': // SOLEA
+        config.allowAuvent = false;
+        config.allowAppentis = false;
+        config.baseWeight = 50;
+        config.getWeight = () => 50;
+        break;
+      default:
+        // Default behavior for unknown codes
+        config.allowAuvent = false;
+        config.allowAppentis = false;
+        config.baseWeight = 50;
+    }
+    return config;
+  };
+
   // Reset counters when selecting a new building
   React.useEffect(() => {
     setAuventCount(0);
@@ -282,11 +364,15 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect }) => {
 
     const calculatedSurface = building.surface ? (building.surface + (extraWidth * building.length)) : (building.length * currentWidth);
 
+    const config = getBuildingConfig(selectedCode);
+    const roofWeighting = config.getWeight(auventCount, appentisCount);
+
     return {
       ...building,
       width: currentWidth,
       surface: calculatedSurface,
-      isSpecialWidth: isSpecialWidth && extraWidth === 0
+      isSpecialWidth: isSpecialWidth && extraWidth === 0,
+      roofWeighting // Export the calculated weighting
     };
   }, [selectedCode, auventCount, appentisCount]);
 
@@ -309,7 +395,7 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect }) => {
               if (next + appentisCount <= 2) setAuventCount(next);
               else setAuventCount(0);
             }}
-            disabled={!selectedCode}
+            disabled={!selectedCode || (selectedCode && !getBuildingConfig(selectedCode).allowAuvent)}
             className={auventCount > 0 ? "bg-amber-600 hover:bg-amber-700" : ""}
           >
             Auvent {auventCount > 0 && `(x${auventCount})`}
@@ -322,7 +408,7 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect }) => {
               if (next + auventCount <= 2) setAppentisCount(next);
               else setAppentisCount(0);
             }}
-            disabled={!selectedCode}
+            disabled={!selectedCode || (selectedCode && !getBuildingConfig(selectedCode).allowAppentis)}
             className={appentisCount > 0 ? "bg-amber-600 hover:bg-amber-700" : ""}
           >
             Appentis {appentisCount > 0 && `(x${appentisCount})`}
