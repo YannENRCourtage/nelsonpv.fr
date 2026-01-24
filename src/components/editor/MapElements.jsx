@@ -491,7 +491,7 @@ function ContextMenu({ position, onAddText, onAddNote, onClose, onCheckUrbanisme
   );
 }
 
-function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject }) {
+function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject, setIsAzimuthDefaulted }) {
   const [mousePos, setMousePos] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [ignoreNextClick, setIgnoreNextClick] = useState(false);
@@ -835,7 +835,33 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
               <Polyline positions={[rotatedCoords[0], rotatedCoords[1], rotatedCoords[2], rotatedCoords[3], rotatedCoords[0]]} pathOptions={{ color: "#f59e0b", weight: 2, opacity: 1, fill: false }} />
               {rotatedCenter && <Marker position={rotatedCenter} opacity={0}><Tooltip permanent direction="center" className="measure-label">{f.buildingName && `${f.buildingName} - `} {formatDistance(height)} × {formatDistance(width)} ({formatArea(area)})</Tooltip></Marker>}
               {isSelected && rotationHandlePos && <Marker position={rotationHandlePos} icon={rotationIcon} draggable={true} eventHandlers={{
-                dragstart: (e) => { L.DomEvent.stop(e); draggingRef.current = { type: 'rotate', featureId: f.id, center: center }; },
+                dragstart: (e) => {
+                  L.DomEvent.stop(e);
+                  draggingRef.current = { type: 'rotate', featureId: f.id, center: center };
+
+                  // Use a document-level mouseup listener to ensure we catch the end of the drag
+                  // regardless of whether the Marker component was re-rendered.
+                  const onMouseUp = () => {
+                    console.log('[AZIMUTH DEBUG] Document mouseup triggered. Updating project.');
+                    setFeatures(currentFeatures => {
+                      const updatedFeature = currentFeatures.find(feat => feat.id === f.id);
+                      if (updatedFeature && f.buildingName) { // Only update if buildingName exists
+                        const newAz = calculateAzimuthFromAngle(updatedFeature.angle);
+                        console.log('[AZIMUTH DEBUG] Final Azimuth:', newAz);
+                        setProject(prev => ({ ...prev, panelAspect: newAz }));
+                        if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
+                        toast({ ...toastStyle, title: "Azimut mis à jour", description: `${newAz}°` });
+                      }
+                      return currentFeatures;
+                    });
+
+                    // Cleanup
+                    draggingRef.current = null;
+                    document.removeEventListener('mouseup', onMouseUp);
+                  };
+
+                  document.addEventListener('mouseup', onMouseUp);
+                },
                 drag: (e) => {
                   if (draggingRef.current?.type !== 'rotate' || !draggingRef.current.center) return;
                   const centerPt = map.latLngToLayerPoint(draggingRef.current.center);
@@ -846,47 +872,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                   setFeatures(fs => fs.map(feat => feat.id === f.id ? { ...feat, angle: newAngle } : feat));
                 },
                 dragend: (e) => {
-                  // Recalculate Azimuth on drag end
-                  console.log('[AZIMUTH DEBUG] dragend triggered!');
-                  console.log('[AZIMUTH DEBUG] f.buildingName:', f.buildingName);
-                  console.log('[AZIMUTH DEBUG] draggingRef.current:', draggingRef.current);
-                  console.log('[AZIMUTH DEBUG] draggingRef.current?.type:', draggingRef.current?.type);
-
-                  if (draggingRef.current?.type === 'rotate' && f.buildingName) {
-                    // We need the latest angle. Since state update might be pending, we calculate it again or trust the last drag event?
-                    // Safer to calculate from current mouse position if possible, but dragend doesn't give mouse pos easily if outside map?
-                    // Actually, we can just find the feature in the updated features list if we used a ref, 
-                    // but here we are in the render loop.
-                    // IMPORTANT: 'f' here is the feature from the closure when this Marker was rendered. 
-                    // It does NOT have the 'newAngle' we just set in 'drag'.
-                    // However, 'drag' updates specific feature in 'setFeatures'.
-                    // We can't access the 'newAngle' easily without recalculating it or storing it in a ref.
-
-                    // Let's rely on the fact that 'drag' runs before 'dragend'.
-                    // We can try to calculate it one last time here?
-                    // Or better: update the Project State in 'drag' is too heavy (re-renders ProjectEditor).
-                    // So we must do it in dragend.
-
-                    // Helper to find the latest angle from the features state would be best, but 'features' here is from closure.
-                    // We can use the 'setFeatures' callback pattern to access the latest state!
-                    console.log('[AZIMUTH DEBUG] Inside condition - will update azimuth');
-                    setFeatures(currentFeatures => {
-                      console.log('[AZIMUTH DEBUG] Inside setFeatures callback');
-                      const updatedFeature = currentFeatures.find(feat => feat.id === f.id);
-                      console.log('[AZIMUTH DEBUG] Found updated feature:', updatedFeature);
-                      if (updatedFeature) {
-                        const newAz = calculateAzimuthFromAngle(updatedFeature.angle);
-                        console.log('[AZIMUTH DEBUG] Calculated azimuth:', newAz, 'from angle:', updatedFeature.angle);
-                        console.log('[AZIMUTH DEBUG] setProject available?', typeof setProject);
-                        setProject(prev => ({ ...prev, panelAspect: newAz }));
-                        toast({ ...toastStyle, title: "Azimut mis à jour", description: `${newAz}°` });
-                      }
-                      return currentFeatures;
-                    });
-                  } else {
-                    console.log('[AZIMUTH DEBUG] Condition failed - not updating azimuth');
-                  }
-                  draggingRef.current = null;
+                  // Handled by document mouseup
                 }
               }} />}
             </Fragment>
@@ -1889,7 +1875,7 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
   );
 }
 
-function MapEvents({ project, setProject, onAddressFound, onAddressSearched, setPhotoToPlace, onBuildingSelect, setFeatures }) {
+function MapEvents({ project, setProject, onAddressFound, onAddressSearched, setPhotoToPlace, onBuildingSelect, setFeatures, setIsAzimuthDefaulted }) {
   const map = useMap();
   useEffect(() => {
     const handlePlaceBuilding = (e) => {
@@ -1911,6 +1897,7 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
       // Update Azimuth immediately
       const az = calculateAzimuthFromAngle(initialAngle);
       setProject(prev => ({ ...prev, panelAspect: az }));
+      if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
 
       toast({ ...toastStyle, title: `Bâtiment ${building.code} ajouté`, description: `Azimut calculé : ${az}° (Sud)` });
     };
@@ -2431,7 +2418,7 @@ function MapStateSync({ project, setProject }) {
   return null;
 }
 
-export default function MapElements({ style = {}, project, setProject, onAddressFound, onAddressSearched, setSymbolToPlace, symbolToPlace }) {
+export default function MapElements({ style = {}, project, setProject, onAddressFound, onAddressSearched, setSymbolToPlace, symbolToPlace, setIsAzimuthDefaulted }) {
 
   const [mode, setMode] = useState(null);
   const [temp, setTemp] = useState([]);
@@ -2608,11 +2595,14 @@ export default function MapElements({ style = {}, project, setProject, onAddress
             targetPos={targetPos}
             setTargetPos={setTargetPos}
             setProject={setProject}
+            setIsAzimuthDefaulted={setIsAzimuthDefaulted}
           />
           <ZoomIndicator />
           <MapEvents
             project={project}
+
             setProject={setProject}
+            setIsAzimuthDefaulted={setIsAzimuthDefaulted}
             onAddressFound={onAddressFound}
             onAddressSearched={onAddressSearched}
 

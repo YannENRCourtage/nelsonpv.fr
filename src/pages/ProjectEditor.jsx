@@ -112,6 +112,7 @@ export default function ProjectEditor() {
   const [activeLayers, setActiveLayers] = useState(new Set());
   const [remountKey, setRemountKey] = useState(0);
   const [isAngleDefaulted, setIsAngleDefaulted] = useState(false);
+  const [isAzimuthDefaulted, setIsAzimuthDefaulted] = useState(false);
 
   useEffect(() => {
     const handleForceReset = () => {
@@ -632,8 +633,14 @@ export default function ProjectEditor() {
               {/* Azimut */}
               <div>
                 <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Azimut toiture 1">Azimut</label>
-                <Select value={String(p.panelAspect || '0')} onValueChange={v => updateProject({ panelAspect: v })}>
-                  <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
+                <Select
+                  value={String(p.panelAspect || '0')}
+                  onValueChange={v => {
+                    updateProject({ panelAspect: v });
+                    if (isAzimuthDefaulted) setIsAzimuthDefaulted(false);
+                  }}
+                >
+                  <SelectTrigger className={`mt-1 h-10 w-full ${isAzimuthDefaulted ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
                   <SelectContent className="h-60">
                     {Array.from({ length: 72 }, (_, i) => -175 + i * 5).map(val => {
                       let label = `${val}°`;
@@ -886,6 +893,7 @@ export default function ProjectEditor() {
                   onAddressSearched={handleAddressSearched}
                   project={project}
                   setProject={setProject}
+                  setIsAzimuthDefaulted={setIsAzimuthDefaulted}
                   symbolToPlace={symbolToPlace}
                   setSymbolToPlace={setSymbolToPlace}
 
