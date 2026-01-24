@@ -847,6 +847,11 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                 },
                 dragend: (e) => {
                   // Recalculate Azimuth on drag end
+                  console.log('[AZIMUTH DEBUG] dragend triggered!');
+                  console.log('[AZIMUTH DEBUG] f.buildingName:', f.buildingName);
+                  console.log('[AZIMUTH DEBUG] draggingRef.current:', draggingRef.current);
+                  console.log('[AZIMUTH DEBUG] draggingRef.current?.type:', draggingRef.current?.type);
+
                   if (draggingRef.current?.type === 'rotate' && f.buildingName) {
                     // We need the latest angle. Since state update might be pending, we calculate it again or trust the last drag event?
                     // Safer to calculate from current mouse position if possible, but dragend doesn't give mouse pos easily if outside map?
@@ -864,8 +869,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 
                     // Helper to find the latest angle from the features state would be best, but 'features' here is from closure.
                     // We can use the 'setFeatures' callback pattern to access the latest state!
-                    console.log('[AZIMUTH DEBUG] dragend triggered for building:', f.buildingName);
-                    console.log('[AZIMUTH DEBUG] draggingRef.current:', draggingRef.current);
+                    console.log('[AZIMUTH DEBUG] Inside condition - will update azimuth');
                     setFeatures(currentFeatures => {
                       console.log('[AZIMUTH DEBUG] Inside setFeatures callback');
                       const updatedFeature = currentFeatures.find(feat => feat.id === f.id);
@@ -879,6 +883,8 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                       }
                       return currentFeatures;
                     });
+                  } else {
+                    console.log('[AZIMUTH DEBUG] Condition failed - not updating azimuth');
                   }
                   draggingRef.current = null;
                 }
