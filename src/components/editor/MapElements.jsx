@@ -109,14 +109,13 @@ function formatArea(m2) { return m2 >= 10000 ? `${(m2 / 10000).toFixed(2)} ha` :
 
 // Custom Azimuth Calculation: 0=South, 180=North, 90=West, -90=East
 function calculateAzimuthFromAngle(angle) {
-  // Angle 0 = South facing South.
-  // Angle comes from Leaflet rotation.
-  // Based on analysis:
-  // Rotation +90 (Top to West) -> South face faces East (-90).
-  // Rotation -90 (Top to East) -> South face faces West (90).
-  // So Azimuth ~= -Angle.
+  // Angle 0 = Up (Handle) -> North Face faces North.
+  // South Face faces South. -> Azimuth 0.
+  // Leaflet Rotation +90 (CW) -> North Face faces East.
+  // South Face faces West. -> Azimuth 90.
+  // So Azimuth = Angle.
 
-  let az = -angle;
+  let az = angle;
 
   // Normalize to [-180, 180]
   az = (az % 360);
@@ -841,7 +840,9 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                   if (draggingRef.current?.type !== 'rotate' || !draggingRef.current.center) return;
                   const centerPt = map.latLngToLayerPoint(draggingRef.current.center);
                   const mousePt = map.latLngToLayerPoint(e.latlng);
-                  const newAngle = Math.atan2(mousePt.y - centerPt.y, mousePt.x - centerPt.x) * (180 / Math.PI) - 90;
+                  // Correction: offset (0, -20) (Up) corresponds to Angle 0.
+                  // atan2(Up) = -90. So Angle = -90 + 90 = 0.
+                  const newAngle = Math.atan2(mousePt.y - centerPt.y, mousePt.x - centerPt.x) * (180 / Math.PI) + 90;
                   setFeatures(fs => fs.map(feat => feat.id === f.id ? { ...feat, angle: newAngle } : feat));
                 },
                 dragend: (e) => {
