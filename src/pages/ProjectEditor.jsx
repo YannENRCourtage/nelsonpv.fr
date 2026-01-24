@@ -444,7 +444,7 @@ export default function ProjectEditor() {
 
       // Auto-set weighting if provided by the building panel logic
       if (building.roofWeighting !== undefined && building.roofWeighting !== null) {
-        updates.roofWeighting = parseInt(building.roofWeighting);
+        updates.roofWeighting = Number(building.roofWeighting);
       }
 
       if (Object.keys(updates).length > 0) {
@@ -452,11 +452,7 @@ export default function ProjectEditor() {
 
         let msg = "";
         if (updates.panelAngle) msg += `Inclinaison: ${newAngle}°`;
-
-        // Debug info included in user message for verification
-        if (updates.roofWeighting !== undefined) {
-          msg += (msg ? ", " : "") + `Pondération: ${updates.roofWeighting}% (Reçu: ${building.roofWeighting})`;
-        }
+        if (updates.roofWeighting !== undefined) msg += (msg ? ", " : "") + `Pondération: ${updates.roofWeighting}%`;
 
         toast({ title: "Configuration appliquée", description: `${msg} pour le modèle ${code}.` });
       }
