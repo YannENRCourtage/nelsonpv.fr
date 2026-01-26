@@ -922,9 +922,6 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                     const newAz = calculateAzimuthFromAngle(normalizedAngle);
                     console.log('[ROTATION END] New azimuth:', newAz);
 
-                    // IMPORTANT: Update the sync ref immediately to prevent the useEffect from reverting this change
-                    lastSyncedAzimuthRef.current = newAz;
-
                     setProject(prev => ({ ...prev, panelAspect: newAz }));
                     if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
                     toast({ ...toastStyle, title: "Azimut mis à jour", description: `${newAz}°` });
