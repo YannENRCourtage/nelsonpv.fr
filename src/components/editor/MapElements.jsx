@@ -928,10 +928,12 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                   }
 
                   // Small delay to allow react cycle to complete before unblocking sync
+                  // Increased to 1000ms to allow full state propagation and avoid race condition reset
                   setTimeout(() => {
                     if (isRotatingRef) isRotatingRef.current = false;
                     draggingRef.current = null;
-                  }, 200);
+                    console.log('[ROTATION END] Synchro unblocked');
+                  }, 1000);
                 }
               }} />}
             </Fragment>
