@@ -1904,10 +1904,8 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
         // Convert azimuth to visual angle
         const visualAngle = calculateAngleFromAzimuth(targetAzimuth);
 
-        // Éviter les mises à jour inutiles (comparaison avec tolérance)
-        // FIX: Compare visual angle with visual angle, NOT visual angle with azimuth
-        if (Math.abs((lastBuilding.angle || 0) - visualAngle) < 0.1) return prev;
-        // Mettre à jour l'angle du dernier bâtiment prédéfini
+        // Toujours mettre à jour l'angle pour permettre la rotation
+        console.log('[SYNC AZIMUTH] Updating building', lastBuilding.id, 'from angle', lastBuilding.angle, 'to', visualAngle, 'for azimuth', targetAzimuth);
         return prev.map(f => f.id === lastBuilding.id ? { ...f, angle: visualAngle } : f);
       });
     }
