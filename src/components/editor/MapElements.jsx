@@ -878,6 +878,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 
               {rotatedCenter && <Marker position={rotatedCenter} opacity={0}><Tooltip permanent direction="center" className="measure-label">{f.buildingName && `${f.buildingName} - `} {formatDistance(height)} × {formatDistance(width)} ({formatArea(area)})</Tooltip></Marker>}
               {/* STEP 2: Rotation enabled for ALL rectangles (manual + predefined) using same code */}
+              {console.log('[ROTATION MARKER]', f.id, 'isSelected:', isSelected, 'rotationHandlePos:', !!rotationHandlePos, 'isPredefinedBuilding:', f.isPredefinedBuilding, 'buildingName:', f.buildingName)}
               {isSelected && rotationHandlePos && <Marker position={rotationHandlePos} icon={rotationIcon} draggable={true} zIndexOffset={1000} eventHandlers={{
                 dragstart: (e) => {
                   L.DomEvent.stop(e);
