@@ -749,6 +749,9 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
             if (f.type === 'line' || f.type === 'polygon' || f.type === 'rectangle') return { ...f, coords: f.coords.map(c => ({ lat: c.lat + deltaLat, lng: c.lng + deltaLng })) };
             if (f.type === 'symbol' || f.type === 'photo' || f.type === 'text') return { ...f, at: { lat: f.at.lat + deltaLat, lng: f.at.lng + deltaLng } };
           } else if (type === 'rotate') {
+            // Safety check: ensure center exists
+            if (!draggingRef.current.center) return f;
+
             // Logic moved from Marker drag to here for smoother updates
             const centerPt = map.latLngToLayerPoint(draggingRef.current.center);
             const mousePt = map.latLngToLayerPoint(e.latlng);
@@ -1927,8 +1930,10 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
         // Convert azimuth to visual angle
         const visualAngle = calculateAngleFromAzimuth(targetAzimuth);
 
-        // Toujours mettre à jour l'angle pour permettre la rotation
-        console.log('[SYNC AZIMUTH] Updating building', lastBuilding.id, 'from angle', lastBuilding.angle, 'to', visualAngle, 'for azimuth', targetAzimuth);
+        // IMPORTANT: Check if angle actually changed to avoid infinite loop
+        if (Math.abs((lastBuilding.angle || 0) - visualAngle) < 0.5) return prev;
+
+        // Mettre à jour l'angle du dernier bâtiment prédéfini
         return prev.map(f => f.id === lastBuilding.id ? { ...f, angle: visualAngle } : f);
       });
     }
