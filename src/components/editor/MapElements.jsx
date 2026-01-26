@@ -2082,7 +2082,9 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
       window.removeEventListener("map:place-building", handlePlaceBuilding);
       window.removeEventListener("map:update-last-building", handleUpdateLastBuilding);
     };
-  }, [map, setFeatures, project?.panelAspect]);
+    // NOTE: project?.panelAspect removed from dependencies to prevent infinite loop
+    // When rotating => azimuth changes => useEffect reruns => handlers re-registered => creates loop
+  }, [map, setFeatures]);
 
   useEffect(() => {
     // L'événement est "map:capture-request"
