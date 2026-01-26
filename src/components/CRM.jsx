@@ -107,7 +107,7 @@ export default function CRM() {
     { key: 'email', label: 'Email' },
     { key: 'status', label: 'Statut' },
     { key: 'projet', label: 'Projet' },
-    { key: 'utilisateur', label: 'Utilisateur' },
+    { key: 'utilisateur', label: 'Commercial' },
   ];
 
   return (
