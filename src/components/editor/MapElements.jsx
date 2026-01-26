@@ -1,5 +1,5 @@
 
-import React, { useRef, useState, useEffect, Fragment } from "react";
+import React, { useRef, useState, useEffect, Fragment, useCallback } from "react";
 import {
   MapContainer,
   LayerGroup,
@@ -100,40 +100,40 @@ function midpointOfLine(coords) {
         coords[i - 1].lng + (coords[i].lng - coords[i - 1].lng) * ratio
       );
     }
-    acc += seg;
+    let lat = 0, lng = 0, n = 0;
+    coords.forEach(c => { lat += c.lat; lng += c.lng; n++; });
+    return { lat: lat / n, lng: lng / n };
   }
-  return coords[Math.floor(coords.length / 2)];
 }
 function formatDistance(m) { return m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(2)} km`; }
 function formatArea(m2) { return m2 >= 10000 ? `${(m2 / 10000).toFixed(2)} ha` : `${Math.round(m2)} m²`; }
 
 // Custom Azimuth Calculation: 0=South, 180=North, 90=West, -90=East
 function calculateAzimuthFromAngle(angle) {
-  // Angle 0 = Up (Handle) -> North Face faces North.
-  // South Face faces South. -> Azimuth 0.
-  // Leaflet Rotation +90 (CW) -> North Face faces East.
-  // South Face faces West. -> Azimuth 90.
-  // So Azimuth = Angle.
-
-  let az = angle;
-
   // Normalize to [-180, 180]
-  az = (az % 360);
+  let az = angle % 360;
   if (az > 180) az -= 360;
   if (az < -180) az += 360;
 
-  // User want "South" width edge. Range [-90, 90].
-  // If we are looking North (180) or roughly North, we switch to the opposite width edge.
+  // Clamp to [-90, 90] for south-facing roof
+  // If angle is > 90 or < -90, flip to opposite edge
   if (az > 90) az -= 180;
   if (az < -90) az += 180;
 
-  // Round to nearest 5
+  // Round to nearest 5 degrees
   az = Math.round(az / 5) * 5;
 
   // Handle -0
   if (az === -0) az = 0;
 
   return az;
+}
+
+// Convert azimuth back to visual angle for map rendering
+// Since azimuth is in [-90, 90], the visual angle is the same
+function calculateAngleFromAzimuth(azimuth) {
+  // Azimuth is already the visual rotation angle
+  return azimuth;
 }
 
 // Custom Azimuth Calculation for Measuring Tool (2 Points)
@@ -321,10 +321,10 @@ function LigneBTLayerManager({ layersRef }) {
 }
 
 const rotationIcon = L.divIcon({
-  html: `<div class="bg-white rounded-full p-1 shadow-lg border-2 border-blue-500 cursor-alias text-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L12 12h9V3"/></svg></div>`,
+  html: `<div class="bg-white rounded-full p-2 shadow-lg border-2 border-blue-500 cursor-move text-blue-600 hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L12 12h9V3"/></svg></div>`,
   className: 'bg-transparent border-none',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
+  iconSize: [40, 40],
+  iconAnchor: [20, 20],
 });
 const targetIcon = L.divIcon({
   html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#f97316" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 drop-shadow-md"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3" fill="#ffffff"></circle></svg>`,
@@ -491,7 +491,7 @@ function ContextMenu({ position, onAddText, onAddNote, onClose, onCheckUrbanisme
   );
 }
 
-function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject, setIsAzimuthDefaulted }) {
+function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject, setIsAzimuthDefaulted, isRotatingRef }) {
   const [mousePos, setMousePos] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [ignoreNextClick, setIgnoreNextClick] = useState(false);
@@ -694,7 +694,8 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
             bounds.getNorthEast(),
             bounds.getSouthEast()
           ];
-          setFeatures((arr) => [...arr, { id, type: "rectangle", coords, center, width, height, angle: 0 }]);
+          // Mark manual rectangles as isManual to distinguish from predefined buildings
+          setFeatures((arr) => [...arr, { id, type: "rectangle", coords, center, width, height, angle: 0, isManual: true }]);
           setRectangleStart(null);
           // setMode(null); // Keep mode active for multiple rectangles
         }
@@ -719,23 +720,42 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
         const { type, featureId, startLatLng } = draggingRef.current;
         setFeatures(prevFeatures => prevFeatures.map(f => {
           if (f.id !== featureId) return f;
+
           if (type === 'drag') {
             const deltaLat = e.latlng.lat - startLatLng.lat;
             const deltaLng = e.latlng.lng - startLatLng.lng;
             if (f.type === 'line' || f.type === 'polygon' || f.type === 'rectangle') return { ...f, coords: f.coords.map(c => ({ lat: c.lat + deltaLat, lng: c.lng + deltaLng })) };
             if (f.type === 'symbol' || f.type === 'photo' || f.type === 'text') return { ...f, at: { lat: f.at.lat + deltaLat, lng: f.at.lng + deltaLng } };
-          } else if (type === 'rotate' && f.type === 'rectangle') {
+          } else if (type === 'rotate') {
+            // Logic moved from Marker drag to here for smoother updates
             const centerPt = map.latLngToLayerPoint(draggingRef.current.center);
             const mousePt = map.latLngToLayerPoint(e.latlng);
-            const newAngle = Math.atan2(mousePt.y - centerPt.y, mousePt.x - centerPt.x) * (180 / Math.PI) - 90;
+            // atan2(Up) = -90. So Angle = -90 + 90 = 0.
+            const newAngle = Math.atan2(mousePt.y - centerPt.y, mousePt.x - centerPt.x) * (180 / Math.PI) + 90;
             return { ...f, angle: newAngle };
           }
           return f;
         }));
+
         if (type === 'drag') draggingRef.current.startLatLng = e.latlng;
       }
     },
-    mouseup() { if (draggingRef.current) draggingRef.current = null; },
+    mouseup() {
+      if (draggingRef.current) {
+        if (draggingRef.current.type === 'rotate') {
+          // Commit rotation
+          const f = features.find(feat => feat.id === draggingRef.current.featureId);
+          if (f && f.buildingName) {
+            const newAz = calculateAzimuthFromAngle(f.angle);
+            setProject(prev => ({ ...prev, panelAspect: newAz }));
+            if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
+            toast({ ...toastStyle, title: "Azimut mis à jour", description: `${newAz}°` });
+          }
+          if (isRotatingRef) isRotatingRef.current = false;
+        }
+        draggingRef.current = null;
+      }
+    },
     dblclick(e) {
       if (mode === "line" && temp.length >= 2) {
         const id = crypto.randomUUID();
@@ -811,11 +831,15 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
           if (!center) return null;
           const centerPt = map.latLngToLayerPoint(center);
           const angleRad = toRad(f.angle || 0);
+          console.log('[RECTANGLE RENDER] Feature', f.id, 'rendering with angle:', f.angle, 'angleRad:', angleRad);
           const rotatedCoords = f.coords.map(c => {
             const point = map.latLngToLayerPoint(c);
             const rotated = L.point(centerPt.x + (point.x - centerPt.x) * Math.cos(angleRad) - (point.y - centerPt.y) * Math.sin(angleRad), centerPt.y + (point.x - centerPt.x) * Math.sin(angleRad) + (point.y - centerPt.y) * Math.cos(angleRad));
             return map.layerPointToLatLng(rotated);
           });
+
+          // Debugging RotatablePolygon input
+          // if (f.angle && Math.abs(f.angle) > 1) console.log('[RotatablePolygon Input]', rotatedCoords);
           const width = haversine(rotatedCoords[0], rotatedCoords[1]);
           const height = haversine(rotatedCoords[1], rotatedCoords[2]);
           const area = width * height;
@@ -830,49 +854,29 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 
           return (
             <Fragment key={f.id}>
-              <Polygon positions={rotatedCoords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#f59e0b", weight: 2, fillColor: "#f59e0b", fillOpacity: 0.2, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers} />
+              {/* Use RotatablePolygon for stable fluid rotation - FIX FOR BLOCKED ROTATION */}
+              <Polygon
+                positions={rotatedCoords}
+                pathOptions={{
+                  color: isSelected ? "#0ea5e9" : "#f59e0b",
+                  weight: 2,
+                  fillColor: "#f59e0b",
+                  fillOpacity: 0.2,
+                  className: mode ? '' : 'cursor-grab'
+                }}
+                eventHandlers={shapeEventHandlers}
+              />
               {/* Ligne de dimension explicite pour la capture */}
               <Polyline positions={[rotatedCoords[0], rotatedCoords[1], rotatedCoords[2], rotatedCoords[3], rotatedCoords[0]]} pathOptions={{ color: "#f59e0b", weight: 2, opacity: 1, fill: false }} />
+
+              {/* DEBUG: Visualizer for Corner 0 */}
+
               {rotatedCenter && <Marker position={rotatedCenter} opacity={0}><Tooltip permanent direction="center" className="measure-label">{f.buildingName && `${f.buildingName} - `} {formatDistance(height)} × {formatDistance(width)} ({formatArea(area)})</Tooltip></Marker>}
-              {isSelected && rotationHandlePos && <Marker position={rotationHandlePos} icon={rotationIcon} draggable={true} eventHandlers={{
-                dragstart: (e) => {
+              {isSelected && rotationHandlePos && <Marker position={rotationHandlePos} icon={rotationIcon} draggable={false} zIndexOffset={1000} eventHandlers={{
+                mousedown: (e) => {
                   L.DomEvent.stop(e);
+                  if (isRotatingRef) isRotatingRef.current = true;
                   draggingRef.current = { type: 'rotate', featureId: f.id, center: center };
-
-                  // Use a document-level mouseup listener to ensure we catch the end of the drag
-                  // regardless of whether the Marker component was re-rendered.
-                  const onMouseUp = () => {
-                    console.log('[AZIMUTH DEBUG] Document mouseup triggered. Updating project.');
-                    setFeatures(currentFeatures => {
-                      const updatedFeature = currentFeatures.find(feat => feat.id === f.id);
-                      if (updatedFeature && f.buildingName) { // Only update if buildingName exists
-                        const newAz = calculateAzimuthFromAngle(updatedFeature.angle);
-                        console.log('[AZIMUTH DEBUG] Final Azimuth:', newAz);
-                        setProject(prev => ({ ...prev, panelAspect: newAz }));
-                        if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
-                        toast({ ...toastStyle, title: "Azimut mis à jour", description: `${newAz}°` });
-                      }
-                      return currentFeatures;
-                    });
-
-                    // Cleanup
-                    draggingRef.current = null;
-                    document.removeEventListener('mouseup', onMouseUp);
-                  };
-
-                  document.addEventListener('mouseup', onMouseUp);
-                },
-                drag: (e) => {
-                  if (draggingRef.current?.type !== 'rotate' || !draggingRef.current.center) return;
-                  const centerPt = map.latLngToLayerPoint(draggingRef.current.center);
-                  const mousePt = map.latLngToLayerPoint(e.latlng);
-                  // Correction: offset (0, -20) (Up) corresponds to Angle 0.
-                  // atan2(Up) = -90. So Angle = -90 + 90 = 0.
-                  const newAngle = Math.atan2(mousePt.y - centerPt.y, mousePt.x - centerPt.x) * (180 / Math.PI) + 90;
-                  setFeatures(fs => fs.map(feat => feat.id === f.id ? { ...feat, angle: newAngle } : feat));
-                },
-                dragend: (e) => {
-                  // Handled by document mouseup
                 }
               }} />}
             </Fragment>
@@ -1875,8 +1879,39 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
   );
 }
 
-function MapEvents({ project, setProject, onAddressFound, onAddressSearched, setPhotoToPlace, onBuildingSelect, setFeatures, setIsAzimuthDefaulted }) {
+
+
+
+
+function MapEvents({ project, setProject, onAddressFound, onAddressSearched, setPhotoToPlace, onBuildingSelect, setFeatures, setIsAzimuthDefaulted, isRotatingRef }) {
   const map = useMap();
+
+  // Synchronisation : Change le rectangle sur la carte quand l'azimut change dans le formulaire
+  useEffect(() => {
+    // Si l'utilisateur est en train de tourner manuellement, on ignore la synchro venant du projet
+    if (isRotatingRef?.current) return;
+
+    if (project?.panelAspect !== undefined && project?.panelAspect !== null) {
+      const targetAzimuth = Number(project.panelAspect);
+
+      setFeatures(prev => {
+        // Trouver le dernier BÂTIMENT PRÉDÉFINI uniquement (pas les rectangles manuels)
+        const predefinedBuildings = prev.filter(f => f.type === 'rectangle' && f.isPredefinedBuilding === true);
+        if (predefinedBuildings.length === 0) return prev;
+
+        const lastBuilding = predefinedBuildings[predefinedBuildings.length - 1];
+
+        // Convert azimuth to visual angle
+        const visualAngle = calculateAngleFromAzimuth(targetAzimuth);
+
+        // Éviter les mises à jour inutiles (comparaison avec tolérance)
+        // FIX: Compare visual angle with visual angle, NOT visual angle with azimuth
+        if (Math.abs((lastBuilding.angle || 0) - visualAngle) < 0.1) return prev;
+        // Mettre à jour l'angle du dernier bâtiment prédéfini
+        return prev.map(f => f.id === lastBuilding.id ? { ...f, angle: visualAngle } : f);
+      });
+    }
+  }, [project?.panelAspect, setFeatures, isRotatingRef]);
   useEffect(() => {
     const handlePlaceBuilding = (e) => {
       const { building } = e.detail;
@@ -1892,7 +1927,8 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
       const se = L.latLng(sw.lat, ne.lng);
       const id = crypto.randomUUID();
       const initialAngle = 0;
-      setFeatures(arr => [...arr, { id, type: "rectangle", buildingName: building.code, coords: [nw, ne, se, sw], angle: initialAngle }]);
+      // Mark as predefined building to distinguish from manual rectangles
+      setFeatures(arr => [...arr, { id, type: "rectangle", buildingName: building.code, coords: [nw, ne, se, sw], angle: initialAngle, isPredefinedBuilding: true }]);
 
       // Update Azimuth immediately
       const az = calculateAzimuthFromAngle(initialAngle);
@@ -1905,14 +1941,13 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
     const handleUpdateLastBuilding = (e) => {
       const { building } = e.detail;
       setFeatures(prev => {
-        // Find last rectangle
-        const rects = prev.filter(f => f.type === 'rectangle');
-        if (rects.length === 0) return prev;
-        const lastRect = rects[rects.length - 1];
+        // Find last PREDEFINED BUILDING only (not manual rectangles)
+        const predefinedBuildings = prev.filter(f => f.type === 'rectangle' && f.isPredefinedBuilding === true);
+        if (predefinedBuildings.length === 0) return prev;
+        const lastBuilding = predefinedBuildings[predefinedBuildings.length - 1];
 
-        // Ensure it matches the expected building type if needed, but for now just update last
         // Calculate new coords preserving center and angle
-        const center = centroid(lastRect.coords);
+        const center = centroid(lastBuilding.coords);
         if (!center) return prev;
 
         // Simple approximation for sizing in meters around center
@@ -1933,7 +1968,7 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
         ];
 
         // Apply rotation
-        const angleRad = toRad(lastRect.angle || 0);
+        const angleRad = toRad(lastBuilding.angle || 0);
         const cosA = Math.cos(angleRad);
         const sinA = Math.sin(angleRad);
 
@@ -1958,8 +1993,8 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
           );
         });
 
-        // Map back to new features list
-        return prev.map(f => f.id === lastRect.id ? { ...f, coords: newCoords, buildingName: building.code } : f);
+        // Map back to new features list, preserving isPredefinedBuilding flag
+        return prev.map(f => f.id === lastBuilding.id ? { ...f, coords: newCoords, buildingName: building.code, isPredefinedBuilding: true } : f);
       });
       console.log('Updated building dimensions:', building.length, 'x', building.width);
     };
@@ -2504,10 +2539,10 @@ export default function MapElements({ style = {}, project, setProject, onAddress
   const hasUserInteractedRef = useRef(false);
 
   // Wrapper to track user interaction
-  const setFeaturesWrapper = (updater) => {
+  const setFeaturesWrapper = useCallback((updater) => {
     hasUserInteractedRef.current = true;
     setFeatures(updater);
-  };
+  }, []);
 
   // 0. RESET EFFECT: Force reload features on project ID change to prevent stale traces
   const lastProjectIdFeaturesRef = useRef(null);
@@ -2570,10 +2605,26 @@ export default function MapElements({ style = {}, project, setProject, onAddress
       // console.log("[MapElements] Syncing local features to project state:", sanitizedFeatures.length);
       setProject(prev => {
         const prevFeatures = prev?.features || [];
+
+        // Bidirectional Sync: Check if azimuth needs update
+        const rects = sanitizedFeatures.filter(f => f.type === 'rectangle');
+        let newUpdates = { ...prev, features: sanitizedFeatures };
+
+        if (rects.length > 0) {
+          const lastRect = rects[rects.length - 1];
+          // Calculate Azimuth from angle
+          const newAzimuth = calculateAzimuthFromAngle(lastRect.angle || 0);
+
+          // If azimuth changed effectively (with tolerance), update it
+          if (prev.panelAspect === undefined || Math.abs(Number(prev.panelAspect) - newAzimuth) >= 1) {
+            newUpdates.panelAspect = newAzimuth;
+          }
+        }
+
         // Deep comparison to avoid infinite loops if objects are different references but same content
-        if (JSON.stringify(prevFeatures) === JSON.stringify(sanitizedFeatures)) return prev;
-        console.log("[MapElements] Updating project.features with", sanitizedFeatures.length, "items.");
-        return { ...prev, features: sanitizedFeatures };
+        if (JSON.stringify(prevFeatures) === JSON.stringify(sanitizedFeatures) && newUpdates.panelAspect === prev.panelAspect) return prev;
+
+        return newUpdates;
       });
     }
   }, [features, setProject]);
@@ -2581,7 +2632,6 @@ export default function MapElements({ style = {}, project, setProject, onAddress
   // Map Reset Handler
   useEffect(() => {
     const handleMapReset = () => {
-      console.log("[MapElements] Resetting map features.");
       setFeaturesWrapper([]); // User interaction (clearing)
       setTemp([]);
       // ...
@@ -2589,6 +2639,9 @@ export default function MapElements({ style = {}, project, setProject, onAddress
     window.addEventListener('map:reset', handleMapReset);
     return () => window.removeEventListener('map:reset', handleMapReset);
   }, [map]);
+
+  // Ref to track if manual rotation is in progress
+  const isRotatingRef = useRef(false);
 
   return (
     <div className="relative h-full w-full flex flex-col">
@@ -2663,6 +2716,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
             setTargetPos={setTargetPos}
             setProject={setProject}
             setIsAzimuthDefaulted={setIsAzimuthDefaulted}
+            isRotatingRef={isRotatingRef}
           />
           <ZoomIndicator />
           <MapEvents
@@ -2675,6 +2729,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
 
             setFeatures={setFeaturesWrapper} // Use Wrapper
             onRightClick={(latlng) => setTargetPos(latlng)}
+            isRotatingRef={isRotatingRef}
           />
           <PointInfoPanel pointInfo={pointInfo} setPointInfo={setPointInfo} />
           <AltimetryProfile
