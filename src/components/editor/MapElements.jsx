@@ -1957,7 +1957,7 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
 
       // CHECK: If this azimuth is the one we just set via drag, ignore it!
       // This breaks the infinite loop: Drag -> SetProject -> UseEffect -> SetFeatures -> Loop
-      if (lastSyncedAzimuthRef.current === targetAzimuth) {
+      if (lastSyncedAzimuthRef && lastSyncedAzimuthRef.current === targetAzimuth) {
         // console.log('[SYNC IGNORED] Azimuth already synced');
         return;
       }
@@ -1990,7 +1990,9 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
         console.log('[SYNC AZIMUTH] Updating angle from external change. TargetAz:', targetAzimuth);
 
         // Update the ref
-        lastSyncedAzimuthRef.current = targetAzimuth;
+        if (lastSyncedAzimuthRef) {
+          lastSyncedAzimuthRef.current = targetAzimuth;
+        }
 
         // Mettre à jour l'angle du dernier bâtiment prédéfini
         return prev.map(f => f.id === lastBuilding.id ? { ...f, angle: visualAngle } : f);
