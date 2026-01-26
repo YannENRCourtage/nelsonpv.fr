@@ -898,9 +898,13 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                 },
                 dragend: (e) => {
                   console.log('[ROTATION END]');
+                  console.log('[DEBUG] Feature:', f);
+                  console.log('[DEBUG] isPredefinedBuilding:', f.isPredefinedBuilding);
+                  console.log('[DEBUG] buildingName:', f.buildingName);
 
                   // Commit the final rotation to project state
                   if (f.isPredefinedBuilding) {
+                    console.log('[DEBUG] INSIDE isPredefinedBuilding condition');
                     const centerPt = map.latLngToLayerPoint(center);
                     const handlePt = map.latLngToLayerPoint(e.target.getLatLng());
                     const finalAngle = Math.atan2(handlePt.y - centerPt.y, handlePt.x - centerPt.x) * (180 / Math.PI) + 90;
@@ -920,6 +924,8 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                     setProject(prev => ({ ...prev, panelAspect: newAz }));
                     if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
                     toast({ ...toastStyle, title: "Azimut mis à jour", description: `${newAz}°` });
+                  } else {
+                    console.log('[DEBUG] NOT a predefined building, skipping azimuth update');
                   }
 
                   // Small delay to allow react cycle to complete before unblocking sync
