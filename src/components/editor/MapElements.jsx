@@ -903,37 +903,50 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                   L.DomEvent.stop(e);
                   if (isRotatingRef) isRotatingRef.current = true;
                   draggingRef.current = { type: 'rotate', featureId: f.id, center: center };
-                  console.log('[ROTATION START] isRotatingRef set to true');
+                  console.log('[ROTATION START]');
+                },
+                drag: (e) => {
+                  // Update VISUAL rotation only in real-time
+                  const centerPt = map.latLngToLayerPoint(center);
+                  const handlePt = map.latLngToLayerPoint(e.target.getLatLng());
+                  const newAngle = Math.atan2(handlePt.y - centerPt.y, handlePt.x - centerPt.x) * (180 / Math.PI) + 90;
+
+                  // Update only the features state, NOT the project azimuth yet
+                  setFeatures(prev => prev.map(feat =>
+                    feat.id === f.id ? { ...feat, angle: newAngle } : feat
+                  ));
                 },
                 dragend: (e) => {
-                  console.log('[ROTATION END] Computing final rotation');
-                  // Commit the final rotation
+                  console.log('[ROTATION END]');
+
+                  // Commit the final rotation to project state
                   if (f.isPredefinedBuilding) {
                     const centerPt = map.latLngToLayerPoint(center);
                     const handlePt = map.latLngToLayerPoint(e.target.getLatLng());
                     const finalAngle = Math.atan2(handlePt.y - centerPt.y, handlePt.x - centerPt.x) * (180 / Math.PI) + 90;
 
-                    console.log('[ROTATION END] Final angle:', finalAngle);
+                    // Normalize final angle for consistency
+                    let normalizedAngle = finalAngle;
 
-                    // Update the feature angle first
+                    // Update features with normalized angle
                     setFeatures(prev => prev.map(feat =>
-                      feat.id === f.id ? { ...feat, angle: finalAngle } : feat
+                      feat.id === f.id ? { ...feat, angle: normalizedAngle } : feat
                     ));
 
-                    // Then update azimuth
-                    const newAz = calculateAzimuthFromAngle(finalAngle);
+                    // Calculate and set azimuth
+                    const newAz = calculateAzimuthFromAngle(normalizedAngle);
                     console.log('[ROTATION END] New azimuth:', newAz);
+
                     setProject(prev => ({ ...prev, panelAspect: newAz }));
                     if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
                     toast({ ...toastStyle, title: "Azimut mis à jour", description: `${newAz}°` });
                   }
 
-                  // Reset rotation state AFTER updating everything
+                  // Small delay to allow react cycle to complete before unblocking sync
                   setTimeout(() => {
                     if (isRotatingRef) isRotatingRef.current = false;
                     draggingRef.current = null;
-                    console.log('[ROTATION END] isRotatingRef set to false');
-                  }, 100);
+                  }, 200);
                 }
               }} />}
             </Fragment>
@@ -1964,14 +1977,21 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
         // Convert azimuth to visual angle
         const visualAngle = calculateAngleFromAzimuth(targetAzimuth);
 
-        // IMPORTANT: Check if angle actually changed to avoid infinite loop
-        // Increased tolerance from 0.5 to 3 degrees to avoid constant updates
-        if (Math.abs((lastBuilding.angle || 0) - visualAngle) < 3) {
-          console.log('[SYNC SKIPPED] Angle difference too small:', Math.abs((lastBuilding.angle || 0) - visualAngle));
+        // Normalize angles to 0-360 for comparison to avoid modulo issues
+        const currentAngleNorm = ((lastBuilding.angle || 0) % 360 + 360) % 360;
+        const visualAngleNorm = ((visualAngle % 360) + 360) % 360;
+
+        // Calculate shortest difference
+        let diff = Math.abs(currentAngleNorm - visualAngleNorm);
+        if (diff > 180) diff = 360 - diff;
+
+        // Tolerance check (3 degrees)
+        if (diff < 3) {
+          // console.log('[SYNC SKIPPED] Angle diff too small:', diff);
           return prev;
         }
 
-        console.log('[SYNC AZIMUTH] Updating building angle from', lastBuilding.angle, 'to', visualAngle, 'for azimuth', targetAzimuth);
+        console.log('[SYNC AZIMUTH] Updating angle. Current:', currentAngleNorm, 'Target:', visualAngleNorm, 'Azimuth:', targetAzimuth);
         // Mettre à jour l'angle du dernier bâtiment prédéfini
         return prev.map(f => f.id === lastBuilding.id ? { ...f, angle: visualAngle } : f);
       });
