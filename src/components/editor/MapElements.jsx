@@ -2044,40 +2044,32 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
           { lat: -dLat, lng: -dLng }  // SW
         ];
 
-        // Apply rotation
-        let currentAngle = lastBuilding.angle;
-        // Fallback: If angle is missing but we have project azimuth, use it
-        if ((currentAngle === undefined || currentAngle === null) && project?.panelAspect !== undefined) {
-          console.log('[UPDATE BLDG] Angle missing, falling back to project azimuth:', project.panelAspect);
-          currentAngle = calculateAngleFromAzimuth(Number(project.panelAspect));
-        }
-        const angleRad = toRad(currentAngle || 0);
-        const cosA = Math.cos(angleRad);
-        const sinA = Math.sin(angleRad);
+        // Map back to new features list, preserving angle from CURRENT feature state
+        return prev.map(f => {
+          if (f.id !== lastBuilding.id) return f;
 
-        const newCoords = corners.map(c => {
-          // Rotate (x=lng, y=lat) - be careful with lat/lng vs x/y mapping
-          // Standard math rotation: x' = x cos - y sin, y' = x sin + y cos
-          // Here x is lng (East), y is lat (North)
-          // But wait, lat/lng ratio is different. We should rotate in meters, then convert.
-          // actually, the dLat/dLng used above are already scaled.
-          // Wait, rotation in lat/lng space distorts if not careful.
-          // Better: Rotate in meters, then convert to deg.
+          // CRITICAL: Use f.angle (current angle) NOT lastBuilding.angle (stale)
+          // This preserves rotation made by user even during dimension updates
+          const currentAngle = f.angle || 0;
+          const angleRad = toRad(currentAngle);
+          const cosA = Math.cos(angleRad);
+          const sinA = Math.sin(angleRad);
 
-          const xM = c.lng * (111111 * Math.cos(toRad(center.lat)));
-          const yM = c.lat * 111111;
+          const newCoords = corners.map(c => {
+            const xM = c.lng * (111111 * Math.cos(toRad(center.lat)));
+            const yM = c.lat * 111111;
 
-          const rotX = xM * cosA - yM * sinA;
-          const rotY = xM * sinA + yM * cosA;
+            const rotX = xM * cosA - yM * sinA;
+            const rotY = xM * sinA + yM * cosA;
 
-          return L.latLng(
-            center.lat + rotY / 111111,
-            center.lng + rotX / (111111 * Math.cos(toRad(center.lat)))
-          );
+            return L.latLng(
+              center.lat + rotY / 111111,
+              center.lng + rotX / (111111 * Math.cos(toRad(center.lat)))
+            );
+          });
+
+          return { ...f, coords: newCoords, buildingName: building.code, isPredefinedBuilding: true, angle: currentAngle };
         });
-
-        // Map back to new features list, preserving isPredefinedBuilding flag and ensuring angle is kept
-        return prev.map(f => f.id === lastBuilding.id ? { ...f, coords: newCoords, buildingName: building.code, isPredefinedBuilding: true, angle: currentAngle || 0 } : f);
       });
       console.log('Updated building dimensions:', building.length, 'x', building.width);
     };
