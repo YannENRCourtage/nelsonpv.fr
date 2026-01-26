@@ -2017,11 +2017,17 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
 
     const handleUpdateLastBuilding = (e) => {
       const { building } = e.detail;
+      console.log('[UPDATE BLDG] Called with building:', building.code, 'dimensions:', building.length, 'x', building.width);
+
       setFeatures(prev => {
         // Find last PREDEFINED BUILDING only (not manual rectangles)
         const predefinedBuildings = prev.filter(f => f.type === 'rectangle' && f.isPredefinedBuilding === true);
-        if (predefinedBuildings.length === 0) return prev;
+        if (predefinedBuildings.length === 0) {
+          console.log('[UPDATE BLDG] No predefined buildings found');
+          return prev;
+        }
         const lastBuilding = predefinedBuildings[predefinedBuildings.length - 1];
+        console.log('[UPDATE BLDG] Last building:', lastBuilding.id, 'current angle:', lastBuilding.angle);
 
         // Calculate new coords preserving center and angle
         const center = centroid(lastBuilding.coords);
@@ -2051,6 +2057,7 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
           // CRITICAL: Use f.angle (current angle) NOT lastBuilding.angle (stale)
           // This preserves rotation made by user even during dimension updates
           const currentAngle = f.angle || 0;
+          console.log('[UPDATE BLDG] Preserving angle:', currentAngle);
           const angleRad = toRad(currentAngle);
           const cosA = Math.cos(angleRad);
           const sinA = Math.sin(angleRad);
