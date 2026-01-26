@@ -734,8 +734,8 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
             if (f.type === 'line' || f.type === 'polygon' || f.type === 'rectangle') return { ...f, coords: f.coords.map(c => ({ lat: c.lat + deltaLat, lng: c.lng + deltaLng })) };
             if (f.type === 'symbol' || f.type === 'photo' || f.type === 'text') return { ...f, at: { lat: f.at.lat + deltaLat, lng: f.at.lng + deltaLng } };
           } else if (type === 'rotate') {
-            // Safety check: ensure center exists
-            if (!draggingRef.current.center) return f;
+            // Safety check: ensure draggingRef still exists and has center
+            if (!draggingRef.current || !draggingRef.current.center) return f;
 
             // Logic moved from Marker drag to here for smoother updates
             const centerPt = map.latLngToLayerPoint(draggingRef.current.center);
@@ -753,14 +753,8 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
     mouseup() {
       if (draggingRef.current) {
         if (draggingRef.current.type === 'rotate') {
-          // Commit rotation
-          const f = features.find(feat => feat.id === draggingRef.current.featureId);
-          if (f && f.buildingName) {
-            const newAz = calculateAzimuthFromAngle(f.angle);
-            setProject(prev => ({ ...prev, panelAspect: newAz }));
-            if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
-            toast({ ...toastStyle, title: "Azimut mis à jour", description: `${newAz}°` });
-          }
+          // Rotation is handled in the Marker dragend event to avoid redundancy
+          // Just reset the rotating state if needed (backup in case dragend doesn't fire)
           if (isRotatingRef) isRotatingRef.current = false;
         }
         draggingRef.current = null;
