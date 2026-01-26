@@ -877,7 +877,8 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
               {/* DEBUG: Visualizer for Corner 0 */}
 
               {rotatedCenter && <Marker position={rotatedCenter} opacity={0}><Tooltip permanent direction="center" className="measure-label">{f.buildingName && `${f.buildingName} - `} {formatDistance(height)} × {formatDistance(width)} ({formatArea(area)})</Tooltip></Marker>}
-              {isSelected && rotationHandlePos && <Marker position={rotationHandlePos} icon={rotationIcon} draggable={true} zIndexOffset={1000} eventHandlers={{
+              {/* STEP 1: Disable rotation for predefined buildings only */}
+              {isSelected && rotationHandlePos && !f.isPredefinedBuilding && <Marker position={rotationHandlePos} icon={rotationIcon} draggable={true} zIndexOffset={1000} eventHandlers={{
                 dragstart: (e) => {
                   L.DomEvent.stop(e);
                   if (isRotatingRef) isRotatingRef.current = true;
