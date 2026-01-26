@@ -109,14 +109,37 @@ function formatDistance(m) { return m < 1000 ? `${Math.round(m)} m` : `${(m / 10
 function formatArea(m2) { return m2 >= 10000 ? `${(m2 / 10000).toFixed(2)} ha` : `${Math.round(m2)} m²`; }
 
 // Custom Azimuth Calculation: 0=South, 180=North, 90=West, -90=East
+// Convert visual angle (Leaflet rotation) to azimuth (geographic)
+// Visual angle: 0=Nord(up), 90=Est(right), -90=Ouest(left)
+// Azimuth: 0=Sud, 90=Ouest, -90=Est
 function calculateAzimuthFromAngle(angle) {
+  // Visual angle to azimuth: azimuth = angle - 90
+  // Because when visual angle is 0 (pointing North/up), azimuth should be -90 (Est)
+  // But wait, let me reconsider:
+  // Visual 0° = up (North) → Azimuth should map to pointing South = 180° or 0°?
+  // Actually for a building:
+  // - Visual 0° (North) means the "front" faces North, so azimuth = 180° (back faces South)
+  // - No wait, let's think differently:
+  // Visual angle rotation on map is clockwise from North(up)
+  // Azimuth is the direction the roof faces
+  // If visual angle = 0°, the rectangle is horizontal, longest side East-West
+  // The "top" edge points North, so azimuth (direction faced) = 180°? No...
+  // 
+  // Let me reconsider the whole thing:
+  // The visual angle rotates the shape clockwise from the original position
+  // Original position has the rectangle's "width" going East-West
+  // When angle = 0, azimuth = 0 (Sud)
+  // When angle = 90, the rectangle rotates 90° clockwise, so azimuth = -90 (Est)
+  // When angle = -90, rectangle rotates 90° counter-clockwise, azimuth = 90 (Ouest)
+  //
+  // So: azimuth = -angle
+  let az = -angle;
+
   // Normalize to [-180, 180]
-  let az = angle % 360;
-  if (az > 180) az -= 360;
-  if (az < -180) az += 360;
+  while (az > 180) az -= 360;
+  while (az < -180) az += 360;
 
   // Clamp to [-90, 90] for south-facing roof
-  // If angle is > 90 or < -90, flip to opposite edge
   if (az > 90) az -= 180;
   if (az < -90) az += 180;
 
@@ -130,10 +153,9 @@ function calculateAzimuthFromAngle(angle) {
 }
 
 // Convert azimuth back to visual angle for map rendering
-// Since azimuth is in [-90, 90], the visual angle is the same
+// azimuth = -visualAngle, so visualAngle = -azimuth
 function calculateAngleFromAzimuth(azimuth) {
-  // Azimuth is already the visual rotation angle
-  return azimuth;
+  return -azimuth;
 }
 
 // Custom Azimuth Calculation for Measuring Tool (2 Points)
@@ -856,6 +878,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
             <Fragment key={f.id}>
               {/* Use RotatablePolygon for stable fluid rotation - FIX FOR BLOCKED ROTATION */}
               <Polygon
+                key={`rect-${f.id}-${f.angle || 0}`} // Force re-render when angle changes
                 positions={rotatedCoords}
                 pathOptions={{
                   color: isSelected ? "#0ea5e9" : "#f59e0b",
