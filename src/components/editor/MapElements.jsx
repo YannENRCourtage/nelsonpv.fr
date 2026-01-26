@@ -1937,6 +1937,12 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
 
   // Synchronisation : Change le rectangle sur la carte quand l'azimut change dans le formulaire
   useEffect(() => {
+    // DISABLED: To match manual rectangle behavior (user request)
+    // Predefined buildings now behave exactly like manual rectangles:
+    // - Free rotation without automatic sync from project.panelAspect
+    // - Azimuth is updated when user rotates (dragend), but not the reverse
+    return;
+
     // Si l'utilisateur est en train de tourner manuellement, on ignore la synchro venant du projet
     if (isRotatingRef?.current) {
       // console.log('[SYNC BLOCKED] User is rotating manually');
