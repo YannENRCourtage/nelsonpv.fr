@@ -903,31 +903,37 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                   L.DomEvent.stop(e);
                   if (isRotatingRef) isRotatingRef.current = true;
                   draggingRef.current = { type: 'rotate', featureId: f.id, center: center };
-                },
-                drag: (e) => {
-                  // Update rotation in real-time during drag
-                  const centerPt = map.latLngToLayerPoint(center);
-                  const handlePt = map.latLngToLayerPoint(e.target.getLatLng());
-                  const newAngle = Math.atan2(handlePt.y - centerPt.y, handlePt.x - centerPt.x) * (180 / Math.PI) + 90;
-
-                  setFeatures(prev => prev.map(feat =>
-                    feat.id === f.id ? { ...feat, angle: newAngle } : feat
-                  ));
+                  console.log('[ROTATION START] isRotatingRef set to true');
                 },
                 dragend: (e) => {
+                  console.log('[ROTATION END] Computing final rotation');
                   // Commit the final rotation
                   if (f.isPredefinedBuilding) {
                     const centerPt = map.latLngToLayerPoint(center);
                     const handlePt = map.latLngToLayerPoint(e.target.getLatLng());
                     const finalAngle = Math.atan2(handlePt.y - centerPt.y, handlePt.x - centerPt.x) * (180 / Math.PI) + 90;
 
+                    console.log('[ROTATION END] Final angle:', finalAngle);
+
+                    // Update the feature angle first
+                    setFeatures(prev => prev.map(feat =>
+                      feat.id === f.id ? { ...feat, angle: finalAngle } : feat
+                    ));
+
+                    // Then update azimuth
                     const newAz = calculateAzimuthFromAngle(finalAngle);
+                    console.log('[ROTATION END] New azimuth:', newAz);
                     setProject(prev => ({ ...prev, panelAspect: newAz }));
                     if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
                     toast({ ...toastStyle, title: "Azimut mis à jour", description: `${newAz}°` });
                   }
-                  if (isRotatingRef) isRotatingRef.current = false;
-                  draggingRef.current = null;
+
+                  // Reset rotation state AFTER updating everything
+                  setTimeout(() => {
+                    if (isRotatingRef) isRotatingRef.current = false;
+                    draggingRef.current = null;
+                    console.log('[ROTATION END] isRotatingRef set to false');
+                  }, 100);
                 }
               }} />}
             </Fragment>
@@ -1940,7 +1946,10 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
   // Synchronisation : Change le rectangle sur la carte quand l'azimut change dans le formulaire
   useEffect(() => {
     // Si l'utilisateur est en train de tourner manuellement, on ignore la synchro venant du projet
-    if (isRotatingRef?.current) return;
+    if (isRotatingRef?.current) {
+      console.log('[SYNC BLOCKED] User is rotating manually, ignoring azimuth sync');
+      return;
+    }
 
     if (project?.panelAspect !== undefined && project?.panelAspect !== null) {
       const targetAzimuth = Number(project.panelAspect);
@@ -1956,8 +1965,13 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
         const visualAngle = calculateAngleFromAzimuth(targetAzimuth);
 
         // IMPORTANT: Check if angle actually changed to avoid infinite loop
-        if (Math.abs((lastBuilding.angle || 0) - visualAngle) < 0.5) return prev;
+        // Increased tolerance from 0.5 to 3 degrees to avoid constant updates
+        if (Math.abs((lastBuilding.angle || 0) - visualAngle) < 3) {
+          console.log('[SYNC SKIPPED] Angle difference too small:', Math.abs((lastBuilding.angle || 0) - visualAngle));
+          return prev;
+        }
 
+        console.log('[SYNC AZIMUTH] Updating building angle from', lastBuilding.angle, 'to', visualAngle, 'for azimuth', targetAzimuth);
         // Mettre à jour l'angle du dernier bâtiment prédéfini
         return prev.map(f => f.id === lastBuilding.id ? { ...f, angle: visualAngle } : f);
       });
