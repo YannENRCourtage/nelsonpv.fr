@@ -748,7 +748,7 @@ export default function Crm() {
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Contact</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Affectation</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Commercial</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Email</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Téléphone</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">ADRESSE</th>
@@ -1297,7 +1297,7 @@ export default function Crm() {
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Nom Projet</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Client</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Commercial</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Affectation</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Commercial</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Adresse</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Code Postal</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Ville</th>
