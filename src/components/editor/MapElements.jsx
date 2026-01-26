@@ -2038,7 +2038,13 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
         ];
 
         // Apply rotation
-        const angleRad = toRad(lastBuilding.angle || 0);
+        let currentAngle = lastBuilding.angle;
+        // Fallback: If angle is missing but we have project azimuth, use it
+        if ((currentAngle === undefined || currentAngle === null) && project?.panelAspect !== undefined) {
+          console.log('[UPDATE BLDG] Angle missing, falling back to project azimuth:', project.panelAspect);
+          currentAngle = calculateAngleFromAzimuth(Number(project.panelAspect));
+        }
+        const angleRad = toRad(currentAngle || 0);
         const cosA = Math.cos(angleRad);
         const sinA = Math.sin(angleRad);
 
@@ -2063,8 +2069,8 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
           );
         });
 
-        // Map back to new features list, preserving isPredefinedBuilding flag
-        return prev.map(f => f.id === lastBuilding.id ? { ...f, coords: newCoords, buildingName: building.code, isPredefinedBuilding: true } : f);
+        // Map back to new features list, preserving isPredefinedBuilding flag and ensuring angle is kept
+        return prev.map(f => f.id === lastBuilding.id ? { ...f, coords: newCoords, buildingName: building.code, isPredefinedBuilding: true, angle: currentAngle || 0 } : f);
       });
       console.log('Updated building dimensions:', building.length, 'x', building.width);
     };
