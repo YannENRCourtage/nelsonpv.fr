@@ -804,11 +804,19 @@ export default function Crm() {
                           const avatarSrc = photoURL ||
                             (contactCreator?.toLowerCase() === 'jack' ? '/assets/avatars/jack.jpg' : null);
 
+                          console.log('[CRM AVATAR]', {
+                            contactName: contact.name,
+                            contactCreator,
+                            photoURL,
+                            avatarSrc,
+                            isJack: contactCreator?.toLowerCase() === 'jack'
+                          });
+
                           return (
                             <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full ${getUserColor(contactCreator)} w-fit pr-5 text-left`}>
                               <div className="w-8 h-8 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
                                 {avatarSrc ?
-                                  <img src={avatarSrc} className="w-full h-full object-cover" /> :
+                                  <img src={avatarSrc} className="w-full h-full object-cover" alt={contactCreator} /> :
                                   <span className="flex items-center justify-center w-full h-full text-xs font-bold">{contactCreator?.[0]}</span>
                                 }
                               </div>
