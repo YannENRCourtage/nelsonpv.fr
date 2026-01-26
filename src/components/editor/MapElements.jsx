@@ -922,6 +922,9 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                     const newAz = calculateAzimuthFromAngle(normalizedAngle);
                     console.log('[ROTATION END] New azimuth:', newAz);
 
+                    // IMPORTANT: Update the sync ref immediately to prevent the useEffect from reverting this change
+                    lastSyncedAzimuthRef.current = newAz;
+
                     setProject(prev => ({ ...prev, panelAspect: newAz }));
                     if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
                     toast({ ...toastStyle, title: "Azimut mis à jour", description: `${newAz}°` });
@@ -1937,22 +1940,27 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
 }
 
 
-
-
-
-function MapEvents({ project, setProject, onAddressFound, onAddressSearched, setPhotoToPlace, onBuildingSelect, setFeatures, setIsAzimuthDefaulted, isRotatingRef }) {
+function MapEvents({ project, setProject, onAddressFound, onAddressSearched, setPhotoToPlace, onBuildingSelect, setFeatures, setIsAzimuthDefaulted, isRotatingRef, lastSyncedAzimuthRef }) {
   const map = useMap();
+  // lastSyncedAzimuthRef is now passed as prop
 
   // Synchronisation : Change le rectangle sur la carte quand l'azimut change dans le formulaire
   useEffect(() => {
     // Si l'utilisateur est en train de tourner manuellement, on ignore la synchro venant du projet
     if (isRotatingRef?.current) {
-      console.log('[SYNC BLOCKED] User is rotating manually, ignoring azimuth sync');
+      // console.log('[SYNC BLOCKED] User is rotating manually');
       return;
     }
 
     if (project?.panelAspect !== undefined && project?.panelAspect !== null) {
       const targetAzimuth = Number(project.panelAspect);
+
+      // CHECK: If this azimuth is the one we just set via drag, ignore it!
+      // This breaks the infinite loop: Drag -> SetProject -> UseEffect -> SetFeatures -> Loop
+      if (lastSyncedAzimuthRef.current === targetAzimuth) {
+        // console.log('[SYNC IGNORED] Azimuth already synced');
+        return;
+      }
 
       setFeatures(prev => {
         // Trouver le dernier BÂTIMENT PRÉDÉFINI uniquement (pas les rectangles manuels)
@@ -1974,16 +1982,21 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
 
         // Tolerance check (3 degrees)
         if (diff < 3) {
-          // console.log('[SYNC SKIPPED] Angle diff too small:', diff);
+          // Even if visual difference is small, update the ref to acknowledge we processed this azimuth
+          lastSyncedAzimuthRef.current = targetAzimuth;
           return prev;
         }
 
-        console.log('[SYNC AZIMUTH] Updating angle. Current:', currentAngleNorm, 'Target:', visualAngleNorm, 'Azimuth:', targetAzimuth);
+        console.log('[SYNC AZIMUTH] Updating angle from external change. TargetAz:', targetAzimuth);
+
+        // Update the ref
+        lastSyncedAzimuthRef.current = targetAzimuth;
+
         // Mettre à jour l'angle du dernier bâtiment prédéfini
         return prev.map(f => f.id === lastBuilding.id ? { ...f, angle: visualAngle } : f);
       });
     }
-  }, [project?.panelAspect, setFeatures, isRotatingRef]);
+  }, [project?.panelAspect, setFeatures, isRotatingRef, lastSyncedAzimuthRef]);
   useEffect(() => {
     const handlePlaceBuilding = (e) => {
       const { building } = e.detail;
@@ -2083,7 +2096,7 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
       window.removeEventListener("map:place-building", handlePlaceBuilding);
       window.removeEventListener("map:update-last-building", handleUpdateLastBuilding);
     };
-  }, [map, setFeatures]);
+  }, [map, setFeatures, project?.panelAspect]);
 
   useEffect(() => {
     // L'événement est "map:capture-request"
@@ -2602,6 +2615,19 @@ export default function MapElements({ style = {}, project, setProject, onAddress
 
   const [mode, setMode] = useState(null);
   const [temp, setTemp] = useState([]);
+  // State for sync tracking
+  const lastSyncedAzimuthRef = useRef(project?.panelAspect);
+
+  // Update ref if project changes from outside (initial load)
+  useEffect(() => {
+    if (project?.panelAspect !== undefined) {
+      // Only update if strictly undefined (first load), otherwise let the loop logic handle it
+      if (lastSyncedAzimuthRef.current === undefined) {
+        lastSyncedAzimuthRef.current = Number(project.panelAspect);
+      }
+    }
+  }, [project?.panelAspect]);
+
   const [features, setFeatures] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [askTextAt, setAskTextAt] = useState(null);
