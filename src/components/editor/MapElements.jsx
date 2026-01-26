@@ -898,11 +898,36 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
               {/* DEBUG: Visualizer for Corner 0 */}
 
               {rotatedCenter && <Marker position={rotatedCenter} opacity={0}><Tooltip permanent direction="center" className="measure-label">{f.buildingName && `${f.buildingName} - `} {formatDistance(height)} × {formatDistance(width)} ({formatArea(area)})</Tooltip></Marker>}
-              {isSelected && rotationHandlePos && <Marker position={rotationHandlePos} icon={rotationIcon} draggable={false} zIndexOffset={1000} eventHandlers={{
-                mousedown: (e) => {
+              {isSelected && rotationHandlePos && <Marker position={rotationHandlePos} icon={rotationIcon} draggable={true} zIndexOffset={1000} eventHandlers={{
+                dragstart: (e) => {
                   L.DomEvent.stop(e);
                   if (isRotatingRef) isRotatingRef.current = true;
                   draggingRef.current = { type: 'rotate', featureId: f.id, center: center };
+                },
+                drag: (e) => {
+                  // Update rotation in real-time during drag
+                  const centerPt = map.latLngToLayerPoint(center);
+                  const handlePt = map.latLngToLayerPoint(e.target.getLatLng());
+                  const newAngle = Math.atan2(handlePt.y - centerPt.y, handlePt.x - centerPt.x) * (180 / Math.PI) + 90;
+
+                  setFeatures(prev => prev.map(feat =>
+                    feat.id === f.id ? { ...feat, angle: newAngle } : feat
+                  ));
+                },
+                dragend: (e) => {
+                  // Commit the final rotation
+                  if (f.isPredefinedBuilding) {
+                    const centerPt = map.latLngToLayerPoint(center);
+                    const handlePt = map.latLngToLayerPoint(e.target.getLatLng());
+                    const finalAngle = Math.atan2(handlePt.y - centerPt.y, handlePt.x - centerPt.x) * (180 / Math.PI) + 90;
+
+                    const newAz = calculateAzimuthFromAngle(finalAngle);
+                    setProject(prev => ({ ...prev, panelAspect: newAz }));
+                    if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
+                    toast({ ...toastStyle, title: "Azimut mis à jour", description: `${newAz}°` });
+                  }
+                  if (isRotatingRef) isRotatingRef.current = false;
+                  draggingRef.current = null;
                 }
               }} />}
             </Fragment>
