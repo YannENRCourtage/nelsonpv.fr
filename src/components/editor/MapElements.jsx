@@ -1952,13 +1952,6 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
     if (project?.panelAspect !== undefined && project?.panelAspect !== null) {
       const targetAzimuth = Number(project.panelAspect);
 
-      // CHECK: If this azimuth is the one we just set via drag, ignore it!
-      // This breaks the infinite loop: Drag -> SetProject -> UseEffect -> SetFeatures -> Loop
-      if (lastSyncedAzimuthRef && lastSyncedAzimuthRef.current === targetAzimuth) {
-        // console.log('[SYNC IGNORED] Azimuth already synced');
-        return;
-      }
-
       setFeatures(prev => {
         // Trouver le dernier BÂTIMENT PRÉDÉFINI uniquement (pas les rectangles manuels)
         const predefinedBuildings = prev.filter(f => f.type === 'rectangle' && f.isPredefinedBuilding === true);
@@ -1979,19 +1972,10 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
 
         // Tolerance check (3 degrees)
         if (diff < 3) {
-          // Even if visual difference is small, update the ref to acknowledge we processed this azimuth
-          if (lastSyncedAzimuthRef) {
-            lastSyncedAzimuthRef.current = targetAzimuth;
-          }
           return prev;
         }
 
         console.log('[SYNC AZIMUTH] Updating angle from external change. TargetAz:', targetAzimuth);
-
-        // Update the ref
-        if (lastSyncedAzimuthRef) {
-          lastSyncedAzimuthRef.current = targetAzimuth;
-        }
 
         // Mettre à jour l'angle du dernier bâtiment prédéfini
         return prev.map(f => f.id === lastBuilding.id ? { ...f, angle: visualAngle } : f);
