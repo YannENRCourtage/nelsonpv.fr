@@ -1983,7 +1983,9 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
         // Tolerance check (3 degrees)
         if (diff < 3) {
           // Even if visual difference is small, update the ref to acknowledge we processed this azimuth
-          lastSyncedAzimuthRef.current = targetAzimuth;
+          if (lastSyncedAzimuthRef) {
+            lastSyncedAzimuthRef.current = targetAzimuth;
+          }
           return prev;
         }
 
