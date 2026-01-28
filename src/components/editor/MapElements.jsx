@@ -930,9 +930,19 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                     const newAz = calculateAzimuthFromAngle(normalizedAngle);
                     console.log('[ROTATION END] New azimuth:', newAz);
 
-                    setProject(prev => ({ ...prev, panelAspect: newAz }));
-                    if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
-                    toast({ ...toastStyle, title: "Azimut mis à jour", description: `${newAz}°` });
+                    // FIX: Determine if this is Building 1 or Building 2
+                    // We need to find the index among predefined buildings
+                    const predefinedBldgs = features.filter(item => item.type === 'rectangle' && item.isPredefinedBuilding);
+                    const bldgIndex = predefinedBldgs.findIndex(b => b.id === f.id);
+
+                    if (bldgIndex === 0) {
+                      setProject(prev => ({ ...prev, panelAspect: newAz }));
+                      if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
+                      toast({ ...toastStyle, title: "Azimut Bâtiment 1 mis à jour", description: `${newAz}°` });
+                    } else if (bldgIndex === 1) {
+                      setProject(prev => ({ ...prev, panelAspect2: newAz }));
+                      toast({ ...toastStyle, title: "Azimut Bâtiment 2 mis à jour", description: `${newAz}°` });
+                    }
                   } else {
                     console.log('[DEBUG] NOT a predefined building, skipping azimuth update');
                   }
@@ -2023,10 +2033,20 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
 
       // Update Azimuth immediately
       const az = calculateAzimuthFromAngle(initialAngle);
-      setProject(prev => ({ ...prev, panelAspect: az }));
-      if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
 
-      toast({ ...toastStyle, title: `Bâtiment ${building.code} ajouté`, description: `Azimut calculé : ${az}° (Sud)` });
+      // FIX: Check if we already have a predefined building (checking props or project)
+      // Since we just added one to 'setFeatures', we look at 'project.features' to see if one ALREADY existed.
+      const existingPredefined = (project?.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding);
+      const isSecondBuilding = existingPredefined.length >= 1;
+
+      if (isSecondBuilding) {
+        setProject(prev => ({ ...prev, panelAspect2: az, panelAngle2: '15' })); // Default angle 15 for 2nd building
+        toast({ ...toastStyle, title: `Bâtiment ${building.code} ajouté`, description: `Azimut calculé : ${az}° (Sud) - Configuré en Bâtiment 2` });
+      } else {
+        setProject(prev => ({ ...prev, panelAspect: az }));
+        if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
+        toast({ ...toastStyle, title: `Bâtiment ${building.code} ajouté`, description: `Azimut calculé : ${az}° (Sud)` });
+      }
     };
 
     const handleUpdateLastBuilding = (e) => {
