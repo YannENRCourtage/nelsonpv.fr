@@ -433,13 +433,36 @@ export default function ProjectEditor() {
       // If we have 1, we edit the 1st.
       const predefinedBuildings = (project?.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding);
       const isSecondBuilding = predefinedBuildings.length >= 2;
+      let targetBuilding = null;
+      let shouldUpdate = false;
 
       if (isSecondBuilding) {
-        if (project?.roofWeighting2 !== val) {
+        // We are targeting the 2nd building
+        targetBuilding = predefinedBuildings[1];
+        // Only update if the type matches (editing existing) OR if we are just starting
+        if (targetBuilding && targetBuilding.buildingName === buildingData.code) {
+          shouldUpdate = true;
+        }
+
+        if (shouldUpdate && project?.roofWeighting2 !== val) {
           updateProject({ roofWeighting2: val });
         }
       } else {
-        if (project?.roofWeighting !== val) {
+        // We are targeting the 1st building (or preparing it)
+        targetBuilding = predefinedBuildings[0];
+
+        // FIX: Prevent overwriting B1 if selecting a NEW building type (preparing B2)
+        // If B1 exists and has different code, we are likely preparing B2, so DOT NOT touch B1 params.
+        if (targetBuilding) {
+          if (targetBuilding.buildingName === buildingData.code) {
+            shouldUpdate = true;
+          }
+        } else {
+          // No building exists yet, allowed to update defaults
+          shouldUpdate = true;
+        }
+
+        if (shouldUpdate && project?.roofWeighting !== val) {
           updateProject({ roofWeighting: val });
           setIsWeightingDefaulted(true);
         }
