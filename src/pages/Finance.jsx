@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Trash2, TrendingUp, Edit, Search, Download } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button.jsx';
-import { listSimulations, deleteSimulation } from '../services/firebase/simulations.service.js';
+import { listSimulations, deleteSimulation, updateSimulation } from '../services/firebase/simulations.service.js';
 import { toast } from "@/components/ui/use-toast.js";
 import * as XLSX from 'xlsx';
 
@@ -90,6 +90,20 @@ export default function Finance() {
         navigate('/simulator', { state: { simulationData: simulatorData } });
     };
 
+    const handleCommentChange = (id, value) => {
+        setSimulations(prev => prev.map(sim =>
+            sim.id === id ? { ...sim, comments: value } : sim
+        ));
+    };
+
+    const handleCommentBlur = async (id, value) => {
+        try {
+            await updateSimulation(id, { comments: value });
+        } catch (error) {
+            console.error("Erreur update commentaire", error);
+        }
+    };
+
     const formatCurrency = (value) => {
         return new Intl.NumberFormat('fr-FR', {
             style: 'currency',
@@ -124,6 +138,7 @@ export default function Finance() {
         // Préparer les données pour l'export
         const dataToExport = selectedRows.map(sim => ({
             'Projet': sim.projectName,
+            'Commentaires': sim.comments || '',
             'Puissance (kWc)': sim.power || 0,
             'Productible (kWh/kWc)': sim.productible || 0,
             'Tarif TB (€/kWh)': sim.tarifTB || 0,
@@ -273,8 +288,11 @@ export default function Finance() {
                                                 className="w-4 h-4 cursor-pointer"
                                             />
                                         </th>
-                                        <th className="px-3 py-4 text-left text-sm font-semibold border-r border-teal-600">
+                                        <th className="px-3 py-4 text-left text-sm font-semibold border-r border-teal-600 w-48">
                                             <div className="leading-tight">Projet</div>
+                                        </th>
+                                        <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600 w-64">
+                                            <div className="leading-tight">Commentaires</div>
                                         </th>
                                         <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
                                             <div className="leading-tight">Puissance</div>
@@ -292,7 +310,7 @@ export default function Finance() {
                                             <div className="leading-tight">Tarif ACC</div>
                                             <div className="text-xs font-normal opacity-90">(€/kWh)</div>
                                         </th>
-                                        <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
+                                        <th className="px-1 py-4 text-center text-xs font-semibold border-r border-teal-600 w-20">
                                             <div className="leading-tight">Part d'ACC</div>
                                             <div className="text-xs font-normal opacity-90">(%)</div>
                                         </th>
@@ -317,14 +335,14 @@ export default function Finance() {
                                             <div className="text-xs font-normal opacity-90">(€)</div>
                                         </th>
                                         <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
-                                            <div className="leading-tight">Développement</div>
+                                            <div className="leading-tight">Dév.</div>
                                             <div className="text-xs font-normal opacity-90">(€)</div>
                                         </th>
                                         <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
                                             <div className="leading-tight">Coût total</div>
                                             <div className="text-xs font-normal opacity-90">du projet</div>
                                         </th>
-                                        <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
+                                        <th className="px-1 py-4 text-center text-xs font-semibold border-r border-teal-600 w-16">
                                             <div className="leading-tight">TRI</div>
                                             <div className="text-xs font-normal opacity-90">Projet</div>
                                         </th>
@@ -332,15 +350,15 @@ export default function Finance() {
                                             <div className="leading-tight">DSCR</div>
                                             <div className="text-xs font-normal opacity-90">Moyen</div>
                                         </th>
-                                        <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
+                                        <th className="px-1 py-4 text-center text-xs font-semibold border-r border-teal-600 w-24">
                                             <div className="leading-tight">ROI</div>
                                             <div className="text-xs font-normal opacity-90">Sans ACC</div>
                                         </th>
-                                        <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
+                                        <th className="px-1 py-4 text-center text-xs font-semibold border-r border-teal-600 w-24">
                                             <div className="leading-tight">ROI</div>
                                             <div className="text-xs font-normal opacity-90">Avec ACC</div>
                                         </th>
-                                        <th className="px-3 py-4 text-center text-sm font-semibold">
+                                        <th className="px-1 py-4 text-center text-sm font-semibold w-24">
                                             <div className="leading-tight">Actions</div>
                                         </th>
                                     </tr>
@@ -364,6 +382,16 @@ export default function Finance() {
                                                     {sim.projectName}
                                                 </Link>
                                             </td>
+                                            <td className="px-2 py-4 text-sm text-gray-900 border-r border-gray-200">
+                                                <input
+                                                    type="text"
+                                                    className="w-full text-xs border-b border-gray-200 focus:border-teal-500 focus:outline-none bg-transparent"
+                                                    value={sim.comments || ''}
+                                                    placeholder="..."
+                                                    onChange={(e) => handleCommentChange(sim.id, e.target.value)}
+                                                    onBlur={(e) => handleCommentBlur(sim.id, sim.comments)}
+                                                />
+                                            </td>
                                             <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
                                                 {formatNumber(sim.power, 0)}
                                             </td>
@@ -376,7 +404,7 @@ export default function Finance() {
                                             <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
                                                 {formatNumber(sim.tarifACC, 4)}
                                             </td>
-                                            <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
+                                            <td className="px-1 py-4 text-xs text-gray-900 text-center border-r border-gray-200">
                                                 {formatNumber(sim.partACC, 0)} %
                                             </td>
                                             <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
@@ -400,25 +428,25 @@ export default function Finance() {
                                             <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200 font-medium">
                                                 {formatCurrency(sim.totalCost)}
                                             </td>
-                                            <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200 font-medium">
+                                            <td className="px-1 py-4 text-xs text-gray-900 text-center border-r border-gray-200 font-medium">
                                                 {formatPercent(sim.tri)}
                                             </td>
                                             <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
                                                 {formatNumber(sim.averageDSCR, 2)}
                                             </td>
-                                            <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
+                                            <td className="px-1 py-4 text-xs text-gray-900 text-center border-r border-gray-200">
                                                 {formatYears(sim.paybackWithoutACC)}
                                             </td>
-                                            <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
+                                            <td className="px-1 py-4 text-xs text-gray-900 text-center border-r border-gray-200">
                                                 {formatYears(sim.paybackWithACC)}
                                             </td>
-                                            <td className="px-3 py-4 text-center">
-                                                <div className="flex items-center justify-center gap-2">
+                                            <td className="px-1 py-4 text-center">
+                                                <div className="flex items-center justify-center gap-1">
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
                                                         onClick={() => handleEdit(sim)}
-                                                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                        className="text-green-600 hover:text-green-700 hover:bg-green-50 w-8 h-8"
                                                         title="Modifier"
                                                     >
                                                         <Edit className="h-4 w-4" />
@@ -427,7 +455,7 @@ export default function Finance() {
                                                         variant="ghost"
                                                         size="icon"
                                                         onClick={() => handleDelete(sim.id)}
-                                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 w-8 h-8"
                                                         title="Supprimer"
                                                     >
                                                         <Trash2 className="h-4 w-4" />
