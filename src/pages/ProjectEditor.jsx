@@ -487,19 +487,22 @@ export default function ProjectEditor() {
 
       const updates = {};
 
+      // Determine if we are adding the second building (if 1 already exists)
+      const predefinedBuildings = (project?.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding);
+      const isNextBuildingSecond = predefinedBuildings.length >= 1;
+
       if (newAngle) {
-        updates.panelAngle = newAngle;
-        setIsAngleDefaulted(true);
+        if (isNextBuildingSecond) {
+          updates.panelAngle2 = newAngle;
+        } else {
+          updates.panelAngle = newAngle;
+          setIsAngleDefaulted(true);
+        }
       }
 
       // Auto-set weighting if provided by the building panel logic
       // RE-ENABLED per user request: "Uniquement sur les polygones créés par le bouton insérer"
       if (building.roofWeighting !== undefined && building.roofWeighting !== null) {
-        // FIX: Check if we are adding a second building
-        // If we already have >= 1 predefined building, the *next* one inserted will be the 2nd.
-        const predefinedBuildings = (project?.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding);
-        const isNextBuildingSecond = predefinedBuildings.length >= 1;
-
         if (isNextBuildingSecond) {
           updates.roofWeighting2 = Number(building.roofWeighting);
         } else {
@@ -511,8 +514,7 @@ export default function ProjectEditor() {
         updateProject(updates);
 
         let msg = "";
-        if (updates.panelAngle) msg += `Inclinaison: ${newAngle}°`;
-        // if (updates.roofWeighting !== undefined) msg += (msg ? ", " : "") + `Pondération: ${updates.roofWeighting}%`;
+        if (updates.panelAngle || updates.panelAngle2) msg += `Inclinaison: ${newAngle}°`;
 
         toast({ title: "Configuration appliquée", description: `${msg} pour le modèle ${code}.` });
       }
