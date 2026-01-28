@@ -235,6 +235,8 @@ export function ProjectProvider({ children }) {
       // 2. Sauvegarde API
       // On tente d'abord l'API pour avoir la vérité terrain (et l'ID généré si création)
       // FIX: Check for temp IDs (starting with "proj_" or "temp_") to force creation
+      const isTempId = projectId && (String(projectId).startsWith('proj_') || String(projectId).startsWith('temp_'));
+
       // VALIDATION: Prevent saving unnamed projects
       const hasName = (savedProject.name && savedProject.name.trim()) || (savedProject.firstName && savedProject.firstName.trim());
       if (!hasName) {
