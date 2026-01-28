@@ -161,7 +161,27 @@ export default function Crm() {
           apiService.getActivities(12),
           apiService.getUsers()
         ]);
-        setContacts(contactsData || []);
+        // CLEANUP: Filter out and delete "Client sans nom" contacts
+        const validContacts = [];
+        const contactDeletions = [];
+        (contactsData || []).forEach(c => {
+          if (c.name === 'Client sans nom' || c.name === 'Contact sans nom') {
+            contactDeletions.push(apiService.deleteContact(c.id).catch(e => console.warn("Cleanup contact failed", e)));
+          } else {
+            validContacts.push(c);
+          }
+        });
+
+        // Trigger project cleanup in background (Sans nom)
+        apiService.getProjects().then(async (allProjs) => {
+          const badProjs = allProjs.filter(p => !p.name || p.name.trim() === '' || p.name === 'Projet' || p.name === 'Sans nom' || p.name === 'PROJET SANS NOM');
+          if (badProjs.length > 0) {
+            console.log(`Cleaning up ${badProjs.length} unnamed projects...`);
+            await Promise.all(badProjs.map(p => apiService.deleteProject(p.id).catch(e => console.warn("Cleanup project failed", e))));
+          }
+        }).catch(e => console.warn("Project cleanup check failed", e));
+
+        setContacts(validContacts);
         setTasks(tasksData || []);
         setActivities(activitiesData || []);
         setUsers(usersData || []);
