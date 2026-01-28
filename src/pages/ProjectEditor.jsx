@@ -472,7 +472,16 @@ export default function ProjectEditor() {
       // Auto-set weighting if provided by the building panel logic
       // RE-ENABLED per user request: "Uniquement sur les polygones créés par le bouton insérer"
       if (building.roofWeighting !== undefined && building.roofWeighting !== null) {
-        updates.roofWeighting = Number(building.roofWeighting);
+        // FIX: Check if we are adding a second building
+        // If we already have >= 1 predefined building, the *next* one inserted will be the 2nd.
+        const predefinedBuildings = (project?.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding);
+        const isNextBuildingSecond = predefinedBuildings.length >= 1;
+
+        if (isNextBuildingSecond) {
+          updates.roofWeighting2 = Number(building.roofWeighting);
+        } else {
+          updates.roofWeighting = Number(building.roofWeighting);
+        }
       }
 
       if (Object.keys(updates).length > 0) {
