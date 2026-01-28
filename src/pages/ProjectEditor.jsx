@@ -642,17 +642,17 @@ export default function ProjectEditor() {
             {/* Technical Fields Row - Compact Layout */}
             <div className="col-span-12 grid grid-cols-7 gap-2 items-end">
               {/* Séisme */}
-              <div><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de séisme">Séisme</label><Input value={p.seismicZone || ''} onChange={e => updateProject({ seismicZone: e.target.value })} className="mt-1" placeholder="Séisme" /></div>
+              <div className="row-span-2 flex flex-col justify-end"><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de séisme">Séisme</label><Input value={p.seismicZone || ''} onChange={e => updateProject({ seismicZone: e.target.value })} className="mt-1" placeholder="Séisme" /></div>
 
               {/* Neige */}
-              <div><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de neige">Neige</label><Input value={p.snowZone || ''} onChange={e => updateProject({ snowZone: e.target.value })} className="mt-1" placeholder="Neige" /></div>
+              <div className="row-span-2 flex flex-col justify-end"><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de neige">Neige</label><Input value={p.snowZone || ''} onChange={e => updateProject({ snowZone: e.target.value })} className="mt-1" placeholder="Neige" /></div>
 
               {/* Vent */}
-              <div><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de vent">Vent</label><Input value={p.windZone || ''} onChange={e => updateProject({ windZone: e.target.value })} className="mt-1" placeholder="Vent" /></div>
+              <div className="row-span-2 flex flex-col justify-end"><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de vent">Vent</label><Input value={p.windZone || ''} onChange={e => updateProject({ windZone: e.target.value })} className="mt-1" placeholder="Vent" /></div>
 
               {/* Inclinaison */}
               <div>
-                <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Inclinaison">Inclinaison</label>
+                <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Inclinaison (Toiture 1)">1/ Incl.</label>
                 <Select
                   value={String(p.panelAngle || '15')}
                   onValueChange={v => {
@@ -665,13 +665,19 @@ export default function ProjectEditor() {
                   <SelectContent>
                     <SelectItem value="10">10°</SelectItem>
                     <SelectItem value="15">15°</SelectItem>
+                    <SelectItem value="20">20°</SelectItem>
+                    <SelectItem value="25">25°</SelectItem>
+                    <SelectItem value="30">30°</SelectItem>
+                    <SelectItem value="35">35°</SelectItem>
+                    <SelectItem value="40">40°</SelectItem>
+                    <SelectItem value="45">45°</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {/* Azimut */}
               <div>
-                <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Azimut toiture 1">Azimut</label>
+                <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Azimut toiture 1">1/ Azimut</label>
                 <Select
                   value={String(p.panelAspect || '0')}
                   onValueChange={v => {
@@ -697,7 +703,7 @@ export default function ProjectEditor() {
 
               {/* Pondération */}
               <div>
-                <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Pondération toiture 1">Pondération</label>
+                <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Pondération toiture 1">1/ Pond.</label>
                 <Select
                   key={`weight-${p.roofWeighting}`}
                   value={String(p.roofWeighting !== undefined ? p.roofWeighting : 50)}
@@ -715,9 +721,9 @@ export default function ProjectEditor() {
                 </Select>
               </div>
 
-              {/* Productible */}
+              {/* Productible & Button (Row 1) */}
               <div className="relative">
-                <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Productible solaire pondéré (kWh/kWc)">Productible</label>
+                <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Productible pondéré">Productible</label>
                 <div className="flex gap-1 mt-1">
                   <Input
                     value={p.solarYield || ''}
@@ -735,7 +741,7 @@ export default function ProjectEditor() {
                     variant="outline"
                     size="icon"
                     className="shrink-0 aspect-square w-10 px-0"
-                    title="Calculer le productible des 2 toitures"
+                    title="Calculer le productible"
                     onClick={async () => {
                       if (!p.gps) {
                         toast({ title: "Erreur", description: "Veuillez renseigner les coordonnées GPS.", variant: "destructive" });
@@ -749,20 +755,35 @@ export default function ProjectEditor() {
                         return;
                       }
 
-                      const angle = p.panelAngle || 15;
+                      // LOGIC 1: Detect Number of Predefined Buildings
+                      const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding);
+                      const hasSecondBuilding = predefinedBuildings.length >= 2;
+
+                      // Params Building 1
+                      const angle1 = p.panelAngle || 15;
                       const aspect1 = parseFloat(p.panelAspect || 0);
                       const weighting1 = p.roofWeighting !== undefined ? p.roofWeighting : 50;
-                      const weighting2 = 100 - weighting1;
 
-                      // Calculer l'azimut opposé pour la toiture 2
-                      const aspect2 = aspect1 >= 0 ? aspect1 - 180 : aspect1 + 180;
+                      // Params Building 2 (or inferred if not present)
+                      let angle2, aspect2, weighting2;
 
-                      toast({ title: "Calcul en cours...", description: `Interrogation PVGIS pour les 2 toitures (${aspect1}° et ${aspect2}°)` });
+                      if (hasSecondBuilding) {
+                        // Use explicit parameters for 2nd building
+                        angle2 = p.panelAngle2 || 15;
+                        aspect2 = parseFloat(p.panelAspect2 || 0);
+                        weighting2 = p.roofWeighting2 !== undefined ? p.roofWeighting2 : 50;
+                        toast({ title: "Calcul en cours...", description: `Interrogation PVGIS pour 2 bâtiments...` });
+                      } else {
+                        // Use single building logic fallback (opposite aspect)
+                        angle2 = angle1;
+                        aspect2 = aspect1 >= 0 ? aspect1 - 180 : aspect1 + 180;
+                        weighting2 = 100 - weighting1;
+                        toast({ title: "Calcul en cours...", description: `Interrogation PVGIS pour les 2 toitures (${aspect1}° et ${aspect2}°)` });
+                      }
 
                       try {
-                        // Appels PVGIS en parallèle pour les deux toitures via le proxy dédié
-                        const pvgisUrl1 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect1}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
-                        const pvgisUrl2 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect2}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                        const pvgisUrl1 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle1}&aspect=${aspect1}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                        const pvgisUrl2 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle2}&aspect=${aspect2}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
 
                         const [res1, res2] = await Promise.all([
                           fetch(pvgisUrl1),
@@ -770,9 +791,7 @@ export default function ProjectEditor() {
                         ]);
 
                         if (!res1.ok || !res2.ok) {
-                          const errText1 = !res1.ok ? await res1.text().catch(() => '') : '';
-                          const errText2 = !res2.ok ? await res2.text().catch(() => '') : '';
-                          throw new Error(`Erreur PVGIS: ${!res1.ok ? res1.status + ' ' + errText1 : res2.status + ' ' + errText2}`);
+                          throw new Error(`Erreur PVGIS.`);
                         }
 
                         const [data1, data2] = await Promise.all([
@@ -780,15 +799,16 @@ export default function ProjectEditor() {
                           res2.json()
                         ]);
 
-                        // Fonction helper pour extraire E_y (supporte outputs.totals.fixed.E_y ou outputs.totals.E_y)
                         const getEy = (d) => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
-
                         const yield1 = parseFloat(getEy(data1));
                         const yield2 = parseFloat(getEy(data2));
 
                         if (!isNaN(yield1) && !isNaN(yield2)) {
-                          // Calcul du productible pondéré
-                          const weightedYield = (yield1 * weighting1 + yield2 * weighting2) / 100;
+                          // Weighted calculation
+                          // If 2nd building exists, we treat weights as independent factors or ratios?
+                          // Standard logic: (Y1*W1 + Y2*W2) / (W1+W2)
+                          const totalWeight = weighting1 + weighting2;
+                          const weightedYield = (yield1 * weighting1 + yield2 * weighting2) / (totalWeight || 100);
 
                           updateProject({
                             solarYield: weightedYield.toFixed(2),
@@ -798,27 +818,86 @@ export default function ProjectEditor() {
 
                           toast({
                             title: "Succès",
-                            description: `Toiture 1 (${aspect1}°): ${yield1.toFixed(2)} kWh/kWc\nToiture 2 (${aspect2}°): ${yield2.toFixed(2)} kWh/kWc\nPondéré (${weighting1}%/${weighting2}%): ${weightedYield.toFixed(2)} kWh/kWc`,
-                            duration: 8000
+                            description: `Productible calculé : ${weightedYield.toFixed(2)} kWh/kWc`,
                           });
-                        } else {
-                          throw new Error("Format de réponse inattendu");
                         }
-                      } catch (e) {
-                        console.error("PVGIS Error:", e);
-                        toast({
-                          title: "Erreur PVGIS",
-                          description: `Détail: ${e.message}`,
-                          variant: "destructive",
-                          duration: 10000
-                        });
+                      } catch (error) {
+                        console.error(error);
+                        toast({ title: "Erreur", description: "Échec du calcul PVGIS.", variant: "destructive" });
                       }
                     }}
                   >
-                    <Zap size={16} />
+                    <RotateCw className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
+
+              {/* ROW 2: CONDITIONAL RENDERING FOR 2ND BUILDING */}
+              {((p.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding).length >= 2) && (
+                <>
+                  {/* Inclinaison 2 */}
+                  <div>
+                    <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Inclinaison (Toiture 2)">2/ Incl.</label>
+                    <Select
+                      value={String(p.panelAngle2 || '15')}
+                      onValueChange={v => updateProject({ panelAngle2: v })}
+                    >
+                      <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10°</SelectItem>
+                        <SelectItem value="15">15°</SelectItem>
+                        <SelectItem value="20">20°</SelectItem>
+                        <SelectItem value="25">25°</SelectItem>
+                        <SelectItem value="30">30°</SelectItem>
+                        <SelectItem value="35">35°</SelectItem>
+                        <SelectItem value="40">40°</SelectItem>
+                        <SelectItem value="45">45°</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Azimut 2 */}
+                  <div>
+                    <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Azimut toiture 2">2/ Azimut</label>
+                    <Select
+                      value={String(p.panelAspect2 || '0')}
+                      onValueChange={v => updateProject({ panelAspect2: v })}
+                    >
+                      <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
+                      <SelectContent className="h-60">
+                        {Array.from({ length: 72 }, (_, i) => -175 + i * 5).map(val => {
+                          let label = `${val}°`;
+                          if (val === 0) label += " (Sud)";
+                          else if (val === -90) label += " (Est)";
+                          else if (val === 90) label += " (Ouest)";
+                          else if (val === 180) label += " (Nord)";
+                          return <SelectItem key={val} value={String(val)}>{label}</SelectItem>;
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Pondération 2 */}
+                  <div>
+                    <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Pondération toiture 2">2/ Pond.</label>
+                    <Select
+                      key={`weight2-${p.roofWeighting2}`}
+                      value={String(p.roofWeighting2 !== undefined ? p.roofWeighting2 : 50)}
+                      onValueChange={v => updateProject({ roofWeighting2: parseInt(v) })}
+                    >
+                      <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
+                      <SelectContent className="h-60">
+                        {Array.from({ length: 11 }, (_, i) => 50 + i * 5).map(val => (
+                          <SelectItem key={val} value={String(val)}>{val}%</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Empty placeholder for alignment */}
+                  <div></div>
+                </>
+              )}
             </div>
 
             <div className="col-span-12"><label className="text-sm font-medium">Commentaires</label><textarea value={p.comments || ''} onChange={e => updateProject({ comments: e.target.value })} className="mt-1 h-24 w-full rounded-lg border px-3 py-2" placeholder="Commentaires" /></div>

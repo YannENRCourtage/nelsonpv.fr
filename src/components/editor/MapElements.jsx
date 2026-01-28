@@ -2041,6 +2041,17 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
           return prev;
         }
         const lastBuilding = predefinedBuildings[predefinedBuildings.length - 1];
+
+        // FIX: Only update if the building type matches (e.g. O4 matches O4).
+        // This allows editing dimensions/extensions (which keep same code) but prevents 
+        // overwriting the previous building when the user selects a NEW building type in the panel.
+        const isSameType = lastBuilding.buildingName === building.code;
+
+        if (!isSameType) {
+          console.log('[UPDATE BLDG] Building type mismatch (Last:', lastBuilding.buildingName, 'New:', building.code, '). Skipping update to allow new insertion.');
+          return prev;
+        }
+
         console.log('[UPDATE BLDG] Last building:', lastBuilding.id, 'current angle:', lastBuilding.angle);
 
         // Calculate new coords preserving center and angle
