@@ -423,12 +423,27 @@ export default function ProjectEditor() {
 
   const handleBuildingConfigChange = (buildingData) => {
     // 1. Update project weighting
-    // 1. Update project weighting
     // RE-ENABLED: Ponderation must update when extensions are added/removed
     const val = Number(buildingData.roofWeighting);
-    if (!isNaN(val) && project?.roofWeighting !== val) {
-      updateProject({ roofWeighting: val });
-      setIsWeightingDefaulted(true);
+
+    if (!isNaN(val)) {
+      // FIX: Determine which building we are targeting (Building 1 or Building 2)
+      // Logic: The panel updates the "last" building or the one being prepared.
+      // If we already have >= 2 buildings, we assume we are editing the 2nd one (the last one).
+      // If we have 1, we edit the 1st.
+      const predefinedBuildings = (project?.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding);
+      const isSecondBuilding = predefinedBuildings.length >= 2;
+
+      if (isSecondBuilding) {
+        if (project?.roofWeighting2 !== val) {
+          updateProject({ roofWeighting2: val });
+        }
+      } else {
+        if (project?.roofWeighting !== val) {
+          updateProject({ roofWeighting: val });
+          setIsWeightingDefaulted(true);
+        }
+      }
     }
     // 2. Update map dimensions
     window.dispatchEvent(new CustomEvent('map:update-last-building', { detail: { building: buildingData } }));
