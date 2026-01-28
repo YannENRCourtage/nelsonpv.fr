@@ -1963,57 +1963,55 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
   // lastSyncedAzimuthRef is now passed as prop
 
   // Synchronisation : Change le rectangle sur la carte quand l'azimut change dans le formulaire
+  // Synchronisation : Change le rectangle sur la carte quand l'azimut change dans le formulaire
   useEffect(() => {
-    // Reactivated synchronization per user request
-    // Predefined buildings should follow the azimuth field
-
-
     // Si l'utilisateur est en train de tourner manuellement, on ignore la synchro venant du projet
     if (isRotatingRef?.current) {
-      // console.log('[SYNC BLOCKED] User is rotating manually');
       return;
     }
 
-    if (project?.panelAspect !== undefined && project?.panelAspect !== null) {
-      const targetAzimuth = Number(project.panelAspect);
+    setFeatures(prev => {
+      // Find all predefined buildings
+      const predefinedBuildings = prev.filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding === true || f.buildingName));
+      if (predefinedBuildings.length === 0) return prev;
 
-      setFeatures(prev => {
-        // Trouver le dernier BÂTIMENT PRÉDÉFINI uniquement (pas les rectangles manuels)
-        // Correction: Check for buildingName as fallback in case isPredefinedBuilding flag is missing on older items
-        const predefinedBuildings = prev.filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding === true || f.buildingName));
-        if (predefinedBuildings.length === 0) return prev;
+      // Check if any building needs update
+      let hasChanges = false;
+      const nextFeatures = prev.map(f => {
+        const bldgIndex = predefinedBuildings.findIndex(p => p.id === f.id);
+        if (bldgIndex === -1) return f; // Not a predefined building
 
-        const lastBuilding = predefinedBuildings[predefinedBuildings.length - 1];
+        // Determine target azimuth based on index
+        let targetAzimuth = undefined;
+        if (bldgIndex === 0) targetAzimuth = project?.panelAspect;
+        else if (bldgIndex === 1) targetAzimuth = project?.panelAspect2;
 
-        // Convert azimuth to visual angle
-        const visualAngle = calculateAngleFromAzimuth(targetAzimuth);
+        if (targetAzimuth === undefined || targetAzimuth === null) return f;
 
-        // Normalize angles to 0-360 for comparison to avoid modulo issues
-        const currentAngleNorm = ((lastBuilding.angle || 0) % 360 + 360) % 360;
+        const visualAngle = calculateAngleFromAzimuth(Number(targetAzimuth));
+
+        // Normalize angles
+        const currentAngleNorm = ((f.angle || 0) % 360 + 360) % 360;
         const visualAngleNorm = ((visualAngle % 360) + 360) % 360;
 
-        // Calculate shortest difference
         let diff = Math.abs(currentAngleNorm - visualAngleNorm);
         if (diff > 180) diff = 360 - diff;
 
-        // Check for 180 degree equivalence (flipped orientation)
-        // If the difference is close to 0 OR close to 180, we consider it synced
-        // This prevents the "flip" when dragging past vertical
+        // Check for equivalence (including 180 flip)
         let isEquivalent = false;
-        if (diff < 3) isEquivalent = true;
-        if (Math.abs(diff - 180) < 3) isEquivalent = true;
+        if (diff < 1) isEquivalent = true;
+        if (Math.abs(diff - 180) < 1) isEquivalent = true;
 
-        if (isEquivalent) {
-          return prev;
-        }
+        if (isEquivalent) return f;
 
-        console.log('[SYNC AZIMUTH] Updating angle from external change. TargetAz:', targetAzimuth);
-
-        // Mettre à jour l'angle du dernier bâtiment prédéfini
-        return prev.map(f => f.id === lastBuilding.id ? { ...f, angle: visualAngle } : f);
+        hasChanges = true;
+        // console.log(`[SYNC AZIMUTH] Updating Building ${bldgIndex + 1} to ${visualAngle}° (Az: ${targetAzimuth})`);
+        return { ...f, angle: visualAngle };
       });
-    }
-  }, [project?.panelAspect, setFeatures, isRotatingRef, lastSyncedAzimuthRef]);
+
+      return hasChanges ? nextFeatures : prev;
+    });
+  }, [project?.panelAspect, project?.panelAspect2, setFeatures, isRotatingRef]);
   useEffect(() => {
     const handlePlaceBuilding = (e) => {
       const { building } = e.detail;
@@ -2756,26 +2754,33 @@ export default function MapElements({ style = {}, project, setProject, onAddress
         const rects = sanitizedFeatures.filter(f => f.type === 'rectangle');
         let newUpdates = { ...prev, features: sanitizedFeatures };
 
-        if (rects.length > 0) {
-          if (rects.length > 0) {
-            const lastRect = rects[rects.length - 1];
+        // Iterate over all predefined buildings to sync their azimuths
+        // This handles B1 (index 0) -> panelAspect AND B2 (index 1) -> panelAspect2
+        rects.forEach((rect, index) => {
+          if (rect.isPredefinedBuilding === true || rect.buildingName) {
+            const newAzimuth = calculateAzimuthFromAngle(rect.angle || 0);
 
-            // FIX: Only update project Azimuth if the manipulated rectangle is a PREDEFINED BUILDING.
-            // Manual rectangles should NOT affect the global project settings or other buildings.
-            if (lastRect.isPredefinedBuilding === true || lastRect.buildingName) {
-              // Calculate Azimuth from angle
-              const newAzimuth = calculateAzimuthFromAngle(lastRect.angle || 0);
-
-              // If azimuth changed effectively (with tolerance), update it
+            if (index === 0) {
+              // Building 1 -> panelAspect
               if (prev.panelAspect === undefined || Math.abs(Number(prev.panelAspect) - newAzimuth) >= 1) {
                 newUpdates.panelAspect = newAzimuth;
               }
+            } else if (index === 1) {
+              // Building 2 -> panelAspect2
+              if (prev.panelAspect2 === undefined || Math.abs(Number(prev.panelAspect2) - newAzimuth) >= 1) {
+                newUpdates.panelAspect2 = newAzimuth;
+              }
             }
           }
-        }
+        });
 
-        // Deep comparison to avoid infinite loops if objects are different references but same content
-        if (JSON.stringify(prevFeatures) === JSON.stringify(sanitizedFeatures) && newUpdates.panelAspect === prev.panelAspect) return prev;
+        // Deep comparison to avoid infinite loops
+        // Check features AND azimuths
+        const featuresChanged = JSON.stringify(prevFeatures) !== JSON.stringify(sanitizedFeatures);
+        const aspect1Changed = newUpdates.panelAspect !== prev.panelAspect;
+        const aspect2Changed = newUpdates.panelAspect2 !== prev.panelAspect2;
+
+        if (!featuresChanged && !aspect1Changed && !aspect2Changed) return prev;
 
         return newUpdates;
       });
