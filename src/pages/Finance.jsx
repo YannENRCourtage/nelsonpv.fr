@@ -383,13 +383,13 @@ export default function Finance() {
                                                 </Link>
                                             </td>
                                             <td className="px-2 py-4 text-sm text-gray-900 border-r border-gray-200">
-                                                <input
-                                                    type="text"
-                                                    className="w-full text-xs border-b border-gray-200 focus:border-teal-500 focus:outline-none bg-transparent"
+                                                <textarea
+                                                    className="w-full text-xs border border-gray-200 rounded p-1 focus:border-teal-500 focus:outline-none bg-transparent min-h-[50px] resize-y"
                                                     value={sim.comments || ''}
                                                     placeholder="..."
                                                     onChange={(e) => handleCommentChange(sim.id, e.target.value)}
                                                     onBlur={(e) => handleCommentBlur(sim.id, sim.comments)}
+                                                    rows={2}
                                                 />
                                             </td>
                                             <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
