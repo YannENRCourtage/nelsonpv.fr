@@ -67,7 +67,8 @@ export default function Finance() {
                 tarifTH: simulation.tarifTB || 0.09,
                 tarifACC: simulation.tarifACC || 0.14,
                 partACC: simulation.partACC || 40,
-                prixAchatACC: 0
+                prixAchatACC: 0,
+                interestRate: simulation.interestRate !== undefined ? simulation.interestRate : 3.9
             },
             costs: {
                 installationRate: 0.50,

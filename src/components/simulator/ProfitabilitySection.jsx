@@ -23,7 +23,7 @@ export default function ProfitabilitySection({ metrics, params, onParamsChange }
                     <input
                         type="number"
                         step="0.1"
-                        value={params.interestRate || 3.0}
+                        value={params.interestRate !== undefined ? params.interestRate : 3.9}
                         onChange={(e) => handleChange('interestRate', e.target.value)}
                         className="w-24 px-2 py-1 border border-gray-300 rounded-md text-right focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     />
