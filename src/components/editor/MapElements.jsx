@@ -908,48 +908,9 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                   ));
                 },
                 dragend: (e) => {
-                  console.log('[ROTATION END]');
-                  console.log('[DEBUG] Feature:', f);
-                  console.log('[DEBUG] isPredefinedBuilding:', f.isPredefinedBuilding);
-                  console.log('[DEBUG] buildingName:', f.buildingName);
-
-                  // Commit the final rotation to project state
-                  if (f.isPredefinedBuilding) {
-                    console.log('[DEBUG] INSIDE isPredefinedBuilding condition');
-                    const centerPt = map.latLngToLayerPoint(center);
-                    const handlePt = map.latLngToLayerPoint(e.target.getLatLng());
-                    const finalAngle = Math.atan2(handlePt.y - centerPt.y, handlePt.x - centerPt.x) * (180 / Math.PI) + 90;
-
-                    // Normalize final angle for consistency
-                    let normalizedAngle = finalAngle;
-
-                    // REMOVED setFeatures here to prevent visual jumping.
-                    // We trust the last 'drag' event which set the angle correctly visually.
-                    // The sync/useEffect will handle any necessary adjustment if azimuth differs significantly.
-
-                    // Calculate and set azimuth
-                    const newAz = calculateAzimuthFromAngle(normalizedAngle);
-                    console.log('[ROTATION END] New azimuth:', newAz);
-
-                    // FIX: Determine if this is Building 1 or Building 2
-                    // We need to find the index among predefined buildings
-                    const predefinedBldgs = features.filter(item => item.type === 'rectangle' && item.isPredefinedBuilding);
-                    const bldgIndex = predefinedBldgs.findIndex(b => b.id === f.id);
-
-                    if (bldgIndex === 0) {
-                      setProject(prev => ({ ...prev, panelAspect: newAz }));
-                      if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
-                      toast({ ...toastStyle, title: "Azimut Bâtiment 1 mis à jour", description: `${newAz}°` });
-                    } else if (bldgIndex === 1) {
-                      setProject(prev => ({ ...prev, panelAspect2: newAz }));
-                      toast({ ...toastStyle, title: "Azimut Bâtiment 2 mis à jour", description: `${newAz}°` });
-                    }
-                  } else {
-                    console.log('[DEBUG] NOT a predefined building, skipping azimuth update');
-                  }
+                  console.log('[ROTATION END] Drag finished');
 
                   // Small delay to allow react cycle to complete before unblocking sync
-                  // Increased to 1000ms to allow full state propagation and avoid race condition reset
                   setTimeout(() => {
                     if (isRotatingRef) isRotatingRef.current = false;
                     draggingRef.current = null;
@@ -2764,6 +2725,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
               // Building 1 -> panelAspect
               if (prev.panelAspect === undefined || Math.abs(Number(prev.panelAspect) - newAzimuth) >= 1) {
                 newUpdates.panelAspect = newAzimuth;
+                if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
               }
             } else if (index === 1) {
               // Building 2 -> panelAspect2
