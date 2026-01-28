@@ -878,7 +878,8 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
               {rotatedCenter && (() => {
                 const predefinedBuildings = features.filter(item => item.type === 'rectangle' && item.isPredefinedBuilding);
                 const buildingIndex = predefinedBuildings.findIndex(b => b.id === f.id);
-                const prefix = buildingIndex !== -1 ? `${buildingIndex + 1}/ ` : '';
+                // Only show "1/", "2/" if there are multiple predefined buildings
+                const prefix = (predefinedBuildings.length > 1 && buildingIndex !== -1) ? `${buildingIndex + 1}/ ` : '';
                 return (
                   <Marker position={rotatedCenter} opacity={0}>
                     <Tooltip permanent direction="center" className="measure-label">
@@ -2034,15 +2035,17 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
       // Update Azimuth immediately
       const az = calculateAzimuthFromAngle(initialAngle);
 
-      // FIX: Check if we already have a predefined building (checking props or project)
-      // Since we just added one to 'setFeatures', we look at 'project.features' to see if one ALREADY existed.
-      const existingPredefined = (project?.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding);
+      // FIX: Use local features state to check for existence of predefined buildings
+      // 'features' prop contains the state BEFORE this update (so it contains B1 if we are adding B2)
+      const existingPredefined = features.filter(f => f.type === 'rectangle' && f.isPredefinedBuilding);
       const isSecondBuilding = existingPredefined.length >= 1;
 
       if (isSecondBuilding) {
         setProject(prev => ({ ...prev, panelAspect2: az, panelAngle2: '15' })); // Default angle 15 for 2nd building
         toast({ ...toastStyle, title: `Bâtiment ${building.code} ajouté`, description: `Azimut calculé : ${az}° (Sud) - Configuré en Bâtiment 2` });
       } else {
+        // If this is the FIRST building, we set the primary panelAspect
+        // We do NOT touch panelAspect if we are adding a second building.
         setProject(prev => ({ ...prev, panelAspect: az }));
         if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
         toast({ ...toastStyle, title: `Bâtiment ${building.code} ajouté`, description: `Azimut calculé : ${az}° (Sud)` });
