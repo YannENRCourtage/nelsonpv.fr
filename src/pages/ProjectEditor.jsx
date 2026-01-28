@@ -702,8 +702,8 @@ export default function ProjectEditor() {
               {(() => {
                 const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding);
                 const hasSecondBuilding = predefinedBuildings.length >= 2;
+                const hasFirstBuilding = predefinedBuildings.length >= 1;
                 const labelPrefix1 = hasSecondBuilding ? "1/ " : "";
-                const labelPrefix2 = "2/ ";
 
                 return (
                   <>
@@ -717,7 +717,7 @@ export default function ProjectEditor() {
                           if (isAngleDefaulted) setIsAngleDefaulted(false);
                         }}
                       >
-                        <SelectTrigger className={`mt-1 h-10 w-full ${isAngleDefaulted ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
+                        <SelectTrigger className={`mt-1 h-10 w-full ${hasFirstBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="10">10°</SelectItem>
                           <SelectItem value="15">15°</SelectItem>
@@ -741,7 +741,7 @@ export default function ProjectEditor() {
                           if (isAzimuthDefaulted) setIsAzimuthDefaulted(false);
                         }}
                       >
-                        <SelectTrigger className={`mt-1 h-10 w-full ${isAzimuthDefaulted ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
+                        <SelectTrigger className={`mt-1 h-10 w-full ${hasFirstBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
                         <SelectContent className="h-60">
                           {Array.from({ length: 72 }, (_, i) => -175 + i * 5).map(val => {
                             let label = `${val}°`;
@@ -768,7 +768,7 @@ export default function ProjectEditor() {
                           if (isWeightingDefaulted) setIsWeightingDefaulted(false);
                         }}
                       >
-                        <SelectTrigger className={`mt-1 h-10 w-full ${isWeightingDefaulted ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
+                        <SelectTrigger className={`mt-1 h-10 w-full ${hasFirstBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
                         <SelectContent className="h-60">
                           {Array.from({ length: 11 }, (_, i) => 50 + i * 5).map(val => (
                             <SelectItem key={val} value={String(val)}>{val}%</SelectItem>
@@ -881,7 +881,7 @@ export default function ProjectEditor() {
                             value={String(p.panelAngle2 || '15')}
                             onValueChange={v => updateProject({ panelAngle2: v })}
                           >
-                            <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className={`mt-1 h-10 w-full ${hasSecondBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="10">10°</SelectItem>
                               <SelectItem value="15">15°</SelectItem>
@@ -902,7 +902,7 @@ export default function ProjectEditor() {
                             value={String(p.panelAspect2 || '0')}
                             onValueChange={v => updateProject({ panelAspect2: v })}
                           >
-                            <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className={`mt-1 h-10 w-full ${hasSecondBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
                             <SelectContent className="h-60">
                               {Array.from({ length: 72 }, (_, i) => -175 + i * 5).map(val => {
                                 let label = `${val}°`;
@@ -924,7 +924,7 @@ export default function ProjectEditor() {
                             value={String(p.roofWeighting2 !== undefined ? p.roofWeighting2 : 50)}
                             onValueChange={v => updateProject({ roofWeighting2: parseInt(v) })}
                           >
-                            <SelectTrigger className="mt-1 h-10 w-full"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className={`mt-1 h-10 w-full ${hasSecondBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
                             <SelectContent className="h-60">
                               {Array.from({ length: 11 }, (_, i) => 50 + i * 5).map(val => (
                                 <SelectItem key={val} value={String(val)}>{val}%</SelectItem>
