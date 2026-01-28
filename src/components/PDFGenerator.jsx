@@ -95,6 +95,9 @@ const PDFGenerator = ({ project }) => {
     return title.toUpperCase() || 'N/A';
   };
 
+  const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding);
+  const hasSecondBuilding = predefinedBuildings.length >= 2;
+
   return (
     // Conteneur A4 PAYSAGE (297mm x 210mm)
     <div style={{ fontFamily: 'Arial, sans-serif', color: '#333', width: '297mm', height: '210mm', padding: '15mm', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', background: 'white' }}>
@@ -137,8 +140,13 @@ const PDFGenerator = ({ project }) => {
             <div style={fieldStyle}>
               <span style={labelStyle}>Productible pondéré :</span>
               <span style={valueStyle}>
-                {p.solarYieldRoof2
-                  ? `1/ ${p.solarYieldRoof1} - 2/ ${p.solarYieldRoof2} kWh/kWc`
+                {hasSecondBuilding && p.solarYieldRoof2
+                  ? (
+                    <>
+                      <div style={{ marginBottom: '2px' }}>1/ {p.solarYieldRoof1} kWh/kWc</div>
+                      <div>2/ {p.solarYieldRoof2} kWh/kWc</div>
+                    </>
+                  )
                   : (p.solarYield ? `${p.solarYield} kWh/kWc` : 'N/A')}
               </span>
             </div>
