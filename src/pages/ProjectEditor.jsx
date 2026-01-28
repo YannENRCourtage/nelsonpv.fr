@@ -704,6 +704,7 @@ export default function ProjectEditor() {
                 const hasSecondBuilding = predefinedBuildings.length >= 2;
                 const hasFirstBuilding = predefinedBuildings.length >= 1;
                 const labelPrefix1 = hasSecondBuilding ? "1/ " : "";
+                const labelPrefix2 = "2/ ";
 
                 return (
                   <>
