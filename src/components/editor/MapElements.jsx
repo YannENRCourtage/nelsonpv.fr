@@ -113,26 +113,25 @@ function formatArea(m2) { return m2 >= 10000 ? `${(m2 / 10000).toFixed(2)} ha` :
 // Visual angle: 0=Sud (si rectangle horizontal), 90=Ouest (sens horaire)
 // Azimuth: 0=Sud, 90=Ouest
 function calculateAzimuthFromAngle(angle) {
-  // Direct mapping: azimuth = angle
-  let az = angle;
+  // Normalize angle to [0, 360) first to behave consistently
+  let az = (angle % 360 + 360) % 360;
 
-  // Normalize to [-180, 180]
-  while (az > 180) az -= 360;
-  while (az < -180) az += 360;
+  // Convert to [-180, 180]
+  if (az > 180) az -= 360;
 
-  // Clamp to [-90, 90] for south-facing roof logic if needed, 
-  // but let's allow full rotation for now as the user requested flexibility
-  // Actually, clamp logic was there originally. Let's stick to simple normalization first.
-
-  // Clamp to [-90, 90] reversed logic from original file?
-  // If az > 90 (Nord-Ouest), should we flip it?
-  // Let's keep it simple: normalize to [-180, 180] and round.
+  // Enforce range [-90, 90] with 180° symmetry
+  while (az > 90) az -= 180;
+  while (az <= -90) az += 180;
 
   // Round to nearest 5 degrees
   az = Math.round(az / 5) * 5;
 
+  // Final check after rounding (e.g. 91 rounded from 89? No, 89->90. 91->90. 93->95->-85)
+  if (az > 90) az -= 180;
+  if (az <= -90) az += 180;
+
   // Handle -0
-  if (az === -0) az = 0;
+  if (az === 0) az = 0;
 
   return az;
 }
@@ -876,9 +875,19 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 
               {/* DEBUG: Visualizer for Corner 0 */}
 
-              {rotatedCenter && <Marker position={rotatedCenter} opacity={0}><Tooltip permanent direction="center" className="measure-label">{f.buildingName && `${f.buildingName} - `} {formatDistance(height)} × {formatDistance(width)} ({formatArea(area)})</Tooltip></Marker>}
+              {rotatedCenter && (() => {
+                const predefinedBuildings = features.filter(item => item.type === 'rectangle' && item.isPredefinedBuilding);
+                const buildingIndex = predefinedBuildings.findIndex(b => b.id === f.id);
+                const prefix = buildingIndex !== -1 ? `${buildingIndex + 1}/ ` : '';
+                return (
+                  <Marker position={rotatedCenter} opacity={0}>
+                    <Tooltip permanent direction="center" className="measure-label">
+                      {prefix}{f.buildingName && `${f.buildingName} - `} {formatDistance(height)} × {formatDistance(width)} ({formatArea(area)})
+                    </Tooltip>
+                  </Marker>
+                );
+              })()}
               {/* STEP 2: Rotation enabled for ALL rectangles (manual + predefined) using same code */}
-              {console.log('[ROTATION MARKER]', f.id, 'isSelected:', isSelected, 'rotationHandlePos:', !!rotationHandlePos, 'isPredefinedBuilding:', f.isPredefinedBuilding, 'buildingName:', f.buildingName)}
               {isSelected && rotationHandlePos && <Marker position={rotationHandlePos} icon={rotationIcon} draggable={true} zIndexOffset={1000} eventHandlers={{
                 dragstart: (e) => {
                   L.DomEvent.stop(e);
@@ -913,10 +922,9 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                     // Normalize final angle for consistency
                     let normalizedAngle = finalAngle;
 
-                    // Update features with normalized angle
-                    setFeatures(prev => prev.map(feat =>
-                      feat.id === f.id ? { ...feat, angle: normalizedAngle } : feat
-                    ));
+                    // REMOVED setFeatures here to prevent visual jumping.
+                    // We trust the last 'drag' event which set the angle correctly visually.
+                    // The sync/useEffect will handle any necessary adjustment if azimuth differs significantly.
 
                     // Calculate and set azimuth
                     const newAz = calculateAzimuthFromAngle(normalizedAngle);
@@ -1945,11 +1953,9 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
 
   // Synchronisation : Change le rectangle sur la carte quand l'azimut change dans le formulaire
   useEffect(() => {
-    // DISABLED: To match manual rectangle behavior (user request)
-    // Predefined buildings now behave exactly like manual rectangles:
-    // - Free rotation without automatic sync from project.panelAspect
-    // - Azimuth is updated when user rotates (dragend), but not the reverse
-    return;
+    // Reactivated synchronization per user request
+    // Predefined buildings should follow the azimuth field
+
 
     // Si l'utilisateur est en train de tourner manuellement, on ignore la synchro venant du projet
     if (isRotatingRef?.current) {
@@ -1962,7 +1968,8 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
 
       setFeatures(prev => {
         // Trouver le dernier BÂTIMENT PRÉDÉFINI uniquement (pas les rectangles manuels)
-        const predefinedBuildings = prev.filter(f => f.type === 'rectangle' && f.isPredefinedBuilding === true);
+        // Correction: Check for buildingName as fallback in case isPredefinedBuilding flag is missing on older items
+        const predefinedBuildings = prev.filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding === true || f.buildingName));
         if (predefinedBuildings.length === 0) return prev;
 
         const lastBuilding = predefinedBuildings[predefinedBuildings.length - 1];
@@ -1978,8 +1985,14 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
         let diff = Math.abs(currentAngleNorm - visualAngleNorm);
         if (diff > 180) diff = 360 - diff;
 
-        // Tolerance check (3 degrees)
-        if (diff < 3) {
+        // Check for 180 degree equivalence (flipped orientation)
+        // If the difference is close to 0 OR close to 180, we consider it synced
+        // This prevents the "flip" when dragging past vertical
+        let isEquivalent = false;
+        if (diff < 3) isEquivalent = true;
+        if (Math.abs(diff - 180) < 3) isEquivalent = true;
+
+        if (isEquivalent) {
           return prev;
         }
 
@@ -2055,11 +2068,12 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
         return prev.map(f => {
           if (f.id !== lastBuilding.id) return f;
 
-          // CRITICAL: Use f.angle (current angle) NOT lastBuilding.angle (stale)
-          // This preserves rotation made by user even during dimension updates
-          const currentAngle = f.angle || 0;
-          console.log('[UPDATE BLDG] Preserving angle:', currentAngle);
-          const angleRad = toRad(currentAngle);
+          // CRITICAL FIX: Do NOT bake rotation into coords. 
+          // The render loop applies f.angle. Storing rotated coords + f.angle = DOUBLE ROTATION.
+          // We must generate axis-aligned coords here.
+          const currentAngle = f.angle || 0; // Restore definition for use in return object
+          // const angleRad = toRad(currentAngle); // OLD: Caused double rotation
+          const angleRad = 0; // NEW: Generate axis-aligned
           const cosA = Math.cos(angleRad);
           const sinA = Math.sin(angleRad);
 
@@ -2709,13 +2723,20 @@ export default function MapElements({ style = {}, project, setProject, onAddress
         let newUpdates = { ...prev, features: sanitizedFeatures };
 
         if (rects.length > 0) {
-          const lastRect = rects[rects.length - 1];
-          // Calculate Azimuth from angle
-          const newAzimuth = calculateAzimuthFromAngle(lastRect.angle || 0);
+          if (rects.length > 0) {
+            const lastRect = rects[rects.length - 1];
 
-          // If azimuth changed effectively (with tolerance), update it
-          if (prev.panelAspect === undefined || Math.abs(Number(prev.panelAspect) - newAzimuth) >= 1) {
-            newUpdates.panelAspect = newAzimuth;
+            // FIX: Only update project Azimuth if the manipulated rectangle is a PREDEFINED BUILDING.
+            // Manual rectangles should NOT affect the global project settings or other buildings.
+            if (lastRect.isPredefinedBuilding === true || lastRect.buildingName) {
+              // Calculate Azimuth from angle
+              const newAzimuth = calculateAzimuthFromAngle(lastRect.angle || 0);
+
+              // If azimuth changed effectively (with tolerance), update it
+              if (prev.panelAspect === undefined || Math.abs(Number(prev.panelAspect) - newAzimuth) >= 1) {
+                newUpdates.panelAspect = newAzimuth;
+              }
+            }
           }
         }
 

@@ -802,7 +802,7 @@ export default function Crm() {
 
                           // Fallback static avatar for Jack
                           const avatarSrc = photoURL ||
-                            (contactCreator?.toLowerCase() === 'jack' ? '/assets/avatars/jack.jpg' : null);
+                            (contactCreator?.toLowerCase().trim().includes('jack') ? '/assets/avatars/jack.jpg' : null);
 
                           console.log('[CRM AVATAR]', {
                             contactName: contact.name,

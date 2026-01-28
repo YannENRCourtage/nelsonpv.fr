@@ -271,6 +271,7 @@ const getBuildingConfig = (code) => {
       config.baseWeight = 90;
       config.getWeight = (auv, app) => {
         const a = Number(auv) || 0;
+        // Table: 0=90%, 1=90%, 2=70%
         if (a === 2) return 70;
         return 90; // 0 or 1
       };
@@ -281,6 +282,7 @@ const getBuildingConfig = (code) => {
       config.baseWeight = 70;
       config.getWeight = (auv, app) => {
         const a = parseInt(auv) || 0;
+        // Table: 0=70%, 1=75%, 2=65%
         if (a === 1) return 75;
         if (a === 2) return 65;
         return 70; // 0
@@ -300,15 +302,22 @@ const getBuildingConfig = (code) => {
         const a = parseInt(auv) || 0;
         const ap = parseInt(app) || 0;
 
-        // Exact combinations from table
+        // Table logic:
+        // Base (0,0) = 50%
+        // 1 Appentis only (0,1) = 65%
+        // 2 Appentis only (0,2) = 50%
+        // 1 Auvent + 1 Appentis (1,1) = 60%
+        // 1 Auvent only (1,0) = 55%
+        // 2 Auvents only (2,0) = 50%
+
         if (a === 0 && ap === 0) return 50;
         if (a === 0 && ap === 1) return 65;
         if (a === 0 && ap === 2) return 50;
-        if (a === 1 && ap === 0) return 55;
-        if (a === 2 && ap === 0) return 50;
         if (a === 1 && ap === 1) return 60;
+        if (a === 1 && ap === 0) return 55;
+        if (a === 2 && ap === 0) return 50; // Also 2 auvents
 
-        // Fallback
+        // Fallback for undefined combinations
         return 50;
       };
       break;

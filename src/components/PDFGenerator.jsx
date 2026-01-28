@@ -136,7 +136,11 @@ const PDFGenerator = ({ project }) => {
             </div>
             <div style={fieldStyle}>
               <span style={labelStyle}>Productible pondéré :</span>
-              <span style={valueStyle}>{p.solarYield ? `${p.solarYield} kWh/kWc` : 'N/A'}</span>
+              <span style={valueStyle}>
+                {p.solarYieldRoof2
+                  ? `1/ ${p.solarYieldRoof1} - 2/ ${p.solarYieldRoof2} kWh/kWc`
+                  : (p.solarYield ? `${p.solarYield} kWh/kWc` : 'N/A')}
+              </span>
             </div>
           </div>
 

@@ -423,6 +423,8 @@ export default function ProjectEditor() {
 
   const handleBuildingConfigChange = (buildingData) => {
     // 1. Update project weighting
+    // 1. Update project weighting
+    // RE-ENABLED: Ponderation must update when extensions are added/removed
     const val = Number(buildingData.roofWeighting);
     if (!isNaN(val) && project?.roofWeighting !== val) {
       updateProject({ roofWeighting: val });
@@ -453,6 +455,7 @@ export default function ProjectEditor() {
       }
 
       // Auto-set weighting if provided by the building panel logic
+      // RE-ENABLED per user request: "Uniquement sur les polygones créés par le bouton insérer"
       if (building.roofWeighting !== undefined && building.roofWeighting !== null) {
         updates.roofWeighting = Number(building.roofWeighting);
       }
@@ -462,7 +465,7 @@ export default function ProjectEditor() {
 
         let msg = "";
         if (updates.panelAngle) msg += `Inclinaison: ${newAngle}°`;
-        if (updates.roofWeighting !== undefined) msg += (msg ? ", " : "") + `Pondération: ${updates.roofWeighting}%`;
+        // if (updates.roofWeighting !== undefined) msg += (msg ? ", " : "") + `Pondération: ${updates.roofWeighting}%`;
 
         toast({ title: "Configuration appliquée", description: `${msg} pour le modèle ${code}.` });
       }
