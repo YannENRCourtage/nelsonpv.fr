@@ -10,7 +10,7 @@ import BusinessPlanTable from '../components/simulator/BusinessPlanTable';
 import { calculateAllMetrics, calculateEstimatedProduction } from '../lib/profitabilityCalculations';
 import { generateSimulatorPDF } from '../components/simulator/SimulatorPDFGenerator';
 import SaveSimulationModal from '../components/simulator/SaveSimulationModal';
-import { createSimulation } from '../services/firebase/simulations.service.js';
+import { createSimulation, updateSimulation } from '../services/firebase/simulations.service.js';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from "@/components/ui/use-toast.js";
 
@@ -60,13 +60,17 @@ export default function ProfitabilitySimulator() {
         averageDSCR: 0
     });
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+    const [editingSimulation, setEditingSimulation] = useState(null);
 
     // Charger les données de simulation si passées via navigation (depuis Finance)
     useEffect(() => {
         if (location.state?.simulationData) {
-            const { params: simParams, costs: simCosts } = location.state.simulationData;
+            const { params: simParams, costs: simCosts, id, projectId, projectName } = location.state.simulationData;
             setParams(simParams);
             setCosts(simCosts);
+            if (id) {
+                setEditingSimulation({ id, projectId, projectName });
+            }
 
             // Nettoyer l'état de navigation pour éviter de recharger au refresh
             window.history.replaceState({}, document.title);
@@ -225,6 +229,55 @@ export default function ProfitabilitySimulator() {
         }
     };
 
+    const handleUpdateExistingSimulation = async () => {
+        if (!editingSimulation || !editingSimulation.id) return;
+
+        try {
+            const simulationData = {
+                // Keep existing project association
+                projectId: editingSimulation.projectId,
+                projectName: editingSimulation.projectName,
+                // Paramètres
+                power: params.power,
+                productible: params.power > 0 ? params.production / params.power : 1200,
+                tarifTB: params.tarifTH,
+                tarifACC: params.tarifACC,
+                partACC: params.partACC || (params.prixAchatACC * 100),
+                interestRate: params.interestRate,
+                // Coûts détaillés
+                installation: costs.installation || 0,
+                charpente: costs.charpente || 0,
+                couverture: costs.couverture || 0,
+                fondations: costs.fondations || 0,
+                raccordement: costs.raccordement || 0,
+                developpement: costs.developpement || 0,
+                // Coût total
+                totalCost: metrics.totalCost,
+                // Métriques financières
+                tri: metrics.tri,
+                averageDSCR: metrics.averageDSCR,
+                paybackWithoutACC: metrics.paybackWithoutACC,
+                paybackWithACC: metrics.paybackWithACC
+            };
+
+            await updateSimulation(editingSimulation.id, simulationData);
+
+            toast({
+                title: "Simulation mise à jour !",
+                description: "Les modifications ont été enregistrées sur la simulation existante.",
+                variant: "default",
+                className: "bg-white text-gray-900 p-4 border border-gray-300 rounded-lg shadow-lg"
+            });
+        } catch (error) {
+            console.error('Erreur mise à jour simulation:', error);
+            toast({
+                title: "Erreur",
+                description: "Impossible de mettre à jour la simulation.",
+                variant: "destructive"
+            });
+        }
+    };
+
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
@@ -243,7 +296,13 @@ export default function ProfitabilitySimulator() {
                             </div>
                             <div className="flex gap-3">
                                 <Button
-                                    onClick={() => setIsSaveModalOpen(true)}
+                                    onClick={() => {
+                                        if (editingSimulation) {
+                                            handleUpdateExistingSimulation();
+                                        } else {
+                                            setIsSaveModalOpen(true);
+                                        }
+                                    }}
                                     className="bg-green-600 hover:bg-green-700 text-white rounded-full"
                                     data-html2canvas-ignore="true"
                                 >

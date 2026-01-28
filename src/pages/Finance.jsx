@@ -60,6 +60,9 @@ export default function Finance() {
     const handleEdit = (simulation) => {
         // Préparer les données pour le simulateur
         const simulatorData = {
+            id: simulation.id,
+            projectId: simulation.projectId,
+            projectName: simulation.projectName,
             params: {
                 power: simulation.power || 120,
                 productible: simulation.productible || 1200,
