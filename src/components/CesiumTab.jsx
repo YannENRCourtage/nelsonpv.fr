@@ -6,6 +6,7 @@ import {
     Math as CesiumMath,
     JulianDate,
     createOsmBuildingsAsync,
+    createWorldTerrainAsync,
     Color
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
@@ -56,6 +57,15 @@ export default function CesiumTab({ project }) {
         });
 
         viewerRef.current = viewer;
+
+        // Ajouter le terrain pour que les bâtiments soient au sol
+        createWorldTerrainAsync()
+            .then((terrainProvider) => {
+                viewer.terrainProvider = terrainProvider;
+            })
+            .catch((err) => {
+                console.warn("Terrain non disponible:", err);
+            });
 
         // Configuration des ombres
         viewer.shadows = true;
