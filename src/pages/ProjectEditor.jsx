@@ -812,52 +812,44 @@ export default function ProjectEditor() {
 
                             const angle = p.panelAngle || 15;
                             const aspect = parseFloat(p.panelAspect || 0);
+                            const weighting = p.roofWeighting !== undefined ? p.roofWeighting : 50;
 
-                            toast({ title: "Calcul en cours...", description: `PVGIS Toiture 1 (${aspect}°)` });
+                            // Calculate opposite aspect (+180°, normalized to -180 to 180 range)
+                            let oppositeAspect = aspect + 180;
+                            if (oppositeAspect > 180) oppositeAspect -= 360;
+                            if (oppositeAspect < -180) oppositeAspect += 360;
+
+                            toast({ title: "Calcul en cours...", description: `PVGIS double toiture (${aspect}° et ${oppositeAspect}°)` });
 
                             try {
-                              const pvgisUrl = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
-                              const res = await fetch(pvgisUrl);
-                              if (!res.ok) throw new Error("Erreur PVGIS");
-                              const data = await res.json();
+                              // Fetch PVGIS for primary aspect (toiture 1)
+                              const pvgisUrl1 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                              const res1 = await fetch(pvgisUrl1);
+                              if (!res1.ok) throw new Error("Erreur PVGIS toiture 1");
+                              const data1 = await res1.json();
                               const getEy = (d) => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
-                              const yield1 = parseFloat(getEy(data));
+                              const yield1 = parseFloat(getEy(data1));
 
-                              if (!isNaN(yield1)) {
-                                const w1 = p.roofWeighting !== undefined ? p.roofWeighting : 50;
-                                const yield2 = parseFloat(p.solarYieldRoof2) || 0;
-                                const w2 = p.roofWeighting2 !== undefined ? p.roofWeighting2 : 50;
+                              // Fetch PVGIS for opposite aspect (toiture 2)
+                              const pvgisUrl2 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${oppositeAspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                              const res2 = await fetch(pvgisUrl2);
+                              if (!res2.ok) throw new Error("Erreur PVGIS toiture 2");
+                              const data2 = await res2.json();
+                              const yield2 = parseFloat(getEy(data2));
 
-                                // Global weighted - if single building, it's just yield1. If dual, weighted.
-                                let weighted = yield1;
-                                if (hasSecondBuilding) {
-                                  const totalW = w1 + w2;
-                                  weighted = (yield1 * w1 + yield2 * w2) / (totalW || 100);
-                                } else {
-                                  // Existing single building logic with opposite aspect? 
-                                  // USER said independent. If single building, we might want the old behaviour (2 pans auto)?
-                                  // User text: "Ne met un 1/ ... que si on ajoute un second bâtiment".
-                                  // If single building, we probably keep the old "Auto dual aspect" logic?
-                                  // OR, we just calc for THIS aspect.
-                                  // Let's stick to strict compliance: This button calculates THIS Input.
-                                  // However, for consistency with previous "single building" behavior which did 2 aspects:
-                                  // If only 1 building, we might want to revert to the old 'advanced' calculation?
-                                  // But user asked for specific fields. Let's stick to: Button 1 => Roof 1.
-                                  // Update: If single building, let's treat it as the only source for now to avoid confusion unless asked.
-                                  // Actually, the previous code handled the "single building = dual aspect" logic. 
-                                  // The user complaint was about layout.
-                                  // Let's keep it simple: Calculate THIS roof.
-                                  // If the user wants the "Opposite Aspect" logic for a single building, they should have asked?
-                                  // The prompt says "Les calculs de la première et de la seconde ligne sont indépendants."
-                                  // I will implement strictly independent calculation.
-                                }
+                              if (!isNaN(yield1) && !isNaN(yield2)) {
+                                // Calculate weighted average
+                                const weightedYield = (yield1 * weighting + yield2 * (100 - weighting)) / 100;
 
                                 updateProject({
                                   solarYieldRoof1: yield1.toFixed(2),
-                                  // If no second building, global = yield1. If second, weighted.
-                                  solarYield: weighted.toFixed(2)
+                                  solarYieldRoof2: yield2.toFixed(2),
+                                  solarYield: weightedYield.toFixed(2)
                                 });
-                                toast({ title: "Succès", description: `Productible T1: ${yield1.toFixed(2)} kWh/kWc` });
+                                toast({
+                                  title: "Succès",
+                                  description: `T1 (${aspect}°): ${yield1.toFixed(2)} kWh/kWc | T2 (${oppositeAspect}°): ${yield2.toFixed(2)} kWh/kWc | Pondéré: ${weightedYield.toFixed(2)} kWh/kWc`
+                                });
                               }
                             } catch (e) {
                               console.error(e);
