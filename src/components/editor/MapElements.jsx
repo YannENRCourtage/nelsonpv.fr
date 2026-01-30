@@ -2617,7 +2617,7 @@ function MapStateSync({ project, setProject }) {
   return null;
 }
 
-export default function MapElements({ style = {}, project, setProject, onAddressFound, onAddressSearched, setSymbolToPlace, symbolToPlace, setIsAzimuthDefaulted }) {
+export default function MapElements({ style = {}, project, setProject, onAddressFound, onAddressSearched, setSymbolToPlace, symbolToPlace, setIsAzimuthDefaulted, isUrbanismeMode }) {
 
   const [mode, setMode] = useState(null);
   const [temp, setTemp] = useState([]);
