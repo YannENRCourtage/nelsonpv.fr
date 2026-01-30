@@ -5,6 +5,7 @@ import html2canvas from 'html2canvas';
 import MapEditor from "../components/MapEditor";
 import StreetViewTab from "../components/StreetViewTab";
 import ShadowMapTab from "../components/ShadowMapTab.jsx";
+import CesiumTab from "../components/CesiumTab.jsx";
 import ChatBox from "../components/editor/ChatBox.jsx";
 import { Button } from "@/components/ui/button";
 import {
@@ -1134,6 +1135,17 @@ export default function ProjectEditor() {
             >
               ShadowMap
             </button>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('cesium'); }}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'cesium'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+              tabIndex={-1}
+            >
+              3D Cesium
+            </button>
 
 
           </div>
@@ -1211,6 +1223,11 @@ export default function ProjectEditor() {
             {/* Onglet ShadowMap */}
             <div className={activeTab === 'shadowmap' ? 'w-full h-full' : 'hidden'}>
               <ShadowMapTab project={project} />
+            </div>
+
+            {/* Onglet Cesium 3D */}
+            <div className={activeTab === 'cesium' ? 'w-full h-full' : 'hidden'}>
+              <CesiumTab project={project} />
             </div>
 
             {/* Onglet ZN / ZV (Neige et Vent) */}
