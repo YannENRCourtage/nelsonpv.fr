@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef } from "react";
 import { Viewer, Entity, CameraFlyTo, Cesium3DTileset } from "resium";
 import {
     Cartesian3,
-    createOsmBuildings,
+    IonResource,
+    Cesium3DTileStyle,
     Ion,
     Math as CesiumMath,
     JulianDate,
@@ -106,10 +107,10 @@ export default function CesiumTab({ project }) {
 
                 {/* Bâtiments 3D Monde Entier */}
                 <Cesium3DTileset
-                    url={createOsmBuildings()}
+                    url={IonResource.fromAssetId(96188)}
                     onReady={(tileset) => {
                         // Style optionnel pour les bâtiments
-                        tileset.style = new Desium.Cesium3DTileStyle({
+                        tileset.style = new Cesium3DTileStyle({
                             color: "color('white', 1)"
                         });
                     }}
