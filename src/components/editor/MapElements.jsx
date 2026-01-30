@@ -108,6 +108,19 @@ function midpointOfLine(coords) {
 function formatDistance(m) { return m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(2)} km`; }
 function formatArea(m2) { return m2 >= 10000 ? `${(m2 / 10000).toFixed(2)} ha` : `${Math.round(m2)} m²`; }
 
+function calculateSolarPower(area) {
+  // Dimensions panneaux (Configurateur) : 1.134 x 1.762
+  // Gap demandé : 2cm = 0.02m
+  // Surface unitaire effective (avec écarts)
+  const EFFECTIVE_PANEL_AREA = (1.134 + 0.02) * (1.762 + 0.02);
+  const PANEL_POWER_KW = 0.465;
+
+  const count = Math.floor(area / EFFECTIVE_PANEL_AREA);
+  const power = count * PANEL_POWER_KW;
+
+  return `${power.toFixed(1)} kWc`;
+}
+
 // Custom Azimuth Calculation: 0=South, 180=North, 90=West, -90=East
 // Convert visual angle (Leaflet rotation) to azimuth (geographic)
 // Visual angle: 0=Sud (si rectangle horizontal), 90=Ouest (sens horaire)
@@ -847,7 +860,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 
         if (f.type === "line") return <Polyline key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#2563eb", weight: 3, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatDistance(polylineLength(f.coords))}</Tooltip></Polyline>;
 
-        if (f.type === "polygon") return <Polygon key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#16a34a", weight: 2, fillColor: "#16a34a", fillOpacity: 0.25, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatArea(polygonArea(f.coords))}</Tooltip></Polygon>;
+        if (f.type === "polygon") return <Polygon key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#16a34a", weight: 2, fillColor: "#16a34a", fillOpacity: 0.25, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatArea(polygonArea(f.coords))} | {calculateSolarPower(polygonArea(f.coords))}</Tooltip></Polygon>;
 
         if (f.type === "rectangle") {
           const center = centroid(f.coords);
@@ -903,7 +916,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                 return (
                   <Marker position={rotatedCenter} opacity={0}>
                     <Tooltip permanent direction="center" className="measure-label">
-                      {prefix}{f.buildingName && `${f.buildingName} - `} {formatDistance(height)} × {formatDistance(width)} ({formatArea(area)})
+                      {prefix}{f.buildingName && `${f.buildingName} - `} {formatDistance(height)} × {formatDistance(width)} ({formatArea(area)} | {calculateSolarPower(area)})
                     </Tooltip>
                   </Marker>
                 );
@@ -968,15 +981,15 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       {mode === "polygon" && temp.length >= 1 && (
         <Fragment>
           <Polygon positions={tempPolyCoords} pathOptions={{ color: "#16a34a", weight: 2, fillColor: "#16a34a", fillOpacity: 0.2, dashArray: '5, 5' }} />
-          {tempPolyCoords.length >= 3 && centroid(tempPolyCoords) && <Marker position={centroid(tempPolyCoords)} opacity={0}><Tooltip permanent direction="center" className="measure-label">{formatArea(polygonArea(tempPolyCoords))}</Tooltip></Marker>}
+          {tempPolyCoords.length >= 3 && centroid(tempPolyCoords) && <Marker position={centroid(tempPolyCoords)} opacity={0}><Tooltip permanent direction="center" className="measure-label">{formatArea(polygonArea(tempPolyCoords))} | {calculateSolarPower(polygonArea(tempPolyCoords))}</Tooltip></Marker>}
         </Fragment>
       )}
       {mode === "rectangle" && tempRectBounds && (
         <Fragment>
           <Rectangle bounds={tempRectBounds} pathOptions={{ color: "#f59e0b", weight: 2, fillColor: "#f59e0b", fillOpacity: 0.2, dashArray: '5, 5' }} />
           {(() => {
-            const ne = tempRectBounds.getNorthEast(); const sw = tempRectBounds.getSouthWest(); const nw = L.latLng(ne.lat, sw.lng); const width = haversine(nw, ne); const height = haversine(nw, sw); const center = tempRectBounds.getCenter();
-            return <Marker position={center} opacity={0}><Tooltip permanent direction="center" className="measure-label">{formatDistance(height)} × {formatDistance(width)}</Tooltip></Marker>;
+            const ne = tempRectBounds.getNorthEast(); const sw = tempRectBounds.getSouthWest(); const nw = L.latLng(ne.lat, sw.lng); const width = haversine(nw, ne); const height = haversine(nw, sw); const center = tempRectBounds.getCenter(); const area = width * height;
+            return <Marker position={center} opacity={0}><Tooltip permanent direction="center" className="measure-label">{formatDistance(height)} × {formatDistance(width)} ({formatArea(area)} | {calculateSolarPower(area)})</Tooltip></Marker>;
           })()}
         </Fragment>
       )}
