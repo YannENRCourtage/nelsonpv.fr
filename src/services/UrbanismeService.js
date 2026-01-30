@@ -88,7 +88,8 @@ class UrbanismeService {
                 lng,
                 zones,
                 documents,
-                isRNU
+                isRNU,
+                mapUrl
             };
 
         } catch (error) {

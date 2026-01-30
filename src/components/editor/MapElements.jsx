@@ -452,17 +452,15 @@ function UrbanismePopup({ info, onClose }) {
                   <p className="text-xs text-slate-600 font-medium line-clamp-2 my-1" title={d.name}>{d.name}</p>
 
                   <div className="flex flex-col gap-1 mt-2">
-                    {d.viewUrl && (
-                      <a
-                        href={d.viewUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors"
-                        title="Voir la fiche détaillée sur le Géoportail"
-                      >
-                        <ExternalLink className="w-3 h-3" /> Voir sur Géoportail
-                      </a>
-                    )}
+                    <a
+                      href={info.mapUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors"
+                      title="Voir la parcelle sur le Géoportail"
+                    >
+                      <ExternalLink className="w-3 h-3" /> Voir sur Géoportail
+                    </a>
                     {d.downloadUrl && (
                       <a
                         href={d.downloadUrl}
