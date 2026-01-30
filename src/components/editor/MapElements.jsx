@@ -447,22 +447,40 @@ function UrbanismePopup({ info, onClose }) {
                 <div key={i} className="border border-slate-100 rounded-lg p-2 hover:bg-slate-50 transition-colors">
                   <div className="flex justify-between items-start mb-1">
                     <span className="font-bold text-slate-800 text-xs px-2 py-0.5 bg-slate-200 rounded-full">{d.type}</span>
-                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${d.status === 'vigueur' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{d.status}</span>
+                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${d.status === 'vigueur' || d.status === 'production' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{d.status}</span>
                   </div>
-                  <p className="text-xs text-slate-600 font-medium line-clamp-2" title={d.name}>{d.name}</p>
-                  {d.downloadUrl ? (
-                    <a
-                      href={d.downloadUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors"
-                      title="Ouvrir le document dans un nouvel onglet"
-                    >
-                      <Download className="w-3 h-3" /> Télécharger le document
-                    </a>
-                  ) : (
-                    <span className="mt-2 text-xs text-gray-400 italic">Document non disponible</span>
-                  )}
+                  <p className="text-xs text-slate-600 font-medium line-clamp-2 my-1" title={d.name}>{d.name}</p>
+
+                  <div className="flex flex-col gap-1 mt-2">
+                    {d.viewUrl && (
+                      <a
+                        href={d.viewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors"
+                        title="Voir la fiche détaillée sur le Géoportail"
+                      >
+                        <ExternalLink className="w-3 h-3" /> Voir sur Géoportail
+                      </a>
+                    )}
+                    {d.downloadUrl && (
+                      <a
+                        href={d.downloadUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs flex items-center gap-1 text-slate-600 hover:text-slate-800 font-medium hover:underline transition-colors"
+                        title="Télécharger l'archive complète (ZIP)"
+                      >
+                        <Download className="w-3 h-3" /> Télécharger l'archive
+                      </a>
+                    )}
+                    {(!d.viewUrl && !d.downloadUrl) && (
+                      <span className="text-xs text-gray-400 italic">Document non disponible</span>
+                    )}
+                  </div>
+                  <div className="mt-2 bg-yellow-50 p-1.5 rounded text-[10px] text-yellow-800 border border-yellow-100">
+                    <p>ℹ️ Pour connaître les hauteurs et retraits, veuillez consulter la fiche Géoportail ou télécharger le règlement.</p>
+                  </div>
                 </div>
               ))}
             </div>

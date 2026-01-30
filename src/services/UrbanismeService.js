@@ -41,14 +41,29 @@ class UrbanismeService {
 
             let documents = [];
             if (docData && docData.features) {
-                documents = docData.features.map(f => ({
-                    id: f.properties.id,
-                    type: f.properties.du_type, // PLU, RNU, CC, POS, PSMV
-                    name: f.properties.nom,
-                    commune: f.properties.commune, // Array usually
-                    status: f.properties.etat, // vigeur, procedure...
-                    downloadUrl: f.properties.archive_url || null // URL to download the full archive
-                }));
+                documents = docData.features.map(f => {
+                    const props = f.properties;
+                    // Fallback to construct download URL if archive_url is missing
+                    // Use document ID for Geoportail links
+                    let dlUrl = props.archive_url;
+                    if (!dlUrl && props.id) {
+                        // This serves the full archive (ZIP)
+                        dlUrl = `https://www.geoportail-urbanisme.gouv.fr/api/v1/document/download-by-id/${props.id}`;
+                    }
+
+                    // Also useful: Link to the 'Fiche' page for viewing without download
+                    const viewUrl = props.id ? `https://www.geoportail-urbanisme.gouv.fr/document/${props.id}` : null;
+
+                    return {
+                        id: props.id,
+                        type: props.du_type, // PLU, RNU, CC, POS, PSMV
+                        name: props.nom,
+                        commune: props.commune, // Array usually
+                        status: props.etat || props.gpu_status,
+                        downloadUrl: dlUrl,
+                        viewUrl: viewUrl
+                    };
+                });
             }
 
             // 3. Récupérer le statut RNU de la commune si aucun document PLU/CC n'est trouvé
