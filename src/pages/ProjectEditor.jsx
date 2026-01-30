@@ -1122,6 +1122,17 @@ export default function ProjectEditor() {
             >
               Windy
             </button>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('shadowmap'); }}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'shadowmap'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+              tabIndex={-1}
+            >
+              ShadowMap
+            </button>
 
 
           </div>
@@ -1194,6 +1205,11 @@ export default function ProjectEditor() {
             {/* Onglet Street View */}
             <div className={activeTab === 'streetview' ? 'w-full h-full' : 'hidden'}>
               <StreetViewTab project={project} activeTab={activeTab} />
+            </div>
+
+            {/* Onglet ShadowMap */}
+            <div className={activeTab === 'shadowmap' ? 'w-full h-full' : 'hidden'}>
+              <ShadowMapTab project={project} />
             </div>
 
             {/* Onglet ZN / ZV (Neige et Vent) */}
