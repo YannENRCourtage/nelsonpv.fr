@@ -19,6 +19,7 @@ export default function CesiumTab({ project }) {
     const viewerRef = useRef(null);
     const [sliderValue, setSliderValue] = useState(12); // Heure de défaut : 12h00
     const [isReady, setIsReady] = useState(false);
+    const [osmResource, setOsmResource] = useState(null);
 
     // Coordonnées du projet
     const coords = project?.gps ? project.gps.split(',').map(Number) : [46.2276, 2.2137]; // Centre France par défaut
@@ -42,7 +43,16 @@ export default function CesiumTab({ project }) {
     };
 
     useEffect(() => {
-        setIsReady(true);
+        // Charger la ressource OSM buildings une seule fois au montage
+        IonResource.fromAssetId(96188)
+            .then((resource) => {
+                setOsmResource(resource);
+                setIsReady(true);
+            })
+            .catch((err) => {
+                console.error("Erreur chargement OSM Buildings:", err);
+                setIsReady(true); // Afficher quand même le viewer
+            });
     }, []);
 
     if (!isReady) return <div className="w-full h-full flex items-center justify-center bg-gray-100">Chargement de la 3D...</div>;
@@ -105,16 +115,18 @@ export default function CesiumTab({ project }) {
                     duration={3}
                 />
 
-                {/* Bâtiments 3D Monde Entier */}
-                <Cesium3DTileset
-                    url={IonResource.fromAssetId(96188)}
-                    onReady={(tileset) => {
-                        // Style optionnel pour les bâtiments
-                        tileset.style = new Cesium3DTileStyle({
-                            color: "color('white', 1)"
-                        });
-                    }}
-                />
+                {/* Bâtiments 3D Monde Entier - Uniquement si chargé */}
+                {osmResource && (
+                    <Cesium3DTileset
+                        url={osmResource}
+                        onReady={(tileset) => {
+                            // Style optionnel pour les bâtiments
+                            tileset.style = new Cesium3DTileStyle({
+                                color: "color('white', 1)"
+                            });
+                        }}
+                    />
+                )}
 
                 {/* Marqueur sur le projet */}
                 <Entity
