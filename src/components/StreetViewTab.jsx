@@ -185,6 +185,40 @@ function CustomZoomControl() {
     );
 }
 
+// Automatically center the map on the project's location when the tab becomes active
+function AutoCenterProject({ project, activeTab }) {
+    const map = useMap();
+    const hasCenteredRef = useRef(false);
+
+    useEffect(() => {
+        if (activeTab === 'streetview') {
+            // Reset the centered flag specifically when entering the tab if needed?
+            // Or just trigger every time we enter the tab
+
+            // Wait slightly for map to be ready/sized
+            setTimeout(() => {
+                if (project?.gps) {
+                    const [lat, lng] = project.gps.split(',').map(Number);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        map.setView([lat, lng], 18, { animate: true });
+                        // Also invalidate size to ensure map renders correctly
+                        map.invalidateSize();
+                    }
+                } else if (project?.address) {
+                    // Fallback to address search if no GPS
+                    const fullAddress = `${project.address}, ${project.zip} ${project.city}`;
+                    // Re-use the event mechanism from SearchField
+                    const event = new CustomEvent('geosearch/search', { detail: { query: fullAddress, keepPopupOpen: false } });
+                    map.getContainer().dispatchEvent(event);
+                    map.invalidateSize();
+                }
+            }, 300);
+        }
+    }, [activeTab, project, map]);
+
+    return null;
+}
+
 export default function StreetViewTab({ project, activeTab }) {
     // Set initial center based on project GPS
     const getInitialCenter = () => {
@@ -216,6 +250,9 @@ export default function StreetViewTab({ project, activeTab }) {
 
                 {/* Street View coverage layer */}
                 <StreetViewCoverageLayer activeTab={activeTab} />
+
+                {/* Auto-center on project when tab becomes active */}
+                <AutoCenterProject project={project} activeTab={activeTab} />
 
                 {/* Search Field */}
                 <SearchField />
