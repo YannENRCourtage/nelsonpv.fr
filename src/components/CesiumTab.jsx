@@ -51,17 +51,24 @@ export default function CesiumTab({ project }) {
             fullscreenButton: false,
             selectionIndicator: false,
             infoBox: false,
-            shadows: true
+            shadows: true,
+            terrainShadows: 2 // ENABLED
         });
 
         viewerRef.current = viewer;
 
-        // Activer l'éclairage du globe
+        // Configuration des ombres
+        viewer.shadows = true;
+        viewer.terrainShadows = 2; // Cast and receive shadows
         viewer.scene.globe.enableLighting = true;
 
-        // Ajouter les bâtiments 3D OSM
+        // Améliorer la qualité du rendu et réduire les artefacts
+        viewer.scene.globe.depthTestAgainstTerrain = true;
+
+        // Ajouter les bâtiments 3D OSM avec ombres
         createOsmBuildingsAsync()
             .then((buildingTileset) => {
+                buildingTileset.shadows = 1; // Cast shadows
                 viewer.scene.primitives.add(buildingTileset);
             })
             .catch((err) => {
