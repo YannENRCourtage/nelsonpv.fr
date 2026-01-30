@@ -786,12 +786,12 @@ export default function ProjectEditor() {
                       <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Productible">{labelPrefix1}Productible</label>
                       <div className="flex gap-1 mt-1">
                         <Input
-                          // Display specialized yield if available, else global (for single building backward compat)
-                          value={p.solarYieldRoof1 || (hasSecondBuilding ? '' : p.solarYield) || ''}
+                          // Display weighted productible (global solarYield)
+                          value={p.solarYield || ''}
                           readOnly
                           placeholder="kWh/kWc"
-                          className={`min-w-0 ${p.solarYieldRoof1
-                            ? (parseFloat(p.solarYieldRoof1) >= 1120
+                          className={`min-w-0 ${p.solarYield
+                            ? (parseFloat(p.solarYield) >= 1120
                               ? "bg-green-100 text-green-900 border-green-500"
                               : "bg-red-100 text-red-900 border-red-500")
                             : "bg-gray-50"
