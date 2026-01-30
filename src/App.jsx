@@ -14,6 +14,7 @@ import CDP from './pages/CDP.jsx';
 import Odoo from './pages/Odoo.jsx';
 import Monday from './pages/Monday.jsx';
 import Finance from './pages/Finance.jsx';
+import Urbanisme from './pages/Urbanisme.jsx';
 import { Toaster } from './components/ui/toaster.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
 import { DndProvider } from 'react-dnd';
@@ -62,6 +63,14 @@ function AppContent() {
             element={
               <ProtectedRoute requiredPermission="canAccessCRM">
                 <Crm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="crm/urbanisme"
+            element={
+              <ProtectedRoute requiredPermission="canAccessCRM">
+                <Urbanisme />
               </ProtectedRoute>
             }
           />

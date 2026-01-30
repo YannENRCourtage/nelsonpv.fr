@@ -396,6 +396,10 @@ function Header() {
               <NavLink to="/crm" className={({ isActive }) => isActive ? 'nav-link active crm' : 'nav-link crm'}>CRM</NavLink>
             )}
 
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessCRM !== false) && (
+              <NavLink to="/crm/urbanisme" className={({ isActive }) => isActive ? 'nav-link active urbanisme' : 'nav-link urbanisme'}>Urbanisme</NavLink>
+            )}
+
             {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessEditor !== false) && (
               <NavLink
                 to="/project/new/edit"
@@ -502,6 +506,16 @@ function Header() {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 CRM
+              </NavLink>
+            )}
+
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessCRM !== false) && (
+              <NavLink
+                to="/crm/urbanisme"
+                className={({ isActive }) => isActive ? 'mobile-nav-link active urbanisme' : 'mobile-nav-link urbanisme'}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Urbanisme
               </NavLink>
             )}
 
