@@ -26,7 +26,7 @@ import html2canvas from "html2canvas";
 import SearchField from "./SearchField.jsx";
 import { toast } from "@/components/ui/use-toast.js";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer } from 'recharts';
-import { X as XIcon, Download, Save, Copy, RotateCw, MapPin, Maximize, Building, AlertCircle, FileText, Map as MapIcon } from 'lucide-react';
+import { X as XIcon, Download, Save, Copy, RotateCw, MapPin, Maximize, Building, AlertCircle, FileText, Map as MapIcon, ExternalLink } from 'lucide-react';
 import { mapData } from "@/lib/nomenclature.js";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
