@@ -18,6 +18,9 @@ class UrbanismeService {
             // 1. Récupérer la zone d'urbanisme (zone-urba)
             // https://apicarto.ign.fr/api/gpu/zone-urba?geom={"type":"Point","coordinates":[lng,lat]}
             const geom = JSON.stringify({ type: "Point", coordinates: [lng, lat] });
+            // URL pour la vue carte directe (plus fiable que le lien document)
+            const mapUrl = `https://www.geoportail-urbanisme.gouv.fr/map/#tile=1&lon=${lng}&lat=${lat}&zoom=19`;
+
             const zoneUrl = `${this.baseUrl}/zone-urba?geom=${encodeURIComponent(geom)}`;
 
             const zoneRes = await fetch(zoneUrl);
