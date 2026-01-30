@@ -497,7 +497,7 @@ function ContextMenu({ position, onAddText, onAddNote, onClose, onCheckUrbanisme
   );
 }
 
-function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject, setIsAzimuthDefaulted, isRotatingRef }) {
+function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject, setIsAzimuthDefaulted, isRotatingRef, isUrbanismeMode }) {
   const [mousePos, setMousePos] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [ignoreNextClick, setIgnoreNextClick] = useState(false);
@@ -652,6 +652,10 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 
   useMapEvents({
     click(e) {
+      if (isUrbanismeMode) {
+        checkUrbanisme(e.latlng);
+        return;
+      }
       if (ignoreNextClick) {
         setIgnoreNextClick(false);
         return;
@@ -1013,6 +1017,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 
       {askTextAt && <TextInputPopup at={askTextAt} onCancel={() => { setAskTextAt(null); setMode(null); }} onSubmit={(val) => { const id = crypto.randomUUID(); setFeatures((arr) => [...arr, { id, type: "text", at: askTextAt, value: val }]); setAskTextAt(null); setMode(null); }} />}
       {askNoteAt && <TextInputPopup at={askNoteAt} onCancel={() => { setAskNoteAt(null); setMode(null); }} onSubmit={(val) => { const id = crypto.randomUUID(); setFeatures((arr) => [...arr, { id, type: "note", at: askNoteAt, value: val }]); setAskNoteAt(null); setMode(null); }} />}
+      {urbanismeInfo && <UrbanismePopup info={urbanismeInfo} onClose={() => setUrbanismeInfo(null)} />}
       {contextMenu && <ContextMenu
         position={contextMenu.position}
         onAddText={() => { setAskTextAt(contextMenu.position); setContextMenu(null); }}
@@ -2837,6 +2842,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
             setProject={setProject}
             setIsAzimuthDefaulted={setIsAzimuthDefaulted}
             isRotatingRef={isRotatingRef}
+            isUrbanismeMode={isUrbanismeMode}
           />
           <ZoomIndicator />
           <MapEvents

@@ -1111,13 +1111,25 @@ export default function ProjectEditor() {
             >
               Windy
             </button>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('urbanisme'); }}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'urbanisme'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+              tabIndex={-1}
+            >
+              Urbanisme
+            </button>
           </div>
 
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden flex-1">
-            {/* Onglet Carte */}
-            <div className={activeTab === 'map' ? 'w-full flex flex-col h-full' : 'hidden'}>
+            {/* Onglet Carte & Urbanisme */}
+            <div className={(activeTab === 'map' || activeTab === 'urbanisme') ? 'w-full flex flex-col h-full' : 'hidden'}>
               <div className="flex-1">
                 <MapEditor
+                  isUrbanismeMode={activeTab === 'urbanisme'}
                   key={`${projectId}-${remountKey}`}
                   onAddressFound={handleAddressFound}
                   onAddressSearched={handleAddressSearched}

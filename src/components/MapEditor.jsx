@@ -64,7 +64,7 @@ function MapControls({ project }) {
   );
 }
 
-export default function MapEditor({ project, setProject, onAddressFound, onAddressSearched, symbolToPlace, setSymbolToPlace, photos, setPhotos, setIsAzimuthDefaulted }) {
+export default function MapEditor({ project, setProject, onAddressFound, onAddressSearched, symbolToPlace, setSymbolToPlace, photos, setPhotos, setIsAzimuthDefaulted, isUrbanismeMode }) {
   return (
     <div className="relative w-full h-full">
       <MapControls project={project} />
@@ -79,6 +79,7 @@ export default function MapEditor({ project, setProject, onAddressFound, onAddre
         setPhotos={setPhotos}
         photos={photos}
         setIsAzimuthDefaulted={setIsAzimuthDefaulted}
+        isUrbanismeMode={isUrbanismeMode}
       />
     </div>
   );
