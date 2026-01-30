@@ -61,6 +61,7 @@ export default function ProfitabilitySimulator() {
     });
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
     const [editingSimulation, setEditingSimulation] = useState(null);
+    const [manualTarifOverride, setManualTarifOverride] = useState(false);
 
     // Charger les données de simulation si passées via navigation (depuis Finance)
     useEffect(() => {
@@ -144,17 +145,31 @@ export default function ProfitabilitySimulator() {
         // 36 - 99.9: 0.0912
         // 100 - 499.9: 0.09
         // >= 500: 0.085
-        let newTarifTH = params.tarifTH;
-        if (power < 36) newTarifTH = 0.1049;
-        else if (power < 100) newTarifTH = 0.0912;
-        else if (power < 500) newTarifTH = 0.09;
-        else newTarifTH = 0.085;
+        // Determine current tariff bracket
+        let automaticTarif = 0.09;
+        if (power < 36) automaticTarif = 0.1049;
+        else if (power < 100) automaticTarif = 0.0912;
+        else if (power < 500) automaticTarif = 0.09;
+        else automaticTarif = 0.085;
 
-        // Apply Tariff if changed.
-        // Note: This forces the tariff. If user changes it manually, it will reset if power changes?
-        // Yes, standard behavior for simulators often. If user wants manual, they change power then tariff.
-        // But here we might overwrite user input if they change power slightly?
-        // Assuming this is desired "Default behavior".
+        // Determine previous tariff bracket
+        const currentTarif = params.tarifTH;
+        let previousBracket = null;
+        if (Math.abs(currentTarif - 0.1049) < 0.0001) previousBracket = 0.1049;
+        else if (Math.abs(currentTarif - 0.0912) < 0.0001) previousBracket = 0.0912;
+        else if (Math.abs(currentTarif - 0.09) < 0.0001) previousBracket = 0.09;
+        else if (Math.abs(currentTarif - 0.085) < 0.0001) previousBracket = 0.085;
+
+        // Only update tariff if:
+        // 1. No manual override is active, OR
+        // 2. The tariff bracket has changed (reset manual override)
+        let newTarifTH = params.tarifTH;
+        let resetManualOverride = false;
+
+        if (!manualTarifOverride || (previousBracket !== null && Math.abs(automaticTarif - previousBracket) > 0.0001)) {
+            newTarifTH = automaticTarif;
+            resetManualOverride = true;
+        }
 
         // 4. Prime Logic
         // Disable Prime if Power > 99.9 (User said "superieur à 99.9")
@@ -171,6 +186,11 @@ export default function ProfitabilitySimulator() {
                 tarifTH: newTarifTH,
                 withPrime: newWithPrime
             }));
+
+            // Reset manual override if tariff bracket changed
+            if (resetManualOverride && manualTarifOverride) {
+                setManualTarifOverride(false);
+            }
         }
 
     }, [params.power, params.productible, params.production, params.tarifTH, params.withPrime, costs.installationRate]);
@@ -325,7 +345,11 @@ export default function ProfitabilitySimulator() {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                         {/* Parameters Section - 1/3 width */}
                         <div className="lg:col-span-1">
-                            <ParametersSection params={params} onParamsChange={setParams} />
+                            <ParametersSection
+                                params={params}
+                                onParamsChange={setParams}
+                                onManualTarifChange={() => setManualTarifOverride(true)}
+                            />
                         </div>
 
                         {/* Project Costs Section - 2/3 width */}

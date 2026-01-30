@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button.jsx';
 import { Switch } from '@/components/ui/switch';
 import TariffDetailsModal from './TariffDetailsModal';
 
-export default function ParametersSection({ params, onParamsChange }) {
+export default function ParametersSection({ params, onParamsChange, onManualTarifChange }) {
     const [showTariffsModal, setShowTariffsModal] = useState(false);
 
     const handleChange = (field, value) => {
@@ -130,7 +130,12 @@ export default function ParametersSection({ params, onParamsChange }) {
                         name="tarifTH"
                         step="0.001"
                         value={params.tarifTH || 0.12}
-                        onChange={(e) => handleChange('tarifTH', e.target.value)}
+                        onChange={(e) => {
+                            handleChange('tarifTH', e.target.value);
+                            if (onManualTarifChange) {
+                                onManualTarifChange();
+                            }
+                        }}
                         onKeyPress={handleKeyPress}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
