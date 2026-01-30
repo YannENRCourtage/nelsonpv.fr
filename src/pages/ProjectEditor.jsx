@@ -4,6 +4,7 @@ import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Bui
 import html2canvas from 'html2canvas';
 import MapEditor from "../components/MapEditor";
 import StreetViewTab from "../components/StreetViewTab";
+import ShadowMapTab from "../components/ShadowMapTab.jsx";
 import ChatBox from "../components/editor/ChatBox.jsx";
 import { Button } from "@/components/ui/button";
 import {
