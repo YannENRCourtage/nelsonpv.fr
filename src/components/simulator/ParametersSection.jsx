@@ -6,6 +6,7 @@ import TariffDetailsModal from './TariffDetailsModal';
 
 export default function ParametersSection({ params, onParamsChange, onManualTarifChange }) {
     const [showTariffsModal, setShowTariffsModal] = useState(false);
+    const [tarifTBText, setTarifTBText] = useState('');
 
     const handleChange = (field, value) => {
         // Replace both comma and dot with dot for parsing (normalize input)
@@ -46,6 +47,29 @@ export default function ParametersSection({ params, onParamsChange, onManualTari
             const inputEvent = new InputEvent('input', { bubbles: true, cancelable: true });
             target.dispatchEvent(inputEvent);
         }
+    };
+
+    // Handler for Tarif TB free text input
+    const handleTarifTBChange = (e) => {
+        setTarifTBText(e.target.value);
+    };
+
+    const handleTarifTBBlur = () => {
+        const normalized = String(tarifTBText).replace(',', '.');
+        const numValue = parseFloat(normalized);
+        if (!isNaN(numValue)) {
+            onParamsChange({ ...params, tarifTH: numValue });
+            if (onManualTarifChange) {
+                onManualTarifChange();
+            }
+        }
+        // Reset text state to sync with params
+        setTarifTBText('');
+    };
+
+    const handleTarifTBFocus = () => {
+        // Set text value when focusing
+        setTarifTBText(String(params.tarifTH || 0.12));
     };
 
     return (
@@ -126,16 +150,12 @@ export default function ParametersSection({ params, onParamsChange, onManualTari
                         Tarif TB (€/kWh)
                     </label>
                     <input
-                        type="number"
+                        type="text"
                         name="tarifTH"
-                        step="0.001"
-                        value={params.tarifTH || 0.12}
-                        onChange={(e) => {
-                            handleChange('tarifTH', e.target.value);
-                            if (onManualTarifChange) {
-                                onManualTarifChange();
-                            }
-                        }}
+                        value={tarifTBText || params.tarifTH || 0.12}
+                        onChange={handleTarifTBChange}
+                        onFocus={handleTarifTBFocus}
+                        onBlur={handleTarifTBBlur}
                         onKeyPress={handleKeyPress}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
