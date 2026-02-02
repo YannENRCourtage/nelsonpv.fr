@@ -107,7 +107,7 @@ export default function ParametersSection({ params, onParamsChange, onManualTari
                         Puissance (kWc)
                     </label>
                     <input
-                        type="number"
+                        type="text"
                         name="power"
                         value={params.power || 0}
                         onChange={(e) => handleChange('power', e.target.value)}
@@ -120,7 +120,7 @@ export default function ParametersSection({ params, onParamsChange, onManualTari
                         Productible (kWh/kWc)
                     </label>
                     <input
-                        type="number"
+                        type="text"
                         name="productible"
                         value={params.productible || 1200}
                         onChange={(e) => {
@@ -168,7 +168,7 @@ export default function ParametersSection({ params, onParamsChange, onManualTari
                         Tarif ACC (€/kWh)
                     </label>
                     <input
-                        type="number"
+                        type="text"
                         name="tarifACC"
                         step="0.005"
                         value={params.tarifACC || 0.12}
