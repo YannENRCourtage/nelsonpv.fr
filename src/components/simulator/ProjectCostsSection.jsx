@@ -26,7 +26,9 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
     ];
 
     const handleChange = (field, value) => {
-        onCostsChange({ ...costs, [field]: parseFloat(value) || 0 });
+        // Replace comma with dot for parsing (normalize input)
+        const normalized = String(value).replace(',', '.');
+        onCostsChange({ ...costs, [field]: parseFloat(normalized) || 0 });
     };
 
     // Intercepter le point du pavé numérique et le convertir en virgule

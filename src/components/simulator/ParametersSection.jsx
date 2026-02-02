@@ -71,7 +71,7 @@ export default function ParametersSection({ params, onParamsChange, onManualTari
 
     const handleTarifTBFocus = () => {
         // Set text value when focusing
-        setTarifTBText(String(params.tarifTH || 0.12));
+        setTarifTBText(String(params.tarifTH || 0.085));
     };
 
     return (
@@ -124,7 +124,8 @@ export default function ParametersSection({ params, onParamsChange, onManualTari
                         name="productible"
                         value={params.productible || 1200}
                         onChange={(e) => {
-                            const prod = parseFloat(e.target.value) || 0;
+                            const normalized = String(e.target.value).replace(',', '.');
+                            const prod = parseFloat(normalized) || 0;
                             const power = params.power || 0;
                             // Update both productible and calculated production
                             onParamsChange({
@@ -154,7 +155,7 @@ export default function ParametersSection({ params, onParamsChange, onManualTari
                     <input
                         type="text"
                         name="tarifTH"
-                        value={tarifTBText || params.tarifTH || 0.12}
+                        value={tarifTBText || params.tarifTH || 0.085}
                         onChange={handleTarifTBChange}
                         onFocus={handleTarifTBFocus}
                         onBlur={handleTarifTBBlur}
