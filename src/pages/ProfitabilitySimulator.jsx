@@ -20,7 +20,7 @@ const DEFAULT_PARAMS = {
     power: 120,
     production: 120000,
     estimatedProduction: 144000,
-    tarifTH: 0.085,
+    tarifTH: 0.12,
     tarifACC: 0.14,
     turpe: 0.012,
     prixAchatACC: 0.40, // Part ACC 40%
