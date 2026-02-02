@@ -812,25 +812,42 @@ export default function ProjectEditor() {
 
                             const angle = p.panelAngle || 15;
                             const aspect = parseFloat(p.panelAspect || 0);
+                            const weighting = p.roofWeighting !== undefined ? p.roofWeighting : 50;
 
-                            toast({ title: "Calcul en cours...", description: `PVGIS Toiture 1 (${aspect}°)` });
+                            // Calculate opposite aspect (+180°, normalized to -180 to 180 range)
+                            let oppositeAspect = aspect + 180;
+                            if (oppositeAspect > 180) oppositeAspect -= 360;
+                            if (oppositeAspect < -180) oppositeAspect += 360;
+
+                            toast({ title: "Calcul en cours...", description: `PVGIS Ligne 1: T1 (${aspect}°) et T2 (${oppositeAspect}°)` });
 
                             try {
-                              // Fetch PVGIS for Roof 1 only
-                              const pvgisUrl = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
-                              const res = await fetch(pvgisUrl);
-                              if (!res.ok) throw new Error("Erreur PVGIS toiture 1");
-                              const data = await res.json();
+                              // Fetch PVGIS for Line 1 primary aspect (T1)
+                              const pvgisUrl1 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                              const res1 = await fetch(pvgisUrl1);
+                              if (!res1.ok) throw new Error("Erreur PVGIS T1");
+                              const data1 = await res1.json();
                               const getEy = (d) => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
-                              const yield1 = parseFloat(getEy(data));
+                              const yieldT1 = parseFloat(getEy(data1));
 
-                              if (!isNaN(yield1)) {
+                              // Fetch PVGIS for Line 1 opposite aspect (T2)
+                              const pvgisUrl2 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${oppositeAspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                              const res2 = await fetch(pvgisUrl2);
+                              if (!res2.ok) throw new Error("Erreur PVGIS T2");
+                              const data2 = await res2.json();
+                              const yieldT2 = parseFloat(getEy(data2));
+
+                              if (!isNaN(yieldT1) && !isNaN(yieldT2)) {
+                                // Calculate weighted average for Line 1
+                                const weightedYield = (yieldT1 * weighting + yieldT2 * (100 - weighting)) / 100;
+
+                                // Store only in Line 1's field (solarYieldRoof1)
                                 updateProject({
-                                  solarYieldRoof1: yield1.toFixed(2)
+                                  solarYieldRoof1: weightedYield.toFixed(2)
                                 });
                                 toast({
-                                  title: "Succès",
-                                  description: `Productible T1: ${yield1.toFixed(2)} kWh/kWc`
+                                  title: "Succès Ligne 1",
+                                  description: `T1: ${yieldT1.toFixed(2)} (${weighting}%) | T2: ${yieldT2.toFixed(2)} (${100 - weighting}%) | Pondéré: ${weightedYield.toFixed(2)} kWh/kWc`
                                 });
                               }
                             } catch (e) {
@@ -941,22 +958,43 @@ export default function ProjectEditor() {
 
                                 const angle = p.panelAngle2 || 15;
                                 const aspect = parseFloat(p.panelAspect2 || 0);
+                                const weighting = p.roofWeighting2 !== undefined ? p.roofWeighting2 : 50;
 
-                                toast({ title: "Calcul en cours...", description: `PVGIS Toiture 2 (${aspect}°)` });
+                                // Calculate opposite aspect (+180°, normalized to -180 to 180 range)
+                                let oppositeAspect = aspect + 180;
+                                if (oppositeAspect > 180) oppositeAspect -= 360;
+                                if (oppositeAspect < -180) oppositeAspect += 360;
+
+                                toast({ title: "Calcul en cours...", description: `PVGIS Ligne 2: T1 (${aspect}°) et T2 (${oppositeAspect}°)` });
 
                                 try {
-                                  const pvgisUrl = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
-                                  const res = await fetch(pvgisUrl);
-                                  if (!res.ok) throw new Error("Erreur PVGIS");
-                                  const data = await res.json();
+                                  // Fetch PVGIS for Line 2 primary aspect (T1)
+                                  const pvgisUrl1 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                                  const res1 = await fetch(pvgisUrl1);
+                                  if (!res1.ok) throw new Error("Erreur PVGIS T1");
+                                  const data1 = await res1.json();
                                   const getEy = (d) => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
-                                  const yield2 = parseFloat(getEy(data));
+                                  const yieldT1 = parseFloat(getEy(data1));
 
-                                  if (!isNaN(yield2)) {
+                                  // Fetch PVGIS for Line 2 opposite aspect (T2)
+                                  const pvgisUrl2 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${oppositeAspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                                  const res2 = await fetch(pvgisUrl2);
+                                  if (!res2.ok) throw new Error("Erreur PVGIS T2");
+                                  const data2 = await res2.json();
+                                  const yieldT2 = parseFloat(getEy(data2));
+
+                                  if (!isNaN(yieldT1) && !isNaN(yieldT2)) {
+                                    // Calculate weighted average for Line 2
+                                    const weightedYield = (yieldT1 * weighting + yieldT2 * (100 - weighting)) / 100;
+
+                                    // Store only in Line 2's field (solarYieldRoof2)
                                     updateProject({
-                                      solarYieldRoof2: yield2.toFixed(2)
+                                      solarYieldRoof2: weightedYield.toFixed(2)
                                     });
-                                    toast({ title: "Succès", description: `Productible T2: ${yield2.toFixed(2)} kWh/kWc` });
+                                    toast({
+                                      title: "Succès Ligne 2",
+                                      description: `T1: ${yieldT1.toFixed(2)} (${weighting}%) | T2: ${yieldT2.toFixed(2)} (${100 - weighting}%) | Pondéré: ${weightedYield.toFixed(2)} kWh/kWc`
+                                    });
                                   }
                                 } catch (e) {
                                   console.error(e);
