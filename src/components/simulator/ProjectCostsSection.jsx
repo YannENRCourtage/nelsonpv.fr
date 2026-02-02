@@ -101,7 +101,7 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                             </label>
                             <div className="relative rounded-md shadow-sm">
                                 <input
-                                    type="number"
+                                    type="text"
                                     value={costs[field.key] || 0}
                                     onChange={(e) => handleChange(field.key, e.target.value)}
                                     onKeyPress={handleKeyPress}
@@ -127,7 +127,7 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                                 </label>
                                 <div className="relative rounded-md shadow-sm">
                                     <input
-                                        type="number"
+                                        type="text"
                                         value={costs[field.key] || 0}
                                         onChange={(e) => handleChange(field.key, e.target.value)}
                                         onKeyPress={handleKeyPress}
