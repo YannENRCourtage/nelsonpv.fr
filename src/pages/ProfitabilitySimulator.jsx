@@ -145,30 +145,18 @@ export default function ProfitabilitySimulator() {
         // 36 - 99.9: 0.0912
         // 100 - 499.9: 0.09
         // >= 500: 0.085
-        // Determine current tariff bracket
+        // Determine current automatic tariff bracket based on power
         let automaticTarif = 0.09;
         if (power < 36) automaticTarif = 0.1049;
         else if (power < 100) automaticTarif = 0.0912;
         else if (power < 500) automaticTarif = 0.09;
         else automaticTarif = 0.085;
 
-        // Determine previous tariff bracket
-        const currentTarif = params.tarifTH;
-        let previousBracket = null;
-        if (Math.abs(currentTarif - 0.1049) < 0.0001) previousBracket = 0.1049;
-        else if (Math.abs(currentTarif - 0.0912) < 0.0001) previousBracket = 0.0912;
-        else if (Math.abs(currentTarif - 0.09) < 0.0001) previousBracket = 0.09;
-        else if (Math.abs(currentTarif - 0.085) < 0.0001) previousBracket = 0.085;
-
-        // Only update tariff if:
-        // 1. No manual override is active, OR
-        // 2. The tariff bracket has changed (reset manual override)
+        // Only update tariff if manual override is not active
         let newTarifTH = params.tarifTH;
-        let resetManualOverride = false;
 
-        if (!manualTarifOverride || (previousBracket !== null && Math.abs(automaticTarif - previousBracket) > 0.0001)) {
+        if (!manualTarifOverride) {
             newTarifTH = automaticTarif;
-            resetManualOverride = true;
         }
 
         // 4. Prime Logic
@@ -186,11 +174,6 @@ export default function ProfitabilitySimulator() {
                 tarifTH: newTarifTH,
                 withPrime: newWithPrime
             }));
-
-            // Reset manual override if tariff bracket changed
-            if (resetManualOverride && manualTarifOverride) {
-                setManualTarifOverride(false);
-            }
         }
 
     }, [params.power, params.productible, params.production, params.tarifTH, params.withPrime, costs.installationRate]);
