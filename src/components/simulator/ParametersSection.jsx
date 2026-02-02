@@ -23,31 +23,7 @@ export default function ParametersSection({ params, onParamsChange, onManualTari
         handleChange('power', e.target.value);
     };
 
-    // Intercepter le point du pavé numérique et le convertir en virgule
-    const handleKeyPress = (e) => {
-        // Si c'est un point (.), on empêche l'insertion et on insère une virgule
-        if (e.key === '.' || e.key === 'Decimal') {
-            e.preventDefault();
-            const target = e.target;
-            const start = target.selectionStart;
-            const end = target.selectionEnd;
-            const currentValue = target.value;
 
-            // Créer la nouvelle valeur avec une virgule
-            const newValue = currentValue.substring(0, start) + ',' + currentValue.substring(end);
-
-            // Mettre à jour manuellement
-            target.value = newValue;
-
-            // Repositionner le curseur
-            const newPosition = start + 1;
-            target.setSelectionRange(newPosition, newPosition);
-
-            // Déclencher manuellement l'événement input pour que React détecte le changement
-            const inputEvent = new InputEvent('input', { bubbles: true, cancelable: true });
-            target.dispatchEvent(inputEvent);
-        }
-    };
 
     // Handler for Tarif TB free text input
     const handleTarifTBChange = (e) => {
@@ -111,7 +87,6 @@ export default function ParametersSection({ params, onParamsChange, onManualTari
                         name="power"
                         value={params.power || 0}
                         onChange={(e) => handleChange('power', e.target.value)}
-                        onKeyPress={handleKeyPress}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
                 </div>
@@ -134,7 +109,6 @@ export default function ParametersSection({ params, onParamsChange, onManualTari
                                 production: power * prod
                             });
                         }}
-                        onKeyPress={handleKeyPress}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
                 </div>
@@ -159,7 +133,6 @@ export default function ParametersSection({ params, onParamsChange, onManualTari
                         onChange={handleTarifTBChange}
                         onFocus={handleTarifTBFocus}
                         onBlur={handleTarifTBBlur}
-                        onKeyPress={handleKeyPress}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
                 </div>
@@ -173,7 +146,6 @@ export default function ParametersSection({ params, onParamsChange, onManualTari
                         step="0.005"
                         value={params.tarifACC || 0.12}
                         onChange={(e) => handleChange('tarifACC', e.target.value)}
-                        onKeyPress={handleKeyPress}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     />
                 </div>
