@@ -23,8 +23,6 @@ export default function ParametersSection({ params, onParamsChange, onManualTari
         handleChange('power', e.target.value);
     };
 
-
-
     // Handler for Tarif TB free text input
     const handleTarifTBChange = (e) => {
         setTarifTBText(e.target.value);

@@ -31,8 +31,6 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
         onCostsChange({ ...costs, [field]: parseFloat(normalized) || 0 });
     };
 
-
-
     return (
         <div className="bg-white rounded-lg shadow-md p-6 h-full flex flex-col">
             <div className="flex items-center justify-between mb-6">
