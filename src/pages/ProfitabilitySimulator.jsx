@@ -140,26 +140,7 @@ export default function ProfitabilitySimulator() {
             return changed ? updated : prev;
         });
 
-        // 3. Tariff Logic based on Power
-        // < 36: 0.1049
-        // 36 - 99.9: 0.0912
-        // 100 - 499.9: 0.09
-        // >= 500: 0.085
-        // Determine current automatic tariff bracket based on power
-        let automaticTarif = 0.09;
-        if (power < 36) automaticTarif = 0.1049;
-        else if (power < 100) automaticTarif = 0.0912;
-        else if (power < 500) automaticTarif = 0.09;
-        else automaticTarif = 0.085;
-
-        // Only update tariff if manual override is not active
-        let newTarifTH = params.tarifTH;
-
-        if (!manualTarifOverride) {
-            newTarifTH = automaticTarif;
-        }
-
-        // 4. Prime Logic
+        // 3. Prime Logic
         // Disable Prime if Power > 99.9 (User said "superieur à 99.9")
         // Checkbox: withPrime
         let newWithPrime = params.withPrime;
@@ -167,16 +148,15 @@ export default function ProfitabilitySimulator() {
             newWithPrime = false;
         }
 
-        // Apply Params changes
-        if (newTarifTH !== params.tarifTH || newWithPrime !== params.withPrime) {
+        // Apply Params changes (only for Prime)
+        if (newWithPrime !== params.withPrime) {
             setParams(prev => ({
                 ...prev,
-                tarifTH: newTarifTH,
                 withPrime: newWithPrime
             }));
         }
 
-    }, [params.power, params.productible, params.production, params.tarifTH, params.withPrime, costs.installationRate]);
+    }, [params.power, params.productible, params.production, params.withPrime, costs.installationRate]);
 
     const handleGeneratePDF = () => {
         generateSimulatorPDF({

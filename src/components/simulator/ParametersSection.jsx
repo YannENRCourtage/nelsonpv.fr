@@ -58,7 +58,9 @@ export default function ParametersSection({ params, onParamsChange, onManualTari
         const normalized = String(tarifTBText).replace(',', '.');
         const numValue = parseFloat(normalized);
         if (!isNaN(numValue)) {
-            onParamsChange({ ...params, tarifTH: numValue });
+            // Round to 4 decimal places
+            const roundedValue = Math.round(numValue * 10000) / 10000;
+            onParamsChange({ ...params, tarifTH: roundedValue });
             if (onManualTarifChange) {
                 onManualTarifChange();
             }
