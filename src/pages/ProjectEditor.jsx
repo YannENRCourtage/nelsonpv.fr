@@ -786,12 +786,12 @@ export default function ProjectEditor() {
                       <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Productible">{labelPrefix1}Productible</label>
                       <div className="flex gap-1 mt-1">
                         <Input
-                          // Display weighted productible (global solarYield)
-                          value={p.solarYield || ''}
+                          // Display Roof 1 productible only
+                          value={p.solarYieldRoof1 || ''}
                           readOnly
                           placeholder="kWh/kWc"
-                          className={`min-w-0 ${p.solarYield
-                            ? (parseFloat(p.solarYield) >= 1120
+                          className={`min-w-0 ${p.solarYieldRoof1
+                            ? (parseFloat(p.solarYieldRoof1) >= 1120
                               ? "bg-green-100 text-green-900 border-green-500"
                               : "bg-red-100 text-red-900 border-red-500")
                             : "bg-gray-50"
@@ -812,43 +812,25 @@ export default function ProjectEditor() {
 
                             const angle = p.panelAngle || 15;
                             const aspect = parseFloat(p.panelAspect || 0);
-                            const weighting = p.roofWeighting !== undefined ? p.roofWeighting : 50;
 
-                            // Calculate opposite aspect (+180°, normalized to -180 to 180 range)
-                            let oppositeAspect = aspect + 180;
-                            if (oppositeAspect > 180) oppositeAspect -= 360;
-                            if (oppositeAspect < -180) oppositeAspect += 360;
-
-                            toast({ title: "Calcul en cours...", description: `PVGIS double toiture (${aspect}° et ${oppositeAspect}°)` });
+                            toast({ title: "Calcul en cours...", description: `PVGIS Toiture 1 (${aspect}°)` });
 
                             try {
-                              // Fetch PVGIS for primary aspect (toiture 1)
-                              const pvgisUrl1 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
-                              const res1 = await fetch(pvgisUrl1);
-                              if (!res1.ok) throw new Error("Erreur PVGIS toiture 1");
-                              const data1 = await res1.json();
+                              // Fetch PVGIS for Roof 1 only
+                              const pvgisUrl = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                              const res = await fetch(pvgisUrl);
+                              if (!res.ok) throw new Error("Erreur PVGIS toiture 1");
+                              const data = await res.json();
                               const getEy = (d) => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
-                              const yield1 = parseFloat(getEy(data1));
+                              const yield1 = parseFloat(getEy(data));
 
-                              // Fetch PVGIS for opposite aspect (toiture 2)
-                              const pvgisUrl2 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${oppositeAspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
-                              const res2 = await fetch(pvgisUrl2);
-                              if (!res2.ok) throw new Error("Erreur PVGIS toiture 2");
-                              const data2 = await res2.json();
-                              const yield2 = parseFloat(getEy(data2));
-
-                              if (!isNaN(yield1) && !isNaN(yield2)) {
-                                // Calculate weighted average
-                                const weightedYield = (yield1 * weighting + yield2 * (100 - weighting)) / 100;
-
+                              if (!isNaN(yield1)) {
                                 updateProject({
-                                  solarYieldRoof1: yield1.toFixed(2),
-                                  solarYieldRoof2: yield2.toFixed(2),
-                                  solarYield: weightedYield.toFixed(2)
+                                  solarYieldRoof1: yield1.toFixed(2)
                                 });
                                 toast({
                                   title: "Succès",
-                                  description: `T1 (${aspect}°): ${yield1.toFixed(2)} kWh/kWc | T2 (${oppositeAspect}°): ${yield2.toFixed(2)} kWh/kWc | Pondéré: ${weightedYield.toFixed(2)} kWh/kWc`
+                                  description: `Productible T1: ${yield1.toFixed(2)} kWh/kWc`
                                 });
                               }
                             } catch (e) {
@@ -971,16 +953,8 @@ export default function ProjectEditor() {
                                   const yield2 = parseFloat(getEy(data));
 
                                   if (!isNaN(yield2)) {
-                                    const w1 = p.roofWeighting !== undefined ? p.roofWeighting : 50;
-                                    const yield1 = parseFloat(p.solarYieldRoof1) || 0;
-                                    const w2 = p.roofWeighting2 !== undefined ? p.roofWeighting2 : 50;
-
-                                    const totalW = w1 + w2;
-                                    const weighted = (yield1 * w1 + yield2 * w2) / (totalW || 100);
-
                                     updateProject({
-                                      solarYieldRoof2: yield2.toFixed(2),
-                                      solarYield: weighted.toFixed(2)
+                                      solarYieldRoof2: yield2.toFixed(2)
                                     });
                                     toast({ title: "Succès", description: `Productible T2: ${yield2.toFixed(2)} kWh/kWc` });
                                   }
