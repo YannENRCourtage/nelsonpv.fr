@@ -81,12 +81,12 @@ export default function Finance() {
                 fondations: simulation.fondations || 0,
                 raccordement: simulation.raccordement || 0,
                 developpement: simulation.developpement || 0,
-                fraisCommerciaux: (simulation.power || 120) * 50,
-                soulte: 0,
-                maintenance: 10,
-                bardage: 0,
-                cheneaux: 0,
-                batterie: 0
+                fraisCommerciaux: simulation.fraisCommerciaux || ((simulation.power || 120) * 50),
+                soulte: simulation.soulte || 0,
+                maintenance: simulation.maintenance || 10,
+                bardage: simulation.bardage || 0,
+                cheneaux: simulation.cheneaux || 0,
+                batterie: simulation.batterie || 0
             }
         };
 

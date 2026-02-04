@@ -184,6 +184,12 @@ export default function ProfitabilitySimulator() {
                 fondations: costs.fondations || 0,
                 raccordement: costs.raccordement || 0,
                 developpement: costs.developpement || 0,
+                fraisCommerciaux: costs.fraisCommerciaux || 0,
+                soulte: costs.soulte || 0,
+                maintenance: costs.maintenance || 10,
+                bardage: costs.bardage || 0,
+                cheneaux: costs.cheneaux || 0,
+                batterie: costs.batterie || 0,
                 // Coût total
                 totalCost: metrics.totalCost,
                 // Métriques financières
@@ -234,6 +240,12 @@ export default function ProfitabilitySimulator() {
                 fondations: costs.fondations || 0,
                 raccordement: costs.raccordement || 0,
                 developpement: costs.developpement || 0,
+                fraisCommerciaux: costs.fraisCommerciaux || 0,
+                soulte: costs.soulte || 0,
+                maintenance: costs.maintenance || 10,
+                bardage: costs.bardage || 0,
+                cheneaux: costs.cheneaux || 0,
+                batterie: costs.batterie || 0,
                 // Coût total
                 totalCost: metrics.totalCost,
                 // Métriques financières
