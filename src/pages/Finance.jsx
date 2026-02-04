@@ -67,14 +67,16 @@ export default function Finance() {
                 power: simulation.power || 120,
                 productible: simulation.productible || 1200,
                 production: (simulation.power || 120) * (simulation.productible || 1200),
+                estimatedProduction: simulation.estimatedProduction || ((simulation.power || 120) * 1.2 * (simulation.productible || 1200)),
                 tarifTH: simulation.tarifTB || 0.09,
                 tarifACC: simulation.tarifACC || 0.14,
+                turpe: simulation.turpe || 0.012,
+                prixAchatACC: simulation.prixAchatACC !== undefined ? simulation.prixAchatACC : 0.40,
                 partACC: simulation.partACC || 40,
-                prixAchatACC: 0,
                 interestRate: simulation.interestRate !== undefined ? simulation.interestRate : 3.9
             },
             costs: {
-                installationRate: 0.50,
+                installationRate: simulation.installationRate !== undefined ? simulation.installationRate : 0.50,
                 installation: simulation.installation || 0,
                 charpente: simulation.charpente || 0,
                 couverture: simulation.couverture || 0,

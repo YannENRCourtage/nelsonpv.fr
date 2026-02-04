@@ -173,11 +173,15 @@ export default function ProfitabilitySimulator() {
                 // Paramètres
                 power: params.power,
                 productible: params.power > 0 ? params.production / params.power : 1200,
+                estimatedProduction: params.estimatedProduction,
                 tarifTB: params.tarifTH,
                 tarifACC: params.tarifACC,
+                turpe: params.turpe,
+                prixAchatACC: params.prixAchatACC,
                 partACC: params.partACC || (params.prixAchatACC * 100),
                 interestRate: params.interestRate,
                 // Coûts détaillés
+                installationRate: costs.installationRate,
                 installation: costs.installation || 0,
                 charpente: costs.charpente || 0,
                 couverture: costs.couverture || 0,
@@ -229,11 +233,15 @@ export default function ProfitabilitySimulator() {
                 // Paramètres
                 power: params.power,
                 productible: params.power > 0 ? params.production / params.power : 1200,
+                estimatedProduction: params.estimatedProduction,
                 tarifTB: params.tarifTH,
                 tarifACC: params.tarifACC,
+                turpe: params.turpe,
+                prixAchatACC: params.prixAchatACC,
                 partACC: params.partACC || (params.prixAchatACC * 100),
                 interestRate: params.interestRate,
                 // Coûts détaillés
+                installationRate: costs.installationRate,
                 installation: costs.installation || 0,
                 charpente: costs.charpente || 0,
                 couverture: costs.couverture || 0,
