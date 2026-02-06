@@ -159,11 +159,12 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
                 <span>{index + 1}</span>
             </td>
 
+
             {columns.map((col, cIdx) => {
                 // Check if this cell should display a calculated value
-                const calculatedValue = isTotalRow && calculatedValues && calculatedValues[col];
-                const displayValue = calculatedValue !== undefined ? calculatedValue : (row.data[col] || '');
-                const isCalculatedCell = calculatedValue !== undefined;
+                const calculatedValue = isTotalRow && calculatedValues ? calculatedValues[col] : null;
+                const displayValue = calculatedValue || row.data[col] || '';
+                const isCalculatedCell = !!calculatedValue;
 
                 return (
                     <td key={`${row.id}-${cIdx}`} className="px-0 py-0 border-r relative" style={{ width: columnWidths[col] }}>
@@ -259,21 +260,31 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
         const currentRowIndex = displayedRows.findIndex(r => r.id === rowId);
         if (currentRowIndex === -1) return {};
 
-        const moneyColumns = getMoneyColumns();
         const calculatedValues = {};
 
-        moneyColumns.forEach(col => {
+        // Calculate sum for each column
+        columns.forEach(col => {
             let sum = 0;
+            let hasNumericData = false;
+
             // Sum all rows BEFORE the current TOTAL row
             for (let i = 0; i < currentRowIndex; i++) {
                 const row = displayedRows[i];
                 // Skip other TOTAL rows
                 if (!isTotalRow(row)) {
                     const value = row.data[col];
-                    sum += parseNumericValue(value);
+                    const numValue = parseNumericValue(value);
+                    if (numValue !== 0 || (value && String(value).match(/\d/))) {
+                        sum += numValue;
+                        hasNumericData = true;
+                    }
                 }
             }
-            calculatedValues[col] = formatEuroValue(sum);
+
+            // Only set calculated value if this column had numeric data
+            if (hasNumericData) {
+                calculatedValues[col] = sum.toFixed(2) + ' €';
+            }
         });
 
         return calculatedValues;
