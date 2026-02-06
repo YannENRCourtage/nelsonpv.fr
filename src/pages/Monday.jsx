@@ -715,9 +715,12 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                             });
                         })()}
 
-                        {/* Ligne TOTAL automatique */}
+                        {/* Ligne TOTAL automatique - Uniquement pour les onglets avec colonne TTC */}
                         {displayedRows.length > 0 && (() => {
                             const { column: ttcColumn, sum: totalValue } = calculateTTCTotal(displayedRows);
+
+                            // N'afficher la ligne TOTAL que si une colonne TTC existe
+                            if (!ttcColumn) return null;
 
                             return (
                                 <tr className="bg-slate-100 border-t-2 border-slate-300 font-bold">
