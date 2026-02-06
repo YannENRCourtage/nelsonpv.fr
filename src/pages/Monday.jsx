@@ -112,7 +112,7 @@ const ResizableHeader = ({ col, index, width, onResize, moveColumn, deleteColumn
 };
 
 // --- Draggable Row ---
-const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, isSelected, toggleSelection, deleteRow, onBlur, isTotalRow, calculatedValues }) => {
+const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, isSelected, toggleSelection, deleteRow, onBlur }) => {
     const ref = useRef(null);
     const [{ isDragging }, drag] = useDrag({
         type: ItemTypes.ROW,
@@ -139,11 +139,9 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
     return (
         <tr
             ref={ref}
-            className={`border-b group ${isDragging ? 'opacity-50' : ''} ${isSelected ? 'bg-blue-50' : ''} ${isTotalRow ? 'bg-slate-100 hover:bg-slate-100 font-bold' : 'bg-white hover:bg-slate-50'
-                }`}
+            className={`bg-white border-b hover:bg-slate-50 group ${isDragging ? 'opacity-50' : ''} ${isSelected ? 'bg-blue-50' : ''}`}
         >
-            <td className={`px-2 py-2 w-10 sticky left-0 border-r text-center ${isTotalRow ? 'bg-slate-100 group-hover:bg-slate-100' : 'bg-white group-hover:bg-slate-50'
-                }`}>
+            <td className="px-2 py-2 w-10 sticky left-0 bg-white group-hover:bg-slate-50 border-r text-center">
                 <input
                     type="checkbox"
                     checked={isSelected}
@@ -151,40 +149,24 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
                     className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                 />
             </td>
-            <td className={`px-2 py-2 w-12 text-slate-500 sticky left-10 border-r text-xs flex items-center justify-center ${isTotalRow ? 'bg-slate-100 group-hover:bg-slate-100' : 'bg-white group-hover:bg-slate-50'
-                }`}>
+            <td className="px-2 py-2 w-12 text-slate-500 sticky left-10 bg-white group-hover:bg-slate-50 border-r text-xs flex items-center justify-center">
                 <div className="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-600">
                     <GripVertical className="w-4 h-4" />
                 </div>
                 <span>{index + 1}</span>
             </td>
 
-
-            {columns.map((col, cIdx) => {
-                // Check if this cell should display a calculated value
-                const calculatedValue = isTotalRow && calculatedValues ? calculatedValues[col] : null;
-                const displayValue = calculatedValue || row.data[col] || '';
-                const isCalculatedCell = !!calculatedValue;
-
-                return (
-                    <td key={`${row.id}-${cIdx}`} className="px-0 py-0 border-r relative" style={{ width: columnWidths[col] }}>
-                        <input
-                            className={`w-full h-full px-2 py-2 bg-transparent focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-inset focus:ring-blue-500 transition-colors text-sm truncate ${isTotalRow ? 'font-bold' : ''
-                                } ${isCalculatedCell ? 'cursor-not-allowed bg-slate-50' : ''
-                                }`}
-                            value={displayValue}
-                            onChange={(e) => {
-                                if (!isCalculatedCell) {
-                                    updateCell(row.id, col, e.target.value);
-                                }
-                            }}
-                            onBlur={onBlur}
-                            title={displayValue}
-                            readOnly={isCalculatedCell}
-                        />
-                    </td>
-                );
-            })}
+            {columns.map((col, cIdx) => (
+                <td key={`${row.id}-${cIdx}`} className="px-0 py-0 border-r relative" style={{ width: columnWidths[col] }}>
+                    <input
+                        className="w-full h-full px-2 py-2 bg-transparent focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-inset focus:ring-blue-500 transition-colors text-sm truncate"
+                        value={row.data[col] || ''}
+                        onChange={(e) => updateCell(row.id, col, e.target.value)}
+                        onBlur={onBlur}
+                        title={row.data[col]}
+                    />
+                </td>
+            ))}
             <td className="px-2 py-2 text-center w-10">
                 <button
                     onClick={() => deleteRow(row.id)}
@@ -218,76 +200,28 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
     const [newColName, setNewColName] = useState('');
     const fileInputRef = useRef(null);
 
-    // Helper function: Check if a row is a TOTAL row
-    const isTotalRow = (row) => {
-        if (!row || !row.data) return false;
-        // Check if any cell contains "TOTAL" (case insensitive)
-        return Object.values(row.data).some(val =>
-            String(val).toUpperCase().includes('TOTAL')
+    // Helper function: Calculate total for "Mensualités TTC" column
+    const calculateMensualitesTotal = (rows) => {
+        const mensualitesColumn = columns.find(col =>
+            col.toUpperCase().includes('MENSUALIT') && col.toUpperCase().includes('TTC')
         );
-    };
 
-    // Helper function: Parse numeric value from a cell (removing € and parsing)
-    const parseNumericValue = (value) => {
-        if (!value) return 0;
-        // Remove spaces, €, and other non-numeric characters except . and ,
-        const cleaned = String(value).replace(/[^0-9.,-]/g, '').replace(',', '.');
-        const num = parseFloat(cleaned);
-        return isNaN(num) ? 0 : num;
-    };
+        if (!mensualitesColumn) return 0;
 
-    // Helper function: Format value with € symbol
-    const formatEuroValue = (value) => {
-        if (value === null || value === undefined || value === '') return '';
-        const num = parseNumericValue(value);
-        if (num === 0 && value === '') return '';
-        return `${num.toFixed(2)} €`;
-    };
-
-    // Helper function: Identify which columns should have € formatting and calculations
-    const getMoneyColumns = () => {
-        // Look for columns that might contain monetary values
-        const moneyKeywords = ['MONTANT', 'PRIX', 'COUT', 'COÛT', 'TOTAL', 'CHARGE'];
-        return columns.filter(col =>
-            moneyKeywords.some(keyword =>
-                col.toUpperCase().includes(keyword)
-            )
-        );
-    };
-
-    // Calculate total values for TOTAL rows
-    const calculateTotalValues = (rowId, displayedRows) => {
-        const currentRowIndex = displayedRows.findIndex(r => r.id === rowId);
-        if (currentRowIndex === -1) return {};
-
-        const calculatedValues = {};
-
-        // Calculate sum for each column
-        columns.forEach(col => {
-            let sum = 0;
-            let hasNumericData = false;
-
-            // Sum all rows BEFORE the current TOTAL row
-            for (let i = 0; i < currentRowIndex; i++) {
-                const row = displayedRows[i];
-                // Skip other TOTAL rows
-                if (!isTotalRow(row)) {
-                    const value = row.data[col];
-                    const numValue = parseNumericValue(value);
-                    if (numValue !== 0 || (value && String(value).match(/\d/))) {
-                        sum += numValue;
-                        hasNumericData = true;
-                    }
+        let sum = 0;
+        rows.forEach(row => {
+            const value = row.data[mensualitesColumn];
+            if (value) {
+                // Remove spaces, €, and other non-numeric characters except . and ,
+                const cleaned = String(value).replace(/[^0-9.,-]/g, '').replace(',', '.');
+                const num = parseFloat(cleaned);
+                if (!isNaN(num)) {
+                    sum += num;
                 }
-            }
-
-            // Only set calculated value if this column had numeric data
-            if (hasNumericData) {
-                calculatedValues[col] = sum.toFixed(2) + ' €';
             }
         });
 
-        return calculatedValues;
+        return sum;
     };
 
     // Initial Defaults for Column Widths
@@ -406,16 +340,16 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
 
     const handleResize = (col, width) => {
         setColumnWidths(prev => ({ ...prev, [col]: width }));
-        // Debounce save? We'll save on mouse up (logic inside Header is component based, 
+        // Debounce save? We'll save on mouse up (logic inside Header is component based,
         // ideally we pass a persistent saver).
-        // For simplicity, we saveMetadata here but it might be frequent. 
+        // For simplicity, we saveMetadata here but it might be frequent.
         // Let's rely on final save or use a ref and save periodically?
         // Actually, just update state here. We need to persist somewhere.
         // We added `columnWidths` to `data` via `saveMetadata`.
-        // To avoid spamming saves, let's only save when resizing STOPS. 
-        // But the resizing state is lifted down. 
+        // To avoid spamming saves, let's only save when resizing STOPS.
+        // But the resizing state is lifted down.
         // We can just rely on user explicit save? No, needs to be auto.
-        // We'll update state locally and maybe save onBlur of the header? 
+        // We'll update state locally and maybe save onBlur of the header?
         // For now, let's update state locally.
     };
 
@@ -737,9 +671,6 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                     </thead>
                     <tbody>
                         {paginatedRows.map((row, index) => {
-                            const isTotal = isTotalRow(row);
-                            const calculatedValues = isTotal ? calculateTotalValues(row.id, displayedRows) : {};
-
                             return (
                                 <DraggableRow
                                     key={row.id}
@@ -753,11 +684,49 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                                     toggleSelection={toggleSelection}
                                     deleteRow={deleteRow}
                                     onBlur={() => persistRow(row.id, row)}
-                                    isTotalRow={isTotal}
-                                    calculatedValues={calculatedValues}
                                 />
                             );
                         })}
+
+                        {/* Ligne TOTAL automatique */}
+                        {displayedRows.length > 0 && (() => {
+                            const mensualitesColumn = columns.find(col =>
+                                col.toUpperCase().includes('MENSUALIT') && col.toUpperCase().includes('TTC')
+                            );
+                            const totalValue = calculateMensualitesTotal(displayedRows);
+
+                            return (
+                                <tr className="bg-slate-100 border-t-2 border-slate-300 font-bold">
+                                    <td className="px-2 py-2 w-10 sticky left-0 bg-slate-100 border-r text-center"></td>
+                                    <td className="px-2 py-2 w-12 text-slate-500 sticky left-10 bg-slate-100 border-r text-xs text-center">
+                                        {paginatedRows.length + 1}
+                                    </td>
+                                    {columns.map((col, cIdx) => {
+                                        let displayValue = '';
+
+                                        if (cIdx === 0) {
+                                            // Première colonne : afficher "TOTAL"
+                                            displayValue = 'TOTAL';
+                                        } else if (mensualitesColumn && col === mensualitesColumn) {
+                                            // Colonne Mensualités TTC : afficher la somme
+                                            displayValue = `${totalValue.toFixed(2)} €`;
+                                        }
+
+                                        return (
+                                            <td key={`total-${cIdx}`} className="px-0 py-0 border-r relative" style={{ width: columnWidths[col] }}>
+                                                <input
+                                                    className="w-full h-full px-2 py-2 bg-slate-100 cursor-not-allowed font-bold text-sm truncate"
+                                                    value={displayValue}
+                                                    readOnly
+                                                    title={displayValue}
+                                                />
+                                            </td>
+                                        );
+                                    })}
+                                    <td className="px-2 py-2 text-center w-10 bg-slate-100"></td>
+                                </tr>
+                            );
+                        })()}
                         {paginatedRows.length === 0 && (
                             <tr>
                                 <td colSpan={columns.length + 3} className="px-6 py-10 text-center text-slate-500">
