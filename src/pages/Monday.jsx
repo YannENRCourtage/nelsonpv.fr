@@ -112,7 +112,7 @@ const ResizableHeader = ({ col, index, width, onResize, moveColumn, deleteColumn
 };
 
 // --- Draggable Row ---
-const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, isSelected, toggleSelection, deleteRow, onBlur }) => {
+const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, isSelected, toggleSelection, deleteRow, onBlur, isTotalRow, calculatedValues }) => {
     const ref = useRef(null);
     const [{ isDragging }, drag] = useDrag({
         type: ItemTypes.ROW,
@@ -139,9 +139,11 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
     return (
         <tr
             ref={ref}
-            className={`bg-white border-b hover:bg-slate-50 group ${isDragging ? 'opacity-50' : ''} ${isSelected ? 'bg-blue-50' : ''}`}
+            className={`border-b group ${isDragging ? 'opacity-50' : ''} ${isSelected ? 'bg-blue-50' : ''} ${isTotalRow ? 'bg-slate-100 hover:bg-slate-100 font-bold' : 'bg-white hover:bg-slate-50'
+                }`}
         >
-            <td className="px-2 py-2 w-10 sticky left-0 bg-white group-hover:bg-slate-50 border-r text-center">
+            <td className={`px-2 py-2 w-10 sticky left-0 border-r text-center ${isTotalRow ? 'bg-slate-100 group-hover:bg-slate-100' : 'bg-white group-hover:bg-slate-50'
+                }`}>
                 <input
                     type="checkbox"
                     checked={isSelected}
@@ -149,24 +151,39 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
                     className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                 />
             </td>
-            <td className="px-2 py-2 w-12 text-slate-500 sticky left-10 bg-white group-hover:bg-slate-50 border-r text-xs flex items-center justify-center">
+            <td className={`px-2 py-2 w-12 text-slate-500 sticky left-10 border-r text-xs flex items-center justify-center ${isTotalRow ? 'bg-slate-100 group-hover:bg-slate-100' : 'bg-white group-hover:bg-slate-50'
+                }`}>
                 <div className="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-600">
                     <GripVertical className="w-4 h-4" />
                 </div>
                 <span>{index + 1}</span>
             </td>
 
-            {columns.map((col, cIdx) => (
-                <td key={`${row.id}-${cIdx}`} className="px-0 py-0 border-r relative" style={{ width: columnWidths[col] }}>
-                    <input
-                        className="w-full h-full px-2 py-2 bg-transparent focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-inset focus:ring-blue-500 transition-colors text-sm truncate"
-                        value={row.data[col] || ''}
-                        onChange={(e) => updateCell(row.id, col, e.target.value)}
-                        onBlur={onBlur} // Trigger save on blur
-                        title={row.data[col]} // Tooltip for truncated text
-                    />
-                </td>
-            ))}
+            {columns.map((col, cIdx) => {
+                // Check if this cell should display a calculated value
+                const calculatedValue = isTotalRow && calculatedValues && calculatedValues[col];
+                const displayValue = calculatedValue !== undefined ? calculatedValue : (row.data[col] || '');
+                const isCalculatedCell = calculatedValue !== undefined;
+
+                return (
+                    <td key={`${row.id}-${cIdx}`} className="px-0 py-0 border-r relative" style={{ width: columnWidths[col] }}>
+                        <input
+                            className={`w-full h-full px-2 py-2 bg-transparent focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-inset focus:ring-blue-500 transition-colors text-sm truncate ${isTotalRow ? 'font-bold' : ''
+                                } ${isCalculatedCell ? 'cursor-not-allowed bg-slate-50' : ''
+                                }`}
+                            value={displayValue}
+                            onChange={(e) => {
+                                if (!isCalculatedCell) {
+                                    updateCell(row.id, col, e.target.value);
+                                }
+                            }}
+                            onBlur={onBlur}
+                            title={displayValue}
+                            readOnly={isCalculatedCell}
+                        />
+                    </td>
+                );
+            })}
             <td className="px-2 py-2 text-center w-10">
                 <button
                     onClick={() => deleteRow(row.id)}
@@ -199,6 +216,68 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
     // Helpers
     const [newColName, setNewColName] = useState('');
     const fileInputRef = useRef(null);
+
+    // Helper function: Check if a row is a TOTAL row
+    const isTotalRow = (row) => {
+        if (!row || !row.data) return false;
+        // Check if any cell contains "TOTAL" (case insensitive)
+        return Object.values(row.data).some(val =>
+            String(val).toUpperCase().includes('TOTAL')
+        );
+    };
+
+    // Helper function: Parse numeric value from a cell (removing € and parsing)
+    const parseNumericValue = (value) => {
+        if (!value) return 0;
+        // Remove spaces, €, and other non-numeric characters except . and ,
+        const cleaned = String(value).replace(/[^0-9.,-]/g, '').replace(',', '.');
+        const num = parseFloat(cleaned);
+        return isNaN(num) ? 0 : num;
+    };
+
+    // Helper function: Format value with € symbol
+    const formatEuroValue = (value) => {
+        if (value === null || value === undefined || value === '') return '';
+        const num = parseNumericValue(value);
+        if (num === 0 && value === '') return '';
+        return `${num.toFixed(2)} €`;
+    };
+
+    // Helper function: Identify which columns should have € formatting and calculations
+    const getMoneyColumns = () => {
+        // Look for columns that might contain monetary values
+        const moneyKeywords = ['MONTANT', 'PRIX', 'COUT', 'COÛT', 'TOTAL', 'CHARGE'];
+        return columns.filter(col =>
+            moneyKeywords.some(keyword =>
+                col.toUpperCase().includes(keyword)
+            )
+        );
+    };
+
+    // Calculate total values for TOTAL rows
+    const calculateTotalValues = (rowId, displayedRows) => {
+        const currentRowIndex = displayedRows.findIndex(r => r.id === rowId);
+        if (currentRowIndex === -1) return {};
+
+        const moneyColumns = getMoneyColumns();
+        const calculatedValues = {};
+
+        moneyColumns.forEach(col => {
+            let sum = 0;
+            // Sum all rows BEFORE the current TOTAL row
+            for (let i = 0; i < currentRowIndex; i++) {
+                const row = displayedRows[i];
+                // Skip other TOTAL rows
+                if (!isTotalRow(row)) {
+                    const value = row.data[col];
+                    sum += parseNumericValue(value);
+                }
+            }
+            calculatedValues[col] = formatEuroValue(sum);
+        });
+
+        return calculatedValues;
+    };
 
     // Initial Defaults for Column Widths
     useEffect(() => {
@@ -363,9 +442,22 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
     };
 
     const updateCell = (rowId, colName, value) => {
+        const moneyColumns = getMoneyColumns();
+        const isMoneyColumn = moneyColumns.includes(colName);
+
+        // Format value if it's in a money column and not empty
+        let formattedValue = value;
+        if (isMoneyColumn && value && value.trim() !== '') {
+            // Check if user is still typing (ends with . or ,)
+            const endsWithDecimal = value.trim().endsWith('.') || value.trim().endsWith(',');
+            if (!endsWithDecimal && !value.includes('€')) {
+                formattedValue = formatEuroValue(value);
+            }
+        }
+
         const newRows = rows.map(r => {
             if (r.id === rowId) {
-                return { ...r, data: { ...r.data, [colName]: value } };
+                return { ...r, data: { ...r.data, [colName]: formattedValue } };
             }
             return r;
         });
@@ -646,21 +738,28 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {paginatedRows.map((row, index) => (
-                            <DraggableRow
-                                key={row.id}
-                                index={index}
-                                row={row}
-                                columns={columns}
-                                columnWidths={columnWidths}
-                                moveRow={moveRow}
-                                updateCell={updateCell}
-                                isSelected={selectedRowIds.has(row.id)}
-                                toggleSelection={toggleSelection}
-                                deleteRow={deleteRow}
-                                onBlur={() => persistRow(row.id, row)}
-                            />
-                        ))}
+                        {paginatedRows.map((row, index) => {
+                            const isTotal = isTotalRow(row);
+                            const calculatedValues = isTotal ? calculateTotalValues(row.id, displayedRows) : {};
+
+                            return (
+                                <DraggableRow
+                                    key={row.id}
+                                    index={index}
+                                    row={row}
+                                    columns={columns}
+                                    columnWidths={columnWidths}
+                                    moveRow={moveRow}
+                                    updateCell={updateCell}
+                                    isSelected={selectedRowIds.has(row.id)}
+                                    toggleSelection={toggleSelection}
+                                    deleteRow={deleteRow}
+                                    onBlur={() => persistRow(row.id, row)}
+                                    isTotalRow={isTotal}
+                                    calculatedValues={calculatedValues}
+                                />
+                            );
+                        })}
                         {paginatedRows.length === 0 && (
                             <tr>
                                 <td colSpan={columns.length + 3} className="px-6 py-10 text-center text-slate-500">
