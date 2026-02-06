@@ -442,22 +442,9 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
     };
 
     const updateCell = (rowId, colName, value) => {
-        const moneyColumns = getMoneyColumns();
-        const isMoneyColumn = moneyColumns.includes(colName);
-
-        // Format value if it's in a money column and not empty
-        let formattedValue = value;
-        if (isMoneyColumn && value && value.trim() !== '') {
-            // Check if user is still typing (ends with . or ,)
-            const endsWithDecimal = value.trim().endsWith('.') || value.trim().endsWith(',');
-            if (!endsWithDecimal && !value.includes('€')) {
-                formattedValue = formatEuroValue(value);
-            }
-        }
-
         const newRows = rows.map(r => {
             if (r.id === rowId) {
-                return { ...r, data: { ...r.data, [colName]: formattedValue } };
+                return { ...r, data: { ...r.data, [colName]: value } };
             }
             return r;
         });
