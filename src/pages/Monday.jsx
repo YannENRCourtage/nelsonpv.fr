@@ -112,7 +112,7 @@ const ResizableHeader = ({ col, index, width, onResize, moveColumn, deleteColumn
 };
 
 // --- Draggable Row ---
-const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, isSelected, toggleSelection, deleteRow, onBlur }) => {
+const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, isSelected, toggleSelection, deleteRow, onBlur, ttcColumn }) => {
     const ref = useRef(null);
     const [{ isDragging }, drag] = useDrag({
         type: ItemTypes.ROW,
@@ -135,6 +135,25 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
     });
 
     drag(drop(ref));
+
+    // Helper function to format TTC values with €
+    const formatTTCValue = (value) => {
+        if (!value) return '';
+        const cleaned = String(value).replace(/[^0-9.,-]/g, '').replace(',', '.');
+        const num = parseFloat(cleaned);
+        if (!isNaN(num)) {
+            return `${num.toFixed(2)} €`;
+        }
+        return value;
+    };
+
+    // Helper to display value (with € for TTC columns)
+    const getDisplayValue = (col, value) => {
+        if (ttcColumn && col === ttcColumn) {
+            return formatTTCValue(value);
+        }
+        return value || '';
+    };
 
     return (
         <tr
@@ -160,7 +179,7 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
                 <td key={`${row.id}-${cIdx}`} className="px-0 py-0 border-r relative" style={{ width: columnWidths[col] }}>
                     <input
                         className="w-full h-full px-2 py-2 bg-transparent focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-inset focus:ring-blue-500 transition-colors text-sm truncate"
-                        value={row.data[col] || ''}
+                        value={getDisplayValue(col, row.data[col])}
                         onChange={(e) => updateCell(row.id, col, e.target.value)}
                         onBlur={onBlur}
                         title={row.data[col]}
@@ -200,17 +219,19 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
     const [newColName, setNewColName] = useState('');
     const fileInputRef = useRef(null);
 
-    // Helper function: Calculate total for "Mensualités TTC" column
-    const calculateMensualitesTotal = (rows) => {
-        const mensualitesColumn = columns.find(col =>
-            col.toUpperCase().includes('MENSUALIT') && col.toUpperCase().includes('TTC')
-        );
+    // Helper function: Calculate total for TTC columns (Mensualités TTC or Montants TTC)
+    const calculateTTCTotal = (rows) => {
+        // Find column that contains TTC and either MENSUALIT or MONTANT
+        const ttcColumn = columns.find(col => {
+            const upper = col.toUpperCase();
+            return upper.includes('TTC') && (upper.includes('MENSUALIT') || upper.includes('MONTANT'));
+        });
 
-        if (!mensualitesColumn) return 0;
+        if (!ttcColumn) return { column: null, sum: 0 };
 
         let sum = 0;
         rows.forEach(row => {
-            const value = row.data[mensualitesColumn];
+            const value = row.data[ttcColumn];
             if (value) {
                 // Remove spaces, €, and other non-numeric characters except . and ,
                 const cleaned = String(value).replace(/[^0-9.,-]/g, '').replace(',', '.');
@@ -221,7 +242,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
             }
         });
 
-        return sum;
+        return { column: ttcColumn, sum };
     };
 
     // Initial Defaults for Column Widths
@@ -670,30 +691,33 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {paginatedRows.map((row, index) => {
-                            return (
-                                <DraggableRow
-                                    key={row.id}
-                                    index={index}
-                                    row={row}
-                                    columns={columns}
-                                    columnWidths={columnWidths}
-                                    moveRow={moveRow}
-                                    updateCell={updateCell}
-                                    isSelected={selectedRowIds.has(row.id)}
-                                    toggleSelection={toggleSelection}
-                                    deleteRow={deleteRow}
-                                    onBlur={() => persistRow(row.id, row)}
-                                />
-                            );
-                        })}
+                        {(() => {
+                            // Calculate ttcColumn once for all rows
+                            const { column: ttcColumn } = calculateTTCTotal(displayedRows);
+
+                            return paginatedRows.map((row, index) => {
+                                return (
+                                    <DraggableRow
+                                        key={row.id}
+                                        index={index}
+                                        row={row}
+                                        columns={columns}
+                                        columnWidths={columnWidths}
+                                        moveRow={moveRow}
+                                        updateCell={updateCell}
+                                        isSelected={selectedRowIds.has(row.id)}
+                                        toggleSelection={toggleSelection}
+                                        deleteRow={deleteRow}
+                                        onBlur={() => persistRow(row.id, row)}
+                                        ttcColumn={ttcColumn}
+                                    />
+                                );
+                            });
+                        })()}
 
                         {/* Ligne TOTAL automatique */}
                         {displayedRows.length > 0 && (() => {
-                            const mensualitesColumn = columns.find(col =>
-                                col.toUpperCase().includes('MENSUALIT') && col.toUpperCase().includes('TTC')
-                            );
-                            const totalValue = calculateMensualitesTotal(displayedRows);
+                            const { column: ttcColumn, sum: totalValue } = calculateTTCTotal(displayedRows);
 
                             return (
                                 <tr className="bg-slate-100 border-t-2 border-slate-300 font-bold">
@@ -707,8 +731,8 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                                         if (cIdx === 0) {
                                             // Première colonne : afficher "TOTAL"
                                             displayValue = 'TOTAL';
-                                        } else if (mensualitesColumn && col === mensualitesColumn) {
-                                            // Colonne Mensualités TTC : afficher la somme
+                                        } else if (ttcColumn && col === ttcColumn) {
+                                            // Colonne TTC (Mensualités ou Montants) : afficher la somme
                                             displayValue = `${totalValue.toFixed(2)} €`;
                                         }
 
