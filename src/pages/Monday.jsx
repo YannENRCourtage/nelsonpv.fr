@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
     Plus, Trash2, Edit2, GripVertical, Download, Upload, Save, X, MoreVertical,
-    Search, Filter, CheckSquare, Square, Trash,
+    Search, Filter, CheckSquare, Square, Trash, Copy,
     // Icons for tabs
     Users, Briefcase, Lock, Wallet, CreditCard, Table2, FolderOpen
 } from 'lucide-react';
@@ -176,14 +176,31 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
             </td>
 
             {columns.map((col, cIdx) => (
-                <td key={`${row.id}-${cIdx}`} className="px-0 py-0 border-r relative" style={{ width: columnWidths[col] }}>
-                    <input
-                        className="w-full h-full px-2 py-2 bg-transparent focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-inset focus:ring-blue-500 transition-colors text-sm truncate"
-                        value={getDisplayValue(col, row.data[col])}
-                        onChange={(e) => updateCell(row.id, col, e.target.value)}
-                        onBlur={onBlur}
-                        title={row.data[col]}
-                    />
+                <td key={`${row.id}-${cIdx}`} className="px-0 py-0 border-r relative group" style={{ width: columnWidths[col] }}>
+                    <div className="relative flex items-center h-full">
+                        <input
+                            className="w-full h-full px-2 py-2 pr-8 bg-transparent focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-inset focus:ring-blue-500 transition-colors text-sm truncate"
+                            value={getDisplayValue(col, row.data[col])}
+                            onChange={(e) => updateCell(row.id, col, e.target.value)}
+                            onBlur={onBlur}
+                            title={row.data[col]}
+                        />
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const valueToCopy = row.data[col] || '';
+                                navigator.clipboard.writeText(valueToCopy).then(() => {
+                                    console.log('Copié:', valueToCopy);
+                                }).catch(err => {
+                                    console.error('Erreur de copie:', err);
+                                });
+                            }}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover:opacity-100 hover:bg-blue-100 rounded transition-all duration-200"
+                            title="Copier"
+                        >
+                            <Copy className="w-3.5 h-3.5 text-blue-600" />
+                        </button>
+                    </div>
                 </td>
             ))}
             <td className="px-2 py-2 text-center w-10">
