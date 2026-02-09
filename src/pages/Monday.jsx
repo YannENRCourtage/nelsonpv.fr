@@ -111,6 +111,48 @@ const ResizableHeader = ({ col, index, width, onResize, moveColumn, deleteColumn
     );
 };
 
+// --- Simple Resizable Header for Fixed Columns (Checkbox, Row Number) ---
+const SimpleResizableHeader = ({ label, width, onResize, isResizing, setIsResizing, children }) => {
+    // Resize Handler
+    const handleMouseDown = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setIsResizing(true);
+        const startX = e.pageX;
+        const startWidth = width;
+
+        const handleMouseMove = (moveEvent) => {
+            const newWidth = Math.max(30, startWidth + (moveEvent.pageX - startX));
+            onResize(newWidth);
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false);
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    };
+
+    return (
+        <th
+            style={{ width: width }}
+            className="px-2 py-3 border-b border-r group relative bg-slate-50"
+        >
+            <div className="flex items-center justify-center h-full">
+                {children || label}
+            </div>
+            {/* Resize Handle */}
+            <div
+                onMouseDown={handleMouseDown}
+                className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 z-10"
+            />
+        </th>
+    );
+};
+
 // --- Draggable Row ---
 const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, isSelected, toggleSelection, deleteRow, onBlur, ttcColumn }) => {
     const ref = useRef(null);
@@ -155,12 +197,16 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
         return value || '';
     };
 
+    // Calculate dynamic sticky positions
+    const checkboxWidth = columnWidths['__checkbox__'] || 64;
+    const rowNumberLeft = checkboxWidth;
+
     return (
         <tr
             ref={ref}
             className={`bg-white border-b hover:bg-slate-50 group ${isDragging ? 'opacity-50' : ''} ${isSelected ? 'bg-blue-50' : ''}`}
         >
-            <td className="px-2 py-2 w-16 sticky left-0 bg-white group-hover:bg-slate-50 border-r text-center">
+            <td className="px-2 py-2 sticky left-0 bg-white group-hover:bg-slate-50 border-r text-center" style={{ width: checkboxWidth }}>
                 <input
                     type="checkbox"
                     checked={isSelected}
@@ -168,7 +214,7 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
                     className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                 />
             </td>
-            <td className="px-2 py-2 w-16 text-slate-500 sticky left-16 bg-white group-hover:bg-slate-50 border-r text-xs flex items-center justify-center">
+            <td className="px-2 py-2 text-slate-500 sticky bg-white group-hover:bg-slate-50 border-r text-xs flex items-center justify-center" style={{ width: columnWidths['__rowNumber__'] || 64, left: `${rowNumberLeft}px` }}>
                 <div className="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-600">
                     <GripVertical className="w-4 h-4" />
                 </div>
@@ -266,6 +312,10 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
     useEffect(() => {
         setColumnWidths(prev => {
             const newWidths = { ...prev };
+            // Initialize fixed columns if not present
+            if (!newWidths['__checkbox__']) newWidths['__checkbox__'] = 64;
+            if (!newWidths['__rowNumber__']) newWidths['__rowNumber__'] = 64;
+            // Initialize data columns
             columns.forEach(col => {
                 if (!newWidths[col]) newWidths[col] = 150;
             });
@@ -682,15 +732,30 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                 <table className="w-full text-sm text-left relative border-collapse table-fixed">
                     <thead className="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm layer-20">
                         <tr>
-                            <th className="px-2 py-3 w-16 sticky left-0 bg-slate-50 z-20 border-b text-center border-r">
+                            <SimpleResizableHeader
+                                width={columnWidths['__checkbox__'] || 64}
+                                onResize={(newWidth) => {
+                                    setColumnWidths(prev => ({ ...prev, '__checkbox__': newWidth }));
+                                }}
+                                isResizing={isResizing}
+                                setIsResizing={setIsResizing}
+                            >
                                 <input
                                     type="checkbox"
                                     checked={displayedRows.length > 0 && selectedRowIds.size === displayedRows.length}
                                     onChange={toggleSelectAll}
                                     className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                 />
-                            </th>
-                            <th className="px-2 py-3 w-16 sticky left-16 bg-slate-50 z-20 border-b border-r text-center">#</th>
+                            </SimpleResizableHeader>
+                            <SimpleResizableHeader
+                                label="#"
+                                width={columnWidths['__rowNumber__'] || 64}
+                                onResize={(newWidth) => {
+                                    setColumnWidths(prev => ({ ...prev, '__rowNumber__': newWidth }));
+                                }}
+                                isResizing={isResizing}
+                                setIsResizing={setIsResizing}
+                            />
                             {columns.map((col, idx) => (
                                 <ResizableHeader
                                     key={col}
@@ -739,10 +804,13 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                             // N'afficher la ligne TOTAL que si une colonne TTC existe
                             if (!ttcColumn) return null;
 
+                            const checkboxWidth = columnWidths['__checkbox__'] || 64;
+                            const rowNumberLeft = checkboxWidth;
+
                             return (
                                 <tr className="bg-slate-100 border-t-2 border-slate-300 font-bold">
-                                    <td className="px-2 py-2 w-16 sticky left-0 bg-slate-100 border-r text-center"></td>
-                                    <td className="px-2 py-2 w-16 text-slate-500 sticky left-16 bg-slate-100 border-r text-xs text-center">
+                                    <td className="px-2 py-2 sticky left-0 bg-slate-100 border-r text-center" style={{ width: checkboxWidth }}></td>
+                                    <td className="px-2 py-2 text-slate-500 sticky bg-slate-100 border-r text-xs text-center" style={{ width: columnWidths['__rowNumber__'] || 64, left: `${rowNumberLeft}px` }}>
                                         {paginatedRows.length + 1}
                                     </td>
                                     {columns.map((col, cIdx) => {
