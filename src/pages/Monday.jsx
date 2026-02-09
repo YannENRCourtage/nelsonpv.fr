@@ -323,6 +323,19 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
         });
     }, [columns]);
 
+    // Save column widths to database with debounce
+    useEffect(() => {
+        // Skip initial render and if no columns
+        if (Object.keys(columnWidths).length === 0) return;
+
+        // Debounce save to avoid too many writes
+        const timer = setTimeout(() => {
+            saveMetadata(columns, rowOrder, columnWidths);
+        }, 500); // Save after 500ms of inactivity
+
+        return () => clearTimeout(timer);
+    }, [columnWidths]); // Only watch columnWidths
+
     // Fetch Rows
     useEffect(() => {
         if (!data.id) return;
