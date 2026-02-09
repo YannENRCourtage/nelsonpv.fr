@@ -160,7 +160,7 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
             ref={ref}
             className={`bg-white border-b hover:bg-slate-50 group ${isDragging ? 'opacity-50' : ''} ${isSelected ? 'bg-blue-50' : ''}`}
         >
-            <td className="px-2 py-2 w-10 sticky left-0 bg-white group-hover:bg-slate-50 border-r text-center">
+            <td className="px-2 py-2 w-16 sticky left-0 bg-white group-hover:bg-slate-50 border-r text-center">
                 <input
                     type="checkbox"
                     checked={isSelected}
@@ -168,7 +168,7 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
                     className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                 />
             </td>
-            <td className="px-2 py-2 w-12 text-slate-500 sticky left-10 bg-white group-hover:bg-slate-50 border-r text-xs flex items-center justify-center">
+            <td className="px-2 py-2 w-16 text-slate-500 sticky left-16 bg-white group-hover:bg-slate-50 border-r text-xs flex items-center justify-center">
                 <div className="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-600">
                     <GripVertical className="w-4 h-4" />
                 </div>
@@ -682,7 +682,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                 <table className="w-full text-sm text-left relative border-collapse table-fixed">
                     <thead className="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm layer-20">
                         <tr>
-                            <th className="px-2 py-3 w-10 sticky left-0 bg-slate-50 z-20 border-b text-center border-r">
+                            <th className="px-2 py-3 w-16 sticky left-0 bg-slate-50 z-20 border-b text-center border-r">
                                 <input
                                     type="checkbox"
                                     checked={displayedRows.length > 0 && selectedRowIds.size === displayedRows.length}
@@ -690,7 +690,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                                     className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                 />
                             </th>
-                            <th className="px-2 py-3 w-12 sticky left-10 bg-slate-50 z-20 border-b border-r text-center">#</th>
+                            <th className="px-2 py-3 w-16 sticky left-16 bg-slate-50 z-20 border-b border-r text-center">#</th>
                             {columns.map((col, idx) => (
                                 <ResizableHeader
                                     key={col}
@@ -741,8 +741,8 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
 
                             return (
                                 <tr className="bg-slate-100 border-t-2 border-slate-300 font-bold">
-                                    <td className="px-2 py-2 w-10 sticky left-0 bg-slate-100 border-r text-center"></td>
-                                    <td className="px-2 py-2 w-12 text-slate-500 sticky left-10 bg-slate-100 border-r text-xs text-center">
+                                    <td className="px-2 py-2 w-16 sticky left-0 bg-slate-100 border-r text-center"></td>
+                                    <td className="px-2 py-2 w-16 text-slate-500 sticky left-16 bg-slate-100 border-r text-xs text-center">
                                         {paginatedRows.length + 1}
                                     </td>
                                     {columns.map((col, cIdx) => {
