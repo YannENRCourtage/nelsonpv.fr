@@ -24,6 +24,7 @@ import znzvData from "@/data/znzv.json";
 import { apiService } from "@/services/api";
 
 const INCLINATION_OPTIONS = [
+  { value: "5", label: "5° (8.75%)" },
   { value: "10", label: "10° (17.63%)" },
   { value: "15", label: "15° (26.79%)" },
   { value: "20", label: "20° (36.40%)" },
