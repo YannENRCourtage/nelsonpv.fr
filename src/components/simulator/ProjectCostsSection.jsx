@@ -25,52 +25,88 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
         { key: 'batterie', label: 'Batterie', unit: '€' }
     ];
 
-    const handleChange = (field, value) => {
-        // Replace comma with dot for parsing (normalize input)
-        const normalized = String(value).replace(',', '.');
-        onCostsChange({ ...costs, [field]: parseFloat(normalized) || 0 });
-    };
+    const CostInput = ({ value, onChange, unit }) => {
+        const [localValue, setLocalValue] = useState(value || 0);
 
-    // Intercepter le point du pavé numérique et le convertir en virgule
-    const handleKeyPress = (e) => {
-        if (e.key === '.' || e.key === 'Decimal') {
-            e.preventDefault();
-            const target = e.target;
-            const start = target.selectionStart;
-            const end = target.selectionEnd;
-            const currentValue = target.value;
+        useEffect(() => {
+            // Update local value if external value changes adequately
+            // We compare parsed values to avoid overwriting "10." with "10"
+            const currentParsed = parseFloat(String(localValue).replace(',', '.'));
+            if (currentParsed !== value) {
+                setLocalValue(value);
+            }
+        }, [value]);
 
-            const newValue = currentValue.substring(0, start) + ',' + currentValue.substring(end);
-            target.value = newValue;
+        const handleChange = (e) => {
+            let val = e.target.value;
+            // Allow numbers, comma, dot. Remove other chars.
+            val = val.replace(/[^0-9.,]/g, '');
 
-            const newPosition = start + 1;
-            target.setSelectionRange(newPosition, newPosition);
+            // Only one dot or comma
+            const parts = val.split(/[.,]/);
+            if (parts.length > 2) return; // More than one separator
 
-            const inputEvent = new InputEvent('input', { bubbles: true, cancelable: true });
-            target.dispatchEvent(inputEvent);
-        }
-    };
+            setLocalValue(val);
 
-    // Convertir le point du pavé numérique en virgule
-    const handleKeyDown = (e) => {
-        if (e.key === '.' || e.key === 'Decimal') {
-            e.preventDefault();
-            const target = e.target;
-            const start = target.selectionStart;
-            const end = target.selectionEnd;
-            const value = target.value;
+            // Notify parent only if valuable number
+            const normalized = val.replace(',', '.');
+            const parsed = parseFloat(normalized);
 
-            // Insérer une virgule à la position du curseur
-            const newValue = value.substring(0, start) + ',' + value.substring(end);
-            target.value = newValue;
+            // If it ends with separator, don't update parent yet (keep previous numeric value or wait)
+            // But wait, if previous was 10, and now is 10., parent still has 10.
+            // If now is 10.5, parent gets 10.5.
+            if (!isNaN(parsed) && !val.endsWith('.') && !val.endsWith(',')) {
+                onChange(parsed);
+            } else if (val === '') {
+                onChange(0);
+            }
+        };
 
-            // Repositionner le curseur après la virgule
-            target.setSelectionRange(start + 1, start + 1);
+        const handleBlur = () => {
+            // On blur, force formatting to parent's value to clean up "10." -> "10"
+            setLocalValue(value);
+        };
 
-            // Déclencher l'événement onChange manuellement
-            const event = new Event('input', { bubbles: true });
-            target.dispatchEvent(event);
-        }
+        const handleKeyDown = (e) => {
+            if (e.key === '.' || e.key === 'Decimal') {
+                e.preventDefault();
+                // Append comma specific logic if needed, or rely on normal input
+                // But we want to standardize on comma visually ?
+                // Let's just allow the key to invoke onChange and we handle replacement there?
+                // Actually the previous logic replaced . with , immediately.
+                // Let's replicate manual insertion to match UX
+                const target = e.target;
+                const start = target.selectionStart;
+                const end = target.selectionEnd;
+                const oldVal = target.value;
+                const newVal = oldVal.substring(0, start) + ',' + oldVal.substring(end);
+
+                // Trigger change manually
+                // React synthetic event mocks
+                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+                nativeInputValueSetter.call(target, newVal);
+                const ev = new Event('input', { bubbles: true });
+                target.dispatchEvent(ev);
+            }
+        };
+
+        return (
+            <div className="relative rounded-md shadow-sm">
+                <input
+                    type="text"
+                    value={localValue}
+                    onChange={handleChange}
+                    onKeyDown={handleKeyDown}
+                    onBlur={handleBlur}
+                    className="block w-full pl-3 pr-8 h-[45px] py-0 text-sm border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent flex items-center"
+                />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500 sm:text-xs">
+                        {unit === '€' ? '€' : (unit === '€/kWc/an' ? '' : '€')}
+                    </span>
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -99,20 +135,11 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                             <label className="block text-xs font-medium text-gray-500 mb-1">
                                 {field.label}
                             </label>
-                            <div className="relative rounded-md shadow-sm">
-                                <input
-                                    type="text"
-                                    value={costs[field.key] || 0}
-                                    onChange={(e) => handleChange(field.key, e.target.value)}
-                                    onKeyPress={handleKeyPress}
-                                    className="block w-full pl-3 pr-8 h-[45px] py-0 text-sm border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent flex items-center"
-                                />
-                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                    <span className="text-gray-500 sm:text-xs">
-                                        {field.unit === '€' ? '€' : (field.unit === '€/kWc/an' ? '' : '€')}
-                                    </span>
-                                </div>
-                            </div>
+                            <CostInput
+                                value={costs[field.key] || 0}
+                                onChange={(val) => onCostsChange({ ...costs, [field.key]: val })}
+                                unit={field.unit}
+                            />
                         </div>
                     ))}
                 </div>
@@ -125,18 +152,11 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                                 <label className="block text-xs font-medium text-gray-500 mb-1">
                                     {field.label}
                                 </label>
-                                <div className="relative rounded-md shadow-sm">
-                                    <input
-                                        type="text"
-                                        value={costs[field.key] || 0}
-                                        onChange={(e) => handleChange(field.key, e.target.value)}
-                                        onKeyPress={handleKeyPress}
-                                        className="block w-full pl-3 pr-8 h-[45px] py-0 text-sm border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent flex items-center"
-                                    />
-                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                        <span className="text-gray-500 sm:text-xs">€</span>
-                                    </div>
-                                </div>
+                                <CostInput
+                                    value={costs[field.key] || 0}
+                                    onChange={(val) => onCostsChange({ ...costs, [field.key]: val })}
+                                    unit={field.unit}
+                                />
                             </div>
                         ))}
                     </div>
