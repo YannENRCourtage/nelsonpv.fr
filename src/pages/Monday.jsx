@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
     Plus, Trash2, Edit2, GripVertical, Download, Upload, Save, X, MoreVertical,
-    Search, Filter, CheckSquare, Square, Trash, Copy,
+    Search, Filter, CheckSquare, Square, Trash, Copy, ArrowUp, ArrowDown,
     // Icons for tabs
     Users, Briefcase, Lock, Wallet, CreditCard, Table2, FolderOpen
 } from 'lucide-react';
@@ -183,7 +183,7 @@ const ResizableHeader = ({ col, index, width, onResize, moveColumn, deleteColumn
 };
 
 // --- Resizable Header avec couleur personnalisée ---
-const ResizableHeaderWithColor = ({ col, index, width, onResize, moveColumn, deleteColumn, isResizing, setIsResizing, headerColor, renameMap }) => {
+const ResizableHeaderWithColor = ({ col, index, width, onResize, moveColumn, deleteColumn, isResizing, setIsResizing, headerColor, renameMap, onSort, sortDirection }) => {
     const ref = useRef(null);
     const [{ isDragging }, drag] = useDrag({
         type: ItemTypes.COLUMN,
@@ -230,19 +230,11 @@ const ResizableHeaderWithColor = ({ col, index, width, onResize, moveColumn, del
         document.addEventListener('mouseup', handleMouseUp);
     };
 
-    // Déterminer le nom à afficher (soit le rename, soit le nom original)
-    // On cherche dans la map si le nom original (col) a une correspondance
-    // Mais attention aux espaces et à la casse, essayons d'être souple
+    // Déterminer le nom à afficher
     let displayName = col;
     if (renameMap) {
-        // Recherche exacte
         if (renameMap[col]) displayName = renameMap[col];
-        // Ou recherche insensible à la casse si besoin?
-        // Laissons exacte pour l'instant car les clés JSON sont précises
-        else {
-            const up = col.trim(); // Pas de toUpperCase pour les clés, garder l'original
-            // Si pas trouvé par clé exacte, on garde l'original
-        }
+        // else keep original
     }
 
     return (
@@ -250,11 +242,16 @@ const ResizableHeaderWithColor = ({ col, index, width, onResize, moveColumn, del
             ref={ref}
             style={{ width: width }}
             className={`px-2 py-3 border-b border-r group relative ${headerColor || 'bg-slate-50'} ${isDragging ? 'opacity-50' : ''}`}
+            onClick={() => onSort && onSort(col)}
         >
             <div className="flex items-center justify-between h-full pointer-events-none">
-                <span className="font-semibold text-slate-700 pointer-events-auto truncate px-1 text-xs" title={col !== displayName ? `${displayName} (${col})` : col}>
-                    {displayName}
-                </span>
+                <div className="flex items-center gap-1 overflow-hidden pointer-events-auto cursor-pointer select-none">
+                    <span className="font-semibold text-slate-700 truncate px-1 text-xs" title={col !== displayName ? `${displayName} (${col})` : col}>
+                        {displayName}
+                    </span>
+                    {sortDirection === 'asc' && <ArrowUp className="w-3 h-3 text-slate-500" />}
+                    {sortDirection === 'desc' && <ArrowDown className="w-3 h-3 text-slate-500" />}
+                </div>
                 <button
                     onClick={(e) => { e.stopPropagation(); deleteColumn(index); }}
                     className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded text-red-500 pointer-events-auto transition-opacity"
@@ -264,7 +261,7 @@ const ResizableHeaderWithColor = ({ col, index, width, onResize, moveColumn, del
             </div>
             <div
                 onMouseDown={handleMouseDown}
-                className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 z-10"
+                className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 z-10 pointer-events-auto"
             />
         </th>
     );
@@ -453,6 +450,9 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
     const [isResizing, setIsResizing] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const rowsPerPage = 200;
+
+    // Sorting
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
     // Helpers
     const [newColName, setNewColName] = useState('');
@@ -644,8 +644,44 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
             }
         });
 
+        // 4. Sort (Column Click)
+        if (sortConfig.key) {
+            ordered.sort((a, b) => {
+                const aValue = a.data[sortConfig.key] || '';
+                const bValue = b.data[sortConfig.key] || '';
+
+                // Essayer de trier comme des nombres si possible
+                const aNum = parseFloat(String(aValue).replace(/[^0-9.-]/g, ''));
+                const bNum = parseFloat(String(bValue).replace(/[^0-9.-]/g, ''));
+
+                if (!isNaN(aNum) && !isNaN(bNum) && String(aValue).length === String(bValue).length) { // Simple heuristic to avoid phone numbers vs small integers issues if needed, but let's try basic numeric
+                    // More robust check: if both look like numbers
+                }
+
+                // Let's use simple logic: if both parse to number, use numeric sort. 
+                // Careful with phone numbers starting with 0, might be treated as octal in some old js but parseFloat is decimals.
+                // However "06..." -> 6...
+
+                const isANum = !isNaN(aNum) && String(aValue).trim() !== '';
+                const isBNum = !isNaN(bNum) && String(bValue).trim() !== '';
+
+                if (isANum && isBNum) {
+                    return sortConfig.direction === 'asc' ? aNum - bNum : bNum - aNum;
+                }
+
+                // String sort
+                if (aValue < bValue) {
+                    return sortConfig.direction === 'asc' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return sortConfig.direction === 'asc' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+
         return ordered;
-    }, [rows, rowOrder, searchTerm, filters]);
+    }, [rows, rowOrder, searchTerm, filters, sortConfig]);
 
     // --- Pagination ---
     const totalPages = Math.ceil(displayedRows.length / rowsPerPage);
@@ -881,6 +917,14 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
     // Specific Filters requested
     const specificFilters = ['NOM', 'COURTIER', 'SOURCE DE INFO', 'DPT', 'SOURCE DU CONTACT'];
 
+    const handleSort = (key) => {
+        let direction = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
     return (
         <div className="flex flex-col h-full">
             {/* Toolbar Top */}
@@ -1032,6 +1076,8 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                                     setIsResizing={setIsResizing}
                                     headerColor={headerColor}
                                     renameMap={tabName && tabName.toLowerCase().includes('lead') ? COLUMN_RENAMES['leads'] : null}
+                                    onSort={handleSort}
+                                    sortDirection={sortConfig.key === col ? sortConfig.direction : null}
                                 />
                             ))}
                             {/* Suppression du titre de la colonne de suppression */}
