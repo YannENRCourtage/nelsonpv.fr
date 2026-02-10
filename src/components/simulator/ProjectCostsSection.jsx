@@ -3,6 +3,107 @@ import { Euro, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import DefaultCostsModal from './DefaultCostsModal';
 
+const CostInput = ({ value, onChange, unit }) => {
+    const [localValue, setLocalValue] = useState(value || 0);
+    const [isFocused, setIsFocused] = useState(false);
+
+    useEffect(() => {
+        // Update local value if external value changes
+        // Only if NOT focused, OR if the numeric value is different (external update)
+        const currentParsed = parseFloat(String(localValue).replace(',', '.'));
+
+        // Si on est focus, on ne veut SURTOUT PAS que "1500.0" soit écrasé par "1500"
+        if (isFocused) {
+            // On accepte l'update externe SEULEMENT si la valeur change vraiment (ex: calcul auto)
+            // Si c'est juste un re-render avec la même valeur (1500 vs 1500), on ne touche pas à localValue
+            if (currentParsed !== value) {
+                // C'est un vrai changement externe (ex: 1500 -> 50000)
+                // On doit mettre à jour, tant pis pour le curseur (cas rare pendant la saisie)
+                setLocalValue(value);
+            }
+        } else {
+            // Pas focus, on synchronise toujours pour être propre
+            if (currentParsed !== value) {
+                setLocalValue(value);
+            }
+        }
+    }, [value, isFocused]);
+
+    const handleChange = (e) => {
+        let val = e.target.value;
+        // Allow numbers, comma, dot. Remove other chars.
+        val = val.replace(/[^0-9.,]/g, '');
+
+        // Only one dot or comma
+        const parts = val.split(/[.,]/);
+        if (parts.length > 2) return; // More than one separator
+
+        setLocalValue(val);
+
+        // Notify parent only if valuable number
+        const normalized = val.replace(',', '.');
+        const parsed = parseFloat(normalized);
+
+        // If it ends with separator, don't update parent yet
+        if (!isNaN(parsed) && !val.endsWith('.') && !val.endsWith(',')) {
+            // IMPORTANT: Ne notifier que si la valeur numérique CHANGE.
+            // Si on tape "1500.0", parsed = 1500. Si value = 1500, on ne fait rien.
+            // Cela empêche le parent de renvoyer "1500" et de déclencher le useEffect qui pourrait (s'il était mal codé) écraser "1500.0"
+            if (parsed !== value) {
+                onChange(parsed);
+            }
+        } else if (val === '') {
+            onChange(0);
+        }
+    };
+
+    const handleBlur = () => {
+        setIsFocused(false);
+        // On blur, force formatting to parent's value to clean up "10." -> "10"
+        setLocalValue(value);
+    };
+
+    const handleFocus = () => {
+        setIsFocused(true);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === '.' || e.key === 'Decimal') {
+            e.preventDefault();
+            const target = e.target;
+            const start = target.selectionStart;
+            const end = target.selectionEnd;
+            const oldVal = target.value;
+            const newVal = oldVal.substring(0, start) + ',' + oldVal.substring(end);
+
+            // Trigger change manually
+            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+            nativeInputValueSetter.call(target, newVal);
+            const ev = new Event('input', { bubbles: true });
+            target.dispatchEvent(ev);
+        }
+    };
+
+    return (
+        <div className="relative rounded-md shadow-sm">
+            <input
+                type="text"
+                value={localValue}
+                onChange={handleChange}
+                onKeyDown={handleKeyDown}
+                onBlur={handleBlur}
+                onFocus={handleFocus}
+                className="block w-full pl-3 pr-8 h-[45px] py-0 text-sm border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent flex items-center"
+            />
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <span className="text-gray-500 sm:text-xs">
+                    {unit === '€' ? '€' : (unit === '€/kWc/an' ? '' : '€')}
+                </span>
+            </div>
+        </div>
+    );
+};
+
 export default function ProjectCostsSection({ costs, onCostsChange, totalCost }) {
     const [showDefaultCostsModal, setShowDefaultCostsModal] = useState(false);
 
@@ -24,107 +125,6 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
         { key: 'cheneaux', label: 'Chéneaux Et Descente', unit: '€' },
         { key: 'batterie', label: 'Batterie', unit: '€' }
     ];
-
-    const CostInput = ({ value, onChange, unit }) => {
-        const [localValue, setLocalValue] = useState(value || 0);
-        const [isFocused, setIsFocused] = useState(false);
-
-        useEffect(() => {
-            // Update local value if external value changes
-            // Only if NOT focused, OR if the numeric value is different (external update)
-            const currentParsed = parseFloat(String(localValue).replace(',', '.'));
-
-            // Si on est focus, on ne veut SURTOUT PAS que "1500.0" soit écrasé par "1500"
-            if (isFocused) {
-                // On accepte l'update externe SEULEMENT si la valeur change vraiment (ex: calcul auto)
-                // Si c'est juste un re-render avec la même valeur (1500 vs 1500), on ne touche pas à localValue
-                if (currentParsed !== value) {
-                    // C'est un vrai changement externe (ex: 1500 -> 50000)
-                    // On doit mettre à jour, tant pis pour le curseur (cas rare pendant la saisie)
-                    setLocalValue(value);
-                }
-            } else {
-                // Pas focus, on synchronise toujours pour être propre
-                if (currentParsed !== value) {
-                    setLocalValue(value);
-                }
-            }
-        }, [value, isFocused]);
-
-        const handleChange = (e) => {
-            let val = e.target.value;
-            // Allow numbers, comma, dot. Remove other chars.
-            val = val.replace(/[^0-9.,]/g, '');
-
-            // Only one dot or comma
-            const parts = val.split(/[.,]/);
-            if (parts.length > 2) return; // More than one separator
-
-            setLocalValue(val);
-
-            // Notify parent only if valuable number
-            const normalized = val.replace(',', '.');
-            const parsed = parseFloat(normalized);
-
-            // If it ends with separator, don't update parent yet
-            if (!isNaN(parsed) && !val.endsWith('.') && !val.endsWith(',')) {
-                // IMPORTANT: Ne notifier que si la valeur numérique CHANGE.
-                // Si on tape "1500.0", parsed = 1500. Si value = 1500, on ne fait rien.
-                // Cela empêche le parent de renvoyer "1500" et de déclencher le useEffect qui pourrait (s'il était mal codé) écraser "1500.0"
-                if (parsed !== value) {
-                    onChange(parsed);
-                }
-            } else if (val === '') {
-                onChange(0);
-            }
-        };
-
-        const handleBlur = () => {
-            setIsFocused(false);
-            // On blur, force formatting to parent's value to clean up "10." -> "10"
-            setLocalValue(value);
-        };
-
-        const handleFocus = () => {
-            setIsFocused(true);
-        };
-
-        const handleKeyDown = (e) => {
-            if (e.key === '.' || e.key === 'Decimal') {
-                e.preventDefault();
-                const target = e.target;
-                const start = target.selectionStart;
-                const end = target.selectionEnd;
-                const oldVal = target.value;
-                const newVal = oldVal.substring(0, start) + ',' + oldVal.substring(end);
-
-                // Trigger change manually
-                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-                nativeInputValueSetter.call(target, newVal);
-                const ev = new Event('input', { bubbles: true });
-                target.dispatchEvent(ev);
-            }
-        };
-
-        return (
-            <div className="relative rounded-md shadow-sm">
-                <input
-                    type="text"
-                    value={localValue}
-                    onChange={handleChange}
-                    onKeyDown={handleKeyDown}
-                    onBlur={handleBlur}
-                    onFocus={handleFocus}
-                    className="block w-full pl-3 pr-8 h-[45px] py-0 text-sm border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent flex items-center"
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-xs">
-                        {unit === '€' ? '€' : (unit === '€/kWc/an' ? '' : '€')}
-                    </span>
-                </div>
-            </div>
-        );
-    };
 
     return (
         <div className="bg-white rounded-lg shadow-md p-6 h-full flex flex-col">
