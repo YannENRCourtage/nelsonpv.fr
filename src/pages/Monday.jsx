@@ -33,6 +33,26 @@ const getTabIcon = (name) => {
     return Table2;
 };
 
+// Helper pour obtenir la couleur de l'onglet
+const getTabHeaderColor = (tabName) => {
+    const colors = [
+        'bg-yellow-100',   // jaune clair
+        'bg-blue-100',     // bleu clair
+        'bg-green-100',    // vert clair
+        'bg-pink-100',     // rose clair
+        'bg-purple-100',   // violet clair
+        'bg-orange-100',   // orange clair
+        'bg-cyan-100',     // cyan clair
+        'bg-lime-100',     // lime clair
+    ];
+    // Utiliser un hash simple du nom pour déterminer la couleur
+    let hash = 0;
+    for (let i = 0; i < tabName.length; i++) {
+        hash = tabName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+};
+
 const ItemTypes = {
     COLUMN: 'column',
     ROW: 'row',
@@ -111,10 +131,82 @@ const ResizableHeader = ({ col, index, width, onResize, moveColumn, deleteColumn
     );
 };
 
-// --- Simple Resizable Header for Fixed Columns (Checkbox, Row Number) ---
-const SimpleResizableHeader = ({ label, width, onResize, isResizing, setIsResizing, children }) => {
-    // Resize Handler
+// --- Resizable Header avec couleur personnalisée ---
+const ResizableHeaderWithColor = ({ col, index, width, onResize, moveColumn, deleteColumn, isResizing, setIsResizing, headerColor }) => {
+    const ref = useRef(null);
+    const [{ isDragging }, drag] = useDrag({
+        type: ItemTypes.COLUMN,
+        item: { index },
+        canDrag: !isResizing,
+        collect: (monitor) => ({
+            isDragging: monitor.isDragging(),
+        }),
+    });
+
+    const [, drop] = useDrop({
+        accept: ItemTypes.COLUMN,
+        hover(item, monitor) {
+            if (!ref.current || isResizing) return;
+            const dragIndex = item.index;
+            const hoverIndex = index;
+            if (dragIndex === hoverIndex) return;
+            moveColumn(dragIndex, hoverIndex);
+            item.index = hoverIndex;
+        },
+    });
+
+    drag(drop(ref));
+
     const handleMouseDown = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setIsResizing(true);
+        const startX = e.pageX;
+        const startWidth = width;
+
+        const handleMouseMove = (moveEvent) => {
+            const newWidth = Math.max(50, startWidth + (moveEvent.pageX - startX));
+            onResize(col, newWidth);
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false);
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    };
+
+    return (
+        <th
+            ref={ref}
+            style={{ width: width }}
+            className={`px-2 py-3 border-b border-r group relative ${headerColor || 'bg-slate-50'} ${isDragging ? 'opacity-50' : ''}`}
+        >
+            <div className="flex items-center justify-between h-full pointer-events-none">
+                <span className="font-semibold text-slate-700 pointer-events-auto truncate px-1 text-xs">{col}</span>
+                <button
+                    onClick={(e) => { e.stopPropagation(); deleteColumn(index); }}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded text-red-500 pointer-events-auto transition-opacity"
+                >
+                    <Trash2 className="w-3 h-3" />
+                </button>
+            </div>
+            <div
+                onMouseDown={handleMouseDown}
+                className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 z-10"
+            />
+        </th>
+    );
+};
+
+// --- Simple Resizable Header for Fixed Columns (Checkbox, Row Number) ---
+const SimpleResizableHeader = ({ label, width, onResize, isResizing, setIsResizing, children, isFixed, headerColor }) => {
+    // Resize Handler - seulement si la colonne n'est pas fixe
+    const handleMouseDown = (e) => {
+        if (isFixed) return; // Ne pas permettre le redimensionnement des colonnes fixes
         e.stopPropagation();
         e.preventDefault();
         setIsResizing(true);
@@ -139,16 +231,18 @@ const SimpleResizableHeader = ({ label, width, onResize, isResizing, setIsResizi
     return (
         <th
             style={{ width: width }}
-            className="px-2 py-3 border-b border-r group relative bg-slate-50"
+            className={`px-2 py-3 border-b border-r group relative ${headerColor || 'bg-slate-50'}`}
         >
             <div className="flex items-center justify-center h-full">
                 {children || label}
             </div>
-            {/* Resize Handle */}
-            <div
-                onMouseDown={handleMouseDown}
-                className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 z-10"
-            />
+            {/* Resize Handle - masqué pour les colonnes fixes */}
+            {!isFixed && (
+                <div
+                    onMouseDown={handleMouseDown}
+                    className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 z-10"
+                />
+            )}
         </th>
     );
 };
@@ -198,7 +292,7 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
     };
 
     // Calculate dynamic sticky positions
-    const checkboxWidth = columnWidths['__checkbox__'] || 64;
+    const checkboxWidth = 38; // Largeur fixe de 1cm
     const rowNumberLeft = checkboxWidth;
 
     return (
@@ -214,7 +308,7 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
                     className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                 />
             </td>
-            <td className="px-2 py-2 text-slate-500 sticky bg-white group-hover:bg-slate-50 border-r text-xs flex items-center justify-center" style={{ width: columnWidths['__rowNumber__'] || 64, left: `${rowNumberLeft}px` }}>
+            <td className="px-2 py-2 text-slate-500 sticky bg-white group-hover:bg-slate-50 border-r text-xs flex items-center justify-center" style={{ width: 38, left: `${rowNumberLeft}px` }}>
                 <div className="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-600">
                     <GripVertical className="w-4 h-4" />
                 </div>
@@ -263,11 +357,14 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
 
 
 // --- Composant Tableau Editable (Updated) ---
-const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
+const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
     // Data State
     const [columns, setColumns] = useState(data.columns || []);
     const [rows, setRows] = useState([]);
     const [rowOrder, setRowOrder] = useState(data.rowOrder || []);
+
+    // Couleur de l'en-tête basée sur le nom de l'onglet
+    const headerColor = getTabHeaderColor(tabName || data.name || 'default');
 
     // UI State
     const [searchTerm, setSearchTerm] = useState('');
@@ -312,9 +409,9 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
     useEffect(() => {
         setColumnWidths(prev => {
             const newWidths = { ...prev };
-            // Initialize fixed columns if not present
-            if (!newWidths['__checkbox__']) newWidths['__checkbox__'] = 64;
-            if (!newWidths['__rowNumber__']) newWidths['__rowNumber__'] = 64;
+            // Initialize fixed columns à 1cm (38px) et les fixer
+            newWidths['__checkbox__'] = 38;
+            newWidths['__rowNumber__'] = 38;
             // Initialize data columns
             columns.forEach(col => {
                 if (!newWidths[col]) newWidths[col] = 150;
@@ -746,12 +843,14 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                     <thead className="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm layer-20">
                         <tr>
                             <SimpleResizableHeader
-                                width={columnWidths['__checkbox__'] || 64}
+                                width={38}
                                 onResize={(newWidth) => {
-                                    setColumnWidths(prev => ({ ...prev, '__checkbox__': newWidth }));
+                                    // Ne fait rien car la colonne est fixe
                                 }}
                                 isResizing={isResizing}
                                 setIsResizing={setIsResizing}
+                                isFixed={true}
+                                headerColor={headerColor}
                             >
                                 <input
                                     type="checkbox"
@@ -762,15 +861,17 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                             </SimpleResizableHeader>
                             <SimpleResizableHeader
                                 label="#"
-                                width={columnWidths['__rowNumber__'] || 64}
+                                width={38}
                                 onResize={(newWidth) => {
-                                    setColumnWidths(prev => ({ ...prev, '__rowNumber__': newWidth }));
+                                    // Ne fait rien car la colonne est fixe
                                 }}
                                 isResizing={isResizing}
                                 setIsResizing={setIsResizing}
+                                isFixed={true}
+                                headerColor={headerColor}
                             />
                             {columns.map((col, idx) => (
-                                <ResizableHeader
+                                <ResizableHeaderWithColor
                                     key={col}
                                     col={col}
                                     index={idx}
@@ -780,6 +881,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                                     deleteColumn={deleteColumn}
                                     isResizing={isResizing}
                                     setIsResizing={setIsResizing}
+                                    headerColor={headerColor}
                                 />
                             ))}
                             <th className="px-2 py-3 w-10 border-b"></th>
@@ -817,13 +919,13 @@ const EditableTable = ({ data, onUpdate, onRowCountChange }) => {
                             // N'afficher la ligne TOTAL que si une colonne TTC existe
                             if (!ttcColumn) return null;
 
-                            const checkboxWidth = columnWidths['__checkbox__'] || 64;
+                            const checkboxWidth = 38; // Largeur fixe de 1cm
                             const rowNumberLeft = checkboxWidth;
 
                             return (
                                 <tr className="bg-slate-100 border-t-2 border-slate-300 font-bold">
                                     <td className="px-2 py-2 sticky left-0 bg-slate-100 border-r text-center" style={{ width: checkboxWidth }}></td>
-                                    <td className="px-2 py-2 text-slate-500 sticky bg-slate-100 border-r text-xs text-center" style={{ width: columnWidths['__rowNumber__'] || 64, left: `${rowNumberLeft}px` }}>
+                                    <td className="px-2 py-2 text-slate-500 sticky bg-slate-100 border-r text-xs text-center" style={{ width: 38, left: `${rowNumberLeft}px` }}>
                                         {paginatedRows.length + 1}
                                     </td>
                                     {columns.map((col, cIdx) => {
@@ -1054,7 +1156,7 @@ export default function Monday() {
                                 </div>
                             </div>
                             <div className="flex-1 min-h-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col">
-                                <EditableTable key={activeTab.id} data={activeTab} onUpdate={handleUpdateTab} onRowCountChange={setRowCount} />
+                                <EditableTable key={activeTab.id} data={activeTab} onUpdate={handleUpdateTab} onRowCountChange={setRowCount} tabName={activeTab.name} />
                             </div>
                         </>
                     ) : (
