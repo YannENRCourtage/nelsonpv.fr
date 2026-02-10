@@ -54,6 +54,18 @@ const formatExcelDate = (serial) => {
     return serial;
 };
 
+// Configuration des renommages de colonnes (Key = Nom original en base, Value = Nom affiché)
+const COLUMN_RENAMES = {
+    'leads': {
+        'PDB': 'Type de pro',
+        'R1': 'Type de projet',
+        'Type de projet': 'Adresse', // Attention : la colonne originale "Type de projet" devient "Adresse"
+        'Adresse': 'Téléphone',      // La colonne originale "Adresse" devient "Téléphone"
+        'CP + Ville': 'Mail',
+        'Tel': 'Commentaires'
+    }
+};
+
 const getTabIcon = (name) => {
     const n = name.toLowerCase();
     if (n.includes('lead')) return Users;
@@ -171,7 +183,7 @@ const ResizableHeader = ({ col, index, width, onResize, moveColumn, deleteColumn
 };
 
 // --- Resizable Header avec couleur personnalisée ---
-const ResizableHeaderWithColor = ({ col, index, width, onResize, moveColumn, deleteColumn, isResizing, setIsResizing, headerColor }) => {
+const ResizableHeaderWithColor = ({ col, index, width, onResize, moveColumn, deleteColumn, isResizing, setIsResizing, headerColor, renameMap }) => {
     const ref = useRef(null);
     const [{ isDragging }, drag] = useDrag({
         type: ItemTypes.COLUMN,
@@ -218,6 +230,21 @@ const ResizableHeaderWithColor = ({ col, index, width, onResize, moveColumn, del
         document.addEventListener('mouseup', handleMouseUp);
     };
 
+    // Déterminer le nom à afficher (soit le rename, soit le nom original)
+    // On cherche dans la map si le nom original (col) a une correspondance
+    // Mais attention aux espaces et à la casse, essayons d'être souple
+    let displayName = col;
+    if (renameMap) {
+        // Recherche exacte
+        if (renameMap[col]) displayName = renameMap[col];
+        // Ou recherche insensible à la casse si besoin?
+        // Laissons exacte pour l'instant car les clés JSON sont précises
+        else {
+            const up = col.trim(); // Pas de toUpperCase pour les clés, garder l'original
+            // Si pas trouvé par clé exacte, on garde l'original
+        }
+    }
+
     return (
         <th
             ref={ref}
@@ -225,7 +252,9 @@ const ResizableHeaderWithColor = ({ col, index, width, onResize, moveColumn, del
             className={`px-2 py-3 border-b border-r group relative ${headerColor || 'bg-slate-50'} ${isDragging ? 'opacity-50' : ''}`}
         >
             <div className="flex items-center justify-between h-full pointer-events-none">
-                <span className="font-semibold text-slate-700 pointer-events-auto truncate px-1 text-xs">{col}</span>
+                <span className="font-semibold text-slate-700 pointer-events-auto truncate px-1 text-xs" title={col !== displayName ? `${displayName} (${col})` : col}>
+                    {displayName}
+                </span>
                 <button
                     onClick={(e) => { e.stopPropagation(); deleteColumn(index); }}
                     className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded text-red-500 pointer-events-auto transition-opacity"
@@ -448,24 +477,9 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
         return { column: ttcColumn, sum };
     };
 
-    // Initial Defaults for Column Widths
-    useEffect(() => {
-        setColumnWidths(prev => {
-            const newWidths = { ...prev };
-            // Initialize fixed columns
-            // Checkbox: -2mm (38px -> ~30px)
-            // Row #: +2mm (38px -> ~46px)
-            newWidths['__checkbox__'] = 30;
-            newWidths['__rowNumber__'] = 46;
-            // Initialize data columns
-            columns.forEach(col => {
-                if (!newWidths[col]) newWidths[col] = 150;
-            });
-            return newWidths;
-        });
-    }, [columns]);
 
-    // Nettoyage automatique des colonnes pour l'onglet "Charges" et "LEADS"
+
+    // Nettoyage automatique des colonnes pour l'onglet "Charges", "LEADS" et "Dettes"
     useEffect(() => {
         if (tabName) {
             const lowName = tabName.toLowerCase();
@@ -474,10 +488,15 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
             if (lowName.includes('charge')) {
                 colsToRemove = ['date résiliation', 'informé'];
             } else if (lowName.includes('lead')) {
-                colsToRemove = ['r1', 'r2', 'pdb', 'infos transmise par', 'connecter les tableaux'];
+                colsToRemove = ['r1', 'r2', 'pdb', 'infos transmise par', 'connecter les tableaux', 'mail', 'info transmise par'];
+            } else if (lowName.includes('dette')) {
+                colsToRemove = ['sous éléments montants ttc', 'case à cocher', 'texte'];
             }
 
             if (colsToRemove.length > 0) {
+                // Pour LEADS, attention : on veut supprimer "Mail" original, pas "CP + Ville" qui devient "Mail".
+                // Donc on supprime par nom original.
+                // Le filtre se fait sur les colonnes actuelles (qui sont les noms originaux).
                 const cleanColumns = columns.filter(c => !colsToRemove.some(rem => rem.toLowerCase() === c.trim().toLowerCase()));
 
                 if (cleanColumns.length !== columns.length) {
@@ -489,6 +508,41 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
             }
         }
     }, [tabName, columns]); // Attention à la boucle infinie si columns change -> mais on compare length donc ça devrait aller (ça va render une fois de plus)
+
+    // Initial Defaults for Column Widths - Including Reductions for Dettes/Charges
+    useEffect(() => {
+        setColumnWidths(prev => {
+            const newWidths = { ...prev };
+            // Initialize fixed columns
+            // Checkbox: -2mm (38px -> ~30px)
+            // Row #: +2mm (38px -> ~46px)
+            if (!newWidths['__checkbox__'] || newWidths['__checkbox__'] === 64) newWidths['__checkbox__'] = 30;
+            if (!newWidths['__rowNumber__'] || newWidths['__rowNumber__'] === 64) newWidths['__rowNumber__'] = 46;
+
+            // Largeurs spécifiques réduites (75px)
+            const reducedCols = [
+                'Montant TTC', 'Date butoir', 'Date Prlvt auto', // Dettes
+                'Mensualités TTC', 'Date paiement', 'Type Prlvt', 'Echéance' // Charges
+            ];
+
+            reducedCols.forEach(rc => {
+                // Si la largeur n'est pas définie ou est par défaut (150), on force à 75
+                // On utilise lowercase pour matcher plus surement
+                const matchingCol = columns.find(c => c.toLowerCase() === rc.toLowerCase());
+                if (matchingCol) {
+                    if (!newWidths[matchingCol] || newWidths[matchingCol] === 150) {
+                        newWidths[matchingCol] = 75;
+                    }
+                }
+            });
+
+            // Initialize data columns
+            columns.forEach(col => {
+                if (!newWidths[col]) newWidths[col] = 150;
+            });
+            return newWidths;
+        });
+    }, [columns]);
 
     // Save column widths to database with debounce
     useEffect(() => {
@@ -952,8 +1006,10 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                                     isResizing={isResizing}
                                     setIsResizing={setIsResizing}
                                     headerColor={headerColor}
+                                    renameMap={tabName && tabName.toLowerCase().includes('lead') ? COLUMN_RENAMES['leads'] : null}
                                 />
                             ))}
+                            {/* Suppression du titre de la colonne de suppression */}
                             <th className="px-2 py-3 w-10 border-b"></th>
                         </tr>
                     </thead>
