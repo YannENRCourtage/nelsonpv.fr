@@ -526,20 +526,37 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
             if (!newWidths['__checkbox__'] || newWidths['__checkbox__'] === 64) newWidths['__checkbox__'] = 30;
             if (!newWidths['__rowNumber__'] || newWidths['__rowNumber__'] === 64) newWidths['__rowNumber__'] = 46;
 
-            // Largeurs spécifiques réduites (75px)
-            const reducedCols = [
-                'Montant TTC', 'Date butoir', 'Date Prlvt auto', // Dettes
-                'Mensualités TTC', 'Date paiement', 'Type Prlvt', 'Echéance', // Charges
-                'Réf', 'DPT' // LEADS (nouveaux ajouts)
-            ];
+            // Largeurs spécifiques (Key = Nom colonne, Value = Largeur en px)
+            const specificWidths = {
+                // Dettes (Réduction 1/2 -> 75px)
+                'Montant TTC': 75,
+                'Date butoir': 75,
+                'Date Prlvt auto': 75,
 
-            reducedCols.forEach(rc => {
-                // Si la largeur n'est pas définie ou est par défaut (150), on force à 75
-                // On utilise lowercase pour matcher plus surement
-                const matchingCol = columns.find(c => c.toLowerCase() === rc.toLowerCase());
+                // Charges (Réduction 1/2 -> 75px)
+                'Mensualités TTC': 75,
+                'Date paiement': 75,
+                'Type Prlvt': 75,
+                'Echéance': 75,
+
+                // LEADS
+                'Réf': 75,          // Réduction 1/2
+                'DPT': 75,          // Réduction 1/2
+                'PDB': 100,         // Réduction 1/3 (Type de pro)
+                'Type de projet': 100, // Réduction 1/3 (Projet)
+                'Tel': 100,         // Réduction 1/3 (Tél)
+                'Adresse': 250,     // Augmentation
+                'Commentaires': 250 // Augmentation
+            };
+
+            // Appliquer les largeurs spécifiques
+            Object.entries(specificWidths).forEach(([colName, width]) => {
+                // Recherche insensible à la casse
+                const matchingCol = columns.find(c => c.toLowerCase() === colName.toLowerCase());
                 if (matchingCol) {
+                    // Si la largeur n'est pas définie ou est par défaut (150), on force la nouvelle largeur
                     if (!newWidths[matchingCol] || newWidths[matchingCol] === 150) {
-                        newWidths[matchingCol] = 75;
+                        newWidths[matchingCol] = width;
                     }
                 }
             });
