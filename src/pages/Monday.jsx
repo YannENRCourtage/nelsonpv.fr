@@ -35,17 +35,24 @@ const getTabIcon = (name) => {
 
 // Helper pour obtenir la couleur de l'onglet
 const getTabHeaderColor = (tabName) => {
+    const name = tabName.toLowerCase();
+
+    // Couleurs spécifiques demandées
+    if (name.includes('dette')) return 'bg-red-100';      // Rouge clair pour Dettes
+    if (name.includes('charge')) return 'bg-yellow-100';  // Jaune pour Charges
+    if (name.includes('lead')) return 'bg-green-100';     // Vert clair pour LEADS (ou défaut)
+    if (name.includes('projet')) return 'bg-blue-100';    // Bleu clair pour Projets
+    if (name.includes('mdp')) return 'bg-purple-100';     // Violet pour MDP
+
+    // Couleurs par défaut pour les autres (hash)
     const colors = [
-        'bg-yellow-100',   // jaune clair
-        'bg-blue-100',     // bleu clair
-        'bg-green-100',    // vert clair
-        'bg-pink-100',     // rose clair
-        'bg-purple-100',   // violet clair
-        'bg-orange-100',   // orange clair
-        'bg-cyan-100',     // cyan clair
-        'bg-lime-100',     // lime clair
+        'bg-orange-100',
+        'bg-cyan-100',
+        'bg-lime-100',
+        'bg-pink-100',
+        'bg-indigo-100',
+        'bg-teal-100'
     ];
-    // Utiliser un hash simple du nom pour déterminer la couleur
     let hash = 0;
     for (let i = 0; i < tabName.length; i++) {
         hash = tabName.charCodeAt(i) + ((hash << 5) - hash);
@@ -292,7 +299,7 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
     };
 
     // Calculate dynamic sticky positions
-    const checkboxWidth = 38; // Largeur fixe de 1cm
+    const checkboxWidth = 30; // ~8mm
     const rowNumberLeft = checkboxWidth;
 
     return (
@@ -308,7 +315,7 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
                     className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                 />
             </td>
-            <td className="px-2 py-2 text-slate-500 sticky bg-white group-hover:bg-slate-50 border-r text-xs flex items-center justify-center" style={{ width: 38, left: `${rowNumberLeft}px` }}>
+            <td className="px-2 py-2 text-slate-500 sticky bg-white group-hover:bg-slate-50 border-r text-xs flex items-center justify-center" style={{ width: 46, left: `${rowNumberLeft}px` }}>
                 <div className="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-600">
                     <GripVertical className="w-4 h-4" />
                 </div>
@@ -409,9 +416,11 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
     useEffect(() => {
         setColumnWidths(prev => {
             const newWidths = { ...prev };
-            // Initialize fixed columns à 1cm (38px) et les fixer
-            newWidths['__checkbox__'] = 38;
-            newWidths['__rowNumber__'] = 38;
+            // Initialize fixed columns
+            // Checkbox: -2mm (38px -> ~30px)
+            // Row #: +2mm (38px -> ~46px)
+            newWidths['__checkbox__'] = 30;
+            newWidths['__rowNumber__'] = 46;
             // Initialize data columns
             columns.forEach(col => {
                 if (!newWidths[col]) newWidths[col] = 150;
@@ -419,6 +428,21 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
             return newWidths;
         });
     }, [columns]);
+
+    // Nettoyage automatique des colonnes pour l'onglet "Charges"
+    useEffect(() => {
+        if (tabName && tabName.toLowerCase().includes('charge')) {
+            const colsToRemove = ['date résiliation', 'informé'];
+            const cleanColumns = columns.filter(c => !colsToRemove.some(rem => rem.toLowerCase() === c.toLowerCase()));
+
+            if (cleanColumns.length !== columns.length) {
+                console.log("Nettoyage des colonnes Charges:", colsToRemove);
+                setColumns(cleanColumns);
+                // On sauvegarde immédiatement pour persister la suppression
+                saveMetadata(cleanColumns, rowOrder, columnWidths);
+            }
+        }
+    }, [tabName, columns]); // Attention à la boucle infinie si columns change -> mais on compare length donc ça devrait aller (ça va render une fois de plus)
 
     // Save column widths to database with debounce
     useEffect(() => {
@@ -843,7 +867,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                     <thead className="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm layer-20">
                         <tr>
                             <SimpleResizableHeader
-                                width={38}
+                                width={30}
                                 onResize={(newWidth) => {
                                     // Ne fait rien car la colonne est fixe
                                 }}
@@ -861,7 +885,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                             </SimpleResizableHeader>
                             <SimpleResizableHeader
                                 label="#"
-                                width={38}
+                                width={46}
                                 onResize={(newWidth) => {
                                     // Ne fait rien car la colonne est fixe
                                 }}
@@ -919,13 +943,13 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                             // N'afficher la ligne TOTAL que si une colonne TTC existe
                             if (!ttcColumn) return null;
 
-                            const checkboxWidth = 38; // Largeur fixe de 1cm
+                            const checkboxWidth = 30; // 30px
                             const rowNumberLeft = checkboxWidth;
 
                             return (
                                 <tr className="bg-slate-100 border-t-2 border-slate-300 font-bold">
                                     <td className="px-2 py-2 sticky left-0 bg-slate-100 border-r text-center" style={{ width: checkboxWidth }}></td>
-                                    <td className="px-2 py-2 text-slate-500 sticky bg-slate-100 border-r text-xs text-center" style={{ width: 38, left: `${rowNumberLeft}px` }}>
+                                    <td className="px-2 py-2 text-slate-500 sticky bg-slate-100 border-r text-xs text-center" style={{ width: 46, left: `${rowNumberLeft}px` }}>
                                         {paginatedRows.length + 1}
                                     </td>
                                     {columns.map((col, cIdx) => {
