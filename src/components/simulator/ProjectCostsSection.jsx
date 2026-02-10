@@ -27,15 +27,29 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
 
     const CostInput = ({ value, onChange, unit }) => {
         const [localValue, setLocalValue] = useState(value || 0);
+        const [isFocused, setIsFocused] = useState(false);
 
         useEffect(() => {
-            // Update local value if external value changes adequately
-            // We compare parsed values to avoid overwriting "10." with "10"
+            // Update local value if external value changes
+            // Only if NOT focused, OR if the numeric value is different (external update)
             const currentParsed = parseFloat(String(localValue).replace(',', '.'));
-            if (currentParsed !== value) {
-                setLocalValue(value);
+
+            // Si on est focus, on ne veut SURTOUT PAS que "1500.0" soit écrasé par "1500"
+            if (isFocused) {
+                // On accepte l'update externe SEULEMENT si la valeur change vraiment (ex: calcul auto)
+                // Si c'est juste un re-render avec la même valeur (1500 vs 1500), on ne touche pas à localValue
+                if (currentParsed !== value) {
+                    // C'est un vrai changement externe (ex: 1500 -> 50000)
+                    // On doit mettre à jour, tant pis pour le curseur (cas rare pendant la saisie)
+                    setLocalValue(value);
+                }
+            } else {
+                // Pas focus, on synchronise toujours pour être propre
+                if (currentParsed !== value) {
+                    setLocalValue(value);
+                }
             }
-        }, [value]);
+        }, [value, isFocused]);
 
         const handleChange = (e) => {
             let val = e.target.value;
@@ -52,29 +66,32 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
             const normalized = val.replace(',', '.');
             const parsed = parseFloat(normalized);
 
-            // If it ends with separator, don't update parent yet (keep previous numeric value or wait)
-            // But wait, if previous was 10, and now is 10., parent still has 10.
-            // If now is 10.5, parent gets 10.5.
+            // If it ends with separator, don't update parent yet
             if (!isNaN(parsed) && !val.endsWith('.') && !val.endsWith(',')) {
-                onChange(parsed);
+                // IMPORTANT: Ne notifier que si la valeur numérique CHANGE.
+                // Si on tape "1500.0", parsed = 1500. Si value = 1500, on ne fait rien.
+                // Cela empêche le parent de renvoyer "1500" et de déclencher le useEffect qui pourrait (s'il était mal codé) écraser "1500.0"
+                if (parsed !== value) {
+                    onChange(parsed);
+                }
             } else if (val === '') {
                 onChange(0);
             }
         };
 
         const handleBlur = () => {
+            setIsFocused(false);
             // On blur, force formatting to parent's value to clean up "10." -> "10"
             setLocalValue(value);
+        };
+
+        const handleFocus = () => {
+            setIsFocused(true);
         };
 
         const handleKeyDown = (e) => {
             if (e.key === '.' || e.key === 'Decimal') {
                 e.preventDefault();
-                // Append comma specific logic if needed, or rely on normal input
-                // But we want to standardize on comma visually ?
-                // Let's just allow the key to invoke onChange and we handle replacement there?
-                // Actually the previous logic replaced . with , immediately.
-                // Let's replicate manual insertion to match UX
                 const target = e.target;
                 const start = target.selectionStart;
                 const end = target.selectionEnd;
@@ -82,7 +99,6 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                 const newVal = oldVal.substring(0, start) + ',' + oldVal.substring(end);
 
                 // Trigger change manually
-                // React synthetic event mocks
                 const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
                 nativeInputValueSetter.call(target, newVal);
                 const ev = new Event('input', { bubbles: true });
@@ -98,6 +114,7 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                     onChange={handleChange}
                     onKeyDown={handleKeyDown}
                     onBlur={handleBlur}
+                    onFocus={handleFocus}
                     className="block w-full pl-3 pr-8 h-[45px] py-0 text-sm border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent flex items-center"
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
