@@ -496,7 +496,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
             if (lowName.includes('charge')) {
                 colsToRemove = ['date résiliation', 'informé'];
             } else if (lowName.includes('lead')) {
-                colsToRemove = ['r1', 'r2', 'pdb', 'infos transmise par', 'connecter les tableaux', 'mail', 'info transmise par', 'réf', 'source du contact'];
+                colsToRemove = ['r1', 'r2', 'pdb', 'infos transmise par', 'connecter les tableaux', 'mail', 'info transmise par', 'réf', 'ref', 'source du contact'];
             } else if (lowName.includes('dette')) {
                 colsToRemove = ['sous éléments montants ttc', 'case à cocher', 'texte'];
             } else if (lowName.includes('projet')) { // Nouveau cas pour Projets
