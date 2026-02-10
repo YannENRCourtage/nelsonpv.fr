@@ -59,10 +59,10 @@ const COLUMN_RENAMES = {
     'leads': {
         'PDB': 'Type de pro',
         'R1': 'Type de projet',
-        'Type de projet': 'Adresse', // Attention : la colonne originale "Type de projet" devient "Adresse"
-        'Adresse': 'Téléphone',      // La colonne originale "Adresse" devient "Téléphone"
+        'Type de projet': 'Projet',      // Modifié : Adresse -> Projet
+        // 'Adresse': 'Adresse',         // Modifié : Téléphone -> Adresse (On supprime le renommage pour garder l'original)
         'CP + Ville': 'Mail',
-        'Tel': 'Commentaires'
+        'Tel': 'Tél'                     // Modifié : Commentaires -> Tél
     }
 };
 
@@ -360,6 +360,13 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
         if (col && (col.toUpperCase() === 'DATE DU CONTACT' || col.toUpperCase() === 'DATE CONTACT')) {
             return formatExcelDate(value);
         }
+        // Formatage spécifique pour Tél (ajout du 0 devant)
+        // La colonne s'appelle 'Tel' en base (renommée Tél en affichage)
+        if (col && (col === 'Tel' || col === 'Tél')) {
+            if (value && String(value).length === 9 && !String(value).startsWith('0')) {
+                return '0' + value;
+            }
+        }
         return value || '';
     };
 
@@ -522,7 +529,8 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
             // Largeurs spécifiques réduites (75px)
             const reducedCols = [
                 'Montant TTC', 'Date butoir', 'Date Prlvt auto', // Dettes
-                'Mensualités TTC', 'Date paiement', 'Type Prlvt', 'Echéance' // Charges
+                'Mensualités TTC', 'Date paiement', 'Type Prlvt', 'Echéance', // Charges
+                'Réf', 'DPT' // LEADS (nouveaux ajouts)
             ];
 
             reducedCols.forEach(rc => {
