@@ -22,6 +22,38 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import apiService from '../services/api';
 
 // Helper for Tab Icons
+const formatExcelDate = (serial) => {
+    // Si c'est déjà une chaîne formatted ou vide
+    if (!serial) return '';
+    // Si c'est un nombre (Excel serial date)
+    // Excel base date is Dec 30 1899 usually (for Windows)
+    // 1 = 1900-01-01
+    // 45863 -> 2025...
+    const num = parseFloat(serial);
+    if (!isNaN(num) && num > 10000) { // Simple check to avoid treating normal numbers as dates unless large enough
+        const utc_days = Math.floor(num - 25569);
+        const utc_value = utc_days * 86400;
+        const date_info = new Date(utc_value * 1000);
+
+        // Ajustement timezone si nécessaire, mais Excel serial est souvent local ou UTC sans time
+        // Pour être sûr, on utilise les méthodes UTC ou on ajoute un offset manuel
+        // Simple approach: new Date((serial - (25567 + 2)) * 86400 * 1000) for standard excel
+        // Let's use a robust method
+
+        const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+        // Add one day maybe because of leap year bug in Excel? 1900 is not leap year but Excel thinks so.
+        // Usually for dates after 1900-02-28 we need to substract 1 day logic or standard algo handles it.
+        // Actually (num - 25569) gives unix timestamp in days.
+
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+    // Si c'est déjà une string, on essaie de la garder ou de la formater si c'est ISO
+    return serial;
+};
+
 const getTabIcon = (name) => {
     const n = name.toLowerCase();
     if (n.includes('lead')) return Users;
@@ -295,6 +327,10 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
         if (ttcColumn && col === ttcColumn) {
             return formatTTCValue(value);
         }
+        // Formatage spécifique pour DATE DU CONTACT
+        if (col && (col.toUpperCase() === 'DATE DU CONTACT' || col.toUpperCase() === 'DATE CONTACT')) {
+            return formatExcelDate(value);
+        }
         return value || '';
     };
 
@@ -429,17 +465,27 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
         });
     }, [columns]);
 
-    // Nettoyage automatique des colonnes pour l'onglet "Charges"
+    // Nettoyage automatique des colonnes pour l'onglet "Charges" et "LEADS"
     useEffect(() => {
-        if (tabName && tabName.toLowerCase().includes('charge')) {
-            const colsToRemove = ['date résiliation', 'informé'];
-            const cleanColumns = columns.filter(c => !colsToRemove.some(rem => rem.toLowerCase() === c.toLowerCase()));
+        if (tabName) {
+            const lowName = tabName.toLowerCase();
+            let colsToRemove = [];
 
-            if (cleanColumns.length !== columns.length) {
-                console.log("Nettoyage des colonnes Charges:", colsToRemove);
-                setColumns(cleanColumns);
-                // On sauvegarde immédiatement pour persister la suppression
-                saveMetadata(cleanColumns, rowOrder, columnWidths);
+            if (lowName.includes('charge')) {
+                colsToRemove = ['date résiliation', 'informé'];
+            } else if (lowName.includes('lead')) {
+                colsToRemove = ['r1', 'r2', 'pdb', 'infos transmise par', 'connecter les tableaux'];
+            }
+
+            if (colsToRemove.length > 0) {
+                const cleanColumns = columns.filter(c => !colsToRemove.some(rem => rem.toLowerCase() === c.trim().toLowerCase()));
+
+                if (cleanColumns.length !== columns.length) {
+                    console.log(`Nettoyage des colonnes ${tabName}:`, colsToRemove);
+                    setColumns(cleanColumns);
+                    // On sauvegarde immédiatement pour persister la suppression
+                    saveMetadata(cleanColumns, rowOrder, columnWidths);
+                }
             }
         }
     }, [tabName, columns]); // Attention à la boucle infinie si columns change -> mais on compare length donc ça devrait aller (ça va render une fois de plus)
