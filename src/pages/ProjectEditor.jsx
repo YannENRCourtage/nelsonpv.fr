@@ -23,6 +23,17 @@ import PredefinedBuildingsPanel from "@/components/editor/PredefinedBuildingsPan
 import znzvData from "@/data/znzv.json";
 import { apiService } from "@/services/api";
 
+const INCLINATION_OPTIONS = [
+  { value: "10", label: "10° (17.63%)" },
+  { value: "15", label: "15° (26.79%)" },
+  { value: "20", label: "20° (36.40%)" },
+  { value: "25", label: "25° (46.63%)" },
+  { value: "30", label: "30° (57.74%)" },
+  { value: "35", label: "35° (70.02%)" },
+  { value: "40", label: "40° (83.91%)" },
+  { value: "45", label: "45° (100.00%)" },
+];
+
 function SymbolBtn({ icon, label, type, emoji, onSelect, isSelected }) {
   return (
     <button
@@ -723,14 +734,11 @@ export default function ProjectEditor() {
                       >
                         <SelectTrigger className={`mt-1 h-10 w-full ${hasFirstBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="10">10°</SelectItem>
-                          <SelectItem value="15">15°</SelectItem>
-                          <SelectItem value="20">20°</SelectItem>
-                          <SelectItem value="25">25°</SelectItem>
-                          <SelectItem value="30">30°</SelectItem>
-                          <SelectItem value="35">35°</SelectItem>
-                          <SelectItem value="40">40°</SelectItem>
-                          <SelectItem value="45">45°</SelectItem>
+                          {INCLINATION_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -878,14 +886,11 @@ export default function ProjectEditor() {
                           >
                             <SelectTrigger className={`mt-1 h-10 w-full ${hasSecondBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="10">10°</SelectItem>
-                              <SelectItem value="15">15°</SelectItem>
-                              <SelectItem value="20">20°</SelectItem>
-                              <SelectItem value="25">25°</SelectItem>
-                              <SelectItem value="30">30°</SelectItem>
-                              <SelectItem value="35">35°</SelectItem>
-                              <SelectItem value="40">40°</SelectItem>
-                              <SelectItem value="45">45°</SelectItem>
+                              {INCLINATION_OPTIONS.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
