@@ -399,6 +399,7 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
                             value={getDisplayValue(col, row.data[col])}
                             onChange={(e) => updateCell(row.id, col, e.target.value)}
                             onBlur={onBlur}
+                            onMouseDown={(e) => e.stopPropagation()} // Fix curseur : empêche le drag de démarrer sur l'input
                             title={row.data[col]}
                         />
                         <button
@@ -495,9 +496,11 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
             if (lowName.includes('charge')) {
                 colsToRemove = ['date résiliation', 'informé'];
             } else if (lowName.includes('lead')) {
-                colsToRemove = ['r1', 'r2', 'pdb', 'infos transmise par', 'connecter les tableaux', 'mail', 'info transmise par'];
+                colsToRemove = ['r1', 'r2', 'pdb', 'infos transmise par', 'connecter les tableaux', 'mail', 'info transmise par', 'réf', 'source du contact'];
             } else if (lowName.includes('dette')) {
                 colsToRemove = ['sous éléments montants ttc', 'case à cocher', 'texte'];
+            } else if (lowName.includes('projet')) { // Nouveau cas pour Projets
+                colsToRemove = ['bâtiment ou sol'];
             }
 
             if (colsToRemove.length > 0) {
