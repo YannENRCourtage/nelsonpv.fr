@@ -317,6 +317,7 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
     const ref = useRef(null);
     const [editingCell, setEditingCell] = useState(null); // Track which cell is being edited (col name)
     const inputRefs = useRef({}); // Refs for each input to preserve cursor position
+    const [cursorPosition, setCursorPosition] = useState(null); // Store cursor position when switching to edit mode
 
     const [{ isDragging }, drag] = useDrag({
         type: ItemTypes.ROW,
@@ -375,18 +376,69 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
         return value || '';
     };
 
-    // Handle cell focus - switch to editing mode
+    // Calculate cursor position when transitioning from formatted to raw value
+    const calculateCursorPosition = (formattedValue, rawValue, clickPosition) => {
+        // If clicking in a TTC column with € formatting
+        if (formattedValue.includes('€')) {
+            // Remove spaces and € to get the numeric part
+            const numericPart = formattedValue.replace(/\s*€\s*$/g, '');
+            // If click is after the numeric part, position at end of raw value
+            if (clickPosition >= numericPart.length) {
+                return rawValue.length;
+            }
+            // Otherwise, keep the same position
+            return Math.min(clickPosition, rawValue.length);
+        }
+        // For other values, keep same position or end
+        return Math.min(clickPosition, rawValue.length);
+    };
+
+    // Handle cell click - capture cursor position and switch to editing mode
+    const handleCellClick = (col, e) => {
+        if (editingCell !== col) {
+            const input = e.target;
+            const clickPosition = input.selectionStart || 0;
+            const formattedValue = getDisplayValue(col, row.data[col]);
+            const rawValue = getRawValue(col, row.data[col]);
+
+            // Calculate where the cursor should be in the raw value
+            const calculatedPosition = calculateCursorPosition(formattedValue, rawValue, clickPosition);
+
+            setCursorPosition({ col, position: calculatedPosition });
+            setEditingCell(col);
+        }
+    };
+
+    // Handle cell focus - used when tabbing into cell
     const handleCellFocus = (col) => {
-        setEditingCell(col);
+        if (editingCell !== col) {
+            setEditingCell(col);
+            // Don't set cursor position here, let it default to start/end
+        }
     };
 
     // Handle cell blur - exit editing mode and trigger parent blur
     const handleCellBlur = (col) => {
         setEditingCell(null);
+        setCursorPosition(null);
         if (onBlur) {
             onBlur();
         }
     };
+
+    // Effect to restore cursor position after value changes
+    useEffect(() => {
+        if (cursorPosition && editingCell === cursorPosition.col) {
+            const input = inputRefs.current[cursorPosition.col];
+            if (input) {
+                // Use setTimeout to ensure the input value has been updated
+                setTimeout(() => {
+                    input.setSelectionRange(cursorPosition.position, cursorPosition.position);
+                    input.focus();
+                }, 0);
+            }
+        }
+    }, [editingCell, cursorPosition]);
 
     // Calculate dynamic sticky positions
     const checkboxWidth = 30; // ~8mm
@@ -431,6 +483,7 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
                                 }}
                                 onClick={(e) => {
                                     e.stopPropagation(); // Empêche toute interférence avec le clic
+                                    handleCellClick(col, e); // Capture cursor position when clicking
                                 }}
                                 title={row.data[col]}
                             />
