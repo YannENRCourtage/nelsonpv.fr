@@ -157,6 +157,16 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                                 onChange={(val) => onCostsChange({ ...costs, [field.key]: val })}
                                 unit={field.unit}
                             />
+                            {field.key === 'soulte' && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                    (rente annuelle sur 20 ans = soulte/16 soit {
+                                        ((costs['soulte'] || 0) / 16).toLocaleString('fr-FR', {
+                                            minimumFractionDigits: 0,
+                                            maximumFractionDigits: 2
+                                        })
+                                    } €)
+                                </p>
+                            )}
                         </div>
                     ))}
                 </div>
