@@ -11,9 +11,18 @@ import {
     where,
     // orderBy, // Removed to avoid index requirement
     onSnapshot,
-    serverTimestamp
+    serverTimestamp,
+    writeBatch
 } from 'firebase/firestore';
 import { db } from '@/config/firebase.js';
+
+// ============================================================================
+// TENANTS
+// ============================================================================
+export const TENANTS = {
+    'green-invest': { label: 'GREEN INVEST (BARCONNIERE)', color: '#16a34a' },
+    'acama': { label: 'ACAMA', color: '#2563eb' }
+};
 
 // ============================================================================
 // USERS
@@ -45,12 +54,13 @@ export const deleteUser = async (uid) => {
 // CONTACTS
 // ============================================================================
 
-export const createContact = async (contactData, userId) => {
+export const createContact = async (contactData, userId, tenantId = 'green-invest') => {
     const contactRef = doc(collection(db, 'contacts'));
     // Remove temporary ID if present
     const { id, ...data } = contactData;
     const contact = {
         ...data,
+        tenantId,
         createdBy: userId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -76,16 +86,15 @@ export const deleteContact = async (contactId) => {
     await deleteDoc(doc(db, 'contacts', contactId));
 };
 
-export const listContacts = async (userId, canViewAll = false) => {
+export const listContacts = async (userId, canViewAll = false, tenantId = 'green-invest') => {
     let q;
     if (canViewAll) {
-        // q = query(collection(db, 'contacts'), orderBy('createdAt', 'desc'));
-        q = query(collection(db, 'contacts'));
+        q = query(collection(db, 'contacts'), where('tenantId', '==', tenantId));
     } else {
         q = query(
             collection(db, 'contacts'),
+            where('tenantId', '==', tenantId),
             where('createdBy', '==', userId)
-            // orderBy('createdAt', 'desc') // Removed to avoid index requirement
         );
     }
 
@@ -100,16 +109,15 @@ export const listContacts = async (userId, canViewAll = false) => {
     });
 };
 
-export const subscribeToContacts = (userId, canViewAll, callback) => {
+export const subscribeToContacts = (userId, canViewAll, callback, tenantId = 'green-invest') => {
     let q;
     if (canViewAll) {
-        // q = query(collection(db, 'contacts'), orderBy('createdAt', 'desc'));
-        q = query(collection(db, 'contacts'));
+        q = query(collection(db, 'contacts'), where('tenantId', '==', tenantId));
     } else {
         q = query(
             collection(db, 'contacts'),
+            where('tenantId', '==', tenantId),
             where('createdBy', '==', userId)
-            // orderBy('createdAt', 'desc') // Removed
         );
     }
 
@@ -129,12 +137,13 @@ export const subscribeToContacts = (userId, canViewAll, callback) => {
 // PROJECTS
 // ============================================================================
 
-export const createProject = async (projectData, userId) => {
+export const createProject = async (projectData, userId, tenantId = 'green-invest') => {
     const projectRef = doc(collection(db, 'projects'));
     // Remove temporary ID
     const { id, ...data } = projectData;
     const project = {
         ...data,
+        tenantId,
         createdBy: userId,
         status: projectData.status || 'draft',
         createdAt: serverTimestamp(),
@@ -161,16 +170,15 @@ export const deleteProject = async (projectId) => {
     await deleteDoc(doc(db, 'projects', projectId));
 };
 
-export const listProjects = async (userId, canViewAll = false) => {
+export const listProjects = async (userId, canViewAll = false, tenantId = 'green-invest') => {
     let q;
     if (canViewAll) {
-        // q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
-        q = query(collection(db, 'projects'));
+        q = query(collection(db, 'projects'), where('tenantId', '==', tenantId));
     } else {
         q = query(
             collection(db, 'projects'),
+            where('tenantId', '==', tenantId),
             where('createdBy', '==', userId)
-            // orderBy('createdAt', 'desc') // Removed
         );
     }
 
@@ -185,16 +193,15 @@ export const listProjects = async (userId, canViewAll = false) => {
     });
 };
 
-export const subscribeToProjects = (userId, canViewAll, callback) => {
+export const subscribeToProjects = (userId, canViewAll, callback, tenantId = 'green-invest') => {
     let q;
     if (canViewAll) {
-        // q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
-        q = query(collection(db, 'projects'));
+        q = query(collection(db, 'projects'), where('tenantId', '==', tenantId));
     } else {
         q = query(
             collection(db, 'projects'),
+            where('tenantId', '==', tenantId),
             where('createdBy', '==', userId)
-            // orderBy('createdAt', 'desc') // Removed
         );
     }
 
@@ -209,6 +216,32 @@ export const subscribeToProjects = (userId, canViewAll, callback) => {
         callback(projects);
     });
 };
+
+// ============================================================================
+// MIGRATION : assigner tenantId à tous les docs existants sans tenant
+// ============================================================================
+
+export const migrateCollectionToTenant = async (collectionName, tenantId) => {
+    const snapshot = await getDocs(collection(db, collectionName));
+    const toMigrate = snapshot.docs.filter(d => !d.data().tenantId);
+
+    if (toMigrate.length === 0) return 0;
+
+    // Batch writes (max 500 per batch)
+    const BATCH_SIZE = 400;
+    let migrated = 0;
+    for (let i = 0; i < toMigrate.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        const chunk = toMigrate.slice(i, i + BATCH_SIZE);
+        chunk.forEach(d => {
+            batch.update(d.ref, { tenantId, updatedAt: serverTimestamp() });
+        });
+        await batch.commit();
+        migrated += chunk.length;
+    }
+    return migrated;
+};
+
 // ============================================================================
 // TASKS
 // ============================================================================
@@ -217,12 +250,13 @@ export const deleteTask = async (taskId) => {
     await deleteDoc(doc(db, 'tasks', taskId));
 };
 
-export const createTask = async (taskData, userId) => {
+export const createTask = async (taskData, userId, tenantId = 'green-invest') => {
     const taskRef = doc(collection(db, 'tasks'));
     // Remove temporary ID
     const { id, ...data } = taskData;
     const task = {
         ...data,
+        tenantId,
         createdBy: userId,
         status: taskData.status || 'todo',
         createdAt: serverTimestamp(),
@@ -239,13 +273,14 @@ export const updateTask = async (taskId, data) => {
     });
 };
 
-export const listTasks = async (userId, canViewAll = false) => {
+export const listTasks = async (userId, canViewAll = false, tenantId = 'green-invest') => {
     let q;
     if (canViewAll) {
-        q = query(collection(db, 'tasks'));
+        q = query(collection(db, 'tasks'), where('tenantId', '==', tenantId));
     } else {
         q = query(
             collection(db, 'tasks'),
+            where('tenantId', '==', tenantId),
             where('createdBy', '==', userId)
         );
     }
@@ -275,8 +310,11 @@ export const logActivity = async (activityData) => {
     return { id: activityRef.id, ...activity };
 };
 
-export const listActivities = async (limitCount = 20) => {
-    const q = query(collection(db, 'activities'));
+export const listActivities = async (limitCount = 20, tenantId = 'green-invest') => {
+    const q = query(
+        collection(db, 'activities'),
+        where('tenantId', '==', tenantId)
+    );
     const snapshot = await getDocs(q);
     const activities = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
 
@@ -286,4 +324,59 @@ export const listActivities = async (limitCount = 20) => {
         const dateB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp || 0);
         return dateB - dateA;
     }).slice(0, limitCount);
+};
+
+
+// ============================================================================
+// TRANSFERT DE PROJET (Inter-Tenant)
+// ============================================================================
+
+export const transferProject = async (projectId, targetTenantId, transferLinkedData = true) => {
+    const batch = writeBatch(db);
+    const projectRef = doc(db, 'projects', projectId);
+    const projectSnap = await getDoc(projectRef);
+
+    if (!projectSnap.exists()) throw new Error("Projet introuvable");
+    const projectData = projectSnap.data();
+
+    // 1. Mettre à jour le projet
+    batch.update(projectRef, {
+        tenantId: targetTenantId,
+        updatedAt: serverTimestamp()
+    });
+
+    if (transferLinkedData) {
+        // 2. Transférer le contact lié si présent
+        // Note: On cherche par email ou par ID si stocké
+        if (projectData.email) {
+            const contactsQ = query(
+                collection(db, 'contacts'),
+                where('email', '==', projectData.email)
+            );
+            const contactsSnap = await getDocs(contactsQ);
+            contactsSnap.docs.forEach(d => {
+                batch.update(d.ref, {
+                    tenantId: targetTenantId,
+                    updatedAt: serverTimestamp()
+                });
+            });
+        }
+
+        // 3. Transférer les tâches liées
+        const tasksQ = query(
+            collection(db, 'tasks'),
+            where('contact', '==', projectData.name) // Souvent lié par le nom du contact/projet dans les tâches
+        );
+        // Note: Cette recherche par nom est fragile mais correspond à l'usage actuel
+        const tasksSnap = await getDocs(tasksQ);
+        tasksSnap.docs.forEach(d => {
+            batch.update(d.ref, {
+                tenantId: targetTenantId,
+                updatedAt: serverTimestamp()
+            });
+        });
+    }
+
+    await batch.commit();
+    return true;
 };

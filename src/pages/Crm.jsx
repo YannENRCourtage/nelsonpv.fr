@@ -10,7 +10,7 @@ import {
   Plus, Search, Euro, Settings, LogOut, X, Edit, Trash2, Save, Phone,
   Mail, Building, MapPin, Tag, Clock, CheckCircle2, AlertCircle,
   ChevronLeft, ChevronRight, BarChart3, PieChart, Activity, FolderHeart, MapPin as MapIcon, FileDown, ExternalLink,
-  List, LayoutGrid, UserCircle, User, Briefcase, Calendar as CalendarIcon, Filter, MoreVertical
+  List, LayoutGrid, UserCircle, User, Briefcase, Calendar as CalendarIcon, Filter, MoreVertical, Shuffle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import { Input } from '@/components/ui/input.jsx';
@@ -110,11 +110,13 @@ const TaskModal = ({ show, onClose, editingTask, setEditingTask, onSave, contact
   );
 };
 
+import TransferProjectModal from '@/components/TransferProjectModal.jsx';
+
 
 export default function Crm() {
   const navigate = useNavigate();
   const { projects, setProjects } = useProjects();
-  const { user } = useAuth();
+  const { user, activeTenantId } = useAuth();
 
   // États principaux
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -135,6 +137,8 @@ export default function Crm() {
   const [showContactModal, setShowContactModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferProjectData, setTransferProjectData] = useState(null);
   const [editingContact, setEditingContact] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -144,7 +148,7 @@ export default function Crm() {
   // Charger les données initiales
   const refreshActivities = async () => {
     try {
-      const latest = await apiService.getActivities(12);
+      const latest = await apiService.getActivities(12, activeTenantId);
       setActivities(latest || []);
     } catch (err) {
       console.error("Failed to refresh activities:", err);
@@ -156,9 +160,9 @@ export default function Crm() {
       setIsLoading(true);
       try {
         const [contactsData, tasksData, activitiesData, usersData] = await Promise.all([
-          apiService.getContacts(),
-          apiService.getTasks(),
-          apiService.getActivities(12),
+          apiService.getContacts(activeTenantId),
+          apiService.getTasks(activeTenantId),
+          apiService.getActivities(12, activeTenantId),
           apiService.getUsers()
         ]);
         // CLEANUP: Filter out and delete "Client sans nom" contacts
@@ -210,7 +214,7 @@ export default function Crm() {
     if (user) {
       fetchData();
     }
-  }, [user]);
+  }, [user, activeTenantId]);
 
   // Helpers
   const formatTime = (timestamp) => {
@@ -226,7 +230,7 @@ export default function Crm() {
 
   const currentUser = {
     name: user?.firstName ? `${user.firstName} ${user.lastName || ''}` : (user?.displayName || 'Utilisateur'),
-    role: user?.role === 'admin' ? 'Administrateur' : 'Conseiller',
+    role: user?.title || (user?.role === 'admin' ? 'Administrateur' : 'Conseiller'),
     avatar: user?.photoURL ? user.photoURL : (user?.firstName?.[0] || user?.displayName?.[0] || 'U').toUpperCase(),
     photoURL: user?.photoURL,
     color: user?.role === 'admin' ? 'bg-indigo-600' : 'bg-blue-600'
@@ -420,7 +424,7 @@ export default function Crm() {
           createdByFirstName: userName,
           user: userName
         };
-        const newContact = await apiService.createContact(contactWithUser);
+        const newContact = await apiService.createContact(contactWithUser, false, activeTenantId);
         setContacts([...contacts, newContact]);
       }
       refreshActivities();
@@ -497,9 +501,45 @@ export default function Crm() {
   const handleGeneratePDF = async (projectId) => {
     try {
       const pData = await apiService.getProject(projectId);
-      if (pData) { await generatePdfForProject(pData); toast({ title: "Succès", description: "PDF généré." }); }
-    } catch (err) { console.error(err); toast({ title: "Erreur", description: "Erreur PDF.", variant: "destructive" }); }
+      if (pData) {
+        await generatePdfForProject(pData);
+        toast({ title: "Succès", description: "PDF généré." });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Erreur", description: "Erreur PDF.", variant: "destructive" });
+    }
   };
+
+  const handleOpenTransferModal = (project) => {
+    setTransferProjectData(project);
+    setShowTransferModal(true);
+  };
+
+  const handleTransferProject = async (projectId, targetTenantId, options) => {
+    try {
+      await apiService.transferProject(projectId, targetTenantId, options);
+      toast({ title: "Transfert réussi", description: "Le projet a été déplacé avec succès." });
+    } catch (error) {
+      console.error("Transfer error:", error);
+      throw error;
+    }
+  };
+
+  const isTransferAuthorized = () => {
+    if (!user) return false;
+    const email = user.email?.toLowerCase();
+    const firstName = (user.firstName || user.displayName || '').toLowerCase();
+
+    // Yann et admin Nelson
+    if (email === 'y.barberis@enr-courtage.fr' || email === 'contact@nelsonpv.fr') return true;
+
+    // Détection de Véro par son prénom
+    if (firstName.includes('vero') || firstName.includes('véro')) return true;
+
+    return false;
+  };
+
 
   const handleAddTask = () => {
     setEditingTask({ id: Date.now(), title: '', contact: '', dueDate: new Date().toISOString().split('T')[0], priority: 'Moyenne', completed: false, color: 'bg-orange-500' });
@@ -513,7 +553,7 @@ export default function Crm() {
         await apiService.updateTask(editingTask.id, editingTask);
         setTasks(tasks.map(t => t.id === editingTask.id ? editingTask : t));
       } else {
-        const newTask = await apiService.createTask(editingTask);
+        const newTask = await apiService.createTask(editingTask, false, activeTenantId);
         setTasks([...tasks, newTask]);
       }
       refreshActivities();
@@ -602,7 +642,15 @@ export default function Crm() {
                       {a.userName?.[0]?.toUpperCase() || 'U'}
                     </div>
                   )}
-                  <div className="flex-1 min-w-0"><p className="text-sm text-slate-900 leading-snug">{a.description}</p><p className="text-xs text-slate-500 mt-1 flex items-center gap-1"><Clock className="w-3 h-3" />{formatTime(a.timestamp)}</p></div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-slate-900 leading-snug">
+                      {a.description?.replace(/ACAMA|GREEN INVEST/g, 'un tiers')}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {formatTime(a.timestamp)}
+                    </p>
+                  </div>
                 </div>
               );
             }) : <div className="text-center py-10 text-slate-500 text-sm">Aucune activité récente</div>}
@@ -1413,6 +1461,17 @@ export default function Crm() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
+                        {isTransferAuthorized() && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenTransferModal(project)}
+                            className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                            title="Transférer entreprise"
+                          >
+                            <Shuffle className="w-4 h-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -1470,11 +1529,18 @@ export default function Crm() {
                 </div>
                 <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
                   <Button size="sm" className="flex-1 bg-blue-600" onClick={() => navigate(`/project/${project.id}/edit`)}>Ouvrir</Button>
-                  <Button size="sm" variant="ghost" className="text-red-500" onClick={() => {
-                    if (window.confirm("Supprimer ce projet ?")) {
-                      toast({ title: "Info", description: "Suppression non implémentée depuis cette vue." });
-                    }
-                  }}><Trash2 size={16} /></Button>
+                  {isTransferAuthorized() && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-amber-600 hover:bg-amber-50"
+                      onClick={() => handleOpenTransferModal(project)}
+                      title="Transférer entreprise"
+                    >
+                      <Shuffle size={16} />
+                    </Button>
+                  )}
+                  <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteProject(project.id)}><Trash2 size={16} /></Button>
                 </div>
               </div>
             ))}
@@ -1740,7 +1806,9 @@ export default function Crm() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-white text-sm truncate">{currentUser.name}</p>
-              <p className="text-xs text-slate-400">{currentUser.role}</p>
+              <p className="text-xs text-slate-400">
+                {currentUser.name?.includes('Gysmo') ? 'Woaf ! Woaf !!' : currentUser.role}
+              </p>
             </div>
           </div>
           <div className="flex gap-2 mt-3">
@@ -1810,6 +1878,13 @@ export default function Crm() {
         setEditingTask={setEditingTask}
         onSave={handleSaveTask}
         contacts={contacts}
+      />
+
+      <TransferProjectModal
+        show={showTransferModal}
+        onClose={() => setShowTransferModal(false)}
+        project={transferProjectData}
+        onTransfer={handleTransferProject}
       />
 
       <UserSettingsModal

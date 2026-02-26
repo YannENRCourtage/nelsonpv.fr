@@ -357,9 +357,24 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
         if (ttcColumn && col === ttcColumn) {
             return formatTTCValue(value);
         }
-        // Formatage spécifique pour DATE DU CONTACT
-        if (col && (col.toUpperCase() === 'DATE DU CONTACT' || col.toUpperCase() === 'DATE CONTACT')) {
-            return formatExcelDate(value);
+        // Formatage spécifique pour les dates (ex: DATE DU CONTACT, DATE FACTURE, PAIEMENT, ARRÊTÉ)
+        if (col) {
+            const upperCol = col.toUpperCase();
+            if (
+                upperCol.includes('DATE') ||
+                upperCol.includes('PAIEMENT') ||
+                upperCol.includes('PAIMENT') ||
+                upperCol.includes('ARRÊTÉ') ||
+                upperCol.includes('ARRETE')
+            ) {
+                // S'assurer que ce n'est pas un montant (éviter "MONTANT FACTURE" mais garder "DATE FACTURE")
+                // Si la colonne contient "MONTANT" et n'est pas explicitement une date, on évite
+                if (upperCol.includes('MONTANT') && !upperCol.includes('DATE')) {
+                    // C'est probablement un montant
+                } else {
+                    return formatExcelDate(value);
+                }
+            }
         }
         // Formatage spécifique pour Tél (ajout du 0 devant)
         // La colonne s'appelle 'Tel' en base (renommée Tél en affichage)

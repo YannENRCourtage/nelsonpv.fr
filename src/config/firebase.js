@@ -6,7 +6,7 @@ import { getStorage } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
 
 // Firebase configuration from environment variables
-const firebaseConfig = {
+export const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAtgH-I5UyB-A23B9MwHoiW06q8Mzu3FQM",
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "nelsonpv-4722c.firebaseapp.com",
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "nelsonpv-4722c",

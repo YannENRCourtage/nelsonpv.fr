@@ -48,7 +48,7 @@ const ProjectContext = createContext({
  * - page Client & Projet  => project + updateProject
  */
 export function ProjectProvider({ children }) {
-  const { user } = useAuth(); // Get current user for notification attribution
+  const { user, activeTenantId } = useAuth(); // Get current user and active tenant
   const [projects, _setProjects] = useState(() => loadAllProjectsFromLS());
   const [project, _setProject] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -64,21 +64,19 @@ export function ProjectProvider({ children }) {
     });
   }, []);
 
-  // Charger les projets depuis l'API au montage
-  // Subscription to real-time updates from Firestore
+  // Subscription to real-time updates from Firestore — re-subscribe on tenant change
   useEffect(() => {
     let unsubscribe = () => { };
 
     const setupSubscription = async () => {
       setLoading(true);
       try {
-        console.log("Setting up real-time project subscription...");
+        console.log("Setting up real-time project subscription for tenant:", activeTenantId);
         unsubscribe = await apiService.subscribeToProjects((updatedProjects) => {
           console.log("Projects updated from Firestore:", updatedProjects.length);
-          // Directly update state; setProjects handles LS sync
           setProjects(updatedProjects);
           setLoading(false);
-        });
+        }, activeTenantId);
       } catch (err) {
         console.error("Failed to subscribe to projects:", err);
         setError(err);
@@ -86,7 +84,7 @@ export function ProjectProvider({ children }) {
 
         // Fallback: try one-time fetch if subscription fails
         try {
-          const fallbackData = await apiService.getProjects();
+          const fallbackData = await apiService.getProjects(activeTenantId);
           setProjects(fallbackData);
         } catch (e) {
           console.error("Fallback fetch failed", e);
@@ -100,7 +98,7 @@ export function ProjectProvider({ children }) {
       console.log("Unsubscribing from projects...");
       unsubscribe();
     };
-  }, [setProjects]);
+  }, [setProjects, activeTenantId]);
 
   // Écouter les changements du localStorage (sync entre onglets)
   useEffect(() => {

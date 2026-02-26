@@ -148,8 +148,21 @@ export const createUser = async (email, password, userData) => {
         const secondaryAuth = getAuth(secondaryApp);
 
         // Create user on the secondary auth instance
-        const userCredential = await createUserSecondary(secondaryAuth, email, password);
-        const user = userCredential.user;
+        let user;
+        try {
+            const userCredential = await createUserSecondary(secondaryAuth, email, password);
+            user = userCredential.user;
+        } catch (error) {
+            // Handle existing user: If the account exists in Auth but the Firestore doc is missing,
+            // we "adopt" the user by signing in to verify the password and get the UID.
+            if (error.code === 'auth/email-already-in-use') {
+                console.log('User already exists in Auth. Attempting to "adopt" by signing in...');
+                const userCredential = await signInWithEmailAndPassword(secondaryAuth, email, password);
+                user = userCredential.user;
+            } else {
+                throw error;
+            }
+        }
 
         // Immediately sign out from secondary app to be safe (though it doesn't affect main app)
         await signOutSecondary(secondaryAuth);
@@ -162,6 +175,7 @@ export const createUser = async (email, password, userData) => {
             firstName: userData.firstName || '',
             lastName: userData.lastName || '',
             role: userData.role || 'user',
+            tenantId: userData.tenantId || 'green-invest',
             permissions: userData.permissions || {
                 canAccessCRM: false,
                 canAccessEditor: false,

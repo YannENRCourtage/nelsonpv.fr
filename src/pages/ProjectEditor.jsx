@@ -373,13 +373,13 @@ export default function ProjectEditor() {
   }, [captures, updateProject]);
 
   const handleAddressFound = (location) => {
-    const { label, y, x } = location;
-    updateProject({ address: label, gps: `${y}, ${x}` });
+    const { label, lat, lng } = location;
+    updateProject({ address: label, gps: `${lat}, ${lng}` });
   };
 
   const handleAddressSearched = (location) => {
-    const { y, x } = location;
-    updateProject({ gps: `${y}, ${x}` });
+    const { lat, lng } = location;
+    updateProject({ gps: `${lat}, ${lng}` });
   };
 
   const handleReset = () => {

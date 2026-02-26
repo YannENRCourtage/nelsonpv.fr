@@ -45,7 +45,7 @@ const DEFAULT_COSTS = {
 };
 
 export default function ProfitabilitySimulator() {
-    const { user } = useAuth();
+    const { user, activeTenantId } = useAuth();
     const location = useLocation();
     const [params, setParams] = useState(DEFAULT_PARAMS);
     const [costs, setCosts] = useState(DEFAULT_COSTS);
@@ -204,7 +204,7 @@ export default function ProfitabilitySimulator() {
             };
 
             // user.uid au lieu de user.id (Firebase Auth utilise uid)
-            await createSimulation(simulationData, user?.uid);
+            await createSimulation(simulationData, user?.uid, activeTenantId);
 
             toast({
                 title: "Simulation sauvegardée !",

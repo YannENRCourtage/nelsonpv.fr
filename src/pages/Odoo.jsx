@@ -1176,7 +1176,7 @@ export default function Odoo() {
     }
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
+        <div className="flex flex-col min-h-screen bg-slate-50 overflow-x-hidden">
             {/* Header */}
             <div className="h-16 bg-white border-b flex items-center px-6 justify-between shrink-0 shadow-sm z-20">
                 <div className="flex items-center gap-6">
@@ -1219,14 +1219,14 @@ export default function Odoo() {
             </div>
 
             {/* Board Content */}
-            <div className={`flex-1 p-6 ${viewMode === 'list' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-x-auto overflow-y-hidden'}`}>
-                <div className={`${viewMode === 'list' ? 'flex flex-col pb-10 space-y-4' : 'flex h-full pb-2 gap-4 relative'}`}>
+            <div className={`flex-1 p-6 ${viewMode === 'list' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-x-auto overflow-y-auto min-h-0'}`}>
+                <div className={`${viewMode === 'list' ? 'flex flex-col pb-10 space-y-4' : 'flex min-h-full pb-10 gap-4 relative'}`}>
                     {stages.map((stage, index) => {
                         const stageProjects = filteredProjects.filter(p => (p.odooStage || DEFAULT_STAGES[0]) === stage);
                         const stageColor = getStageColor(stage, index);
 
                         return (
-                            <div key={stage} className={`group relative ${viewMode === 'kanban' ? 'h-full flex-shrink-0' : ''}`}>
+                            <div key={stage} className={`group relative ${viewMode === 'kanban' ? 'min-h-full flex-shrink-0' : ''}`}>
                                 {/* Header Controls (Hover) */}
                                 {viewMode === 'kanban' && (
                                     <div className="absolute top-0 right-6 z-20 opacity-0 group-hover:opacity-100 transition-opacity flex bg-white rounded-md shadow-sm border p-0.5">

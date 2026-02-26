@@ -48,24 +48,24 @@ class ApiService {
     // PROJECTS
     // ============================================================================
 
-    async getProjects() {
+    async getProjects(tenantId) {
         try {
             const user = await this._getCurrentUser();
-            // Validated by user: everyone should see everything for Odoo sync
             const canViewAll = true;
-            return await firestoreService.listProjects(user.uid, canViewAll);
+            const tId = tenantId || user.tenantId || 'green-invest';
+            return await firestoreService.listProjects(user.uid, canViewAll, tId);
         } catch (error) {
             console.error("Error getting projects:", error);
             return [];
         }
     }
 
-    async subscribeToProjects(callback) {
+    async subscribeToProjects(callback, tenantId) {
         try {
             const user = await this._getCurrentUser();
-            // Validated by user: everyone should see everything for Odoo sync
             const canViewAll = true;
-            return firestoreService.subscribeToProjects(user.uid, canViewAll, callback);
+            const tId = tenantId || user.tenantId || 'green-invest';
+            return firestoreService.subscribeToProjects(user.uid, canViewAll, callback, tId);
         } catch (error) {
             console.error("Error subscribing to projects:", error);
             return () => { };
@@ -76,9 +76,10 @@ class ApiService {
         return await firestoreService.getProject(id);
     }
 
-    async createProject(data, skipLog = false) {
+    async createProject(data, skipLog = false, tenantId) {
         const user = await this._getCurrentUser();
-        const created = await firestoreService.createProject(data, user.uid);
+        const tId = tenantId || user.tenantId || 'green-invest';
+        const created = await firestoreService.createProject(data, user.uid, tId);
 
         if (!skipLog) {
             await this.logActivity({
@@ -121,6 +122,23 @@ class ApiService {
         return result;
     }
 
+    async transferProject(projectId, targetTenantId, options = { transferLinkedData: true }) {
+        const user = await this._getCurrentUser();
+        const result = await firestoreService.transferProject(projectId, targetTenantId, options.transferLinkedData);
+
+        await this.logActivity({
+            type: 'project',
+            action: 'transfer',
+            description: `${user.firstName || user.displayName || 'Un utilisateur'} a transféré le projet vers un tiers`,
+            userId: user.uid,
+            userName: user.firstName || user.displayName,
+            userPhotoURL: user.photoURL,
+            itemId: projectId
+        });
+
+        return result;
+    }
+
     async deleteProject(id, skipLog = false) {
         const user = await this._getCurrentUser();
         // Get name before delete
@@ -148,13 +166,12 @@ class ApiService {
     // CONTACTS
     // ============================================================================
 
-    async getContacts() {
+    async getContacts(tenantId) {
         try {
             const user = await this._getCurrentUser();
-            // Check for Admin role or explicit permission (reusing project permission for now as it's the main "View All" switch)
-            // Or ideally use a separate permission if available. For now, let's assume 'canViewAllProjects' implies full CRM visibility or check role.
             const canViewAll = user.role === 'admin' || user.permissions?.canViewAllProjects;
-            return await firestoreService.listContacts(user.uid, canViewAll);
+            const tId = tenantId || user.tenantId || 'green-invest';
+            return await firestoreService.listContacts(user.uid, canViewAll, tId);
         } catch (error) {
             console.error("Error getting contacts:", error);
             return [];
@@ -165,9 +182,10 @@ class ApiService {
         return await firestoreService.getContact(id);
     }
 
-    async createContact(data, skipLog = false) {
+    async createContact(data, skipLog = false, tenantId) {
         const user = await this._getCurrentUser();
-        const created = await firestoreService.createContact(data, user.uid);
+        const tId = tenantId || user.tenantId || 'green-invest';
+        const created = await firestoreService.createContact(data, user.uid, tId);
 
         if (!skipLog) {
             await this.logActivity({
@@ -231,20 +249,22 @@ class ApiService {
     // ACTIVITIES & TASKS
     // ============================================================================
 
-    async getTasks() {
+    async getTasks(tenantId) {
         try {
             const user = await this._getCurrentUser();
             const canViewAll = user.role === 'admin' || user.permissions?.canViewAllProjects;
-            return await firestoreService.listTasks(user.uid, canViewAll);
+            const tId = tenantId || user.tenantId || 'green-invest';
+            return await firestoreService.listTasks(user.uid, canViewAll, tId);
         } catch (error) {
             console.error("Error getting tasks:", error);
             return [];
         }
     }
 
-    async createTask(data, skipLog = false) {
+    async createTask(data, skipLog = false, tenantId) {
         const user = await this._getCurrentUser();
-        const created = await firestoreService.createTask(data, user.uid);
+        const tId = tenantId || user.tenantId || 'green-invest';
+        const created = await firestoreService.createTask(data, user.uid, tId);
 
         if (!skipLog) {
             await this.logActivity({
@@ -305,11 +325,27 @@ class ApiService {
     }
 
     async logActivity(data) {
-        return await firestoreService.logActivity(data);
+        try {
+            const user = await this._getCurrentUser();
+            const activityData = {
+                ...data,
+                tenantId: user.tenantId || 'green-invest'
+            };
+            return await firestoreService.logActivity(activityData);
+        } catch (e) {
+            console.error("Failed to log activity:", e);
+        }
     }
 
-    async getActivities(limit = 20) {
-        return await firestoreService.listActivities(limit);
+    async getActivities(limit = 20, tenantId) {
+        try {
+            const user = await this._getCurrentUser();
+            const tId = tenantId || user.tenantId || 'green-invest';
+            return await firestoreService.listActivities(limit, tId);
+        } catch (error) {
+            console.error("Error getting activities:", error);
+            return [];
+        }
     }
 
     // ============================================================================

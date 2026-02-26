@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { Trash2, Mountain, Square, RotateCw, Ruler, Pentagon } from "lucide-react";
+import L from "leaflet";
 
 const btnBase =
   "flex items-center justify-center w-[140px] mb-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 shadow hover:bg-slate-50 focus:outline-none";
@@ -7,6 +8,15 @@ const btnActive =
   "ring-2 ring-offset-1 ring-blue-500 border-blue-500 !bg-blue-50";
 
 export default function MapDrawingTools({ mode, setMode }) {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      L.DomEvent.disableClickPropagation(containerRef.current);
+      L.DomEvent.disableScrollPropagation(containerRef.current);
+    }
+  }, []);
+
   const toggle = (tool) => {
     setMode(mode === tool ? null : tool);
   };
@@ -14,11 +24,15 @@ export default function MapDrawingTools({ mode, setMode }) {
   const handleClick = (e, newMode) => {
     e.preventDefault();
     e.stopPropagation();
-    toggle(newMode);
+    // Activation avec un délai de 0.1s pour éviter les clics accidentels sur la carte
+    setTimeout(() => {
+      toggle(newMode);
+    }, 100);
   };
 
   return (
     <div
+      ref={containerRef}
       className="absolute left-3 top-3 z-[990] hide-on-capture"
       style={{ userSelect: "none" }}
     >

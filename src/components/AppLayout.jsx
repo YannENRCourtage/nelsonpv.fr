@@ -4,7 +4,7 @@ import Footer from './Footer.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useProject } from '../contexts/ProjectContext.jsx';
 import { Button } from './ui/button.jsx';
-import { LogOut, FileDown, Save, Bell, Users, Shield, Grid, TrendingUp, Menu, X } from 'lucide-react';
+import { LogOut, FileDown, Save, Bell, Users, Shield, Grid, TrendingUp, Menu, X, Shuffle } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast.js";
 import jsPDF from "jspdf";
 import html2canvas from 'html2canvas';
@@ -14,6 +14,8 @@ import ReactDOMServer from 'react-dom/server';
 import useNotifications from '../hooks/useNotifications.jsx';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover.jsx';
 import NotificationBell from './NotificationBell.jsx';
+import TransferProjectModal from './TransferProjectModal.jsx';
+import { apiService } from '@/services/api';
 import { ref, getDownloadURL } from "firebase/storage";
 import { storage } from "@/config/firebase.js";
 import {
@@ -241,6 +243,28 @@ function Header() {
   const { project, saveProject, setProject } = useProject();
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+
+  const isTransferAuthorized = () => {
+    if (!user) return false;
+    const email = user.email?.toLowerCase();
+    const firstName = (user.firstName || user.displayName || '').toLowerCase();
+    if (email === 'y.barberis@enr-courtage.fr' || email === 'contact@nelsonpv.fr') return true;
+    if (firstName.includes('vero') || firstName.includes('véro')) return true;
+    return false;
+  };
+
+  const handleTransferProject = async (projectId, targetTenantId, options) => {
+    try {
+      await apiService.transferProject(projectId, targetTenantId, options.transferLinkedData);
+      toast({ title: "Transfert réussi", description: "Le projet a été déplacé avec succès." });
+      // On redirige vers le CRM car le projet ne sera peut-être plus accessible sur ce tenant
+      navigate('/crm');
+    } catch (error) {
+      console.error("Transfer error:", error);
+      throw error;
+    }
+  };
 
 
   const handleLogout = async () => {
@@ -470,6 +494,16 @@ function Header() {
                 <FileDown className="h-5 w-5 mr-2" />
                 Générer le PDF
               </Button>
+              {isTransferAuthorized() && (
+                <Button
+                  onClick={() => setShowTransferModal(true)}
+                  className="rounded-full bg-amber-500 hover:bg-amber-600 text-white"
+                  title="Transférer le projet vers une autre entreprise"
+                >
+                  <Shuffle className="h-5 w-5 mr-2" />
+                  Transférer
+                </Button>
+              )}
               <Button onClick={handleSave} className="rounded-full text-white" style={{ background: 'linear-gradient(to right, #3b82f6, #8b5cf6)' }}>
                 <Save className="h-5 w-5 mr-2" />
                 Sauvegarder
@@ -617,6 +651,13 @@ function Header() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <TransferProjectModal
+        show={showTransferModal}
+        onClose={() => setShowTransferModal(false)}
+        project={project}
+        onTransfer={handleTransferProject}
+      />
     </header>
   );
 }

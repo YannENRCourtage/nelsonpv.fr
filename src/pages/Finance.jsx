@@ -4,10 +4,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button.jsx';
 import { listSimulations, deleteSimulation, updateSimulation } from '../services/firebase/simulations.service.js';
 import { toast } from "@/components/ui/use-toast.js";
+import { useAuth } from '@/contexts/AuthContext';
 import * as XLSX from 'xlsx';
 
 export default function Finance() {
     const navigate = useNavigate();
+    const { activeTenantId } = useAuth();
     const [simulations, setSimulations] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -15,12 +17,12 @@ export default function Finance() {
 
     useEffect(() => {
         loadSimulations();
-    }, []);
+    }, [activeTenantId]);
 
     const loadSimulations = async () => {
         try {
             setIsLoading(true);
-            const data = await listSimulations();
+            const data = await listSimulations(activeTenantId);
             setSimulations(data);
         } catch (error) {
             console.error('Erreur chargement simulations:', error);

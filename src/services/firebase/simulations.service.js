@@ -8,6 +8,7 @@ import {
     updateDoc,
     deleteDoc,
     query,
+    where,
     serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../config/firebase.js';
@@ -18,12 +19,13 @@ import { db } from '../../config/firebase.js';
  * @param {string} userId - ID de l'utilisateur créant la simulation
  * @returns {Promise<Object>} La simulation créée avec son ID
  */
-export const createSimulation = async (simulationData, userId) => {
+export const createSimulation = async (simulationData, userId, tenantId) => {
     const simulationRef = doc(collection(db, 'financial_simulations'));
     const { id, ...data } = simulationData;
 
     const simulation = {
         ...data,
+        tenantId: tenantId || 'green-invest',
         createdBy: userId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -37,8 +39,13 @@ export const createSimulation = async (simulationData, userId) => {
  * Récupère toutes les simulations financières
  * @returns {Promise<Array>} Liste de toutes les simulations
  */
-export const listSimulations = async () => {
-    const q = query(collection(db, 'financial_simulations'));
+export const listSimulations = async (tenantId) => {
+    let q;
+    if (tenantId) {
+        q = query(collection(db, 'financial_simulations'), where('tenantId', '==', tenantId));
+    } else {
+        q = query(collection(db, 'financial_simulations'));
+    }
     const simulationsSnapshot = await getDocs(q);
     const simulations = simulationsSnapshot.docs.map(doc => ({
         ...doc.data(),

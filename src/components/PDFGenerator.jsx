@@ -147,7 +147,7 @@ const PDFGenerator = ({ project }) => {
                       <div>2/ {p.solarYieldRoof2} kWh/kWc</div>
                     </>
                   )
-                  : (p.solarYield ? `${p.solarYield} kWh/kWc` : 'N/A')}
+                  : (p.solarYieldRoof1 || p.solarYield ? `${p.solarYieldRoof1 || p.solarYield} kWh/kWc` : 'N/A')}
               </span>
             </div>
           </div>
@@ -160,7 +160,13 @@ const PDFGenerator = ({ project }) => {
             </div>
             <div style={fieldStyle}>
               <span style={labelStyle}>GPS :</span>
-              <span style={valueStyle}>{p.gps || 'N/A'}</span>
+              <span style={valueStyle}>
+                {(p.gps || '')
+                  .split(',')
+                  .map(part => part.trim())
+                  .filter(part => part !== 'undefined' && part !== '')
+                  .join(', ') || 'N/A'}
+              </span>
             </div>
             <div style={fieldStyle}>
               {/* CORRIGÉ : Label changé en "Projet" */}

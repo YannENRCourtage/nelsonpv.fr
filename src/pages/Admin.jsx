@@ -22,16 +22,24 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, Trash2, Edit, Plus, Shield, ShieldAlert, Mail, Eye, EyeOff, Link, FolderSync } from 'lucide-react';
+import { Loader2, Trash2, Edit, Plus, Shield, Mail, Eye, EyeOff, Link, FolderSync, Building2, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
+import { migrateCollectionToTenant, TENANTS } from '@/services/firebase/firestore.service';
+
+const TENANT_OPTIONS = [
+  { value: 'green-invest', label: 'GREEN INVEST (BARCONNIERE)' },
+  { value: 'acama', label: 'ACAMA' }
+];
 
 export default function Admin() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, activeTenantId, switchTenant, isAdmin } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRepairModalOpen, setIsRepairModalOpen] = useState(false);
+  const [isMigratingOpen, setIsMigratingOpen] = useState(false);
+  const [migrationLoading, setMigrationLoading] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
 
   // Repair form state
@@ -40,18 +48,20 @@ export default function Admin() {
   // Form states
   const [formData, setFormData] = useState({
     email: '',
-    password: '', // Only for creation
+    password: '',
     displayName: '',
     firstName: '',
     lastName: '',
     role: 'user',
+    tenantId: 'green-invest',
     permissions: {
       canAccessCRM: false,
       canAccessEditor: false,
       canAccessSimulator: false,
-      canAccessConfigurator: false, // Default false
-      canAccessOdoo: false,         // Default false
-      canAccessCDP: false,          // Default false
+      canAccessConfigurator: false,
+      canAccessOdoo: false,
+      canAccessCDP: false,
+      canAccessFinance: false,
       canViewAllProjects: false,
     }
   });
@@ -84,11 +94,12 @@ export default function Admin() {
       setEditingUser(user);
       setFormData({
         email: user.email || '',
-        password: '', // Don't show password
+        password: '',
         displayName: user.displayName || '',
         firstName: user.firstName || '',
         lastName: user.lastName || '',
         role: user.role || 'user',
+        tenantId: user.tenantId || 'green-invest',
         permissions: {
           canAccessCRM: user.permissions?.canAccessCRM || false,
           canAccessEditor: user.permissions?.canAccessEditor || false,
@@ -96,6 +107,7 @@ export default function Admin() {
           canAccessConfigurator: user.permissions?.canAccessConfigurator || false,
           canAccessOdoo: user.permissions?.canAccessOdoo || false,
           canAccessCDP: user.permissions?.canAccessCDP || false,
+          canAccessFinance: user.permissions?.canAccessFinance || false,
           canViewAllProjects: user.permissions?.canViewAllProjects || false,
         }
       });
@@ -108,13 +120,15 @@ export default function Admin() {
         firstName: '',
         lastName: '',
         role: 'user',
+        tenantId: 'green-invest',
         permissions: {
           canAccessCRM: false,
           canAccessEditor: false,
           canAccessSimulator: false,
-          canAccessConfigurator: false, // default false
-          canAccessOdoo: false,         // default false
-          canAccessCDP: false,          // default false
+          canAccessConfigurator: false,
+          canAccessOdoo: false,
+          canAccessCDP: false,
+          canAccessFinance: false,
           canViewAllProjects: false,
         }
       });
@@ -146,26 +160,17 @@ export default function Admin() {
     e.preventDefault();
     try {
       if (editingUser) {
-        // Update
         const updates = {
           displayName: formData.displayName,
           firstName: formData.firstName,
           lastName: formData.lastName,
           role: formData.role,
+          tenantId: formData.tenantId,
           permissions: formData.permissions
         };
-        // NOTE: Password update via client SDK for OTHER users is not strictly supported without Admin SDK.
-        // We will pass it to API service in case we switch to backend, but usually it won't apply to Auth.
-        // For now, we rely on recreating user if password lost.
-        if (formData.password) {
-          console.warn("Password update for existing user requested - requires Admin SDK or User Re-auth");
-          // We could try to update if it's the CURRENT user, but for others it's tricky.
-        }
-
         await apiService.updateUser(editingUser.id, updates);
         toast({ title: "Succès", description: "Utilisateur mis à jour." });
       } else {
-        // Create
         if (!formData.email || !formData.password) {
           toast({ title: "Erreur", description: "Email et mot de passe requis.", variant: "destructive" });
           return;
@@ -177,25 +182,17 @@ export default function Admin() {
       fetchUsers();
     } catch (error) {
       console.error("Operation failed:", error);
-
       let message = error.message || "Une erreur est survenue.";
       if (error.code === 'auth/email-already-in-use') {
         message = "ERREUR CRITIQUE : Cet email est déjà enregistré dans l'authentification Firebase mais n'a pas de profil. Impossible de le recréer ici. SOLUTION : Utilisez le bouton 'Lier UID' en haut à droite pour réparer ce compte.";
       }
-
-      toast({
-        title: "Erreur de création",
-        description: message,
-        variant: "destructive",
-        duration: 8000
-      });
+      toast({ title: "Erreur de création", description: message, variant: "destructive", duration: 8000 });
     }
   };
 
   const handleRepairSubmit = async (e) => {
     e.preventDefault();
     if (!repairData.uid || !repairData.email) return;
-
     try {
       await setDoc(doc(db, 'users', repairData.uid), {
         email: repairData.email,
@@ -203,13 +200,14 @@ export default function Admin() {
         firstName: repairData.firstName,
         lastName: repairData.lastName,
         role: 'user',
+        tenantId: 'green-invest',
         permissions: {
           canAccessCRM: true,
           canAccessEditor: true,
           canAccessSimulator: true,
           canViewAllProjects: false
         },
-        isActive: true, // Required for login
+        isActive: true,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
@@ -222,15 +220,28 @@ export default function Admin() {
     }
   };
 
-  const handleDelete = async (userId) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.")) return;
+  const handleMigrateToGreenInvest = async () => {
+    if (!window.confirm(
+      "Cela va assigner tenantId='green-invest' à TOUS les projets, contacts et tâches qui n'ont pas encore de tenant.\n\nCette action est sûre et ne modifie pas les données existantes, elle ne fait qu'ajouter le champ tenant. Continuer ?"
+    )) return;
+    setMigrationLoading(true);
     try {
-      await apiService.deleteUser(userId);
-      toast({ title: "Succès", description: "Utilisateur supprime." });
-      fetchUsers();
-    } catch (error) {
-      console.error("Delete failed:", error);
-      toast({ title: "Erreur", description: "Impossible de supprimer l'utilisateur.", variant: "destructive" });
+      const [projects, contacts, tasks, activities] = await Promise.all([
+        migrateCollectionToTenant('projects', 'green-invest'),
+        migrateCollectionToTenant('contacts', 'green-invest'),
+        migrateCollectionToTenant('tasks', 'green-invest'),
+        migrateCollectionToTenant('activities', 'green-invest'),
+      ]);
+      toast({
+        title: "Migration réussie ✅",
+        description: `Projets: ${projects}, Contacts: ${contacts}, Tâches: ${tasks}, Activités: ${activities} documents migrés vers GREEN INVEST.`
+      });
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Erreur de migration", description: err.message, variant: "destructive" });
+    } finally {
+      setMigrationLoading(false);
+      setIsMigratingOpen(false);
     }
   };
 
@@ -267,10 +278,11 @@ export default function Admin() {
     );
   }
 
-  // Double check admin role just in case
   if (currentUser?.role !== 'admin') {
     return <div className="p-8 text-center text-red-600">Accès non autorisé.</div>;
   }
+
+  const tenantLabel = TENANT_OPTIONS.find(t => t.value === activeTenantId)?.label || activeTenantId;
 
   return (
     <div className="p-8 space-y-6 bg-slate-50 min-h-screen">
@@ -282,7 +294,11 @@ export default function Admin() {
           </h1>
           <p className="text-slate-500 mt-1">Gérez les utilisateurs et leurs accès</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
+          <Button onClick={() => setIsMigratingOpen(true)} variant="outline" className="text-green-700 border-green-300 hover:bg-green-50">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Migration Tenant
+          </Button>
           <Button onClick={handleInitOdooStages} variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50">
             <FolderSync className="w-4 h-4 mr-2" />
             Réinit. ODOO
@@ -298,6 +314,35 @@ export default function Admin() {
         </div>
       </div>
 
+      {/* TENANT SWITCHER (Admin only) */}
+      <Card className="border-2 border-blue-100 bg-blue-50/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2 text-blue-800">
+            <Building2 className="w-5 h-5" />
+            Interface active : <span className="font-bold">{tenantLabel}</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-slate-600 mb-3">
+            En tant qu'administrateur, vous pouvez basculer entre les interfaces entreprise. Cette sélection s'applique à toute l'application.
+          </p>
+          <div className="flex gap-3">
+            {TENANT_OPTIONS.map(t => (
+              <button
+                key={t.value}
+                onClick={() => switchTenant(t.value)}
+                className={`px-4 py-2 rounded-lg border-2 text-sm font-semibold transition-all ${activeTenantId === t.value
+                  ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                  : 'bg-white border-slate-300 text-slate-700 hover:border-blue-400'
+                  }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Utilisateurs ({users.length})</CardTitle>
@@ -308,6 +353,7 @@ export default function Admin() {
               <TableRow>
                 <TableHead>Utilisateur</TableHead>
                 <TableHead>Rôle</TableHead>
+                <TableHead>Entreprise</TableHead>
                 <TableHead>Accès</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -332,6 +378,14 @@ export default function Admin() {
                     </span>
                   </TableCell>
                   <TableCell>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.tenantId === 'acama' ? 'bg-blue-100 text-blue-800' :
+                      user.tenantId === 'green-invest' ? 'bg-green-100 text-green-800' :
+                        'bg-slate-100 text-slate-600'
+                      }`}>
+                      {TENANT_OPTIONS.find(t => t.value === user.tenantId)?.label || user.tenantId || 'GREEN INVEST (défaut)'}
+                    </span>
+                  </TableCell>
+                  <TableCell>
                     <div className="flex gap-2 flex-wrap">
                       {user.permissions?.canAccessCRM && (
                         <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs border border-blue-200">CRM</span>
@@ -351,6 +405,9 @@ export default function Admin() {
                       {user.permissions?.canAccessCDP && (
                         <span className="px-2 py-1 rounded bg-yellow-50 text-yellow-700 text-xs border border-yellow-200">CDP</span>
                       )}
+                      {user.permissions?.canAccessFinance && (
+                        <span className="px-2 py-1 rounded bg-teal-50 text-teal-700 text-xs border border-teal-200">Finance</span>
+                      )}
                       {user.permissions?.canViewAllProjects && (
                         <span className="px-2 py-1 rounded bg-slate-100 text-slate-700 text-xs border border-slate-200">Tout voir</span>
                       )}
@@ -365,7 +422,7 @@ export default function Admin() {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(user.id)}
-                        disabled={user.email === 'y.barberis@enr-courtage.fr'} // Protect main admin
+                        disabled={user.email === 'y.barberis@enr-courtage.fr'}
                         className="text-red-500 hover:text-red-600 hover:bg-red-50"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -379,6 +436,7 @@ export default function Admin() {
         </CardContent>
       </Card>
 
+      {/* CREATE / EDIT USER MODAL */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -409,32 +467,73 @@ export default function Admin() {
                 type="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                disabled={!!editingUser} // Prevent email change for now to avoid Auth desync
+                disabled={!!editingUser}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">{editingUser ? 'Nouveau mot de passe (Optionnel)' : 'Mot de passe'}</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder={editingUser ? "Laisser vide pour ne pas changer" : ""}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+            {/* Password Field - ONLY for NEW users, OR replaced by a reset button for existing ones */}
+            {!editingUser ? (
+              <div className="space-y-2">
+                <Label htmlFor="password">Mot de passe</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    required={!editingUser}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 h-4 text-slate-400" /> : <Eye className="h-4 h-4 text-slate-400" />}
+                  </Button>
+                </div>
               </div>
-              {editingUser && <p className="text-xs text-slate-500">Note: Pour changer le mot de passe d'un autre utilisateur, supprimez et recréez le compte si nécessaire.</p>}
+            ) : (
+              <div className="space-y-2 p-3 bg-blue-50 rounded-lg border border-blue-100 italic text-sm text-blue-700 flex justify-between items-center">
+                <span>Le mot de passe ne peut être modifié que par l'utilisateur.</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-7 border-blue-200 hover:bg-blue-100"
+                  onClick={async () => {
+                    try {
+                      await apiService.sendPasswordReset(formData.email);
+                      toast({ title: "Email envoyé", description: `Un lien de réinitialisation a été envoyé à ${formData.email}` });
+                    } catch (err) {
+                      toast({ title: "Erreur", description: "Échec de l'envoi : " + err.message, variant: "destructive" });
+                    }
+                  }}
+                >
+                  <Mail className="w-3 h-3 mr-1" />
+                  Réinitialiser
+                </Button>
+              </div>
+            )}
+            {/* TENANT SELECTOR */}
+            <div className="space-y-2 border-t pt-3">
+              <Label htmlFor="tenantId" className="flex items-center gap-1">
+                <Building2 className="w-4 h-4" /> Entreprise (Interface)
+              </Label>
+              <select
+                id="tenantId"
+                name="tenantId"
+                value={formData.tenantId}
+                onChange={handleInputChange}
+                className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {TENANT_OPTIONS.map(t => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500">L'utilisateur ne verra que les projets et contacts de cette entreprise.</p>
             </div>
 
             <div className="space-y-3 border-t pt-3">
@@ -477,10 +576,16 @@ export default function Admin() {
                   label="Accès CDP"
                 />
                 <ToggleSwitch
+                  id="perm-finance"
+                  checked={formData.permissions.canAccessFinance}
+                  onCheckedChange={(c) => handlePermissionChange('canAccessFinance', c)}
+                  label="Accès Finance"
+                />
+                <ToggleSwitch
                   id="perm-viewall"
                   checked={formData.permissions.canViewAllProjects}
                   onCheckedChange={(c) => handlePermissionChange('canViewAllProjects', c)}
-                  label="Voir TOUS les projets"
+                  label="Voir TOUS les projets (du tenant)"
                 />
               </div>
             </div>
@@ -491,7 +596,7 @@ export default function Admin() {
             </DialogFooter>
           </form>
         </DialogContent>
-      </Dialog >
+      </Dialog>
 
       {/* REPAIR MODAL */}
       <Dialog open={isRepairModalOpen} onOpenChange={setIsRepairModalOpen}>
@@ -529,6 +634,38 @@ export default function Admin() {
           </form>
         </DialogContent>
       </Dialog>
-    </div >
+
+      {/* MIGRATION MODAL */}
+      <Dialog open={isMigratingOpen} onOpenChange={setIsMigratingOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 text-green-600" />
+              Migration des données existantes
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="p-4 bg-green-50 border border-green-200 rounded text-sm text-green-900">
+              <strong>À effectuer une seule fois</strong> lors de la mise en place du système multi-tenant.<br /><br />
+              Cette action va assigner <code className="bg-green-100 px-1 rounded">tenantId = "green-invest"</code> à tous les projets, contacts et tâches qui n'ont pas encore de tenant assigné.<br /><br />
+              Les données déjà migrées ne seront pas modifiées.
+            </div>
+            <div className="p-4 bg-slate-100 border border-slate-200 rounded text-sm text-slate-700">
+              Les nouvelles données créées après cette migration auront automatiquement le bon tenant.
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsMigratingOpen(false)}>Annuler</Button>
+            <Button
+              onClick={handleMigrateToGreenInvest}
+              disabled={migrationLoading}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {migrationLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Migration en cours...</> : 'Lancer la migration'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

@@ -2,7 +2,8 @@
   background-color: #ffffff;
   border-top: 1px solid #e5e7eb;
   padding: 40px 24px;
-  color: #4b5563; /* text-gray-600 */
+  color: #4b5563;
+  /* text-gray-600 */
 }
 
 .footer__container {
@@ -30,7 +31,7 @@
 }
 
 .footer__brand-text {
-    margin-top: 8px;
+  margin-top: 8px;
 }
 
 .footer__brand-title {
@@ -62,7 +63,8 @@
 .footer__heading {
   font-size: 14px;
   font-weight: 600;
-  color: #111827; /* text-gray-900 */
+  color: #111827;
+  /* text-gray-900 */
   margin-bottom: 16px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -92,5 +94,26 @@
   padding-top: 32px;
   text-align: center;
   font-size: 12px;
-  color: #6b7280; /* text-gray-500 */
+  color: #6b7280;
+  /* text-gray-500 */
+}
+
+.footer__enerplan {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  margin-top: 15px;
+  align-items: center;
+}
+
+.footer__enerplan-logo {
+  height: 45px;
+  width: auto;
+  object-fit: contain;
+}
+
+.footer__enerplan-text {
+  font-weight: 400;
+  color: #4b5563;
+  font-size: 14px;
 }

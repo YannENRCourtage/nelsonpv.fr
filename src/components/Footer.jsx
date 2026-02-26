@@ -5,7 +5,8 @@ const siteLinks = {
   "enr-courtage.fr": "https://www.enr-courtage.fr/",
   "enr-courtage-energie.fr": "https://www.enr-courtage-energie.fr/",
   "monelectricitelocale.fr": "https://www.monelectricitelocale.fr/",
-  "batimentneufgratuit.fr": "https://www.batimentneufgratuit.fr/"
+  "batimentneufgratuit.fr": "https://www.batimentneufgratuit.fr/",
+  "mapartdesoleil.fr": "https://www.mapartdesoleil.fr/"
 };
 
 export default function Footer() {
@@ -18,8 +19,8 @@ export default function Footer() {
               <img src="https://horizons-cdn.hostinger.com/350bc103-daf8-48b5-9a02-076489f36a7d/91b2154ed95aaea4fd382a5cc7b86d93.png" alt="Groupe ENR Courtage" className="footer__logo" />
             </a>
             <div className="footer__brand-text">
-                <p className="footer__brand-title">  Groupe ENR Courtage</p>
-                <p className="footer__tagline">  Solutions en énergies renouvelables</p>
+              <p className="footer__brand-title">  Groupe ENR Courtage</p>
+              <p className="footer__tagline">  Solutions en énergies renouvelables</p>
             </div>
           </div>
           <div className="footer__links">
@@ -28,6 +29,12 @@ export default function Footer() {
               <ul className="footer__list">
                 <li>contact@enr-courtage.fr</li>
                 <li>7 Rue Gutenberg, 33700 Mérignac</li>
+                <li className="footer__enerplan">
+                  <a href="https://www.enerplan.asso.fr/" target="_blank" rel="noopener noreferrer">
+                    <img src="/images/enerplan-logo.png" alt="" className="footer__enerplan-logo" />
+                  </a>
+                  <span className="footer__enerplan-text">Adhérent ENERPLAN</span>
+                </li>
               </ul>
             </div>
           </div>

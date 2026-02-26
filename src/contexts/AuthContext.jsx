@@ -1,7 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as authService from '@/services/firebase/auth.service.js';
 
 const AuthContext = createContext(null);
+
+const DEFAULT_TENANT = 'green-invest';
+const TENANT_LS_KEY = 'nelson:activeTenantId';
 
 export const useAuth = () => {
   return useContext(AuthContext);
@@ -11,11 +14,13 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [activeTenantId, setActiveTenantId] = useState(() => {
+    try { return localStorage.getItem(TENANT_LS_KEY) || DEFAULT_TENANT; } catch { return DEFAULT_TENANT; }
+  });
 
   useEffect(() => {
     // Listen to Firebase auth state changes
     const unsubscribe = authService.onAuthChange((userData) => {
-      // console.log("AuthContext onAuthChange:", userData);
       if (userData) {
         // --- OVERRIDE DU COMPTE 'CONTACT' ---
         // Le compte contact@enr-courtage.fr est forcement 'user' et sans accès Admin/Simulateur
@@ -41,18 +46,14 @@ export const AuthProvider = ({ children }) => {
 
         const userEmail = userData.email?.toLowerCase();
 
-        // Debug
-        // console.log("Checking Configurator Access for:", userEmail);
-
         if (
           (userEmail && CONFIGURATOR_USERS.includes(userEmail)) ||
           userData.role === 'admin' ||
           userData.permissions?.canAccessConfigurator === true ||
           userData.permissions?.canAccessConfigurateur === true
         ) {
-          // console.log("Granting Configurator Access to:", userEmail);
           userData.permissions = {
-            ...(userData.permissions || {}), // Safety for null
+            ...(userData.permissions || {}),
             canAccessConfigurator: true
           };
         }
@@ -60,6 +61,17 @@ export const AuthProvider = ({ children }) => {
 
         setUser(userData);
         setIsAuthenticated(true);
+
+        // For non-admin users, lock the tenant to their own tenantId
+        if (userData.role !== 'admin') {
+          const userTenant = userData.tenantId || DEFAULT_TENANT;
+          setActiveTenantId(userTenant);
+          try { localStorage.setItem(TENANT_LS_KEY, userTenant); } catch { }
+        } else {
+          // For admins: restore from localStorage or default
+          const stored = (() => { try { return localStorage.getItem(TENANT_LS_KEY); } catch { return null; } })();
+          setActiveTenantId(stored || DEFAULT_TENANT);
+        }
       } else {
         setUser(null);
         setIsAuthenticated(false);
@@ -93,6 +105,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  /** Switch tenant (admins only) */
+  const switchTenant = useCallback((tenantId) => {
+    if (!tenantId) return;
+    setActiveTenantId(tenantId);
+    try { localStorage.setItem(TENANT_LS_KEY, tenantId); } catch { }
+  }, []);
+
   // Helper functions for permission checks
   const hasPermission = (permission) => {
     if (!user || !user.permissions) return false;
@@ -125,6 +144,9 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     logout,
+    // Tenant management
+    activeTenantId,
+    switchTenant,
     // Permission helpers
     hasPermission,
     isAdmin,
