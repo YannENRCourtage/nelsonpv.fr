@@ -312,9 +312,8 @@ body,
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 9990;
-  backdrop-filter: blur(4px);
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 40000;
 }
 
 .mobile-nav {
@@ -326,7 +325,7 @@ body,
   max-width: 85vw;
   background-color: hsl(var(--background));
   border-left: 1px solid hsl(var(--border));
-  z-index: 9995;
+  z-index: 50000;
   overflow-y: auto;
   padding: 1rem;
   display: flex;
@@ -491,6 +490,11 @@ body,
   .grid-cols-3,
   .grid-cols-4 {
     grid-template-columns: 1fr !important;
+  }
+
+  /* Override to allow 2 columns on mobile specifically for CRM KPIs */
+  .crm-kpi-grid.grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
   .sm\:grid-cols-2,

@@ -226,15 +226,16 @@ export default function Admin() {
     )) return;
     setMigrationLoading(true);
     try {
-      const [projects, contacts, tasks, activities] = await Promise.all([
+      const [projects, contacts, tasks, activities, simulations] = await Promise.all([
         migrateCollectionToTenant('projects', 'green-invest'),
         migrateCollectionToTenant('contacts', 'green-invest'),
         migrateCollectionToTenant('tasks', 'green-invest'),
         migrateCollectionToTenant('activities', 'green-invest'),
+        migrateCollectionToTenant('financial_simulations', 'green-invest'),
       ]);
       toast({
         title: "Migration réussie ✅",
-        description: `Projets: ${projects}, Contacts: ${contacts}, Tâches: ${tasks}, Activités: ${activities} documents migrés vers GREEN INVEST.`
+        description: `Projets: ${projects}, Contacts: ${contacts}, Tâches: ${tasks}, Activités: ${activities}, Simulations: ${simulations} documents migrés vers GREEN INVEST.`
       });
     } catch (err) {
       console.error(err);

@@ -20,6 +20,7 @@ export function PortalFrame({
     roofPitch = 10,
     buildingType = 'symetrique'
 }) {
+    const { isAcama } = useConfiguratorValues();
     // Industrial PBR Material (Galvanized Steel)
     const steelMaterial = useMemo(() => new THREE.MeshStandardMaterial({
         color: '#8a949b',
@@ -41,6 +42,7 @@ export function PortalFrame({
     const isAsymetrique = buildingType === 'asymetrique_1'; // Corrected ID
     const isAsymetrique2 = buildingType === 'asymetrique_2'; // NEW: 2 zones
     const isSymetrique = buildingType === 'symetrique';
+    const isEpona = isAcama && buildingType === 'epona';
 
     let leftSpan, rightSpan, lAngle, rAngle, effectiveRidgeHeight, apexX;
     let leftEaveHeight = eaveHeight; // Default
@@ -52,7 +54,45 @@ export function PortalFrame({
     let leftSectionAngle, rightSectionAngle, middleSectionAngle;
 
     // Determine Geometry params based on Type
-    if (isAsymetrique2) {
+    if (isEpona) {
+        // EPONA 45/65 based exactly on Image 3:
+        // Left post to Center post = 23.60m. Center to Right = 7.85m.
+        // Total building 'width' as span = 31.45m.
+        // Left overhang = 2.55m. Right overhang = 1.25m.
+        // Pitch = 17° on both sides.
+        // Apex is strictly in the middle of the 23.60m span. (11.8m from left post).
+        const mainPitch = 17 * (Math.PI / 180);
+
+        leftEaveHeight = 5.0;
+        rightEaveHeight = 3.83;
+
+        // Apex is 11.8m from Left Post
+        leftSpan = 11.8;
+        rightSpan = 11.8 + 7.85; // 19.65
+
+        apexX = -11.8 + leftSpan; // Exactly 0 if Left Post is at -11.8
+
+        // Calculate Ridge Height based on angle and Left Eave Height
+        effectiveRidgeHeight = leftEaveHeight + (leftSpan * Math.tan(mainPitch)); // ~8.60m. Note: Image 3 says 9.41m but that implies eave isn't lowest point or slope > 17°. We use geometric matching.
+
+        middleColumnX = -11.8 + 23.6; // 11.8
+
+        lAngle = mainPitch;
+        rAngle = mainPitch;
+
+        // Calculate middle column height (based on right slope)
+        const distApexToMiddle = middleColumnX - apexX;
+        middleColumnHeight = effectiveRidgeHeight - (distApexToMiddle * Math.tan(rAngle));
+
+        leftSectionSpan = leftSpan;
+        leftSectionAngle = lAngle;
+
+        middleSectionSpan = distApexToMiddle;
+        middleSectionAngle = rAngle;
+
+        rightSectionSpan = 7.85;
+        rightSectionAngle = rAngle;
+    } else if (isAsymetrique2) {
         // Asymmetrical 2 Zones: apex positioned so that:
         // - Right slope (from right wall to apex) = 3/4 of total width
         // - Left slope (from apex to left wall) = 1/4 of total width
@@ -380,6 +420,103 @@ export function PortalFrame({
     // but standard `angleRad` might be close enough or we can accept slight mismatch for now.
     // The previous implementation used `angleRad` for columns globally.
 
+    // --- EPONA (3 Columns, Exact Render) ---
+    if (isEpona) {
+        const rafterDepth = 0.35;
+        const leftRafterVert = rafterDepth / Math.cos(leftSectionAngle);
+        const rightRafterVert = rafterDepth / Math.cos(rightSectionAngle);
+        const middleRafterVert = rafterDepth / Math.cos(middleSectionAngle);
+
+        const leftColOffset = leftRafterVert - 0.20;
+        const rightColOffset = rightRafterVert - 0.20;
+        const middleColOffset = middleRafterVert - 0.20;
+
+        const leftColHeight = leftEaveHeight + leftColOffset;
+        const rightColHeight = rightEaveHeight + rightColOffset;
+        const middleColHeightFinal = middleColumnHeight + middleColOffset;
+
+        // Create VERTICAL column geometries
+        const leftColumnGeo = createSlantedColumn(baseColumnProfile, 0, false, leftColHeight);
+        const rightColumnGeo = createSlantedColumn(baseColumnProfile, 0, false, rightColHeight);
+        const middleColumnGeo = createSlantedColumn(baseColumnProfile, 0, false, middleColHeightFinal);
+
+        // Calculate rafter lengths with exact overhangs (2.55m on left, 1.25m on right)
+        const extendLeftX = 2.55;
+        const extendRightX = 1.25;
+
+        // Left rafter spans from the left overhang edge up to the apex
+        const leftTotalSpanX = leftSectionSpan + extendLeftX;
+        const leftSectionRafterLength = leftTotalSpanX / Math.cos(leftSectionAngle);
+
+        // Right sections: right slope is split by the middle column.
+        // Apex to middle column:
+        const middleSectionRafterLength = (middleSectionSpan + horizontalOverhang / 2) / Math.cos(middleSectionAngle);
+        // Middle column to right overhang edge:
+        const rightTotalSpanX = rightSectionSpan + extendRightX;
+        const rightSectionRafterLength = rightTotalSpanX / Math.cos(rightSectionAngle);
+
+        // Positioning logic:
+        // Left Column is at x = -11.8
+        // Apex is at x = 0
+        // Middle Column is at x = 11.8
+        // Right Column is at x = 19.65
+
+        const leftColumnX = -11.8;
+
+        return (
+            <group position={position}>
+                {/* Columns */}
+                <mesh geometry={leftColumnGeo} material={steelMaterial} position={[leftColumnX, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
+                <mesh geometry={middleColumnGeo} material={steelMaterial} position={[middleColumnX, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
+                <mesh geometry={rightColumnGeo} material={steelMaterial} position={[-11.8 + 31.45, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
+
+                {/* Gusset at Apex */}
+                <group position={[apexX, effectiveRidgeHeight, 0]}>
+                    {createApexHaunchAssemblySCREB(leftSectionAngle, middleSectionAngle)}
+                </group>
+
+                {/* Gusset at Middle Column */}
+                <group position={[middleColumnX, middleColHeightFinal, 0]}>
+                    {createApexHaunchAssemblySCREB(middleSectionAngle, rightSectionAngle)}
+                </group>
+
+                {/* Left Rafter (from overhang edge UP to apex - pointing RIGHT) */}
+                <group position={[leftColumnX - extendLeftX, leftColHeight - (extendLeftX * Math.tan(leftSectionAngle)), 0]} rotation={[0, 0, leftSectionAngle]}>
+                    {createRafterAssembly(leftSectionRafterLength - 0.05, false)}
+                </group>
+
+                {/* Right Rafter Segment from Apex DOWN to Middle Column (pointing RIGHT) */}
+                <group position={[-11.8 + 31.45 + extendRightX, rightColHeight - (extendRightX * Math.tan(rightSectionAngle)), 0]} rotation={[0, 0, -rightSectionAngle]}>
+                    {createRafterAssembly(rightSectionRafterLength - 0.05, true)}
+                </group>
+
+                {/* Middle Rafter Segment from Middle Column UP to Apex */}
+                <group position={[middleColumnX, middleColHeightFinal, 0]} rotation={[0, 0, -middleSectionAngle]}>
+                    {createRafterAssembly(middleSectionRafterLength - 0.05, true)}
+                </group>
+
+                {/* Diagonal Braces matching the image (Knee Braces / Jarrets / Bracons) */}
+                {/* Simple Bracons for realism */}
+                <mesh position={[leftColumnX + 0.5, leftColHeight - 0.8, 0]} rotation={[0, 0, Math.PI / 4]} castShadow>
+                    <boxGeometry args={[0.08, 1.5, 0.08]} />
+                    <meshStandardMaterial color="#6a747b" />
+                </mesh>
+                <mesh position={[middleColumnX - 0.5, middleColHeightFinal - 0.8, 0]} rotation={[0, 0, -Math.PI / 4]} castShadow>
+                    <boxGeometry args={[0.08, 1.5, 0.08]} />
+                    <meshStandardMaterial color="#6a747b" />
+                </mesh>
+                <mesh position={[middleColumnX + 0.5, middleColHeightFinal - 0.8, 0]} rotation={[0, 0, Math.PI / 4]} castShadow>
+                    <boxGeometry args={[0.08, 1.5, 0.08]} />
+                    <meshStandardMaterial color="#6a747b" />
+                </mesh>
+                <mesh position={[(-11.8 + 31.45) - 0.5, rightColHeight - 0.8, 0]} rotation={[0, 0, -Math.PI / 4]} castShadow>
+                    <boxGeometry args={[0.08, 1.5, 0.08]} />
+                    <meshStandardMaterial color="#6a747b" />
+                </mesh>
+            </group>
+        );
+    }
+
     // --- ASYMMETRIC 2 ZONES (3 Columns) ---
     if (isAsymetrique2) {
         // Calculate column heights with offsets
@@ -423,12 +560,12 @@ export function PortalFrame({
                 <mesh geometry={rightColumnGeo} material={steelMaterial} position={[width / 2, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
 
                 {/* Main Apex Assembly at Ridge (Diamond Gusset) - at 1/4 from left */}
-                <group position={[apexX, effectiveRidgeHeight, 0]}>
+                <group position={[apexX, effectiveRidgeHeight + (isAcama && isSymetrique && Math.abs(width - 18.8) < 0.1 ? 0.1 : 0), 0]}>
                     {createApexHaunchAssemblySCREB(leftSectionAngle, middleSectionAngle)}
                 </group>
 
                 {/* Intermediate junction at Middle Column */}
-                <group position={[middleColumnX, middleColHeightFinal, 0]}>
+                <group position={[middleColumnX, middleColHeightFinal + (isAcama && isSymetrique && Math.abs(width - 18.8) < 0.1 ? 0.1 : 0), 0]}>
                     {createApexHaunchAssemblySCREB(middleSectionAngle, rightSectionAngle)}
                 </group>
 
@@ -849,8 +986,9 @@ export function PortalFrame({
             {/* Positioned at the ridge apex.
                 We subtract a small offset to align the diamond center/top with the rafter intersection.
                 If (0,0) of diamond is Top Apex, we place it exactly at [apexX, effectiveRidgeHeight, 0].
+                For EPONA, the diamond is lowered by 50cm.
              */}
-            <group position={[apexX, effectiveRidgeHeight, 0]}>
+            <group position={[apexX, effectiveRidgeHeight - (buildingType === 'epona' ? 0.65 : (isAcama && isSymetrique && Math.abs(width - 17.5) < 0.1 ? -0.3 : (isAcama && isSymetrique && Math.abs(width - 18.8) < 0.1 ? -0.1 : 0))), 0]}>
                 {createApexHaunchAssemblySCREB(lAngle, rAngle)}
             </group>
 

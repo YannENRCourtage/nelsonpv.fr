@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { createTrapezoidalProfile, createZProfile, getIPEProfileParams } from '../utils/profiles.js';
+import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
 import { SolarPanels } from './SolarPanels.jsx';
 
 /**
@@ -15,7 +16,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
 
     // --- DIMENSIONS ---
     // --- DIMENSIONS ---
-    // --- DIMENSIONS ---
+    const { isAcama } = useConfiguratorValues();
     let auventWidth = 4.0; // Fixed 4m
     let angleRad = 5 * (Math.PI / 180); // Default 5 deg
     let startHeight = eaveHeight;
@@ -71,6 +72,11 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
             angleRad = Math.atan((startHeight - tipHeight) / auventWidth);
         }
 
+    } else if (isAcama && buildingType === 'epona') {
+        // ACAMA EPONA: Specs Phase 15 (Sablière G abaissée à 5m)
+        auventWidth = 2.5;
+        angleRad = 17 * (Math.PI / 180);
+        startHeight = 5.0; // Sablière Gauche à 5m
     } else {
         // Sym/Mono Logic
         if (buildingType === 'symetrique') {
@@ -86,6 +92,19 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
                 if (Math.abs(buildingWidth - 20) < 0.5) tipHeight = 6.4;
                 else if (Math.abs(buildingWidth - 16) < 0.5 || Math.abs(buildingWidth - 16.4) < 0.5) tipHeight = 5.4;
                 startHeight = (tipHeight + rise) - 0.60; // Lowered by 60cm total
+            }
+
+            // OVERRIDE FOR TALIAN 1 (ACAMA)
+            if (isAcama && Math.abs(buildingWidth - 18.8) < 0.1) {
+                auventWidth = 2.3;
+                angleRad = 14 * (Math.PI / 180);
+                startHeight = eaveHeight + 0.2; // Phase 18: +10cm vs +0.1
+            }
+            // OVERRIDE FOR TALIAN 3 (ACAMA)
+            if (isAcama && Math.abs(buildingWidth - 17.5) < 0.1) {
+                auventWidth = 1.8;
+                angleRad = 12 * (Math.PI / 180);
+                startHeight = eaveHeight + 0.4; // Phase 18: +30cm vs +0.1
             }
         } else {
             // Monopente (Force 15 deg)

@@ -47,10 +47,27 @@ export const listSimulations = async (tenantId) => {
         q = query(collection(db, 'financial_simulations'));
     }
     const simulationsSnapshot = await getDocs(q);
-    const simulations = simulationsSnapshot.docs.map(doc => ({
+    let simulations = simulationsSnapshot.docs.map(doc => ({
         ...doc.data(),
         id: doc.id
     }));
+
+    // TRANSITION : Si on est sur green-invest, on récupère aussi les simulations qui n'ont PAS de tenantId
+    if (tenantId === 'green-invest') {
+        const legacyQ = query(collection(db, 'financial_simulations'));
+        const legacySnapshot = await getDocs(legacyQ);
+        const legacySims = legacySnapshot.docs
+            .map(doc => ({ ...doc.data(), id: doc.id }))
+            .filter(sim => !sim.tenantId);
+
+        // Eviter les doublons au cas où
+        const existingIds = new Set(simulations.map(s => s.id));
+        legacySims.forEach(sim => {
+            if (!existingIds.has(sim.id)) {
+                simulations.push(sim);
+            }
+        });
+    }
 
     // Tri côté client par date de création (plus récent en premier)
     return simulations.sort((a, b) => {

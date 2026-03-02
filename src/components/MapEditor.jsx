@@ -35,8 +35,8 @@ function MapControls({ project }) {
         onClick={goToProjectAddress}
         className="bg-white text-gray-800 hover:bg-gray-100 shadow-md"
       >
-        <HomeIcon size={16} className="mr-2" />
-        Adresse Projet
+        <HomeIcon size={16} className="mr-2 lg:mr-2" />
+        <span className="hidden lg:inline">Adresse </span>Projet
       </Button>
 
       {/* Boutons Zoom style Leaflet */}
@@ -64,7 +64,7 @@ function MapControls({ project }) {
   );
 }
 
-export default function MapEditor({ project, setProject, onAddressFound, onAddressSearched, symbolToPlace, setSymbolToPlace, photos, setPhotos, setIsAzimuthDefaulted, isUrbanismeMode }) {
+export default function MapEditor({ project, setProject, onAddressFound, onAddressSearched, symbolToPlace, setSymbolToPlace, photos, setPhotos, setIsAzimuthDefaulted, isUrbanismeMode, activeLayers }) {
   return (
     <div className="relative w-full h-full">
       <MapControls project={project} />
@@ -80,6 +80,7 @@ export default function MapEditor({ project, setProject, onAddressFound, onAddre
         photos={photos}
         setIsAzimuthDefaulted={setIsAzimuthDefaulted}
         isUrbanismeMode={isUrbanismeMode}
+        activeLayers={activeLayers}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Building, X, FolderHeart as HomeIcon, Map as MapIcon, ExternalLink, RotateCcw, RotateCw, Type } from 'lucide-react';
+import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Building, X, FolderHeart as HomeIcon, Map as MapIcon, ExternalLink, RotateCcw, RotateCw, Type, MessageCircle, Box, Layout, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import MapEditor from "../components/MapEditor";
 import StreetViewTab from "../components/StreetViewTab";
@@ -96,7 +96,7 @@ export default function ProjectEditor() {
 
   // ...
 
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, activeTenantId } = useAuth();
   const [projectUsers, setProjectUsers] = useState([]);
 
   useEffect(() => {
@@ -124,9 +124,22 @@ export default function ProjectEditor() {
   const [streetViewUrl, setStreetViewUrl] = useState('');
   const [activeLayers, setActiveLayers] = useState(new Set());
   const [remountKey, setRemountKey] = useState(0);
+
+  // Reset layers when project changes
+  useEffect(() => {
+    setActiveLayers(new Set());
+  }, [projectId]);
   const [isAngleDefaulted, setIsAngleDefaulted] = useState(false);
   const [isAzimuthDefaulted, setIsAzimuthDefaulted] = useState(false);
   const [isWeightingDefaulted, setIsWeightingDefaulted] = useState(false);
+  const [isWeightingDefaulted2, setIsWeightingDefaulted2] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isSymbolsOpen, setIsSymbolsOpen] = useState(false);
+  const [isBuildingsOpen, setIsBuildingsOpen] = useState(false);
+  const [isCapturesOpen, setIsCapturesOpen] = useState(false);
+  const [isLayersOpen, setIsLayersOpen] = useState(false);
+  const [isClientOpen, setIsClientOpen] = useState(false); // Client zone collapsed by default on mobile
+  const [mobileAddressQuery, setMobileAddressQuery] = useState(''); // For mobile address search above map
 
   useEffect(() => {
     const handleForceReset = () => {
@@ -375,6 +388,8 @@ export default function ProjectEditor() {
   const handleAddressFound = (location) => {
     const { label, lat, lng } = location;
     updateProject({ address: label, gps: `${lat}, ${lng}` });
+    // Force map to go to this address immediately by passing coords directly
+    window.dispatchEvent(new CustomEvent("map:goto-address", { detail: { lat, lng } }));
   };
 
   const handleAddressSearched = (location) => {
@@ -565,12 +580,22 @@ export default function ProjectEditor() {
   const p = project || {};
 
   return (
-    <div className="w-full px-4 py-6 bg-gray-50">
-      <div className="grid grid-cols-12 gap-6 mb-6 items-stretch">
-        <section className="col-span-9 rounded-2xl bg-white p-6 shadow-sm h-full flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl font-semibold">Client & Projet</h2>
+    <div className="w-full px-2 lg:px-4 py-4 lg:py-6 bg-gray-50">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 mb-6 items-stretch">
+        <section className="col-span-1 lg:col-span-9 rounded-2xl bg-white p-3 lg:p-6 shadow-sm h-full flex flex-col justify-between">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start mb-4">
+            <div className="flex items-center justify-between lg:justify-start gap-3 w-full lg:w-auto">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold">Client &amp; Projet</h2>
+                <button
+                  type="button"
+                  className="lg:hidden text-gray-400 hover:text-gray-600 transition-colors"
+                  onClick={() => setIsClientOpen(v => !v)}
+                  title={isClientOpen ? 'Replier' : 'Déplier la section client'}
+                >
+                  {isClientOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                </button>
+              </div>
               <Button
                 type="button"
                 onClick={handleReset}
@@ -583,8 +608,9 @@ export default function ProjectEditor() {
                 Remise à zéro
               </Button>
             </div>
-            <div className="flex gap-4 items-end">
-              <div>
+            {/* Dropdowns: sur une ligne sur mobile */}
+            <div className="flex flex-wrap gap-2 items-end w-full lg:w-auto mt-2 lg:mt-0 lg:grid lg:grid-cols-3 lg:gap-4">
+              <div className="flex-1 min-w-[80px]">
                 <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Commercial</label>
                 <Select
                   value={p.commercial || ''}
@@ -598,7 +624,7 @@ export default function ProjectEditor() {
                     }
                   }}
                 >
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -615,7 +641,7 @@ export default function ProjectEditor() {
                 </Select>
               </div>
 
-              <div>
+              <div className="flex-1 min-w-[80px]">
                 <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Chef de projet</label>
                 <Select value={p.assignedUser || ''} onValueChange={(v) => {
                   const oldVal = p.assignedUser;
@@ -626,7 +652,7 @@ export default function ProjectEditor() {
                     toast({ title: "Notification envoyée", description: `${v} a été notifié(e).` });
                   }
                 }}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -643,10 +669,10 @@ export default function ProjectEditor() {
                 </Select>
               </div>
 
-              <div>
+              <div className="flex-1 min-w-[80px]">
                 <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Statut</label>
                 <Select value={p.status || 'Nouveau'} onValueChange={(v) => updateProject({ status: v })}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full lg:w-[180px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -660,60 +686,46 @@ export default function ProjectEditor() {
             </div>
           </div>
 
-          <div className="grid grid-cols-12 gap-4">
-            <div className="col-span-3"><label className="text-sm font-medium">Nom*</label><Input value={p.name || ''} onChange={e => updateProject({ name: e.target.value })} className="mt-1" placeholder="Nom" /></div>
-            <div className="col-span-3"><label className="text-sm font-medium">Prénom</label><Input value={p.firstName || ''} onChange={e => updateProject({ firstName: e.target.value })} className="mt-1" placeholder="Prénom" /></div>
-            <div className="col-span-3"><label className="text-sm font-medium">Téléphone</label><Input value={p.phone || ''} onChange={e => updateProject({ phone: e.target.value })} className="mt-1" placeholder="Téléphone" /></div>
-            <div className="col-span-3"><label className="text-sm font-medium">Email</label><Input value={p.email || ''} onChange={e => updateProject({ email: e.target.value })} className="mt-1" placeholder="Email" /></div>
+          {/* Body: collapsed on mobile by default, always visible on desktop */}
+          <div className={`${isClientOpen ? 'block' : 'hidden'} lg:block`}>
+            {/* ============================
+                MOBILE/TABLET LAYOUT (lg:hidden)
+                6 rows of grouped fields
+                ============================ */}
+            <div className="lg:hidden flex flex-col gap-2">
 
-            <div className="col-span-12 flex gap-4 items-end">
-              <div className="flex-grow-[3]"><label className="text-sm font-medium">Adresse du projet</label><Input value={p.address || ''} onChange={e => updateProject({ address: e.target.value })} className="mt-1" placeholder="Adresse du projet" /></div>
-              <div className="flex-grow-[1]"><label className="text-sm font-medium">Code postal</label><Input value={p.zip || ''} onChange={e => updateProject({ zip: e.target.value })} className="mt-1" placeholder="Code postal" /></div>
-              <div className="flex-grow-[2]"><label className="text-sm font-medium">Ville</label><Input value={p.city || ''} onChange={e => updateProject({ city: e.target.value })} className="mt-1" placeholder="Ville" /></div>
-            </div>
-
-            <div className="col-span-3">
-              <label className="text-sm font-medium">Coordonnées GPS</label>
-              <div className="flex gap-2 mt-1">
-                <Input
-                  placeholder="Latitude"
-                  value={p.gps ? p.gps.split(',')[0] : ''}
-                  onChange={e => {
-                    const lat = e.target.value;
-                    const lon = p.gps && p.gps.includes(',') ? p.gps.split(',')[1].trim() : '';
-                    updateProject({ gps: `${lat}, ${lon}` });
-                  }}
-                  title="Latitude"
-                />
-                <Input
-                  placeholder="Longitude"
-                  value={p.gps && p.gps.includes(',') ? p.gps.split(',')[1].trim() : ''}
-                  onChange={e => {
-                    const lat = p.gps ? p.gps.split(',')[0].trim() : '';
-                    const lon = e.target.value;
-                    updateProject({ gps: `${lat}, ${lon}` });
-                  }}
-                  title="Longitude"
-                />
+              {/* Ligne 1: Nom + Prénom + Type de projet */}
+              <div className="flex gap-2">
+                <div className="flex-1 min-w-[80px]"><label className="text-xs font-medium">Nom*</label><Input value={p.name || ''} onChange={e => updateProject({ name: e.target.value })} className="mt-0.5 h-8" placeholder="Nom" /></div>
+                <div className="flex-1 min-w-[80px]"><label className="text-xs font-medium">Prénom</label><Input value={p.firstName || ''} onChange={e => updateProject({ firstName: e.target.value })} className="mt-0.5 h-8" placeholder="Prénom" /></div>
+                <div className="flex-1 min-w-[90px]"><label className="text-xs font-medium">Type</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-0.5 w-full rounded-lg border px-1 py-1 h-8 bg-background text-xs"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option></select></div>
               </div>
-            </div>
-            <div className="col-span-3"><label className="text-sm font-medium">Type de projet</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background"><option>Construction</option><option>Rénovation</option><option>Construction & Rénovation</option></select></div>
-            <div className="col-span-6"><label className="text-sm font-medium">Projet</label><Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} className="mt-1" placeholder="Ex: 150m² ou 9kWc" /></div>
 
-            {/* ZNZV Fields & PVGIS */}
-            {/* Technical Fields Grid */}
-            <div className="col-span-12 grid grid-cols-7 gap-2 items-end">
-              {/* --- ROW 1 --- */}
-              {/* Séisme */}
-              <div><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de séisme">Séisme</label><Input value={p.seismicZone || ''} onChange={e => updateProject({ seismicZone: e.target.value })} className="mt-1" placeholder="Séisme" /></div>
+              {/* Tél + Email on same line */}
+              <div className="flex gap-2">
+                <div className="flex-1 min-w-[90px]"><label className="text-xs font-medium">Tél.</label><Input value={p.phone || ''} onChange={e => updateProject({ phone: e.target.value })} className="mt-0.5 h-8" placeholder="Tél." /></div>
+                <div className="flex-1 min-w-[130px]"><label className="text-xs font-medium">Email</label><Input value={p.email || ''} onChange={e => updateProject({ email: e.target.value })} className="mt-0.5 h-8" placeholder="Email" /></div>
+              </div>
 
-              {/* Neige */}
-              <div><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de neige">Neige</label><Input value={p.snowZone || ''} onChange={e => updateProject({ snowZone: e.target.value })} className="mt-1" placeholder="Neige" /></div>
+              {/* Ligne 2: Adresse */}
+              <div>
+                <label className="text-xs font-medium">Adresse</label>
+                <Input value={p.address || ''} onChange={e => updateProject({ address: e.target.value })} className="mt-0.5 h-8" placeholder="Adresse du projet" />
+              </div>
 
-              {/* Vent */}
-              <div><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de vent">Vent</label><Input value={p.windZone || ''} onChange={e => updateProject({ windZone: e.target.value })} className="mt-1" placeholder="Vent" /></div>
+              {/* Ligne 3: CP + Ville */}
+              <div className="flex gap-2">
+                <div className="w-[80px] shrink-0"><label className="text-xs font-medium">CP</label><Input value={p.zip || ''} onChange={e => updateProject({ zip: e.target.value })} className="mt-0.5 h-8" placeholder="CP" /></div>
+                <div className="flex-1"><label className="text-xs font-medium">Ville</label><Input value={p.city || ''} onChange={e => updateProject({ city: e.target.value })} className="mt-0.5 h-8" placeholder="Ville" /></div>
+              </div>
 
-              {/* Shared Logic for determining presence of second building */}
+              {/* GPS + Projet on same line */}
+              <div className="flex gap-2">
+                <div className="flex-1 min-w-[120px]"><label className="text-xs font-medium">GPS</label><div className="flex gap-1 mt-0.5"><Input placeholder="Lat" value={p.gps ? p.gps.split(',')[0] : ''} onChange={e => { const lat = e.target.value; const lon = p.gps && p.gps.includes(',') ? p.gps.split(',')[1].trim() : ''; updateProject({ gps: `${lat}, ${lon}` }); }} className="h-8 min-w-0" /><Input placeholder="Lon" value={p.gps && p.gps.includes(',') ? p.gps.split(',')[1].trim() : ''} onChange={e => { const lat = p.gps ? p.gps.split(',')[0].trim() : ''; updateProject({ gps: `${lat}, ${e.target.value}` }); }} className="h-8 min-w-0" /></div></div>
+                <div className="w-[90px] shrink-0"><label className="text-xs font-medium">Projet</label><Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} className="mt-0.5 h-8" placeholder="Ex: 9kWc" /></div>
+              </div>
+
+              {/* Technical fields - use the same IIFE for building logic */}
               {(() => {
                 const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding);
                 const hasSecondBuilding = predefinedBuildings.length >= 2;
@@ -723,169 +735,239 @@ export default function ProjectEditor() {
 
                 return (
                   <>
-                    {/* Inclinaison 1 */}
-                    <div>
-                      <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Inclinaison">{labelPrefix1}Inclinaison</label>
-                      <Select
-                        value={String(p.panelAngle || '15')}
-                        onValueChange={v => {
-                          updateProject({ panelAngle: v });
-                          if (isAngleDefaulted) setIsAngleDefaulted(false);
-                        }}
-                      >
-                        <SelectTrigger className={`mt-1 h-10 w-full ${hasFirstBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {INCLINATION_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    {/* Ligne 4: Séisme + Neige + Vent */}
+                    <div className="flex gap-2">
+                      <div className="flex-1"><label className="text-xs font-medium">Séisme</label><Input value={p.seismicZone || ''} onChange={e => updateProject({ seismicZone: e.target.value })} className="mt-0.5 h-8" placeholder="Séisme" /></div>
+                      <div className="w-[56px] shrink-0"><label className="text-xs font-medium">Neige</label><Input value={p.snowZone || ''} onChange={e => updateProject({ snowZone: e.target.value })} className="mt-0.5 h-8" placeholder="" /></div>
+                      <div className="w-[56px] shrink-0"><label className="text-xs font-medium">Vent</label><Input value={p.windZone || ''} onChange={e => updateProject({ windZone: e.target.value })} className="mt-0.5 h-8" placeholder="" /></div>
                     </div>
 
-                    {/* Azimut 1 */}
-                    <div>
-                      <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Azimut">{labelPrefix1}Azimut</label>
-                      <Select
-                        value={String(p.panelAspect || '0')}
-                        onValueChange={v => {
-                          updateProject({ panelAspect: v });
-                          if (isAzimuthDefaulted) setIsAzimuthDefaulted(false);
-                        }}
-                      >
-                        <SelectTrigger className={`mt-1 h-10 w-full ${hasFirstBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
-                        <SelectContent className="h-60">
-                          {Array.from({ length: 72 }, (_, i) => -175 + i * 5).map(val => {
-                            let label = `${val}°`;
-                            if (val === 0) label += " (Sud)";
-                            else if (val === -90) label += " (Est)";
-                            else if (val === 90) label += " (Ouest)";
-                            else if (val === 180) label += " (Nord)";
-                            return (
-                              <SelectItem key={val} value={String(val)}>{label}</SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
+                    {/* Ligne 5: Inclinaison + Azimut */}
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="text-xs font-medium">{labelPrefix1}Inclinaison</label>
+                        <Select value={String(p.panelAngle || '15')} onValueChange={v => { updateProject({ panelAngle: v }); if (isAngleDefaulted) setIsAngleDefaulted(false); }}>
+                          <SelectTrigger className={`mt-0.5 h-8 w-full text-xs ${hasFirstBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
+                          <SelectContent>{INCLINATION_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-xs font-medium">{labelPrefix1}Azimut</label>
+                        <Select value={String(p.panelAspect || '0')} onValueChange={v => { updateProject({ panelAspect: v }); if (isAzimuthDefaulted) setIsAzimuthDefaulted(false); }}>
+                          <SelectTrigger className={`mt-0.5 h-8 w-full text-xs ${hasFirstBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
+                          <SelectContent className="h-60">{Array.from({ length: 72 }, (_, i) => -175 + i * 5).map(val => { let label = `${val}°`; if (val === 0) label += " (Sud)"; else if (val === -90) label += " (Est)"; else if (val === 90) label += " (Ouest)"; else if (val === 180) label += " (Nord)"; return <SelectItem key={val} value={String(val)}>{label}</SelectItem>; })}</SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
-                    {/* Pondération 1 */}
-                    <div>
-                      <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Pondération">{labelPrefix1}Pondération</label>
-                      <Select
-                        key={`weight-${p.roofWeighting}`}
-                        value={String(p.roofWeighting !== undefined ? p.roofWeighting : 50)}
-                        onValueChange={v => {
-                          updateProject({ roofWeighting: parseInt(v) });
-                          if (isWeightingDefaulted) setIsWeightingDefaulted(false);
-                        }}
-                      >
-                        <SelectTrigger className={`mt-1 h-10 w-full ${hasFirstBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
-                        <SelectContent className="h-60">
-                          {Array.from({ length: 11 }, (_, i) => 50 + i * 5).map(val => (
-                            <SelectItem key={val} value={String(val)}>{val}%</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Productible 1 */}
-                    <div className="relative">
-                      <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Productible">{labelPrefix1}Productible</label>
-                      <div className="flex gap-1 mt-1">
-                        <Input
-                          // Display Roof 1 productible only
-                          value={p.solarYieldRoof1 || ''}
-                          readOnly
-                          placeholder="kWh/kWc"
-                          className={`min-w-0 ${p.solarYieldRoof1
-                            ? (parseFloat(p.solarYieldRoof1) >= 1120
-                              ? "bg-green-100 text-green-900 border-green-500"
-                              : "bg-red-100 text-red-900 border-red-500")
-                            : "bg-gray-50"
-                            }`}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="shrink-0 aspect-square w-10 px-0"
-                          title="Calculer le productible Toiture 1"
-                          onClick={async () => {
-                            if (!p.gps) return toast({ title: "Erreur", description: "Veuillez renseigner les coordonnées GPS.", variant: "destructive" });
-                            const parts = p.gps ? p.gps.split(',') : [];
+                    {/* Ligne 6: Pondération + Productible */}
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="text-xs font-medium">{labelPrefix1}Pondération</label>
+                        <Select key={`weight-m-${p.roofWeighting}`} value={String(p.roofWeighting !== undefined ? p.roofWeighting : 50)} onValueChange={v => { updateProject({ roofWeighting: parseInt(v) }); if (isWeightingDefaulted) setIsWeightingDefaulted(false); }}>
+                          <SelectTrigger className={`mt-0.5 h-8 w-full text-xs ${hasFirstBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
+                          <SelectContent className="h-60">{Array.from({ length: 11 }, (_, i) => 50 + i * 5).map(val => <SelectItem key={val} value={String(val)}>{val}%</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-xs font-medium">{labelPrefix1}Productible</label>
+                        <div className="flex gap-1 mt-0.5">
+                          <Input value={p.solarYieldRoof1 || ''} readOnly placeholder="kWh/kWc" className={`min-w-0 h-8 text-xs ${p.solarYieldRoof1 ? (parseFloat(p.solarYieldRoof1) >= 1120 ? 'bg-green-100 text-green-900 border-green-500' : 'bg-red-100 text-red-900 border-red-500') : 'bg-gray-50'}`} />
+                          <Button type="button" variant="outline" size="icon" className="shrink-0 h-8 w-8 px-0" title="Calculer PVGIS" onClick={async () => {
+                            if (!p.gps) return toast({ title: 'Erreur', description: 'GPS manquant', variant: 'destructive' });
+                            const parts = p.gps.split(',');
                             const lat = parseFloat(parts[0]?.trim());
                             const lon = parseFloat(parts[1]?.trim());
-                            if (isNaN(lat) || isNaN(lon)) return toast({ title: "Erreur", description: "Coordonnées GPS invalides.", variant: "destructive" });
+                            if (isNaN(lat) || isNaN(lon)) return;
 
                             const angle = p.panelAngle || 15;
                             const aspect = parseFloat(p.panelAspect || 0);
                             const weighting = p.roofWeighting !== undefined ? p.roofWeighting : 50;
 
-                            // Calculate opposite aspect (+180°, normalized to -180 to 180 range)
-                            let oppositeAspect = aspect + 180;
-                            if (oppositeAspect > 180) oppositeAspect -= 360;
-                            if (oppositeAspect < -180) oppositeAspect += 360;
+                            // PVGIS Logic for ACAMA vs others
+                            const pvgisLoss = activeTenantId === 'acama' ? 10 : 6;
+                            const pvgisMounting = activeTenantId === 'acama' ? 'building' : 'free';
 
-                            toast({ title: "Calcul en cours...", description: `PVGIS Ligne 1: T1 (${aspect}°) et T2 (${oppositeAspect}°)` });
+                            let opp = aspect + 180;
+                            if (opp > 180) opp -= 360;
+                            if (opp < -180) opp += 360;
 
                             try {
-                              // Fetch PVGIS for Line 1 primary aspect (T1)
-                              const pvgisUrl1 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
-                              const res1 = await fetch(pvgisUrl1);
-                              if (!res1.ok) throw new Error("Erreur PVGIS T1");
-                              const data1 = await res1.json();
-                              const getEy = (d) => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
-                              const yieldT1 = parseFloat(getEy(data1));
-
-                              // Fetch PVGIS for Line 1 opposite aspect (T2)
-                              const pvgisUrl2 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${oppositeAspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
-                              const res2 = await fetch(pvgisUrl2);
-                              if (!res2.ok) throw new Error("Erreur PVGIS T2");
-                              const data2 = await res2.json();
-                              const yieldT2 = parseFloat(getEy(data2));
-
-                              if (!isNaN(yieldT1) && !isNaN(yieldT2)) {
-                                // Calculate weighted average for Line 1
-                                const weightedYield = (yieldT1 * weighting + yieldT2 * (100 - weighting)) / 100;
-
-                                // Store only in Line 1's field (solarYieldRoof1)
-                                updateProject({
-                                  solarYieldRoof1: weightedYield.toFixed(2)
-                                });
-                                toast({
-                                  title: "Succès Ligne 1",
-                                  description: `T1: ${yieldT1.toFixed(2)} (${weighting}%) | T2: ${yieldT2.toFixed(2)} (${100 - weighting}%) | Pondéré: ${weightedYield.toFixed(2)} kWh/kWc`
-                                });
+                              const [r1, r2] = await Promise.all([
+                                fetch(`/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`),
+                                fetch(`/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${opp}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`)
+                              ]);
+                              const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+                              const getEy = d => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
+                              const y1 = parseFloat(getEy(d1));
+                              const y2 = parseFloat(getEy(d2));
+                              if (!isNaN(y1) && !isNaN(y2)) {
+                                updateProject({ solarYieldRoof1: ((y1 * weighting + y2 * (100 - weighting)) / 100).toFixed(2) });
                               }
                             } catch (e) {
                               console.error(e);
-                              toast({ title: "Erreur", description: "Échec calcul PVGIS", variant: "destructive" });
                             }
-                          }}
-                        >
-                          <Zap size={16} />
-                        </Button>
+                          }}><Zap size={14} /></Button>
+                        </div>
                       </div>
                     </div>
 
-                    {/* --- ROW 2 (Conditional) --- */}
+                    {/* Bâtiment 2 (si existant) */}
                     {hasSecondBuilding && (
                       <>
-                        {/* Spacers for Env cols */}
-                        <div className="hidden md:block"></div>
-                        <div className="hidden md:block"></div>
-                        <div className="hidden md:block"></div>
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <label className="text-xs font-medium">{labelPrefix2}Inclinaison</label>
+                            <Select value={String(p.panelAngle2 || '15')} onValueChange={v => updateProject({ panelAngle2: v })}>
+                              <SelectTrigger className="mt-0.5 h-8 w-full text-xs bg-gray-200"><SelectValue /></SelectTrigger>
+                              <SelectContent>{INCLINATION_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex-1">
+                            <label className="text-xs font-medium">{labelPrefix2}Azimut</label>
+                            <Select value={String(p.panelAspect2 || '0')} onValueChange={v => updateProject({ panelAspect2: v })}>
+                              <SelectTrigger className="mt-0.5 h-8 w-full text-xs bg-gray-200"><SelectValue /></SelectTrigger>
+                              <SelectContent className="h-60">{Array.from({ length: 72 }, (_, i) => -175 + i * 5).map(val => { let label = `${val}°`; if (val === 0) label += " (Sud)"; return <SelectItem key={val} value={String(val)}>{label}</SelectItem>; })}</SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <label className="text-xs font-medium">{labelPrefix2}Pondération</label>
+                            <Select key={`weight2-m-${p.roofWeighting2}`} value={String(p.roofWeighting2 !== undefined ? p.roofWeighting2 : 50)} onValueChange={v => { updateProject({ roofWeighting2: parseInt(v) }); if (isWeightingDefaulted2) setIsWeightingDefaulted2(false); }}>
+                              <SelectTrigger className="mt-0.5 h-8 w-full text-xs bg-gray-200"><SelectValue /></SelectTrigger>
+                              <SelectContent className="h-60">{Array.from({ length: 11 }, (_, i) => 50 + i * 5).map(val => <SelectItem key={val} value={String(val)}>{val}%</SelectItem>)}</SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex-1">
+                            <label className="text-xs font-medium">{labelPrefix2}Productible</label>
+                            <div className="flex gap-1 mt-0.5">
+                              <Input value={p.solarYieldRoof2 || ''} readOnly placeholder="kWh/kWc" className={`min-w-0 h-8 text-xs ${p.solarYieldRoof2 ? (parseFloat(p.solarYieldRoof2) >= 1120 ? 'bg-green-100 text-green-900 border-green-500' : 'bg-red-100 text-red-900 border-red-500') : 'bg-gray-50'}`} />
+                              <Button type="button" variant="outline" size="icon" className="shrink-0 h-8 w-8 px-0" title="Calculer PVGIS 2" onClick={async () => {
+                                if (!p.gps) return;
+                                const parts = p.gps.split(',');
+                                const lat = parseFloat(parts[0]?.trim());
+                                const lon = parseFloat(parts[1]?.trim());
+                                if (isNaN(lat) || isNaN(lon)) return;
 
-                        {/* Inclinaison 2 */}
+                                const angle = p.panelAngle2 || 15;
+                                const aspect = parseFloat(p.panelAspect2 || 0);
+                                const weighting = p.roofWeighting2 !== undefined ? p.roofWeighting2 : 50;
+
+                                // PVGIS Logic for ACAMA vs others
+                                const pvgisLoss = activeTenantId === 'acama' ? 10 : 6;
+                                const pvgisMounting = activeTenantId === 'acama' ? 'building' : 'free';
+
+                                let opp = aspect + 180;
+                                if (opp > 180) opp -= 360;
+                                if (opp < -180) opp += 360;
+
+                                try {
+                                  const [r1, r2] = await Promise.all([
+                                    fetch(`/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`),
+                                    fetch(`/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${opp}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`)
+                                  ]);
+                                  const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+                                  const getEy = d => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
+                                  const y1 = parseFloat(getEy(d1));
+                                  const y2 = parseFloat(getEy(d2));
+                                  if (!isNaN(y1) && !isNaN(y2)) {
+                                    updateProject({ solarYieldRoof2: ((y1 * weighting + y2 * (100 - weighting)) / 100).toFixed(2) });
+                                  }
+                                } catch (e) {
+                                  console.error(e);
+                                }
+                              }}><Zap size={14} /></Button>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* Commentaires */}
+              <div><label className="text-xs font-medium">Commentaires</label><textarea value={p.comments || ''} onChange={e => updateProject({ comments: e.target.value })} className="mt-0.5 h-16 w-full max-w-full rounded-lg border px-3 py-2 text-sm resize-y" placeholder="Commentaires" /></div>
+            </div>
+
+            {/* ============================
+                DESKTOP LAYOUT (hidden on mobile)
+                Original grid unchanged
+                ============================ */}
+            <div className="hidden lg:grid grid-cols-12 gap-4">
+              {/* Desktop: Nom, Prénom, Tél, Email */}
+              <div className="col-span-3"><label className="text-sm font-medium">Nom*</label><Input value={p.name || ''} onChange={e => updateProject({ name: e.target.value })} className="mt-1 h-10" placeholder="Nom" /></div>
+              <div className="col-span-3"><label className="text-sm font-medium">Prénom</label><Input value={p.firstName || ''} onChange={e => updateProject({ firstName: e.target.value })} className="mt-1 h-10" placeholder="Prénom" /></div>
+              <div className="col-span-3"><label className="text-sm font-medium">Téléphone</label><Input value={p.phone || ''} onChange={e => updateProject({ phone: e.target.value })} className="mt-1 h-10" placeholder="Téléphone" /></div>
+              <div className="col-span-3"><label className="text-sm font-medium">Email</label><Input value={p.email || ''} onChange={e => updateProject({ email: e.target.value })} className="mt-1 h-10" placeholder="Email" /></div>
+              {/* Desktop: Adresse, CP, Ville */}
+              <div className="col-span-6"><label className="text-sm font-medium">Adresse du projet</label><Input value={p.address || ''} onChange={e => updateProject({ address: e.target.value })} className="mt-1 h-10" placeholder="Adresse du projet" /></div>
+              <div className="col-span-2"><label className="text-sm font-medium">Code postal</label><Input value={p.zip || ''} onChange={e => updateProject({ zip: e.target.value })} className="mt-1 h-10" placeholder="Code postal" /></div>
+              <div className="col-span-4"><label className="text-sm font-medium">Ville</label><Input value={p.city || ''} onChange={e => updateProject({ city: e.target.value })} className="mt-1 h-10" placeholder="Ville" /></div>
+
+              {/* Desktop: GPS + Type + Projet */}
+              <div className="col-span-3">
+                <label className="text-sm font-medium">Coordonnées GPS</label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    placeholder="Lat"
+                    value={p.gps ? p.gps.split(',')[0] : ''}
+                    onChange={e => {
+                      const lat = e.target.value;
+                      const lon = p.gps && p.gps.includes(',') ? p.gps.split(',')[1].trim() : '';
+                      updateProject({ gps: `${lat}, ${lon}` });
+                    }}
+                    title="Latitude"
+                  />
+                  <Input
+                    placeholder="Lon"
+                    value={p.gps && p.gps.includes(',') ? p.gps.split(',')[1].trim() : ''}
+                    onChange={e => {
+                      const lat = p.gps ? p.gps.split(',')[0].trim() : '';
+                      const lon = e.target.value;
+                      updateProject({ gps: `${lat}, ${lon}` });
+                    }}
+                    title="Longitude"
+                  />
+                </div>
+              </div>
+              <div className="col-span-3"><label className="text-sm font-medium">Type de projet</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option></select></div>
+              <div className="col-span-6"><label className="text-sm font-medium">Projet</label><Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} className="mt-1" placeholder="Ex: 150m² ou 9kWc" /></div>
+
+              {/* Desktop: Technical Fields */}
+              <div className="col-span-12 space-y-2">
+                {/* --- ROW 1: Env + Building 1 --- */}
+                <div className="grid grid-cols-7 gap-2 items-end">
+                  {/* Séisme */}
+                  <div><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de séisme">Séisme</label><Input value={p.seismicZone || ''} onChange={e => updateProject({ seismicZone: e.target.value })} className="mt-1" placeholder="Séisme" /></div>
+
+                  {/* Neige */}
+                  <div><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de neige">Neige</label><Input value={p.snowZone || ''} onChange={e => updateProject({ snowZone: e.target.value })} className="mt-1" placeholder="Neige" /></div>
+
+                  {/* Vent */}
+                  <div><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de vent">Vent</label><Input value={p.windZone || ''} onChange={e => updateProject({ windZone: e.target.value })} className="mt-1" placeholder="Vent" /></div>
+
+                  {/* Shared Logic for determining presence of second building */}
+                  {(() => {
+                    const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding || f.buildingName));
+                    const hasSecondBuilding = predefinedBuildings.length >= 2;
+                    const hasFirstBuilding = predefinedBuildings.length >= 1;
+                    const labelPrefix1 = hasSecondBuilding ? "1/ " : "";
+
+                    return (
+                      <>
+                        {/* Inclinaison 1 */}
                         <div>
-                          <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Inclinaison">{labelPrefix2}Inclinaison</label>
+                          <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Inclinaison">{labelPrefix1}Inclinaison</label>
                           <Select
-                            value={String(p.panelAngle2 || '15')}
-                            onValueChange={v => updateProject({ panelAngle2: v })}
+                            value={String(p.panelAngle || '15')}
+                            onValueChange={v => {
+                              updateProject({ panelAngle: v });
+                              if (isAngleDefaulted) setIsAngleDefaulted(false);
+                            }}
                           >
-                            <SelectTrigger className={`mt-1 h-10 w-full ${hasSecondBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
+                            <SelectTrigger className={`mt-1 h-10 w-full ${hasFirstBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
                             <SelectContent>
                               {INCLINATION_OPTIONS.map((opt) => (
                                 <SelectItem key={opt.value} value={opt.value}>
@@ -896,14 +978,17 @@ export default function ProjectEditor() {
                           </Select>
                         </div>
 
-                        {/* Azimut 2 */}
+                        {/* Azimut 1 */}
                         <div>
-                          <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Azimut">{labelPrefix2}Azimut</label>
+                          <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Azimut">{labelPrefix1}Azimut</label>
                           <Select
-                            value={String(p.panelAspect2 || '0')}
-                            onValueChange={v => updateProject({ panelAspect2: v })}
+                            value={String(p.panelAspect || '0')}
+                            onValueChange={v => {
+                              updateProject({ panelAspect: v });
+                              if (isAzimuthDefaulted) setIsAzimuthDefaulted(false);
+                            }}
                           >
-                            <SelectTrigger className={`mt-1 h-10 w-full ${hasSecondBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
+                            <SelectTrigger className={`mt-1 h-10 w-full ${hasFirstBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
                             <SelectContent className="h-60">
                               {Array.from({ length: 72 }, (_, i) => -175 + i * 5).map(val => {
                                 let label = `${val}°`;
@@ -911,21 +996,26 @@ export default function ProjectEditor() {
                                 else if (val === -90) label += " (Est)";
                                 else if (val === 90) label += " (Ouest)";
                                 else if (val === 180) label += " (Nord)";
-                                return <SelectItem key={val} value={String(val)}>{label}</SelectItem>;
+                                return (
+                                  <SelectItem key={val} value={String(val)}>{label}</SelectItem>
+                                );
                               })}
                             </SelectContent>
                           </Select>
                         </div>
 
-                        {/* Pondération 2 */}
+                        {/* Pondération 1 */}
                         <div>
-                          <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Pondération">{labelPrefix2}Pondération</label>
+                          <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Pondération">{labelPrefix1}Pondération</label>
                           <Select
-                            key={`weight2-${p.roofWeighting2}`}
-                            value={String(p.roofWeighting2 !== undefined ? p.roofWeighting2 : 50)}
-                            onValueChange={v => updateProject({ roofWeighting2: parseInt(v) })}
+                            key={`weight-${p.roofWeighting}`}
+                            value={String(p.roofWeighting !== undefined ? p.roofWeighting : 50)}
+                            onValueChange={v => {
+                              updateProject({ roofWeighting: parseInt(v) });
+                              if (isWeightingDefaulted) setIsWeightingDefaulted(false);
+                            }}
                           >
-                            <SelectTrigger className={`mt-1 h-10 w-full ${hasSecondBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
+                            <SelectTrigger className={`mt-1 h-10 w-full ${hasFirstBuilding ? 'bg-gray-200' : ''}`}><SelectValue /></SelectTrigger>
                             <SelectContent className="h-60">
                               {Array.from({ length: 11 }, (_, i) => 50 + i * 5).map(val => (
                                 <SelectItem key={val} value={String(val)}>{val}%</SelectItem>
@@ -934,16 +1024,17 @@ export default function ProjectEditor() {
                           </Select>
                         </div>
 
-                        {/* Productible 2 */}
+                        {/* Productible 1 */}
                         <div className="relative">
-                          <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Productible">{labelPrefix2}Productible</label>
+                          <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Productible">{labelPrefix1}Productible</label>
                           <div className="flex gap-1 mt-1">
                             <Input
-                              value={p.solarYieldRoof2 || ''}
+                              // Display Roof 1 productible only
+                              value={p.solarYieldRoof1 || ''}
                               readOnly
                               placeholder="kWh/kWc"
-                              className={`min-w-0 ${p.solarYieldRoof2
-                                ? (parseFloat(p.solarYieldRoof2) >= 1120
+                              className={`min-w-0 ${p.solarYieldRoof1
+                                ? (parseFloat(p.solarYieldRoof1) >= 1120
                                   ? "bg-green-100 text-green-900 border-green-500"
                                   : "bg-red-100 text-red-900 border-red-500")
                                 : "bg-gray-50"
@@ -954,7 +1045,7 @@ export default function ProjectEditor() {
                               variant="outline"
                               size="icon"
                               className="shrink-0 aspect-square w-10 px-0"
-                              title="Calculer le productible Toiture 2"
+                              title="Calculer le productible Toiture 1"
                               onClick={async () => {
                                 if (!p.gps) return toast({ title: "Erreur", description: "Veuillez renseigner les coordonnées GPS.", variant: "destructive" });
                                 const parts = p.gps ? p.gps.split(',') : [];
@@ -962,43 +1053,47 @@ export default function ProjectEditor() {
                                 const lon = parseFloat(parts[1]?.trim());
                                 if (isNaN(lat) || isNaN(lon)) return toast({ title: "Erreur", description: "Coordonnées GPS invalides.", variant: "destructive" });
 
-                                const angle = p.panelAngle2 || 15;
-                                const aspect = parseFloat(p.panelAspect2 || 0);
-                                const weighting = p.roofWeighting2 !== undefined ? p.roofWeighting2 : 50;
+                                const angle = p.panelAngle || 15;
+                                const aspect = parseFloat(p.panelAspect || 0);
+                                const weighting = p.roofWeighting !== undefined ? p.roofWeighting : 50;
+
+                                // PVGIS Logic for ACAMA vs others
+                                const pvgisLoss = activeTenantId === 'acama' ? 10 : 6;
+                                const pvgisMounting = activeTenantId === 'acama' ? 'building' : 'free';
 
                                 // Calculate opposite aspect (+180°, normalized to -180 to 180 range)
                                 let oppositeAspect = aspect + 180;
                                 if (oppositeAspect > 180) oppositeAspect -= 360;
                                 if (oppositeAspect < -180) oppositeAspect += 360;
 
-                                toast({ title: "Calcul en cours...", description: `PVGIS Ligne 2: T1 (${aspect}°) et T2 (${oppositeAspect}°)` });
+                                toast({ title: "Calcul en cours...", description: `PVGIS Ligne 1: T1 (${aspect}°) et T2 (${oppositeAspect}°)` });
 
                                 try {
-                                  // Fetch PVGIS for Line 2 primary aspect (T1)
-                                  const pvgisUrl1 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                                  // Fetch PVGIS for Line 1 primary aspect (T1)
+                                  const pvgisUrl1 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
                                   const res1 = await fetch(pvgisUrl1);
                                   if (!res1.ok) throw new Error("Erreur PVGIS T1");
                                   const data1 = await res1.json();
                                   const getEy = (d) => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
                                   const yieldT1 = parseFloat(getEy(data1));
 
-                                  // Fetch PVGIS for Line 2 opposite aspect (T2)
-                                  const pvgisUrl2 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=6&angle=${angle}&aspect=${oppositeAspect}&outputformat=json&mountingplace=free&pvtechchoice=crystSi`;
+                                  // Fetch PVGIS for Line 1 opposite aspect (T2)
+                                  const pvgisUrl2 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${oppositeAspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
                                   const res2 = await fetch(pvgisUrl2);
                                   if (!res2.ok) throw new Error("Erreur PVGIS T2");
                                   const data2 = await res2.json();
                                   const yieldT2 = parseFloat(getEy(data2));
 
                                   if (!isNaN(yieldT1) && !isNaN(yieldT2)) {
-                                    // Calculate weighted average for Line 2
+                                    // Calculate weighted average for Line 1
                                     const weightedYield = (yieldT1 * weighting + yieldT2 * (100 - weighting)) / 100;
 
-                                    // Store only in Line 2's field (solarYieldRoof2)
+                                    // Store only in Line 1's field (solarYieldRoof1)
                                     updateProject({
-                                      solarYieldRoof2: weightedYield.toFixed(2)
+                                      solarYieldRoof1: weightedYield.toFixed(2)
                                     });
                                     toast({
-                                      title: "Succès Ligne 2",
+                                      title: "Succès Ligne 1",
                                       description: `T1: ${yieldT1.toFixed(2)} (${weighting}%) | T2: ${yieldT2.toFixed(2)} (${100 - weighting}%) | Pondéré: ${weightedYield.toFixed(2)} kWh/kWc`
                                     });
                                   }
@@ -1013,29 +1108,209 @@ export default function ProjectEditor() {
                           </div>
                         </div>
                       </>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
+                    );
+                  })()}
+                </div>
 
-            <div className="col-span-12"><label className="text-sm font-medium">Commentaires</label><textarea value={p.comments || ''} onChange={e => updateProject({ comments: e.target.value })} className="mt-1 h-24 w-full rounded-lg border px-3 py-2" placeholder="Commentaires" /></div>
+                {/* --- ROW 2: Building 2 (aligned vertically) --- */}
+                {(() => {
+                  const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding || f.buildingName));
+                  const hasSecondBuilding = predefinedBuildings.length >= 2;
+                  if (!hasSecondBuilding) return null;
+                  const labelPrefix2 = "2/ ";
+
+                  return (
+                    <div className="grid grid-cols-7 gap-2 items-end">
+                      {/* Spacers for Env cols (Séisme, Neige, Vent) */}
+                      <div></div>
+                      <div></div>
+                      <div></div>
+
+                      {/* Inclinaison 2 */}
+                      <div>
+                        <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Inclinaison">{labelPrefix2}Inclinaison</label>
+                        <Select
+                          value={String(p.panelAngle2 || '15')}
+                          onValueChange={v => updateProject({ panelAngle2: v })}
+                        >
+                          <SelectTrigger className="mt-1 h-10 w-full bg-gray-200"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {INCLINATION_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Azimut 2 */}
+                      <div>
+                        <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Azimut">{labelPrefix2}Azimut</label>
+                        <Select
+                          value={String(p.panelAspect2 || '0')}
+                          onValueChange={v => updateProject({ panelAspect2: v })}
+                        >
+                          <SelectTrigger className="mt-1 h-10 w-full bg-gray-200"><SelectValue /></SelectTrigger>
+                          <SelectContent className="h-60">
+                            {Array.from({ length: 72 }, (_, i) => -175 + i * 5).map(val => {
+                              let label = `${val}°`;
+                              if (val === 0) label += " (Sud)";
+                              else if (val === -90) label += " (Est)";
+                              else if (val === 90) label += " (Ouest)";
+                              else if (val === 180) label += " (Nord)";
+                              return <SelectItem key={val} value={String(val)}>{label}</SelectItem>;
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Pondération 2 */}
+                      <div>
+                        <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Pondération">{labelPrefix2}Pondération</label>
+                        <Select
+                          key={`weight2-${p.roofWeighting2}`}
+                          value={String(p.roofWeighting2 !== undefined ? p.roofWeighting2 : 50)}
+                          onValueChange={v => { updateProject({ roofWeighting2: parseInt(v) }); if (isWeightingDefaulted2) setIsWeightingDefaulted2(false); }}
+                        >
+                          <SelectTrigger className="mt-1 h-10 w-full bg-gray-200"><SelectValue /></SelectTrigger>
+                          <SelectContent className="h-60">
+                            {Array.from({ length: 11 }, (_, i) => 50 + i * 5).map(val => (
+                              <SelectItem key={val} value={String(val)}>{val}%</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Productible 2 */}
+                      <div className="relative">
+                        <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Productible">{labelPrefix2}Productible</label>
+                        <div className="flex gap-1 mt-1">
+                          <Input
+                            value={p.solarYieldRoof2 || ''}
+                            readOnly
+                            placeholder="kWh/kWc"
+                            className={`min-w-0 ${p.solarYieldRoof2
+                              ? (parseFloat(p.solarYieldRoof2) >= 1120
+                                ? "bg-green-100 text-green-900 border-green-500"
+                                : "bg-red-100 text-red-900 border-red-500")
+                              : "bg-gray-50"
+                              }`}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="shrink-0 aspect-square w-10 px-0"
+                            title="Calculer le productible Toiture 2"
+                            onClick={async () => {
+                              if (!p.gps) return toast({ title: "Erreur", description: "Veuillez renseigner les coordonnées GPS.", variant: "destructive" });
+                              const parts = p.gps ? p.gps.split(',') : [];
+                              const lat = parseFloat(parts[0]?.trim());
+                              const lon = parseFloat(parts[1]?.trim());
+                              if (isNaN(lat) || isNaN(lon)) return toast({ title: "Erreur", description: "Coordonnées GPS invalides.", variant: "destructive" });
+
+                              const angle = p.panelAngle2 || 15;
+                              const aspect = parseFloat(p.panelAspect2 || 0);
+                              const weighting = p.roofWeighting2 !== undefined ? p.roofWeighting2 : 50;
+
+                              // PVGIS Logic for ACAMA vs others
+                              const pvgisLoss = activeTenantId === 'acama' ? 10 : 6;
+                              const pvgisMounting = activeTenantId === 'acama' ? 'building' : 'free';
+
+                              // Calculate opposite aspect (+180°, normalized to -180 to 180 range)
+                              let oppositeAspect = aspect + 180;
+                              if (oppositeAspect > 180) oppositeAspect -= 360;
+                              if (oppositeAspect < -180) oppositeAspect += 360;
+
+                              toast({ title: "Calcul en cours...", description: `PVGIS Ligne 2: T1 (${aspect}°) et T2 (${oppositeAspect}°)` });
+
+                              try {
+                                // Fetch PVGIS for Line 2 primary aspect (T1)
+                                const pvgisUrl1 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
+                                const res1 = await fetch(pvgisUrl1);
+                                if (!res1.ok) throw new Error("Erreur PVGIS T1");
+                                const data1 = await res1.json();
+                                const getEy = (d) => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
+                                const yieldT1 = parseFloat(getEy(data1));
+
+                                // Fetch PVGIS for Line 1 opposite aspect (T2)
+                                const pvgisUrl2 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${oppositeAspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
+                                const res2 = await fetch(pvgisUrl2);
+                                if (!res2.ok) throw new Error("Erreur PVGIS T2");
+                                const data2 = await res2.json();
+                                const yieldT2 = parseFloat(getEy(data2));
+
+                                if (!isNaN(yieldT1) && !isNaN(yieldT2)) {
+                                  // Calculate weighted average for Line 2
+                                  const weightedYield = (yieldT1 * weighting + yieldT2 * (100 - weighting)) / 100;
+
+                                  // Store only in Line 2's field (solarYieldRoof2)
+                                  updateProject({
+                                    solarYieldRoof2: weightedYield.toFixed(2)
+                                  });
+                                  toast({
+                                    title: "Succès Ligne 2",
+                                    description: `T1: ${yieldT1.toFixed(2)} (${weighting}%) | T2: ${yieldT2.toFixed(2)} (${100 - weighting}%) | Pondéré: ${weightedYield.toFixed(2)} kWh/kWc`
+                                  });
+                                }
+                              } catch (e) {
+                                console.error(e);
+                                toast({ title: "Erreur", description: "Échec calcul PVGIS", variant: "destructive" });
+                              }
+                            }}
+                          >
+                            <Zap size={16} />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+                {/* Desktop: Commentaires */}
+                <div className="col-span-12"><label className="text-sm font-medium">Commentaires</label><textarea value={p.comments || ''} onChange={e => updateProject({ comments: e.target.value })} className="mt-1 h-24 w-full rounded-lg border px-3 py-2 text-sm resize-y" placeholder="Commentaires" /></div>
+              </div>
+            </div>
           </div>
         </section>
 
-        <aside className="col-span-3 h-full">
+        {/* Chat Box - Desktop only */}
+        <aside className="col-span-1 lg:col-span-3 h-full hidden lg:block">
           <ChatBox className="h-full" />
         </aside>
+      </div>
+
+      {/* Floating Chat Bubble - Mobile only */}
+      < div className="lg:hidden" >
+        {isChatOpen && (
+          <div className="fixed inset-0 z-[25000] bg-black/50" onClick={() => setIsChatOpen(false)} />
+        )
+        }
+        {
+          isChatOpen && (
+            <div className="fixed bottom-20 right-4 z-[26000] w-[90vw] max-w-sm h-[60vh] rounded-2xl shadow-2xl overflow-hidden">
+              <ChatBox className="h-full" />
+            </div>
+          )
+        }
+        <button
+          type="button"
+          onClick={() => setIsChatOpen(v => !v)}
+          className="fixed bottom-4 right-4 z-[26001] bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 shadow-xl flex items-center justify-center transition-transform active:scale-95"
+          title="Ouvrir le chat"
+        >
+          {isChatOpen ? <X size={24} /> : <MessageCircle size={24} />}
+        </button>
       </div >
 
-      <div className="grid grid-cols-12 gap-6">
-        <div className="col-span-9 relative flex flex-col">
-          {/* Tab Bar */}
-          <div className="flex gap-2 border-b border-gray-700">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="col-span-1 lg:col-span-9 relative flex flex-col">
+          {/* Tab Bar - On mobile: Carte only */}
+          <div className="flex gap-2 border-b border-gray-700 overflow-x-auto">
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('map'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'map'
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'map'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
@@ -1047,7 +1322,7 @@ export default function ProjectEditor() {
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('streetview'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'streetview'
+              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'streetview'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
@@ -1058,7 +1333,7 @@ export default function ProjectEditor() {
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('urbanisme'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'urbanisme'
+              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'urbanisme'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
@@ -1069,7 +1344,7 @@ export default function ProjectEditor() {
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('nv65'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'nv65'
+              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'nv65'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
@@ -1081,7 +1356,7 @@ export default function ProjectEditor() {
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('owners'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'owners'
+              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'owners'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
@@ -1092,7 +1367,7 @@ export default function ProjectEditor() {
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('capareseau'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'capareseau'
+              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'capareseau'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
@@ -1103,7 +1378,7 @@ export default function ProjectEditor() {
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('terravisu'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'terravisu'
+              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'terravisu'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
@@ -1114,7 +1389,7 @@ export default function ProjectEditor() {
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('dvf'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'dvf'
+              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'dvf'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
@@ -1125,7 +1400,7 @@ export default function ProjectEditor() {
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('windy'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'windy'
+              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'windy'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
@@ -1136,7 +1411,7 @@ export default function ProjectEditor() {
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('shadowmap'); }}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 ${activeTab === 'shadowmap'
+              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'shadowmap'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
@@ -1148,10 +1423,60 @@ export default function ProjectEditor() {
 
           </div>
 
-          <div className="rounded-2xl bg-white shadow-sm overflow-hidden flex-1">
+          {/* Champ de recherche d'adresse au-dessus de la carte (mobile/tablette) */}
+          <div className="lg:hidden mb-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={mobileAddressQuery}
+                onChange={e => setMobileAddressQuery(e.target.value)}
+                onKeyDown={async (e) => {
+                  if (e.key === 'Enter' && mobileAddressQuery.trim()) {
+                    e.preventDefault();
+                    try {
+                      const res = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(mobileAddressQuery)}&limit=1`);
+                      if (res.ok) {
+                        const data = await res.json();
+                        const feature = data.features?.[0];
+                        if (feature) {
+                          const [lng, lat] = feature.geometry.coordinates;
+                          const label = feature.properties.label;
+                          handleAddressFound({ label, lat, lng });
+                        }
+                      }
+                    } catch (err) { console.error('Address search error', err); }
+                  }
+                }}
+                placeholder="Rechercher une adresse..."
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:border-blue-500"
+              />
+              <button
+                type="button"
+                className="bg-blue-600 text-white rounded-lg px-3 py-2 text-sm font-medium hover:bg-blue-700 active:scale-95 transition-transform"
+                onClick={async () => {
+                  if (!mobileAddressQuery.trim()) return;
+                  try {
+                    const res = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(mobileAddressQuery)}&limit=1`);
+                    if (res.ok) {
+                      const data = await res.json();
+                      const feature = data.features?.[0];
+                      if (feature) {
+                        const [lng, lat] = feature.geometry.coordinates;
+                        const label = feature.properties.label;
+                        handleAddressFound({ label, lat, lng });
+                      }
+                    }
+                  } catch (err) { console.error('Address search error', err); }
+                }}
+              >
+                <Search size={16} />
+              </button>
+            </div>
+          </div>
+          <div className="rounded-2xl bg-white shadow-sm overflow-hidden flex-1 min-h-[60vh] lg:min-h-0">
             {/* Onglet Carte & Urbanisme */}
             <div className={(activeTab === 'map' || activeTab === 'urbanisme') ? 'w-full flex flex-col h-full' : 'hidden'}>
-              <div className="flex-1">
+              <div className="flex-1 min-h-[55vh] lg:min-h-0">
                 <MapEditor
                   isUrbanismeMode={activeTab === 'urbanisme'}
                   key={`${projectId}-${remountKey}`}
@@ -1162,13 +1487,13 @@ export default function ProjectEditor() {
                   setIsAzimuthDefaulted={setIsAzimuthDefaulted}
                   symbolToPlace={symbolToPlace}
                   setSymbolToPlace={setSymbolToPlace}
-
-
+                  activeLayers={activeLayers}
                 />
               </div>
 
-              {/* Layer Toggle Buttons - Inside map tab */}
-              <div className="p-3 bg-gray-50 border-t flex flex-wrap gap-2">
+              {/* Layer Toggle Buttons - Desktop: always visible; Mobile: collapsible */}
+              {/* Desktop */}
+              <div className="hidden lg:flex p-3 bg-gray-50 border-t flex-wrap gap-2">
                 {[
                   { key: 'cadastre', label: 'Cadastre' },
                   { key: 'zoneInondable', label: 'Zone Inondable' },
@@ -1184,7 +1509,6 @@ export default function ProjectEditor() {
                   { key: 'Natura 2000 Habitat', label: 'Natura 2000 Habitat' },
                   { key: 'enedisHTA', label: 'Lignes HTA' },
                   { key: 'enedisPostes', label: 'Postes HTA/BT' },
-
                   { key: 'sdis', label: 'SDIS' },
                 ].map(layer => (
                   <button
@@ -1209,6 +1533,60 @@ export default function ProjectEditor() {
                     {layer.label}
                   </button>
                 ))}
+              </div>
+              {/* Mobile - collapsible */}
+              <div className="lg:hidden">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 border-t text-sm font-medium text-gray-700"
+                  onClick={() => setIsLayersOpen(v => !v)}
+                >
+                  <span>🗺️ Calques</span>
+                  <span>{isLayersOpen ? '▲' : '▼'}</span>
+                </button>
+                {isLayersOpen && (
+                  <div className="p-2 bg-gray-50 flex flex-wrap gap-1.5">
+                    {[
+                      { key: 'cadastre', label: 'Cadastre' },
+                      { key: 'zoneInondable', label: 'Z. Inond.' },
+                      { key: 'batiments', label: 'Bâtiments' },
+                      { key: 'rpg', label: 'Parcelles agr.' },
+                      { key: 'hydro', label: 'Hydro.' },
+                      { key: 'routes', label: 'Routes' },
+                      { key: 'voiesFerrees', label: 'V. ferrées' },
+                      { key: 'communes', label: 'Lim. comm.' },
+                      { key: 'ZNIEFF 1', label: 'ZNIEFF 1' },
+                      { key: 'ZNIEFF 2', label: 'ZNIEFF 2' },
+                      { key: 'Natura 2000 Oiseaux', label: 'N2000 Ois.' },
+                      { key: 'Natura 2000 Habitat', label: 'N2000 Hab.' },
+                      { key: 'enedisHTA', label: 'L. HTA' },
+                      { key: 'enedisPostes', label: 'P. HTA/BT' },
+                      { key: 'sdis', label: 'SDIS' },
+                    ].map(layer => (
+                      <button
+                        key={layer.key}
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          const newActiveLayers = new Set(activeLayers);
+                          if (newActiveLayers.has(layer.key)) {
+                            newActiveLayers.delete(layer.key);
+                          } else {
+                            newActiveLayers.add(layer.key);
+                          }
+                          setActiveLayers(newActiveLayers);
+                          window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: layer.key } }));
+                        }}
+                        className={`px-2 py-1 text-xs border rounded transition-colors ${activeLayers.has(layer.key)
+                          ? 'bg-blue-500 text-white border-blue-600'
+                          : 'bg-white text-gray-700 border-gray-300'
+                          }`}
+                      >
+                        {layer.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1307,7 +1685,8 @@ export default function ProjectEditor() {
           </div>
         </div>
 
-        <aside className="col-span-3 flex flex-col gap-6">
+        {/* Desktop Aside Panel */}
+        <aside className="col-span-1 lg:col-span-3 hidden lg:flex flex-col gap-6">
           <SymbolsPanel onSymbolSelect={handleSymbolSelect} selectedSymbol={symbolToPlace} />
           <PredefinedBuildingsPanel onBuildingSelect={handleBuildingSelect} onConfigChange={handleBuildingConfigChange} />
           <div className="rounded-2xl bg-white p-4 shadow-sm">
@@ -1347,7 +1726,111 @@ export default function ProjectEditor() {
             </div>
           </div>
         </aside>
+
+        {/* Mobile Collapsible Panels - Symbols, Buildings, Captures */}
+        <div className="lg:hidden mt-3 flex flex-col gap-3">
+          {/* Symbols Collapsible */}
+          <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+            <button
+              type="button"
+              className="w-full flex items-center justify-between px-4 py-3 font-semibold text-sm text-gray-700"
+              onClick={() => setIsSymbolsOpen(v => !v)}
+            >
+              <span>📍 Symboles</span>
+              <span className="text-lg">{isSymbolsOpen ? '▲' : '▼'}</span>
+            </button>
+            {isSymbolsOpen && (
+              <div className="px-3 pb-3">
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { type: "project", label: "Lieu Projet", icon: <MapPin className="h-5 w-5 text-red-500" />, emoji: "📍" },
+                    { type: "access", label: "Accès", icon: <DoorOpen className="h-5 w-5 text-slate-700" />, emoji: "🚪" },
+                    { type: "house", label: "Maison", icon: <Home className="h-5 w-5" />, emoji: "🏠" },
+                    { type: "sdis", label: "SDIS", icon: <Flame className="h-5 w-5" />, emoji: "🚒" },
+                    { type: "transfo", label: "Transfo", icon: <Zap className="h-5 w-5" />, emoji: "⚡" },
+                    { type: "pdl", label: "PDL", icon: <Plug className="h-5 w-5" />, emoji: "🔌" },
+                    { type: "neighbor", label: "Voisin", icon: <Users className="h-5 w-5" />, emoji: "👥" },
+                    { type: "building", label: "Bâtiment", icon: <Building className="h-5 w-5" />, emoji: "🏢" },
+                    { type: "photo", label: "Photo", icon: <Camera className="h-5 w-5" />, emoji: "📷" },
+                    { type: "text", label: "Texte", icon: <Type className="h-5 w-5" />, emoji: "T" },
+                  ].map(s => (
+                    <button
+                      key={s.type}
+                      type="button"
+                      onClick={() => handleSymbolSelect({ type: s.type, label: s.label, emoji: s.emoji })}
+                      className={cn("flex flex-col items-center justify-center gap-1 rounded-lg border bg-white p-2 text-xs font-medium shadow-sm",
+                        symbolToPlace?.type === s.type && "ring-2 ring-blue-500 border-blue-500"
+                      )}
+                      tabIndex={-1}
+                    >
+                      {s.icon}
+                      <span className="truncate w-full text-center">{s.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Buildings Collapsible */}
+          <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+            <button
+              type="button"
+              className="w-full flex items-center justify-between px-4 py-3 font-semibold text-sm text-gray-700"
+              onClick={() => setIsBuildingsOpen(v => !v)}
+            >
+              <span>🏗️ Bâtiments prédéfinis</span>
+              <span className="text-lg">{isBuildingsOpen ? '▲' : '▼'}</span>
+            </button>
+            {isBuildingsOpen && (
+              <div className="px-3 pb-3">
+                <PredefinedBuildingsPanel onBuildingSelect={handleBuildingSelect} onConfigChange={handleBuildingConfigChange} />
+              </div>
+            )}
+          </div>
+
+          {/* Captures Collapsible */}
+          <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+            <button
+              type="button"
+              className="w-full flex items-center justify-between px-4 py-3 font-semibold text-sm text-gray-700"
+              onClick={() => setIsCapturesOpen(v => !v)}
+            >
+              <span>📸 Captures</span>
+              <span className="text-lg">{isCapturesOpen ? '▲' : '▼'}</span>
+            </button>
+            {isCapturesOpen && (
+              <div className="px-3 pb-3 flex flex-col gap-2">
+                <Button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); captureNow(); }}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
+                  disabled={activeTab !== 'map'}
+                  tabIndex={-1}
+                >
+                  <Camera size={16} className="mr-2" />
+                  Prendre une capture
+                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  {captures.map((c, i) => (
+                    <div key={i} className="group relative rounded-lg border bg-gray-100 aspect-video overflow-hidden">
+                      {c ? (
+                        <>
+                          <img src={c} alt={`capture-${i + 1}`} className="h-full w-full object-cover" onClick={() => window.open(c, '_blank')} />
+                          <button type="button" onClick={() => deleteCapture(i)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5">
+                            <X size={12} />
+                          </button>
+                        </>
+                      ) : <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">Vide</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div >
+
 
 
     </div >

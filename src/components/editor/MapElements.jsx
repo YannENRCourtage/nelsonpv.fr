@@ -526,7 +526,7 @@ function ContextMenu({ position, onAddText, onAddNote, onClose, onCheckUrbanisme
   );
 }
 
-function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject, setIsAzimuthDefaulted, isRotatingRef, isUrbanismeMode }) {
+function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject, setIsAzimuthDefaulted, isRotatingRef, isUrbanismeMode, setShowInfoPanel }) {
   const [mousePos, setMousePos] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [ignoreNextClick, setIgnoreNextClick] = useState(false);
@@ -810,8 +810,9 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
         setTemp([]);
         setMode(null);
       } else if (!mode) {
-        // If no mode is active, move the "Lieu Projet" marker
+        // If no mode is active, show info panel for this point
         setTargetPos(e.latlng);
+        if (setShowInfoPanel) setShowInfoPanel(true);
       }
     },
     keydown(e) {
@@ -1626,29 +1627,58 @@ function LayerToggleListener({ layersRef }) {
 function BasemapControl({ layersRef }) {
   const map = useMap();
   const boxRef = useRef(null);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (!map || !layersRef.current) return;
 
-    const container = L.DomUtil.create('div', 'leaflet-control-layers leaflet-control-layers-expanded custom-basemap-panel no-print hide-on-capture');
-    container.style.padding = '10px';
-    container.style.backgroundColor = 'white';
-    container.style.borderRadius = '8px';
-    container.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
-    container.style.minWidth = '180px';
-    container.style.maxHeight = '250px';
-    container.style.overflowY = 'auto';
+    // Outer wrapper (toggle button + panel)
+    const wrapper = L.DomUtil.create('div', 'no-print hide-on-capture');
+    wrapper.style.display = 'flex';
+    wrapper.style.flexDirection = 'column';
+    wrapper.style.alignItems = 'flex-end';
+    wrapper.style.gap = '4px';
+
+    // Toggle button
+    const toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.innerText = '🗺️ Fonds de carte ▼';
+    toggleBtn.style.cssText = `background:white;border:1px solid #ccc;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.15);white-space:nowrap;color:#374151;display:${isDesktop ? 'none' : 'block'};`;
+    wrapper.appendChild(toggleBtn);
+
+    // Panel (initially hidden on mobile, visible on desktop)
+    const container = document.createElement('div');
+    container.style.cssText = `padding:10px;background:white;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.2);min-width:180px;max-height:250px;overflow-y:auto;display:${isDesktop ? 'block' : 'none'};`;
+    wrapper.appendChild(container);
 
     const title = document.createElement('div');
-    title.innerText = 'fonds de carte'; // Minuscule
-    title.className = 'font-bold text-xs mb-3 text-gray-700 border-b pb-2 uppercase tracking-wider';
+    title.innerText = 'FONDS DE CARTE';
+    title.style.cssText = 'font-weight:700;font-size:11px;margin-bottom:10px;color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:6px;letter-spacing:0.05em;';
     container.appendChild(title);
 
     const list = document.createElement('div');
-    list.className = 'space-y-1';
     container.appendChild(list);
 
-    const Control = L.Control.extend({ onAdd: () => container });
+    // Toggle open/close (only relevant for mobile)
+    let isOpen = isDesktop;
+    toggleBtn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      L.DomEvent.stopPropagation(ev);
+      isOpen = !isOpen;
+      container.style.display = isOpen ? 'block' : 'none';
+      toggleBtn.innerText = isOpen ? '🗺️ Fonds de carte ▲' : '🗺️ Fonds de carte ▼';
+    });
+
+    const Control = L.Control.extend({ onAdd: () => wrapper });
     const ctrl = new Control({ position: 'bottomright' });
     ctrl.addTo(map);
     boxRef.current = ctrl;
@@ -1661,24 +1691,26 @@ function BasemapControl({ layersRef }) {
         // Handle separator
         if (layer.isSeparator) {
           const separator = document.createElement('hr');
-          separator.className = 'my-2 border-gray-300';
+          separator.style.cssText = 'margin:6px 0;border-color:#e5e7eb;';
           list.appendChild(separator);
           return;
         }
 
         if (layer.zIndex === 0) {
           const label = document.createElement('label');
-          label.className = 'flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-1.5 rounded text-sm transition-colors';
+          label.style.cssText = 'display:flex;align-items:center;gap:10px;cursor:pointer;padding:4px 6px;border-radius:4px;font-size:13px;transition:background 0.1s;';
+          label.onmouseenter = () => { label.style.background = '#f9fafb'; };
+          label.onmouseleave = () => { label.style.background = ''; };
 
           const input = document.createElement('input');
           input.type = 'radio';
           input.name = 'basemap';
           input.checked = map.hasLayer(layersRef.current[key]);
-          input.className = 'accent-blue-600 w-4 h-4 mr-2';
+          input.style.cssText = 'accent-color:#2563eb;width:14px;height:14px;';
 
           const span = document.createElement('span');
           span.innerText = layer.name;
-          span.className = 'text-gray-700 font-medium';
+          span.style.cssText = 'color:#374151;font-weight:500;';
 
           label.appendChild(input);
           label.appendChild(span);
@@ -1706,7 +1738,7 @@ function BasemapControl({ layersRef }) {
       if (map && boxRef.current) boxRef.current.remove();
       map.off('layeradd layerremove', updateList);
     };
-  }, [map, layersRef]);
+  }, [map, layersRef, isDesktop]);
   return null;
 }
 
@@ -1781,10 +1813,10 @@ function MiniMap() {
     miniMapRef.current = miniMap;
     return () => { parentMap.off('move', updateMiniMap); parentMap.off('zoom', updateMiniMap); miniMap.remove(); miniMapRef.current = null; };
   }, [parentMap]);
-  return <div ref={miniMapContainerRef} className="w-40 h-32 border-2 border-border rounded-lg shadow-lg overflow-hidden bg-card hide-on-capture" />;
+  return <div ref={miniMapContainerRef} className="hidden lg:block w-40 h-32 border-2 border-border rounded-lg shadow-lg overflow-hidden bg-card hide-on-capture" />;
 }
 
-function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
+function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setShowInfoPanel }) {
   const map = useMap();
   const [info, setInfo] = useState({ lat: 0, lng: 0, alt: '...', address: '...', parcel: '...', zoning: '...' });
   const [loading, setLoading] = useState(false);
@@ -1921,13 +1953,22 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo }) {
     navigator.clipboard.writeText(text).then(() => toast({ ...toastStyle, title: "Coordonnées copiées", description: text }));
   };
 
+  if (!showInfoPanel) return null;
+
   return (
     <div className="bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-lg border border-gray-200 text-xs min-w-[220px] max-w-[280px] z-[1000]">
       <div className="flex justify-between items-center mb-1">
         <span className="font-bold text-blue-600 cursor-pointer hover:bg-blue-50 p-1 rounded transition-colors flex items-center gap-1" onClick={copyCoords} title="Copier les coordonnées">
           {info.lat.toFixed(5)}, {info.lng.toFixed(5)} <Copy size={12} />
         </span>
-        <span className="text-gray-500">{loading && !hoverInfo ? '...' : ''}</span>
+        <button
+          type="button"
+          onClick={() => setShowInfoPanel(false)}
+          className="ml-1 p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+          title="Fermer"
+        >
+          <XIcon size={14} />
+        </button>
       </div>
 
       <div className="flex items-start gap-2 mb-1 cursor-pointer hover:bg-gray-50 p-1 rounded transition-colors group" onClick={() => copyToClipboard(info.address)} title="Copier l'adresse">
@@ -2248,16 +2289,23 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
     const handleZoomOut = () => { map.zoomOut(); };
 
     // Correction du nom de l'événement écouté
+    const handleGotoAddress = (e) => {
+      const { lat, lng } = e.detail;
+      if (lat && lng) {
+        map.setView([lat, lng], 18);
+      }
+    };
+
     window.addEventListener("map:capture-request", handleCaptureRequest);
     window.addEventListener("map:goto-project-address", goToProjectAddress);
+    window.addEventListener("map:goto-address", handleGotoAddress);
     window.addEventListener("map:zoom-in", handleZoomIn);
     window.addEventListener("map:zoom-out", handleZoomOut);
-
-    // L'événement de retour "map:capture-done" est géré dans ProjectMap.jsx
 
     return () => {
       window.removeEventListener("map:capture-request", handleCaptureRequest);
       window.removeEventListener("map:goto-project-address", goToProjectAddress);
+      window.removeEventListener("map:goto-address", handleGotoAddress);
       window.removeEventListener("map:zoom-in", handleZoomIn);
       window.removeEventListener("map:zoom-out", handleZoomOut);
     };
@@ -2646,7 +2694,7 @@ function MapStateSync({ project, setProject }) {
   return null;
 }
 
-export default function MapElements({ style = {}, project, setProject, onAddressFound, onAddressSearched, setSymbolToPlace, symbolToPlace, setIsAzimuthDefaulted, isUrbanismeMode }) {
+export default function MapElements({ style = {}, project, setProject, onAddressFound, onAddressSearched, setSymbolToPlace, symbolToPlace, setIsAzimuthDefaulted, isUrbanismeMode, activeLayers }) {
 
   const [mode, setMode] = useState(null);
   const [temp, setTemp] = useState([]);
@@ -2674,6 +2722,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
   const [targetPos, setTargetPos] = useState(null);
   const [map, setMap] = useState(null); // State for map instance
   const [hoverInfo, setHoverInfo] = useState(null); // New state for shared hover info
+  const [showInfoPanel, setShowInfoPanel] = useState(false); // Info panel shown on dblclick
   const layersRef = useRef({});
   const hasUserInteractedRef = useRef(false);
 
@@ -2794,6 +2843,30 @@ export default function MapElements({ style = {}, project, setProject, onAddress
     return () => window.removeEventListener('map:reset', handleMapReset);
   }, [map]);
 
+  // Synchronisation déclarative des calques (Remplace l'écouteur d'événements pour plus de robustesse)
+  useEffect(() => {
+    if (!map || !layersRef.current || !activeLayers) return;
+
+    Object.keys(LAYERS).forEach(key => {
+      const layerDef = LAYERS[key];
+      if (!layerDef.isOverlay) return; // Ne gère que les couches overlay
+
+      const layer = layersRef.current[key];
+      if (!layer) return;
+
+      const shouldBeVisible = activeLayers.has(key);
+      const isVisible = map.hasLayer(layer);
+
+      if (shouldBeVisible && !isVisible) {
+        console.log(`[MapElements] Adding layer: ${key}`);
+        layer.addTo(map);
+      } else if (!shouldBeVisible && isVisible) {
+        console.log(`[MapElements] Removing layer: ${key}`);
+        map.removeLayer(layer);
+      }
+    });
+  }, [map, activeLayers]);
+
   // Ref to track if manual rotation is in progress
   const isRotatingRef = useRef(false);
 
@@ -2833,11 +2906,15 @@ export default function MapElements({ style = {}, project, setProject, onAddress
           <ZoneInondableLegend layersRef={layersRef} />
           <SDISLegend layersRef={layersRef} />
 
-          <SearchField onAddressFound={onAddressFound} />
+          {window.innerWidth > 1024 && (
+            <div className="hidden lg:block">
+              <SearchField onAddressFound={onAddressFound} />
+            </div>
+          )}
           <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
             <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '30px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
               <div className="flex flex-col items-start gap-2">
-                <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} hoverInfo={hoverInfo} />
+                <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} hoverInfo={hoverInfo} showInfoPanel={showInfoPanel} setShowInfoPanel={setShowInfoPanel} />
                 <MiniMap />
                 <LayerToggleListener layersRef={layersRef} />
                 <ScaleControl position="bottomleft" metric={true} imperial={false} />
@@ -2872,6 +2949,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
             setIsAzimuthDefaulted={setIsAzimuthDefaulted}
             isRotatingRef={isRotatingRef}
             isUrbanismeMode={isUrbanismeMode}
+            setShowInfoPanel={setShowInfoPanel}
           />
           <ZoomIndicator />
           <MapEvents

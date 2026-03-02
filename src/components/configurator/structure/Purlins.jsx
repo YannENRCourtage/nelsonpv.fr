@@ -1,8 +1,10 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { createZProfile } from '../utils/profiles.js';
+import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
 
 export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHeight, ridgeHeight, buildingType = 'symetrique' }) {
+    const { isAcama } = useConfiguratorValues();
     const material = useMemo(() => new THREE.MeshStandardMaterial({
         color: '#d0d0d0', // Galvanized
         metalness: 0.5,
@@ -35,9 +37,73 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
     const perpOffset = rafterOffset + (purlinHeight / 2) + 0.001; // Small 1mm tolerance
 
     const purlins = [];
+    const isEpona = isAcama && buildingType === 'epona';
 
+    // --- EPONA GENERATION ---
+    if (isEpona) {
+        const mainSlope = 17 * (Math.PI / 180);
+        const extendLeftX = 2.55;
+        const extendRightX = 1.25;
+
+        // Geometric constraints based on left pilar at x = -11.8 and eaveHeight = 5.0
+        const apexX = 0;
+        const apexY = 5.0 + (11.8 * Math.tan(mainSlope));
+
+        const lSlopeLen = (11.8 + extendLeftX) / Math.cos(mainSlope);
+        const rSlopeLen = (19.65 + extendRightX) / Math.cos(mainSlope);
+
+        const numPurlinsLeft = Math.floor(lSlopeLen / purlinSpacing);
+        const numPurlinsRight = Math.floor(rSlopeLen / purlinSpacing);
+
+        for (let bayIndex = 0; bayIndex < bayCount; bayIndex++) {
+            const zStart = -bayIndex * baySpacing;
+
+            // Left Slope (Apex down to Left Overhang)
+            for (let i = 0; i <= numPurlinsLeft; i++) {
+                const dist = i * purlinSpacing;
+                const xLocal = -dist * Math.cos(mainSlope);
+                const yLocal = -dist * Math.sin(mainSlope);
+
+                const xPerp = -perpOffset * Math.sin(mainSlope);
+                const yPerp = perpOffset * Math.cos(mainSlope);
+
+                purlins.push(
+                    <mesh
+                        key={`Bay${bayIndex}-Epona-L-${i}`}
+                        geometry={bayGeometry}
+                        material={material}
+                        position={[apexX + xLocal + xPerp, apexY + yLocal + yPerp, zStart]}
+                        rotation={[0, Math.PI, -mainSlope]}
+                    />
+                );
+            }
+
+            // Right Slope (Apex down to Right Overhang)
+            for (let i = 0; i <= numPurlinsRight; i++) {
+                // To avoid drawing the purlin EXACTLY twice at the apex:
+                if (i === 0) continue;
+
+                const dist = i * purlinSpacing;
+                const xLocal = dist * Math.cos(mainSlope);
+                const yLocal = -dist * Math.sin(mainSlope);
+
+                const xPerp = perpOffset * Math.sin(mainSlope);
+                const yPerp = perpOffset * Math.cos(mainSlope);
+
+                purlins.push(
+                    <mesh
+                        key={`Bay${bayIndex}-Epona-R-${i}`}
+                        geometry={bayGeometry}
+                        material={material}
+                        position={[apexX + xLocal + xPerp, apexY + yLocal + yPerp, zStart]}
+                        rotation={[0, Math.PI, mainSlope]}
+                    />
+                );
+            }
+        }
+    }
     // --- MONOPENTE GENERATION ---
-    if (isMonopente) {
+    else if (isMonopente) {
         const deltaH = ridgeHeight - eaveHeight;
         const angleRad = Math.atan(deltaH / width); // Absolute angle
         const slopeLength = width / Math.cos(angleRad);

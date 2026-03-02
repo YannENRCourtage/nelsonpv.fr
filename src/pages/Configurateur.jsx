@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { ControlPanel } from '../components/configurator/ui/ControlPanel.jsx';
 import { useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
 import { useProjects } from '@/contexts/ProjectContext';
-import { Download, Share2, Info, Search, Minimize2, ChevronRight, FileText, Maximize } from 'lucide-react';
+import { Download, Share2, Info, Search, Minimize2, ChevronRight, FileText, Maximize, X } from 'lucide-react';
 import jsPDF from 'jspdf';
 import BuildingScene from '../components/configurator/BuildingScene.jsx';
 // Firebase Imports
@@ -13,13 +13,23 @@ import { storage } from "@/config/firebase.js";
 import { OfferGenerationModal } from '../components/configurator/ui/OfferGenerationModal.jsx';
 
 export default function Configurateur() {
-    const { user } = useAuth();
+    const { user, activeTenantId } = useAuth();
+    const isAcama = activeTenantId === 'acama';
     const { projects } = useProjects();
     const config = useConfiguratorValues();
     const actions = useConfiguratorActions();
 
     // UI State
     const [showPDFModal, setShowPDFModal] = useState(false);
+
+    // ACAMA: default to EPONA_45 on first load
+    useEffect(() => {
+        actions.setIsAcama(isAcama);
+        if (isAcama && config.buildingType !== 'epona') {
+            actions.setEponaModel('EPONA_45');
+        }
+    }, [isAcama]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const [projectSearch, setProjectSearch] = useState('');
     const [selectedProject, setSelectedProject] = useState(null);
     const [viewMode, setViewMode] = useState('3D'); // '3D', '2D_FRONT'
@@ -310,17 +320,15 @@ export default function Configurateur() {
     };
 
     return (
-        <div className="h-screen w-full bg-gradient-to-b from-slate-50 to-slate-200 relative flex overflow-hidden">
+        <div className="h-screen w-full bg-gradient-to-b from-slate-50 to-slate-200 relative flex flex-col lg:flex-row overflow-hidden">
 
             {/* ========== CONTROL PANEL (LEFT) ========== */}
-            <div className="absolute top-4 left-4 z-20 w-[420px] max-h-[calc(100vh-2rem)] overflow-y-auto">
-                <ControlPanel />
-
-
+            <div className="relative lg:absolute top-0 lg:top-4 left-0 lg:left-4 z-20 w-full lg:w-[420px] max-h-[40vh] lg:max-h-[calc(100vh-2rem)] overflow-y-auto p-4 lg:p-0">
+                <ControlPanel isAcama={isAcama} />
             </div>
 
             {/* ========== VISUALISATION BÂTIMENT (CENTER) ========== */}
-            <div id="3d-view-container" className="flex-1 ml-[440px] relative h-full isolate">
+            <div id="3d-view-container" className="flex-1 lg:ml-[440px] relative h-full isolate">
                 {/* 3D Scene */}
                 <div className="w-full h-full">
                     <BuildingScene
@@ -330,6 +338,16 @@ export default function Configurateur() {
                         transparent={isCapturing && !showPDFModal} // Hacky but effective: if capturing but NOT for PDF modal, it's for image
                     />
                 </div>
+
+                {/* Close Fullscreen Button (Only in Fullscreen) */}
+                {document.fullscreenElement && (
+                    <button
+                        onClick={() => document.exitFullscreen()}
+                        className="absolute top-4 right-4 z-[200] bg-white/90 p-2 rounded-full shadow-lg border border-slate-200 hover:bg-slate-100"
+                    >
+                        <X className="w-6 h-6 text-slate-800" />
+                    </button>
+                )}
 
 
 
@@ -378,42 +396,33 @@ export default function Configurateur() {
                             onClick={() => setViewMode('3D')}
                             className={`flex-1 px-4 py-2 rounded-xl font-medium params-transition text-sm ${viewMode === '3D' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
                         >
-                            Vue 3D
+                            <span className="hidden lg:inline">Vue 3D</span>
+                            <span className="lg:hidden">3D</span>
                         </button>
                         <button
                             onClick={() => setViewMode('2D_FRONT')}
                             className={`flex-1 px-4 py-2 rounded-xl font-medium params-transition text-sm ${viewMode === '2D_FRONT' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
                         >
-                            Vue 2D
+                            <span className="hidden lg:inline">Vue 2D</span>
+                            <span className="lg:hidden">2D</span>
                         </button>
                     </div>
 
                     {/* PDF Generation Button */}
                     <button
                         onClick={async () => {
-                            // Capture 3D
+                            // ... capture logic
                             let img3D = null;
-                            if (canvasRef.current) {
-                                const originalView = viewMode;
-                                if (viewMode !== '2D_FRONT') {
-                                    // Optionally force a specific view for the offer, but user might want 'current' view
-                                    // Actually, let's just capture current view.
-                                }
-                                // Wait a bit if we switched view? No, we use current.
-                                img3D = canvasRef.current.toDataURL('image/png', 1.0);
-                            }
-
-                            // Capture Map (Proxy)
+                            if (canvasRef.current) img3D = canvasRef.current.toDataURL('image/png', 1.0);
                             let mapImg = null;
                             if (selectedProject?.captures?.length > 0) {
                                 const captureUrl = selectedProject.captures[0];
                                 mapImg = await fetchImageViaProxy(captureUrl);
                             }
-
                             setGeneratedImages({ img3D, mapImg });
                             setShowPDFModal(true);
                         }}
-                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all hover:scale-[1.02] flex items-center justify-center gap-2 text-sm"
+                        className="hidden lg:flex w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all hover:scale-[1.02] items-center justify-center gap-2 text-sm"
                     >
                         <span>📄</span>
                         <span>Générer l'Offre</span>
@@ -423,28 +432,18 @@ export default function Configurateur() {
                     <button
                         onClick={async () => {
                             if (!canvasRef.current) return;
-                            setIsCapturing(true); // Trigger re-render with transparency
-                            console.log("setIsCapturing(true) called"); // Log for debugging
-
-                            // Wait for re-render and clear color update
-                            // Increased delay to ensure React commit has occurred and Three.js frame is ready with new background state
+                            setIsCapturing(true);
                             await new Promise(r => setTimeout(r, 250));
-                            console.log("Delay finished, attempting capture."); // Log for debugging
-
-                            // Capture
                             const imgData = canvasRef.current.toDataURL('image/png');
-
-                            // Create Download Link
                             const link = document.createElement('a');
                             link.href = imgData;
                             link.download = `vue_${viewMode === '3D' ? '3d' : '2d'}_${new Date().getTime()}.png`;
                             document.body.appendChild(link);
                             link.click();
                             document.body.removeChild(link);
-
                             setIsCapturing(false);
                         }}
-                        className="w-full bg-white text-slate-700 font-bold py-3 px-4 rounded-xl shadow-sm border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-2 text-sm"
+                        className="hidden lg:flex w-full bg-white text-slate-700 font-bold py-3 px-4 rounded-xl shadow-sm border border-slate-200 hover:bg-slate-50 transition-all items-center justify-center gap-2 text-sm"
                         title="Télécharger l'image (sans fond)"
                     >
                         <Download className="w-5 h-5" />
@@ -465,7 +464,7 @@ export default function Configurateur() {
                         title="Plein écran"
                     >
                         <Maximize className="w-5 h-5" />
-                        <span>Plein écran</span>
+                        <span className="hidden lg:inline">Plein écran</span>
                     </button>
                 </div>
             </div>

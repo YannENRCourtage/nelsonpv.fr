@@ -5,7 +5,7 @@ import { listProjects } from '@/services/firebase/firestore.service.js';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 
 export default function SaveSimulationModal({ isOpen, onClose, onSave }) {
-    const { user } = useAuth();
+    const { user, activeTenantId } = useAuth();
     const [projects, setProjects] = useState([]);
     const [filteredProjects, setFilteredProjects] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -36,9 +36,9 @@ export default function SaveSimulationModal({ isOpen, onClose, onSave }) {
     const loadProjects = async () => {
         try {
             setIsLoading(true);
-            // Admin peut voir tous les projets
+            // Admin peut voir tous les projets (du tenant actif)
             const canViewAll = user?.role === 'admin' || user?.role === 'Administrator';
-            const projectsList = await listProjects(user?.id, canViewAll);
+            const projectsList = await listProjects(user?.id, canViewAll, activeTenantId);
             setProjects(projectsList);
             setFilteredProjects(projectsList);
         } catch (error) {
@@ -124,8 +124,8 @@ export default function SaveSimulationModal({ isOpen, onClose, onSave }) {
                                         key={project.id}
                                         onClick={() => setSelectedProject(project)}
                                         className={`p-3 cursor-pointer border-b border-gray-200 last:border-b-0 transition-colors ${selectedProject?.id === project.id
-                                                ? 'bg-teal-50 border-l-4 border-l-teal-500'
-                                                : 'hover:bg-gray-50'
+                                            ? 'bg-teal-50 border-l-4 border-l-teal-500'
+                                            : 'hover:bg-gray-50'
                                             }`}
                                     >
                                         <div className="font-medium text-gray-900">

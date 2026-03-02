@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { createTrapezoidalProfile, createZProfile } from '../utils/profiles.js';
+import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
 import { SolarPanels } from './SolarPanels.jsx';
 
 /**
@@ -20,7 +21,25 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
     let angleRad = (roofPitch * Math.PI) / 180;
     let endHeight = 3.87;
 
-    if (buildingType === 'asymetrique_2' && side === 'right') {
+    const { isAcama } = useConfiguratorValues();
+    const isTalian4 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 13.7) < 0.1;
+    const isTalian1 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 18.8) < 0.1;
+    const isTalian3 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 17.5) < 0.1;
+    const isTalian = isTalian4 || isTalian1 || isTalian3;
+
+    if (isAcama && buildingType === 'epona') {
+        // ACAMA EPONA: Appentis droit 7.8m (Connecté à la toiture)
+        awningWidth = 7.8;
+        angleRad = (roofPitch * Math.PI) / 180;
+        startHeight = eaveHeight + 0.1;
+        endHeight = startHeight - (awningWidth * Math.tan(angleRad));
+    } else if (isTalian) {
+        awningWidth = isTalian4 ? 11.2 : (isTalian1 ? 2.3 : 1.8);
+        angleRad = (roofPitch * Math.PI) / 180;
+        // TALIAN 1: 3.8m (ou eaveHeight) / TALIAN 3: 2.5m / TALIAN 4: 3.3m
+        endHeight = isTalian4 ? 3.3 : (isTalian1 ? 3.8 : 2.5);
+        startHeight = eaveHeight + 0.1;
+    } else if (buildingType === 'asymetrique_2' && side === 'right') {
         startHeight = 4.0;
         angleRad = (15 * Math.PI) / 180;
         awningWidth = (4.0 - 3.0) / Math.tan(angleRad); // approx 3.73m
@@ -115,13 +134,15 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
         const zPos = -i * baySpacing;
 
         // 1. COLUMN (At the low end)
+        // USER REQUEST Phase 14: Diminuer la longueur des poteaux verticaux
+        const finalColHeight = isAcama && buildingType === 'epona' ? endHeight - 0.2 : endHeight;
         frames.push(
             <mesh
                 key={`col-${i}`}
                 material={structureMaterial}
-                position={[awningWidth, -startHeight + endHeight / 2, zPos]}
+                position={[awningWidth, -startHeight + finalColHeight / 2, zPos]}
             >
-                <boxGeometry args={[0.2, endHeight, 0.2]} />
+                <boxGeometry args={[0.2, finalColHeight, 0.2]} />
             </mesh>
         );
 

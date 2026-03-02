@@ -2,8 +2,10 @@ import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { createTrapezoidalProfile } from '../utils/profiles.js';
 import { SolarPanels } from './SolarPanels.jsx';
+import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
 
 export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildingType = 'symetrique' }) {
+    const { isAcama } = useConfiguratorValues();
     // Material: RAL 7016 (Anthracite Grey)
     const roofMaterial = useMemo(() => new THREE.MeshStandardMaterial({
         color: '#383e42', // RAL 7016 approx
@@ -15,6 +17,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     const isMonopente = buildingType === 'monopente';
     const isAsymetrique = buildingType === 'asymetrique_1';
     const isAsymetrique2 = buildingType === 'asymetrique_2';
+    const isEpona = isAcama && buildingType === 'epona';
 
     // ==========================================
     // HOOKS (Must be unconditional)
@@ -187,6 +190,132 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
                 />
                 <group position={[offX, centerY + offY - 0.06, -length / 2]} rotation={[0, 0, -monoSlopeAngle]}>
                     <SolarPanels surfaceWidth={monoSlopeLength} surfaceLength={length + 1.0} />
+                </group>
+            </group>
+        );
+    }
+
+    // --- B0. EPONA ---
+    if (isEpona) {
+        // Geometric Constants from Image 3
+        const mainSlope = 17 * (Math.PI / 180);
+        const leftEaveH = 5.0;
+
+        // The building spans 23.60m from Left to Middle column, and 7.85m to Right column.
+        // Apex is strictly 11.8m from Left Column.
+        const leftSpan = 11.8;
+        const rightSpan = 11.8 + 7.85; // 19.65
+
+        // Overhangs
+        const extendLeftX = 2.55;
+        const extendRightX = 1.25;
+
+        // Total panels
+        const leftTotalSpanX = leftSpan + extendLeftX;
+        const leftRoofLength = leftTotalSpanX / Math.cos(mainSlope);
+
+        const rightTotalSpanX = rightSpan + extendRightX;
+        const rightRoofLength = rightTotalSpanX / Math.cos(mainSlope);
+
+        // Geometries
+        const leftProfile = createTrapezoidalProfile(leftRoofLength, 0.035, 0.25);
+        const rightProfile = createTrapezoidalProfile(rightRoofLength, 0.035, 0.25);
+
+        const leftGeo = new THREE.ExtrudeGeometry(leftProfile, { depth: length + 1.0, bevelEnabled: false });
+        const rightGeo = new THREE.ExtrudeGeometry(rightProfile, { depth: length + 1.0, bevelEnabled: false });
+
+        // Offsets
+        const getOffsetProps = (slopeLen, angle, isRight, overhang) => {
+            const centerDist = (slopeLen - overhang) / 2;
+            const localX = centerDist * Math.cos(angle);
+            const localY = centerDist * Math.sin(angle);
+
+            const extraLift = 0.10;
+            const purlinH = 0.140;
+            const thick = 0.001;
+            const offsetDist = (purlinH / 2) + (thick / 2) + 0.35 + extraLift;
+
+            const nX = isRight ? Math.sin(angle) : -Math.sin(angle);
+            const nY = Math.cos(angle);
+
+            return {
+                x: localX + (offsetDist * nX),
+                y: localY + (offsetDist * nY),
+                rot: isRight ? -angle : angle
+            };
+        };
+
+        const leftProps = getOffsetProps(leftRoofLength, mainSlope, false, extendLeftX);
+        const rightProps = getOffsetProps(rightRoofLength, mainSlope, true, extendRightX);
+
+        // Left Post is at X = -11.8. Apex is at X = 0.
+        // We calculate base height for the left eave at exactly x = -11.8 - extendLeftX (The very left edge of roof cover)
+        // Wait, leftProps center is calculated from the start.
+        // Left geometric edge: X_start = -11.8 - extendLeftX.
+        // Y_start = 5.0 - extendLeftX * Math.tan(17 deg).
+        const leftEdgeX = -11.8 - extendLeftX;
+        const leftEdgeY = leftEaveH - (extendLeftX * Math.tan(mainSlope));
+
+        // Right geometric edge:
+        const rightEdgeX = 19.65 + extendRightX;
+        const apexY = leftEaveH + (leftSpan * Math.tan(mainSlope)); // ~8.60m
+        const rightEdgeY = apexY - ((rightSpan + extendRightX) * Math.tan(mainSlope));
+
+        // Center calculation trick:
+        // Position of group for right roof panel.
+        // The getOffsetProps gives local Center offset from Eave if isRight ? Right Eave : Left Eave.
+        // For right roof, `localX` goes from 0 to center. So it starts at the apex and goes right?
+        // Wait! In Asymetrique2, section1 starts at middleColumnX... Wait, it starts at the right Eave and goes UP.
+        // If isRight=true, "0" is at the eave, and it extends leftwards towards the apex. 
+        // Let's position it simply using the midpoint.
+        const rightMidX = 0 + (rightTotalSpanX / 2); // 0 is apex, right Total is right of apex
+        const rightMidY = apexY - (rightTotalSpanX / 2) * Math.tan(mainSlope);
+
+        const leftMidX = 0 - (leftTotalSpanX / 2);
+        const leftMidY = apexY - (leftTotalSpanX / 2) * Math.tan(mainSlope);
+
+        // Apply perp offsets
+        const perpOffsetDist = (0.140 / 2) + (0.001 / 2) + 0.35 + 0.10;
+
+        // Right normal is upwards and rightwards (+sin, +cos) rotation is -angle.
+        // If angle is positive (mainSlope), normal X is +sin, Normal Y is +cos
+        const rNX = Math.sin(mainSlope);
+        const rNY = Math.cos(mainSlope);
+
+        // Left normal is upwards and leftwards (-sin, +cos) rotation is +angle.
+        const lNX = -Math.sin(mainSlope);
+        const lNY = Math.cos(mainSlope);
+
+        const rFinalX = rightMidX + perpOffsetDist * rNX;
+        const rFinalY = rightMidY + perpOffsetDist * rNY;
+
+        const lFinalX = leftMidX + perpOffsetDist * lNX;
+        const lFinalY = leftMidY + perpOffsetDist * lNY;
+
+        // The ExtrudeGeometry centers the trapezoid around the midpoint if 0,0 is center? No, ExtrudeGeometry starts from x=0 usually based on the shape.
+        // createTrapezoidalProfile creates a shape centered horizontally. Yes.
+
+        return (
+            <group>
+                {/* Left Panel */}
+                <mesh geometry={leftGeo} material={roofMaterial}
+                    position={[lFinalX, lFinalY, -length - 0.5]}
+                    rotation={[0, 0, mainSlope]}
+                    castShadow receiveShadow />
+
+                <group position={[lFinalX, lFinalY, -length / 2]} rotation={[0, 0, mainSlope]}>
+                    <SolarPanels surfaceWidth={leftRoofLength} surfaceLength={length + 1.0} />
+                </group>
+
+                {/* Right Panel */}
+                <mesh geometry={rightGeo} material={roofMaterial}
+                    position={[rFinalX, rFinalY, -length - 0.5]}
+                    rotation={[0, 0, -mainSlope]}
+                    scale={[-1, 1, 1]}
+                    castShadow receiveShadow />
+
+                <group position={[rFinalX, rFinalY, -length / 2]} rotation={[0, 0, -mainSlope]} scale={[-1, 1, 1]}>
+                    <SolarPanels surfaceWidth={rightRoofLength} surfaceLength={length + 1.0} />
                 </group>
             </group>
         );

@@ -85,8 +85,22 @@ export function Structure() {
 
     return (
         <group>
-            {config.buildingType === 'symetrique' && (
-                <RidgeFlashing len={length + 1.0} h={calculatedRidgeHeight + 0.5} angle={angleRad} />
+            {(config.buildingType === 'symetrique' || config.buildingType === 'epona') && (
+                <RidgeFlashing
+                    len={length + 1.0}
+                    h={(() => {
+                        if (config.isAcama) {
+                            if (config.buildingType === 'epona') {
+                                const mainSlope = 17 * (Math.PI / 180);
+                                return 5.0 + 11.8 * Math.tan(mainSlope) + 0.5; // True geometric apex + offset
+                            }
+                            if (config.buildingType === 'symetrique' && Math.abs(width - 18.8) < 0.1) return calculatedRidgeHeight + 0.5;
+                        }
+                        return calculatedRidgeHeight + 0.5;
+                    })()}
+                    angle={config.buildingType === 'epona' ? 17 * (Math.PI / 180) : angleRad}
+                    x={0}
+                />
             )}
             {(config.buildingType === 'asymetrique_1' || config.buildingType === 'asymetrique_2') && (
                 <RidgeFlashing
@@ -198,6 +212,7 @@ export function Structure() {
                     buildingWidth={width}
                     bayCount={bayCount}
                     baySpacing={baySpacing}
+                    buildingType={config.buildingType}
                 />
             )}
 

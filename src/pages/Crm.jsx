@@ -10,8 +10,9 @@ import {
   Plus, Search, Euro, Settings, LogOut, X, Edit, Trash2, Save, Phone,
   Mail, Building, MapPin, Tag, Clock, CheckCircle2, AlertCircle,
   ChevronLeft, ChevronRight, BarChart3, PieChart, Activity, FolderHeart, MapPin as MapIcon, FileDown, ExternalLink,
-  List, LayoutGrid, UserCircle, User, Briefcase, Calendar as CalendarIcon, Filter, MoreVertical, Shuffle
+  List, LayoutGrid, UserCircle, User, Briefcase, Calendar as CalendarIcon, Filter, MoreVertical, Shuffle, Menu
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button.jsx';
 import { Input } from '@/components/ui/input.jsx';
 import { Badge } from '@/components/ui/badge.jsx';
@@ -143,6 +144,7 @@ export default function Crm() {
   const [editingTask, setEditingTask] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [taskViewMode, setTaskViewMode] = useState('list');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [calendarDate, setCalendarDate] = useState(new Date());
 
   // Charger les données initiales
@@ -300,7 +302,7 @@ export default function Crm() {
       ...calculateWeeklyGrowth(currentKpiValues.contacts, contacts, 'contacts'),
       color: 'bg-blue-500',
       bgLight: 'bg-blue-50',
-      height: 'h-48'
+      height: 'h-32 lg:h-48'
     },
     {
       icon: FolderHeart,
@@ -309,7 +311,7 @@ export default function Crm() {
       ...calculateWeeklyGrowth(currentKpiValues.projectsInProgress, projects, 'projects_in_progress'),
       color: 'bg-green-500',
       bgLight: 'bg-green-50',
-      height: 'h-48'
+      height: 'h-32 lg:h-48'
     },
     {
       icon: CheckSquare,
@@ -318,7 +320,7 @@ export default function Crm() {
       ...calculateWeeklyGrowth(currentKpiValues.tasksInProgress, tasks, 'tasks_in_progress'),
       color: 'bg-orange-500',
       bgLight: 'bg-orange-50',
-      height: 'h-48'
+      height: 'h-32 lg:h-48'
     },
     {
       icon: CheckCircle2,
@@ -327,7 +329,7 @@ export default function Crm() {
       ...calculateWeeklyGrowth(currentKpiValues.projectsCompleted, projects, 'projects_completed'),
       color: 'bg-purple-500',
       bgLight: 'bg-purple-50',
-      height: 'h-48'
+      height: 'h-32 lg:h-48'
     },
   ];
 
@@ -587,18 +589,20 @@ export default function Crm() {
   });
 
   const renderDashboard = () => (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="space-y-6 lg:space-y-8">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 crm-kpi-grid">
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
-            <div key={idx} className={`bg-white rounded-2xl shadow-sm border border-slate-200 p-6 ${kpi.height || ''} flex flex-col justify-between hover:shadow-md transition-shadow`}>
-              <div className="flex items-start justify-between mb-4">
-                <div className={`${kpi.bgLight} p-3 rounded-xl`}><Icon className={`w-6 h-6 ${kpi.color.replace('bg-', 'text-')}`} /></div>
-                <span className={`text-sm font-semibold px-2 py-1 rounded-full ${kpi.trendPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{kpi.trend}</span>
+            <div key={idx} className={`bg-white rounded-xl lg:rounded-2xl shadow-sm border border-slate-200 p-3 lg:p-6 ${kpi.height || ''} flex flex-col justify-between hover:shadow-md transition-shadow`}>
+              <div className="flex items-start justify-between mb-2 lg:mb-4">
+                <div className={`${kpi.bgLight} p-1.5 lg:p-3 rounded-lg lg:rounded-xl`}><Icon className={`w-4 h-4 lg:w-6 lg:h-6 ${kpi.color.replace('bg-', 'text-')}`} /></div>
+                <span className={`text-[10px] lg:text-sm font-semibold px-1.5 lg:py-1 rounded-full ${kpi.trendPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{kpi.trend}</span>
               </div>
-              <p className="text-2xl font-bold text-slate-900 mb-1">{kpi.value}</p>
-              <p className="text-sm text-slate-600">{kpi.label}</p>
+              <div className="mt-auto">
+                <p className="text-lg lg:text-2xl font-bold text-slate-900 mb-0.5">{kpi.value}</p>
+                <p className="text-[10px] lg:text-sm text-slate-600 line-clamp-1">{kpi.label}</p>
+              </div>
             </div>
           );
         })}
@@ -663,8 +667,8 @@ export default function Crm() {
   // Rendu de la liste des Contacts
   const renderContacts = () => (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-6">
-        <div className="flex items-center gap-4 flex-1">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 lg:gap-6">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1">
           <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
@@ -676,11 +680,11 @@ export default function Crm() {
             />
           </div>
 
-          <div className="flex gap-2 items-center">
+          <div className="flex flex-wrap gap-2 items-center">
             <select
               value={filterUser}
               onChange={(e) => setFilterUser(e.target.value)}
-              className="px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="flex-1 md:flex-none px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-[140px]"
             >
               <option value="all">Tous les utilisateurs</option>
               {users.map(u => (
@@ -688,20 +692,30 @@ export default function Crm() {
               ))}
             </select>
 
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            >
-              <option value="all">Tous les statuts</option>
-              <option value="Nouveau">Nouveau</option>
-              <option value="En cours">En cours</option>
-              <option value="Client">Client</option>
-            </select>
+            <div className="flex flex-1 md:flex-none gap-2 items-center">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-[120px]"
+              >
+                <option value="all">Tous les statuts</option>
+                <option value="Nouveau">Nouveau</option>
+                <option value="En cours">En cours</option>
+                <option value="Client">Client</option>
+              </select>
+
+              <Button
+                onClick={handleAddContact}
+                className="lg:hidden bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md px-3 h-9"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                <span className="text-xs">Nouveau</span>
+              </Button>
+            </div>
           </div>
         </div>
 
-        <div className="flex gap-4 items-center">
+        <div className="flex gap-4 items-center justify-between lg:justify-end">
           <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
             <button
               onClick={() => setViewMode('card')}
@@ -721,7 +735,7 @@ export default function Crm() {
 
           <Button
             onClick={handleAddContact}
-            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg"
+            className="hidden lg:flex bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg"
           >
             <Plus className="w-4 h-4 mr-2" />
             Nouveau contact
@@ -1264,8 +1278,8 @@ export default function Crm() {
   // Rendu de la liste des Projets
   const renderProjects = () => (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-6">
-        <div className="flex items-center gap-4 flex-1">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 lg:gap-6">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1">
           <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
@@ -1277,57 +1291,70 @@ export default function Crm() {
             />
           </div>
 
-          {/* Filtre Utilisateur */}
-          <select
-            value={filterUser}
-            onChange={(e) => setFilterUser(e.target.value)}
-            className="px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          >
-            <option value="all">Tous les utilisateurs</option>
-            {users.map(u => (
-              <option key={u.id} value={u.firstName || u.displayName}>{u.firstName || u.displayName || 'Utilisateur'}</option>
-            ))}
-          </select>
+          <div className="flex flex-wrap gap-2 items-center">
+            {/* Filtre Utilisateur */}
+            <select
+              value={filterUser}
+              onChange={(e) => setFilterUser(e.target.value)}
+              className="flex-1 md:flex-none px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-[140px]"
+            >
+              <option value="all">Tous les utilisateurs</option>
+              {users.map(u => (
+                <option key={u.id} value={u.firstName || u.displayName}>{u.firstName || u.displayName || 'Utilisateur'}</option>
+              ))}
+            </select>
 
-          {/* Filtre Type */}
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          >
-            <option value="all">Tous les types</option>
-            <option value="Construction">Construction</option>
-            <option value="Rénovation">Rénovation</option>
-            <option value="Construction & Rénovation">Construction & Rénovation</option>
-            <option value="Location">Location</option>
-          </select>
+            {/* Filtre Type */}
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="flex-1 md:flex-none px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-[120px]"
+            >
+              <option value="all">Tous les types</option>
+              <option value="Construction">Construction</option>
+              <option value="Rénovation">Rénovation</option>
+              <option value="Construction & Rénovation">Construction & Rénovation</option>
+              <option value="Location">Location</option>
+            </select>
 
-          {/* Filtre Statut */}
-          {/* Filtre Statut */}
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          >
-            <option value="all">Tous les statuts</option>
-            <option value="Nouveau">Nouveau</option>
-            <option value="En cours">En cours</option>
-            <option value="Terminé">Terminé</option>
-            <option value="Abandonné">Abandonné</option>
-          </select>
+            <div className="flex flex-wrap gap-2 items-center w-full md:w-auto mt-2 md:mt-0">
+              {/* Filtre Statut */}
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="flex-1 md:flex-none px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-[120px]"
+              >
+                <option value="all">Tous les statuts</option>
+                <option value="Nouveau">Nouveau</option>
+                <option value="En cours">En cours</option>
+                <option value="Terminé">Terminé</option>
+                <option value="Abandonné">Abandonné</option>
+              </select>
 
-          {/* Filtre Mes Projets */}
-          <Button
-            variant={filterMyProjects ? "default" : "outline"}
-            onClick={() => setFilterMyProjects(!filterMyProjects)}
-            className={`h-9 ${filterMyProjects ? 'bg-blue-600 text-white' : 'text-slate-600'}`}
-          >
-            <UserCircle className="w-4 h-4 mr-2" />
-            Mes projets
-          </Button>
+              <div className="flex gap-2 items-center flex-1 md:flex-none">
+                {/* Filtre Mes Projets */}
+                <Button
+                  variant={filterMyProjects ? "default" : "outline"}
+                  onClick={() => setFilterMyProjects(!filterMyProjects)}
+                  className={`flex-1 md:flex-none h-9 ${filterMyProjects ? 'bg-blue-600 text-white' : 'text-slate-600'} px-2`}
+                >
+                  <UserCircle className="w-4 h-4 mr-1 md:mr-2" />
+                  <span className="text-xs md:text-sm">Mes projets</span>
+                </Button>
+
+                <Button
+                  onClick={() => navigate('/project/new/edit')}
+                  className="lg:hidden flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-md h-9 px-2"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  <span className="text-xs">Nouveau</span>
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="flex gap-4 items-center">
+        <div className="flex gap-4 items-center justify-between lg:justify-end">
           <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
             <button
               onClick={() => setViewMode('card')}
@@ -1354,7 +1381,7 @@ export default function Crm() {
 
           <Button
             onClick={() => navigate('/project/new/edit')}
-            className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+            className="hidden lg:flex bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
           >
             <Plus className="w-4 h-4 mr-2" />
             Nouveau Projet
@@ -1754,13 +1781,21 @@ export default function Crm() {
     );
   };
 
-  // Les modales sont maintenant rendues directement dans le JSX principal ou via des composants externes
-
-
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100" >
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 overflow-hidden" >
+      {/* Backdrop for mobile CRM sidebar */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-[19999] lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      < div className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white flex flex-col shadow-2xl" >
+      < div className={cn(
+        "fixed inset-y-0 left-0 z-[20000] w-64 bg-slate-900 lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col shadow-2xl",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )} >
         {/* Logo */}
         < div className="p-6 border-b border-slate-700" >
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
@@ -1770,7 +1805,7 @@ export default function Crm() {
         </div >
 
         {/* Navigation */}
-        < nav className="flex-1 p-4 space-y-1" >
+        < nav className="flex-1 p-4 space-y-1 overflow-y-auto" >
           {
             navItems.map((item) => {
               const Icon = item.icon;
@@ -1831,8 +1866,21 @@ export default function Crm() {
       </div >
 
       {/* Main Content */}
-      < div className="flex-1 overflow-y-auto" >
-        <div className="p-6">
+      < div className="flex-1 overflow-y-auto flex flex-col" >
+        <div className="p-4 lg:p-8">
+          {/* Mobile Header Toggle - Dark Style to match aesthetic */}
+          <div className="lg:hidden flex items-center justify-between mb-6 bg-slate-900 p-4 rounded-xl shadow-lg border border-slate-700">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-white"
+            >
+              <Menu size={24} />
+            </button>
+            <h1 className="text-xl font-bold text-white">
+              {navItems.find(item => item.id === activeTab)?.label}
+            </h1>
+            <div className="w-10" /> {/* Spacer for centering */}
+          </div>
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-slate-900 mb-2">

@@ -3,8 +3,9 @@ import {
     Plus, Trash2, Edit2, GripVertical, Download, Upload, Save, X, MoreVertical,
     Search, Filter, CheckSquare, Square, Trash, Copy, ArrowUp, ArrowDown,
     // Icons for tabs
-    Users, Briefcase, Lock, Wallet, CreditCard, Table2, FolderOpen
+    Users, Briefcase, Lock, Wallet, CreditCard, Table2, FolderOpen, Menu
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -393,6 +394,8 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
 
     // Calculate cursor position when transitioning from formatted to raw value
     const calculateCursorPosition = (formattedValue, rawValue, clickPosition) => {
+        if (!formattedValue || !rawValue) return 0;
+
         // If clicking in a TTC column with € formatting
         if (formattedValue.includes('€')) {
             // Remove spaces and € to get the numeric part
@@ -404,24 +407,32 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
             // Otherwise, keep the same position
             return Math.min(clickPosition, rawValue.length);
         }
+
+        // For date formatting (DD/MM/YYYY)
+        if (formattedValue.includes('/') && formattedValue.length === 10 && rawValue.includes('-')) {
+            // raw: YYYY-MM-DD (10 chars), formatted: DD/MM/YYYY (10 chars)
+            // This is a simple 1:1 map for standard dates
+            return Math.min(clickPosition, rawValue.length);
+        }
+
         // For other values, keep same position or end
         return Math.min(clickPosition, rawValue.length);
     };
 
     // Handle cell click - capture cursor position and switch to editing mode
     const handleCellClick = (col, e) => {
-        if (editingCell !== col) {
-            const input = e.target;
-            const clickPosition = input.selectionStart || 0;
-            const formattedValue = getDisplayValue(col, row.data[col]);
-            const rawValue = getRawValue(col, row.data[col]);
+        const input = e.target;
+        const clickPosition = input.selectionStart || 0;
+        const formattedValue = getDisplayValue(col, row.data[col]) || '';
+        const rawValue = getRawValue(col, row.data[col]) || '';
 
-            // Calculate where the cursor should be in the raw value
-            const calculatedPosition = calculateCursorPosition(formattedValue, rawValue, clickPosition);
+        // Calculate where the cursor should be in the raw value
+        const calculatedPosition = calculateCursorPosition(formattedValue, rawValue, clickPosition);
 
-            setCursorPosition({ col, position: calculatedPosition });
-            setEditingCell(col);
-        }
+        // Always set cursor position on click if not already editing this cell 
+        // or if we just started editing (to override browser's default cursor-to-end)
+        setCursorPosition({ col, position: calculatedPosition, timestamp: Date.now() });
+        setEditingCell(col);
     };
 
     // Handle cell focus - used when tabbing into cell
@@ -446,11 +457,18 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
         if (cursorPosition && editingCell === cursorPosition.col) {
             const input = inputRefs.current[cursorPosition.col];
             if (input) {
-                // Use setTimeout to ensure the input value has been updated
-                setTimeout(() => {
-                    input.setSelectionRange(cursorPosition.position, cursorPosition.position);
-                    input.focus();
-                }, 0);
+                const pos = cursorPosition.position;
+                // Use requestAnimationFrame + setTimeout to ensure the DOM is ready and React render committed
+                requestAnimationFrame(() => {
+                    setTimeout(() => {
+                        if (input.value.length >= pos) {
+                            input.setSelectionRange(pos, pos);
+                        } else {
+                            input.setSelectionRange(input.value.length, input.value.length);
+                        }
+                        input.focus();
+                    }, 0);
+                });
             }
         }
     }, [editingCell, cursorPosition]);
@@ -637,11 +655,11 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                 'Date butoir': 75,
                 'Date Prlvt auto': 75,
 
-                // Charges (Réduction 1/2 -> 75px)
-                'Mensualités TTC': 75,
-                'Date paiement': 75,
-                'Type Prlvt': 75,
-                'Echéance': 75,
+                // Charges (Élargis pour mobile)
+                'Mensualités TTC': 120,
+                'Date paiement': 110,
+                'Type Prlvt': 110,
+                'Echéance': 110,
 
                 // LEADS
                 'Réf': 75,          // Réduction 1/2
@@ -1035,7 +1053,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
             <div className="flex flex-col gap-4 mb-4 bg-white p-4 rounded-xl shadow-sm border border-slate-100">
                 {/* Row 1: Actions */}
                 <div className="flex justify-between items-center flex-wrap gap-4">
-                    <div className="flex gap-2 items-center">
+                    <div className="flex gap-2 items-center flex-1">
                         <Button onClick={addRow} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
                             <Plus className="w-4 h-4 mr-2" />
                             Ligne
@@ -1082,20 +1100,20 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
+
+                        {/* Search field moved here, next to Filtres */}
+                        <div className="relative w-full max-w-[300px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <Input
+                                placeholder="Rechercher partout..."
+                                className="pl-9 h-9"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
                     </div>
 
-                    {/* Search */}
-                    <div className="relative w-full max-w-md">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <Input
-                            placeholder="Rechercher partout..."
-                            className="pl-9 h-9"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 shrink-0">
                         {/* Selection Actions */}
                         {selectedRowIds.size > 0 && (
                             <div className="flex items-center gap-2 mr-4 bg-blue-50 px-2 rounded border border-blue-100 animate-in fade-in">
@@ -1331,6 +1349,7 @@ export default function Monday() {
     const [newTabName, setNewTabName] = useState('');
     const [isAddingTab, setIsAddingTab] = useState(false);
     const [rowCount, setRowCount] = useState(0);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     useEffect(() => {
         const unsubscribe = apiService.subscribeToMondayTables((updatedTabs) => {
@@ -1374,14 +1393,30 @@ export default function Monday() {
 
     return (
         <DndProvider backend={HTML5Backend}>
-            <div className="bg-slate-50 min-h-screen flex text-slate-900 font-sans">
+            <div className="bg-slate-50 min-h-screen flex text-slate-900 font-sans relative">
+                {/* Backdrop for mobile */}
+                {isSidebarOpen && (
+                    <div
+                        className="fixed inset-0 bg-black/60 z-[29] lg:hidden"
+                        onClick={() => setIsSidebarOpen(false)}
+                    />
+                )}
+
                 {/* Sidebar Navigation - CRM Style */}
-                <aside className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white border-r border-slate-700 flex flex-col fixed top-[64px] bottom-0 left-0 z-30 transition-transform duration-300 shadow-2xl">
-                    <div className="p-6 border-b border-slate-700">
-                        <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-1">
-                            Monday
-                        </h2>
-                        <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Tableaux Admin</p>
+                <aside className={cn(
+                    "w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white border-r border-slate-700 flex flex-col fixed top-[0] lg:top-[64px] bottom-0 left-0 z-30 transition-transform duration-300 shadow-2xl lg:translate-x-0 h-full lg:h-[calc(100vh-64px)]",
+                    isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+                )}>
+                    <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+                        <div>
+                            <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-1">
+                                Monday
+                            </h2>
+                            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Tableaux Admin</p>
+                        </div>
+                        <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-1 hover:bg-slate-700 rounded text-slate-400">
+                            <X className="w-6 h-6" />
+                        </button>
                     </div>
 
                     <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
@@ -1392,7 +1427,10 @@ export default function Monday() {
                             return (
                                 <div key={tab.id} className="group flex items-center gap-2">
                                     <button
-                                        onClick={() => setActiveTabId(tab.id)}
+                                        onClick={() => {
+                                            setActiveTabId(tab.id);
+                                            setIsSidebarOpen(false);
+                                        }}
                                         className={`flex-1 flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${isActive
                                             ? 'bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg shadow-blue-500/50'
                                             : 'hover:bg-slate-700/50'
@@ -1419,6 +1457,7 @@ export default function Monday() {
                             );
                         })}
 
+                        {/* ... Nouveau tableau button code ... */}
                         {isAddingTab ? (
                             <div className="flex items-center gap-2 px-2 mt-4 animate-in fade-in slide-in-from-left-2 text-white">
                                 <Input
@@ -1445,7 +1484,45 @@ export default function Monday() {
                         )}
                     </nav>
                 </aside>
-                <main className="flex-1 ml-64 p-8 w-full max-w-full overflow-hidden flex flex-col h-[calc(100vh-64px)] mt-16">
+
+                <main className="flex-1 lg:ml-64 p-4 lg:p-8 w-full max-w-full flex flex-col min-h-screen pt-20 lg:pt-24">
+                    {/* Mobile Header Toggle - Dark Style to match CRM Screenshot */}
+                    <div className="lg:hidden flex items-center justify-between mb-4 bg-slate-900 p-4 rounded-xl shadow-lg border border-slate-700">
+                        <button
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-white"
+                        >
+                            <Menu size={24} />
+                        </button>
+                        <h1 className="text-xl font-bold text-white">
+                            {activeTab?.name || 'Monday'}
+                        </h1>
+                        <div className="w-10" />
+                    </div>
+
+                    {/* Mobile/Tablet Tab Navigation Bar */}
+                    <div className="lg:hidden mb-6 flex overflow-x-auto pb-2 gap-2 no-scrollbar">
+                        {tabs.map(tab => {
+                            const Icon = getTabIcon(tab.name);
+                            const isActive = activeTabId === tab.id;
+                            return (
+                                <button
+                                    key={`mobile-tab-${tab.id}`}
+                                    onClick={() => setActiveTabId(tab.id)}
+                                    className={cn(
+                                        "flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all text-sm font-medium border",
+                                        isActive
+                                            ? "bg-blue-600 text-white border-blue-600 shadow-md"
+                                            : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                                    )}
+                                >
+                                    <Icon className="w-4 h-4" />
+                                    {tab.name}
+                                </button>
+                            );
+                        })}
+                    </div>
+
                     {activeTab ? (
                         <>
                             <div className="flex justify-between items-center mb-6">
@@ -1456,7 +1533,7 @@ export default function Monday() {
                                     <p className="text-slate-500 text-sm">Gérez vos données dans ce tableau.</p>
                                 </div>
                             </div>
-                            <div className="flex-1 min-h-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col">
+                            <div className="flex-1 min-h-0 bg-white rounded-2xl shadow-sm border border-slate-200 p-2 lg:p-4 flex flex-col overflow-x-auto">
                                 <EditableTable key={activeTab.id} data={activeTab} onUpdate={handleUpdateTab} onRowCountChange={setRowCount} tabName={activeTab.name} />
                             </div>
                         </>
@@ -1466,5 +1543,6 @@ export default function Monday() {
                 </main>
             </div>
         </DndProvider>
+
     );
 }

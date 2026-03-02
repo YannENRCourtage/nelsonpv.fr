@@ -236,13 +236,12 @@ export const generatePdfForProject = async (projectData) => {
   });
 };
 
-function Header() {
+function Header({ isMobileMenuOpen, setIsMobileMenuOpen }) {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const isProjectPage = useMatch("/project/:projectId/edit");
   const { project, saveProject, setProject } = useProject();
   const [showSaveDialog, setShowSaveDialog] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
 
   const isTransferAuthorized = () => {
@@ -522,8 +521,52 @@ function Header() {
           </Button>
         </div>
       </div>
+      <AlertDialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Voulez-vous sauvegarder les modifications ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vous êtes sur le point de quitter cette page. Voulez-vous sauvegarder vos modifications avant de créer un nouveau projet ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDiscardAndContinue}>Non</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-blue-500 text-black hover:bg-blue-600"
+              onClick={(e) => {
+                e.preventDefault();
+                handleSaveAndContinue();
+              }}
+            >
+              Oui
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-      {/* Mobile Navigation Overlay */}
+      <TransferProjectModal
+        show={showTransferModal}
+        onClose={() => setShowTransferModal(false)}
+        project={project}
+        onTransfer={handleTransferProject}
+      />
+    </header >
+  );
+}
+
+export default function AppLayout() {
+  const { user } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  return (
+    <div className="app-layout">
+      <Header isMobileMenuOpen={isMobileMenuOpen} setIsMobileMenuOpen={setIsMobileMenuOpen} />
+      <main className="app-layout__content">
+        <Outlet />
+      </main>
+      <Footer />
+
+      {/* Mobile Navigation Overlay - Outside Header Stacking Context */}
       {isMobileMenuOpen && (
         <>
           <div
@@ -541,13 +584,11 @@ function Header() {
               </NavLink>
             )}
 
-
-
             {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessEditor !== false) && (
               <NavLink
                 to="/project/new/edit"
-                onClick={(e) => { handleEditorClick(e); setIsMobileMenuOpen(false); }}
                 className={({ isActive }) => isActive ? 'mobile-nav-link active editeur' : 'mobile-nav-link editeur'}
+                onClick={() => setIsMobileMenuOpen(false)}
               >
                 Editeur de projet
               </NavLink>
@@ -628,48 +669,6 @@ function Header() {
           </nav>
         </>
       )}
-
-      <AlertDialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Voulez-vous sauvegarder les modifications ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Vous êtes sur le point de quitter cette page. Voulez-vous sauvegarder vos modifications avant de créer un nouveau projet ?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleDiscardAndContinue}>Non</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-blue-500 text-black hover:bg-blue-600"
-              onClick={(e) => {
-                e.preventDefault();
-                handleSaveAndContinue();
-              }}
-            >
-              Oui
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <TransferProjectModal
-        show={showTransferModal}
-        onClose={() => setShowTransferModal(false)}
-        project={project}
-        onTransfer={handleTransferProject}
-      />
-    </header>
-  );
-}
-
-export default function AppLayout() {
-  return (
-    <div className="app-layout">
-      <Header />
-      <main className="app-layout__content">
-        <Outlet />
-      </main>
-      <Footer />
     </div>
   );
 }
