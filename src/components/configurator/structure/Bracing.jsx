@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
+import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
 
 /**
  * X-Bracing (Croix de St Andre) for Walls and Roof
