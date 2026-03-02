@@ -583,10 +583,12 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
         let xStart, xEnd, xMid;
         if (isEpona) {
-            // Epona total width bounds including overhangs: 2.55 (left) + 23.6 (span) + 7.85 (right+overhang) = 34m? 
-            // Wait, user says 35.3m. 
-            // 2.5 (left) + 25 (main) + 7.8 (right) = 35.3. 
-            // Let's center it at 0.
+            // Epona total width bounds including overhangs
+            xStart = new THREE.Vector3(-35.3 / 2, yPos, zPos);
+            xEnd = new THREE.Vector3(35.3 / 2, yPos, zPos);
+            xMid = new THREE.Vector3(0, yPos, zPos);
+        } else if (isTalian) {
+            // Talian 1, 3, 4: Align style to Talian 4 (centered) and use 35.3m as requested
             xStart = new THREE.Vector3(-35.3 / 2, yPos, zPos);
             xEnd = new THREE.Vector3(35.3 / 2, yPos, zPos);
             xMid = new THREE.Vector3(0, yPos, zPos);
@@ -596,7 +598,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             xMid = new THREE.Vector3(0, yPos, zPos);
         }
         return {
-            totalW, xStart, xEnd, xMid,
+            totalW, xStart, xEnd, xMid, zPos,
             points: [
                 [xStart, new THREE.Vector3(xMid.x - gapSize / 2, yPos, zPos)],
                 [new THREE.Vector3(xMid.x + gapSize / 2, yPos, zPos), xEnd]
@@ -846,16 +848,14 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             {isEpona ? '7.8m' : `${rightExtData.extWidth} m`}
                         </Text>
                     </group>
-                    <group>
-                        {rightExtData.heightPoints.map((p, i) => (
-                            <Line key={i} points={p} color={lineColor} lineWidth={lineWidth} />
-                        ))}
-                        <mesh position={rightExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <mesh position={rightExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <Text position={[rightExtData.xH + 0.5, (isEpona || isTalian4 || isTalian1 ? (rightExtData.extHeight - (isEpona ? 0 : (isTalian4 ? 1.2 : 0))) : rightExtData.extHeight) / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                            {`${parseFloat(Number(isTalian4 ? 4.5 : (isTalian1 ? 3.8 : rightExtData.extHeight)).toFixed(2))} m`}
-                        </Text>
-                    </group>
+                    {/* Gap implementation for Right Extension height */}
+                    <Line points={rightExtData.heightPoints[0] || []} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={rightExtData.heightPoints[1] || []} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={rightExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={rightExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text position={[rightExtData.xH, (isEpona || isTalian4 || isTalian1 ? (rightExtData.extHeight - (isEpona ? 0 : (isTalian4 ? 1.2 : 0))) : rightExtData.extHeight) / 2, 0]} rotation={[0, Math.PI / 2, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                        {`${parseFloat(Number(isTalian4 ? 4.5 : (isTalian1 ? 3.8 : rightExtData.extHeight)).toFixed(2))} m`}
+                    </Text>
                 </>
             )}
 
@@ -938,7 +938,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </group>
             )}
 
-            {/* 9. ACAMA TOTAL WIDTH MARKER (35m / 37.5m) */}
+            {/* 9. ACAMA TOTAL WIDTH MARKER (35.3m) */}
             {acamaTotalWidthData && (
                 <group>
                     <Line points={acamaTotalWidthData.points[0]} color={lineColor} lineWidth={lineWidth} />
@@ -946,7 +946,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={acamaTotalWidthData.xStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={acamaTotalWidthData.xEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[0, 0.2, 6.5]}
+                        position={[acamaTotalWidthData.xMid.x, 0.2, acamaTotalWidthData.zPos + 0.5]}
                         rotation={[-Math.PI / 2, 0, 0]}
                         fontSize={0.8}
                         color={textColor}
@@ -995,7 +995,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Line points={eponaMarkers.rHeightPoints[1]} color={lineColor} lineWidth={lineWidth} />
                     <mesh position={eponaMarkers.rHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={eponaMarkers.rHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text position={[eponaMarkers.xRightMarker + 0.5, eponaMarkers.rightEaveH / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                    {/* Right Height Label on Line */}
+                    <Text position={[eponaMarkers.xRightMarker, eponaMarkers.rightEaveH / 2, 0]} rotation={[0, Math.PI / 2, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
                         {`${eponaMarkers.rightEaveH} m`}
                     </Text>
                 </group>

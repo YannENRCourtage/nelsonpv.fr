@@ -213,7 +213,13 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
 
         // 1. CANTILEVER RAFTER (Massive)
         // Asymmetric Left 20m: Lower by 30cm
+        // TALIAN refinements (ACAMA)
+        // TALIAN 3: Lower structure by 35cm
+        // TALIAN 1: Lower structure by 15cm
         let rafterYOffset = 0;
+        if (isTalian3) rafterYOffset = -0.35;
+        else if (isTalian1) rafterYOffset = -0.15;
+
         if (buildingType === 'asymetrique_1' && side === 'left' && Math.abs(buildingWidth - 20) < 0.5) {
             rafterYOffset = -0.30;
         }
@@ -298,6 +304,12 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
 
     // Roof Y Position logic with all adjustments
     let roofY = -0.10; // Default baseline
+
+    // TALIAN refinements (ACAMA)
+    // TALIAN 3: Lower roof by 20cm
+    // TALIAN 1: Lower roof by 5cm
+    if (isTalian3) roofY -= 0.20;
+    else if (isTalian1) roofY -= 0.05;
 
     if (buildingType === 'asymetrique_2') {
         // USER REQUEST 12/01/2026: Awning cover adjustments for asymétrique 2 zones

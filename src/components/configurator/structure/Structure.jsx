@@ -149,6 +149,10 @@ export function Structure() {
                 ridgeHeight={calculatedRidgeHeight} // Pass Ridge Height
                 roofPitch={roofPitch}
                 buildingType={config.buildingType} // Pass Type
+                leftSide={leftSide}
+                rightSide={rightSide}
+                leftWidth={config.leftWidth}
+                rightWidth={config.rightWidth}
             />
 
             {/* REMOVED RidgeCap */}
