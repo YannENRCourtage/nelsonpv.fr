@@ -1,3 +1,4 @@
+// Bracing component for TALIAN models refinements in ACAMA
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
