@@ -15,8 +15,11 @@ import { SolarPanels } from './SolarPanels.jsx';
 export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWidth, bayCount, baySpacing, side = 'left', buildingType = 'symetrique' }) {
 
     // --- DIMENSIONS ---
-    // --- DIMENSIONS ---
     const { isAcama } = useConfiguratorValues();
+    const isTalian4 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 13.7) < 0.1;
+    const isTalian1 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 18.8) < 0.1;
+    const isTalian3 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 17.5) < 0.1;
+
     let auventWidth = 4.0; // Fixed 4m
     let angleRad = 5 * (Math.PI / 180); // Default 5 deg
     let startHeight = eaveHeight;
