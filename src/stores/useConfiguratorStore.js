@@ -67,6 +67,8 @@ export const EPONA_MODELS = {
         rightEaveHeight: 3.83, // Sablière Droite (Image 1)
         ridgeHeight: 9.41,   // Faîtage (Image 1)
         roofPitch: 17,      // Pente réelle 3D pour alignement (Phase 16)
+        bayCount: 6,
+        baySpacing: 7.5,
         leftSide: 'none',
         rightSide: 'none',
     },
@@ -78,6 +80,8 @@ export const EPONA_MODELS = {
         rightEaveHeight: 3.83, // Sablière Droite (Image 1)
         ridgeHeight: 9.41,   // Faîtage (Image 1)
         roofPitch: 17,      // Pente réelle 3D pour alignement (Phase 16)
+        bayCount: 8,
+        baySpacing: 8.125,
         leftSide: 'none',
         rightSide: 'none',
     }

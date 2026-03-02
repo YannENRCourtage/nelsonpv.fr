@@ -62,6 +62,26 @@ export function LongitudinalBeams({ width, length, eaveHeight, ridgeHeight, buil
         );
     }
 
+    if (buildingType === 'epona') {
+        const mainPitch = 17 * (Math.PI / 180);
+        const apexX = 0;
+        const apexY = 5.0 + (11.8 * Math.tan(mainPitch));
+        const leftColX = -11.8;
+        const rightColX = -11.8 + 31.45; // 19.65
+
+        return (
+            <group>
+                {/* Left Sablière */}
+                <Beam x={leftColX} y={5.0} z={-length} />
+
+                {/* Ridge Beam */}
+                <Beam x={apexX} y={apexY} z={-length} />
+
+                {/* Right Sablière */}
+                <Beam x={rightColX} y={3.83} z={-length} />
+            </group>
+        );
+    }
 
 
     // Default for Symetrique (Optional, maybe nothing for now or just Sablières)

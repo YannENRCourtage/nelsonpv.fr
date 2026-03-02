@@ -142,45 +142,43 @@ export function Bracing({ width, length, bayCount, baySpacing, eaveHeight, roofP
             bracings.push(createRod(R_Apex_Start, R_Eave_End, `roof-R-Asym-${i}-2`));
 
 
-        } else if (buildingType === 'asymetrique_2') {
-            // Asymmetrical 2 Zones: 2 X-crosses meeting at apex
-            const w = width;
-            const rightEave = 4.0;
-            let leftEave, ridge;
+        } else if (buildingType === 'epona') {
+            // EPONA: 3 columns (Left -11.8, Middle 11.8, Right 19.65)
+            const mainPitch = 17 * (Math.PI / 180);
+            const apexX = 0;
+            const apexY = 5.0 + (11.8 * Math.tan(mainPitch));
 
-            if (Math.abs(width - 25.5) < 0.1) {
-                leftEave = 6.9;
-                ridge = 8.9;
-            } else if (Math.abs(width - 29.1) < 0.1) {
-                leftEave = 7.9;
-                ridge = 9.8;
-            } else {
-                const rAngle = 15 * (Math.PI / 180);
-                ridge = rightEave + (w * 0.75 * Math.tan(rAngle));
-                leftEave = ridge - (w * 0.25 * Math.tan(rAngle));
-            }
+            const leftColX = -11.8;
+            const middleColX = 11.8;
+            const rightColX = 19.65;
 
-            // Apex at 1/4 from left
-            const apexX = -w / 2 + (w * 0.25);
-            const rafterOffset = 0.15;
+            const leftH = 5.0;
+            const rightH = 3.83;
+            // Middle column height based on right slope from apex
+            const middleH = apexY - (middleColX * Math.tan(mainPitch));
 
-            // Left Section: Left eave to apex
-            const L_Eave_Start = new THREE.Vector3(-w / 2, leftEave + rafterOffset, zStart);
-            const L_Apex_Start = new THREE.Vector3(apexX - 0.1, ridge, zStart);
-            const L_Eave_End = new THREE.Vector3(-w / 2, leftEave + rafterOffset, zEnd);
-            const L_Apex_End = new THREE.Vector3(apexX - 0.1, ridge, zEnd);
+            // 1. Wall Bracing (Left, Middle, Right)
+            // Left Wall
+            bracings.push(createRod(new THREE.Vector3(leftColX, 0.5, zStart), new THREE.Vector3(leftColX, leftH - 0.5, zEnd), `wall-L-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(leftColX, leftH - 0.5, zStart), new THREE.Vector3(leftColX, 0.5, zEnd), `wall-L-${i}-2`));
 
-            bracings.push(createRod(L_Eave_Start, L_Apex_End, `roof-L-Asym2-${i}-1`));
-            bracings.push(createRod(L_Apex_Start, L_Eave_End, `roof-L-Asym2-${i}-2`));
+            // Middle Wall (Bracing between bays)
+            bracings.push(createRod(new THREE.Vector3(middleColX, 0.5, zStart), new THREE.Vector3(middleColX, middleH - 0.5, zEnd), `wall-M-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(middleColX, middleH - 0.5, zStart), new THREE.Vector3(middleColX, 0.5, zEnd), `wall-M-${i}-2`));
 
-            // Right Section: Apex to right eave
-            const R_Apex_Start = new THREE.Vector3(apexX + 0.1, ridge, zStart);
-            const R_Eave_Start = new THREE.Vector3(w / 2, rightEave + rafterOffset, zStart);
-            const R_Apex_End = new THREE.Vector3(apexX + 0.1, ridge, zEnd);
-            const R_Eave_End = new THREE.Vector3(w / 2, rightEave + rafterOffset, zEnd);
+            // Right Wall
+            bracings.push(createRod(new THREE.Vector3(rightColX, 0.5, zStart), new THREE.Vector3(rightColX, rightH - 0.5, zEnd), `wall-R-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(rightColX, rightH - 0.5, zStart), new THREE.Vector3(rightColX, 0.5, zEnd), `wall-R-${i}-2`));
 
-            bracings.push(createRod(R_Apex_Start, R_Eave_End, `roof-R-Asym2-${i}-1`));
-            bracings.push(createRod(R_Eave_Start, R_Apex_End, `roof-R-Asym2-${i}-2`));
+            // 2. Roof Bracing
+            // Left Span: Left Eave to Apex
+            bracings.push(createRod(new THREE.Vector3(leftColX, leftH, zStart), new THREE.Vector3(apexX - 0.1, apexY, zEnd), `roof-L-Epona-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(apexX - 0.1, apexY, zStart), new THREE.Vector3(leftColX, leftH, zEnd), `roof-L-Epona-${i}-2`));
+
+            // Right Span: Apex to Right Eave (passing through middle)
+            // We'll treat it as one continuous cross for the full right slope
+            bracings.push(createRod(new THREE.Vector3(apexX + 0.1, apexY, zStart), new THREE.Vector3(rightColX, rightH, zEnd), `roof-R-Epona-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(rightColX, rightH, zStart), new THREE.Vector3(apexX + 0.1, apexY, zEnd), `roof-R-Epona-${i}-2`));
 
         } else {
             // Symmetrical: Two Crosses (Left->Center, Right->Center)
