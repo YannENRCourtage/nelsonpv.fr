@@ -486,13 +486,13 @@ export function PortalFrame({
                 </group>
 
                 {/* Right Rafter Segment from Apex DOWN to Middle Column (pointing RIGHT) */}
-                <group position={[-11.8 + 31.45 + extendRightX, rightColHeight - (extendRightX * Math.tan(rightSectionAngle)), 0]} rotation={[0, 0, -rightSectionAngle]}>
-                    {createRafterAssembly(rightSectionRafterLength - 0.05, true)}
-                </group>
-
-                {/* Middle Rafter Segment from Middle Column UP to Apex */}
                 <group position={[middleColumnX, middleColHeightFinal, 0]} rotation={[0, 0, -middleSectionAngle]}>
                     {createRafterAssembly(middleSectionRafterLength - 0.05, true)}
+                </group>
+
+                {/* Middle Rafter Segment from Middle Column DOWN to Right Overhang */}
+                <group position={[-11.8 + 31.45 + extendRightX, rightColHeight - (extendRightX * Math.tan(rightSectionAngle)), 0]} rotation={[0, 0, -rightSectionAngle]}>
+                    {createRafterAssembly(rightSectionRafterLength - 0.05, true)}
                 </group>
 
                 {/* Diagonal Braces matching the image (Knee Braces / Jarrets / Bracons) */}
