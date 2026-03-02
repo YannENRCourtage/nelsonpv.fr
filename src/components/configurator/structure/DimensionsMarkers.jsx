@@ -604,7 +604,30 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // 10. NEW: Cross Height Marker for Ombrière VL Double 11.3m
 
-    // 10. NEW: Cross Height Marker for Ombrière VL Double 11.3m
+    const crossHeightData = useMemo(() => {
+        if (buildingType === 'ombriere_vl_double' && Math.abs(width - 11.3) < 0.1) {
+            const h = 2.2;
+            const x = 0; // Center
+            const z = 0.3; // USER REQUEST 15/01/2026: Move forward by 30cm
+            const start = new THREE.Vector3(x, 0, z);
+            const end = new THREE.Vector3(x, h, z);
+            const mid = new THREE.Vector3(x, h / 2, z);
+
+            // User wants gap UNDER the text? Or gap around.
+            // Let's assume standard gap around center is what is needed but maybe larger.
+            const localGap = 0.6; // Larger gap
+
+            return {
+                hVal: h,
+                start, end,
+                points: [
+                    [start, new THREE.Vector3(mid.x, mid.y - localGap / 2, mid.z)],
+                    [new THREE.Vector3(mid.x, mid.y + localGap / 2, mid.z), end]
+                ]
+            };
+        }
+        return null;
+    }, [buildingType, width, gapSize]);
 
     // 11. EPONA Specific Custom Markers
     const eponaMarkers = useMemo(() => {
