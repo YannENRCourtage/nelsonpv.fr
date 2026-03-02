@@ -577,16 +577,19 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     // 7b. EPONA/TALIAN Total Width Marker (ACAMA uniquement)
     const acamaTotalWidthData = useMemo(() => {
         if (!isEpona && !isTalian) return null;
-        const totalW = isEpona ? 31.45 : (isTalian4 ? 37.5 : (isTalian3 ? 21.1 : 23.5)); // Phase 18: Talian 3 is 21.1, Talian 1 is 23.5
+        const totalW = isEpona ? 35.3 : (isTalian4 ? 37.5 : (isTalian3 ? 21.1 : 23.5)); // Phase 18: Talian 3 is 21.1, Talian 1 is 23.5, Epona updated to 35.3
         const zPos = (isTalian1 || isTalian3) ? 7.0 : 6.0;
         const yPos = 0.1;
 
         let xStart, xEnd, xMid;
         if (isEpona) {
-            // Epona bounds: left post at -11.8, right post at 19.65
-            xStart = new THREE.Vector3(-11.8, yPos, zPos);
-            xEnd = new THREE.Vector3(19.65, yPos, zPos);
-            xMid = new THREE.Vector3(-11.8 + 31.45 / 2, yPos, zPos);
+            // Epona total width bounds including overhangs: 2.55 (left) + 23.6 (span) + 7.85 (right+overhang) = 34m? 
+            // Wait, user says 35.3m. 
+            // 2.5 (left) + 25 (main) + 7.8 (right) = 35.3. 
+            // Let's center it at 0.
+            xStart = new THREE.Vector3(-35.3 / 2, yPos, zPos);
+            xEnd = new THREE.Vector3(35.3 / 2, yPos, zPos);
+            xMid = new THREE.Vector3(0, yPos, zPos);
         } else {
             xStart = new THREE.Vector3(-totalW / 2, yPos, zPos);
             xEnd = new THREE.Vector3(totalW / 2, yPos, zPos);
@@ -638,7 +641,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const rightPostX = 19.65;
         const zFront = 3.0; // matching default width marker `zFront`
 
-        // Right Span (7.85m)
+        // Right Span (7.8m as requested)
         const rSpanStart = new THREE.Vector3(midPostX, 0.1, zFront);
         const rSpanEnd = new THREE.Vector3(rightPostX, 0.1, zFront);
         const rSpanMid = new THREE.Vector3(midPostX + 7.85 / 2, 0.1, zFront);
@@ -648,9 +651,18 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             [new THREE.Vector3(rSpanMid.x + rSpanGap / 2, 0.1, zFront), rSpanEnd]
         ];
 
+        // Left Awning (2.5m)
+        const lAwningStart = new THREE.Vector3(leftPostX - 2.5, 0.1, zFront);
+        const lAwningEnd = new THREE.Vector3(leftPostX, 0.1, zFront);
+        const lAwningMid = new THREE.Vector3(leftPostX - 1.25, 0.1, zFront);
+        const lAwningPoints = [
+            [lAwningStart, new THREE.Vector3(lAwningMid.x - 1.0, 0.1, zFront)],
+            [new THREE.Vector3(lAwningMid.x + 1.0, 0.1, zFront), lAwningEnd]
+        ];
+
         // Left Height (5.0m)
         const leftEaveH = 5.0;
-        const xLeftMarker = leftPostX - 2.0;
+        const xLeftMarker = leftPostX - 2.5 - 2.0; // Outside awning
         const lHeightStart = new THREE.Vector3(xLeftMarker, 0, 0);
         const lHeightEnd = new THREE.Vector3(xLeftMarker, leftEaveH, 0);
         const lHeightMid = new THREE.Vector3(xLeftMarker, leftEaveH / 2, 0);
@@ -659,8 +671,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             [new THREE.Vector3(xLeftMarker, lHeightMid.y + gapSize / 2, 0), lHeightEnd]
         ];
 
-        // Right Height (3.83m)
-        const rightEaveH = 3.83;
+        // Right Height (3.8m instead of 3.83m)
+        const rightEaveH = 3.8;
         const xRightMarker = rightPostX + 2.0;
         const rHeightStart = new THREE.Vector3(xRightMarker, 0, 0);
         const rHeightEnd = new THREE.Vector3(xRightMarker, rightEaveH, 0);
@@ -672,6 +684,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
         return {
             rSpanStart, rSpanEnd, rSpanMid, rSpanPoints,
+            lAwningStart, lAwningEnd, lAwningMid, lAwningPoints,
             xLeftMarker, lHeightStart, lHeightEnd, lHeightPoints, leftEaveH,
             xRightMarker, rHeightStart, rHeightEnd, rHeightPoints, rightEaveH
         };
@@ -956,7 +969,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={eponaMarkers.rSpanStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={eponaMarkers.rSpanEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text position={[eponaMarkers.rSpanMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                        7.85 m
+                        7.8 m
+                    </Text>
+
+                    {/* Left Awning 2.5m */}
+                    <Line points={eponaMarkers.lAwningPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={eponaMarkers.lAwningPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={eponaMarkers.lAwningStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={eponaMarkers.lAwningEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text position={[eponaMarkers.lAwningMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                        2.5 m
                     </Text>
 
                     {/* Left Height 5m */}

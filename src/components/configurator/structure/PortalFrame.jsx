@@ -490,14 +490,15 @@ export function PortalFrame({
                     {createRafterAssembly(middleSectionRafterLength - 0.05, true)}
                 </group>
 
-                {/* Middle Rafter Segment from Middle Column DOWN to Right Overhang */}
-                <group position={[-11.8 + 31.45 + extendRightX, rightColHeight - (extendRightX * Math.tan(rightSectionAngle)), 0]} rotation={[0, 0, -rightSectionAngle]}>
+                {/* Middle Rafter Segment from Middle Column DOWN to Right Overhang (Appentis section) */}
+                {/* User Request: Lower this part of the structure by 1.5m */}
+                <group position={[-11.8 + 31.45 + extendRightX, rightColHeight - (extendRightX * Math.tan(rightSectionAngle)) - 1.5, 0]} rotation={[0, 0, -rightSectionAngle]}>
                     {createRafterAssembly(rightSectionRafterLength - 0.05, true)}
                 </group>
 
                 {/* Diagonal Braces matching the image (Knee Braces / Jarrets / Bracons) */}
-                {/* Simple Bracons for realism */}
-                <mesh position={[leftColumnX + 0.5, leftColHeight - 0.8, 0]} rotation={[0, 0, Math.PI / 4]} castShadow>
+                {/* User Request: Inverse orientations (pointing outwards) */}
+                <mesh position={[leftColumnX - 0.5, leftColHeight - 0.8, 0]} rotation={[0, 0, -Math.PI / 4]} castShadow>
                     <boxGeometry args={[0.08, 1.5, 0.08]} />
                     <meshStandardMaterial color="#6a747b" />
                 </mesh>
@@ -509,7 +510,7 @@ export function PortalFrame({
                     <boxGeometry args={[0.08, 1.5, 0.08]} />
                     <meshStandardMaterial color="#6a747b" />
                 </mesh>
-                <mesh position={[(-11.8 + 31.45) - 0.5, rightColHeight - 0.8, 0]} rotation={[0, 0, -Math.PI / 4]} castShadow>
+                <mesh position={[(-11.8 + 31.45) + 0.5, rightColHeight - 0.8, 0]} rotation={[0, 0, Math.PI / 4]} castShadow>
                     <boxGeometry args={[0.08, 1.5, 0.08]} />
                     <meshStandardMaterial color="#6a747b" />
                 </mesh>

@@ -90,12 +90,15 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
                 const xPerp = perpOffset * Math.sin(mainSlope);
                 const yPerp = perpOffset * Math.cos(mainSlope);
 
+                // User Request: Lower purlins on the right slope by 1.5m (structural matching)
+                const yOffset = -1.5;
+
                 purlins.push(
                     <mesh
                         key={`Bay${bayIndex}-Epona-R-${i}`}
                         geometry={bayGeometry}
                         material={material}
-                        position={[apexX + xLocal + xPerp, apexY + yLocal + yPerp, zStart]}
+                        position={[apexX + xLocal + xPerp, apexY + yLocal + yPerp + yOffset, zStart]}
                         rotation={[0, Math.PI, mainSlope]}
                     />
                 );

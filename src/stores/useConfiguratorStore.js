@@ -64,7 +64,7 @@ export const EPONA_MODELS = {
         width: 23.6,
         fixedLength: 45,     // Longueur affichée
         eaveHeight: 5.0,     // Sablière Gauche (Image 1)
-        rightEaveHeight: 3.83, // Sablière Droite (Image 1)
+        rightEaveHeight: 3.8, // Sablière Droite (Image 1) - Corrected 3.83 -> 3.8
         ridgeHeight: 9.41,   // Faîtage (Image 1)
         roofPitch: 17,      // Pente réelle 3D pour alignement (Phase 16)
         bayCount: 6,
@@ -77,7 +77,7 @@ export const EPONA_MODELS = {
         width: 23.6,
         fixedLength: 65,     // Longueur affichée
         eaveHeight: 5.0,     // Sablière Gauche (Image 1)
-        rightEaveHeight: 3.83, // Sablière Droite (Image 1)
+        rightEaveHeight: 3.8, // Sablière Droite (Image 1) - Corrected 3.83 -> 3.8
         ridgeHeight: 9.41,   // Faîtage (Image 1)
         roofPitch: 17,      // Pente réelle 3D pour alignement (Phase 16)
         bayCount: 8,
