@@ -1821,12 +1821,14 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
   const [info, setInfo] = useState({ lat: 0, lng: 0, alt: '...', address: '...', parcel: '...', zoning: '...' });
   const [loading, setLoading] = useState(false);
 
-  // Initialize target at center if not set
+  // Initialize target: use map center or fallback to 7 rue Gutenberg, Mérignac (siège ENR Courtage)
+  const DEFAULT_LAT = 44.8378;
+  const DEFAULT_LNG = -0.6122;
   useEffect(() => {
     if (!targetPos) {
-      setTargetPos(map.getCenter());
+      setTargetPos({ lat: DEFAULT_LAT, lng: DEFAULT_LNG });
     }
-  }, [map, targetPos, setTargetPos]);
+  }, [targetPos, setTargetPos]);
 
   useEffect(() => {
     if (hoverInfo) {
@@ -2283,12 +2285,28 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
           return;
         }
       }
+      // Pas de GPS : géocoder l'adresse du projet via l'API Adresse nationale
       if (project?.address || project?.zip || project?.city) {
         const parts = [project.address, project.zip, project.city].filter(p => p && p.trim() !== '');
         if (parts.length > 0) {
-          const fullAddress = parts.join(', ');
-          const event = new CustomEvent('geosearch/search', { detail: { query: fullAddress, keepPopupOpen: false } });
-          map.getContainer().dispatchEvent(event);
+          const fullAddress = parts.join(' ');
+          // Géocodage via l'API Adresse
+          fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(fullAddress)}&limit=1`)
+            .then(r => r.json())
+            .then(data => {
+              const feature = data.features?.[0];
+              if (feature) {
+                const [lng, lat] = feature.geometry.coordinates;
+                map.setView([lat, lng], 17);
+                if (setTargetPos) setTargetPos({ lat, lng });
+                if (setShowInfoPanel) setShowInfoPanel(true);
+              }
+            })
+            .catch(() => {
+              // Fallback : recherche geosearch
+              const event = new CustomEvent('geosearch/search', { detail: { query: fullAddress, keepPopupOpen: false } });
+              map.getContainer().dispatchEvent(event);
+            });
         }
       }
     };
@@ -2727,10 +2745,10 @@ export default function MapElements({ style = {}, project, setProject, onAddress
   const [altimetryProfile, setAltimetryProfile] = useState(null);
   const [rectangleStart, setRectangleStart] = useState(null);
 
-  const [targetPos, setTargetPos] = useState(null);
+  const [targetPos, setTargetPos] = useState(null); // initialized in MapTargetInfo via useEffect
   const [map, setMap] = useState(null); // State for map instance
   const [hoverInfo, setHoverInfo] = useState(null); // New state for shared hover info
-  const [showInfoPanel, setShowInfoPanel] = useState(false); // Info panel shown on dblclick
+  const [showInfoPanel, setShowInfoPanel] = useState(true); // Always visible by défaut
   const layersRef = useRef({});
   const hasUserInteractedRef = useRef(false);
 

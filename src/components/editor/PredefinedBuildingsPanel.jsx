@@ -241,45 +241,45 @@ const buildingsData = [
 // ─── ACAMA ──────────────────────────────────────────────────────────────────
 // Données issues du tableau fourni par l'utilisateur (Gamme / # / Longueur / Largeur / Surface / Puissance / Ratio)
 const acamaBuildingsData = [
-  // TALIAN 1
-  { code: 'T1 MINI', gamme: 'TALIAN 1', length: 52.7, width: 24.4, surface: 1288, power: 266.8, ratio: 0.53 },
-  { code: 'T1 MID', gamme: 'TALIAN 1', length: 60.2, width: 24.4, surface: 1471, power: 303.6, ratio: 0.54 },
-  { code: 'T1 MAXI', gamme: 'TALIAN 1', length: 67.5, width: 24.4, surface: 1650, power: 340.4, ratio: 0.54 },
-  // TALIAN 2
-  { code: 'T2 MINI', gamme: 'TALIAN 2', length: 37.3, width: 24.0, surface: 896, power: 184.0, ratio: 0.69 },
-  { code: 'T2 MID', gamme: 'TALIAN 2', length: 62.0, width: 24.0, surface: 1488, power: 312.8, ratio: 0.68 },
-  { code: 'T2 MAXI', gamme: 'TALIAN 2', length: 68.2, width: 24.0, surface: 1637, power: 349.6, ratio: 0.67 },
-  // TALIAN 3
-  { code: 'T3 MINI', gamme: 'TALIAN 3', length: 52.7, width: 21.5, surface: 1133, power: 240.1, ratio: 0.46 },
-  { code: 'T3 MID', gamme: 'TALIAN 3', length: 68.0, width: 21.5, surface: 1462, power: 314.6, ratio: 0.48 },
-  { code: 'T3 MAXI', gamme: 'TALIAN 3', length: 90.2, width: 21.5, surface: 1939, power: 414.0, ratio: 0.45 },
-  // TALIAN 4
-  { code: 'T4 MINI', gamme: 'TALIAN 4', length: 37.5, width: 37.7, surface: 1415, power: 309.1, ratio: 0.52 },
-  { code: 'T4 MID', gamme: 'TALIAN 4', length: 45.0, width: 37.7, surface: 1697, power: 368.0, ratio: 0.51 },
-  { code: 'T4 MAXI', gamme: 'TALIAN 4', length: 63.2, width: 37.7, surface: 2384, power: 500.0, ratio: 0.50 },
-  // TALIAN 5
-  { code: 'T5 MINI', gamme: 'TALIAN 5', length: 31.0, width: 28.0, surface: 866, power: 179.9, ratio: 0.60 },
-  { code: 'T5 MID', gamme: 'TALIAN 5', length: 50.6, width: 28.0, surface: 1414, power: 296.2, ratio: 0.58 },
-  { code: 'T5 MAXI', gamme: 'TALIAN 5', length: 60.0, width: 28.0, surface: 1677, power: 349.1, ratio: 0.59 },
-  // TALIAN 6
-  { code: 'T6 MINI', gamme: 'TALIAN 6', length: 39.4, width: 17.4, surface: 687, power: 161.9, ratio: 0.58 },
-  { code: 'T6 MID', gamme: 'TALIAN 6', length: 64.5, width: 17.4, surface: 1125, power: 265.0, ratio: 0.58 },
-  { code: 'T6 MAXI', gamme: 'TALIAN 6', length: 83.2, width: 17.4, surface: 1451, power: 338.6, ratio: 0.57 },
-  // TALIAN 7
-  { code: 'T7 MINI', gamme: 'TALIAN 7', length: 36.0, width: 19.8, surface: 714, power: 156.4, ratio: 0.61 },
-  { code: 'T7 MID', gamme: 'TALIAN 7', length: 60.0, width: 19.8, surface: 1190, power: 258.1, ratio: 0.61 },
-  { code: 'T7 MAXI', gamme: 'TALIAN 7', length: 78.0, width: 19.8, surface: 1548, power: 336.3, ratio: 0.58 },
-  // TALIAN 8
-  { code: 'T8 MINI', gamme: 'TALIAN 8', length: 43.2, width: 27.3, surface: 1180, power: 242.9, ratio: 0.54 },
-  { code: 'T8 MID', gamme: 'TALIAN 8', length: 57.6, width: 27.3, surface: 1574, power: 323.8, ratio: 0.53 },
-  { code: 'T8 MAXI', gamme: 'TALIAN 8', length: 86.6, width: 27.3, surface: 2366, power: 485.8, ratio: 0.50 },
-  // TALIAN 9
-  { code: 'T9 MINI', gamme: 'TALIAN 9', length: 37.5, width: 31.6, surface: 1185, power: 251.2, ratio: 0.55 },
-  { code: 'T9 MID', gamme: 'TALIAN 9', length: 52.5, width: 31.6, surface: 1659, power: 346.8, ratio: 0.50 },
-  { code: 'T9 MAXI', gamme: 'TALIAN 9', length: 75.0, width: 31.6, surface: 2370, power: 500.0, ratio: 0.52 },
-  // EPONA
-  { code: 'EQUESTRE 64m', gamme: 'EPONA 65', length: 65.0, width: 29.5, surface: 1918, power: 500.0, ratio: 0.52 },
-  { code: 'EQUESTRE 44m', gamme: 'EPONA 45', length: 45.0, width: 29.5, surface: 1328, power: 356.5, ratio: 0.57 },
+  // TALIAN 1 – Pondération toiture 1 : 50%
+  { code: 'T1 MINI', gamme: 'TALIAN 1', length: 52.7, width: 24.4, surface: 1288, power: 266.8, ratio: 0.53, roofWeighting: 50 },
+  { code: 'T1 MID', gamme: 'TALIAN 1', length: 60.2, width: 24.4, surface: 1471, power: 303.6, ratio: 0.54, roofWeighting: 50 },
+  { code: 'T1 MAXI', gamme: 'TALIAN 1', length: 67.5, width: 24.4, surface: 1650, power: 340.4, ratio: 0.54, roofWeighting: 50 },
+  // TALIAN 2 – Pondération toiture 1 : 50%
+  { code: 'T2 MINI', gamme: 'TALIAN 2', length: 37.3, width: 24.0, surface: 896, power: 184.0, ratio: 0.69, roofWeighting: 50 },
+  { code: 'T2 MID', gamme: 'TALIAN 2', length: 62.0, width: 24.0, surface: 1488, power: 312.8, ratio: 0.68, roofWeighting: 50 },
+  { code: 'T2 MAXI', gamme: 'TALIAN 2', length: 68.2, width: 24.0, surface: 1637, power: 349.6, ratio: 0.67, roofWeighting: 50 },
+  // TALIAN 3 – Pondération toiture 1 : 50%
+  { code: 'T3 MINI', gamme: 'TALIAN 3', length: 52.7, width: 21.5, surface: 1133, power: 240.1, ratio: 0.46, roofWeighting: 50 },
+  { code: 'T3 MID', gamme: 'TALIAN 3', length: 68.0, width: 21.5, surface: 1462, power: 314.6, ratio: 0.48, roofWeighting: 50 },
+  { code: 'T3 MAXI', gamme: 'TALIAN 3', length: 90.2, width: 21.5, surface: 1939, power: 414.0, ratio: 0.45, roofWeighting: 50 },
+  // TALIAN 4 – Pondération toiture 1 : 50%
+  { code: 'T4 MINI', gamme: 'TALIAN 4', length: 37.5, width: 37.7, surface: 1415, power: 309.1, ratio: 0.52, roofWeighting: 50 },
+  { code: 'T4 MID', gamme: 'TALIAN 4', length: 45.0, width: 37.7, surface: 1697, power: 368.0, ratio: 0.51, roofWeighting: 50 },
+  { code: 'T4 MAXI', gamme: 'TALIAN 4', length: 63.2, width: 37.7, surface: 2384, power: 500.0, ratio: 0.50, roofWeighting: 50 },
+  // TALIAN 5 – Pondération toiture 1 : 85%
+  { code: 'T5 MINI', gamme: 'TALIAN 5', length: 31.0, width: 28.0, surface: 866, power: 179.9, ratio: 0.60, roofWeighting: 85 },
+  { code: 'T5 MID', gamme: 'TALIAN 5', length: 50.6, width: 28.0, surface: 1414, power: 296.2, ratio: 0.58, roofWeighting: 85 },
+  { code: 'T5 MAXI', gamme: 'TALIAN 5', length: 60.0, width: 28.0, surface: 1677, power: 349.1, ratio: 0.59, roofWeighting: 85 },
+  // TALIAN 6 – Pondération toiture 1 : 79%
+  { code: 'T6 MINI', gamme: 'TALIAN 6', length: 39.4, width: 17.4, surface: 687, power: 161.9, ratio: 0.58, roofWeighting: 79 },
+  { code: 'T6 MID', gamme: 'TALIAN 6', length: 64.5, width: 17.4, surface: 1125, power: 265.0, ratio: 0.58, roofWeighting: 79 },
+  { code: 'T6 MAXI', gamme: 'TALIAN 6', length: 83.2, width: 17.4, surface: 1451, power: 338.6, ratio: 0.57, roofWeighting: 79 },
+  // TALIAN 7 – Pondération toiture 1 : 100%
+  { code: 'T7 MINI', gamme: 'TALIAN 7', length: 36.0, width: 19.8, surface: 714, power: 156.4, ratio: 0.61, roofWeighting: 100 },
+  { code: 'T7 MID', gamme: 'TALIAN 7', length: 60.0, width: 19.8, surface: 1190, power: 258.1, ratio: 0.61, roofWeighting: 100 },
+  { code: 'T7 MAXI', gamme: 'TALIAN 7', length: 78.0, width: 19.8, surface: 1548, power: 336.3, ratio: 0.58, roofWeighting: 100 },
+  // TALIAN 8 – Pondération toiture 1 : 68%
+  { code: 'T8 MINI', gamme: 'TALIAN 8', length: 43.2, width: 27.3, surface: 1180, power: 242.9, ratio: 0.54, roofWeighting: 68 },
+  { code: 'T8 MID', gamme: 'TALIAN 8', length: 57.6, width: 27.3, surface: 1574, power: 323.8, ratio: 0.53, roofWeighting: 68 },
+  { code: 'T8 MAXI', gamme: 'TALIAN 8', length: 86.6, width: 27.3, surface: 2366, power: 485.8, ratio: 0.50, roofWeighting: 68 },
+  // TALIAN 9 – Pondération toiture 1 : 72%
+  { code: 'T9 MINI', gamme: 'TALIAN 9', length: 37.5, width: 31.6, surface: 1185, power: 251.2, ratio: 0.55, roofWeighting: 72 },
+  { code: 'T9 MID', gamme: 'TALIAN 9', length: 52.5, width: 31.6, surface: 1659, power: 346.8, ratio: 0.50, roofWeighting: 72 },
+  { code: 'T9 MAXI', gamme: 'TALIAN 9', length: 75.0, width: 31.6, surface: 2370, power: 500.0, ratio: 0.52, roofWeighting: 72 },
+  // EPONA – Pondération toiture 1 : 57%
+  { code: 'EQUESTRE 64m', gamme: 'EPONA 65', length: 65.0, width: 29.5, surface: 1918, power: 500.0, ratio: 0.52, roofWeighting: 57 },
+  { code: 'EQUESTRE 44m', gamme: 'EPONA 45', length: 45.0, width: 29.5, surface: 1328, power: 356.5, ratio: 0.57, roofWeighting: 57 },
 ];
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
@@ -382,9 +382,9 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
     const building = activeData.find(b => b.code === selectedCode);
     if (!building) return null;
 
-    // ACAMA: no extensions, return as-is
+    // ACAMA: no extensions, return as-is with roofWeighting from table
     if (isAcama) {
-      return { ...building, roofWeighting: 50 };
+      return { ...building, roofWeighting: building.roofWeighting ?? 50 };
     }
 
     // GREEN INVEST: extension logic
