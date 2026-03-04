@@ -1994,7 +1994,7 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
 }
 
 
-function MapEvents({ project, setProject, onAddressFound, onAddressSearched, setPhotoToPlace, onBuildingSelect, features, setFeatures, setIsAzimuthDefaulted, isRotatingRef, lastSyncedAzimuthRef }) {
+function MapEvents({ project, setProject, onAddressFound, onAddressSearched, setPhotoToPlace, onBuildingSelect, features, setFeatures, setIsAzimuthDefaulted, isRotatingRef, lastSyncedAzimuthRef, setTargetPos, setShowInfoPanel }) {
   const map = useMap();
   // lastSyncedAzimuthRef is now passed as prop
 
@@ -2273,7 +2273,16 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
       }
     };
     const goToProjectAddress = () => {
-      if (project?.gps) { const [lat, lng] = project.gps.split(',').map(Number); if (!isNaN(lat) && !isNaN(lng)) { map.setView([lat, lng], 18); return; } }
+      if (project?.gps) {
+        const [lat, lng] = project.gps.split(',').map(Number);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          map.setView([lat, lng], 18);
+          // Set crosshair target and open info panel
+          if (setTargetPos) setTargetPos({ lat, lng });
+          if (setShowInfoPanel) setShowInfoPanel(true);
+          return;
+        }
+      }
       if (project?.address || project?.zip || project?.city) {
         const parts = [project.address, project.zip, project.city].filter(p => p && p.trim() !== '');
         if (parts.length > 0) {
@@ -2308,7 +2317,7 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
       window.removeEventListener("map:zoom-in", handleZoomIn);
       window.removeEventListener("map:zoom-out", handleZoomOut);
     };
-  }, [map, project, onAddressFound]);
+  }, [map, project, onAddressFound, setTargetPos, setShowInfoPanel]);
 
   useEffect(() => {
     const handleSearchResult = (e) => { onAddressSearched(e.location); };
@@ -2964,6 +2973,8 @@ export default function MapElements({ style = {}, project, setProject, onAddress
             setFeatures={setFeaturesWrapper} // Use Wrapper
             onRightClick={(latlng) => setTargetPos(latlng)}
             isRotatingRef={isRotatingRef}
+            setTargetPos={setTargetPos}
+            setShowInfoPanel={setShowInfoPanel}
           />
           <PointInfoPanel pointInfo={pointInfo} setPointInfo={setPointInfo} />
           <AltimetryProfile
