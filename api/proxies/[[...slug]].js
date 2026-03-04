@@ -29,6 +29,7 @@ export default async function handler(req, res) {
             const params = new URLSearchParams(req.query);
             params.delete('slug'); // Remove slug from PVGIS original params
             const pvgisUrl = `https://re.jrc.ec.europa.eu/api/v5_2/PVcalc?${params.toString()}`;
+            console.log(`[PROXY PVGIS] Fetching: ${pvgisUrl}`);
             const response = await fetch(pvgisUrl, {
                 method: 'GET',
                 headers: { 'Accept': 'application/json', 'User-Agent': 'NelsonPV-App/1.0' }

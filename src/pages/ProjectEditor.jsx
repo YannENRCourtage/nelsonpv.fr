@@ -1055,7 +1055,7 @@ export default function ProjectEditor() {
 
                                 const angle = p.panelAngle || 15;
                                 const aspect = parseFloat(p.panelAspect || 0);
-                                const weighting = p.roofWeighting !== undefined ? p.roofWeighting : 50;
+                                const weighting = parseFloat(p.roofWeighting !== undefined ? p.roofWeighting : 50);
 
                                 // PVGIS Logic for ACAMA vs others
                                 const pvgisLoss = activeTenantId === 'acama' ? 10 : 6;
@@ -1071,8 +1071,12 @@ export default function ProjectEditor() {
                                 try {
                                   // Fetch PVGIS for Line 1 primary aspect (T1)
                                   const pvgisUrl1 = `/api/proxies/pvgis?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
+                                  console.log("[PVGIS] Fetching T1:", pvgisUrl1);
                                   const res1 = await fetch(pvgisUrl1);
-                                  if (!res1.ok) throw new Error("Erreur PVGIS T1");
+                                  if (!res1.ok) {
+                                    const errData = await res1.json().catch(() => ({}));
+                                    throw new Error(`T1 (${res1.status}): ${errData.details || errData.error || res1.statusText}`);
+                                  }
                                   const data1 = await res1.json();
                                   const getEy = (d) => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
                                   const yieldT1 = parseFloat(getEy(data1));
@@ -1080,7 +1084,10 @@ export default function ProjectEditor() {
                                   // Fetch PVGIS for Line 1 opposite aspect (T2)
                                   const pvgisUrl2 = `/api/proxies/pvgis?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${oppositeAspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
                                   const res2 = await fetch(pvgisUrl2);
-                                  if (!res2.ok) throw new Error("Erreur PVGIS T2");
+                                  if (!res2.ok) {
+                                    const errData = await res2.json().catch(() => ({}));
+                                    throw new Error(`T2 (${res2.status}): ${errData.details || errData.error || res2.statusText}`);
+                                  }
                                   const data2 = await res2.json();
                                   const yieldT2 = parseFloat(getEy(data2));
 
@@ -1098,8 +1105,12 @@ export default function ProjectEditor() {
                                     });
                                   }
                                 } catch (e) {
-                                  console.error(e);
-                                  toast({ title: "Erreur", description: "Échec calcul PVGIS", variant: "destructive" });
+                                  console.error("[PVGIS L1 Error]", e);
+                                  toast({
+                                    title: "Erreur Ligne 1",
+                                    description: `Échec calcul: ${e.message || "Erreur inconnue"}`,
+                                    variant: "destructive"
+                                  });
                                 }
                               }}
                             >
@@ -1212,7 +1223,7 @@ export default function ProjectEditor() {
 
                               const angle = p.panelAngle2 || 15;
                               const aspect = parseFloat(p.panelAspect2 || 0);
-                              const weighting = p.roofWeighting2 !== undefined ? p.roofWeighting2 : 50;
+                              const weighting = parseFloat(p.roofWeighting2 !== undefined ? p.roofWeighting2 : 50);
 
                               // PVGIS Logic for ACAMA vs others
                               const pvgisLoss = activeTenantId === 'acama' ? 10 : 6;
@@ -1228,8 +1239,12 @@ export default function ProjectEditor() {
                               try {
                                 // Fetch PVGIS for Line 2 primary aspect (T1)
                                 const pvgisUrl1 = `/api/proxies/pvgis?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
+                                console.log("[PVGIS] Fetching T1:", pvgisUrl1);
                                 const res1 = await fetch(pvgisUrl1);
-                                if (!res1.ok) throw new Error("Erreur PVGIS T1");
+                                if (!res1.ok) {
+                                  const errData = await res1.json().catch(() => ({}));
+                                  throw new Error(`T1 (${res1.status}): ${errData.details || errData.error || res1.statusText}`);
+                                }
                                 const data1 = await res1.json();
                                 const getEy = (d) => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
                                 const yieldT1 = parseFloat(getEy(data1));
@@ -1237,7 +1252,10 @@ export default function ProjectEditor() {
                                 // Fetch PVGIS for Line 1 opposite aspect (T2)
                                 const pvgisUrl2 = `/api/proxies/pvgis?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${oppositeAspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
                                 const res2 = await fetch(pvgisUrl2);
-                                if (!res2.ok) throw new Error("Erreur PVGIS T2");
+                                if (!res2.ok) {
+                                  const errData = await res2.json().catch(() => ({}));
+                                  throw new Error(`T2 (${res2.status}): ${errData.details || errData.error || res2.statusText}`);
+                                }
                                 const data2 = await res2.json();
                                 const yieldT2 = parseFloat(getEy(data2));
 
@@ -1255,8 +1273,12 @@ export default function ProjectEditor() {
                                   });
                                 }
                               } catch (e) {
-                                console.error(e);
-                                toast({ title: "Erreur", description: "Échec calcul PVGIS", variant: "destructive" });
+                                console.error("[PVGIS L2 Error]", e);
+                                toast({
+                                  title: "Erreur Ligne 2",
+                                  description: `Échec calcul: ${e.message || "Erreur inconnue"}`,
+                                  variant: "destructive"
+                                });
                               }
                             }}
                           >
