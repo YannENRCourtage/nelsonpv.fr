@@ -476,23 +476,29 @@ export default function ProjectEditor() {
           updateProject({ roofWeighting2: val });
         }
       } else {
-        // We are targeting the 1st building (or preparing it)
+        // We have 0 or 1 building
         targetBuilding = predefinedBuildings[0];
 
-        // FIX: Prevent overwriting B1 if selecting a NEW building type (preparing B2)
-        // If B1 exists and has different code, we are likely preparing B2, so DOT NOT touch B1 params.
         if (targetBuilding) {
           if (targetBuilding.buildingName === buildingData.code) {
-            shouldUpdate = true;
+            // Editing B1
+            if (project?.roofWeighting !== val) {
+              updateProject({ roofWeighting: val });
+              setIsWeightingDefaulted(true);
+            }
+          } else {
+            // Preparing B2
+            if (project?.roofWeighting2 !== val) {
+              updateProject({ roofWeighting2: val });
+              if (typeof setIsWeightingDefaulted2 === 'function') setIsWeightingDefaulted2(true);
+            }
           }
         } else {
           // No building exists yet, allowed to update defaults
-          shouldUpdate = true;
-        }
-
-        if (shouldUpdate && project?.roofWeighting !== val) {
-          updateProject({ roofWeighting: val });
-          setIsWeightingDefaulted(true);
+          if (project?.roofWeighting !== val) {
+            updateProject({ roofWeighting: val });
+            setIsWeightingDefaulted(true);
+          }
         }
       }
     }

@@ -921,7 +921,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                 return (
                   <Marker position={rotatedCenter} opacity={0}>
                     <Tooltip permanent direction="center" className="measure-label">
-                      {prefix}{f.buildingName && `${f.buildingName} - `} {formatDistance(height)} × {formatDistance(width)} ({formatArea(area)} | {calculateSolarPower(area)})
+                      {prefix}{f.buildingName && `${f.buildingName} - `} {f.buildingLength != null ? f.buildingLength : formatDistance(height)} x {f.buildingWidth != null ? f.buildingWidth : formatDistance(width)} m ({f.buildingSurface != null ? `${f.buildingSurface} m²` : formatArea(area)} | {f.buildingPower != null ? `${f.buildingPower} kWc` : calculateSolarPower(area)})
                     </Tooltip>
                   </Marker>
                 );
@@ -1826,8 +1826,8 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
   const [loading, setLoading] = useState(false);
 
   // Initialize target: use map center or fallback to 7 rue Gutenberg, Mérignac (siège ENR Courtage)
-  const DEFAULT_LAT = 44.8378;
-  const DEFAULT_LNG = -0.6122;
+  const DEFAULT_LAT = 44.82618;
+  const DEFAULT_LNG = -0.671985;
   useEffect(() => {
     if (!targetPos) {
       setTargetPos({ lat: DEFAULT_LAT, lng: DEFAULT_LNG });
@@ -2070,7 +2070,7 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
       const id = crypto.randomUUID();
       const initialAngle = 0;
       // Mark as predefined building to distinguish from manual rectangles
-      setFeatures(arr => [...arr, { id, type: "rectangle", buildingName: building.code, coords: [nw, ne, se, sw], angle: initialAngle, isPredefinedBuilding: true }]);
+      setFeatures(arr => [...arr, { id, type: "rectangle", buildingName: building.code, coords: [nw, ne, se, sw], angle: initialAngle, isPredefinedBuilding: true, buildingLength: building.length, buildingWidth: building.width, buildingSurface: building.surface, buildingPower: building.power }]);
 
       // Update Azimuth immediately
       const az = calculateAzimuthFromAngle(initialAngle);
@@ -2164,7 +2164,7 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
             );
           });
 
-          return { ...f, coords: newCoords, buildingName: building.code, isPredefinedBuilding: true, angle: currentAngle };
+          return { ...f, coords: newCoords, buildingName: building.code, isPredefinedBuilding: true, angle: currentAngle, buildingLength: building.length, buildingWidth: building.width, buildingSurface: building.surface, buildingPower: building.power };
         });
       });
       console.log('Updated building dimensions:', building.length, 'x', building.width);
