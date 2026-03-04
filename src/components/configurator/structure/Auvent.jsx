@@ -338,9 +338,8 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     let roofY = -0.10; // Default baseline
 
     // TALIAN refinements (ACAMA)
-    // TALIAN 3: Lower roof by 80cm total (was 70cm, now +10cm)
-    // TALIAN 1: Lower roof by 5cm
-    if (isTalian3) roofY -= 0.80;
+    // TALIAN 3: Lower roof by 110cm total (was 80cm, -30cm requested)
+    if (isTalian3) roofY -= 1.10;
 
     else if (isTalian1) roofY -= 0.05;
 
@@ -419,7 +418,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
                 <mesh
                     position={[
                         auventWidth,
-                        -auventWidth * Math.tan(angleRad) - 0.1 + 0.25,
+                        -auventWidth * Math.tan(angleRad) - 0.1 + (isTalian3 ? -0.25 : 0.25),
                         length / 2
                     ]}
                     rotation={[0, 0, 0]}

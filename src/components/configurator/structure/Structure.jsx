@@ -96,6 +96,7 @@ export function Structure() {
                                 return 5.0 + 11.8 * Math.tan(mainSlope) + 0.5; // True geometric apex + offset
                             }
                             if (config.buildingType === 'symetrique' && Math.abs(width - 18.8) < 0.1) return calculatedRidgeHeight + 0.5;
+                            if (config.buildingType === 'symetrique' && Math.abs(width - 17.5) < 0.1) return calculatedRidgeHeight + 0.6;
                         }
                         return calculatedRidgeHeight + 0.5;
                     })()}
