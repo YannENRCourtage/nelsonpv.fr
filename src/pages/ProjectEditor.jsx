@@ -1732,7 +1732,7 @@ export default function ProjectEditor() {
         {/* Desktop Aside Panel */}
         <aside className="col-span-1 lg:col-span-3 hidden lg:flex flex-col gap-6">
           <SymbolsPanel onSymbolSelect={handleSymbolSelect} selectedSymbol={symbolToPlace} />
-          <PredefinedBuildingsPanel onBuildingSelect={handleBuildingSelect} onConfigChange={handleBuildingConfigChange} />
+          <PredefinedBuildingsPanel onBuildingSelect={handleBuildingSelect} onConfigChange={handleBuildingConfigChange} tenantId={activeTenantId} />
           <div className="rounded-2xl bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Capturer la vue</h3>
@@ -1828,7 +1828,7 @@ export default function ProjectEditor() {
             </button>
             {isBuildingsOpen && (
               <div className="px-3 pb-3">
-                <PredefinedBuildingsPanel onBuildingSelect={handleBuildingSelect} onConfigChange={handleBuildingConfigChange} />
+                <PredefinedBuildingsPanel onBuildingSelect={handleBuildingSelect} onConfigChange={handleBuildingConfigChange} tenantId={activeTenantId} />
               </div>
             )}
           </div>

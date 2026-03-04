@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Building2 } from 'lucide-react';
 
+// ─── GREEN INVEST ────────────────────────────────────────────────────────────
 const buildingsData = [
   { code: 'O1', length: 30, width: 16.4, surface: 492, power: 96, ratio: 0.6 },
   { code: 'O2', length: 37.5, width: 16.4, surface: 615, power: 126, ratio: 0.55 },
@@ -237,25 +238,61 @@ const buildingsData = [
   { code: 'S40', length: 52.5, width: 41.5, surface: 2178, power: 460, ratio: 0.48 },
 ];
 
+// ─── ACAMA ──────────────────────────────────────────────────────────────────
+// Données issues du tableau fourni par l'utilisateur (Gamme / # / Longueur / Largeur / Surface / Puissance / Ratio)
+const acamaBuildingsData = [
+  // TALIAN 1
+  { code: 'T1 MINI', gamme: 'TALIAN 1', length: 52.7, width: 24.4, surface: 1288, power: 266.8, ratio: 0.53 },
+  { code: 'T1 MID', gamme: 'TALIAN 1', length: 60.2, width: 24.4, surface: 1471, power: 303.6, ratio: 0.54 },
+  { code: 'T1 MAXI', gamme: 'TALIAN 1', length: 67.5, width: 24.4, surface: 1650, power: 340.4, ratio: 0.54 },
+  // TALIAN 2
+  { code: 'T2 MINI', gamme: 'TALIAN 2', length: 37.3, width: 24.0, surface: 896, power: 184.0, ratio: 0.69 },
+  { code: 'T2 MID', gamme: 'TALIAN 2', length: 62.0, width: 24.0, surface: 1488, power: 312.8, ratio: 0.68 },
+  { code: 'T2 MAXI', gamme: 'TALIAN 2', length: 68.2, width: 24.0, surface: 1637, power: 349.6, ratio: 0.67 },
+  // TALIAN 3
+  { code: 'T3 MINI', gamme: 'TALIAN 3', length: 52.7, width: 21.5, surface: 1133, power: 240.1, ratio: 0.46 },
+  { code: 'T3 MID', gamme: 'TALIAN 3', length: 68.0, width: 21.5, surface: 1462, power: 314.6, ratio: 0.48 },
+  { code: 'T3 MAXI', gamme: 'TALIAN 3', length: 90.2, width: 21.5, surface: 1939, power: 414.0, ratio: 0.45 },
+  // TALIAN 4
+  { code: 'T4 MINI', gamme: 'TALIAN 4', length: 37.5, width: 37.7, surface: 1415, power: 309.1, ratio: 0.52 },
+  { code: 'T4 MID', gamme: 'TALIAN 4', length: 45.0, width: 37.7, surface: 1697, power: 368.0, ratio: 0.51 },
+  { code: 'T4 MAXI', gamme: 'TALIAN 4', length: 63.2, width: 37.7, surface: 2384, power: 500.0, ratio: 0.50 },
+  // TALIAN 5
+  { code: 'T5 MINI', gamme: 'TALIAN 5', length: 31.0, width: 28.0, surface: 866, power: 179.9, ratio: 0.60 },
+  { code: 'T5 MID', gamme: 'TALIAN 5', length: 50.6, width: 28.0, surface: 1414, power: 296.2, ratio: 0.58 },
+  { code: 'T5 MAXI', gamme: 'TALIAN 5', length: 60.0, width: 28.0, surface: 1677, power: 349.1, ratio: 0.59 },
+  // TALIAN 6
+  { code: 'T6 MINI', gamme: 'TALIAN 6', length: 39.4, width: 17.4, surface: 687, power: 161.9, ratio: 0.58 },
+  { code: 'T6 MID', gamme: 'TALIAN 6', length: 64.5, width: 17.4, surface: 1125, power: 265.0, ratio: 0.58 },
+  { code: 'T6 MAXI', gamme: 'TALIAN 6', length: 83.2, width: 17.4, surface: 1451, power: 338.6, ratio: 0.57 },
+  // TALIAN 7
+  { code: 'T7 MINI', gamme: 'TALIAN 7', length: 36.0, width: 19.8, surface: 714, power: 156.4, ratio: 0.61 },
+  { code: 'T7 MID', gamme: 'TALIAN 7', length: 60.0, width: 19.8, surface: 1190, power: 258.1, ratio: 0.61 },
+  { code: 'T7 MAXI', gamme: 'TALIAN 7', length: 78.0, width: 19.8, surface: 1548, power: 336.3, ratio: 0.58 },
+  // TALIAN 8
+  { code: 'T8 MINI', gamme: 'TALIAN 8', length: 43.2, width: 27.3, surface: 1180, power: 242.9, ratio: 0.54 },
+  { code: 'T8 MID', gamme: 'TALIAN 8', length: 57.6, width: 27.3, surface: 1574, power: 323.8, ratio: 0.53 },
+  { code: 'T8 MAXI', gamme: 'TALIAN 8', length: 86.6, width: 27.3, surface: 2366, power: 485.8, ratio: 0.50 },
+  // TALIAN 9
+  { code: 'T9 MINI', gamme: 'TALIAN 9', length: 37.5, width: 31.6, surface: 1185, power: 251.2, ratio: 0.55 },
+  { code: 'T9 MID', gamme: 'TALIAN 9', length: 52.5, width: 31.6, surface: 1659, power: 346.8, ratio: 0.50 },
+  { code: 'T9 MAXI', gamme: 'TALIAN 9', length: 75.0, width: 31.6, surface: 2370, power: 500.0, ratio: 0.52 },
+  // EPONA
+  { code: 'EQUESTRE 64m', gamme: 'EPONA 65', length: 65.0, width: 29.5, surface: 1918, power: 500.0, ratio: 0.52 },
+  { code: 'EQUESTRE 44m', gamme: 'EPONA 45', length: 45.0, width: 29.5, surface: 1328, power: 356.5, ratio: 0.57 },
+];
+
+// ─── Shared helpers ──────────────────────────────────────────────────────────
 const getRatioColor = (ratio) => {
   if (ratio <= 0.45) return 'text-green-600';
   if (ratio > 0.45 && ratio <= 0.55) return 'text-orange-500';
   return 'text-red-600';
 };
 
-// Helper to determine configuration based on building code
+// Helper to determine configuration based on building code (GREEN INVEST only)
 const getBuildingConfig = (code) => {
   if (!code) return { allowAuvent: false, allowAppentis: false, baseWeight: 50, getWeight: () => 50 };
   const firstLetter = code.charAt(0).toUpperCase();
-
-  // Configuration Table based on User Request
-  // O (Orion): 0=90%, 1Auv=90%, 2Auv=70%. Appentis disallowed.
-  // C (Cyrus): 0=70%, 1Auv=75%, 2Auv=65%. Appentis disallowed.
-  // A (Atlas): 100%. Extensions disallowed.
-  // H (Helios): 0/0=50%. 1App=65%, 2App=50%, 1Auv=55%, 2Auv=50%, 1Auv+1App=60%.
-  // K (Keren): 65%. Extensions disallowed.
-  // Y (Yoko): 50%. Extensions disallowed.
-  // S (Solea): 50%. Extensions disallowed.
 
   const config = {
     allowAuvent: false,
@@ -265,72 +302,50 @@ const getBuildingConfig = (code) => {
   };
 
   switch (firstLetter) {
-    case 'O': // ORION
+    case 'O':
       config.allowAuvent = true;
-      config.allowAppentis = false;
       config.baseWeight = 90;
-      config.getWeight = (auv, app) => {
+      config.getWeight = (auv) => {
         const a = Number(auv) || 0;
-        // Table: 0=90%, 1=90%, 2=70%
-        if (a === 2) return 70;
-        return 90; // 0 or 1
+        return a === 2 ? 70 : 90;
       };
       break;
-    case 'C': // CYRUS
+    case 'C':
       config.allowAuvent = true;
-      config.allowAppentis = false;
       config.baseWeight = 70;
-      config.getWeight = (auv, app) => {
+      config.getWeight = (auv) => {
         const a = parseInt(auv) || 0;
-        // Table: 0=70%, 1=75%, 2=65%
         if (a === 1) return 75;
         if (a === 2) return 65;
-        return 70; // 0
+        return 70;
       };
       break;
-    case 'A': // ATLAS
-      config.allowAuvent = false;
-      config.allowAppentis = false;
+    case 'A':
       config.baseWeight = 100;
       config.getWeight = () => 100;
       break;
-    case 'H': // HELIOS
+    case 'H':
       config.allowAuvent = true;
       config.allowAppentis = true;
       config.baseWeight = 50;
       config.getWeight = (auv, app) => {
         const a = parseInt(auv) || 0;
         const ap = parseInt(app) || 0;
-
-        // Table logic:
-        // Base (0,0) = 50%
-        // 1 Appentis only (0,1) = 65%
-        // 2 Appentis only (0,2) = 50%
-        // 1 Auvent + 1 Appentis (1,1) = 60%
-        // 1 Auvent only (1,0) = 55%
-        // 2 Auvents only (2,0) = 50%
-
         if (a === 0 && ap === 0) return 50;
         if (a === 0 && ap === 1) return 65;
         if (a === 0 && ap === 2) return 50;
         if (a === 1 && ap === 1) return 60;
         if (a === 1 && ap === 0) return 55;
-        if (a === 2 && ap === 0) return 50; // Also 2 auvents
-
-        // Fallback for undefined combinations
+        if (a === 2 && ap === 0) return 50;
         return 50;
       };
       break;
-    case 'K': // KEREN
-      config.allowAuvent = false;
-      config.allowAppentis = false;
+    case 'K':
       config.baseWeight = 65;
       config.getWeight = () => 65;
       break;
-    case 'Y': // YOKO
-    case 'S': // SOLEA
-      config.allowAuvent = false;
-      config.allowAppentis = false;
+    case 'Y':
+    case 'S':
       config.baseWeight = 50;
       config.getWeight = () => 50;
       break;
@@ -340,10 +355,21 @@ const getBuildingConfig = (code) => {
   return config;
 };
 
-const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange }) => {
+// ─── Component ───────────────────────────────────────────────────────────────
+const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }) => {
+  const isAcama = tenantId === 'acama';
+  const activeData = isAcama ? acamaBuildingsData : buildingsData;
+
   const [selectedCode, setSelectedCode] = useState(null);
   const [auventCount, setAuventCount] = useState(0);
   const [appentisCount, setAppentisCount] = useState(0);
+
+  // Reset counters and selection when tenant changes
+  useEffect(() => {
+    setSelectedCode(null);
+    setAuventCount(0);
+    setAppentisCount(0);
+  }, [tenantId]);
 
   // Reset counters when selecting a new building
   useEffect(() => {
@@ -351,36 +377,32 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange }) => {
     setAppentisCount(0);
   }, [selectedCode]);
 
-
-
   const selectedBuildingData = useMemo(() => {
     if (!selectedCode) return null;
-    const building = buildingsData.find(b => b.code === selectedCode);
+    const building = activeData.find(b => b.code === selectedCode);
     if (!building) return null;
 
-    let baseWidth = building.width;
+    // ACAMA: no extensions, return as-is
+    if (isAcama) {
+      return { ...building, roofWeighting: 50 };
+    }
 
-    // Handle string widths like "12,7 + 4"
+    // GREEN INVEST: extension logic
+    let baseWidth = building.width;
     if (typeof baseWidth === 'string') {
-      // Replace comma with dot, split by '+', sum parts
       const parts = baseWidth.replace(',', '.').split('+').map(p => parseFloat(p.trim()));
       baseWidth = parts.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
     }
 
     let currentWidth = baseWidth;
     let extraWidth = 0;
-
-    // Calculate extra width from extensions
-    if (auventCount > 0) {
-      extraWidth += auventCount * 4;
-    }
-    if (appentisCount > 0) {
-      extraWidth += appentisCount * 9.3;
-    }
-
+    if (auventCount > 0) extraWidth += auventCount * 4;
+    if (appentisCount > 0) extraWidth += appentisCount * 9.3;
     currentWidth += extraWidth;
 
-    const calculatedSurface = building.surface ? (building.surface + (extraWidth * building.length)) : (building.length * currentWidth);
+    const calculatedSurface = building.surface
+      ? building.surface + extraWidth * building.length
+      : building.length * currentWidth;
 
     const config = getBuildingConfig(selectedCode);
     const roofWeighting = config.getWeight(auventCount, appentisCount);
@@ -392,7 +414,7 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange }) => {
       isSpecialWidth: false,
       roofWeighting
     };
-  }, [selectedCode, auventCount, appentisCount]);
+  }, [selectedCode, auventCount, appentisCount, isAcama, activeData]);
 
   // Sync weighting with parent whenever it changes
   React.useEffect(() => {
@@ -407,37 +429,53 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange }) => {
     }
   };
 
+  // Group ACAMA buildings by gamme for display
+  const acamaGroups = useMemo(() => {
+    if (!isAcama) return null;
+    const groups = {};
+    acamaBuildingsData.forEach(b => {
+      if (!groups[b.gamme]) groups[b.gamme] = [];
+      groups[b.gamme].push(b);
+    });
+    return groups;
+  }, [isAcama]);
+
   return (
     <Card className="rounded-2xl shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-semibold">Bâtiments prédéfinis</CardTitle>
         <div className="flex gap-2">
-          <Button
-            variant={auventCount > 0 ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              const next = (auventCount + 1) % 3;
-              if (next + appentisCount <= 2) setAuventCount(next);
-              else setAuventCount(0);
-            }}
-            disabled={!selectedCode || (selectedCode && !getBuildingConfig(selectedCode).allowAuvent)}
-            className={auventCount > 0 ? "bg-amber-600 hover:bg-amber-700" : ""}
-          >
-            Auvent {auventCount > 0 && `(x${auventCount})`}
-          </Button>
-          <Button
-            variant={appentisCount > 0 ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              const next = (appentisCount + 1) % 3;
-              if (next + auventCount <= 2) setAppentisCount(next);
-              else setAppentisCount(0);
-            }}
-            disabled={!selectedCode || (selectedCode && !getBuildingConfig(selectedCode).allowAppentis)}
-            className={appentisCount > 0 ? "bg-amber-600 hover:bg-amber-700" : ""}
-          >
-            Appentis {appentisCount > 0 && `(x${appentisCount})`}
-          </Button>
+          {/* Auvent & Appentis buttons: hidden for ACAMA */}
+          {!isAcama && (
+            <>
+              <Button
+                variant={auventCount > 0 ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  const next = (auventCount + 1) % 3;
+                  if (next + appentisCount <= 2) setAuventCount(next);
+                  else setAuventCount(0);
+                }}
+                disabled={!selectedCode || (selectedCode && !getBuildingConfig(selectedCode).allowAuvent)}
+                className={auventCount > 0 ? "bg-amber-600 hover:bg-amber-700" : ""}
+              >
+                Auvent {auventCount > 0 && `(x${auventCount})`}
+              </Button>
+              <Button
+                variant={appentisCount > 0 ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  const next = (appentisCount + 1) % 3;
+                  if (next + auventCount <= 2) setAppentisCount(next);
+                  else setAppentisCount(0);
+                }}
+                disabled={!selectedCode || (selectedCode && !getBuildingConfig(selectedCode).allowAppentis)}
+                className={appentisCount > 0 ? "bg-amber-600 hover:bg-amber-700" : ""}
+              >
+                Appentis {appentisCount > 0 && `(x${appentisCount})`}
+              </Button>
+            </>
+          )}
           <Button onClick={handleInsert} disabled={!selectedBuildingData} size="sm" className="bg-blue-600 hover:bg-blue-700">
             <Building2 size={16} className="mr-2" />
             Insérer
@@ -452,11 +490,28 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange }) => {
                 <SelectValue placeholder="Code..." />
               </SelectTrigger>
               <SelectContent>
-                {buildingsData.map((building) => (
-                  <SelectItem key={building.code} value={building.code}>
-                    {building.code}
-                  </SelectItem>
-                ))}
+                {isAcama ? (
+                  // ACAMA: grouped by gamme
+                  Object.entries(acamaGroups).map(([gamme, buildings]) => (
+                    <React.Fragment key={gamme}>
+                      <div className="px-2 py-1 text-xs font-bold text-gray-500 uppercase tracking-wide bg-gray-50 border-b">
+                        {gamme}
+                      </div>
+                      {buildings.map(b => (
+                        <SelectItem key={b.code} value={b.code}>
+                          {b.code}
+                        </SelectItem>
+                      ))}
+                    </React.Fragment>
+                  ))
+                ) : (
+                  // GREEN INVEST: flat list
+                  buildingsData.map((building) => (
+                    <SelectItem key={building.code} value={building.code}>
+                      {building.code}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -472,9 +527,13 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange }) => {
           </div>
         </div>
 
-
         {selectedBuildingData && (
           <div className="space-y-3">
+            {isAcama && selectedBuildingData.gamme && (
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                {selectedBuildingData.gamme}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <div className="flex justify-between"><span>Longueur:</span> <span className="font-semibold">{selectedBuildingData.length} m</span></div>
               <div className="flex justify-between"><span>Puissance:</span> <span className="font-semibold">{selectedBuildingData.power} kWc</span></div>
@@ -492,7 +551,7 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange }) => {
           </div>
         )}
       </CardContent>
-    </Card >
+    </Card>
   );
 };
 
