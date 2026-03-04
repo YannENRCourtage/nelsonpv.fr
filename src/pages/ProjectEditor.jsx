@@ -513,7 +513,9 @@ export default function ProjectEditor() {
       let newAngle = null;
       const firstLetter = code.charAt(0).toUpperCase();
 
-      if (['O', 'C', 'A'].includes(firstLetter)) {
+      if (building.angle !== undefined && building.angle !== null && activeTenantId === 'acama') {
+        newAngle = String(building.angle);
+      } else if (['O', 'C', 'A'].includes(firstLetter)) {
         newAngle = "15";
       } else if (['K', 'H', 'Y', 'S'].includes(firstLetter)) {
         newAngle = "10";
