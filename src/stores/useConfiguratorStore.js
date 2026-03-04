@@ -264,7 +264,7 @@ export const useConfiguratorStore = create((set, get) => ({
     setBuildingType: (type) => {
         if (TYPE_WIDTHS_MAP[type]) {
             const defaultWidth = TYPE_WIDTHS_MAP[type][0];
-            const updates = { buildingType: type, width: defaultWidth };
+            const updates = { buildingType: type, width: defaultWidth, fixedLength: null };
 
             // Forcer la hauteur de sablière pour Monopente + Pente 15°
             if (type === 'monopente') {
@@ -419,6 +419,7 @@ export const useConfiguratorStore = create((set, get) => ({
         leftWidth: 9.3,
         rightWidth: 9.3,
         isAcama: false,
+        fixedLength: null,
     }),
 
     getSummary: () => {
