@@ -539,7 +539,16 @@ export default function ProjectEditor() {
       }
 
       // ACAMA uniquement : forcer la surface (col E) et la puissance (col J) depuis les données du bâtiment
+      // Ainsi que la longueur et la largeur
       if (activeTenantId === 'acama' && building.isPredefinedAcama !== false) {
+        if (building.length !== undefined && building.length !== null) {
+          if (isNextBuildingSecond) updates.longueur2 = String(building.length);
+          else updates.longueur = String(building.length);
+        }
+        if (building.width !== undefined && building.width !== null) {
+          if (isNextBuildingSecond) updates.largeur2 = String(building.width);
+          else updates.largeur = String(building.width);
+        }
         if (building.surface !== undefined && building.surface !== null) {
           if (isNextBuildingSecond) {
             updates.surface2 = Number(building.surface);
@@ -549,9 +558,9 @@ export default function ProjectEditor() {
         }
         if (building.power !== undefined && building.power !== null) {
           if (isNextBuildingSecond) {
-            updates.panelPower2 = Number(building.power);
+            updates.puissance2 = Number(building.power);
           } else {
-            updates.panelPower = Number(building.power);
+            updates.puissance = Number(building.power);
           }
         }
       }

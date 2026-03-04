@@ -746,7 +746,11 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
           if (temp.length === 0) setTemp([e.latlng]);
           else setTemp((t) => [...t, e.latlng]);
         }
-      } else setSelectedId(null);
+      } else {
+        setSelectedId(null);
+        if (setTargetPos) setTargetPos(e.latlng);
+        if (setShowInfoPanel) setShowInfoPanel(true);
+      }
     },
     contextmenu(e) {
       e.originalEvent.preventDefault();
