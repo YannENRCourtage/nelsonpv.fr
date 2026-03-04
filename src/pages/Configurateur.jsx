@@ -25,10 +25,16 @@ export default function Configurateur() {
     // ACAMA: default to EPONA_45 on first load
     useEffect(() => {
         actions.setIsAcama(isAcama);
-        if (isAcama && config.buildingType !== 'epona') {
-            actions.setEponaModel('EPONA_45');
+        if (isAcama) {
+            if (config.buildingType !== 'epona') {
+                actions.setEponaModel('EPONA_45');
+            }
+        } else {
+            // Reset to defaults when switching back to GREEN INVEST
+            actions.reset();
         }
     }, [isAcama]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
     const [projectSearch, setProjectSearch] = useState('');
     const [selectedProject, setSelectedProject] = useState(null);

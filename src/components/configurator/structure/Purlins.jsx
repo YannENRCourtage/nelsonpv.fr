@@ -43,7 +43,8 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
     if (isEpona) {
         const mainSlope = 17 * (Math.PI / 180);
         const extendLeftX = 2.55;
-        const extendRightX = 1.25;
+        const extendRightX = 1.25; // Restored
+
 
         // Geometric constraints based on left pilar at x = -11.8 and eaveHeight = 5.0
         const apexX = 0;
@@ -90,8 +91,10 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
                 const xPerp = perpOffset * Math.sin(mainSlope);
                 const yPerp = perpOffset * Math.cos(mainSlope);
 
-                // User Request: Lower purlins on the right slope by 1.5m (structural matching)
-                const yOffset = -1.5;
+                // User Request: Align right slope purlins 50cm high relative to reference (prev -45cm)
+                const yOffset = 0.05; // Was -0.45, requested raise by 50cm
+
+
 
                 purlins.push(
                     <mesh

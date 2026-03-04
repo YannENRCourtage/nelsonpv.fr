@@ -89,6 +89,8 @@ export function ControlPanel({ isAcama = false }) {
                             <option value="ombriere_pl">Ombrière PL</option>
                         </>
                     )}
+
+
                 </select>
             </div>
 
@@ -229,7 +231,8 @@ export function ControlPanel({ isAcama = false }) {
                                 </button>
                                 <button
                                     onClick={() => setLeftSide(leftSide === 'appentis' ? 'none' : 'appentis')}
-                                    disabled={buildingType === 'monopente' || buildingType.startsWith('asymetrique')}
+                                    disabled={buildingType === 'monopente'}
+
                                     className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase border transition-all ${leftSide === 'appentis'
                                         ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
                                         : (buildingType === 'monopente' || buildingType.startsWith('asymetrique'))
@@ -256,7 +259,8 @@ export function ControlPanel({ isAcama = false }) {
                                 </button>
                                 <button
                                     onClick={() => setRightSide(rightSide === 'appentis' ? 'none' : 'appentis')}
-                                    disabled={buildingType === 'monopente' || buildingType.startsWith('asymetrique')}
+                                    disabled={buildingType === 'monopente'}
+
                                     className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase border transition-all ${rightSide === 'appentis'
                                         ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
                                         : (buildingType === 'monopente' || buildingType.startsWith('asymetrique'))

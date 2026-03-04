@@ -208,7 +208,9 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
 
         // Overhangs
         const extendLeftX = 2.55;
-        const extendRightX = 1.25;
+        const extendRightX = 1.25; // Restored (from 0)
+
+
 
         // Total panels
         const leftTotalSpanX = leftSpan + extendLeftX;

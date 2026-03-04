@@ -453,13 +453,14 @@ export const useConfiguratorValues = () => {
             : (WIDTH_HEIGHT_MAP[state.width] ||
                 // For EPONA, use hardcoded ridge 9.4m. For TALIAN, calculate/fixed
                 (state.buildingType === 'epona' ? 9.4 :
-                    (state.buildingType === 'symetrique' && Math.abs(state.width - 13.7) < 0.1)
+                    (state.isAcama && state.buildingType === 'symetrique' && Math.abs(state.width - 13.7) < 0.1)
                         ? state.eaveHeight + (state.width / 2) * Math.tan(state.roofPitch * Math.PI / 180)
-                        : (state.buildingType === 'symetrique' && Math.abs(state.width - 18.8) < 0.1)
+                        : (state.isAcama && state.buildingType === 'symetrique' && Math.abs(state.width - 18.8) < 0.1)
                             ? 6.7 // TALIAN 1 Fixed Ridge Height
-                            : (state.buildingType === 'symetrique' && Math.abs(state.width - 17.5) < 0.1)
+                            : (state.isAcama && state.buildingType === 'symetrique' && Math.abs(state.width - 17.5) < 0.1)
                                 ? 4.5 // TALIAN 3 Fixed Ridge Height
-                                : WIDTH_HEIGHT_MAP[18.6]));
+                                : WIDTH_HEIGHT_MAP[state.width] || WIDTH_HEIGHT_MAP[18.6]));
+
 
         // --- SOLAR STATS ---
         const PANEL_WIDTH = 1.134;

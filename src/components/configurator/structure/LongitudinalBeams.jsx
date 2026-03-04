@@ -78,7 +78,10 @@ export function LongitudinalBeams({ width, length, eaveHeight, ridgeHeight, buil
                 <Beam x={apexX} y={apexY} z={-length} />
 
                 {/* Right Sablière */}
-                <Beam x={rightColX} y={3.83} z={-length} />
+                <Beam x={rightColX} y={2.6} z={-length} />
+
+
+
             </group>
         );
     }

@@ -19,12 +19,16 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     const isTalian4 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 13.7) < 0.1;
     const isTalian1 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 18.8) < 0.1;
     const isTalian3 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 17.5) < 0.1;
+    const isEpona = isAcama && buildingType === 'epona';
+
+
 
     let auventWidth = 4.0; // Fixed 4m
     let angleRad = 5 * (Math.PI / 180); // Default 5 deg
     let startHeight = eaveHeight;
 
-    if (buildingType === 'asymetrique_2') {
+    if (isAcama && buildingType === 'asymetrique_2') {
+
         // USER REQUEST 12/01/2026: Asymétrique 2 zones awnings
         // Angle: 15° for both sides
         angleRad = 15 * (Math.PI / 180);
@@ -183,7 +187,8 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     const purlinHeight = 0.180;
     const purlinWidth = 0.070;
     const thickness = 0.003;
-    const purlinSpacing = 1.3;
+    const purlinSpacing = isTalian3 ? 0.8 : 1.3; // Closer spacing for Talian 3 to ensure 2 purlins
+
     const purlinShape = useMemo(() => createZProfile(purlinHeight, purlinWidth, thickness), []);
     const purlinGeometry = useMemo(() => new THREE.ExtrudeGeometry(purlinShape, {
         depth: baySpacing,
@@ -197,6 +202,11 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     if (buildingType === 'asymetrique_1' && side === 'right') {
         purlinPerpOffset += 0.05;
     }
+
+    // TALIAN refinements (ACAMA)
+    if (isTalian3) purlinPerpOffset -= 0.65; // Lowered by additional 30cm (from 0.35 to 0.65)
+    else if (isTalian1) purlinPerpOffset -= 0.15;
+
 
     // Asymmetric Left Awning 20m: Lower purlins by 30cm
     if (buildingType === 'asymetrique_1' && side === 'left' && Math.abs(buildingWidth - 20) < 0.5) {
@@ -255,20 +265,25 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
         const strutLen = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
         const strutAngle = Math.atan2(deltaY, deltaX);
 
-        frames.push(
-            <mesh
-                key={`strut-${i}`}
-                material={structureMaterial}
-                position={[
-                    strutStartX + deltaX / 2,
-                    strutStartY + deltaY / 2,
-                    zPos
-                ]}
-                rotation={[0, 0, strutAngle]}
-            >
-                <boxGeometry args={[strutLen, 0.2, 0.2]} />
-            </mesh>
-        );
+        // User Request Phase 4: Removed for EPONA ACAMA
+        if (!isEpona || !isAcama) {
+            frames.push(
+                <mesh
+                    key={`strut-${i}`}
+                    material={structureMaterial}
+                    position={[
+                        strutStartX + deltaX / 2,
+                        strutStartY + deltaY / 2,
+                        zPos
+                    ]}
+                    rotation={[0, 0, strutAngle]}
+                >
+                    <boxGeometry args={[strutLen, 0.2, 0.2]} />
+                </mesh>
+            );
+        }
+
+
 
         // 3. PURLINS
         if (i < bayCount) {
@@ -283,6 +298,20 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
                 const xPerp = purlinPerpOffset * Math.sin(angleRad);
                 const yPerp = purlinPerpOffset * Math.cos(angleRad);
 
+                let finalYLoc = yLoc + yPerp;
+                // TALIAN 3: Specific purlin adjustments
+                if (isTalian3) {
+                    if (j === numPurlins) {
+                        // Outermost (Sablière): Lowered and now REMOVED as requested Phase 3/03
+                        continue;
+                    } else if (j === 1) {
+                        // Innermost (Intermédiaire): Raise by 20cm
+                        finalYLoc += 0.20;
+                    }
+                }
+
+
+
                 purlins.push(
                     <mesh
                         key={`purlin-${i}-${j}`}
@@ -290,7 +319,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
                         material={structureMaterial}
                         position={[
                             xLoc + xPerp,
-                            yLoc + yPerp,
+                            finalYLoc,
                             zStart
                         ]}
                         rotation={[0, 0, -angleRad]} // Align with slope
@@ -309,10 +338,12 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     let roofY = -0.10; // Default baseline
 
     // TALIAN refinements (ACAMA)
-    // TALIAN 3: Lower roof by 20cm
+    // TALIAN 3: Lower roof by 80cm total (was 70cm, now +10cm)
     // TALIAN 1: Lower roof by 5cm
-    if (isTalian3) roofY -= 0.20;
+    if (isTalian3) roofY -= 0.80;
+
     else if (isTalian1) roofY -= 0.05;
+
 
     if (buildingType === 'asymetrique_2') {
         // USER REQUEST 12/01/2026: Awning cover adjustments for asymétrique 2 zones
@@ -383,8 +414,8 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
 
             {/* STRUCTURE */}
             {frames}
-            {/* Longitudinal Beam (Sablière) at Tip - Only for Symmetric (Hidden for Monopente) */}
-            {buildingType !== 'monopente' && (
+            {/* Longitudinal Beam (Sablière) at Tip - Hidden for EPONA ACAMA */}
+            {(buildingType !== 'monopente' && (!isEpona || !isAcama)) && (
                 <mesh
                     position={[
                         auventWidth,
@@ -397,6 +428,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
                     <boxGeometry args={[0.10, 0.20, length]} />
                 </mesh>
             )}
+
 
             {/* Purlins */}
             {purlins}

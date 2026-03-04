@@ -43,7 +43,8 @@ export function Bracing({
         const yTopMainLeft = (buildingType === 'monopente') ? ridgeHeight - 0.5 : eaveHeight - 0.5;
         let yTopMainRight = eaveHeight - 0.5;
         if (buildingType === 'asymetrique_1') yTopMainRight = 3.9;
-        else if (buildingType === 'asymetrique_2') yTopMainRight -= 1.0;
+        else if (isAcama && buildingType === 'asymetrique_2') yTopMainRight -= 1.0;
+
 
         const createRod = (start, end, key) => (
             <BraceRod key={key} start={start} end={end} material={bracingMaterial} thickness={0.03} />
@@ -53,9 +54,12 @@ export function Bracing({
         bracings.push(createRod(new THREE.Vector3(-width / 2, yBot, zStart), new THREE.Vector3(-width / 2, yTopMainLeft, zEnd), `wall-L-${i}-1`));
         bracings.push(createRod(new THREE.Vector3(-width / 2, yTopMainLeft, zStart), new THREE.Vector3(-width / 2, yBot, zEnd), `wall-L-${i}-2`));
 
-        // Main Right Wall (+width/2)
-        bracings.push(createRod(new THREE.Vector3(width / 2, yBot, zStart), new THREE.Vector3(width / 2, yTopMainRight, zEnd), `wall-R-${i}-1`));
-        bracings.push(createRod(new THREE.Vector3(width / 2, yTopMainRight, zStart), new THREE.Vector3(width / 2, yBot, zEnd), `wall-R-${i}-2`));
+        // Main Right Wall (+width/2) - User Request: Only one brace for EPONA ACAMA
+        if (!isAcama || buildingType !== 'epona') {
+            bracings.push(createRod(new THREE.Vector3(width / 2, yBot, zStart), new THREE.Vector3(width / 2, yTopMainRight, zEnd), `wall-R-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(width / 2, yTopMainRight, zStart), new THREE.Vector3(width / 2, yBot, zEnd), `wall-R-${i}-2`));
+        }
+
 
         // --- Extension Eaves (TALIAN ACAMA specific) ---
         if (isTalian) {
@@ -63,7 +67,7 @@ export function Bracing({
             let leftExtEaveH = eaveHeight - 0.5;
             let rightExtEaveH = eaveHeight - 0.5;
 
-            if (leftSide !== 'none') {
+            if (leftSide !== 'none' && !isTalian) {
                 if (leftSide === 'auvent') {
                     const auventW = isTalian1 ? 2.3 : (isTalian3 ? 1.8 : 4.0);
                     const auventAngle = (isTalian1 ? 14 : (isTalian3 ? 12 : 10)) * (Math.PI / 180);
@@ -77,7 +81,7 @@ export function Bracing({
                 bracings.push(createRod(new THREE.Vector3(xLExt, leftExtEaveH, zStart), new THREE.Vector3(xLExt, yBot, zEnd), `wall-extL-${i}-2`));
             }
 
-            if (rightSide !== 'none') {
+            if (rightSide !== 'none' && !isTalian) {
                 if (rightSide === 'auvent') {
                     const auventW = isTalian1 ? 2.3 : (isTalian3 ? 1.8 : 4.0);
                     const auventAngle = (isTalian1 ? 14 : (isTalian3 ? 12 : 10)) * (Math.PI / 180);
@@ -124,18 +128,28 @@ export function Bracing({
             const apexX = 0;
             const apexY = 5.0 + (11.8 * Math.tan(mainPitch));
             const leftColX = -11.8, middleColX = 11.8, rightColX = 19.65;
-            const leftH = 5.0, rightH = 3.83;
+            const leftH = 5.0, rightH = 2.63; // Lowered by 1.2m
             const middleH = apexY - (middleColX * Math.tan(mainPitch));
 
-            // Wall M
+            // Wall M (Double restored) - Right wall for EPONA ACAMA
             bracings.push(createRod(new THREE.Vector3(middleColX, 0.5, zStart), new THREE.Vector3(middleColX, middleH - 0.5, zEnd), `wall-M-${i}-1`));
             bracings.push(createRod(new THREE.Vector3(middleColX, middleH - 0.5, zStart), new THREE.Vector3(middleColX, 0.5, zEnd), `wall-M-${i}-2`));
 
-            // Roof
+
+            // New Request (Step 423): Add Wall R single brace if not already there? 
+            // Wait, Wall R (+width/2) is already handled at line 56. 
+            // middleColX (11.8) is the RIGHT wall of the main building for EPONA.
+            // middleH is the height at 11.8
+
+
+            // Roof (Double restored)
             bracings.push(createRod(new THREE.Vector3(leftColX, leftH, zStart), new THREE.Vector3(apexX - 0.1, apexY, zEnd), `roof-L-Epona-${i}-1`));
-            bracings.push(createRod(new THREE.Vector3(apexX - 0.1, apexY, zStart), new THREE.Vector3(leftColX, leftH, zEnd), `roof-L-Epona-${i}-2`));
+            bracings.push(createRod(new THREE.Vector3(apexX - 0.05, apexY, zStart), new THREE.Vector3(leftColX, leftH, zEnd), `roof-L-Epona-${i}-2`));
+
             bracings.push(createRod(new THREE.Vector3(apexX + 0.1, apexY, zStart), new THREE.Vector3(rightColX, rightH, zEnd), `roof-R-Epona-${i}-1`));
-            bracings.push(createRod(new THREE.Vector3(rightColX, rightH, zStart), new THREE.Vector3(apexX + 0.1, apexY, zEnd), `roof-R-Epona-${i}-2`));
+            bracings.push(createRod(new THREE.Vector3(rightColX, rightH, zStart), new THREE.Vector3(apexX + 0.05, apexY, zEnd), `roof-R-Epona-${i}-2`));
+
+
         } else {
             // Symmetrical
             bracings.push(createRod(new THREE.Vector3(-width / 2, eaveHeight, zStart), new THREE.Vector3(-0.1, symRidgeHeight, zEnd), `roof-L-${i}-1`));

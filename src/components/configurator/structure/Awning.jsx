@@ -26,6 +26,9 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
     const isTalian1 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 18.8) < 0.1;
     const isTalian3 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 17.5) < 0.1;
     const isTalian = isTalian4 || isTalian1 || isTalian3;
+    const isEpona = isAcama && buildingType === 'epona';
+
+
 
     if (isAcama && buildingType === 'epona') {
         // ACAMA EPONA: Appentis droit 7.8m (Connecté à la toiture)
@@ -44,6 +47,7 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
         angleRad = (15 * Math.PI) / 180;
         awningWidth = (4.0 - 3.0) / Math.tan(angleRad); // approx 3.73m
         endHeight = 3.0;
+
     } else if (buildingType === 'monopente' && side === 'left') {
         // Specific heights requested for Monopente Left Awning
         // Width 12.7m -> Sablière 6.4m
@@ -85,8 +89,11 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
 
     // --- ROOF GEOMETRY ---
     // Length of the slope = Width / cos(angle)
-    // "Jusqu'à la sablière" -> Ensure full coverage + overhang
-    const slopeLength = awningWidth / Math.cos(angleRad) + 0.2; // +20cm overhang
+    // "Jusqu'à la sablière" -> Ensure full coverage
+    // User Request Phase 4: 75cm overhang for EPONA (1.25m branch - 0.50m reduction)
+    const slopeLength = awningWidth / Math.cos(angleRad) + (isAcama && buildingType === 'epona' ? 0.75 : 0.2);
+
+
 
     // Profile for roof sheet
     const profileShape = useMemo(() => createTrapezoidalProfile(slopeLength, 0.035, 0.25), [slopeLength]);
@@ -244,18 +251,21 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
             {/* STRUCTURE FRAMES */}
             {frames}
 
-            {/* Longitudinal Beam (Sablière) at Tip - Reduced 20%, Adjusted Height */}
-            <mesh
-                position={[
-                    awningWidth,
-                    -awningWidth * Math.tan(angleRad) - 0.1 + (buildingType === 'monopente' ? 0.4 : 0.25),
-                    -length / 2
-                ]}
-                rotation={[0, 0, 0]}
-                material={structureMaterial}
-            >
-                <boxGeometry args={[0.16, 0.32, length]} />
-            </mesh>
+            {/* Longitudinal Beam (Sablière) at Tip - Removed for EPONA ACAMA */}
+            {(!isEpona || !isAcama) && (
+                <mesh
+                    position={[
+                        awningWidth,
+                        -awningWidth * Math.tan(angleRad) - 0.1 + (buildingType === 'monopente' ? 0.4 : 0.25),
+                        -length / 2
+                    ]}
+                    rotation={[0, 0, 0]}
+                    material={structureMaterial}
+                >
+                    <boxGeometry args={[0.16, 0.32, length]} />
+                </mesh>
+            )}
+
 
             {/* PURLINS */}
             {purlins}

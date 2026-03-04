@@ -39,8 +39,9 @@ export function PortalFrame({
 
     // --- HEIGHT & ANGLE LOGIC (Hoisted) ---
     const isMonopente = buildingType === 'monopente';
-    const isAsymetrique = buildingType === 'asymetrique_1'; // Corrected ID
-    const isAsymetrique2 = buildingType === 'asymetrique_2'; // NEW: 2 zones
+    const isAsymetrique = buildingType === 'asymetrique_1';
+    const isAsymetrique2 = buildingType === 'asymetrique_2';
+
     const isSymetrique = buildingType === 'symetrique';
     const isEpona = isAcama && buildingType === 'epona';
 
@@ -64,11 +65,15 @@ export function PortalFrame({
         const mainPitch = 17 * (Math.PI / 180);
 
         leftEaveHeight = 5.0;
-        rightEaveHeight = 3.83;
+        rightEaveHeight = 2.6; // Lowered by 1.2m (3.8 -> 2.6)
+
+
+
 
         // Apex is 11.8m from Left Post
         leftSpan = 11.8;
-        rightSpan = 11.8 + 7.85; // 19.65
+        rightSpan = 19.65; // Apex to right post (11.8 + 7.85)
+
 
         apexX = -11.8 + leftSpan; // Exactly 0 if Left Post is at -11.8
 
@@ -429,6 +434,7 @@ export function PortalFrame({
 
         const leftColOffset = leftRafterVert - 0.20;
         const rightColOffset = rightRafterVert - 0.20;
+
         const middleColOffset = middleRafterVert - 0.20;
 
         const leftColHeight = leftEaveHeight + leftColOffset;
@@ -442,7 +448,9 @@ export function PortalFrame({
 
         // Calculate rafter lengths with exact overhangs (2.55m on left, 1.25m on right)
         const extendLeftX = 2.55;
-        const extendRightX = 1.25;
+        const extendRightX = 1.25; // Restored (from 0)
+
+
 
         // Left rafter spans from the left overhang edge up to the apex
         const leftTotalSpanX = leftSectionSpan + extendLeftX;
@@ -451,9 +459,9 @@ export function PortalFrame({
         // Right sections: right slope is split by the middle column.
         // Apex to middle column:
         const middleSectionRafterLength = (middleSectionSpan + horizontalOverhang / 2) / Math.cos(middleSectionAngle);
-        // Middle column to right overhang edge:
-        const rightTotalSpanX = rightSectionSpan + extendRightX;
-        const rightSectionRafterLength = rightTotalSpanX / Math.cos(rightSectionAngle);
+        // Middle column to right column (No overhang):
+        const rightSectionRafterLength = rightSectionSpan / Math.cos(rightSectionAngle);
+
 
         // Positioning logic:
         // Left Column is at x = -11.8
@@ -490,30 +498,17 @@ export function PortalFrame({
                     {createRafterAssembly(middleSectionRafterLength - 0.05, true)}
                 </group>
 
-                {/* Middle Rafter Segment from Middle Column DOWN to Right Overhang (Appentis section) */}
-                {/* User Request: Lower this part of the structure by 1.5m */}
-                <group position={[-11.8 + 31.45 + extendRightX, rightColHeight - (extendRightX * Math.tan(rightSectionAngle)) - 1.5, 0]} rotation={[0, 0, -rightSectionAngle]}>
+                {/* Middle Rafter Segment from Middle Column DOWN to Right Column (Appentis section) */}
+                {/* User Request: Lower this part of the structure by 1.2m (same as column) */}
+                <group position={[middleColumnX + 7.85, rightColHeight, 0]} rotation={[0, 0, -rightSectionAngle]}>
                     {createRafterAssembly(rightSectionRafterLength - 0.05, true)}
                 </group>
 
+
+
                 {/* Diagonal Braces matching the image (Knee Braces / Jarrets / Bracons) */}
-                {/* User Request: Inverse orientations (pointing outwards) */}
-                <mesh position={[leftColumnX - 0.5, leftColHeight - 0.8, 0]} rotation={[0, 0, -Math.PI / 4]} castShadow>
-                    <boxGeometry args={[0.08, 1.5, 0.08]} />
-                    <meshStandardMaterial color="#6a747b" />
-                </mesh>
-                <mesh position={[middleColumnX - 0.5, middleColHeightFinal - 0.8, 0]} rotation={[0, 0, -Math.PI / 4]} castShadow>
-                    <boxGeometry args={[0.08, 1.5, 0.08]} />
-                    <meshStandardMaterial color="#6a747b" />
-                </mesh>
-                <mesh position={[middleColumnX + 0.5, middleColHeightFinal - 0.8, 0]} rotation={[0, 0, Math.PI / 4]} castShadow>
-                    <boxGeometry args={[0.08, 1.5, 0.08]} />
-                    <meshStandardMaterial color="#6a747b" />
-                </mesh>
-                <mesh position={[(-11.8 + 31.45) + 0.5, rightColHeight - 0.8, 0]} rotation={[0, 0, Math.PI / 4]} castShadow>
-                    <boxGeometry args={[0.08, 1.5, 0.08]} />
-                    <meshStandardMaterial color="#6a747b" />
-                </mesh>
+                {/* User Request: Removed for EPONA ACAMA */}
+
             </group>
         );
     }

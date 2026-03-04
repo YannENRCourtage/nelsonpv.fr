@@ -12,7 +12,8 @@ import { Auvent } from './Auvent.jsx';
 
 export function Structure() {
     const config = useConfiguratorValues();
-    const { width, length, bayCount, baySpacing, eaveHeight, roofPitch, ridgeHeight, leftSide, rightSide, showDimensions } = config;
+    const { buildingType, width, length, bayCount, baySpacing, eaveHeight, roofPitch, ridgeHeight, leftSide, rightSide, showDimensions } = config;
+
 
     // Use exact ridge height from store (Map values) instead of calculated
     const calculatedRidgeHeight = ridgeHeight;
@@ -102,7 +103,7 @@ export function Structure() {
                     x={0}
                 />
             )}
-            {(config.buildingType === 'asymetrique_1' || config.buildingType === 'asymetrique_2') && (
+            {((buildingType === 'asymetrique_1' || buildingType === 'asymetrique_2')) && (
                 <RidgeFlashing
                     len={length + 1.0}
                     h={(() => {
@@ -121,6 +122,7 @@ export function Structure() {
                     x={-width * 0.25} // Apex position
                 />
             )}
+
             {frames}
             <Purlins
                 width={width}

@@ -502,11 +502,13 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
                 const displayValue = isEditing ? getRawValue(col, row.data[col]) : getDisplayValue(col, row.data[col]);
 
                 return (
-                    <td key={`${row.id}-${cIdx}`} className="px-0 py-0 border-r relative group" style={{ width: columnWidths[col] }}>
-                        <div className="relative flex items-center h-full">
+                    <td key={`${row.id}-${cIdx}`} className="px-0 py-0 border-r relative group" style={{ minWidth: columnWidths[col] || 150, width: 'auto' }}>
+                        <div className="relative flex items-center h-full min-h-[40px]">
+                            {/* Span invisible pour forcer la largeur sur mobile en fonction du contenu */}
+                            <span className="invisible whitespace-nowrap px-2 py-2 pr-8 text-sm lg:hidden">{displayValue}</span>
                             <input
                                 ref={(el) => inputRefs.current[col] = el}
-                                className="w-full h-full px-2 py-2 pr-8 bg-transparent focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-inset focus:ring-blue-500 transition-colors text-sm truncate cursor-text"
+                                className="w-full h-full px-2 py-2 pr-8 bg-transparent focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-inset focus:ring-blue-500 transition-colors text-sm lg:truncate cursor-text lg:static absolute inset-0"
                                 value={displayValue}
                                 onChange={(e) => updateCell(row.id, col, e.target.value)}
                                 onFocus={() => handleCellFocus(col)}
@@ -667,8 +669,8 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                 'PDB': 100,         // Réduction 1/3 (Type de pro)
                 'Type de projet': 100, // Réduction 1/3 (Projet)
                 'Tel': 100,         // Réduction 1/3 (Tél)
-                'Adresse': 250,     // Augmentation
-                'Commentaires': 250 // Augmentation
+                'Adresse': 350,     // Augmentation (Anciennement 250)
+                'Commentaires': 350 // Augmentation (Anciennement 250)
             };
 
             // Appliquer les largeurs spécifiques
@@ -1154,7 +1156,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
 
             {/* Table Container */}
             <div className="flex-1 overflow-auto border rounded-xl shadow-sm bg-white relative">
-                <table className="w-full text-sm text-left relative border-collapse table-fixed">
+                <table className="w-full text-sm text-left relative border-collapse lg:table-fixed table-auto">
                     <thead className="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm layer-20">
                         <tr>
                             <SimpleResizableHeader
@@ -1192,6 +1194,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                                     index={idx}
                                     width={columnWidths[col] || 150}
                                     onResize={handleResize}
+                                    style={{ minWidth: columnWidths[col] || 150 }}
                                     moveColumn={moveColumn}
                                     deleteColumn={deleteColumn}
                                     isResizing={isResizing}
@@ -1259,13 +1262,16 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                                         }
 
                                         return (
-                                            <td key={`total-${cIdx}`} className="px-0 py-0 border-r relative" style={{ width: columnWidths[col] }}>
-                                                <input
-                                                    className="w-full h-full px-2 py-2 bg-slate-100 cursor-not-allowed font-bold text-sm truncate"
-                                                    value={displayValue}
-                                                    readOnly
-                                                    title={displayValue}
-                                                />
+                                            <td key={`total-${cIdx}`} className="px-0 py-0 border-r relative" style={{ minWidth: columnWidths[col] || 150, width: 'auto' }}>
+                                                <div className="relative flex items-center h-full min-h-[40px]">
+                                                    <span className="invisible whitespace-nowrap px-2 py-2 text-sm lg:hidden font-bold">{displayValue}</span>
+                                                    <input
+                                                        className="w-full h-full px-2 py-2 bg-slate-100 cursor-not-allowed font-bold text-sm lg:truncate lg:static absolute inset-0"
+                                                        value={displayValue}
+                                                        readOnly
+                                                        title={displayValue}
+                                                    />
+                                                </div>
                                             </td>
                                         );
                                     })}
