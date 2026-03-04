@@ -1994,7 +1994,7 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
 }
 
 
-function MapEvents({ project, setProject, onAddressFound, onAddressSearched, setPhotoToPlace, onBuildingSelect, setFeatures, setIsAzimuthDefaulted, isRotatingRef, lastSyncedAzimuthRef }) {
+function MapEvents({ project, setProject, onAddressFound, onAddressSearched, setPhotoToPlace, onBuildingSelect, features, setFeatures, setIsAzimuthDefaulted, isRotatingRef, lastSyncedAzimuthRef }) {
   const map = useMap();
   // lastSyncedAzimuthRef is now passed as prop
 
@@ -2955,7 +2955,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
           <ZoomIndicator />
           <MapEvents
             project={project}
-
+            features={features}
             setProject={setProject}
             setIsAzimuthDefaulted={setIsAzimuthDefaulted}
             onAddressFound={onAddressFound}
