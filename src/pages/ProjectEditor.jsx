@@ -1047,15 +1047,16 @@ export default function ProjectEditor() {
                               className="shrink-0 aspect-square w-10 px-0"
                               title="Calculer le productible Toiture 1"
                               onClick={async () => {
+                                console.log("[PVGIS L1] Starting calculation for project:", p.id, "Params:", { panelAspect: p.panelAspect, panelAngle: p.panelAngle, gps: p.gps });
                                 if (!p.gps) return toast({ title: "Erreur", description: "Veuillez renseigner les coordonnées GPS.", variant: "destructive" });
                                 const parts = p.gps ? p.gps.split(',') : [];
                                 const lat = parseFloat(parts[0]?.trim());
                                 const lon = parseFloat(parts[1]?.trim());
                                 if (isNaN(lat) || isNaN(lon)) return toast({ title: "Erreur", description: "Coordonnées GPS invalides.", variant: "destructive" });
 
-                                const angle = p.panelAngle || 15;
-                                const aspect = parseFloat(p.panelAspect || 0);
-                                const weighting = parseFloat(p.roofWeighting !== undefined ? p.roofWeighting : 50);
+                                const angle = parseFloat(p.panelAngle || 15) || 15;
+                                const aspect = parseFloat(p.panelAspect || 0) || 0;
+                                const weighting = parseFloat(p.roofWeighting !== undefined ? p.roofWeighting : 50) || 50;
 
                                 // PVGIS Logic for ACAMA vs others
                                 const pvgisLoss = activeTenantId === 'acama' ? 10 : 6;
@@ -1069,26 +1070,30 @@ export default function ProjectEditor() {
                                 toast({ title: "Calcul en cours...", description: `PVGIS Ligne 1: T1 (${aspect}°) et T2 (${oppositeAspect}°)` });
 
                                 try {
+                                  const safeFetchPVGIS = async (url) => {
+                                    const response = await fetch(url);
+                                    const text = await response.text();
+                                    try {
+                                      const json = JSON.parse(text);
+                                      if (!response.ok) throw new Error(json.details || json.error || `Erreur HTTP ${response.status}`);
+                                      return json;
+                                    } catch (err) {
+                                      if (!response.ok) throw new Error(`Réponse non-JSON (${response.status}): ${text.slice(0, 100)}...`);
+                                      throw new Error(`JSON Invalide: ${err.message}`);
+                                    }
+                                  };
+
                                   // Fetch PVGIS for Line 1 primary aspect (T1)
                                   const pvgisUrl1 = `/api/proxies/pvgis?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
                                   console.log("[PVGIS] Fetching T1:", pvgisUrl1);
-                                  const res1 = await fetch(pvgisUrl1);
-                                  if (!res1.ok) {
-                                    const errData = await res1.json().catch(() => ({}));
-                                    throw new Error(`T1 (${res1.status}): ${errData.details || errData.error || res1.statusText}`);
-                                  }
-                                  const data1 = await res1.json();
+                                  const data1 = await safeFetchPVGIS(pvgisUrl1);
                                   const getEy = (d) => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
                                   const yieldT1 = parseFloat(getEy(data1));
 
                                   // Fetch PVGIS for Line 1 opposite aspect (T2)
                                   const pvgisUrl2 = `/api/proxies/pvgis?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${oppositeAspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
-                                  const res2 = await fetch(pvgisUrl2);
-                                  if (!res2.ok) {
-                                    const errData = await res2.json().catch(() => ({}));
-                                    throw new Error(`T2 (${res2.status}): ${errData.details || errData.error || res2.statusText}`);
-                                  }
-                                  const data2 = await res2.json();
+                                  console.log("[PVGIS] Fetching T2:", pvgisUrl2);
+                                  const data2 = await safeFetchPVGIS(pvgisUrl2);
                                   const yieldT2 = parseFloat(getEy(data2));
 
                                   if (!isNaN(yieldT1) && !isNaN(yieldT2)) {
@@ -1108,7 +1113,7 @@ export default function ProjectEditor() {
                                   console.error("[PVGIS L1 Error]", e);
                                   toast({
                                     title: "Erreur Ligne 1",
-                                    description: `Échec calcul: ${e.message || "Erreur inconnue"}`,
+                                    description: `Échec calcul: ${e.message}`,
                                     variant: "destructive"
                                   });
                                 }
@@ -1215,15 +1220,16 @@ export default function ProjectEditor() {
                             className="shrink-0 aspect-square w-10 px-0"
                             title="Calculer le productible Toiture 2"
                             onClick={async () => {
+                              console.log("[PVGIS L2] Starting calculation for project:", p.id, "Params:", { panelAspect2: p.panelAspect2, panelAngle2: p.panelAngle2, gps: p.gps });
                               if (!p.gps) return toast({ title: "Erreur", description: "Veuillez renseigner les coordonnées GPS.", variant: "destructive" });
                               const parts = p.gps ? p.gps.split(',') : [];
                               const lat = parseFloat(parts[0]?.trim());
                               const lon = parseFloat(parts[1]?.trim());
                               if (isNaN(lat) || isNaN(lon)) return toast({ title: "Erreur", description: "Coordonnées GPS invalides.", variant: "destructive" });
 
-                              const angle = p.panelAngle2 || 15;
-                              const aspect = parseFloat(p.panelAspect2 || 0);
-                              const weighting = parseFloat(p.roofWeighting2 !== undefined ? p.roofWeighting2 : 50);
+                              const angle = parseFloat(p.panelAngle2 || 15) || 15;
+                              const aspect = parseFloat(p.panelAspect2 || 0) || 0;
+                              const weighting = parseFloat(p.roofWeighting2 !== undefined ? p.roofWeighting2 : 50) || 50;
 
                               // PVGIS Logic for ACAMA vs others
                               const pvgisLoss = activeTenantId === 'acama' ? 10 : 6;
