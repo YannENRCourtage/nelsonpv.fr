@@ -36,13 +36,28 @@ export default async function handler(req, res) {
             });
             if (!response.ok) {
                 const errorText = await response.text();
-                return res.status(response.status).json({ error: `PVGIS API error: ${response.status}`, details: errorText });
+                console.error(`[PROXY PVGIS] API Error ${response.status}:`, errorText);
+                return res.status(response.status).json({
+                    error: `PVGIS API error: ${response.status}`,
+                    details: errorText.slice(0, 200)
+                });
             }
-            const data = await response.json();
-            return res.status(200).json(data);
+
+            const rawBody = await response.text();
+            try {
+                const data = JSON.parse(rawBody);
+                return res.status(200).json(data);
+            } catch (parseError) {
+                console.error('[PROXY PVGIS] JSON Parse Error:', parseError, 'Raw body snippet:', rawBody.slice(0, 200));
+                return res.status(500).json({
+                    error: 'PVGIS return invalid JSON',
+                    details: rawBody.slice(0, 100),
+                    status: response.status
+                });
+            }
         } catch (error) {
             console.error('Error proxying PVGIS request:', error);
-            return res.status(500).json({ error: 'Internal server error', message: error.message });
+            return res.status(500).json({ error: 'Internal proxy error', message: error.message });
         }
     }
 

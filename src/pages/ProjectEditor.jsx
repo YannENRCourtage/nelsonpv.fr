@@ -1071,7 +1071,13 @@ export default function ProjectEditor() {
 
                                 try {
                                   const safeFetchPVGIS = async (url) => {
-                                    const response = await fetch(url);
+                                    let response;
+                                    try {
+                                      response = await fetch(url);
+                                    } catch (fetchErr) {
+                                      throw new Error(`Réseau: ${fetchErr.message}`);
+                                    }
+
                                     const text = await response.text();
                                     try {
                                       const json = JSON.parse(text);
@@ -1079,7 +1085,7 @@ export default function ProjectEditor() {
                                       return json;
                                     } catch (err) {
                                       if (!response.ok) throw new Error(`Réponse non-JSON (${response.status}): ${text.slice(0, 100)}...`);
-                                      throw new Error(`JSON Invalide: ${err.message}`);
+                                      throw new Error(`JSON Invalide: ${err.message}. Début: ${text.slice(0, 50)}`);
                                     }
                                   };
 
@@ -1243,26 +1249,36 @@ export default function ProjectEditor() {
                               toast({ title: "Calcul en cours...", description: `PVGIS Ligne 2: T1 (${aspect}°) et T2 (${oppositeAspect}°)` });
 
                               try {
+                                const safeFetchPVGIS = async (url) => {
+                                  let response;
+                                  try {
+                                    response = await fetch(url);
+                                  } catch (fetchErr) {
+                                    throw new Error(`Réseau: ${fetchErr.message}`);
+                                  }
+
+                                  const text = await response.text();
+                                  try {
+                                    const json = JSON.parse(text);
+                                    if (!response.ok) throw new Error(json.details || json.error || `Erreur HTTP ${response.status}`);
+                                    return json;
+                                  } catch (err) {
+                                    if (!response.ok) throw new Error(`Réponse non-JSON (${response.status}): ${text.slice(0, 100)}...`);
+                                    throw new Error(`JSON Invalide: ${err.message}. Début: ${text.slice(0, 50)}`);
+                                  }
+                                };
+
                                 // Fetch PVGIS for Line 2 primary aspect (T1)
                                 const pvgisUrl1 = `/api/proxies/pvgis?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
                                 console.log("[PVGIS] Fetching T1:", pvgisUrl1);
-                                const res1 = await fetch(pvgisUrl1);
-                                if (!res1.ok) {
-                                  const errData = await res1.json().catch(() => ({}));
-                                  throw new Error(`T1 (${res1.status}): ${errData.details || errData.error || res1.statusText}`);
-                                }
-                                const data1 = await res1.json();
+                                const data1 = await safeFetchPVGIS(pvgisUrl1);
                                 const getEy = (d) => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
                                 const yieldT1 = parseFloat(getEy(data1));
 
-                                // Fetch PVGIS for Line 1 opposite aspect (T2)
+                                // Fetch PVGIS for Line 2 opposite aspect (T2)
                                 const pvgisUrl2 = `/api/proxies/pvgis?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${oppositeAspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
-                                const res2 = await fetch(pvgisUrl2);
-                                if (!res2.ok) {
-                                  const errData = await res2.json().catch(() => ({}));
-                                  throw new Error(`T2 (${res2.status}): ${errData.details || errData.error || res2.statusText}`);
-                                }
-                                const data2 = await res2.json();
+                                console.log("[PVGIS] Fetching T2:", pvgisUrl2);
+                                const data2 = await safeFetchPVGIS(pvgisUrl2);
                                 const yieldT2 = parseFloat(getEy(data2));
 
                                 if (!isNaN(yieldT1) && !isNaN(yieldT2)) {
@@ -1282,7 +1298,7 @@ export default function ProjectEditor() {
                                 console.error("[PVGIS L2 Error]", e);
                                 toast({
                                   title: "Erreur Ligne 2",
-                                  description: `Échec calcul: ${e.message || "Erreur inconnue"}`,
+                                  description: `Échec calcul: ${e.message}`,
                                   variant: "destructive"
                                 });
                               }
