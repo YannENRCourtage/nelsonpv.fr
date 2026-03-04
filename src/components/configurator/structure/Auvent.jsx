@@ -338,8 +338,8 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     let roofY = -0.10; // Default baseline
 
     // TALIAN refinements (ACAMA)
-    // TALIAN 3: Lower roof by 110cm total (was 80cm, -30cm requested)
-    if (isTalian3) roofY -= 1.10;
+    // TALIAN 3: Lower roof by 130cm total (was 110cm, -20cm as requested phase 19)
+    if (isTalian3) roofY -= 1.30;
 
     else if (isTalian1) roofY -= 0.05;
 

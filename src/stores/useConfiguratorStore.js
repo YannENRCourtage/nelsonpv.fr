@@ -582,7 +582,9 @@ export const useConfiguratorValues = () => {
             }
         }
 
-        const solarPower = (solarCount * 465) / 1000;
+        // Puissance par panneau : 460Wc pour ACAMA, 465Wc pour GREEN INVEST
+        const PANEL_WATT = state.isAcama ? 460 : 465;
+        const solarPower = (solarCount * PANEL_WATT) / 1000;
         const availableWidths = TYPE_WIDTHS_MAP[state.buildingType] || TYPE_WIDTHS_MAP['symetrique'];
 
         return {
