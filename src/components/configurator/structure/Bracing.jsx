@@ -28,7 +28,8 @@ export function Bracing({
     const isTalian4 = isAcama && buildingType === 'symetrique' && Math.abs(width - 13.7) < 0.1;
     const isTalian1 = isAcama && buildingType === 'symetrique' && Math.abs(width - 18.8) < 0.1;
     const isTalian3 = isAcama && buildingType === 'symetrique' && Math.abs(width - 17.5) < 0.1;
-    const isTalian = isTalian4 || isTalian1 || isTalian3;
+    const isTalian5 = isAcama && buildingType === 'epona' && Math.abs(width - 27.3) < 0.1;
+    const isTalian = isTalian4 || isTalian1 || isTalian3 || isTalian5;
 
     // Loop through bays and add bracing every 4 bays
     for (let i = 0; i < bayCount; i += 4) {
@@ -43,7 +44,7 @@ export function Bracing({
         const yTopMainLeft = (buildingType === 'monopente') ? ridgeHeight - 0.5 : eaveHeight - 0.5;
         let yTopMainRight = eaveHeight - 0.5;
         if (buildingType === 'asymetrique_1') yTopMainRight = 3.9;
-        else if (isAcama && buildingType === 'asymetrique_2') yTopMainRight -= 1.0;
+        else if (isAcama && (buildingType === 'asymetrique_2' || isTalian5)) yTopMainRight = 3.7;
 
 
         const createRod = (start, end, key) => (
@@ -150,6 +151,8 @@ export function Bracing({
             bracings.push(createRod(new THREE.Vector3(rightColX, rightH, zStart), new THREE.Vector3(apexX + 0.05, apexY, zEnd), `roof-R-Epona-${i}-2`));
 
 
+        } else if (buildingType === 'asymetrique_2') {
+            // No roof bracing for asymetrique_2 as requested
         } else {
             // Symmetrical
             bracings.push(createRod(new THREE.Vector3(-width / 2, eaveHeight, zStart), new THREE.Vector3(-0.1, symRidgeHeight, zEnd), `roof-L-${i}-1`));

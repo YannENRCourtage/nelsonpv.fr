@@ -18,6 +18,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     const isAsymetrique = buildingType === 'asymetrique_1';
     const isAsymetrique2 = buildingType === 'asymetrique_2';
     const isEpona = isAcama && buildingType === 'epona';
+    const isTalian5 = isAcama && buildingType === 'epona' && Math.abs(width - 27.3) < 0.1;
 
     // ==========================================
     // HOOKS (Must be unconditional)
@@ -305,9 +306,11 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
                     rotation={[0, 0, mainSlope]}
                     castShadow receiveShadow />
 
-                <group position={[lFinalX, lFinalY, -length / 2]} rotation={[0, 0, mainSlope]}>
-                    <SolarPanels surfaceWidth={leftRoofLength} surfaceLength={length + 1.0} />
-                </group>
+                {!isTalian5 && (
+                    <group position={[lFinalX, lFinalY, -length / 2]} rotation={[0, 0, mainSlope]}>
+                        <SolarPanels surfaceWidth={leftRoofLength} surfaceLength={length + 1.0} />
+                    </group>
+                )}
 
                 {/* Right Panel */}
                 <mesh geometry={rightGeo} material={roofMaterial}

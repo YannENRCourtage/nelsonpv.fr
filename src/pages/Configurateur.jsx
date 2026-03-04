@@ -365,10 +365,14 @@ export default function Configurateur() {
                             {config.length}m x {parseFloat((config.width
                                 + (config.leftSide === 'appentis' ? 9.3 : (config.leftSide === 'auvent' ? 4.0 : 0))
                                 + (config.rightSide === 'appentis' ? 9.3 : (config.rightSide === 'auvent' ? 4.0 : 0))
-                            ).toFixed(1))}m - {((config.width
-                                + (config.leftSide === 'appentis' ? 9.3 : (config.leftSide === 'auvent' ? 4.0 : 0))
-                                + (config.rightSide === 'appentis' ? 9.3 : (config.rightSide === 'auvent' ? 4.0 : 0))
-                            ) * config.length).toFixed(0)}m²
+                            ).toFixed(1))}m - {
+                                (isAcama && config.buildingType === 'epona' && Math.abs(config.width - 27.3) < 0.1)
+                                    ? 846
+                                    : ((config.width
+                                        + (config.leftSide === 'appentis' ? 9.3 : (config.leftSide === 'auvent' ? 4.0 : 0))
+                                        + (config.rightSide === 'appentis' ? 9.3 : (config.rightSide === 'auvent' ? 4.0 : 0))
+                                    ) * config.length).toFixed(0)
+                            }m²
                         </span>
                     </div>
 

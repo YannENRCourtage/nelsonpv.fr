@@ -2170,9 +2170,8 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
       window.removeEventListener("map:place-building", handlePlaceBuilding);
       window.removeEventListener("map:update-last-building", handleUpdateLastBuilding);
     };
-    // NOTE: project?.panelAspect removed from dependencies to prevent infinite loop
-    // When rotating => azimuth changes => useEffect reruns => handlers re-registered => creates loop
-  }, [map, setFeatures]);
+    // NOTE: features added to dependencies to fix closure bug causing isSecondBuilding to always be false
+  }, [map, features, setFeatures]);
 
   useEffect(() => {
     // L'événement est "map:capture-request"
@@ -2801,20 +2800,22 @@ export default function MapElements({ style = {}, project, setProject, onAddress
         // Iterate over all predefined buildings to sync their azimuths
         // This handles B1 (index 0) -> panelAspect AND B2 (index 1) -> panelAspect2
         rects.forEach((rect, index) => {
-          if (rect.isPredefinedBuilding === true || rect.buildingName) {
-            const newAzimuth = calculateAzimuthFromAngle(rect.angle || 0);
+          // Identify building index based on its position in the list of PREDEFINED buildings
+          // This prevents manual rectangles from shifting the B1/B2 indices.
+          const buildingIndex = index;
 
-            if (index === 0) {
-              // Building 1 -> panelAspect
-              if (prev.panelAspect === undefined || Math.abs(Number(prev.panelAspect) - newAzimuth) >= 1) {
-                newUpdates.panelAspect = newAzimuth;
-                if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
-              }
-            } else if (index === 1) {
-              // Building 2 -> panelAspect2
-              if (prev.panelAspect2 === undefined || Math.abs(Number(prev.panelAspect2) - newAzimuth) >= 1) {
-                newUpdates.panelAspect2 = newAzimuth;
-              }
+          const newAzimuth = calculateAzimuthFromAngle(rect.angle || 0);
+
+          if (buildingIndex === 0) {
+            // Building 1 -> panelAspect
+            if (prev.panelAspect === undefined || Math.abs(Number(prev.panelAspect) - newAzimuth) >= 1) {
+              newUpdates.panelAspect = newAzimuth;
+              if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
+            }
+          } else if (buildingIndex === 1) {
+            // Building 2 -> panelAspect2
+            if (prev.panelAspect2 === undefined || Math.abs(Number(prev.panelAspect2) - newAzimuth) >= 1) {
+              newUpdates.panelAspect2 = newAzimuth;
             }
           }
         });

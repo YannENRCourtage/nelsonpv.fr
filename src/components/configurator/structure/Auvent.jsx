@@ -38,14 +38,14 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
             // Right awning: top at 4m
             startHeight = 4.0;
         } else {
-            // Left awning: top at 6.9m (25.5m) or 7.9m (29.1m)
+            // Left awning: top at 6.4m (25.5m) or 7.4m (29.1m) - Lowered by 50cm
             if (Math.abs(w - 25.5) < 0.1) {
-                startHeight = 6.9;
+                startHeight = 6.4;
             } else if (Math.abs(w - 29.1) < 0.1) {
-                startHeight = 7.9;
+                startHeight = 7.4;
             } else {
                 // Fallback for other widths
-                startHeight = 6.9;
+                startHeight = 6.4;
             }
         }
     } else if (buildingType === 'asymetrique_1') {
@@ -408,7 +408,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
                 ]}
                 rotation={[0, 0, -angleRad]}
             >
-                <SolarPanels surfaceWidth={slopeLength} surfaceLength={length + 1.0} />
+                <SolarPanels surfaceWidth={slopeLength} surfaceLength={length + 1.0} forceFullCoverage={isTalian3} />
             </group>
 
             {/* STRUCTURE */}

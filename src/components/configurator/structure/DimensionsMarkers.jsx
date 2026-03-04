@@ -20,11 +20,12 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const isAcamaInStore = isAcama;
     const isAcamaReal = isAcamaInStore || false; // Safe check
 
-    const isEpona = isAcama && buildingType === 'epona';
+    const isEpona = isAcama && buildingType === 'epona' && Math.abs(width - 23.6) < 0.1;
     const isTalian4 = isAcama && buildingType === 'symetrique' && Math.abs(width - 13.7) < 0.1;
     const isTalian1 = isAcama && buildingType === 'symetrique' && Math.abs(width - 18.8) < 0.1;
     const isTalian3 = isAcama && buildingType === 'symetrique' && Math.abs(width - 17.5) < 0.1;
-    const isTalian = isTalian4 || isTalian1 || isTalian3;
+    const isTalian5 = isAcama && buildingType === 'epona' && Math.abs(width - 27.3) < 0.1;
+    const isTalian = isTalian4 || isTalian1 || isTalian3 || isTalian5;
 
     const getExtWidth = (type, side) => {
         if (isEpona) return side === 'left' ? 2.5 : 9.1; // Appentis depth: 7.85 (span) + 1.25 (overhang) = 9.1m
@@ -67,6 +68,20 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const zFront = 3.0;
         const start = new THREE.Vector3(-width / 2, yHeight, zFront);
         const end = new THREE.Vector3(width / 2, yHeight, zFront);
+
+        if (isTalian5) {
+            // TALIAN 5: 2 segments (15.4m and 11.0m from left)
+            const mid = new THREE.Vector3(-width / 2 + 15.4, yHeight, zFront);
+            return {
+                widthStart: start,
+                widthEnd: end,
+                widthPoints: [
+                    [start, new THREE.Vector3(mid.x - gapSize / 2, mid.y, mid.z)],
+                    [new THREE.Vector3(mid.x + gapSize / 2, mid.y, mid.z), end]
+                ]
+            };
+        }
+
         const mid = new THREE.Vector3(0, yHeight, zFront);
         return {
             widthStart: start,
@@ -76,7 +91,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(mid.x + gapSize / 2, mid.y, mid.z), end]
             ]
         };
-    }, [width, gapSize, buildingType]);
+    }, [width, gapSize, buildingType, isTalian5]);
 
     // 2. Length Arrow (Right Side)
     const { lengthPoints, lengthStart, lengthEnd, xSide } = useMemo(() => {
@@ -116,7 +131,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     // If Right has Extension, try Left?
     // If BOTH have extensions, pick one outer edge?
     // Let's assume we place it on Left, but offset if Left Ext exists.
-    // `const x = -width / 2 - leftWidth - 2.0;`
+    // `const x = -width/2 - leftWidth - 2.0;`
     // This places it outside the left extension.
     // And verifies the height of the EAVE (which is usually same for extension connection?).
     // Actually eaveHeight is Main Building Eave.
@@ -138,36 +153,15 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         if (buildingType === 'monopente') {
             // Right Side
             x = rightSide !== 'none' ? width / 2 + 1.5 : width / 2 + 3.0;
-        } else if (buildingType === 'ombriere_vl_simple_droite') {
-            // Low side Right. Eave Marker on Right.
+        } else if (buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche' || buildingType === 'ombriere_vl_double' || buildingType === 'ombriere_pl') {
             x = width / 2 + 1.5;
-        } else if (buildingType === 'ombriere_vl_simple_gauche') {
-            // Low side Right (Unified High Left -> Low Right).
-            x = width / 2 + 1.5;
-        } else if (buildingType === 'ombriere_vl_double' || buildingType === 'ombriere_pl') {
-            // User Request (Images): Match positions of Simple Gauche
-            // Previously set to +3.0, now reverting/adjusting to +1.5 to match Simple Gauche.
-            x = width / 2 + 1.5;
-        } else if (buildingType === 'asymetrique_2') {
-            return { heightPoints: null, heightStart: null, heightEnd: null, xEave: null };
-        } else if (buildingType === 'asymetrique_1') {
-            // Right Side (Fixed at 4.0m) - handled here for simple display logic, 
-            // but for Asym 2 we use a specific marker elsewhere? 
-            // Actually Asym 1 uses standard logic for Right (4m), Asym 2 uses specific Right (4m).
-            // But this block is for the "Primary Eave Height" marker.
-            // For Asym 1, primary is Right (4m).
-            // For Asym 2, primary is Right (4m) too? No, user said "Remove 5.5m indication on left".
-            // The standard marker (lines 122-123) is Left Side for Sym/Mono?
-
-            // Let's refine:
-            // Sym/Default -> Left Side (eaveHeight)
-            // Monopente -> Right Side (eaveHeight)
-            // Asym 1 -> Right Side (4.0m)
-            // Asym 2 -> Right Side (4.0m) ? User said "Retire l'indication de 5.5m pour la sablière gauche".
-            // So we want to ensure NO marker is drawn on the left here.
-
+        } else if (isTalian5) {
+            // Right Side for Talian 5 (4.3m)
+            h = 4.3;
+            x = width / 2 + 3.0;
+        } else if (buildingType === 'asymetrique_1' || buildingType === 'asymetrique_2') {
             h = 4.0;
-            x = rightSide !== 'none' ? width / 2 + 1.5 : width / 2 + 3.0; // Show on Right for Asym 1 & 2
+            x = rightSide !== 'none' ? width / 2 + 1.5 : width / 2 + 3.0;
         } else {
             // Left Side (Standard Sym)
             x = leftSide !== 'none' ? -width / 2 - 1.5 : -width / 2 - 3.0;
@@ -185,7 +179,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
             ]
         };
-    }, [width, eaveHeight, leftSide, rightSide, gapSize, buildingType]);
+    }, [width, eaveHeight, leftSide, rightSide, gapSize, buildingType, isTalian5]);
 
     // 3b. Ridge Height
     const { ridgePoints, ridgeStart, ridgeEnd, xRidge, zRidge, ridgeLabelValue } = useMemo(() => {
@@ -207,10 +201,6 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         // USER REQUEST 13/01/2026: Swap markers for 'gauche'.
         // 'ombriere_vl_simple_droite': High Left (Ridge), Low Right (Eave). (Already handled by standard logic if slopes are negative?)
         // 'ombriere_vl_simple_gauche': High Left (Ridge), Low Right (Eave).
-
-        // The user wants:
-        // Droite: Unchanged (Ridge Left 4.5m, Eave Right 2.9m)
-        // Gauche: "Inverse aussi... indications". Ridge Left (4.5m), Eave Right (2.9m).
 
         // WAIT. If they are geometrically identical (High Left -> Low Right), then the markers should correspond to geometry.
         // If geometry is High Left, then Ridge IS Left.
@@ -239,6 +229,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
             // Apex
             x = -width / 2 + (width * 0.25);
+        } else if (isTalian5) {
+            h = ridgeHeight;
+            x = -width / 2 + 3.43; // Apex for Talian 5
         } else if (buildingType === 'asymetrique_2') {
             // Asym 2 Ridge: at apex (1/4 from left)
             if (Math.abs(width - 25.5) < 0.1) {
@@ -297,13 +290,13 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
             ]
         };
-    }, [width, ridgeHeight, gapSize, buildingType, isEpona, isTalian4, isTalian1]);
+    }, [width, ridgeHeight, gapSize, buildingType, isEpona, isTalian4, isTalian1, isTalian5]);
 
 
     // 3c. Left Eave Height (Asymmetrical ONLY — masqué pour EPONA)
     const asymLeftEaveData = useMemo(() => {
         // Pour EPONA, on ne montre pas la sablière gauche du bâtiment
-        if (buildingType !== 'asymetrique_1' && buildingType !== 'asymetrique_2') return null;
+        if (buildingType !== 'asymetrique_1' && buildingType !== 'asymetrique_2' && !isTalian5) return null;
         // Uniquement pour ACAMA
 
 
@@ -314,10 +307,12 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const ridge = rightEave + (rSpan * Math.tan(rAngle));
 
         let h;
-        if (buildingType === 'asymetrique_2') {
+        if (isTalian5) {
+            h = 7.9;
+        } else if (buildingType === 'asymetrique_2') {
             // USER REQUEST 12/01/2026: Updated sablière heights for BUILDING
-            if (Math.abs(width - 25.5) < 0.1) h = 6.9; // 25.5m width (was 5.9m)
-            else if (Math.abs(width - 29.1) < 0.1) h = 7.9; // 29.1m width (was 6.9m)
+            if (Math.abs(width - 25.5) < 0.1) h = 6.9;
+            else if (Math.abs(width - 29.1) < 0.1) h = 7.9;
             else h = 6.9; // Fallback
         } else {
             // Asym 1
@@ -345,13 +340,13 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
             ]
         };
-    }, [buildingType, width, leftSide, gapSize]);
+    }, [buildingType, width, leftSide, gapSize, isTalian5]);
 
     // 3d. Right Eave Height (Asymmetrical 2 Zones ONLY)
     const asym2RightEaveData = useMemo(() => {
-        if (buildingType !== 'asymetrique_2') return null;
+        if (buildingType !== 'asymetrique_2' && !isTalian5) return null;
         // USER REQUEST 12/01/2026: Right sablière height for asymmetric 2 zones = 4m (BUILDING, not awning)
-        const h = 4.0; // Fixed right eave height for BUILDING
+        const h = isTalian5 ? 4.3 : 4.0; // Fixed right eave height for BUILDING
         const x = width / 2 + 1.5; // Right side, outside
 
         const start = new THREE.Vector3(x, 0, 0);
@@ -367,7 +362,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
             ]
         };
-    }, [buildingType, width, gapSize]);
+    }, [buildingType, width, gapSize, isTalian5]);
 
     // 5. Left Extension Dimensions
     const leftExtData = useMemo(() => {
@@ -393,10 +388,13 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             if (Math.abs(width - 20) < 0.5) extHeight = 6.4; // Back to original height
             else if (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5) extHeight = 5.4;
         } else if (buildingType === 'asymetrique_2' && leftSide === 'auvent') {
-            // USER REQUEST 12/01/2026: Asym 2 Left Auvent: 5.9m (25.5m) or 6.9m (29.1m)
+            // USER REQUEST 12/01/2026: Asym 2 Left Auvent: Indication must stay at 5.9m (25.5m) or 6.9m (29.1m)
+            // even if physically lowered by 50cm.
             if (Math.abs(width - 25.5) < 0.1) extHeight = 5.9;
             else if (Math.abs(width - 29.1) < 0.1) extHeight = 6.9;
             else extHeight = 5.9; // Fallback
+        } else if (isTalian5 && leftSide === 'auvent') {
+            extHeight = 5.9; // Talian 5 left awning height
         }
 
         // Logic for Left side: Start -Width/2, End -Width/2 - ExtWidth
@@ -411,21 +409,21 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const wStart = new THREE.Vector3(xStart, yWidth, zFront);
         const wEnd = new THREE.Vector3(xEnd, yWidth, zFront);
 
-        // Gap removed for extensions to put points at ends EXCEPT for EPONA/TALIAN 1/TALIAN 3
-        const hasGap = isEpona || isTalian1 || isTalian3;
+        // Gap removed for extensions to put points at ends EXCEPT for EPONA/TALIAN 1/TALIAN 3 or Asym 2 Auvent
+        const hasGap = isEpona || isTalian1 || isTalian3 || isTalian5 || (buildingType === 'asymetrique_2' && leftSide === 'auvent');
         const wPoints = hasGap ? [
-            [wStart, new THREE.Vector3(xMid + 1.0, yWidth, zFront)],
-            [new THREE.Vector3(xMid - 1.0, yWidth, zFront), wEnd]
+            [wStart, new THREE.Vector3(xMid + (isEpona || isTalian ? 1.0 : 1.5), yWidth, zFront)],
+            [new THREE.Vector3(xMid - (isEpona || isTalian ? 1.0 : 1.5), yWidth, zFront), wEnd]
         ] : [
             [wStart, wEnd]
         ];
 
         // Height
-        const xH = -width / 2 - leftWidth - (isTalian1 || isEpona ? 3.0 : 2.0);
+        const xH = -width / 2 - leftWidth - (isTalian1 || isEpona || isTalian5 ? 3.0 : 2.0);
         // Pour EPONA ACAMA, on arrête le trait de mesure à la sablière (extHeight)
-        const visualTopLeft = isEpona ? extHeight : (isTalian4 ? extHeight - 1.2 : (isTalian1 ? extHeight - 0.3 : extHeight));
+        const visualTopLeft = isEpona ? extHeight : (isTalian4 ? extHeight - 1.2 : (isTalian1 ? extHeight - 0.3 : (isTalian5 ? extHeight - 0.3 : extHeight)));
         const visualMidLeft = visualTopLeft / 2;
-        const hGap = isTalian3 ? 2.0 : (isEpona ? 2.0 : gapSize); // Phase 18: reduce gap to avoid lines outside
+        const hGap = isTalian3 ? 2.0 : (isEpona || isTalian5 ? 2.0 : gapSize); // Phase 18: reduce gap to avoid lines outside
 
         return {
             extWidth, extHeight, xH,
@@ -438,7 +436,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(xH, visualMidLeft + hGap / 2, 0), new THREE.Vector3(xH, visualTopLeft, 0)]
             ]
         };
-    }, [leftSide, leftWidth, leftHeight, width, gapSize, buildingType, isEpona, isTalian]);
+    }, [leftSide, leftWidth, leftHeight, width, gapSize, buildingType, isEpona, isTalian, isTalian1, isTalian3, isTalian4, isTalian5]);
 
     // 4. Right Extension Dimensions (Update for Monopente Right)
     const rightExtData = useMemo(() => {
@@ -455,8 +453,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             // Right Auvent Tip: 3.0m
             extHeight = 3.0;
         } else if (buildingType === 'asymetrique_2' && rightSide === 'auvent') {
-            // USER REQUEST 12/01/2026: Right Auvent for asymétrique 2 zones = 3m
-            extHeight = 3.0;
+            // USER REQUEST 12/01/2026: Right Auvent for asymétrique 2 zones = 4m indication
+            extHeight = 4.0;
+        } else if (isTalian5 && rightSide === 'auvent') {
+            extHeight = 4.3; // Talian 5 right awning height
         } else if (buildingType === 'symetrique' && rightSide === 'auvent' && !isTalian1 && !isTalian3) {
             // Sym Right Auvent: Low Point ~4.8m (High 5.5 - Rise)
             extHeight = 4.8;
@@ -474,23 +474,23 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const wMid = new THREE.Vector3(width / 2 + extWidth / 2, yWidth, zFront);
 
         // Height Marker
-        const xH = width / 2 + extWidth + (isTalian1 || isEpona ? 3.0 : 2.0);
+        const xH = width / 2 + extWidth + (isTalian1 || isEpona || isTalian5 ? 3.0 : 2.0);
         // Pour EPONA ACAMA, on arrête le trait de mesure à la sablière (extHeight)
-        const visualTopRight = isEpona ? extHeight : (isTalian4 ? extHeight - 1.2 : (isTalian1 ? extHeight - 0.3 : extHeight));
+        const visualTopRight = isEpona ? extHeight : (isTalian4 ? extHeight - 1.2 : (isTalian1 ? extHeight - 0.3 : (isTalian5 ? extHeight - 0.3 : extHeight)));
         const visualMidRight = visualTopRight / 2;
         const hStart = new THREE.Vector3(xH, 0, 0);
         const hEnd = new THREE.Vector3(xH, visualTopRight, 0);
         const hMid = new THREE.Vector3(xH, visualMidRight, 0);
 
-        const hasGap = isEpona || isTalian1 || isTalian3;
+        const hasGap = isEpona || isTalian1 || isTalian3 || isTalian5 || (buildingType === 'asymetrique_2' && rightSide === 'auvent');
         const wPoints = hasGap ? [
-            [wStart, new THREE.Vector3(wMid.x - 1.0, yWidth, zFront)],
-            [new THREE.Vector3(wMid.x + 1.0, yWidth, zFront), wEnd]
+            [wStart, new THREE.Vector3(wMid.x - (isEpona || isTalian ? 1.0 : 1.5), yWidth, zFront)],
+            [new THREE.Vector3(wMid.x + (isEpona || isTalian ? 1.0 : 1.5), yWidth, zFront), wEnd]
         ] : [
             [wStart, wEnd]
         ];
 
-        const hGap = isTalian3 ? 2.0 : (isEpona ? 2.0 : gapSize);
+        const hGap = isTalian3 ? 2.0 : (isEpona || isTalian5 ? 2.0 : gapSize);
 
         return {
             extWidth, extHeight, xH,
@@ -502,13 +502,14 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(hMid.x, hMid.y + hGap / 2, hMid.z), hEnd]
             ]
         };
-    }, [rightSide, rightWidth, rightHeight, width, gapSize, buildingType, ridgeHeight, isEpona, isTalian]);
+    }, [rightSide, rightWidth, rightHeight, width, gapSize, buildingType, ridgeHeight, isEpona, isTalian, isTalian1, isTalian3, isTalian4, isTalian5]);
 
     // 3d. Middle Column Distance (Asymmetrical 2 Zones ONLY)
     const asym2MiddleColData = useMemo(() => {
-        if (buildingType !== 'asymetrique_2') return null;
+        if (buildingType !== 'asymetrique_2' && !isTalian5) return null;
 
-        const middleColX = -width / 2 + 13.1;
+        const dist = isTalian5 ? 15.4 : 13.1;
+        const middleColX = -width / 2 + dist;
         const leftWallX = -width / 2;
         const zFront = 1.5; // Offset toward building
 
@@ -527,15 +528,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         return {
             wStart, wEnd, wMid,
             widthPoints: wPoints,
-            distance: 13.1
+            distance: dist
         };
     }, [buildingType, width, gapSize]);
 
     // 3e. Middle Column to Right Distance (Asymm 2 Zones ONLY)
     const asym2RightDistData = useMemo(() => {
-        if (buildingType !== 'asymetrique_2') return null;
+        if (buildingType !== 'asymetrique_2' && !isTalian5) return null;
 
-        const middleColX = -width / 2 + 13.1;
+        const distLeft = isTalian5 ? 15.4 : 13.1;
+        const middleColX = -width / 2 + distLeft;
         const rightWallX = width / 2;
         const zFront = 1.5; // Same offset as left marker
 
@@ -545,6 +547,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             distValue = 12.4;
         } else if (Math.abs(width - 29.1) < 0.1) {
             distValue = 16.0;
+        } else if (isTalian5) {
+            distValue = 11; // User requested 11m label even if total is 27.3 (15.4 + 11.9)
         } else {
             distValue = width - 13.1; // Fallback
         }
@@ -577,7 +581,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     // 7b. EPONA/TALIAN Total Width Marker (ACAMA uniquement)
     const acamaTotalWidthData = useMemo(() => {
         if (!isEpona && !isTalian) return null;
-        const totalW = isEpona ? 35.3 : (isTalian4 ? 37.5 : (isTalian3 ? 21.1 : 23.5)); // Epona: 2.55 (left) + 11.8 (L span) + 11.8 (R main span) + 7.85 (appentis span) + 1.25 (right overhang) = 35.25 ≈ 35.3m
+        const totalW = isEpona ? 35.3 : (isTalian4 ? 37.5 : (isTalian3 ? 21.1 : (isTalian5 ? 27.3 : 23.5)));
         const zPos = (isTalian1 || isTalian3) ? 7.0 : 6.0;
 
 
@@ -759,7 +763,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         outlineWidth={0.1}
                         outlineColor="#ffffff"
                     >
-                        {`${length} m`}
+                        {isTalian5 ? "31.0 m" : `${length} m`}
                     </Text>
                 </group>
             )}
@@ -813,15 +817,17 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             {/* ... (Rest of Renders) ... */}
 
             {/* 4. RIDGE HEIGHT */}
-            <group>
-                <Line points={ridgePoints[0]} color={lineColor} lineWidth={lineWidth} />
-                <Line points={ridgePoints[1]} color={lineColor} lineWidth={lineWidth} />
-                <mesh position={ridgeStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                <mesh position={ridgeEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                <Text position={[xRidge + 0.5, (isEpona ? (ridgeLabelValue || ridgeHeight) - 0.5 : (ridgeLabelValue || ridgeHeight)) / 2, zRidge]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                    {`${Number(ridgeLabelValue || ridgeHeight).toFixed(1)} m`}
-                </Text>
-            </group>
+            {!isTalian5 && (
+                <group>
+                    <Line points={ridgePoints[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={ridgePoints[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={ridgeStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={ridgeEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text position={[xRidge + 0.5, (isEpona ? (ridgeLabelValue || ridgeHeight) - 0.5 : (ridgeLabelValue || ridgeHeight)) / 2, zRidge]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                        {`${Number(ridgeLabelValue || ridgeHeight).toFixed(1)} m`}
+                    </Text>
+                </group>
+            )}
 
             {/* 4b. ASYM LEFT EAVE HEIGHT */}
             {asymLeftEaveData && (
@@ -831,7 +837,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={asymLeftEaveData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={asymLeftEaveData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text position={[asymLeftEaveData.xLeft - 0.5, asymLeftEaveData.hVal / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                        {`${parseFloat(Number(asymLeftEaveData.hVal).toFixed(2))} m`}
+                        {isTalian5 ? "7.9 m" : `${parseFloat(Number(asymLeftEaveData.hVal).toFixed(2))} m`}
                     </Text>
                 </group>
             )}
@@ -844,7 +850,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={asym2RightEaveData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={asym2RightEaveData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text position={[asym2RightEaveData.xRight + 0.5, asym2RightEaveData.hVal / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                        {`4 m`}
+                        {isTalian5 ? "4.3 m" : `4 m`}
                     </Text>
                 </group>
             )}
@@ -927,7 +933,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         outlineWidth={0.1}
                         outlineColor="#ffffff"
                     >
-                        {`13.1 m`}
+                        {isTalian5 ? "15.4 m" : `13.1 m`}
                     </Text>
                 </group>
             )}
@@ -949,7 +955,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         outlineWidth={0.1}
                         outlineColor="#ffffff"
                     >
-                        {`${asym2RightDistData.distance} m`}
+                        {isTalian5 ? "11 m" : `${asym2RightDistData.distance} m`}
                     </Text>
                 </group>
             )}
@@ -1024,11 +1030,13 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 position={[
                     width / 4,
                     (() => {
-                        // USER REQUEST 12/01/2026: Raise surface area by 20cm for asymetrique_1 16.4m width
+                        // USER REQUEST 12/01/2026: Raise surface area by 20cm
                         let baseHeight = buildingType === 'symetrique' ? ridgeHeight + 1.0 : ridgeHeight - 1.0;
                         if (isAcama && buildingType === 'asymetrique_1' && (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5)) {
                             baseHeight += 0.20; // Raise by 20cm for 16.4m width
                         }
+
+                        if (isTalian5) baseHeight = 5.0; // Place it on the long slope lower down for visibility
 
                         // USER REQUEST 13/01/2026: Raise surface area by 1m for ombriere
                         // USER REQUEST 13/01/2026 Part 3: Raise by additional 1.5m (Total 2.5m)
@@ -1054,7 +1062,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 outlineWidth={0.2}
                 outlineColor="#000000"
             >
-                {`${surfaceArea} m²`}
+                {isTalian5 ? "846 m²" : `${surfaceArea} m²`}
             </Text>
             {/* 9. ROOF SLOPE LABELS (Faitage/Sablière) */}
 

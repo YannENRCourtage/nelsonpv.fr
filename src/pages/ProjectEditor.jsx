@@ -1070,7 +1070,7 @@ export default function ProjectEditor() {
 
                                 try {
                                   // Fetch PVGIS for Line 1 primary aspect (T1)
-                                  const pvgisUrl1 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
+                                  const pvgisUrl1 = `/api/proxies/pvgis?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
                                   const res1 = await fetch(pvgisUrl1);
                                   if (!res1.ok) throw new Error("Erreur PVGIS T1");
                                   const data1 = await res1.json();
@@ -1078,7 +1078,7 @@ export default function ProjectEditor() {
                                   const yieldT1 = parseFloat(getEy(data1));
 
                                   // Fetch PVGIS for Line 1 opposite aspect (T2)
-                                  const pvgisUrl2 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${oppositeAspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
+                                  const pvgisUrl2 = `/api/proxies/pvgis?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${oppositeAspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
                                   const res2 = await fetch(pvgisUrl2);
                                   if (!res2.ok) throw new Error("Erreur PVGIS T2");
                                   const data2 = await res2.json();
@@ -1227,7 +1227,7 @@ export default function ProjectEditor() {
 
                               try {
                                 // Fetch PVGIS for Line 2 primary aspect (T1)
-                                const pvgisUrl1 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
+                                const pvgisUrl1 = `/api/proxies/pvgis?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
                                 const res1 = await fetch(pvgisUrl1);
                                 if (!res1.ok) throw new Error("Erreur PVGIS T1");
                                 const data1 = await res1.json();
@@ -1235,7 +1235,7 @@ export default function ProjectEditor() {
                                 const yieldT1 = parseFloat(getEy(data1));
 
                                 // Fetch PVGIS for Line 1 opposite aspect (T2)
-                                const pvgisUrl2 = `/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${oppositeAspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
+                                const pvgisUrl2 = `/api/proxies/pvgis?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${oppositeAspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`;
                                 const res2 = await fetch(pvgisUrl2);
                                 if (!res2.ok) throw new Error("Erreur PVGIS T2");
                                 const data2 = await res2.json();

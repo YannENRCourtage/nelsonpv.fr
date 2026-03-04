@@ -23,7 +23,7 @@
     ],
     "headers": [],
     "functions": {
-        "api/pvgis-proxy.js": {
+        "api/proxies/[[...slug]].js": {
             "maxDuration": 60,
             "memory": 1024
         }

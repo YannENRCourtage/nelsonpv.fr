@@ -231,6 +231,57 @@ export const TALIAN_3_MODELS = {
     }
 };
 
+/**
+ * ACAMA TALIAN 5 Model Definitions
+ * - buildingType = 'symetrique' (handled as asym2 in PortalFrame)
+ * - width = 27.3m
+ * - asym style with 3 columns
+ */
+export const TALIAN_5_MODELS = {
+    'TALIAN_5_MIN': {
+        label: 'TALIAN 5 MIN / 31.0x27.3m',
+        width: 27.3,
+        baySpacing: 6.2,
+        bayCount: 5,
+        fixedLength: 31.0,
+        eaveHeight: 7.9,        // Sablière Gauche
+        rightEaveHeight: 4.3,   // Sablière Droite
+        roofPitch: 10,
+        leftSide: 'none',
+        rightSide: 'none',
+        leftWidth: 15.4,        // Distance poteau G -> Milieu
+        rightWidth: 11.0,       // Distance poteau D -> Milieu
+    },
+    'TALIAN_5_MID': {
+        label: 'TALIAN 5 MID / 50.2x27.3m',
+        width: 27.3,
+        baySpacing: 6.275,
+        bayCount: 8,
+        fixedLength: 50.2,
+        eaveHeight: 7.9,
+        rightEaveHeight: 4.3,
+        roofPitch: 10,
+        leftSide: 'none',
+        rightSide: 'none',
+        leftWidth: 15.4,
+        rightWidth: 11.0,
+    },
+    'TALIAN_5_MAX': {
+        label: 'TALIAN 5 MAX / 62.6x27.3m',
+        width: 27.3,
+        baySpacing: 6.26,
+        bayCount: 10,
+        fixedLength: 62.6,
+        eaveHeight: 7.9,
+        rightEaveHeight: 4.3,
+        roofPitch: 10,
+        leftSide: 'none',
+        rightSide: 'none',
+        leftWidth: 15.4,
+        rightWidth: 11.0,
+    }
+};
+
 export const useConfiguratorStore = create((set, get) => ({
     // ... (existing constants and params)
     roofPitch: 10,
@@ -251,6 +302,7 @@ export const useConfiguratorStore = create((set, get) => ({
     selectedTalianModel: 'TALIAN_4_MIN',
     selectedTalian1Model: 'TALIAN_1_MIN',
     selectedTalian3Model: 'TALIAN_3_MIN',
+    selectedTalian5Model: 'TALIAN_5_MIN',
     fixedLength: null,  // Override for EPONA/TALIAN models
     leftWidth: 9.3,     // Standard
     rightWidth: 9.3,    // Standard
@@ -398,6 +450,24 @@ export const useConfiguratorStore = create((set, get) => ({
             rightWidth: model.rightWidth,
         });
     },
+    setTalian5Model: (modelKey) => {
+        const model = TALIAN_5_MODELS[modelKey];
+        if (!model) return;
+        set({
+            selectedTalian5Model: modelKey,
+            buildingType: 'epona',
+            width: model.width,
+            baySpacing: model.baySpacing,
+            bayCount: model.bayCount,
+            fixedLength: model.fixedLength,
+            eaveHeight: model.eaveHeight,
+            roofPitch: model.roofPitch,
+            leftSide: model.leftSide,
+            rightSide: model.rightSide,
+            leftWidth: model.leftWidth,
+            rightWidth: model.rightWidth,
+        });
+    },
 
     hasSolar: false,
     toggleSolar: () => set((state) => ({ hasSolar: !state.hasSolar })),
@@ -416,6 +486,7 @@ export const useConfiguratorStore = create((set, get) => ({
         selectedTalianModel: 'TALIAN_4_MIN',
         selectedTalian1Model: 'TALIAN_1_MIN',
         selectedTalian3Model: 'TALIAN_3_MIN',
+        selectedTalian5Model: 'TALIAN_5_MIN',
         leftWidth: 9.3,
         rightWidth: 9.3,
         isAcama: false,
@@ -446,24 +517,26 @@ export const useConfiguratorStore = create((set, get) => ({
 export const useConfiguratorValues = () => {
     const state = useConfiguratorStore();
 
-    return React.useMemo(() => {
-        // Length: use fixedLength for EPONA, otherwise compute from bays
-        const length = state.fixedLength || (state.baySpacing * state.bayCount);
-        const ridgeHeight = (state.buildingType === 'monopente' && MONOPENTE_HEIGHTS[state.width])
-            ? MONOPENTE_HEIGHTS[state.width]
-            : (WIDTH_HEIGHT_MAP[state.width] ||
-                // For EPONA, use hardcoded ridge 9.4m. For TALIAN, calculate/fixed
-                (state.buildingType === 'epona' ? 9.4 :
-                    (state.isAcama && state.buildingType === 'symetrique' && Math.abs(state.width - 13.7) < 0.1)
-                        ? state.eaveHeight + (state.width / 2) * Math.tan(state.roofPitch * Math.PI / 180)
-                        : (state.isAcama && state.buildingType === 'symetrique' && Math.abs(state.width - 18.8) < 0.1)
-                            ? 6.7 // TALIAN 1 Fixed Ridge Height
-                            : (state.isAcama && state.buildingType === 'symetrique' && Math.abs(state.width - 17.5) < 0.1)
-                                ? 4.5 // TALIAN 3 Fixed Ridge Height
-                                : WIDTH_HEIGHT_MAP[state.width] || WIDTH_HEIGHT_MAP[18.6]));
+    const length = React.useMemo(() => {
+        return state.fixedLength || (state.baySpacing * state.bayCount);
+    }, [state.fixedLength, state.baySpacing, state.bayCount]);
 
+    const ridgeHeight = React.useMemo(() => {
+        if (state.isAcama && state.buildingType === 'symetrique' && Math.abs(state.width - 24.5) < 0.1) {
+            return 6.7; // TALIAN 1 Fixed Ridge Height
+        }
+        if (state.isAcama && state.buildingType === 'symetrique' && Math.abs(state.width - 17.5) < 0.1) {
+            return 4.5; // TALIAN 3 Fixed Ridge Height
+        }
+        if (state.isAcama && state.buildingType === 'epona' && Math.abs(state.width - 27.3) < 0.1) {
+            return 8.50; // TALIAN 5 Calculated Ridge Height
+        }
 
-        // --- SOLAR STATS ---
+        // Default calculation
+        return (state.eaveHeight + ((state.width / 2) * Math.tan(state.roofPitch * Math.PI / 180)));
+    }, [state.width, state.buildingType, state.isAcama, state.eaveHeight, state.roofPitch]);
+
+    const solarStats = React.useMemo(() => {
         const PANEL_WIDTH = 1.134;
         const PANEL_HEIGHT = 1.762;
         const GAP = 0.01;
@@ -473,11 +546,9 @@ export const useConfiguratorValues = () => {
             const uW = surfWidth - 2 * MARGIN;
             const uL = surfLength - 2 * MARGIN;
             if (uW <= 0 || uL <= 0) return 0;
-            // Option A
             const cXA = Math.floor((uW + GAP) / (PANEL_WIDTH + GAP));
             const cZA = Math.floor((uL + GAP) / (PANEL_HEIGHT + GAP));
             const tA = cXA * cZA;
-            // Option B
             const cXB = Math.floor((uW + GAP) / (PANEL_HEIGHT + GAP));
             const cZB = Math.floor((uL + GAP) / (PANEL_WIDTH + GAP));
             const tB = cXB * cZB;
@@ -494,7 +565,6 @@ export const useConfiguratorValues = () => {
 
             solarCount += getPanelCount(roofSlope, roofLength) * 2;
 
-            // Left Side Extension
             if (state.leftSide === 'auvent') {
                 const slope = 4.0 / Math.cos(angleRad);
                 solarCount += getPanelCount(slope, length);
@@ -503,7 +573,6 @@ export const useConfiguratorValues = () => {
                 solarCount += getPanelCount(slope, length + 1.0);
             }
 
-            // Right Side Extension
             if (state.rightSide === 'auvent') {
                 const slope = 4.0 / Math.cos(angleRad);
                 solarCount += getPanelCount(slope, length);
@@ -514,52 +583,22 @@ export const useConfiguratorValues = () => {
         }
 
         const solarPower = (solarCount * 465) / 1000;
-
         const availableWidths = TYPE_WIDTHS_MAP[state.buildingType] || TYPE_WIDTHS_MAP['symetrique'];
 
         return {
+            ...state,
             availableWidths,
-            buildingType: state.buildingType,
-            width: state.width,
-            ridgeHeight,
-            eaveHeight: state.eaveHeight,
-            roofPitch: state.roofPitch,
-            baySpacing: state.baySpacing,
-            bayCount: state.bayCount,
             length,
-            leftSide: state.leftSide,
-            rightSide: state.rightSide,
-            hasSolar: state.hasSolar,
-            showDimensions: state.showDimensions,
+            ridgeHeight,
             solarStats: { count: solarCount, power: solarPower },
-            fixedLength: state.fixedLength,
-            selectedEponaModel: state.selectedEponaModel,
-            selectedTalianModel: state.selectedTalianModel,
-            selectedTalian1Model: state.selectedTalian1Model,
-            selectedTalian3Model: state.selectedTalian3Model,
-            leftWidth: state.leftWidth,
-            rightWidth: state.rightWidth,
-            isAcama: state.isAcama,
         };
     }, [
-        state.width,
-        state.eaveHeight,
-        state.roofPitch,
-        state.baySpacing,
-        state.bayCount,
-        state.buildingType,
-        state.leftSide,
-        state.rightSide,
-        state.hasSolar,
-        state.showDimensions,
-        state.selectedEponaModel,
-        state.selectedTalianModel,
-        state.selectedTalian1Model,
-        state.selectedTalian3Model,
-        state.leftWidth,
-        state.rightWidth,
-        state.isAcama,
+        state,
+        length,
+        ridgeHeight
     ]);
+
+    return solarStats;
 };
 
 export const useConfiguratorActions = () => {
@@ -580,6 +619,7 @@ export const useConfiguratorActions = () => {
         setTalianModel: (m) => useConfiguratorStore.getState().setTalianModel(m),
         setTalian1Model: (m) => useConfiguratorStore.getState().setTalian1Model(m),
         setTalian3Model: (m) => useConfiguratorStore.getState().setTalian3Model(m),
+        setTalian5Model: (m) => useConfiguratorStore.getState().setTalian5Model(m),
         setIsAcama: (v) => useConfiguratorStore.getState().setIsAcama(v),
     }), []);
 };

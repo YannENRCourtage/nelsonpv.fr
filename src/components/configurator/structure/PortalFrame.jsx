@@ -45,80 +45,77 @@ export function PortalFrame({
     const isSymetrique = buildingType === 'symetrique';
     const isEpona = isAcama && buildingType === 'epona';
 
+    // ACAMA: TALIAN 5 is also an Asymetrique 2 Zones structure
+    const isTalian5 = isAcama && buildingType === 'epona' && Math.abs(width - 27.3) < 0.1;
+
     let leftSpan, rightSpan, lAngle, rAngle, effectiveRidgeHeight, apexX;
     let leftEaveHeight = eaveHeight; // Default
     let rightEaveHeight = eaveHeight; // Default
 
-    // NEW: For asymmetric_2
+    // NEW: For asymmetric_2 and TALIAN 5
     let middleColumnX, middleColumnHeight;
     let leftSectionSpan, rightSectionSpan, middleSectionSpan;
     let leftSectionAngle, rightSectionAngle, middleSectionAngle;
 
     // Determine Geometry params based on Type
-    if (isEpona) {
-        // EPONA 45/65 based exactly on Image 3:
-        // Left post to Center post = 23.60m. Center to Right = 7.85m.
-        // Total building 'width' as span = 31.45m.
-        // Left overhang = 2.55m. Right overhang = 1.25m.
-        // Pitch = 17° on both sides.
-        // Apex is strictly in the middle of the 23.60m span. (11.8m from left post).
-        const mainPitch = 17 * (Math.PI / 180);
+    if (isTalian5) {
+        // TALIAN 5: Asymmetrical with 3 columns, strictly 10° pitch
+        const mainPitch = 10 * (Math.PI / 180);
+        leftEaveHeight = 7.9;
+        rightEaveHeight = 4.3;
 
-        leftEaveHeight = 5.0;
-        rightEaveHeight = 2.6; // Lowered by 1.2m (3.8 -> 2.6)
+        // Apex calculated to maintain 10° from BOTH eaves (x = span from left)
+        // 7.9 + x*tan(10) = 4.3 + (27.3-x)*tan(10) -> x = 3.43m
+        leftSpan = 3.43;
+        rightSpan = width - leftSpan;
+        apexX = -width / 2 + leftSpan;
+        effectiveRidgeHeight = 7.9 + (leftSpan * Math.tan(mainPitch)); // ~8.504m
 
-
-
-
-        // Apex is 11.8m from Left Post
-        leftSpan = 11.8;
-        rightSpan = 19.65; // Apex to right post (11.8 + 7.85)
-
-
-        apexX = -11.8 + leftSpan; // Exactly 0 if Left Post is at -11.8
-
-        // Calculate Ridge Height based on angle and Left Eave Height
-        effectiveRidgeHeight = leftEaveHeight + (leftSpan * Math.tan(mainPitch)); // ~8.60m. Note: Image 3 says 9.41m but that implies eave isn't lowest point or slope > 17°. We use geometric matching.
-
-        middleColumnX = -11.8 + 23.6; // 11.8
+        // Middle column at 15.4m from left wall (as per user text)
+        middleColumnX = -width / 2 + 15.4;
 
         lAngle = mainPitch;
         rAngle = mainPitch;
 
-        // Calculate middle column height (based on right slope)
-        const distApexToMiddle = middleColumnX - apexX;
-        middleColumnHeight = effectiveRidgeHeight - (distApexToMiddle * Math.tan(rAngle));
+        const distApexToMiddle = 15.4 - leftSpan; // Distance from apex to middle column (15.4 - 3.43)
+        middleColumnHeight = effectiveRidgeHeight - (distApexToMiddle * Math.tan(mainPitch));
 
         leftSectionSpan = leftSpan;
         leftSectionAngle = lAngle;
-
         middleSectionSpan = distApexToMiddle;
         middleSectionAngle = rAngle;
+        rightSectionSpan = width - 15.4; // 11.9m from middle column to right wall
+        rightSectionAngle = rAngle;
 
+    } else if (isEpona) {
+        // EPONA (Asymmetrical 2 Zones)
+        const mainPitch = 17 * (Math.PI / 180);
+        leftEaveHeight = 5.0;
+        rightEaveHeight = 2.6;
+        leftSpan = 11.8;
+        rightSpan = 19.65;
+        apexX = -11.8 + leftSpan;
+        effectiveRidgeHeight = leftEaveHeight + (leftSpan * Math.tan(mainPitch));
+        middleColumnX = -11.8 + 23.6;
+        lAngle = mainPitch;
+        rAngle = mainPitch;
+        const distApexToMiddle = middleColumnX - apexX;
+        middleColumnHeight = effectiveRidgeHeight - (distApexToMiddle * Math.tan(rAngle));
+        leftSectionSpan = leftSpan;
+        leftSectionAngle = lAngle;
+        middleSectionSpan = distApexToMiddle;
+        middleSectionAngle = rAngle;
         rightSectionSpan = 7.85;
         rightSectionAngle = rAngle;
     } else if (isAsymetrique2) {
-        // Asymmetrical 2 Zones: apex positioned so that:
-        // - Right slope (from right wall to apex) = 3/4 of total width
-        // - Left slope (from apex to left wall) = 1/4 of total width
-        const mainPitch = 15 * (Math.PI / 180);
-
-        // Fixed heights
+        // Standard Asymetrique 2 zones
+        let mainPitch = 15 * (Math.PI / 180);
         rightEaveHeight = 4.0;
-
-        // Middle column is ALWAYS at 13.1m from the left wall post
         middleColumnX = -width / 2 + 13.1;
+        leftSpan = width * 0.25;
+        rightSpan = width * 0.75;
+        apexX = -width / 2 + leftSpan;
 
-        // Calculate distances
-        const distLeftToMiddle = 13.1; // From left wall to middle column
-
-        // Apex position: 1/4 from left (or 3/4 from right)
-        // Right slope = 3/4, Left slope = 1/4
-        leftSpan = width * 0.25;  // Left side is SHORTER (1/4)
-        rightSpan = width * 0.75; // Right side is LONGER (3/4)
-        apexX = -width / 2 + leftSpan; // Apex at 1/4 from left
-
-        // For 25.5m width:
         if (Math.abs(width - 25.5) < 0.1) {
             leftEaveHeight = 6.9;
             effectiveRidgeHeight = 8.9;
@@ -126,37 +123,26 @@ export function PortalFrame({
             leftEaveHeight = 7.9;
             effectiveRidgeHeight = 9.8;
         } else {
-            // Fallback: calculate based on 15° slope from right
             leftEaveHeight = 6.9;
             effectiveRidgeHeight = rightEaveHeight + (rightSpan * Math.tan(mainPitch));
         }
 
-        // Both slopes are 15°
         rAngle = mainPitch;
         lAngle = mainPitch;
 
-        // Calculate middle column height using linear interpolation
-        // The middle column is on the RIGHT section (between apex and right eave)
-        // Distance from apex to middle column
         const distApexToMiddle = middleColumnX - apexX;
         const ratio = distApexToMiddle / rightSpan;
         const rightSectionRise = effectiveRidgeHeight - rightEaveHeight;
         middleColumnHeight = effectiveRidgeHeight - (rightSectionRise * ratio);
 
-        // Calculate section angles and spans for rafters
-        // The middle column is in the RIGHT section (between apex and right eave)
-
-        // Section 1: Left eave to apex (short side - 1/4 of width)
         leftSectionSpan = leftSpan;
         const leftSectionRise = effectiveRidgeHeight - leftEaveHeight;
         leftSectionAngle = Math.atan(leftSectionRise / leftSectionSpan);
 
-        // Section 2: Apex to middle column (first part of right slope)
         middleSectionSpan = distApexToMiddle;
         const middleSectionRise = effectiveRidgeHeight - middleColumnHeight;
         middleSectionAngle = Math.atan(middleSectionRise / middleSectionSpan);
 
-        // Section 3: Middle column to right eave (second part of right slope)
         rightSectionSpan = rightSpan - distApexToMiddle;
         const rightSectionRise2 = middleColumnHeight - rightEaveHeight;
         rightSectionAngle = Math.atan(rightSectionRise2 / rightSectionSpan);
