@@ -44,7 +44,8 @@ export function Bracing({
         const yTopMainLeft = (buildingType === 'monopente') ? ridgeHeight - 0.5 : eaveHeight - 0.5;
         let yTopMainRight = eaveHeight - 0.5;
         if (buildingType === 'asymetrique_1') yTopMainRight = 3.9;
-        else if (isAcama && (buildingType === 'asymetrique_2' || isTalian5)) yTopMainRight = 3.7;
+        else if (buildingType === 'asymetrique_2') yTopMainRight = 3.7;
+        else if (isAcama && isTalian5) yTopMainRight = 3.7;
 
 
         const createRod = (start, end, key) => (

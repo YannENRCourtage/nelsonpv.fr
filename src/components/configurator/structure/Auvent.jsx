@@ -27,25 +27,24 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     let angleRad = 5 * (Math.PI / 180); // Default 5 deg
     let startHeight = eaveHeight;
 
-    if (isAcama && buildingType === 'asymetrique_2') {
-
-        // USER REQUEST 12/01/2026: Asymétrique 2 zones awnings
-        // Angle: 15° for both sides
-        angleRad = 15 * (Math.PI / 180);
+    if (buildingType === 'asymetrique_2') {
+        // USER REQUEST 05/03/2026: Asymétrique 2 zones - Continuité de la pente pour l'auvent gauche
         const w = buildingWidth;
 
         if (side === 'right') {
-            // Right awning: top at 4m
+            angleRad = 15 * (Math.PI / 180);
             startHeight = 4.0;
         } else {
-            // Left awning: top at 6.4m (25.5m) or 7.4m (29.1m) - Lowered by 50cm
+            // Left awning: perfectly aligned with building left slope
             if (Math.abs(w - 25.5) < 0.1) {
-                startHeight = 6.4;
+                startHeight = 6.9; // Building Eave Height
+                angleRad = Math.atan(2.0 / 6.375); // Ridge 8.9, Span 6.375 -> Rise 2.0
             } else if (Math.abs(w - 29.1) < 0.1) {
-                startHeight = 7.4;
+                startHeight = 7.9; // Building Eave Height
+                angleRad = Math.atan(1.9 / 7.275); // Ridge 9.8, Span 7.275 -> Rise 1.9
             } else {
-                // Fallback for other widths
-                startHeight = 6.4;
+                startHeight = 6.9;
+                angleRad = 17.4 * (Math.PI / 180);
             }
         }
     } else if (buildingType === 'asymetrique_1') {
@@ -233,6 +232,10 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
         if (isTalian3) rafterYOffset = -0.35;
         else if (isTalian1) rafterYOffset = -0.15;
 
+        if (buildingType === 'asymetrique_2' && side === 'left') {
+            rafterYOffset = 0.165; // Align with building rafter offset
+        }
+
         if (buildingType === 'asymetrique_1' && side === 'left' && Math.abs(buildingWidth - 20) < 0.5) {
             rafterYOffset = -0.30;
         }
@@ -345,17 +348,15 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
 
 
     if (buildingType === 'asymetrique_2') {
-        // USER REQUEST 12/01/2026: Awning cover adjustments for asymétrique 2 zones
-        // Right awning: lower by 15cm + 10cm = 25cm total
-        // Left awning: lower by 10cm + 5cm + 5cm (29.1m only) = 15cm (25.5m) or 20cm (29.1m)
+        // USER REQUEST 05/03/2026: Align with building roof continuity
         const w = buildingWidth;
         if (side === 'right') {
-            roofY = -0.10 + 0.15 - 0.15 - 0.10; // +15 -15 -10 = -0.20
+            roofY = -0.20;
         } else {
             if (Math.abs(w - 29.1) < 0.1) {
-                roofY = -0.10 + 0.15 - 0.10 - 0.05 - 0.05; // +15 -10 -5 -5 = -0.15
+                roofY = 0.245; // Calculated to match Roof.jsx continuity
             } else {
-                roofY = -0.10 + 0.15 - 0.10 - 0.05; // +15 -10 -5 = -0.10
+                roofY = -0.155; // Calculated to match Roof.jsx continuity
             }
         }
     } else if (buildingType === 'symetrique') {
