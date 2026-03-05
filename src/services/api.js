@@ -96,7 +96,7 @@ class ApiService {
         return created;
     }
 
-    async updateProject(id, data, skipLog = false) {
+    async updateProject(id, data, skipLog = false, tenantId) {
         const result = await firestoreService.updateProject(id, data);
 
         // Log update (debounced ideally, but direct for now)
@@ -114,7 +114,8 @@ class ApiService {
                     userId: user.uid,
                     userName: user.firstName || user.displayName,
                     userPhotoURL: user.photoURL,
-                    itemId: id
+                    itemId: id,
+                    tenantId: tenantId || undefined // passer le tenant actif si fourni
                 });
             } catch (e) { console.error("Log fail", e); }
         }
@@ -329,7 +330,8 @@ class ApiService {
             const user = await this._getCurrentUser();
             const activityData = {
                 ...data,
-                tenantId: user.tenantId || 'green-invest'
+                // Prioritize tenantId from data (active tenant), fallback to user's default tenant
+                tenantId: data.tenantId || user.tenantId || 'green-invest'
             };
             return await firestoreService.logActivity(activityData);
         } catch (e) {

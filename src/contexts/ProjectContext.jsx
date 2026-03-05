@@ -269,7 +269,7 @@ export function ProjectProvider({ children }) {
       } else {
         // UPDATE
         try {
-          await apiService.updateProject(projectId, savedProject);
+          await apiService.updateProject(projectId, savedProject, false, activeTenantIdRef.current);
         } catch (e) {
           // Fallback: si l'update échoue (ex: document supprimé ou inexistant), on le recrée
           console.warn("Update failed, trying create (upsert):", e);
