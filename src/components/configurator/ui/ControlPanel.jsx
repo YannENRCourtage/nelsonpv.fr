@@ -346,7 +346,7 @@ export function ControlPanel({ isAcama = false }) {
                     {!buildingType.startsWith('ombriere') && (
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                            <span className="text-slate-700">H. Égout: <strong>{isAcamaTalian5 ? '7.9m/4.3m' : (buildingType.startsWith('asymetrique') ? 4 : eaveHeight)}m</strong></span>
+                            <span className="text-slate-700">H. Égout: <strong>{buildingType.startsWith('asymetrique') ? 4 : eaveHeight}m</strong></span>
                         </div>
                     )}
                     {isAcama && (

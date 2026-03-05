@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+﻿import React, { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Building, X, FolderHeart as HomeIcon, Map as MapIcon, ExternalLink, RotateCcw, RotateCw, Type, MessageCircle, Box, Layout, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import html2canvas from 'html2canvas';
@@ -849,7 +849,7 @@ export default function ProjectEditor() {
                         <div className="flex gap-2">
                           <div className="flex-1">
                             <label className="text-xs font-medium">{labelPrefix2}Inclinaison</label>
-                            <Select value={String(p.panelAngle2 || '15')} onValueChange={v => updateProject({ panelAngle2: v })}>
+                            <Select value={String(p.panelAngle2 || (activeTenantId === 'acama' ? '10' : '15'))} onValueChange={v => updateProject({ panelAngle2: v })}>
                               <SelectTrigger className="mt-0.5 h-8 w-full text-xs bg-gray-200"><SelectValue /></SelectTrigger>
                               <SelectContent>{INCLINATION_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
                             </Select>
@@ -1183,7 +1183,7 @@ export default function ProjectEditor() {
                       <div>
                         <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Inclinaison">{labelPrefix2}Inclinaison</label>
                         <Select
-                          value={String(p.panelAngle2 || '15')}
+                          value={String(p.panelAngle2 || (activeTenantId === 'acama' ? '10' : '15'))}
                           onValueChange={v => updateProject({ panelAngle2: v })}
                         >
                           <SelectTrigger className="mt-1 h-10 w-full bg-gray-200"><SelectValue /></SelectTrigger>

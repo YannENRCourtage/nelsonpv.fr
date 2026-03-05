@@ -18,7 +18,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     const isAsymetrique = buildingType === 'asymetrique_1';
     const isAsymetrique2 = buildingType === 'asymetrique_2';
     const isEpona = isAcama && buildingType === 'epona';
-    const isAcamaTalian5 = isAcama && buildingType === 'epona' && Math.abs(width - 28.0) < 0.1;
+    const isAcamaTalian5 = false; // TALIAN 5 supprimé - 05/03/2026
 
     // ==========================================
     // HOOKS (Must be unconditional)
