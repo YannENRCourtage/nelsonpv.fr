@@ -411,8 +411,8 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
 
             {/* STRUCTURE */}
             {frames}
-            {/* Longitudinal Beam (Sablière) at Tip - Hidden for EPONA ACAMA */}
-            {(buildingType !== 'monopente' && (!isEpona || !isAcama)) && (
+            {/* Longitudinal Beam (Sablière) at Tip - Hidden for EPONA ACAMA and TALIAN 3 */}
+            {(buildingType !== 'monopente' && !isTalian3 && (!isEpona || !isAcama)) && (
                 <mesh
                     position={[
                         auventWidth,
