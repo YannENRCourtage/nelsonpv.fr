@@ -179,7 +179,7 @@ export default function Crm() {
         });
 
         // Trigger project cleanup in background (Sans nom)
-        apiService.getProjects().then(async (allProjs) => {
+        apiService.getProjects(activeTenantId).then(async (allProjs) => {
           const badProjs = allProjs.filter(p => !p.name || p.name.trim() === '' || p.name === 'Projet' || p.name === 'Sans nom' || p.name === 'PROJET SANS NOM');
           if (badProjs.length > 0) {
             console.log(`Cleaning up ${badProjs.length} unnamed projects...`);
@@ -485,7 +485,7 @@ export default function Crm() {
       await apiService.deleteProject(projectId);
 
       // Force refresh data from server to be sure
-      const freshProjects = await apiService.getProjects();
+      const freshProjects = await apiService.getProjects(activeTenantId);
       setProjects(freshProjects);
 
       refreshActivities();

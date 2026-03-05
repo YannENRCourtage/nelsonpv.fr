@@ -49,6 +49,8 @@ const ProjectContext = createContext({
  */
 export function ProjectProvider({ children }) {
   const { user, activeTenantId } = useAuth(); // Get current user and active tenant
+  const activeTenantIdRef = useRef(activeTenantId);
+  useEffect(() => { activeTenantIdRef.current = activeTenantId; }, [activeTenantId]);
   const [projects, _setProjects] = useState(() => loadAllProjectsFromLS());
   const [project, _setProject] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -158,6 +160,12 @@ export function ProjectProvider({ children }) {
     try {
       let projectId = project.id;
       let savedProject = { ...project };
+
+      // Forcer le tenantId du projet au tenant actif pour garantir l'isolation
+      const currentTenantId = activeTenantIdRef.current;
+      if (currentTenantId) {
+        savedProject.tenantId = currentTenantId;
+      }
 
       // Handle captures: upload to Storage if they are data URLs
       // This prevents Firestore document size limit errors (1 MB)
@@ -294,8 +302,8 @@ export function ProjectProvider({ children }) {
       }
 
       // 4. Mise à jour du Cache Local (LS) et Liste
-      // On recharge la liste officielle depuis le serveur pour être sûr
-      const refreshedProjects = await apiService.getProjects();
+      // On recharge la liste officielle depuis le serveur avec le bon tenant
+      const refreshedProjects = await apiService.getProjects(activeTenantIdRef.current);
       setProjects(refreshedProjects);
       saveAllProjectsToLS(refreshedProjects);
 
