@@ -245,12 +245,12 @@ export const TALIAN_5_MODELS = {
         bayCount: 5,
         fixedLength: 31.0,
         eaveHeight: 7.9,        // Sablière Gauche
-        rightEaveHeight: 4.3,   // Sablière Droite
+        rightEaveHeight: 4.3,   // Sablière Droite (Image 1 style)
         roofPitch: 10,
         leftSide: 'none',
         rightSide: 'none',
-        leftWidth: 15.4,        // Distance poteau G -> Milieu
-        rightWidth: 12.6,       // Distance poteau D -> Milieu (28 - 15.4)
+        leftWidth: 15.4,        // Entre sablière gauche et poteau central
+        rightWidth: 11.0,       // Entre sablière droite et poteau central (Total 26.4 -> 1.6m overhang)
     },
     'TALIAN_5_MID': {
         label: 'TALIAN 5 MID / 50.6x28m / 1414m² / 296.2 kWc',
@@ -264,7 +264,7 @@ export const TALIAN_5_MODELS = {
         leftSide: 'none',
         rightSide: 'none',
         leftWidth: 15.4,
-        rightWidth: 12.6,
+        rightWidth: 11.0,
     },
     'TALIAN_5_MAX': {
         label: 'TALIAN 5 MAX / 60x28m / 1677m² / 349.1 kWc',
@@ -278,7 +278,7 @@ export const TALIAN_5_MODELS = {
         leftSide: 'none',
         rightSide: 'none',
         leftWidth: 15.4,
-        rightWidth: 12.6,
+        rightWidth: 11.0,
     }
 };
 

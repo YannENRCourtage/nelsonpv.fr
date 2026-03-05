@@ -18,7 +18,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     const isAsymetrique = buildingType === 'asymetrique_1';
     const isAsymetrique2 = buildingType === 'asymetrique_2';
     const isEpona = isAcama && buildingType === 'epona';
-    const isTalian5 = isAcama && buildingType === 'epona' && Math.abs(width - 28.0) < 0.1;
+    const isAcamaTalian5 = isAcama && buildingType === 'epona' && Math.abs(width - 28.0) < 0.1;
 
     // ==========================================
     // HOOKS (Must be unconditional)
@@ -306,7 +306,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
                     rotation={[0, 0, mainSlope]}
                     castShadow receiveShadow />
 
-                {!isTalian5 && (
+                {!isAcamaTalian5 && (
                     <group position={[lFinalX, lFinalY, -length / 2]} rotation={[0, 0, mainSlope]}>
                         <SolarPanels surfaceWidth={leftRoofLength} surfaceLength={length + 1.0} />
                     </group>
@@ -326,26 +326,44 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         );
     }
 
-    // --- B. ASYMETRIQUE 2 ZONES ---
-    if (isAsymetrique2) {
-        // Same 15° slope across all sections
-        const mainSlope = 15 * (Math.PI / 180);
-        const asymRightEaveH = 4.0;
+    // --- B. ASYMETRIQUE 2 ZONES & TALIAN 5 ---
+    if (isAsymetrique2 || isAcamaTalian5) {
+        // Same slope across sections for default, but TALIAN 5 has specific logic
+        let leftAngleAsym2 = 15 * (Math.PI / 180);
+        let middleAngleAsym2 = 15 * (Math.PI / 180);
+        let rightAngleAsym2 = 15 * (Math.PI / 180);
+
+        let leftEaveHeightAsym2 = 4.0;
+        let middleColumnHeightAsym2 = 4.0; // Needs calculation below
+        let ridgeHAsym2 = 6.0;
+
         const w = width;
 
-        // Calculate ridge height and left eave
-        const ridgeH = 4.0 + (w * 0.75 * Math.tan(mainSlope));
-        const asymLeftEaveH = ridgeH - (w * 0.25 * Math.tan(mainSlope));
+        if (isAcamaTalian5) {
+            // TALIAN 5 specific geometry (matches PortalFrame)
+            const mainPitch = 10 * (Math.PI / 180);
+            leftEaveHeightAsym2 = 7.9;
+            const rightEaveHeightT5 = 4.3;
+            const effectiveRidgeHeightT5 = 8.1;
 
-        // Determine middle column position - always at 13.1m from left
-        let middleColumnX = -width / 2 + 13.1;
+            const leftApexOffsetT5 = 0.2 / Math.tan(mainPitch);
+            const apexXT5 = -w / 2 + leftApexOffsetT5;
+            const middleColumnXT5 = -w / 2 + 15.4;
 
-        // Calculate middle column height
-        const distRightToMiddle = width / 2 - middleColumnX;
-        const rightSpan = width * 0.75;
-        const ratio = distRightToMiddle / rightSpan;
-        const rightSectionRise = ridgeH - asymRightEaveH;
-        const middleColumnHeight = asymRightEaveH + (rightSectionRise * ratio);
+            leftAngleAsym2 = mainPitch;
+            const distApexToRightEaveT5 = w / 2 - apexXT5;
+            rightAngleAsym2 = Math.atan((effectiveRidgeHeightT5 - rightEaveHeightT5) / distApexToRightEaveT5);
+            middleAngleAsym2 = rightAngleAsym2;
+
+            const distApexToMiddleT5 = middleColumnXT5 - apexXT5;
+            middleColumnHeightAsym2 = effectiveRidgeHeightT5 - (distApexToMiddleT5 * Math.tan(rightAngleAsym2));
+            ridgeHAsym2 = effectiveRidgeHeightT5;
+        } else {
+            // Default Asymetrique 2 Zones (Green Invest)
+            leftEaveHeightAsym2 = 4.0; // Base
+            ridgeHAsym2 = 4.0 + (w * 0.75 * Math.tan(15 * Math.PI / 180));
+            // ... (rest of logic will use these renamed variables)
+        }
 
         // Section 1: Right (from right eave to middle column)
         const section1Span = distRightToMiddle;

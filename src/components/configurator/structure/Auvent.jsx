@@ -110,7 +110,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
             if (isAcama && Math.abs(buildingWidth - 17.5) < 0.1) {
                 auventWidth = 1.8;
                 angleRad = 12 * (Math.PI / 180);
-                startHeight = eaveHeight + 0.4; // Phase 18: +30cm vs +0.1
+                startHeight = eaveHeight; // USER REQUEST 05/03/2026: Lower to eave level
             }
         } else {
             // Monopente (Force 15 deg)
@@ -229,7 +229,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
         // TALIAN 3: Lower structure by 35cm
         // TALIAN 1: Lower structure by 15cm
         let rafterYOffset = 0;
-        if (isTalian3) rafterYOffset = -0.35;
+        if (isTalian3) rafterYOffset = 0.165; // Matches building rafter offset for continuity
         else if (isTalian1) rafterYOffset = -0.15;
 
         if (buildingType === 'asymetrique_2' && side === 'left') {
@@ -362,6 +362,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     } else if (buildingType === 'symetrique') {
         // Symmetric: Raise both awnings by 4cm
         roofY = -0.10 + 0.04; // -0.06
+        if (isTalian3) roofY = -0.155; // Matches building roof continuity for T3
     } else if (buildingType === 'asymetrique_1') {
         if (side === 'right') {
             // Asymmetric Right Awning: Raise cover by 3cm

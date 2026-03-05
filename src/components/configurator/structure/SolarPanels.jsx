@@ -34,7 +34,7 @@ export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof", forceF
         for (let iz = 0; iz < colsZ; iz++) {
             instances.push({
                 x: startX + ix * (dimX + effectiveGap),
-                y: forceFullCoverage ? 0.20 : 0.05,
+                y: 0.05,
                 z: startZ + iz * (dimZ + effectiveGap)
             });
         }

@@ -60,7 +60,9 @@ export function PortalFrame({
     // Determine Geometry params based on Type
     if (isTalian5) {
         // TALIAN 5: Asymmetrical with 3 columns, strictly 10° pitch from LEFT eave
-        // USER REQUEST 05/03/2026: Fixed Ridge 8.1, Left Eave 7.9, Right Eave 4.3, Left Width 15.4
+        // USER REQUEST 05/03/2026: Fixed Ridge 8.1, Left Eave 7.9, Right Eave 4.3, Total 28m
+        // Spans: Left Eave -> Mid Column = 15.4m. Mid Column -> Right Eave = 11m (Wait, if Total 28, then 26.4m column-to-column).
+        // Let's assume columns are: xL = -14, xMid = -14+15.4 = +1.4, xR = 1.4+11 = +12.4. (Right Sabliere at +14).
         const mainPitch = 10 * (Math.PI / 180);
         leftEaveHeight = 7.9;
         rightEaveHeight = 4.3;
@@ -68,29 +70,31 @@ export function PortalFrame({
 
         // Apex offset from Left Eave to reach 8.1m at 10° pitch:
         // 7.9 + x*tan(10) = 8.1 -> x = 0.2 / tan(10) ~= 1.134m
-        leftSpan = 0.2 / Math.tan(mainPitch);
-        rightSpan = width - leftSpan;
-        apexX = -width / 2 + leftSpan;
+        const leftApexOffset = 0.2 / Math.tan(mainPitch);
+        apexX = -width / 2 + leftApexOffset;
 
-        // Middle column at 15.4m from left wall
+        // Middle column at 15.4m from left sabliere
         middleColumnX = -width / 2 + 15.4;
 
         lAngle = mainPitch;
-        // Right angle is different because ridge is low
-        const distApexToRight = width - leftSpan;
-        const totalDrop = 8.1 - 4.3; // 3.8m
-        rAngle = Math.atan(totalDrop / distApexToRight);
+        // Right angle: from Ridge (-12.86m, 8.1m) to Right Sabliere (+14m, 4.3m)
+        const distApexToRightEave = width / 2 - apexX;
+        const totalDrop = effectiveRidgeHeight - rightEaveHeight;
+        rAngle = Math.atan(totalDrop / distApexToRightEave);
 
-        const distApexToMiddle = 15.4 - leftSpan;
+        // Middle Column Height calculation
+        const distApexToMiddle = middleColumnX - apexX;
         middleColumnHeight = effectiveRidgeHeight - (distApexToMiddle * Math.tan(rAngle));
 
-        leftSectionSpan = leftSpan;
+        leftSectionSpan = leftApexOffset;
         leftSectionAngle = lAngle;
-        middleSectionSpan = distApexToMiddle;
+        middleSectionSpan = middleColumnX - apexX;
         middleSectionAngle = rAngle;
-        rightSectionSpan = width - 15.4;
+        rightSectionSpan = width / 2 - middleColumnX;
         rightSectionAngle = rAngle;
 
+        // NEW: Right Column is NOT under sabliere. xR = +12.4 (11m after Mid).
+        // The standard renderer might need adjustment if it assumes columns under eaves.
     } else if (isEpona) {
         // EPONA (Asymmetrical 2 Zones)
         const mainPitch = 17 * (Math.PI / 180);
@@ -414,6 +418,64 @@ export function PortalFrame({
     // We should probably update column rendering if we want perfect flush cuts, 
     // but standard `angleRad` might be close enough or we can accept slight mismatch for now.
     // The previous implementation used `angleRad` for columns globally.
+
+    // --- TALIAN 5 (3 Columns, Exact Render with Overhang) ---
+    if (isTalian5) {
+        const rafterDepth = 0.35;
+        const leftRafterVert = rafterDepth / Math.cos(leftSectionAngle);
+        const middleRafterVert = rafterDepth / Math.cos(middleSectionAngle);
+        const rightRafterVert = rafterDepth / Math.cos(rightSectionAngle);
+
+        const leftColOffset = leftRafterVert - 0.20;
+        const middleColOffset = middleRafterVert - 0.20;
+        const rightColOffset = rightRafterVert - 0.20;
+
+        const leftColHeightFinal = leftEaveHeight + leftColOffset;
+        const middleColHeightFinal = middleColumnHeight + middleColOffset;
+
+        // Height of rafter at Right Column position (x=12.4)
+        const distMidToRightCol = 11.0;
+        const rightColHeightFinal = middleColumnHeight - (distMidToRightCol * Math.tan(rightSectionAngle)) + rightColOffset;
+
+        // Assembly
+        const leftColumnGeoT5 = createSlantedColumn(baseColumnProfile, 0, false, leftColHeightFinal);
+        const middleColumnGeoT5 = createSlantedColumn(baseColumnProfile, 0, false, middleColHeightFinal);
+        const rightColumnGeoT5 = createSlantedColumn(baseColumnProfile, 0, false, rightColHeightFinal);
+
+        // Sections
+        const leftRafterT5 = createRafterAssembly(leftSectionSpan / Math.cos(leftSectionAngle), false);
+        const middleRafterT5 = createRafterAssembly(middleSectionSpan / Math.cos(middleSectionAngle), true);
+        const rightRafterT5 = createRafterAssembly(rightSectionSpan / Math.cos(rightSectionAngle), true);
+
+        return (
+            <group position={position}>
+                {/* Columns */}
+                <mesh geometry={leftColumnGeoT5} material={steelMaterial} position={[-width / 2, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
+                <mesh geometry={middleColumnGeoT5} material={steelMaterial} position={[middleColumnX, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
+                <mesh geometry={rightColumnGeoT5} material={steelMaterial} position={[middleColumnX + 11.0, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
+
+                {/* Left Section (Eave to Apex) */}
+                <group position={[-width / 2, leftEaveHeight, 0]} rotation={[0, 0, leftSectionAngle]}>
+                    {leftRafterT5}
+                </group>
+
+                {/* Middle Section (Apex to Mid Column) */}
+                <group position={[apexX, effectiveRidgeHeight, 0]} rotation={[0, 0, -middleSectionAngle]}>
+                    {middleRafterT5}
+                </group>
+
+                {/* Right Section (Mid Column to Right Eave - with 1.6m overhang) */}
+                <group position={[middleColumnX, middleColumnHeight, 0]} rotation={[0, 0, -rightSectionAngle]}>
+                    {rightRafterT5}
+                </group>
+
+                {/* Apex Haunch */}
+                <group position={[apexX, effectiveRidgeHeight, 0]}>
+                    {createApexHaunchAssemblySCREB(leftSectionAngle, middleSectionAngle)}
+                </group>
+            </group>
+        );
+    }
 
     // --- EPONA (3 Columns, Exact Render) ---
     if (isEpona) {

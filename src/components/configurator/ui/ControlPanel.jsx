@@ -44,7 +44,7 @@ export function ControlPanel({ isAcama = false }) {
     const isAcamaTalian4 = isAcama && buildingType === 'symetrique' && !!TALIAN_MODELS[selectedTalianModel] && Math.abs(width - 13.7) < 0.1;
     const isAcamaTalian1 = isAcama && buildingType === 'symetrique' && !!TALIAN_1_MODELS[selectedTalian1Model] && Math.abs(width - 18.8) < 0.1;
     const isAcamaTalian3 = isAcama && buildingType === 'symetrique' && !!TALIAN_3_MODELS[selectedTalian3Model] && Math.abs(width - 17.5) < 0.1;
-    const isAcamaTalian5 = isAcama && buildingType === 'epona' && Math.abs(width - 27.3) < 0.1;
+    const isAcamaTalian5 = isAcama && buildingType === 'epona' && Math.abs(width - 28.0) < 0.1;
     const isAcamaTalian = isAcamaTalian4 || isAcamaTalian1 || isAcamaTalian3;
 
     // When ACAMA user picks 'Asymétrique', auto-load EPONA_45 if not already epona
@@ -156,7 +156,7 @@ export function ControlPanel({ isAcama = false }) {
                         <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100 text-[11px] text-blue-800 space-y-2">
                             <div className="font-bold text-blue-900 mb-1">{TALIAN_5_MODELS[selectedTalian5Model]?.label}</div>
                             <div className="text-blue-900 leading-relaxed">
-                                Pente G: <strong>10°</strong> / Pente D: <strong>10°</strong> / Travées: <strong>5x6.2m</strong> / Sablière G: <strong>7.9m</strong> / Sablière D: <strong>4.3m</strong> / Largeur T: <strong>27.3m</strong> / Int. G: <strong>15.4m</strong> / Int. D: <strong>11m</strong>
+                                Pente G: <strong>10°</strong> / Travées: <strong>{TALIAN_5_MODELS[selectedTalian5Model]?.bayCount}x6.2m</strong> / Sablière G: <strong>7.9m</strong> / Sablière D: <strong>4.3m</strong> / Largeur T: <strong>28m</strong> / Int. G: <strong>15.4m</strong> / Int. D: <strong>11m</strong>
                             </div>
                         </div>
                     )}
