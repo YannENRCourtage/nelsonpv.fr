@@ -375,6 +375,12 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
             middleColumnHeightAsym2 = ridgeHAsym2 - ((rightSpan - distRightToMiddle) * Math.tan(mainSlope));
         }
 
+        // Aliases for positioning meshes below
+        const asymRightEaveH = 4.0;
+        const asymLeftEaveH = leftEaveHeightAsym2;
+        const middleColumnHeight = middleColumnHeightAsym2;
+        const middleColumnX = width / 2 - distRightToMiddle;
+
         // Section 1: Right (from right eave to middle column)
         const section1Span = distRightToMiddle;
         const section1Length = section1Span / Math.cos(mainSlope);
