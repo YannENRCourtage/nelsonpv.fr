@@ -23,17 +23,13 @@ import PredefinedBuildingsPanel from "@/components/editor/PredefinedBuildingsPan
 import znzvData from "@/data/znzv.json";
 import { apiService } from "@/services/api";
 
-const INCLINATION_OPTIONS = [
-  { value: "5", label: "5° (8.75%)" },
-  { value: "10", label: "10° (17.63%)" },
-  { value: "15", label: "15° (26.79%)" },
-  { value: "20", label: "20° (36.40%)" },
-  { value: "25", label: "25° (46.63%)" },
-  { value: "30", label: "30° (57.74%)" },
-  { value: "35", label: "35° (70.02%)" },
-  { value: "40", label: "40° (83.91%)" },
-  { value: "45", label: "45° (100.00%)" },
-];
+const INCLINATION_OPTIONS = Array.from({ length: 91 }, (_, i) => {
+  const percentage = Math.tan(i * Math.PI / 180) * 100;
+  return {
+    value: String(i),
+    label: `${i}° (${percentage.toFixed(2)}%)`
+  };
+});
 
 function SymbolBtn({ icon, label, type, emoji, onSelect, isSelected }) {
   return (

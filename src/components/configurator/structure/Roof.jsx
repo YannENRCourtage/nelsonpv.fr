@@ -18,7 +18,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     const isAsymetrique = buildingType === 'asymetrique_1';
     const isAsymetrique2 = buildingType === 'asymetrique_2';
     const isEpona = isAcama && buildingType === 'epona';
-    const isTalian5 = isAcama && buildingType === 'epona' && Math.abs(width - 27.3) < 0.1;
+    const isTalian5 = isAcama && buildingType === 'epona' && Math.abs(width - 28.0) < 0.1;
 
     // ==========================================
     // HOOKS (Must be unconditional)

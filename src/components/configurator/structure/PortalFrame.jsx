@@ -46,7 +46,7 @@ export function PortalFrame({
     const isEpona = isAcama && buildingType === 'epona';
 
     // ACAMA: TALIAN 5 is also an Asymetrique 2 Zones structure
-    const isTalian5 = isAcama && buildingType === 'epona' && Math.abs(width - 27.3) < 0.1;
+    const isTalian5 = isAcama && buildingType === 'epona' && Math.abs(width - 28.0) < 0.1;
 
     let leftSpan, rightSpan, lAngle, rAngle, effectiveRidgeHeight, apexX;
     let leftEaveHeight = eaveHeight; // Default
@@ -59,32 +59,36 @@ export function PortalFrame({
 
     // Determine Geometry params based on Type
     if (isTalian5) {
-        // TALIAN 5: Asymmetrical with 3 columns, strictly 10° pitch
+        // TALIAN 5: Asymmetrical with 3 columns, strictly 10° pitch from LEFT eave
+        // USER REQUEST 05/03/2026: Fixed Ridge 8.1, Left Eave 7.9, Right Eave 4.3, Left Width 15.4
         const mainPitch = 10 * (Math.PI / 180);
         leftEaveHeight = 7.9;
         rightEaveHeight = 4.3;
+        effectiveRidgeHeight = 8.1;
 
-        // Apex calculated to maintain 10° from BOTH eaves (x = span from left)
-        // 7.9 + x*tan(10) = 4.3 + (27.3-x)*tan(10) -> x = 3.43m
-        leftSpan = 3.43;
+        // Apex offset from Left Eave to reach 8.1m at 10° pitch:
+        // 7.9 + x*tan(10) = 8.1 -> x = 0.2 / tan(10) ~= 1.134m
+        leftSpan = 0.2 / Math.tan(mainPitch);
         rightSpan = width - leftSpan;
         apexX = -width / 2 + leftSpan;
-        effectiveRidgeHeight = 7.9 + (leftSpan * Math.tan(mainPitch)); // ~8.504m
 
-        // Middle column at 15.4m from left wall (as per user text)
+        // Middle column at 15.4m from left wall
         middleColumnX = -width / 2 + 15.4;
 
         lAngle = mainPitch;
-        rAngle = mainPitch;
+        // Right angle is different because ridge is low
+        const distApexToRight = width - leftSpan;
+        const totalDrop = 8.1 - 4.3; // 3.8m
+        rAngle = Math.atan(totalDrop / distApexToRight);
 
-        const distApexToMiddle = 15.4 - leftSpan; // Distance from apex to middle column (15.4 - 3.43)
-        middleColumnHeight = effectiveRidgeHeight - (distApexToMiddle * Math.tan(mainPitch));
+        const distApexToMiddle = 15.4 - leftSpan;
+        middleColumnHeight = effectiveRidgeHeight - (distApexToMiddle * Math.tan(rAngle));
 
         leftSectionSpan = leftSpan;
         leftSectionAngle = lAngle;
         middleSectionSpan = distApexToMiddle;
         middleSectionAngle = rAngle;
-        rightSectionSpan = width - 15.4; // 11.9m from middle column to right wall
+        rightSectionSpan = width - 15.4;
         rightSectionAngle = rAngle;
 
     } else if (isEpona) {

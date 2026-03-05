@@ -239,8 +239,8 @@ export const TALIAN_3_MODELS = {
  */
 export const TALIAN_5_MODELS = {
     'TALIAN_5_MIN': {
-        label: 'TALIAN 5 MIN / 31.0x27.3m',
-        width: 27.3,
+        label: 'TALIAN 5 MIN / 31x28m / 866m² / 179.9 kWc',
+        width: 28.0,
         baySpacing: 6.2,
         bayCount: 5,
         fixedLength: 31.0,
@@ -250,35 +250,35 @@ export const TALIAN_5_MODELS = {
         leftSide: 'none',
         rightSide: 'none',
         leftWidth: 15.4,        // Distance poteau G -> Milieu
-        rightWidth: 11.0,       // Distance poteau D -> Milieu
+        rightWidth: 12.6,       // Distance poteau D -> Milieu (28 - 15.4)
     },
     'TALIAN_5_MID': {
-        label: 'TALIAN 5 MID / 50.2x27.3m',
-        width: 27.3,
-        baySpacing: 6.275,
+        label: 'TALIAN 5 MID / 50.6x28m / 1414m² / 296.2 kWc',
+        width: 28.0,
+        baySpacing: 6.325,
         bayCount: 8,
-        fixedLength: 50.2,
+        fixedLength: 50.6,
         eaveHeight: 7.9,
         rightEaveHeight: 4.3,
         roofPitch: 10,
         leftSide: 'none',
         rightSide: 'none',
         leftWidth: 15.4,
-        rightWidth: 11.0,
+        rightWidth: 12.6,
     },
     'TALIAN_5_MAX': {
-        label: 'TALIAN 5 MAX / 62.6x27.3m',
-        width: 27.3,
-        baySpacing: 6.26,
+        label: 'TALIAN 5 MAX / 60x28m / 1677m² / 349.1 kWc',
+        width: 28.0,
+        baySpacing: 6.0,
         bayCount: 10,
-        fixedLength: 62.6,
+        fixedLength: 60.0,
         eaveHeight: 7.9,
         rightEaveHeight: 4.3,
         roofPitch: 10,
         leftSide: 'none',
         rightSide: 'none',
         leftWidth: 15.4,
-        rightWidth: 11.0,
+        rightWidth: 12.6,
     }
 };
 
@@ -528,8 +528,8 @@ export const useConfiguratorValues = () => {
         if (state.isAcama && state.buildingType === 'symetrique' && Math.abs(state.width - 17.5) < 0.1) {
             return 4.5; // TALIAN 3 Fixed Ridge Height
         }
-        if (state.isAcama && state.buildingType === 'epona' && Math.abs(state.width - 27.3) < 0.1) {
-            return 8.50; // TALIAN 5 Calculated Ridge Height
+        if (state.isAcama && state.buildingType === 'epona' && Math.abs(state.width - 28.0) < 0.1) {
+            return 8.1; // TALIAN 5 Fixed Ridge Height
         }
 
         // Default calculation
