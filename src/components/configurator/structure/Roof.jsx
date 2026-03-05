@@ -339,6 +339,8 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
 
         const w = width;
 
+        let rightSpan, distRightToMiddle, mainSlope;
+
         if (isAcamaTalian5) {
             // TALIAN 5 specific geometry (matches PortalFrame)
             const mainPitch = 10 * (Math.PI / 180);
@@ -358,11 +360,19 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
             const distApexToMiddleT5 = middleColumnXT5 - apexXT5;
             middleColumnHeightAsym2 = effectiveRidgeHeightT5 - (distApexToMiddleT5 * Math.tan(rightAngleAsym2));
             ridgeHAsym2 = effectiveRidgeHeightT5;
+
+            // Spans for sections
+            rightSpan = w - leftApexOffsetT5;
+            distRightToMiddle = 11; // From user specs: sablière droite à poteau central
+            mainSlope = rightAngleAsym2;
         } else {
             // Default Asymetrique 2 Zones (Green Invest)
             leftEaveHeightAsym2 = 4.0; // Base
-            ridgeHAsym2 = 4.0 + (w * 0.75 * Math.tan(15 * Math.PI / 180));
-            // ... (rest of logic will use these renamed variables)
+            mainSlope = 15 * (Math.PI / 180);
+            rightSpan = w * 0.75;
+            distRightToMiddle = rightSpan * 0.6; // Position arbitraire du poteau milieu
+            ridgeHAsym2 = 4.0 + (rightSpan * Math.tan(mainSlope));
+            middleColumnHeightAsym2 = ridgeHAsym2 - ((rightSpan - distRightToMiddle) * Math.tan(mainSlope));
         }
 
         // Section 1: Right (from right eave to middle column)

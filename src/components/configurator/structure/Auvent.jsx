@@ -186,7 +186,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     const purlinHeight = 0.180;
     const purlinWidth = 0.070;
     const thickness = 0.003;
-    const purlinSpacing = isTalian3 ? 0.8 : 1.3; // Closer spacing for Talian 3 to ensure 2 purlins
+    const purlinSpacing = 1.3; // Distance between purlins along slope (Matches building)
 
     const purlinShape = useMemo(() => createZProfile(purlinHeight, purlinWidth, thickness), []);
     const purlinGeometry = useMemo(() => new THREE.ExtrudeGeometry(purlinShape, {
@@ -203,8 +203,11 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     }
 
     // TALIAN refinements (ACAMA)
-    if (isTalian3) purlinPerpOffset += 0.80; // USER REQUEST 05/03/2026: Raise purlins by +80cm
-    else if (isTalian1) purlinPerpOffset -= 0.15;
+    if (isTalian3) {
+        // Aligner avec les pannes du bâtiment principal (offset 0.271m dans Purlins.jsx)
+        // La structure auvent est décalée de rafterYOffset (0.165m) par rapport à la structure bâtiment
+        purlinPerpOffset = 0.271 - (0.165 / Math.cos(angleRad));
+    } else if (isTalian1) purlinPerpOffset -= 0.15;
 
 
     // Asymmetric Left Awning 20m: Lower purlins by 30cm
@@ -303,15 +306,8 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
 
                 let finalYLoc = yLoc + yPerp;
                 // TALIAN 3: Specific purlin adjustments
-                if (isTalian3) {
-                    if (j === numPurlins) {
-                        // Outermost (sablière): +1.20m total - USER REQUEST 05/03/2026
-                        finalYLoc += 1.20;
-                    } else if (j === 1) {
-                        // Innermost (au-dessus couverture): SUPPRIMÉE - USER REQUEST 05/03/2026
-                        continue;
-                    }
-                }
+                // TALIAN 3: Alignement automatique via purlinPerpOffset
+                // (Retrait des ajustements manuels car l'offset calculé assure la continuité)
 
 
 
