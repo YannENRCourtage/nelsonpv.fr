@@ -257,7 +257,7 @@ export function ProjectProvider({ children }) {
           delete savedProject.id;
         }
 
-        const created = await apiService.createProject(savedProject);
+        const created = await apiService.createProject(savedProject, false, activeTenantIdRef.current);
         console.log("Project created:", created);
 
         savedProject = { ...savedProject, ...created }; // Récupère l'ID et les timestamps
@@ -289,7 +289,7 @@ export function ProjectProvider({ children }) {
           projectId: projectId,
         };
 
-        const allContacts = await apiService.getContacts();
+        const allContacts = await apiService.getContacts(activeTenantIdRef.current);
         const existingContact = allContacts.find(c => c.projectId === projectId);
 
         if (existingContact) {

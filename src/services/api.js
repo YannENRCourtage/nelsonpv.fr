@@ -89,7 +89,8 @@ class ApiService {
                 userId: user.uid,
                 userName: user.firstName || user.displayName,
                 userPhotoURL: user.photoURL,
-                itemId: created.id
+                itemId: created.id,
+                tenantId: tId
             });
         }
 
@@ -134,7 +135,8 @@ class ApiService {
             userId: user.uid,
             userName: user.firstName || user.displayName,
             userPhotoURL: user.photoURL,
-            itemId: projectId
+            itemId: projectId,
+            tenantId: targetTenantId // Log the activity in the target tenant where the project now belongs
         });
 
         return result;
@@ -156,7 +158,8 @@ class ApiService {
                 userId: user.uid,
                 userName: user.firstName || user.displayName,
                 userPhotoURL: user.photoURL,
-                itemId: id
+                itemId: id,
+                tenantId: project?.tenantId // Use project's tenantId if available
             });
         }
 
@@ -196,7 +199,8 @@ class ApiService {
                 userId: user.uid,
                 userName: user.firstName || user.displayName,
                 userPhotoURL: user.photoURL,
-                itemId: created.id
+                itemId: created.id,
+                tenantId: tId
             });
         }
 
@@ -217,7 +221,8 @@ class ApiService {
                     userId: user.uid,
                     userName: user.firstName || user.displayName,
                     userPhotoURL: user.photoURL,
-                    itemId: id
+                    itemId: id,
+                    tenantId: data.tenantId || (await this.getContact(id))?.tenantId
                 });
             } catch (e) { console.warn("Log activity failed", e); }
         }
@@ -239,7 +244,8 @@ class ApiService {
                 userId: user.uid,
                 userName: user.firstName || user.displayName,
                 userPhotoURL: user.photoURL,
-                itemId: id
+                itemId: id,
+                tenantId: contact?.tenantId
             });
         }
 
@@ -275,7 +281,8 @@ class ApiService {
                 userId: user.uid,
                 userName: user.firstName || user.displayName,
                 userPhotoURL: user.photoURL,
-                itemId: created.id
+                itemId: created.id,
+                tenantId: tId
             });
         }
 
