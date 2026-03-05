@@ -302,7 +302,6 @@ export const useConfiguratorStore = create((set, get) => ({
     selectedTalianModel: 'TALIAN_4_MIN',
     selectedTalian1Model: 'TALIAN_1_MIN',
     selectedTalian3Model: 'TALIAN_3_MIN',
-    selectedTalian5Model: 'TALIAN_5_MIN',
     fixedLength: null,  // Override for EPONA/TALIAN models
     leftWidth: 9.3,     // Standard
     rightWidth: 9.3,    // Standard
@@ -450,24 +449,6 @@ export const useConfiguratorStore = create((set, get) => ({
             rightWidth: model.rightWidth,
         });
     },
-    setTalian5Model: (modelKey) => {
-        const model = TALIAN_5_MODELS[modelKey];
-        if (!model) return;
-        set({
-            selectedTalian5Model: modelKey,
-            buildingType: 'epona',
-            width: model.width,
-            baySpacing: model.baySpacing,
-            bayCount: model.bayCount,
-            fixedLength: model.fixedLength,
-            eaveHeight: model.eaveHeight,
-            roofPitch: model.roofPitch,
-            leftSide: model.leftSide,
-            rightSide: model.rightSide,
-            leftWidth: model.leftWidth,
-            rightWidth: model.rightWidth,
-        });
-    },
 
     hasSolar: false,
     toggleSolar: () => set((state) => ({ hasSolar: !state.hasSolar })),
@@ -486,7 +467,6 @@ export const useConfiguratorStore = create((set, get) => ({
         selectedTalianModel: 'TALIAN_4_MIN',
         selectedTalian1Model: 'TALIAN_1_MIN',
         selectedTalian3Model: 'TALIAN_3_MIN',
-        selectedTalian5Model: 'TALIAN_5_MIN',
         leftWidth: 9.3,
         rightWidth: 9.3,
         isAcama: false,

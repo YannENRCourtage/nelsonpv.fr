@@ -203,7 +203,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     }
 
     // TALIAN refinements (ACAMA)
-    if (isTalian3) purlinPerpOffset -= 0.65; // Lowered by additional 30cm (from 0.35 to 0.65)
+    if (isTalian3) purlinPerpOffset += 0.80; // USER REQUEST 05/03/2026: Raise purlins by +80cm
     else if (isTalian1) purlinPerpOffset -= 0.15;
 
 
@@ -362,7 +362,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     } else if (buildingType === 'symetrique') {
         // Symmetric: Raise both awnings by 4cm
         roofY = -0.10 + 0.04; // -0.06
-        if (isTalian3) roofY = -0.155; // Matches building roof continuity for T3
+        if (isTalian3) roofY = -0.155 + 0.50; // USER REQUEST 05/03/2026: +50cm
     } else if (buildingType === 'asymetrique_1') {
         if (side === 'right') {
             // Asymmetric Right Awning: Raise cover by 3cm

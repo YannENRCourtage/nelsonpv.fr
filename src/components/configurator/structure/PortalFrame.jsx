@@ -46,7 +46,7 @@ export function PortalFrame({
     const isEpona = isAcama && buildingType === 'epona';
 
     // ACAMA: TALIAN 5 is also an Asymetrique 2 Zones structure
-    const isTalian5 = isAcama && buildingType === 'epona' && Math.abs(width - 28.0) < 0.1;
+    const isTalian5 = false; // TALIAN 5 supprimé - 05/03/2026
 
     let leftSpan, rightSpan, lAngle, rAngle, effectiveRidgeHeight, apexX;
     let leftEaveHeight = eaveHeight; // Default

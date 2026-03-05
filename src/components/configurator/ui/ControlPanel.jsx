@@ -1,5 +1,5 @@
 import React from 'react';
-import { useConfiguratorValues, useConfiguratorActions, EPONA_MODELS, TALIAN_MODELS, TALIAN_1_MODELS, TALIAN_3_MODELS, TALIAN_5_MODELS } from '@/stores/useConfiguratorStore.js';
+import { useConfiguratorValues, useConfiguratorActions, EPONA_MODELS, TALIAN_MODELS, TALIAN_1_MODELS, TALIAN_3_MODELS } from '@/stores/useConfiguratorStore.js';
 
 export function ControlPanel({ isAcama = false }) {
     // NEW: Split hooks with destructuring to maintain variable scope compatibility
@@ -19,7 +19,6 @@ export function ControlPanel({ isAcama = false }) {
         selectedTalianModel,
         selectedTalian1Model,
         selectedTalian3Model,
-        selectedTalian5Model,
     } = useConfiguratorValues();
 
     const {
@@ -37,14 +36,12 @@ export function ControlPanel({ isAcama = false }) {
         setTalianModel,
         setTalian1Model,
         setTalian3Model,
-        setTalian5Model,
     } = useConfiguratorActions();
 
     // ACAMA mode: show EPONA model selector when buildingType is 'epona'
     const isAcamaTalian4 = isAcama && buildingType === 'symetrique' && !!TALIAN_MODELS[selectedTalianModel] && Math.abs(width - 13.7) < 0.1;
     const isAcamaTalian1 = isAcama && buildingType === 'symetrique' && !!TALIAN_1_MODELS[selectedTalian1Model] && Math.abs(width - 18.8) < 0.1;
     const isAcamaTalian3 = isAcama && buildingType === 'symetrique' && !!TALIAN_3_MODELS[selectedTalian3Model] && Math.abs(width - 17.5) < 0.1;
-    const isAcamaTalian5 = isAcama && buildingType === 'epona' && Math.abs(width - 28.0) < 0.1;
     const isAcamaTalian = isAcamaTalian4 || isAcamaTalian1 || isAcamaTalian3;
 
     // When ACAMA user picks 'Asymétrique', auto-load EPONA_45 if not already epona
@@ -104,62 +101,31 @@ export function ControlPanel({ isAcama = false }) {
                         Modèle Bâtiment
                     </label>
 
-                    {/* Model Switcher for ASYMETRIQUE (EPONA / TALIAN 5) */}
-                    <div className="flex gap-2 mb-4">
-                        <button
-                            onClick={() => setEponaModel(selectedEponaModel)}
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all border ${!isAcamaTalian5 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}
-                        >
-                            EPONA
-                        </button>
-                        <button
-                            onClick={() => setTalian5Model(selectedTalian5Model)}
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all border ${isAcamaTalian5 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}
-                        >
-                            TALIAN 5
-                        </button>
-                    </div>
-
                     <select
-                        value={isAcamaTalian5 ? selectedTalian5Model : selectedEponaModel}
-                        onChange={(e) => isAcamaTalian5 ? setTalian5Model(e.target.value) : setEponaModel(e.target.value)}
+                        value={selectedEponaModel}
+                        onChange={(e) => setEponaModel(e.target.value)}
                         className="w-full px-4 py-3 border border-slate-300 rounded-lg font-semibold text-sm bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                     >
-                        {isAcamaTalian5 ? (
-                            Object.entries(TALIAN_5_MODELS).map(([key, model]) => (
-                                <option key={key} value={key}>{model.label}</option>
-                            ))
-                        ) : (
-                            Object.entries(EPONA_MODELS).map(([key, model]) => (
-                                <option key={key} value={key}>{model.label}</option>
-                            ))
-                        )}
+                        {Object.entries(EPONA_MODELS).map(([key, model]) => (
+                            <option key={key} value={key}>{model.label}</option>
+                        ))}
                     </select>
 
                     {/* Display fixed model characteristics */}
-                    {!isAcamaTalian5 ? (
-                        <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100 text-xs text-blue-800 space-y-1">
-                            <div className="font-bold text-blue-900 mb-1">{EPONA_MODELS[selectedEponaModel]?.label}</div>
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-                                <span>Longueur : <strong>{EPONA_MODELS[selectedEponaModel]?.fixedLength}m</strong></span>
-                                <span>Largeur totale : <strong>35.3m</strong></span>
-                                <span>Travées : <strong>{EPONA_MODELS[selectedEponaModel]?.bayCount} × {EPONA_MODELS[selectedEponaModel]?.baySpacing}m</strong></span>
-                                <span>Pente : <strong>17°</strong></span>
-                                <span>Faîtage : <strong>9.4m</strong></span>
-                                <span>Sablière G : <strong>5m</strong></span>
-                                <span>Sablière D : <strong>3.8m</strong></span>
-                                <span>Auvent G : <strong>2.5m</strong></span>
-                                <span>Appentis D : <strong>7.8m</strong></span>
-                            </div>
+                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100 text-xs text-blue-800 space-y-1">
+                        <div className="font-bold text-blue-900 mb-1">{EPONA_MODELS[selectedEponaModel]?.label}</div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                            <span>Longueur : <strong>{EPONA_MODELS[selectedEponaModel]?.fixedLength}m</strong></span>
+                            <span>Largeur totale : <strong>35.3m</strong></span>
+                            <span>Travées : <strong>{EPONA_MODELS[selectedEponaModel]?.bayCount} × {EPONA_MODELS[selectedEponaModel]?.baySpacing}m</strong></span>
+                            <span>Pente : <strong>17°</strong></span>
+                            <span>Faîtage : <strong>9.4m</strong></span>
+                            <span>Sablière G : <strong>5m</strong></span>
+                            <span>Sablière D : <strong>3.8m</strong></span>
+                            <span>Auvent G : <strong>2.5m</strong></span>
+                            <span>Appentis D : <strong>7.8m</strong></span>
                         </div>
-                    ) : (
-                        <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100 text-[11px] text-blue-800 space-y-2">
-                            <div className="font-bold text-blue-900 mb-1">{TALIAN_5_MODELS[selectedTalian5Model]?.label}</div>
-                            <div className="text-blue-900 leading-relaxed">
-                                Pente G: <strong>10°</strong> / Travées: <strong>{TALIAN_5_MODELS[selectedTalian5Model]?.bayCount}x6.2m</strong> / Sablière G: <strong>7.9m</strong> / Sablière D: <strong>4.3m</strong> / Largeur T: <strong>28m</strong> / Int. G: <strong>15.4m</strong> / Int. D: <strong>11m</strong>
-                            </div>
-                        </div>
-                    )}
+                    </div>
                 </div>
             )}
 

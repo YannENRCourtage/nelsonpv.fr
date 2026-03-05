@@ -28,8 +28,7 @@ export function Bracing({
     const isTalian4 = isAcama && buildingType === 'symetrique' && Math.abs(width - 13.7) < 0.1;
     const isTalian1 = isAcama && buildingType === 'symetrique' && Math.abs(width - 18.8) < 0.1;
     const isTalian3 = isAcama && buildingType === 'symetrique' && Math.abs(width - 17.5) < 0.1;
-    const isTalian5 = isAcama && buildingType === 'epona' && Math.abs(width - 27.3) < 0.1;
-    const isTalian = isTalian4 || isTalian1 || isTalian3 || isTalian5;
+    const isTalian = isTalian4 || isTalian1 || isTalian3;
 
     // Loop through bays and add bracing every 4 bays
     for (let i = 0; i < bayCount; i += 4) {
@@ -45,7 +44,7 @@ export function Bracing({
         let yTopMainRight = eaveHeight - 0.5;
         if (buildingType === 'asymetrique_1') yTopMainRight = 3.9;
         else if (buildingType === 'asymetrique_2') yTopMainRight = 3.7;
-        else if (isAcama && isTalian5) yTopMainRight = 3.7;
+
 
 
         const createRod = (start, end, key) => (
