@@ -305,11 +305,11 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
                 // TALIAN 3: Specific purlin adjustments
                 if (isTalian3) {
                     if (j === numPurlins) {
-                        // Outermost (Sablière): Lowered and now REMOVED as requested Phase 3/03
-                        continue;
+                        // Outermost (bas/extérieur): Réintégrée avec +60cm - USER REQUEST 05/03/2026
+                        finalYLoc += 0.60;
                     } else if (j === 1) {
-                        // Innermost (Intermédiaire): Raise by 20cm
-                        finalYLoc += 0.20;
+                        // Innermost (haut/intérieur): Abaissée de 1m - USER REQUEST 05/03/2026
+                        finalYLoc -= 0.80; // was +0.20, now -0.80 (delta = -1.00)
                     }
                 }
 
@@ -362,7 +362,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     } else if (buildingType === 'symetrique') {
         // Symmetric: Raise both awnings by 4cm
         roofY = -0.10 + 0.04; // -0.06
-        if (isTalian3) roofY = -0.155 + 0.50; // USER REQUEST 05/03/2026: +50cm
+        if (isTalian3) roofY = -0.155 + 0.20; // USER REQUEST 05/03/2026: +50cm puis -30cm => +20cm net
     } else if (buildingType === 'asymetrique_1') {
         if (side === 'right') {
             // Asymmetric Right Awning: Raise cover by 3cm
