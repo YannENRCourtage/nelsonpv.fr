@@ -748,6 +748,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
         }
       } else {
         setSelectedId(null);
+        e.latlng.isManual = true;
         if (setTargetPos) setTargetPos(e.latlng);
         if (setShowInfoPanel) setShowInfoPanel(true);
       }
@@ -815,7 +816,8 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
         setMode(null);
       } else if (!mode) {
         // If no mode is active, show info panel for this point
-        setTargetPos(e.latlng);
+        e.latlng.isManual = true;
+        if (setTargetPos) setTargetPos(e.latlng);
         if (setShowInfoPanel) setShowInfoPanel(true);
       }
     },
@@ -1820,7 +1822,7 @@ function MiniMap() {
   return <div ref={miniMapContainerRef} className="hidden lg:block w-40 h-32 border-2 border-border rounded-lg shadow-lg overflow-hidden bg-card hide-on-capture" />;
 }
 
-function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setShowInfoPanel, project }) {
+function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setShowInfoPanel, project, setProject }) {
   const map = useMap();
   const [info, setInfo] = useState({ lat: 0, lng: 0, alt: '...', address: '...', parcel: '...', zoning: '...' });
   const [loading, setLoading] = useState(false);
@@ -1927,6 +1929,18 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
         }
 
         setInfo(prev => ({ ...prev, alt, address, parcel, zoning }));
+
+        if (targetPos.isManual && setProject) {
+          setProject(prev => {
+            const currentGps = `${targetPos.lat}, ${targetPos.lng}`;
+            if (prev.gps === currentGps) return prev;
+            return {
+              ...prev,
+              gps: currentGps,
+              address: (address !== 'N/A' && address !== 'Adresse non trouvée') ? address : prev.address
+            };
+          });
+        }
       } catch (e) {
         console.error("Info fetch error", e);
       } finally {
@@ -1937,7 +1951,7 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
     // Debounce réduit pour réactivité
     const timeoutId = setTimeout(updateInfo, 100);
     return () => clearTimeout(timeoutId);
-  }, [targetPos, hoverInfo]);
+  }, [targetPos, hoverInfo, setProject]);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -2974,7 +2988,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
           <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
             <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '30px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
               <div className="flex flex-col items-start gap-2">
-                <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} hoverInfo={hoverInfo} showInfoPanel={showInfoPanel} setShowInfoPanel={setShowInfoPanel} project={project} />
+                <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} hoverInfo={hoverInfo} showInfoPanel={showInfoPanel} setShowInfoPanel={setShowInfoPanel} project={project} setProject={setProject} />
                 <MiniMap />
                 <LayerToggleListener layersRef={layersRef} />
                 <ScaleControl position="bottomleft" metric={true} imperial={false} />
