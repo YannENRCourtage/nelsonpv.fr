@@ -1820,19 +1820,34 @@ function MiniMap() {
   return <div ref={miniMapContainerRef} className="hidden lg:block w-40 h-32 border-2 border-border rounded-lg shadow-lg overflow-hidden bg-card hide-on-capture" />;
 }
 
-function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setShowInfoPanel }) {
+function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setShowInfoPanel, project }) {
   const map = useMap();
   const [info, setInfo] = useState({ lat: 0, lng: 0, alt: '...', address: '...', parcel: '...', zoning: '...' });
   const [loading, setLoading] = useState(false);
+  const [hasInitializedFromProject, setHasInitializedFromProject] = useState(false);
 
   // Initialize target: use map center or fallback to 7 rue Gutenberg, Mérignac (siège ENR Courtage)
   const DEFAULT_LAT = 44.82618;
   const DEFAULT_LNG = -0.671985;
+
   useEffect(() => {
+    if (!hasInitializedFromProject && project?.gps) {
+      const parts = project.gps.split(',');
+      if (parts.length === 2) {
+        const plat = parseFloat(parts[0].trim());
+        const plng = parseFloat(parts[1].trim());
+        if (!isNaN(plat) && !isNaN(plng)) {
+          setTargetPos({ lat: plat, lng: plng });
+          setHasInitializedFromProject(true);
+          return;
+        }
+      }
+    }
+
     if (!targetPos) {
       setTargetPos({ lat: DEFAULT_LAT, lng: DEFAULT_LNG });
     }
-  }, [targetPos, setTargetPos]);
+  }, [targetPos, project?.gps, hasInitializedFromProject, setTargetPos]);
 
   useEffect(() => {
     if (hoverInfo) {
@@ -2959,7 +2974,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
           <div className="leaflet-bottom leaflet-left no-print" style={{ pointerEvents: 'none' }}>
             <div className="leaflet-control-container" style={{ position: 'absolute', bottom: '30px', left: '10px', zIndex: 1000, pointerEvents: 'auto' }}>
               <div className="flex flex-col items-start gap-2">
-                <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} hoverInfo={hoverInfo} showInfoPanel={showInfoPanel} setShowInfoPanel={setShowInfoPanel} />
+                <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} hoverInfo={hoverInfo} showInfoPanel={showInfoPanel} setShowInfoPanel={setShowInfoPanel} project={project} />
                 <MiniMap />
                 <LayerToggleListener layersRef={layersRef} />
                 <ScaleControl position="bottomleft" metric={true} imperial={false} />
