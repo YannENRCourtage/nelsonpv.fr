@@ -74,26 +74,26 @@ export default function Finance() {
                 tarifTH: simulation.tarifTB || 0.09,
                 tarifACC: simulation.tarifACC || 0.14,
                 turpe: simulation.turpe || 0.012,
-                prixAchatACC: simulation.prixAchatACC !== undefined ? simulation.prixAchatACC : 0.40,
-                partACC: simulation.partACC || 40,
+                prixAchatACC: simulation.prixAchatACC !== undefined ? simulation.prixAchatACC : (isAcama ? 0 : 0.40),
+                partACC: simulation.partACC !== undefined ? simulation.partACC : (isAcama ? 0 : 40),
                 interestRate: simulation.interestRate !== undefined ? simulation.interestRate : 3.9
             },
             costs: {
                 installationRate: simulation.installationRate !== undefined ? simulation.installationRate : 0.50,
-                installation: simulation.installation || 0,
-                charpente: simulation.charpente || 0,
-                couverture: isAcama ? 0 : (simulation.couverture || 0),
-                agregateur: isAcama ? (simulation.agregateur || 0) : 0,
-                fondations: isAcama ? 0 : (simulation.fondations || 0),
-                resteACharge: isAcama ? (simulation.resteACharge || 0) : 0,
-                raccordement: simulation.raccordement || 0,
-                developpement: simulation.developpement || 0,
-                fraisCommerciaux: simulation.fraisCommerciaux || ((simulation.power || 120) * 50),
-                soulte: simulation.soulte || 0,
-                maintenance: simulation.maintenance || 10,
-                bardage: simulation.bardage || 0,
-                cheneaux: simulation.cheneaux || 0,
-                batterie: simulation.batterie || 0
+                installation: simulation.installation !== undefined ? simulation.installation : 0,
+                charpente: simulation.charpente !== undefined ? simulation.charpente : 0,
+                couverture: isAcama ? 0 : (simulation.couverture !== undefined ? simulation.couverture : 0),
+                agregateur: isAcama ? (simulation.agregateur !== undefined ? simulation.agregateur : 2500) : 0,
+                fondations: isAcama ? 0 : (simulation.fondations !== undefined ? simulation.fondations : 0),
+                resteACharge: isAcama ? (simulation.resteACharge !== undefined ? simulation.resteACharge : 0) : 0,
+                raccordement: simulation.raccordement !== undefined ? simulation.raccordement : 0,
+                developpement: simulation.developpement !== undefined ? simulation.developpement : 0,
+                fraisCommerciaux: simulation.fraisCommerciaux !== undefined ? simulation.fraisCommerciaux : ((simulation.power || 120) * (isAcama ? 30 : 50)),
+                soulte: simulation.soulte !== undefined ? simulation.soulte : 0,
+                maintenance: simulation.maintenance !== undefined ? simulation.maintenance : 10,
+                bardage: simulation.bardage !== undefined ? simulation.bardage : 0,
+                cheneaux: simulation.cheneaux !== undefined ? simulation.cheneaux : 0,
+                batterie: simulation.batterie !== undefined ? simulation.batterie : 0
             }
         };
 

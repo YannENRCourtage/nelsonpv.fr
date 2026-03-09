@@ -109,7 +109,7 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost, i
 
     // Order matching simuacc.fr (Image 5)
     let costFields = [
-        { key: 'installation', label: 'Installation', unit: '€' },
+        { key: 'installation', label: 'Installation PV', unit: '€' },
         { key: 'charpente', label: 'Charpente', unit: '€' },
         { key: 'couverture', label: 'Couverture', unit: '€' },
         { key: 'fondations', label: 'Fondations', unit: '€' },
@@ -122,7 +122,7 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost, i
 
     if (isAcama) {
         costFields = [
-            { key: 'installation', label: 'Installation', unit: '€' },
+            { key: 'installation', label: 'Installation PV', unit: '€' },
             { key: 'charpente', label: 'Coût Bâtiment', unit: '€' },
             { key: 'agregateur', label: 'Agrégateur', unit: '€' },
             { key: 'resteACharge', label: 'Reste à Charge', unit: '€', hasAutoButton: true },

@@ -148,7 +148,7 @@ export default function ProfitabilitySimulator() {
         // So 0.50 * 1000 = 500.
         // Rate is indeed 0.50.
         const rate = costs.installationRate !== undefined ? costs.installationRate : 0.50;
-        const newInstallation = power * rate * 1000;
+        const newInstallation = isAcama ? power * 0.50 * 1000 : power * rate * 1000;
         const newFraisCommerciaux = power * (isAcama ? 30 : 50);
 
         setCosts(prev => {
@@ -231,7 +231,7 @@ export default function ProfitabilitySimulator() {
                 tarifACC: params.tarifACC,
                 turpe: params.turpe,
                 prixAchatACC: params.prixAchatACC,
-                partACC: params.partACC || (params.prixAchatACC * 100),
+                partACC: params.partACC !== undefined ? params.partACC : (params.prixAchatACC * 100),
                 interestRate: params.interestRate,
                 // Coûts détaillés
                 installationRate: costs.installationRate,
@@ -293,7 +293,7 @@ export default function ProfitabilitySimulator() {
                 tarifACC: params.tarifACC,
                 turpe: params.turpe,
                 prixAchatACC: params.prixAchatACC,
-                partACC: params.partACC || (params.prixAchatACC * 100),
+                partACC: params.partACC !== undefined ? params.partACC : (params.prixAchatACC * 100),
                 interestRate: params.interestRate,
                 // Coûts détaillés
                 installationRate: costs.installationRate,
