@@ -45,11 +45,10 @@ export function calculateTotalProjectCost(costs) {
         fraisCommerciaux +
         developpement +
         soulte +
-        batterie +
         bardage +
         cheneaux +
-        agregateur +
-        resteACharge
+        Number(agregateur || 0) -
+        Number(resteACharge || 0)
     );
 }
 
@@ -425,12 +424,12 @@ export function calculateAllMetrics(params, costs) {
 }
 
 /**
- * Find the optimal Reste à Charge (which will be a negative number) to achieve TRI >= 5 and DSCR >= 1.1.
+ * Find the optimal Reste à Charge (which will be a positive number reducing the CAPEX) to achieve TRI >= 5 and DSCR >= 1.1.
  * Uses binary search.
  */
 export function calculateRequiredResteACharge(params, tempCosts) {
-    let minReste = -1500000; // Un reste à charge est négatif pour le client final, réduisant le CAPEX
-    let maxReste = 0;
+    let minReste = 0;
+    let maxReste = 1500000;
 
     let bestReste = 0;
 
@@ -448,17 +447,17 @@ export function calculateRequiredResteACharge(params, tempCosts) {
         let metrics = calculateAllMetrics(params, testCosts);
 
         // Is it profitable enough?
-        // A more negative resteACharge LOWERS the CAPEX, which INCREASES TRI & DSCR.
+        // A larger positive resteACharge LOWERS the CAPEX, which INCREASES TRI & DSCR.
         if (metrics.tri >= 5 && metrics.averageDSCR >= 1.1) {
-            // It's good enough! Try to make it less negative (closer to 0) to save money for the client
+            // It's good enough! Try to make it smaller to not overcharge the client
             bestReste = midReste;
-            minReste = midReste;
-        } else {
-            // Not profitable enough, we need a MORE negative impact on CAPEX
             maxReste = midReste;
+        } else {
+            // Not profitable enough, we need a LARGER reste à charge
+            minReste = midReste;
         }
     }
 
-    // Round to whole Euro downward to be safe on the threshold (e.g. -12503.2 -> -12504)
-    return Math.floor(bestReste);
+    // Ceil to safely ensure the threshold is passed
+    return Math.ceil(bestReste);
 }

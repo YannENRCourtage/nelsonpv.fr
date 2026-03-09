@@ -149,7 +149,7 @@ export default function ProfitabilitySimulator() {
         // Rate is indeed 0.50.
         const rate = costs.installationRate !== undefined ? costs.installationRate : 0.50;
         const newInstallation = power * rate * 1000;
-        const newFraisCommerciaux = power * 50;
+        const newFraisCommerciaux = power * (isAcama ? 30 : 50);
 
         setCosts(prev => {
             let updated = { ...prev };
@@ -182,7 +182,34 @@ export default function ProfitabilitySimulator() {
             }));
         }
 
-    }, [params.power, params.productible, params.production, params.withPrime, costs.installationRate]);
+    }, [params.power, params.productible, params.production, params.withPrime, costs.installationRate, isAcama]);
+
+    // Auto-calculate Reste à charge on parameter/cost changes (except resteACharge itself)
+    useEffect(() => {
+        if (!isAcama) return;
+
+        const optimalReste = calculateRequiredResteACharge(params, costs);
+
+        if (optimalReste !== costs.resteACharge) {
+            setCosts(prev => ({ ...prev, resteACharge: optimalReste }));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        isAcama,
+        params,
+        costs.installationRate,
+        costs.installation,
+        costs.charpente,
+        costs.agregateur,
+        costs.raccordement,
+        costs.developpement,
+        costs.fraisCommerciaux,
+        costs.soulte,
+        costs.maintenance,
+        costs.bardage,
+        costs.cheneaux,
+        costs.batterie
+    ]);
 
     const handleGeneratePDF = () => {
         generateSimulatorPDF({

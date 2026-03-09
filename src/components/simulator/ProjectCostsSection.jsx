@@ -123,7 +123,7 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost, i
     if (isAcama) {
         costFields = [
             { key: 'installation', label: 'Installation', unit: '€' },
-            { key: 'charpente', label: 'Charpente', unit: '€' },
+            { key: 'charpente', label: 'Coût Bâtiment', unit: '€' },
             { key: 'agregateur', label: 'Agrégateur', unit: '€' },
             { key: 'resteACharge', label: 'Reste à Charge', unit: '€', hasAutoButton: true },
             { key: 'raccordement', label: 'Raccordement', unit: '€' },
