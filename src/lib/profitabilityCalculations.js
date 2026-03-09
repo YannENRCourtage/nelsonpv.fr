@@ -282,9 +282,7 @@ export function calculateTRI(businessPlan, initialInvestment) {
     const cashFlows = [-initialInvestment, ...businessPlan.map(y => y.ebe)];
 
     const sumPositive = cashFlows.reduce((acc, val) => val > 0 ? acc + val : acc, 0);
-    if (sumPositive < initialInvestment) {
-        return -100;
-    }
+    // Allow the math solver to find the true negative IRR instead of hardcoding -100%
 
     let tri = 0.05;
     for (let i = 0; i < 1000; i++) {
@@ -302,7 +300,7 @@ export function calculateTRI(businessPlan, initialInvestment) {
 
         // Clamp
         if (newTri > 50) newTri = 50;
-        if (newTri < -0.99) newTri = -0.99;
+        if (newTri < -0.999) newTri = -0.999;
 
         if (Math.abs(newTri - tri) < 0.00001) return newTri * 100;
         tri = newTri;
@@ -428,15 +426,23 @@ export function calculateAllMetrics(params, costs) {
  * Uses binary search.
  */
 export function calculateRequiredResteACharge(params, tempCosts) {
-    let minReste = 0;
-    let maxReste = 1500000;
-
-    let bestReste = 0;
-
     // Quick check: is it already profitable at 0 Reste à Charge?
     let baseMetrics = calculateAllMetrics(params, { ...tempCosts, resteACharge: 0 });
     if (baseMetrics.tri >= 5 && baseMetrics.averageDSCR >= 1.1) {
         return 0;
+    }
+
+    let minReste = 0;
+    // The maximum possible reste à charge is slightly less than total cost, to keep CAPEX > 0
+    let maxReste = Math.max(0, baseMetrics.totalCost - 1);
+
+    let bestReste = 0;
+
+    // Check if even with maxReste it's still not profitable (e.g. negative EBE)
+    let maxResteMetrics = calculateAllMetrics(params, { ...tempCosts, resteACharge: maxReste });
+    if (maxResteMetrics.tri < 5 || maxResteMetrics.averageDSCR < 1.1) {
+        // Impossible to reach target, OPEX > revenue. Give the max possible.
+        return Math.floor(maxReste);
     }
 
     // Binary Search
