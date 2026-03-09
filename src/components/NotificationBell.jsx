@@ -21,11 +21,35 @@ export default function NotificationBell() {
         // Subscribe to real-time notifications
         const unsubscribe = subscribeToNotifications(user.uid, (notifs) => {
             setNotifications(notifs);
-            setUnreadCount(notifs.filter(n => !n.read).length);
+
+            // Check last seen time to calculate red badge count
+            const lastSeenRaw = localStorage.getItem(`notifs_seen_${user.uid}`);
+            const lastSeenTime = lastSeenRaw ? parseInt(lastSeenRaw, 10) : 0;
+
+            const count = notifs.filter(n => {
+                if (n.read) return false;
+                if (!n.createdAt) return true;
+                const time = n.createdAt.toDate ? n.createdAt.toDate().getTime() : new Date(n.createdAt).getTime();
+                // We add a small 1000ms buffer to lastSeenTime to avoid precision issues
+                return time > lastSeenTime + 1000;
+            }).length;
+
+            setUnreadCount(count);
         });
 
         return () => unsubscribe();
     }, [user]);
+
+    const handleBellClick = () => {
+        const willShow = !showDropdown;
+        setShowDropdown(willShow);
+
+        if (willShow) {
+            // Dismiss the red notification badge but keep unread status for the items
+            localStorage.setItem(`notifs_seen_${user.uid}`, Date.now().toString());
+            setUnreadCount(0);
+        }
+    };
 
     const handleNotificationClick = async (notification) => {
         // Mark as read
@@ -59,7 +83,7 @@ export default function NotificationBell() {
     return (
         <div className="relative">
             <button
-                onClick={() => setShowDropdown(!showDropdown)}
+                onClick={handleBellClick}
                 className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
                 <Bell className="w-5 h-5 text-gray-700" />
