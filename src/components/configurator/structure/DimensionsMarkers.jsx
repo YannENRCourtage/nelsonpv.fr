@@ -861,11 +861,15 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             {rightExtData && (
                 <>
                     <group>
-                        {rightExtData.widthPoints.map((p, i) => (
-                            <Line key={i} points={p} color={lineColor} lineWidth={lineWidth} />
-                        ))}
-                        <mesh position={rightExtData.wStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <mesh position={rightExtData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        {!isTalian4 && (
+                            <>
+                                {rightExtData.widthPoints.map((p, i) => (
+                                    <Line key={i} points={p} color={lineColor} lineWidth={lineWidth} />
+                                ))}
+                                <mesh position={rightExtData.wStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                                <mesh position={rightExtData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                            </>
+                        )}
                         <Text position={[width / 2 + rightExtData.extWidth / 2, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
                             {isEpona ? '7.8m' : `${rightExtData.extWidth} m`}
                         </Text>
@@ -873,7 +877,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     {/* Gap implementation for Right Extension height */}
                     <Line points={rightExtData.heightPoints[0] || []} color={lineColor} lineWidth={lineWidth} />
                     <Line points={rightExtData.heightPoints[1] || []} color={lineColor} lineWidth={lineWidth} />
-                    <mesh position={rightExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    {!isTalian4 && (
+                        <mesh position={rightExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    )}
                     <mesh position={rightExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text position={[rightExtData.xH, (isEpona || isTalian4 || isTalian1 ? (rightExtData.extHeight - (isEpona ? 0 : (isTalian4 ? 1.2 : 0))) : rightExtData.extHeight) / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
                         {`${parseFloat(Number(isTalian4 ? 4.5 : (isTalian1 ? 3.8 : rightExtData.extHeight)).toFixed(2))} m`}
@@ -884,11 +890,15 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             {/* 6. LEFT EXTENSION (If Exists) */}
             {leftExtData && (
                 <group>
-                    {leftExtData.widthPoints.map((p, i) => (
-                        <Line key={i} points={p} color={lineColor} lineWidth={lineWidth} />
-                    ))}
-                    <mesh position={leftExtData.wStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <mesh position={leftExtData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    {!isTalian4 && (
+                        <>
+                            {leftExtData.widthPoints.map((p, i) => (
+                                <Line key={i} points={p} color={lineColor} lineWidth={lineWidth} />
+                            ))}
+                            <mesh position={leftExtData.wStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                            <mesh position={leftExtData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        </>
+                    )}
                     <Text
                         position={[-width / 2 - leftExtData.extWidth / 2, 0.2, 3.5]}
                         rotation={[-Math.PI / 2, 0, 0]}
@@ -906,7 +916,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     ))}
                     {isAcama && (
                         <>
-                            <mesh position={leftExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                            {!isTalian4 && (
+                                <mesh position={leftExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                            )}
                             <mesh position={leftExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                         </>
                     )}
@@ -1037,6 +1049,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         }
 
                         if (isTalian5) baseHeight = 5.0; // Place it on the long slope lower down for visibility
+
+                        if (isEpona) {
+                            baseHeight += 1.5;
+                        }
 
                         // USER REQUEST 13/01/2026: Raise surface area by 1m for ombriere
                         // USER REQUEST 13/01/2026 Part 3: Raise by additional 1.5m (Total 2.5m)

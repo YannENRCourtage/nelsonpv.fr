@@ -2283,9 +2283,13 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
         const [lat, lng] = project.gps.split(',').map(Number);
         if (!isNaN(lat) && !isNaN(lng)) {
           map.setView([lat, lng], 18);
-          // Set crosshair target and open info panel
           if (setTargetPos) setTargetPos({ lat, lng });
           if (setShowInfoPanel) setShowInfoPanel(true);
+
+          // Synchroniser les champs GPS même si déjà présents (demande utilisateur)
+          if (onAddressFound) {
+            onAddressFound({ label: project.address, lat, lng });
+          }
           return;
         }
       }
@@ -2304,6 +2308,15 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
                 map.setView([lat, lng], 17);
                 if (setTargetPos) setTargetPos({ lat, lng });
                 if (setShowInfoPanel) setShowInfoPanel(true);
+
+                // Synchroniser les champs GPS avec le résultat du géocodage
+                if (onAddressFound) {
+                  onAddressFound({
+                    label: feature.properties.label,
+                    lat: lat,
+                    lng: lng
+                  });
+                }
               }
             })
             .catch(() => {

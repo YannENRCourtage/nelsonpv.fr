@@ -519,12 +519,13 @@ export const useConfiguratorValues = () => {
     const solarStats = React.useMemo(() => {
         const PANEL_WIDTH = 1.134;
         const PANEL_HEIGHT = 1.762;
-        const GAP = 0.01;
+        const GAP = 0.02; // Harmonisé à 2cm
         const MARGIN = 0.50;
 
-        const getPanelCount = (surfWidth, surfLength) => {
-            const uW = surfWidth - 2 * MARGIN;
-            const uL = surfLength - 2 * MARGIN;
+        const getPanelCount = (surfWidth, surfLength, customMargin = null) => {
+            const effectiveMargin = customMargin !== null ? customMargin : MARGIN;
+            const uW = surfWidth - 2 * effectiveMargin;
+            const uL = surfLength - 2 * effectiveMargin;
             if (uW <= 0 || uL <= 0) return 0;
             const cXA = Math.floor((uW + GAP) / (PANEL_WIDTH + GAP));
             const cZA = Math.floor((uL + GAP) / (PANEL_HEIGHT + GAP));
@@ -545,20 +546,35 @@ export const useConfiguratorValues = () => {
 
             solarCount += getPanelCount(roofSlope, roofLength) * 2;
 
+            // Auvents/Appentis : Utiliser une marge réduite pour les auvents étroits (< 4m)
+            const getExtensionMargin = (extWidth) => extWidth < 4.0 ? 0.20 : 0.50;
+
             if (state.leftSide === 'auvent') {
-                const slope = 4.0 / Math.cos(angleRad);
-                solarCount += getPanelCount(slope, length);
+                const extWidth = 4.0;
+                // Note: TALIAN 1/3 override extWidth in render, but store uses 4.0 for standard.
+                // We align the store logic for specific models too.
+                let specificWidth = extWidth;
+                if (state.isAcama && Math.abs(state.width - 18.8) < 0.1) specificWidth = 2.3;
+                if (state.isAcama && Math.abs(state.width - 17.5) < 0.1) specificWidth = 1.8;
+
+                const slope = specificWidth / Math.cos(angleRad);
+                solarCount += getPanelCount(slope, length + 1.0, getExtensionMargin(specificWidth));
             } else if (state.leftSide === 'appentis') {
                 const slope = state.leftWidth / Math.cos(angleRad);
-                solarCount += getPanelCount(slope, length + 1.0);
+                solarCount += getPanelCount(slope, length + 1.0, getExtensionMargin(state.leftWidth));
             }
 
             if (state.rightSide === 'auvent') {
-                const slope = 4.0 / Math.cos(angleRad);
-                solarCount += getPanelCount(slope, length);
+                const extWidth = 4.0;
+                let specificWidth = extWidth;
+                if (state.isAcama && Math.abs(state.width - 18.8) < 0.1) specificWidth = 2.3;
+                if (state.isAcama && Math.abs(state.width - 17.5) < 0.1) specificWidth = 1.8;
+
+                const slope = specificWidth / Math.cos(angleRad);
+                solarCount += getPanelCount(slope, length + 1.0, getExtensionMargin(specificWidth));
             } else if (state.rightSide === 'appentis') {
                 const slope = state.rightWidth / Math.cos(angleRad);
-                solarCount += getPanelCount(slope, length + 1.0);
+                solarCount += getPanelCount(slope, length + 1.0, getExtensionMargin(state.rightWidth));
             }
         }
 

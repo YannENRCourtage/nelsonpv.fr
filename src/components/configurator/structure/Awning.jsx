@@ -245,7 +245,11 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
                 ]}
                 rotation={[0, 0, -angleRad]}
             >
-                <SolarPanels surfaceWidth={slopeLength} surfaceLength={length + 1.0} />
+                <SolarPanels
+                    surfaceWidth={slopeLength}
+                    surfaceLength={length + 1.0}
+                    customMargin={slopeLength < 4.0 ? 0.20 : 0.50}
+                />
             </group>
 
             {/* STRUCTURE FRAMES */}

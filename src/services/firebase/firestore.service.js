@@ -347,7 +347,6 @@ export const transferProject = async (projectId, targetTenantId, transferLinkedD
 
     if (transferLinkedData) {
         // 2. Transférer le contact lié si présent
-        // Note: On cherche par email ou par ID si stocké
         if (projectData.email) {
             const contactsQ = query(
                 collection(db, 'contacts'),
@@ -365,9 +364,8 @@ export const transferProject = async (projectId, targetTenantId, transferLinkedD
         // 3. Transférer les tâches liées
         const tasksQ = query(
             collection(db, 'tasks'),
-            where('contact', '==', projectData.name) // Souvent lié par le nom du contact/projet dans les tâches
+            where('contact', '==', projectData.name)
         );
-        // Note: Cette recherche par nom est fragile mais correspond à l'usage actuel
         const tasksSnap = await getDocs(tasksQ);
         tasksSnap.docs.forEach(d => {
             batch.update(d.ref, {
@@ -375,8 +373,45 @@ export const transferProject = async (projectId, targetTenantId, transferLinkedD
                 updatedAt: serverTimestamp()
             });
         });
+
+        // 4. Transférer les activités liées
+        const activitiesQ = query(
+            collection(db, 'activities'),
+            where('itemId', '==', projectId)
+        );
+        const activitiesSnap = await getDocs(activitiesQ);
+        activitiesSnap.docs.forEach(d => {
+            batch.update(d.ref, {
+                tenantId: targetTenantId
+            });
+        });
     }
 
     await batch.commit();
     return true;
+};
+
+/**
+ * Nettoie les activités d'un projet spécifique en les déplaçant vers un autre tenant
+ */
+export const cleanupProjectActivities = async (projectId, targetTenantId) => {
+    const activitiesQ = query(
+        collection(db, 'activities'),
+        where('itemId', '==', projectId)
+    );
+    const snapshot = await getDocs(activitiesQ);
+    const batch = writeBatch(db);
+    let count = 0;
+
+    snapshot.docs.forEach(d => {
+        if (d.data().tenantId !== targetTenantId) {
+            batch.update(d.ref, { tenantId: targetTenantId });
+            count++;
+        }
+    });
+
+    if (count > 0) {
+        await batch.commit();
+    }
+    return count;
 };

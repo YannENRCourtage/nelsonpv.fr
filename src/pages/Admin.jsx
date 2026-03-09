@@ -25,7 +25,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Loader2, Trash2, Edit, Plus, Shield, Mail, Eye, EyeOff, Link, FolderSync, Building2, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ToggleSwitch } from '@/components/ui/toggle-switch';
-import { migrateCollectionToTenant, TENANTS } from '@/services/firebase/firestore.service';
+import { migrateCollectionToTenant, TENANTS, cleanupProjectActivities } from '@/services/firebase/firestore.service';
 
 const TENANT_OPTIONS = [
   { value: 'green-invest', label: 'GREEN INVEST (BARCONNIERE)' },
@@ -270,6 +270,7 @@ export default function Admin() {
       toast({ title: "Erreur", description: "Échec de l'initialisation ODOO : " + error.message, variant: "destructive" });
     }
   };
+
 
   if (loading) {
     return (

@@ -10,6 +10,7 @@ import * as XLSX from 'xlsx';
 export default function Finance() {
     const navigate = useNavigate();
     const { activeTenantId } = useAuth();
+    const isAcama = activeTenantId === 'acama';
     const [simulations, setSimulations] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -81,8 +82,10 @@ export default function Finance() {
                 installationRate: simulation.installationRate !== undefined ? simulation.installationRate : 0.50,
                 installation: simulation.installation || 0,
                 charpente: simulation.charpente || 0,
-                couverture: simulation.couverture || 0,
-                fondations: simulation.fondations || 0,
+                couverture: isAcama ? 0 : (simulation.couverture || 0),
+                agregateur: isAcama ? (simulation.agregateur || 0) : 0,
+                fondations: isAcama ? 0 : (simulation.fondations || 0),
+                resteACharge: isAcama ? (simulation.resteACharge || 0) : 0,
                 raccordement: simulation.raccordement || 0,
                 developpement: simulation.developpement || 0,
                 fraisCommerciaux: simulation.fraisCommerciaux || ((simulation.power || 120) * 50),
@@ -144,26 +147,37 @@ export default function Finance() {
         }
 
         // Préparer les données pour l'export
-        const dataToExport = selectedRows.map(sim => ({
-            'Projet': sim.projectName,
-            'Commentaires': sim.comments || '',
-            'Puissance (kWc)': sim.power || 0,
-            'Productible (kWh/kWc)': sim.productible || 0,
-            'Tarif TB (€/kWh)': sim.tarifTB || 0,
-            'Tarif ACC (€/kWh)': sim.tarifACC || 0,
-            'Part d\'ACC (%)': sim.partACC || 0,
-            'Installation (€)': sim.installation || 0,
-            'Charpente (€)': sim.charpente || 0,
-            'Couverture (€)': sim.couverture || 0,
-            'Fondations (€)': sim.fondations || 0,
-            'Raccordement (€)': sim.raccordement || 0,
-            'Développement (€)': sim.developpement || 0,
-            'Coût total (€)': sim.totalCost || 0,
-            'TRI (%)': sim.tri || 0,
-            'DSCR Moyen': sim.averageDSCR || 0,
-            'ROI Sans ACC (ans)': sim.paybackWithoutACC || 0,
-            'ROI Avec ACC (ans)': sim.paybackWithACC || 0
-        }));
+        const dataToExport = selectedRows.map(sim => {
+            const rowData = {
+                'Projet': sim.projectName,
+                'Commentaires': sim.comments || '',
+                'Puissance (kWc)': sim.power || 0,
+                'Productible (kWh/kWc)': sim.productible || 0,
+                'Tarif TB (€/kWh)': sim.tarifTB || 0,
+                'Tarif ACC (€/kWh)': sim.tarifACC || 0,
+                'Part d\'ACC (%)': sim.partACC || 0,
+                'Installation (€)': sim.installation || 0,
+                'Charpente (€)': sim.charpente || 0
+            };
+
+            if (isAcama) {
+                rowData['Agrégateur (€)'] = sim.agregateur || 0;
+                rowData['Reste à Charge (€)'] = sim.resteACharge || 0;
+            } else {
+                rowData['Couverture (€)'] = sim.couverture || 0;
+                rowData['Fondations (€)'] = sim.fondations || 0;
+            }
+
+            rowData['Raccordement (€)'] = sim.raccordement || 0;
+            rowData['Développement (€)'] = sim.developpement || 0;
+            rowData['Coût total (€)'] = sim.totalCost || 0;
+            rowData['TRI (%)'] = sim.tri || 0;
+            rowData['DSCR Moyen'] = sim.averageDSCR || 0;
+            rowData['ROI Sans ACC (ans)'] = sim.paybackWithoutACC || 0;
+            rowData['ROI Avec ACC (ans)'] = sim.paybackWithACC || 0;
+
+            return rowData;
+        });
 
         // Créer le fichier Excel
         const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -331,11 +345,11 @@ export default function Finance() {
                                             <div className="text-xs font-normal opacity-90">(€)</div>
                                         </th>
                                         <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
-                                            <div className="leading-tight">Couverture</div>
+                                            <div className="leading-tight">{isAcama ? 'Agrégateur' : 'Couverture'}</div>
                                             <div className="text-xs font-normal opacity-90">(€)</div>
                                         </th>
                                         <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
-                                            <div className="leading-tight">Fondations</div>
+                                            <div className="leading-tight">{isAcama ? 'Reste à Charge' : 'Fondations'}</div>
                                             <div className="text-xs font-normal opacity-90">(€)</div>
                                         </th>
                                         <th className="px-3 py-4 text-center text-sm font-semibold border-r border-teal-600">
@@ -422,10 +436,10 @@ export default function Finance() {
                                                 {formatCurrency(sim.charpente)}
                                             </td>
                                             <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
-                                                {formatCurrency(sim.couverture)}
+                                                {formatCurrency(isAcama ? sim.agregateur : sim.couverture)}
                                             </td>
                                             <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
-                                                {formatCurrency(sim.fondations)}
+                                                {formatCurrency(isAcama ? sim.resteACharge : sim.fondations)}
                                             </td>
                                             <td className="px-3 py-4 text-sm text-gray-900 text-center border-r border-gray-200">
                                                 {formatCurrency(sim.raccordement)}

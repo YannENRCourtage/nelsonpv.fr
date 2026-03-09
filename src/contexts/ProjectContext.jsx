@@ -161,10 +161,13 @@ export function ProjectProvider({ children }) {
       let projectId = project.id;
       let savedProject = { ...project };
 
-      // Forcer le tenantId du projet au tenant actif pour garantir l'isolation
-      const currentTenantId = activeTenantIdRef.current;
-      if (currentTenantId) {
-        savedProject.tenantId = currentTenantId;
+      // Ne définir le tenantId que pour les NOUVEAUX projets
+      // Pour les projets existants, on conserve leur tenant d'origine pour éviter les fuites
+      if (!savedProject.tenantId) {
+        const currentTenantId = activeTenantIdRef.current;
+        if (currentTenantId) {
+          savedProject.tenantId = currentTenantId;
+        }
       }
 
       // Handle captures: upload to Storage if they are data URLs

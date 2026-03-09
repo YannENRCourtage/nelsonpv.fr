@@ -7,7 +7,7 @@ import ProjectCostsSection from '../components/simulator/ProjectCostsSection';
 import ProfitabilitySection from '../components/simulator/ProfitabilitySection';
 import CumulativeGainsChart from '../components/simulator/CumulativeGainsChart';
 import BusinessPlanTable from '../components/simulator/BusinessPlanTable';
-import { calculateAllMetrics, calculateEstimatedProduction } from '../lib/profitabilityCalculations';
+import { calculateAllMetrics, calculateEstimatedProduction, calculateRequiredResteACharge } from '../lib/profitabilityCalculations';
 import { generateSimulatorPDF } from '../components/simulator/SimulatorPDFGenerator';
 import SaveSimulationModal from '../components/simulator/SaveSimulationModal';
 import { createSimulation, updateSimulation } from '../services/firebase/simulations.service.js';
@@ -34,6 +34,8 @@ const DEFAULT_COSTS = {
     charpente: 30000,
     couverture: 15000,
     fondations: 15000,
+    agregateur: 0,
+    resteACharge: 0,
     raccordement: 15000,
     developpement: 5000,
     fraisCommerciaux: 0, // Calculated
@@ -47,8 +49,26 @@ const DEFAULT_COSTS = {
 export default function ProfitabilitySimulator() {
     const { user, activeTenantId } = useAuth();
     const location = useLocation();
-    const [params, setParams] = useState(DEFAULT_PARAMS);
-    const [costs, setCosts] = useState(DEFAULT_COSTS);
+    const isAcama = activeTenantId === 'acama';
+
+    // Set initial params based on tenant
+    const initialParams = isAcama ? {
+        ...DEFAULT_PARAMS,
+        partACC: 0,
+        prixAchatACC: 0
+    } : DEFAULT_PARAMS;
+
+    // Set initial costs based on tenant
+    const initialCosts = isAcama ? {
+        ...DEFAULT_COSTS,
+        couverture: 0,
+        fondations: 0,
+        agregateur: 2500,
+        resteACharge: 0
+    } : DEFAULT_COSTS;
+
+    const [params, setParams] = useState(initialParams);
+    const [costs, setCosts] = useState(initialCosts);
     const [metrics, setMetrics] = useState({
         totalCost: 0,
         businessPlan: [],
@@ -87,7 +107,7 @@ export default function ProfitabilitySimulator() {
     // Load saved defaults
     useEffect(() => {
         const savedCosts = localStorage.getItem('simulator_default_costs_v4');
-        if (savedCosts) {
+        if (savedCosts && !isAcama) {
             try {
                 // Merge saved defaults with structure to ensure installationRate exists
                 const parsed = JSON.parse(savedCosts);
@@ -96,13 +116,19 @@ export default function ProfitabilitySimulator() {
                 console.error('Error loading saved costs:', e);
             }
         }
-    }, []);
+    }, [isAcama]);
 
     // Recalculate metrics
     useEffect(() => {
         const calculated = calculateAllMetrics(params, costs);
         setMetrics(calculated);
     }, [params, costs]);
+
+    // Handler for automatic constraint solver (ACAMA only)
+    const handleAutoCalculateResteACharge = () => {
+        const optimalReste = calculateRequiredResteACharge(params, costs);
+        setCosts(prev => ({ ...prev, resteACharge: optimalReste }));
+    };
 
     // Auto-Logic: Costs, Production, Tariffs, Prime
     useEffect(() => {
@@ -184,8 +210,10 @@ export default function ProfitabilitySimulator() {
                 installationRate: costs.installationRate,
                 installation: costs.installation || 0,
                 charpente: costs.charpente || 0,
-                couverture: costs.couverture || 0,
-                fondations: costs.fondations || 0,
+                couverture: isAcama ? 0 : (costs.couverture || 0),
+                agregateur: isAcama ? (costs.agregateur || 0) : 0,
+                fondations: isAcama ? 0 : (costs.fondations || 0),
+                resteACharge: isAcama ? (costs.resteACharge || 0) : 0,
                 raccordement: costs.raccordement || 0,
                 developpement: costs.developpement || 0,
                 fraisCommerciaux: costs.fraisCommerciaux || 0,
@@ -244,8 +272,10 @@ export default function ProfitabilitySimulator() {
                 installationRate: costs.installationRate,
                 installation: costs.installation || 0,
                 charpente: costs.charpente || 0,
-                couverture: costs.couverture || 0,
-                fondations: costs.fondations || 0,
+                couverture: isAcama ? 0 : (costs.couverture || 0),
+                agregateur: isAcama ? (costs.agregateur || 0) : 0,
+                fondations: isAcama ? 0 : (costs.fondations || 0),
+                resteACharge: isAcama ? (costs.resteACharge || 0) : 0,
                 raccordement: costs.raccordement || 0,
                 developpement: costs.developpement || 0,
                 fraisCommerciaux: costs.fraisCommerciaux || 0,
@@ -341,6 +371,8 @@ export default function ProfitabilitySimulator() {
                                 costs={costs}
                                 onCostsChange={setCosts}
                                 totalCost={metrics.totalCost}
+                                isAcama={isAcama}
+                                onAutoCalculateResteACharge={handleAutoCalculateResteACharge}
                             />
                         </div>
                     </div>

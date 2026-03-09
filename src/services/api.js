@@ -116,7 +116,7 @@ class ApiService {
                     userName: user.firstName || user.displayName,
                     userPhotoURL: user.photoURL,
                     itemId: id,
-                    tenantId: tenantId || undefined // passer le tenant actif si fourni
+                    tenantId: tenantId || data.tenantId || undefined // Priorité au tenant actif ou celui des données
                 });
             } catch (e) { console.error("Log fail", e); }
         }
@@ -306,7 +306,8 @@ class ApiService {
                     userId: user.uid,
                     userName: user.firstName || user.displayName,
                     userPhotoURL: user.photoURL,
-                    itemId: id
+                    itemId: id,
+                    tenantId: data.tenantId || undefined // Priorité au tenant des données
                 });
             } catch (e) { }
         }
@@ -337,7 +338,7 @@ class ApiService {
             const user = await this._getCurrentUser();
             const activityData = {
                 ...data,
-                // Prioritize tenantId from data (active tenant), fallback to user's default tenant
+                // Prioritize: 1. data.tenantId, 2. user profile tenantId, 3. fallback
                 tenantId: data.tenantId || user.tenantId || 'green-invest'
             };
             return await firestoreService.logActivity(activityData);

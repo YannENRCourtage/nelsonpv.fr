@@ -31,7 +31,9 @@ export function calculateTotalProjectCost(costs) {
         soulte = 0,
         batterie = 0,
         bardage = 0,
-        cheneaux = 0
+        cheneaux = 0,
+        agregateur = 0,
+        resteACharge = 0
     } = costs;
 
     return (
@@ -45,7 +47,9 @@ export function calculateTotalProjectCost(costs) {
         soulte +
         batterie +
         bardage +
-        cheneaux
+        cheneaux +
+        agregateur +
+        resteACharge
     );
 }
 
@@ -418,4 +422,43 @@ export function calculateAllMetrics(params, costs) {
         paybackWithACC,
         averageDSCR
     };
+}
+
+/**
+ * Find the optimal Reste à Charge (which will be a negative number) to achieve TRI >= 5 and DSCR >= 1.1.
+ * Uses binary search.
+ */
+export function calculateRequiredResteACharge(params, tempCosts) {
+    let minReste = -1500000; // Un reste à charge est négatif pour le client final, réduisant le CAPEX
+    let maxReste = 0;
+
+    let bestReste = 0;
+
+    // Quick check: is it already profitable at 0 Reste à Charge?
+    let baseMetrics = calculateAllMetrics(params, { ...tempCosts, resteACharge: 0 });
+    if (baseMetrics.tri >= 5 && baseMetrics.averageDSCR >= 1.1) {
+        return 0;
+    }
+
+    // Binary Search
+    for (let i = 0; i < 50; i++) {
+        let midReste = (minReste + maxReste) / 2;
+
+        let testCosts = { ...tempCosts, resteACharge: midReste };
+        let metrics = calculateAllMetrics(params, testCosts);
+
+        // Is it profitable enough?
+        // A more negative resteACharge LOWERS the CAPEX, which INCREASES TRI & DSCR.
+        if (metrics.tri >= 5 && metrics.averageDSCR >= 1.1) {
+            // It's good enough! Try to make it less negative (closer to 0) to save money for the client
+            bestReste = midReste;
+            minReste = midReste;
+        } else {
+            // Not profitable enough, we need a MORE negative impact on CAPEX
+            maxReste = midReste;
+        }
+    }
+
+    // Round to whole Euro downward to be safe on the threshold (e.g. -12503.2 -> -12504)
+    return Math.floor(bestReste);
 }

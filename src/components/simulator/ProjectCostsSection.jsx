@@ -104,11 +104,11 @@ const CostInput = ({ value, onChange, unit }) => {
     );
 };
 
-export default function ProjectCostsSection({ costs, onCostsChange, totalCost }) {
+export default function ProjectCostsSection({ costs, onCostsChange, totalCost, isAcama = false, onAutoCalculateResteACharge }) {
     const [showDefaultCostsModal, setShowDefaultCostsModal] = useState(false);
 
     // Order matching simuacc.fr (Image 5)
-    const costFields = [
+    let costFields = [
         { key: 'installation', label: 'Installation', unit: '€' },
         { key: 'charpente', label: 'Charpente', unit: '€' },
         { key: 'couverture', label: 'Couverture', unit: '€' },
@@ -119,6 +119,20 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
         { key: 'soulte', label: 'Soulte', unit: '€' },
         { key: 'maintenance', label: 'Maintenance', unit: '€/kWc/an' }
     ];
+
+    if (isAcama) {
+        costFields = [
+            { key: 'installation', label: 'Installation', unit: '€' },
+            { key: 'charpente', label: 'Charpente', unit: '€' },
+            { key: 'agregateur', label: 'Agrégateur', unit: '€' },
+            { key: 'resteACharge', label: 'Reste à Charge', unit: '€', hasAutoButton: true },
+            { key: 'raccordement', label: 'Raccordement', unit: '€' },
+            { key: 'developpement', label: 'Développement', unit: '€' },
+            { key: 'fraisCommerciaux', label: 'Frais Commerciaux', unit: '€' },
+            { key: 'soulte', label: 'Soulte', unit: '€' },
+            { key: 'maintenance', label: 'Maintenance', unit: '€/kWc/an' }
+        ];
+    }
 
     const optionFields = [
         { key: 'bardage', label: 'Bardage', unit: '€' },
@@ -149,9 +163,19 @@ export default function ProjectCostsSection({ costs, onCostsChange, totalCost })
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2">
                     {costFields.map((field) => (
                         <div key={field.key}>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">
-                                {field.label}
-                            </label>
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="block text-xs font-medium text-gray-500">
+                                    {field.label}
+                                </label>
+                                {field.hasAutoButton && (
+                                    <button
+                                        className="text-[10px] bg-teal-100 text-teal-700 hover:bg-teal-200 px-1.5 py-0.5 rounded transition-colors"
+                                        onClick={() => onAutoCalculateResteACharge()}
+                                    >
+                                        Auto
+                                    </button>
+                                )}
+                            </div>
                             <CostInput
                                 value={costs[field.key] || 0}
                                 onChange={(val) => onCostsChange({ ...costs, [field.key]: val })}

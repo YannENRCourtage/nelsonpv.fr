@@ -5,7 +5,7 @@ import { calculateSolarLayout } from '../utils/solarLayout';
 
 // ... (Constants preserved if needed, but logic moved) ...
 
-export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof", forceFullCoverage = false, stretchToFit = false, customGap = null }) {
+export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof", forceFullCoverage = false, stretchToFit = false, customGap = null, customMargin = null }) {
     const { hasSolar } = useConfiguratorStore(useConfiguratorValues);
 
     // Geometry & Material (Memoized)
@@ -15,8 +15,8 @@ export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof", forceF
     const layout = useMemo(() => {
         if (!hasSolar) return null;
 
-        return calculateSolarLayout(surfaceWidth, surfaceLength, forceFullCoverage, customGap);
-    }, [hasSolar, surfaceWidth, surfaceLength, forceFullCoverage, customGap]);
+        return calculateSolarLayout(surfaceWidth, surfaceLength, forceFullCoverage, customGap, customMargin);
+    }, [hasSolar, surfaceWidth, surfaceLength, forceFullCoverage, customGap, customMargin]);
 
     // ...
 

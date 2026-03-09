@@ -406,7 +406,11 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
                 ]}
                 rotation={[0, 0, -angleRad]}
             >
-                <SolarPanels surfaceWidth={slopeLength} surfaceLength={length + 1.0} forceFullCoverage={isTalian3} />
+                <SolarPanels
+                    surfaceWidth={slopeLength}
+                    surfaceLength={length + 1.0}
+                    customMargin={slopeLength < 4.0 ? 0.20 : 0.50}
+                />
             </group>
 
             {/* STRUCTURE */}
