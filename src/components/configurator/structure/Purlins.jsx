@@ -305,38 +305,55 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
     }
     // --- ASYMMETRICAL 2 ZONES GENERATION ---
     else if (buildingType === 'asymetrique_2') {
+        const isTalian5 = isAcama && Math.abs(width - 27.6) < 0.1;
         const w = width;
-        const rightEave = 4.0;
+        let rightEave = 4.0;
         let leftEave, ridge;
+        let apexX, lAngle, rAngle;
 
-        // Heights based on width
-        if (Math.abs(width - 25.5) < 0.1) {
-            leftEave = 6.9;
-            ridge = 8.9;
-        } else if (Math.abs(width - 29.1) < 0.1) {
+        if (isTalian5) {
+            const mainPitchT5 = 10 * (Math.PI / 180);
             leftEave = 7.9;
-            ridge = 9.8;
+            rightEave = 4.3;
+            ridge = 8.1;
+
+            const leftApexOffsetT5 = 0.2 / Math.tan(mainPitchT5);
+            apexX = -w / 2 + leftApexOffsetT5;
+
+            const distApexToRightEaveT5 = w / 2 - apexX;
+            rAngle = Math.atan((ridge - rightEave) / distApexToRightEaveT5);
+            lAngle = mainPitchT5;
         } else {
-            const rAngle = 15 * (Math.PI / 180);
-            ridge = rightEave + (w * 0.75 * Math.tan(rAngle));
-            leftEave = ridge - (w * 0.25 * Math.tan(rAngle));
+            // Heights based on width
+            if (Math.abs(width - 25.5) < 0.1) {
+                leftEave = 6.9;
+                ridge = 8.9;
+            } else if (Math.abs(width - 29.1) < 0.1) {
+                leftEave = 7.9;
+                ridge = 9.8;
+            } else {
+                const rAngleFixed = 15 * (Math.PI / 180);
+                ridge = rightEave + (w * 0.75 * Math.tan(rAngleFixed));
+                leftEave = ridge - (w * 0.25 * Math.tan(rAngleFixed));
+            }
+
+            // Apex at 1/4 from left
+            apexX = -w / 2 + (w * 0.25);
+
+            // Left slope: left eave to apex (1/4 of width)
+            const leftSpan = w * 0.25;
+            const lRise = ridge - leftEave;
+            lAngle = Math.atan(lRise / leftSpan);
+
+            // Right slope: apex to right eave (3/4 of width)
+            const rightSpan = w * 0.75;
+            const rRise = ridge - rightEave;
+            rAngle = Math.atan(rRise / rightSpan);
         }
 
-        // Apex at 1/4 from left
-        const apexX = -w / 2 + (w * 0.25);
-
-        // Left slope: left eave to apex (1/4 of width)
-        const leftSpan = w * 0.25;
-        const lRise = ridge - leftEave;
-        const lAngle = Math.atan(lRise / leftSpan);
-
-        // Right slope: apex to right eave (3/4 of width)
-        const rightSpan = w * 0.75;
-        const rRise = ridge - rightEave;
-        const rAngle = Math.atan(rRise / rightSpan);
-
-        // --- Left Side (Short - 1/4) ---
-        const leftSlopeLen = leftSpan / Math.cos(lAngle);
+        // --- Left Side (Short) ---
+        const leftSpanX = apexX - (-w / 2);
+        const leftSlopeLen = leftSpanX / Math.cos(lAngle);
         const numPurlinsLeft = Math.floor(leftSlopeLen / purlinSpacing);
 
         for (let bayIndex = 0; bayIndex < bayCount; bayIndex++) {
@@ -365,8 +382,9 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
             }
         }
 
-        // --- Right Side (Long - 3/4) ---
-        const rightSlopeLen = rightSpan / Math.cos(rAngle);
+        // --- Right Side (Long) ---
+        const rightSpanX = (w / 2) - apexX;
+        const rightSlopeLen = rightSpanX / Math.cos(rAngle);
         const numPurlinsRight = Math.floor(rightSlopeLen / purlinSpacing);
 
         for (let bayIndex = 0; bayIndex < bayCount; bayIndex++) {

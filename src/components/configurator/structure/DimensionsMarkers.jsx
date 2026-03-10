@@ -70,15 +70,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const end = new THREE.Vector3(width / 2, yHeight, zFront);
 
         if (isTalian5) {
-            // TALIAN 5: 2 segments (15.4m and 11.0m from left)
-            const mid = new THREE.Vector3(-width / 2 + 15.4, yHeight, zFront);
             return {
                 widthStart: start,
                 widthEnd: end,
-                widthPoints: [
-                    [start, new THREE.Vector3(mid.x - gapSize / 2, mid.y, mid.z)],
-                    [new THREE.Vector3(mid.x + gapSize / 2, mid.y, mid.z), end]
-                ]
+                widthPoints: null
             };
         }
 
@@ -581,7 +576,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     // 7b. EPONA/TALIAN Total Width Marker (ACAMA uniquement)
     const acamaTotalWidthData = useMemo(() => {
         if (!isEpona && !isTalian) return null;
-        const totalW = isEpona ? 35.3 : (isTalian4 ? 37.5 : (isTalian3 ? 21.1 : (isTalian5 ? 27.3 : 23.5)));
+        const totalW = isEpona ? 35.3 : (isTalian4 ? 37.5 : (isTalian3 ? 21.1 : (isTalian5 ? 27.6 : 23.5)));
         const zPos = (isTalian1 || isTalian3) ? 7.0 : 6.0;
 
 
