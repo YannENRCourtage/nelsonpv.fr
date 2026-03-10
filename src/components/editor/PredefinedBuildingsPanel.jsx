@@ -258,9 +258,9 @@ const acamaBuildingsData = [
   { code: 'T4 MID', gamme: 'TALIAN 4', length: 45.0, width: 37.7, surface: 1697, power: 368.0, ratio: 0.51, roofWeighting: 50, angle: 6 },
   { code: 'T4 MAXI', gamme: 'TALIAN 4', length: 63.2, width: 37.7, surface: 2384, power: 500.0, ratio: 0.50, roofWeighting: 50, angle: 6 },
   // TALIAN 5 - Pondération: 85%, Inclinaison: 10°
-  { code: 'T5 MINI', gamme: 'TALIAN 5', length: 31.0, width: 28.0, surface: 866, power: 179.9, ratio: 0.60, roofWeighting: 85, angle: 10 },
-  { code: 'T5 MID', gamme: 'TALIAN 5', length: 50.6, width: 28.0, surface: 1414, power: 296.2, ratio: 0.58, roofWeighting: 85, angle: 10 },
-  { code: 'T5 MAXI', gamme: 'TALIAN 5', length: 60.0, width: 28.0, surface: 1677, power: 349.1, ratio: 0.59, roofWeighting: 85, angle: 10 },
+  { code: 'T5 MINI', gamme: 'TALIAN 5', length: 31.0, width: 27.6, surface: 866, power: 179.9, ratio: 0.60, roofWeighting: 85, angle: 10 },
+  { code: 'T5 MID', gamme: 'TALIAN 5', length: 50.0, width: 27.6, surface: 1414, power: 296.2, ratio: 0.58, roofWeighting: 85, angle: 10 },
+  { code: 'T5 MAXI', gamme: 'TALIAN 5', length: 62.5, width: 27.6, surface: 1677, power: 349.1, ratio: 0.59, roofWeighting: 85, angle: 10 },
   // TALIAN 6 - Pondération: 80%, Inclinaison: 12°
   { code: 'T6 MINI', gamme: 'TALIAN 6', length: 39.4, width: 17.4, surface: 687, power: 161.9, ratio: 0.58, roofWeighting: 80, angle: 12 },
   { code: 'T6 MID', gamme: 'TALIAN 6', length: 64.5, width: 17.4, surface: 1125, power: 265.0, ratio: 0.58, roofWeighting: 80, angle: 12 },

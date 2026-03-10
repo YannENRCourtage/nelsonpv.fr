@@ -239,25 +239,25 @@ export const TALIAN_3_MODELS = {
  */
 export const TALIAN_5_MODELS = {
     'TALIAN_5_MIN': {
-        label: 'TALIAN 5 MIN / 31x28m / 866m² / 179.9 kWc',
-        width: 28.0,
+        label: 'TALIAN 5 MIN / 31x27.6m / 866m² / 179.9 kWc',
+        width: 27.6,
         baySpacing: 6.2,
         bayCount: 5,
         fixedLength: 31.0,
         eaveHeight: 7.9,        // Sablière Gauche
-        rightEaveHeight: 4.3,   // Sablière Droite (Image 1 style)
+        rightEaveHeight: 4.3,   // Sablière Droite
         roofPitch: 10,
         leftSide: 'none',
         rightSide: 'none',
         leftWidth: 15.4,        // Entre sablière gauche et poteau central
-        rightWidth: 11.0,       // Entre sablière droite et poteau central (Total 26.4 -> 1.6m overhang)
+        rightWidth: 11.0,       // Entre poteau central et sablière droite. (Total spans 26.4m, width 27.6m -> 1.2m débord total)
     },
     'TALIAN_5_MID': {
-        label: 'TALIAN 5 MID / 50.6x28m / 1414m² / 296.2 kWc',
-        width: 28.0,
-        baySpacing: 6.325,
+        label: 'TALIAN 5 MID / 50x27.6m / 1414m² / 296.2 kWc',
+        width: 27.6,
+        baySpacing: 6.25,
         bayCount: 8,
-        fixedLength: 50.6,
+        fixedLength: 50.0,
         eaveHeight: 7.9,
         rightEaveHeight: 4.3,
         roofPitch: 10,
@@ -267,11 +267,11 @@ export const TALIAN_5_MODELS = {
         rightWidth: 11.0,
     },
     'TALIAN_5_MAX': {
-        label: 'TALIAN 5 MAX / 60x28m / 1677m² / 349.1 kWc',
-        width: 28.0,
-        baySpacing: 6.0,
+        label: 'TALIAN 5 MAX / 62.5x27.6m / 1677m² / 349.1 kWc',
+        width: 27.6,
+        baySpacing: 6.25,
         bayCount: 10,
-        fixedLength: 60.0,
+        fixedLength: 62.5,
         eaveHeight: 7.9,
         rightEaveHeight: 4.3,
         roofPitch: 10,
@@ -302,6 +302,7 @@ export const useConfiguratorStore = create((set, get) => ({
     selectedTalianModel: 'TALIAN_4_MIN',
     selectedTalian1Model: 'TALIAN_1_MIN',
     selectedTalian3Model: 'TALIAN_3_MIN',
+    selectedTalian5Model: 'TALIAN_5_MIN',
     fixedLength: null,  // Override for EPONA/TALIAN models
     leftWidth: 9.3,     // Standard
     rightWidth: 9.3,    // Standard
@@ -450,6 +451,25 @@ export const useConfiguratorStore = create((set, get) => ({
         });
     },
 
+    setTalian5Model: (modelKey) => {
+        const model = TALIAN_5_MODELS[modelKey];
+        if (!model) return;
+        set({
+            selectedTalian5Model: modelKey,
+            buildingType: 'asymetrique_2', // TALIAN 5 uses Asymetrique 2 logic for rendering
+            width: model.width,
+            baySpacing: model.baySpacing,
+            bayCount: model.bayCount,
+            fixedLength: model.fixedLength,
+            eaveHeight: model.eaveHeight,
+            roofPitch: model.roofPitch,
+            leftSide: model.leftSide,
+            rightSide: model.rightSide,
+            leftWidth: model.leftWidth,
+            rightWidth: model.rightWidth,
+        });
+    },
+
     hasSolar: false,
     toggleSolar: () => set((state) => ({ hasSolar: !state.hasSolar })),
     toggleDimensions: () => set((state) => ({ showDimensions: !state.showDimensions })),
@@ -467,6 +487,7 @@ export const useConfiguratorStore = create((set, get) => ({
         selectedTalianModel: 'TALIAN_4_MIN',
         selectedTalian1Model: 'TALIAN_1_MIN',
         selectedTalian3Model: 'TALIAN_3_MIN',
+        selectedTalian5Model: 'TALIAN_5_MIN',
         leftWidth: 9.3,
         rightWidth: 9.3,
         isAcama: false,
@@ -508,7 +529,7 @@ export const useConfiguratorValues = () => {
         if (state.isAcama && state.buildingType === 'symetrique' && Math.abs(state.width - 17.5) < 0.1) {
             return 4.5; // TALIAN 3 Fixed Ridge Height
         }
-        if (state.isAcama && state.buildingType === 'epona' && Math.abs(state.width - 28.0) < 0.1) {
+        if (state.isAcama && state.buildingType === 'asymetrique_2' && Math.abs(state.width - 27.6) < 0.1) {
             return 8.1; // TALIAN 5 Fixed Ridge Height
         }
         if (state.isAcama && state.buildingType === 'epona' && Math.abs(state.width - 23.6) < 0.1) {

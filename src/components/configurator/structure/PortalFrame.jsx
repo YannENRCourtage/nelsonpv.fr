@@ -46,7 +46,7 @@ export function PortalFrame({
     const isEpona = isAcama && buildingType === 'epona';
 
     // ACAMA: TALIAN 5 is also an Asymetrique 2 Zones structure
-    const isTalian5 = false; // TALIAN 5 supprimé - 05/03/2026
+    const isTalian5 = isAcama && buildingType === 'asymetrique_2' && Math.abs(width - 27.6) < 0.1;
 
     let leftSpan, rightSpan, lAngle, rAngle, effectiveRidgeHeight, apexX;
     let leftEaveHeight = eaveHeight; // Default
@@ -60,9 +60,14 @@ export function PortalFrame({
     // Determine Geometry params based on Type
     if (isTalian5) {
         // TALIAN 5: Asymmetrical with 3 columns, strictly 10° pitch from LEFT eave
-        // USER REQUEST 05/03/2026: Fixed Ridge 8.1, Left Eave 7.9, Right Eave 4.3, Total 28m
-        // Spans: Left Eave -> Mid Column = 15.4m. Mid Column -> Right Eave = 11m (Wait, if Total 28, then 26.4m column-to-column).
-        // Let's assume columns are: xL = -14, xMid = -14+15.4 = +1.4, xR = 1.4+11 = +12.4. (Right Sabliere at +14).
+        // USER REQUEST 10/03/2026: Fixed Ridge 8.1, Left Eave 7.9, Right Eave 4.3, Total 27.6m
+        // Spans: Left Eave -> Mid Column = 15.4m. Mid Column -> Right Eave = 11m. Total inner = 26.4m.
+        // Assume Columns: Left = -width/2 + 0.6, Mid = Left+15.4, Right = Mid+11.
+        // Let's keep Left column at -width/2 and overhangs outside, OR Columns on the grid.
+        // Usually, in Nelson, columns are at -width/2 and width/2, with width being the distance.
+        // Wait, width = 27.6m in store. So from -13.8 to 13.8.
+        // If left column is at -13.8, Mid is at -13.8+15.4 = 1.6, Right is at 1.6+11 = 12.6.
+        // Remaining to 13.8 is 1.2m (Right Overhang). Left overhang 0.
         const mainPitch = 10 * (Math.PI / 180);
         leftEaveHeight = 7.9;
         rightEaveHeight = 4.3;
@@ -90,11 +95,11 @@ export function PortalFrame({
         leftSectionAngle = lAngle;
         middleSectionSpan = middleColumnX - apexX;
         middleSectionAngle = rAngle;
-        rightSectionSpan = width / 2 - middleColumnX;
+        rightSectionSpan = 11.0; // Distance from mid column to right column
         rightSectionAngle = rAngle;
 
-        // NEW: Right Column is NOT under sabliere. xR = +12.4 (11m after Mid).
-        // The standard renderer might need adjustment if it assumes columns under eaves.
+        // NEW: Right Column is NOT under sabliere. xR = 1.6 + 11 = 12.6.
+        // It has a 1.2m overhang to reach the 13.8m mark (27.6/2).
     } else if (isEpona) {
         // EPONA (Asymmetrical 2 Zones)
         const mainPitch = 17 * (Math.PI / 180);
@@ -466,9 +471,10 @@ export function PortalFrame({
                     {middleRafterT5}
                 </group>
 
-                {/* Right Section (Mid Column to Right Eave - with 1.6m overhang) */}
+                {/* Right Section (Mid Column to Right Eave - with 1.2m overhang) */}
                 <group position={[middleColumnX, middleColumnHeight, 0]} rotation={[0, 0, -rightSectionAngle]}>
-                    {rightRafterT5}
+                    {/* The rafter length must include the overhang up to width/2 */}
+                    {createRafterAssembly((rightSectionSpan + 1.2 + horizontalOverhang) / Math.cos(rightSectionAngle), true)}
                 </group>
 
                 {/* Apex Haunch */}

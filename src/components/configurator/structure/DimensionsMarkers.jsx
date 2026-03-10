@@ -24,8 +24,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const isTalian4 = isAcama && buildingType === 'symetrique' && Math.abs(width - 13.7) < 0.1;
     const isTalian1 = isAcama && buildingType === 'symetrique' && Math.abs(width - 18.8) < 0.1;
     const isTalian3 = isAcama && buildingType === 'symetrique' && Math.abs(width - 17.5) < 0.1;
-    const isTalian5 = false; // TALIAN 5 supprimé - 05/03/2026
-    const isTalian = isTalian4 || isTalian1 || isTalian3;
+    const isTalian5 = isAcama && buildingType === 'asymetrique_2' && Math.abs(width - 27.6) < 0.1;
+    const isTalian = isTalian4 || isTalian1 || isTalian3 || isTalian5;
 
     const getExtWidth = (type, side) => {
         if (isEpona) return side === 'left' ? 2.5 : 9.1; // Appentis depth: 7.85 (span) + 1.25 (overhang) = 9.1m
@@ -1078,7 +1078,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 outlineWidth={0.2}
                 outlineColor="#000000"
             >
-                {isTalian5 ? "846 m²" : `${surfaceArea} m²`}
+                {isTalian5 ? `${(length * 27.6).toFixed(0)} m²` : `${surfaceArea} m²`}
             </Text>
             {/* 9. ROOF SLOPE LABELS (Faitage/Sablière) */}
 
