@@ -291,7 +291,7 @@ export function PortalFrame({
     // --- Assembly Groups ---
 
     // Rafter + Haunch + Plate Assembly
-    const createRafterAssembly = (length, isRight) => {
+    const createRafterAssembly = (length, isRight, hasHaunch = true) => {
         const rafterG = createRafterGeo(length);
 
         // Bolts position (local to assembly)
@@ -309,9 +309,11 @@ export function PortalFrame({
 
                 {/* Haunch (Underneath) */}
                 {/* Tapered Geo is Y-Top aligned. Needs to be placed below Rafter */}
-                <group position={[0, -0.2, 0]} rotation={[0, isRight ? -Math.PI / 2 : Math.PI / 2, 0]}>
-                    <mesh geometry={haunchGeo} material={steelMaterial} position={[0, 0, 0]} castShadow />
-                </group>
+                {hasHaunch && (
+                    <group position={[0, -0.2, 0]} rotation={[0, isRight ? -Math.PI / 2 : Math.PI / 2, 0]}>
+                        <mesh geometry={haunchGeo} material={steelMaterial} position={[0, 0, 0]} castShadow />
+                    </group>
+                )}
 
                 {/* End Plate (At origin) */}
                 {/* Center of plate at (0, -0.1, 0) approx to cover join */}
@@ -542,7 +544,7 @@ export function PortalFrame({
 
                 {/* Left Rafter (from overhang edge UP to apex - pointing RIGHT) */}
                 <group position={[leftColumnX - extendLeftX, leftColHeight - (extendLeftX * Math.tan(leftSectionAngle)), 0]} rotation={[0, 0, leftSectionAngle]}>
-                    {createRafterAssembly(leftSectionRafterLength - 0.05, false)}
+                    {createRafterAssembly(leftSectionRafterLength - 0.05, false, false)}
                 </group>
 
                 {/* Right Rafter Segment from Apex DOWN to Middle Column (pointing RIGHT) */}

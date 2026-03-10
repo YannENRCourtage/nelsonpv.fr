@@ -511,6 +511,9 @@ export const useConfiguratorValues = () => {
         if (state.isAcama && state.buildingType === 'epona' && Math.abs(state.width - 28.0) < 0.1) {
             return 8.1; // TALIAN 5 Fixed Ridge Height
         }
+        if (state.isAcama && state.buildingType === 'epona' && Math.abs(state.width - 23.6) < 0.1) {
+            return 9.4; // EPONA Fixed Ridge Height
+        }
 
         // Default calculation
         return (state.eaveHeight + ((state.width / 2) * Math.tan(state.roofPitch * Math.PI / 180)));
