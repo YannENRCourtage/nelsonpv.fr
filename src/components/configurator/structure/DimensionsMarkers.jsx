@@ -706,7 +706,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             rHeightVal = 3.8; 
             rGapBottom = rHeightVal / 2 - 0.6;
             rGapTop = rHeightVal / 2 + 0.6;
-            rHeightStart = new THREE.Vector3(rHeightX, eponaBaseY, markerZ); 
+            rHeightStart = new THREE.Vector3(rHeightX, 0, markerZ); 
             rHeightEnd = new THREE.Vector3(rHeightX, rHeightVal, markerZ);
             rHeightPoints.push([rHeightStart, new THREE.Vector3(rHeightX, rGapBottom, markerZ)]);
             rHeightPoints.push([new THREE.Vector3(rHeightX, rGapTop, markerZ), rHeightEnd]);
