@@ -272,6 +272,8 @@ export const TALIAN_5_MODELS = {
         roofPitch: 10,       // Pente TALIAN 5 (calculée/fixe dans PortalFrame)
         leftSide: 'none',
         rightSide: 'none',   // L'appentis est maintenant intégré dans les 26.4m de largeur principale
+        fixedPower: 179.9,
+        fixedPanelCount: 391,
     },
     'TALIAN_5_MID': {
         label: 'TALIAN 5 MID / 50x35.3m',
@@ -285,6 +287,8 @@ export const TALIAN_5_MODELS = {
         roofPitch: 10,
         leftSide: 'none',
         rightSide: 'none',
+        fixedPower: 296.2,
+        fixedPanelCount: 644,
     },
     'TALIAN_5_MAX': {
         label: 'TALIAN 5 MAX / 62.5x35.3m',
@@ -298,6 +302,8 @@ export const TALIAN_5_MODELS = {
         roofPitch: 10,
         leftSide: 'none',
         rightSide: 'none',
+        fixedPower: 349.1,
+        fixedPanelCount: 759,
     }
 };
 
