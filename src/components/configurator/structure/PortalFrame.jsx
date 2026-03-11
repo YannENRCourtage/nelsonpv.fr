@@ -407,7 +407,8 @@ export function PortalFrame({
         const middleColumnGeo = createSlantedColumn(baseColumnProfile, 0, false, middleColHeightFinal);
 
         // Calculate rafter lengths with exact overhangs (2.55m on left, 1.25m on right)
-        const extendLeftX = 2.55;
+        // USER REQUEST 11/03/2026: Remove left awning for TALIAN 5
+        const extendLeftX = buildingType === 'epona_talian5' ? 0.05 : 2.55;
         const extendRightX = 1.25; // Restored (from 0)
 
 

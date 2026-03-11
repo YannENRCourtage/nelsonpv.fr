@@ -315,7 +315,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             xLeft: x,
             hVal: h,
             start, end,
-            points: [
+            // USER REQUEST 11/03/2026: Hide this marker (7.9m left) for EPONA only
+            points: (isEpona && buildingType === 'epona') ? [] : [
                 [start, new THREE.Vector3(mid.x, mid.y - gapSize / 2, mid.z)],
                 [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
             ]
@@ -646,7 +647,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const lAwningStart = new THREE.Vector3(leftPostX - 2.5, 0.1, zFront);
         const lAwningEnd = new THREE.Vector3(leftPostX, 0.1, zFront);
         const lAwningMid = new THREE.Vector3(leftPostX - 1.25, 0.1, zFront);
-        const lAwningPoints = [
+        // USER REQUEST 11/03/2026: Hide for TALIAN 5
+        const lAwningPoints = buildingType === 'epona_talian5' ? [] : [
             [lAwningStart, new THREE.Vector3(lAwningMid.x - 1.0, 0.1, zFront)],
             [new THREE.Vector3(lAwningMid.x + 1.0, 0.1, zFront), lAwningEnd]
         ];
@@ -657,7 +659,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const lHeightStart = new THREE.Vector3(xLeftMarker, 0, 0);
         const lHeightEnd = new THREE.Vector3(xLeftMarker, leftEaveH, 0);
         const lHeightMid = new THREE.Vector3(xLeftMarker, leftEaveH / 2, 0);
-        const lHeightPoints = [
+        // USER REQUEST 11/03/2026: Hide for TALIAN 5
+        const lHeightPoints = buildingType === 'epona_talian5' ? [] : [
             [lHeightStart, new THREE.Vector3(xLeftMarker, lHeightMid.y - gapSize / 2, 0)],
             [new THREE.Vector3(xLeftMarker, lHeightMid.y + gapSize / 2, 0), lHeightEnd]
         ];
@@ -991,22 +994,30 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         </Text>
 
                         {/* Left Awning 2.5m */}
-                        <Line points={eponaMarkers.lAwningPoints[0]} color={lineColor} lineWidth={lineWidth} />
-                        <Line points={eponaMarkers.lAwningPoints[1]} color={lineColor} lineWidth={lineWidth} />
-                        <mesh position={eponaMarkers.lAwningStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <mesh position={eponaMarkers.lAwningEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <Text position={[eponaMarkers.lAwningMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                            2.5 m
-                        </Text>
+                        {eponaMarkers.lAwningPoints.length > 0 && (
+                            <>
+                                <Line points={eponaMarkers.lAwningPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                                <Line points={eponaMarkers.lAwningPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                                <mesh position={eponaMarkers.lAwningStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                                <mesh position={eponaMarkers.lAwningEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                                <Text position={[eponaMarkers.lAwningMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                                    2.5 m
+                                </Text>
+                            </>
+                        )}
 
                         {/* Left Height 5m */}
-                        <Line points={eponaMarkers.lHeightPoints[0]} color={lineColor} lineWidth={lineWidth} />
-                        <Line points={eponaMarkers.lHeightPoints[1]} color={lineColor} lineWidth={lineWidth} />
-                        <mesh position={eponaMarkers.lHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <mesh position={eponaMarkers.lHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <Text position={[eponaMarkers.xLeftMarker - 0.5, eponaMarkers.leftEaveH / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                            {`${eponaMarkers.leftEaveH} m`}
-                        </Text>
+                        {eponaMarkers.lHeightPoints.length > 0 && (
+                            <>
+                                <Line points={eponaMarkers.lHeightPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                                <Line points={eponaMarkers.lHeightPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                                <mesh position={eponaMarkers.lHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                                <mesh position={eponaMarkers.lHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                                <Text position={[eponaMarkers.xLeftMarker - 0.5, eponaMarkers.leftEaveH / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                                    {`${eponaMarkers.leftEaveH} m`}
+                                </Text>
+                            </>
+                        )}
 
                         {/* Right Height 3.8m */}
                         <Line points={eponaMarkers.rHeightPoints[0]} color={lineColor} lineWidth={lineWidth} />

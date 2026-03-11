@@ -149,12 +149,12 @@ export function ControlPanel({ isAcama = false }) {
                             <span>Longueur : <strong>{isAcamaEpona ? EPONA_MODELS[selectedEponaModel]?.fixedLength : TALIAN_5_MODELS[selectedTalian5Model]?.fixedLength}m</strong></span>
                             <span>Largeur totale : <strong>35.3m</strong></span>
                             <span>Travées : <strong>{isAcamaEpona ? `${EPONA_MODELS[selectedEponaModel]?.bayCount} × ${EPONA_MODELS[selectedEponaModel]?.baySpacing}m` : `${TALIAN_5_MODELS[selectedTalian5Model]?.bayCount} × ${TALIAN_5_MODELS[selectedTalian5Model]?.baySpacing}m`}</strong></span>
-                            <span>Pente : <strong>17°</strong></span>
-                            <span>Faîtage : <strong>9.4m</strong></span>
-                            <span>Sablière G : <strong>5m</strong></span>
-                            <span>Sablière D : <strong>3.8m</strong></span>
-                            <span>Appentis G : <strong>9.3m</strong></span>
-                            <span>Auvent D : <strong>2.5m</strong></span>
+                            <span>Pente : <strong>{isAcamaEpona ? '17°' : '10°'}</strong></span>
+                            <span>Faîtage : <strong>{isAcamaEpona ? '9.4m' : '8.1m'}</strong></span>
+                            <span>Sablière G : <strong>{isAcamaEpona ? '5m' : '7.9m'}</strong></span>
+                            <span>Sablière D : <strong>{isAcamaEpona ? '3.8m' : '4.3m'}</strong></span>
+                            <span>{isAcamaEpona ? 'Appentis G : 9.3m' : 'Appentis D : 9.3m'}</span>
+                            {isAcamaEpona && <span>Auvent D : <strong>2.5m</strong></span>}
                         </div>
                     </div>
                 </div>
@@ -226,143 +226,152 @@ export function ControlPanel({ isAcama = false }) {
                         </div>
                     )}
                 </div>
-            )}
+            )
+            }
 
-            {!isAcama && (
-                /* ========== GREEN INVEST: LARGEUR DU BÂTIMENT ========== */
-                <div className="param-group mb-6">
-                    <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
-                        Largeur du Bâtiment
-                    </label>
-                    <select
-                        value={width}
-                        onChange={(e) => setWidth(Number(e.target.value))}
-                        className="w-full px-4 py-3 border border-slate-300 rounded-lg font-semibold text-sm bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                    >
-                        {availableWidths.map((w) => (
-                            <option key={w} value={w}>{w} m</option>
-                        ))}
-                    </select>
-                </div>
-            )}
+            {
+                !isAcama && (
+                    /* ========== GREEN INVEST: LARGEUR DU BÂTIMENT ========== */
+                    <div className="param-group mb-6">
+                        <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
+                            Largeur du Bâtiment
+                        </label>
+                        <select
+                            value={width}
+                            onChange={(e) => setWidth(Number(e.target.value))}
+                            className="w-full px-4 py-3 border border-slate-300 rounded-lg font-semibold text-sm bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                        >
+                            {availableWidths.map((w) => (
+                                <option key={w} value={w}>{w} m</option>
+                            ))}
+                        </select>
+                    </div>
+                )
+            }
 
             {/* ========== OPTIONS STRUCTURE - EXTENSIONS (Compact) — masqué pour ACAMA EPONA/TALIAN ========== */}
-            {!buildingType.startsWith('ombriere') && !isAcama && buildingType !== 'epona' && (
-                <div className="param-group mb-4">
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider flex items-center gap-2">
-                        <span>🏗️</span> Extensions
-                    </label>
-                    <div className="space-y-2 p-2 border border-slate-300 rounded-lg bg-white max-w-sm">
-                        {/* Côté Gauche */}
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-slate-400 w-8 uppercase">Gch</span>
-                            <div className="flex-1 flex gap-1">
-                                <button
-                                    onClick={() => setLeftSide(leftSide === 'auvent' ? 'none' : 'auvent')}
-                                    className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase border transition-all ${leftSide === 'auvent'
-                                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                        : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                                        }`}
-                                >
-                                    Auvent
-                                </button>
-                                <button
-                                    onClick={() => setLeftSide(leftSide === 'appentis' ? 'none' : 'appentis')}
-                                    disabled={buildingType === 'monopente'}
-
-                                    className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase border transition-all ${leftSide === 'appentis'
-                                        ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
-                                        : (buildingType === 'monopente' || buildingType.startsWith('asymetrique'))
-                                            ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
+            {
+                !buildingType.startsWith('ombriere') && !isAcama && buildingType !== 'epona' && (
+                    <div className="param-group mb-4">
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider flex items-center gap-2">
+                            <span>🏗️</span> Extensions
+                        </label>
+                        <div className="space-y-2 p-2 border border-slate-300 rounded-lg bg-white max-w-sm">
+                            {/* Côté Gauche */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-slate-400 w-8 uppercase">Gch</span>
+                                <div className="flex-1 flex gap-1">
+                                    <button
+                                        onClick={() => setLeftSide(leftSide === 'auvent' ? 'none' : 'auvent')}
+                                        className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase border transition-all ${leftSide === 'auvent'
+                                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                                             : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                                        }`}
-                                >
-                                    Appentis
-                                </button>
+                                            }`}
+                                    >
+                                        Auvent
+                                    </button>
+                                    <button
+                                        onClick={() => setLeftSide(leftSide === 'appentis' ? 'none' : 'appentis')}
+                                        disabled={buildingType === 'monopente'}
+
+                                        className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase border transition-all ${leftSide === 'appentis'
+                                            ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                                            : (buildingType === 'monopente' || buildingType.startsWith('asymetrique'))
+                                                ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
+                                                : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                                            }`}
+                                    >
+                                        Appentis
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                        {/* Côté Droit */}
-                        <div className="flex items-center gap-2 border-t border-slate-100 pt-2">
-                            <span className="text-[10px] font-bold text-slate-400 w-8 uppercase">Drt</span>
-                            <div className="flex-1 flex gap-1">
-                                <button
-                                    onClick={() => setRightSide(rightSide === 'auvent' ? 'none' : 'auvent')}
-                                    className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase border transition-all ${rightSide === 'auvent'
-                                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                        : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                                        }`}
-                                >
-                                    Auvent
-                                </button>
-                                <button
-                                    onClick={() => setRightSide(rightSide === 'appentis' ? 'none' : 'appentis')}
-                                    disabled={buildingType === 'monopente'}
-
-                                    className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase border transition-all ${rightSide === 'appentis'
-                                        ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
-                                        : (buildingType === 'monopente' || buildingType.startsWith('asymetrique'))
-                                            ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
+                            {/* Côté Droit */}
+                            <div className="flex items-center gap-2 border-t border-slate-100 pt-2">
+                                <span className="text-[10px] font-bold text-slate-400 w-8 uppercase">Drt</span>
+                                <div className="flex-1 flex gap-1">
+                                    <button
+                                        onClick={() => setRightSide(rightSide === 'auvent' ? 'none' : 'auvent')}
+                                        className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase border transition-all ${rightSide === 'auvent'
+                                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                                             : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                                        }`}
-                                >
-                                    Appentis
-                                </button>
+                                            }`}
+                                    >
+                                        Auvent
+                                    </button>
+                                    <button
+                                        onClick={() => setRightSide(rightSide === 'appentis' ? 'none' : 'appentis')}
+                                        disabled={buildingType === 'monopente'}
+
+                                        className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase border transition-all ${rightSide === 'appentis'
+                                            ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                                            : (buildingType === 'monopente' || buildingType.startsWith('asymetrique'))
+                                                ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
+                                                : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                                            }`}
+                                    >
+                                        Appentis
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* ========== ESPACEMENT TRAVÉES — masqué pour ACAMA EPONA/TALIAN ========== */}
-            {!isAcama && (
-                <div className="param-group mb-4">
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
-                        Espacement Travées
-                    </label>
-                    <div className="inline-flex rounded-lg overflow-hidden border-2 border-slate-300">
-                        <button
-                            onClick={() => setBaySpacing(6)}
-                            className={`px-4 py-2 font-bold text-xs transition-all ${baySpacing === 6 ? 'bg-green-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
-                        >
-                            6m
-                        </button>
-                        <button
-                            onClick={() => setBaySpacing(7.5)}
-                            className={`px-4 py-2 font-bold text-xs transition-all ${baySpacing === 7.5 ? 'bg-green-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
-                        >
-                            7.5m
-                        </button>
+            {
+                !isAcama && (
+                    <div className="param-group mb-4">
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
+                            Espacement Travées
+                        </label>
+                        <div className="inline-flex rounded-lg overflow-hidden border-2 border-slate-300">
+                            <button
+                                onClick={() => setBaySpacing(6)}
+                                className={`px-4 py-2 font-bold text-xs transition-all ${baySpacing === 6 ? 'bg-green-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
+                            >
+                                6m
+                            </button>
+                            <button
+                                onClick={() => setBaySpacing(7.5)}
+                                className={`px-4 py-2 font-bold text-xs transition-all ${baySpacing === 7.5 ? 'bg-green-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
+                            >
+                                7.5m
+                            </button>
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* ========== NOMBRE DE TRAVÉES — masqué pour ACAMA EPONA/TALIAN ========== */}
-            {!isAcama && (
-                <div className="param-group mb-4">
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
-                        Nombre de Travées
-                    </label>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={decrementBayCount}
-                            disabled={bayCount <= 4}
-                            className={`w-10 h-10 rounded-lg font-bold text-lg transition-all ${bayCount > 4 ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
-                        >
-                            −
-                        </button>
-                        <div className="text-center">
-                            <span className="text-2xl font-bold text-slate-900">{bayCount}</span>
-                            <p className="text-[10px] text-slate-500 leading-none mt-0.5">travées</p>
+            {
+                !isAcama && (
+                    <div className="param-group mb-4">
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
+                            Nombre de Travées
+                        </label>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={decrementBayCount}
+                                disabled={bayCount <= 4}
+                                className={`w-10 h-10 rounded-lg font-bold text-lg transition-all ${bayCount > 4 ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                            >
+                                −
+                            </button>
+                            <div className="text-center">
+                                <span className="text-2xl font-bold text-slate-900">{bayCount}</span>
+                                <p className="text-[10px] text-slate-500 leading-none mt-0.5">travées</p>
+                            </div>
+                            <button
+                                onClick={incrementBayCount}
+                                className="w-10 h-10 rounded-lg bg-green-500 text-white font-bold text-lg hover:bg-green-600 transition-all"
+                            >
+                                +
+                            </button>
                         </div>
-                        <button
-                            onClick={incrementBayCount}
-                            className="w-10 h-10 rounded-lg bg-green-500 text-white font-bold text-lg hover:bg-green-600 transition-all"
-                        >
-                            +
-                        </button>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* ========== PARAMÈTRES FIXES ========== */}
             <div className="fixed-params mb-6 p-4 bg-slate-100 rounded-lg border border-slate-300">
@@ -421,6 +430,6 @@ export function ControlPanel({ isAcama = false }) {
 
 
 
-        </div>
+        </div >
     );
 }
