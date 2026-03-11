@@ -397,8 +397,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const wStart = new THREE.Vector3(xStart, yWidth, zFront);
         const wEnd = new THREE.Vector3(xEnd, yWidth, zFront);
 
-        // Gap removed for extensions to put points at ends EXCEPT for EPONA/TALIAN 1/TALIAN 3 or Asym 2 Auvent
-        const hasGap = isEpona || isTalian1 || isTalian3 || (buildingType === 'asymetrique_2' && leftSide === 'auvent');
+        // Gap removed for extensions to put points at ends EXCEPT for EPONA/TALIAN 1/TALIAN 3/TALIAN 4 or Asym 2 Auvent
+        const hasGap = isEpona || isTalian1 || isTalian3 || isTalian4 || (buildingType === 'asymetrique_2' && leftSide === 'auvent');
         const wPoints = hasGap ? [
             [wStart, new THREE.Vector3(xMid + (isEpona || isTalian ? 1.0 : 1.5), yWidth, zFront)],
             [new THREE.Vector3(xMid - (isEpona || isTalian ? 1.0 : 1.5), yWidth, zFront), wEnd]
@@ -470,7 +470,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const hEnd = new THREE.Vector3(xH, visualTopRight, 0);
         const hMid = new THREE.Vector3(xH, visualMidRight, 0);
 
-        const hasGap = isEpona || isTalian1 || isTalian3 || (buildingType === 'asymetrique_2' && rightSide === 'auvent');
+        const hasGap = isEpona || isTalian1 || isTalian3 || isTalian4 || (buildingType === 'asymetrique_2' && rightSide === 'auvent');
         const wPoints = hasGap ? [
             [wStart, new THREE.Vector3(wMid.x - (isEpona || isTalian ? 1.0 : 1.5), yWidth, zFront)],
             [new THREE.Vector3(wMid.x + (isEpona || isTalian ? 1.0 : 1.5), yWidth, zFront), wEnd]
@@ -601,42 +601,6 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         };
     }, [isEpona, isTalian, isTalian4, isTalian3, isTalian1, gapSize, buildingType]);
 
-    // 7c. TALIAN 4 Appentis Width Markers (11.2m)
-    const talian4AppentisWidthData = useMemo(() => {
-        if (!isTalian4 || !isAcama) return null;
-
-        const leftAppentisStart = -37.5 / 2;
-        const leftAppentisEnd = -13.7 / 2;
-        const rightAppentisStart = 13.7 / 2;
-        const rightAppentisEnd = 37.5 / 2;
-        const yPos = 0.1;
-        const zPos = 4.5; // Slightly behind the total width marker (6.0)
-
-        const lMid = (leftAppentisStart + leftAppentisEnd) / 2;
-        const rMid = (rightAppentisStart + rightAppentisEnd) / 2;
-        const textGap = 1.0;
-
-        return {
-            left: {
-                start: new THREE.Vector3(leftAppentisStart, yPos, zPos),
-                end: new THREE.Vector3(leftAppentisEnd, yPos, zPos),
-                mid: new THREE.Vector3(lMid, yPos, zPos),
-                points: [
-                    [new THREE.Vector3(leftAppentisStart, yPos, zPos), new THREE.Vector3(lMid - textGap / 2, yPos, zPos)],
-                    [new THREE.Vector3(lMid + textGap / 2, yPos, zPos), new THREE.Vector3(leftAppentisEnd, yPos, zPos)]
-                ]
-            },
-            right: {
-                start: new THREE.Vector3(rightAppentisStart, yPos, zPos),
-                end: new THREE.Vector3(rightAppentisEnd, yPos, zPos),
-                mid: new THREE.Vector3(rMid, yPos, zPos),
-                points: [
-                    [new THREE.Vector3(rightAppentisStart, yPos, zPos), new THREE.Vector3(rMid - textGap / 2, yPos, zPos)],
-                    [new THREE.Vector3(rMid + textGap / 2, yPos, zPos), new THREE.Vector3(rightAppentisEnd, yPos, zPos)]
-                ]
-            }
-        };
-    }, [isTalian4, isAcama]);
 
 
     // 10. NEW: Cross Height Marker for Ombrière VL Double 11.3m
@@ -1084,46 +1048,6 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 )
             }
 
-            {/* 7c. TALIAN 4 Appentis Width Markers (11.2m) */}
-            {talian4AppentisWidthData && (
-                <group>
-                    {/* Left Appentis */}
-                    <Line points={talian4AppentisWidthData.left.points[0]} color={lineColor} lineWidth={lineWidth} />
-                    <Line points={talian4AppentisWidthData.left.points[1]} color={lineColor} lineWidth={lineWidth} />
-                    <mesh position={talian4AppentisWidthData.left.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <mesh position={talian4AppentisWidthData.left.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text
-                        position={[talian4AppentisWidthData.left.mid.x, 0.2, talian4AppentisWidthData.left.mid.z]}
-                        rotation={[-Math.PI / 2, 0, 0]}
-                        fontSize={0.8}
-                        color={textColor}
-                        anchorX="center"
-                        anchorY="bottom"
-                        outlineWidth={0.1}
-                        outlineColor="#ffffff"
-                    >
-                        11.2 m
-                    </Text>
-
-                    {/* Right Appentis */}
-                    <Line points={talian4AppentisWidthData.right.points[0]} color={lineColor} lineWidth={lineWidth} />
-                    <Line points={talian4AppentisWidthData.right.points[1]} color={lineColor} lineWidth={lineWidth} />
-                    <mesh position={talian4AppentisWidthData.right.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <mesh position={talian4AppentisWidthData.right.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text
-                        position={[talian4AppentisWidthData.right.mid.x, 0.2, talian4AppentisWidthData.right.mid.z]}
-                        rotation={[-Math.PI / 2, 0, 0]}
-                        fontSize={0.8}
-                        color={textColor}
-                        anchorX="center"
-                        anchorY="bottom"
-                        outlineWidth={0.1}
-                        outlineColor="#ffffff"
-                    >
-                        11.2 m
-                    </Text>
-                </group>
-            )}
 
             {/* 11. EPONA SPECIFIC MARKERS */}
             {
