@@ -385,12 +385,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             extHeight = 5.9; // Epona left awning height
         }
 
-        // Logic for Left side: Start -Width/2, End -Width/2 - ExtWidth
-
-        const xStart = -width / 2;
-        const xEnd = -width / 2 - extWidth;
-        const xMid = -width / 2 - extWidth / 2;
-        const zFront = isTalian4 ? 4.5 : 3.0;
+        const zFront = isTalian4 ? 5.0 : 3.0;
 
         // Width Marker
         const yWidth = 0.1; // Reverted for EPONA
@@ -446,12 +441,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             extHeight = 4.0;
         } else if (isEpona && rightSide === 'auvent') {
             extHeight = 4.3; // Epona right awning height
-        } else if (buildingType === 'symetrique' && rightSide === 'auvent' && !isTalian1 && !isTalian3) {
-            // Sym Right Auvent: Low Point ~4.8m (High 5.5 - Rise)
-            extHeight = 4.8;
-        }
-
-        const zFront = isTalian4 ? 4.5 : 3.0;
+        const zFront = isTalian4 ? 5.0 : 3.0;
 
         // Width Marker
         const xStart = width / 2;
