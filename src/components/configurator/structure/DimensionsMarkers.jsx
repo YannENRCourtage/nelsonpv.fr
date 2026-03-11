@@ -599,6 +599,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(xMid.x + gapSize / 2, yPos, zPos), xEnd]
             ]
         };
+    }, [isEpona, isTalian, isTalian4, isTalian3, isTalian1, gapSize, buildingType]);
+
     // 7c. TALIAN 4 Appentis Width Markers (11.2m)
     const talian4AppentisWidthData = useMemo(() => {
         if (!isTalian4 || !isAcama) return null;
@@ -635,8 +637,6 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             }
         };
     }, [isTalian4, isAcama]);
-
-    }, [isEpona, isTalian, isTalian4, isTalian3, isTalian1, gapSize, buildingType]);
 
 
     // 10. NEW: Cross Height Marker for Ombrière VL Double 11.3m
