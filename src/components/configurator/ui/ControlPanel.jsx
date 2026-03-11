@@ -153,7 +153,7 @@ export function ControlPanel({ isAcama = false }) {
                             <span>Faîtage : <strong>{isAcamaEpona ? '9.4m' : '8.1m'}</strong></span>
                             <span>Sablière G : <strong>{isAcamaEpona ? '5m' : '7.9m'}</strong></span>
                             <span>Sablière D : <strong>{isAcamaEpona ? '3.8m' : '4.3m'}</strong></span>
-                            <span>{isAcamaEpona ? 'Appentis G : 9.3m' : 'Appentis D : 9.3m'}</span>
+                            {!isAcamaEpona && <span>Appentis D : 9.3m</span>}
                             {isAcamaEpona && <span>Auvent D : <strong>2.5m</strong></span>}
                         </div>
                     </div>
