@@ -71,8 +71,26 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
                 console.error("Erreur téléchargement image:", e);
                 return null;
             }
+    };
+
+    // Helper: Convert Data URL to Uint8Array for pdf-lib
+    const dataURLToUint8Array = (dataURL) => {
+        if (!dataURL) return null;
+        try {
+            const parts = dataURL.split(',');
+            if (parts.length < 2) return null;
+            const base64 = parts[1];
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes;
+        } catch (e) {
+            console.error("Error converting dataURL:", e);
+            return null;
         }
-        return null;
     };
 
     // --- INITIALIZATON ---
@@ -241,16 +259,19 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
 
                 // Handle Images
                 if (tag.key === '{{img_2d}}' && generatedImages?.img3D) {
-                    const img = await pdfDoc.embedPng(generatedImages.img3D);
-                    // Decreased by further 20% from 320 -> 256
-                    const imgDims = img.scaleToFit(256, 192);
+                    const imgBytes = dataURLToUint8Array(generatedImages.img3D);
+                    if (imgBytes) {
+                        const img = await pdfDoc.embedPng(imgBytes);
+                        // Decreased by further 20% from 320 -> 256
+                        const imgDims = img.scaleToFit(256, 192);
 
-                    page.drawImage(img, {
-                        x: x,
-                        y: y - imgDims.height,
-                        width: imgDims.width,
-                        height: imgDims.height,
-                    });
+                        page.drawImage(img, {
+                            x: x,
+                            y: y - imgDims.height,
+                            width: imgDims.width,
+                            height: imgDims.height,
+                        });
+                    }
                     continue;
                 }
 
@@ -258,16 +279,19 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
                 const captureToUse = projectCaptureImg || generatedImages?.mapImg;
 
                 if (tag.key === '{{img_capture}}' && captureToUse) {
-                    const img = await pdfDoc.embedPng(captureToUse);
-                    // Increased by 80% from 300 -> 540
-                    const captureDims = img.scaleToFit(540, 405);
+                    const capBytes = dataURLToUint8Array(captureToUse);
+                    if (capBytes) {
+                        const img = await pdfDoc.embedPng(capBytes);
+                        // Increased by 80% from 300 -> 540
+                        const captureDims = img.scaleToFit(540, 405);
 
-                    page.drawImage(img, {
-                        x: x,
-                        y: y - captureDims.height,
-                        width: captureDims.width,
-                        height: captureDims.height,
-                    });
+                        page.drawImage(img, {
+                            x: x,
+                            y: y - captureDims.height,
+                            width: captureDims.width,
+                            height: captureDims.height,
+                        });
+                    }
                     continue;
                 }
 
@@ -293,8 +317,9 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
             link.click();
 
         } catch (err) {
-            console.error(err);
-            alert("Erreur lors de la génération : " + err.message);
+            console.error("PDF Generation Error:", err);
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            alert("Erreur lors de la génération : " + errorMsg);
         } finally {
             setIsGenerating(false);
         }
