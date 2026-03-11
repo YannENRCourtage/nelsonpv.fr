@@ -62,11 +62,12 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
                 clearTimeout(timeoutId);
 
                 if (!response.ok) throw new Error(`Proxy Error: ${response.status}`);
+                const contentType = response.headers.get('content-type') || 'image/png';
                 const arrayBuffer = await response.arrayBuffer();
                 let binary = '';
                 const bytes = new Uint8Array(arrayBuffer);
                 for (let k = 0; k < bytes.byteLength; k++) binary += String.fromCharCode(bytes[k]);
-                return `data:image/png;base64,${window.btoa(binary)}`;
+                return `data:${contentType};base64,${window.btoa(binary)}`;
             } catch (e) {
                 console.error("Erreur téléchargement image:", e);
                 return null;
@@ -263,7 +264,9 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
                 if (tag.key === '{{img_2d}}' && generatedImages?.img3D) {
                     const imgBytes = dataURLToUint8Array(generatedImages.img3D);
                     if (imgBytes) {
-                        const img = await pdfDoc.embedPng(imgBytes);
+                        const isJpeg = generatedImages.img3D.toLowerCase().startsWith('data:image/jp');
+                        const img = isJpeg ? await pdfDoc.embedJpg(imgBytes) : await pdfDoc.embedPng(imgBytes);
+                        
                         // Decreased by further 20% from 320 -> 256
                         const imgDims = img.scaleToFit(256, 192);
 
@@ -283,16 +286,33 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
                 if (tag.key === '{{img_capture}}' && captureToUse) {
                     const capBytes = dataURLToUint8Array(captureToUse);
                     if (capBytes) {
-                        const img = await pdfDoc.embedPng(capBytes);
-                        // Increased by 80% from 300 -> 540
-                        const captureDims = img.scaleToFit(540, 405);
+                        try {
+                            const isJpeg = captureToUse.toLowerCase().startsWith('data:image/jp');
+                            const img = isJpeg ? await pdfDoc.embedJpg(capBytes) : await pdfDoc.embedPng(capBytes);
+                            
+                            // Increased by 80% from 300 -> 540
+                            const captureDims = img.scaleToFit(540, 405);
 
-                        page.drawImage(img, {
-                            x: x,
-                            y: y - captureDims.height,
-                            width: captureDims.width,
-                            height: captureDims.height,
-                        });
+                            page.drawImage(img, {
+                                x: x,
+                                y: y - captureDims.height,
+                                width: captureDims.width,
+                                height: captureDims.height,
+                            });
+                        } catch (embedErr) {
+                            console.error("Embedding failure, retrying with opposite type", embedErr);
+                            // Fallback try: if it was thought to be PNG but failed, try JPG and vice versa
+                            const isJpeg = captureToUse.toLowerCase().startsWith('data:image/jp');
+                            const img = isJpeg ? await pdfDoc.embedPng(capBytes) : await pdfDoc.embedJpg(capBytes);
+                            
+                            const captureDims = img.scaleToFit(540, 405);
+                            page.drawImage(img, {
+                                x: x,
+                                y: y - captureDims.height,
+                                width: captureDims.width,
+                                height: captureDims.height,
+                            });
+                        }
                     }
                     continue;
                 }

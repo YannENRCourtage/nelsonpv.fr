@@ -84,11 +84,13 @@ export default function Configurateur() {
                 clearTimeout(timeoutId);
 
                 if (!response.ok) throw new Error(`Proxy Error: ${response.status}`);
+                
+                const contentType = response.headers.get('content-type') || 'image/png';
                 const arrayBuffer = await response.arrayBuffer();
                 let binary = '';
                 const bytes = new Uint8Array(arrayBuffer);
                 for (let k = 0; k < bytes.byteLength; k++) binary += String.fromCharCode(bytes[k]);
-                return `data:image/png;base64,${window.btoa(binary)}`;
+                return `data:${contentType};base64,${window.btoa(binary)}`;
             } catch (e) {
                 console.error("Erreur téléchargement image:", e);
                 return null;
