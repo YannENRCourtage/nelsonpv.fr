@@ -588,16 +588,6 @@ export const useConfiguratorValues = () => {
 
         let solarCount = 0;
         if (state.hasSolar) {
-            // Check for fixed model stats (TALIAN 5)
-            const activeModel = state.buildingType === 'epona_talian5' ? TALIAN_5_MODELS[state.selectedTalian5Model] : (state.buildingType === 'epona' ? EPONA_MODELS[state.selectedEponaModel] : null);
-
-            if (activeModel && activeModel.fixedPower) {
-                return {
-                    power: activeModel.fixedPower,
-                    count: activeModel.fixedPanelCount
-                };
-            }
-
             const halfWidth = state.width / 2;
             const angleRad = (state.roofPitch * Math.PI) / 180;
             const geoSlope = halfWidth / Math.cos(angleRad);
@@ -648,6 +638,8 @@ export const useConfiguratorValues = () => {
             let model = null;
             if (state.buildingType === 'epona') {
                 model = EPONA_MODELS[state.selectedEponaModel];
+            } else if (state.buildingType === 'epona_talian5') {
+                model = TALIAN_5_MODELS[state.selectedTalian5Model];
             } else if (state.buildingType === 'symetrique') {
                 // Check if it's one of the TALIAN families
                 if (TALIAN_MODELS[state.selectedTalianModel] && Math.abs(state.width - 13.7) < 0.1) {

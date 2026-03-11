@@ -381,12 +381,12 @@ export function ControlPanel({ isAcama = false }) {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                        <span className="text-slate-700">Pente: <strong>{isAcamaTalian4 ? 6 : (isAcamaTalian1 ? 14 : (buildingType.startsWith('asymetrique') ? 15 : roofPitch))}°</strong></span>
+                        <span className="text-slate-700">Pente: <strong>{isAcamaTalian4 ? 6 : (isAcamaTalian1 ? 14 : (buildingType?.startsWith('asymetrique') ? 15 : roofPitch))}°</strong></span>
                     </div>
-                    {!buildingType.startsWith('ombriere') && (
+                    {!buildingType?.startsWith('ombriere') && (
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                            <span className="text-slate-700">H. Égout: <strong>{buildingType.startsWith('asymetrique') ? 4 : eaveHeight}m</strong></span>
+                            <span className="text-slate-700">H. Égout: <strong>{buildingType?.startsWith('asymetrique') ? 4 : eaveHeight}m</strong></span>
                         </div>
                     )}
                     {isAcama && (
