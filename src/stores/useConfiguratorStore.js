@@ -72,6 +72,8 @@ export const EPONA_MODELS = {
         baySpacing: 7.5,
         leftSide: 'none',
         rightSide: 'none',
+        fixedPower: 356.5,
+        fixedPanelCount: 775,
     },
     'EPONA_65': {
         label: 'EPONA 65 / 65x35m',
@@ -85,6 +87,8 @@ export const EPONA_MODELS = {
         baySpacing: 8.125,
         leftSide: 'none',
         rightSide: 'none',
+        fixedPower: 500.0,
+        fixedPanelCount: 1116,
     }
 };
 
