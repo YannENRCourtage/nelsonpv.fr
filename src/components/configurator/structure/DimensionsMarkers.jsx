@@ -390,7 +390,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const xStart = -width / 2;
         const xEnd = -width / 2 - extWidth;
         const xMid = -width / 2 - extWidth / 2;
-        const zFront = 3.0;
+        const zFront = isTalian4 ? 4.5 : 3.0;
 
         // Width Marker
         const yWidth = 0.1; // Reverted for EPONA
@@ -399,9 +399,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
         // Gap removed for extensions to put points at ends EXCEPT for EPONA/TALIAN 1/TALIAN 3/TALIAN 4 or Asym 2 Auvent
         const hasGap = isEpona || isTalian1 || isTalian3 || isTalian4 || (buildingType === 'asymetrique_2' && leftSide === 'auvent');
+        const gapOffset = isTalian4 ? 1.25 : (isEpona || isTalian ? 1.0 : 1.5);
         const wPoints = hasGap ? [
-            [wStart, new THREE.Vector3(xMid + (isEpona || isTalian ? 1.0 : 1.5), yWidth, zFront)],
-            [new THREE.Vector3(xMid - (isEpona || isTalian ? 1.0 : 1.5), yWidth, zFront), wEnd]
+            [wStart, new THREE.Vector3(xMid + gapOffset, yWidth, zFront)],
+            [new THREE.Vector3(xMid - gapOffset, yWidth, zFront), wEnd]
         ] : [
             [wStart, wEnd]
         ];
@@ -450,8 +451,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             extHeight = 4.8;
         }
 
-        const zFront = 3.0;
-
+        const zFront = isTalian4 ? 4.5 : 3.0;
 
         // Width Marker
         const xStart = width / 2;
@@ -471,9 +471,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const hMid = new THREE.Vector3(xH, visualMidRight, 0);
 
         const hasGap = isEpona || isTalian1 || isTalian3 || isTalian4 || (buildingType === 'asymetrique_2' && rightSide === 'auvent');
+        const gapOffset = isTalian4 ? 1.25 : (isEpona || isTalian ? 1.0 : 1.5);
         const wPoints = hasGap ? [
-            [wStart, new THREE.Vector3(wMid.x - (isEpona || isTalian ? 1.0 : 1.5), yWidth, zFront)],
-            [new THREE.Vector3(wMid.x + (isEpona || isTalian ? 1.0 : 1.5), yWidth, zFront), wEnd]
+            [wStart, new THREE.Vector3(wMid.x - gapOffset, yWidth, zFront)],
+            [new THREE.Vector3(wMid.x + gapOffset, yWidth, zFront), wEnd]
         ] : [
             [wStart, wEnd]
         ];
@@ -918,7 +919,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                 <mesh position={rightExtData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                             </>
                         )}
-                        <Text position={[width / 2 + rightExtData.extWidth / 2, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                        <Text position={[width / 2 + rightExtData.extWidth / 2, 0.2, isTalian4 ? 5.0 : 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
                             {isEpona ? '7.8m' : `${rightExtData.extWidth} m`}
                         </Text>
                     </group>
@@ -949,7 +950,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         </>
                     )}
                     <Text
-                        position={[-width / 2 - leftExtData.extWidth / 2, 0.2, 3.5]}
+                        position={[-width / 2 - leftExtData.extWidth / 2, 0.2, isTalian4 ? 5.0 : 3.5]}
                         rotation={[-Math.PI / 2, 0, 0]}
                         fontSize={0.8}
                         color={textColor}
