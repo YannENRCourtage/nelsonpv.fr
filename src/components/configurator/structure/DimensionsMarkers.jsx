@@ -654,7 +654,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const rSpanStart = new THREE.Vector3(midPostX, 0.1, zFront);
         const rSpanEnd = new THREE.Vector3(rightPostX, 0.1, zFront);
         const rSpanMid = new THREE.Vector3(midPostX + rightSpanLength / 2, 0.1, zFront);
-        const rSpanGap = buildingType === 'epona_talian5' ? 2.5 : 2.0;
+        const rSpanGap = buildingType === 'epona_talian5' ? 3.0 : 2.0;
         const rSpanPoints = [
             [rSpanStart, new THREE.Vector3(rSpanMid.x - rSpanGap / 2, 0.1, zFront)],
             // USER REQUEST: Line visible to the right until the point
@@ -668,7 +668,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             lCenterStart = new THREE.Vector3(leftPostX, eponaBaseY, zFront);
             lCenterEnd = new THREE.Vector3(midPostX, eponaBaseY, zFront);
             lCenterMid = new THREE.Vector3(leftPostX + lCenterLength / 2, eponaBaseY, zFront);
-            const lCenterGap = 5.0;
+            const lCenterGap = 6.0;
             lCenterPoints.push([lCenterStart, new THREE.Vector3(lCenterMid.x - lCenterGap / 2, eponaBaseY, zFront)]);
             lCenterPoints.push([new THREE.Vector3(lCenterMid.x + lCenterGap / 2, eponaBaseY, zFront), lCenterEnd]);
         }
@@ -1067,7 +1067,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                 <Line points={eponaMarkers.lCenterPoints[0]} color={lineColor} lineWidth={lineWidth} />
                                 <Line points={eponaMarkers.lCenterPoints[1]} color={lineColor} lineWidth={lineWidth} />
                                 <mesh position={eponaMarkers.lCenterStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                <mesh position={eponaMarkers.lCenterEnd}><sphereGeometry args={[buildingType === 'epona_talian5' ? 0 : 0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                                <mesh position={eponaMarkers.lCenterEnd}><sphereGeometry args={[buildingType === 'epona_talian5' ? 0.1 : 0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                                 <Text position={[eponaMarkers.lCenterMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
                                     15.4 m
                                 </Text>
