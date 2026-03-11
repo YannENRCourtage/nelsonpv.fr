@@ -321,7 +321,11 @@ export function PortalFrame({
 
                 {/* End Plate (At origin) */}
                 {/* Center of plate at (0, -0.1, 0) approx to cover join */}
-                <mesh geometry={plateGeo} material={steelMaterial} position={[isRight ? -plateThickness / 2 : plateThickness / 2, -0.1, 0]} rotation={[0, Math.PI / 2, 0]} castShadow />
+                {/* USER REQUEST: Resize plate if no haunch */}
+                <mesh position={[isRight ? -plateThickness / 2 : plateThickness / 2, hasHaunch ? -0.1 : 0, 0]} rotation={[0, Math.PI / 2, 0]} castShadow>
+                    <boxGeometry args={[plateWidth, hasHaunch ? 0.60 : 0.40, plateThickness]} />
+                    <meshStandardMaterial color="#8a949b" metalness={0.6} roughness={0.4} />
+                </mesh>
 
                 {/* Bolts */}
                 {/* Use Instances or simple mesh for now inside group (InstancedMesh is better at Frame level, but simpler here for strict placement) */}
@@ -509,7 +513,8 @@ export function PortalFrame({
                 {/* Middle Rafter Segment from Middle Column DOWN to Right Column (Appentis section) */}
                 {/* Extends beyond Right column by extendRightX */}
                 <group position={[rightColumnX_EP + extendRightX, rightColHeight - (extendRightX * Math.tan(rightSectionAngle)), 0]} rotation={[0, 0, -rightSectionAngle]}>
-                    {createRafterAssembly(rightSectionRafterLength - 0.05, true)}
+                    {/* USER REQUEST: Remove reinforcement (haunch) */}
+                    {createRafterAssembly(rightSectionRafterLength - 0.05, true, false)}
                 </group>
 
                 {/* Diagonal Braces omitted as per user request for EPONA/TALIAN 5 */}

@@ -332,7 +332,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     // 3d. Right Eave Height (Asymmetrical 2 Zones ONLY)
     const asym2RightEaveData = useMemo(() => {
         if (buildingType !== 'asymetrique_2' && !isEpona) return null;
-        if (buildingType === 'epona_talian5') return null; // USER REQUEST: Remove redundant line on right
+        if (isEpona) return null; // USER REQUEST: Remove for both Talian 5 and EPONA original
         // USER REQUEST 12/01/2026: Right sablière height for asymmetric 2 zones = 4m (BUILDING, not awning)
         const h = isEpona ? 4.3 : 4.0; // Fixed right eave height for BUILDING
         const x = width / 2 + 1.5; // Right side, outside
@@ -641,7 +641,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
         // --- LARGEURS ---
 
-        // Right Span (11.6m pour T5, 7.85m pour EPONA)
+        // Right Span (11.0m pour T5, 7.85m pour EPONA)
         const rightSpanLength = buildingType === 'epona_talian5' ? 11.0 : 7.85;
         const rightSpanLabel = buildingType === 'epona_talian5' ? "11 m" : "7.8 m"; 
         const rSpanStart = new THREE.Vector3(midPostX, 0.1, zFront);
@@ -694,7 +694,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             rHeightPoints.push([new THREE.Vector3(rHeightX, rGapTop, rightHeightZ), rHeightEnd]);
         } else {
             // Epona Right Height Default
-            rHeightVal = 2.6;
+            rHeightVal = 3.8; // USER REQUEST: Update from 2.6 to 3.8
             rGapBottom = rHeightVal / 2 - 0.6;
             rGapTop = rHeightVal / 2 + 0.6;
             rHeightStart = new THREE.Vector3(rHeightX, eponaBaseY, rightHeightZ);
@@ -732,7 +732,14 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             lHeightPoints.push([lHeightStart, new THREE.Vector3(lHeightX, lGapBottom, leftHeightZ)]);
             lHeightPoints.push([new THREE.Vector3(lHeightX, lGapTop, leftHeightZ), lHeightEnd]);
         } else {
-            // Epona Left Height Default (5.0m) - Hidden by default below if empty
+            // Epona Left Height Default (5.0m)
+            lHeightVal = 5.0;
+            lGapBottom = lHeightVal / 2 - 0.6;
+            lGapTop = lHeightVal / 2 + 0.6;
+            lHeightStart = new THREE.Vector3(lHeightX, eponaBaseY, leftHeightZ);
+            lHeightEnd = new THREE.Vector3(lHeightX, lHeightVal, leftHeightZ);
+            lHeightPoints.push([lHeightStart, new THREE.Vector3(lHeightX, lGapBottom, leftHeightZ)]);
+            lHeightPoints.push([new THREE.Vector3(lHeightX, lGapTop, leftHeightZ), lHeightEnd]);
         }
 
         return {
@@ -1081,7 +1088,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             <>
                                 <mesh position={eponaMarkers.rHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                                 <mesh position={eponaMarkers.rHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                <Text position={[eponaMarkers.rHeightX, eponaMarkers.rHeightVal / 2, eponaMarkers.rightHeightZ - 0.2]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                                <Text position={[eponaMarkers.rHeightX + 0.5, eponaMarkers.rHeightVal / 2, eponaMarkers.rightHeightZ]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
                                     {`${eponaMarkers.rHeightVal} m`}
                                 </Text>
                             </>
@@ -1109,11 +1116,12 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             <>
                                 <mesh position={eponaMarkers.lHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                                 <mesh position={eponaMarkers.lHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                <Text position={[eponaMarkers.lHeightX, eponaMarkers.lHeightVal / 2, eponaMarkers.leftHeightZ + 0.2]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                                <Text position={[eponaMarkers.lHeightX - 0.5, eponaMarkers.lHeightVal / 2, eponaMarkers.leftHeightZ]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
                                     {`${eponaMarkers.lHeightVal} m`}
                                 </Text>
                             </>
                         )}
+ drum
                     </group>
                 )
             }
