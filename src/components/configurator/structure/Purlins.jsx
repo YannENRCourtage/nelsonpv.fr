@@ -187,6 +187,9 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
                 const xPerp = perpOffset * Math.sin(rightAngle);
                 const yPerp = perpOffset * Math.cos(rightAngle);
 
+                // USER REQUEST: Remove rightmost horizontal purlin (Round 6)
+                if (i === numPRight) continue;
+
                 purlins.push(
                     <mesh key={`Bay${bayIndex}-T5-R-${i}`} geometry={t5BayGeo} material={material}
                         position={[middleColumnX + xLocal + xPerp, midEaveH + yLocal + yPerp - 0.20, zStart]}
