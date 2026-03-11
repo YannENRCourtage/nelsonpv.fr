@@ -663,8 +663,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
         // Left Span Central (TALIAN_5: 16.0m, EPONA: pas affiché tel quel, c'est l'auvent)
         let lCenterStart, lCenterEnd, lCenterMid, lCenterPoints = [];
+        let lCenterLabel = "";
         if (buildingType === 'epona_talian5') {
             const lCenterLength = 16.0;
+            lCenterLabel = "15.4 m";
             lCenterStart = new THREE.Vector3(leftPostX, eponaBaseY, zFront);
             lCenterEnd = new THREE.Vector3(midPostX, eponaBaseY, zFront);
             lCenterMid = new THREE.Vector3(leftPostX + lCenterLength / 2, eponaBaseY, zFront);
@@ -704,7 +706,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             rHeightVal = 3.8; 
             rGapBottom = rHeightVal / 2 - 0.6;
             rGapTop = rHeightVal / 2 + 0.6;
-            rHeightStart = new THREE.Vector3(rHeightX, eponaBaseY, markerZ); 
+            // USER REQUEST Round 1 EPONA: Reduce trait height by 1.2m (start higher from ground)
+            rHeightStart = new THREE.Vector3(rHeightX, eponaBaseY + 1.2, markerZ); 
             rHeightEnd = new THREE.Vector3(rHeightX, rHeightVal, markerZ);
             rHeightPoints.push([rHeightStart, new THREE.Vector3(rHeightX, rGapBottom, markerZ)]);
             rHeightPoints.push([new THREE.Vector3(rHeightX, rGapTop, markerZ), rHeightEnd]);
@@ -755,7 +758,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             lAwningStart, lAwningEnd, lAwningMid, lAwningPoints,
             rHeightPoints, rHeightStart, rHeightEnd, rHeightVal, rHeightX,
             mHeightPoints, mHeightStart, mHeightEnd, mHeightVal, mHeightX, midHeightZ,
-            lHeightPoints, lHeightStart, lHeightEnd, lHeightVal, lHeightX, markerZ
+            lHeightPoints, lHeightStart, lHeightEnd, lHeightVal, lHeightX, markerZ,
+            lCenterLabel
         };
     }, [isEpona, gapSize, buildingType, length]);
 
@@ -783,7 +787,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             {/* 1. WIDTH MARKER */}
             {widthPoints && (
                 <group>
-                    <Line points={widthPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                    {widthPoints.map((p, i) => (
+                        <Line key={`wp-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />
+                    ))}
                     <mesh position={widthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     {buildingType !== 'epona_talian5' && (
                         <Text position={[0, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
@@ -1069,7 +1075,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                 <mesh position={eponaMarkers.lCenterStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                                 <mesh position={eponaMarkers.lCenterEnd}><sphereGeometry args={[buildingType === 'epona_talian5' ? 0.1 : 0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                                 <Text position={[eponaMarkers.lCenterMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                                    15.4 m
+                                    {eponaMarkers.lCenterLabel}
                                 </Text>
                             </>
                         )}
