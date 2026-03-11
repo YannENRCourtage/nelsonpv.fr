@@ -23,7 +23,15 @@ const CrispChat = () => {
         if (user && window.$crisp) {
             if (user.email) window.$crisp.push(["set", "user:email", [user.email]]);
             if (user.displayName) window.$crisp.push(["set", "user:nickname", [user.displayName]]);
-            // if (user.photoURL) window.$crisp.push(["set", "user:avatar", [user.photoURL]]); 
+            
+            // Set avatar for Yann specifically as requested, or use photoURL for others
+            const avatarUrl = (user.displayName && user.displayName.toLowerCase().includes('yann')) 
+                ? '/avatars/yann_new.png' 
+                : (user.photoURL || null);
+            
+            if (avatarUrl) {
+                window.$crisp.push(["set", "user:avatar", [window.location.origin + avatarUrl]]);
+            }
         }
     }, [user]);
 

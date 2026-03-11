@@ -164,7 +164,7 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
 
     // --- HANDLERS ---
     const handleTagMoved = (tag, newPos) => {
-        const updatedTags = templateData.tags.map(t =>
+        const updatedTags = (templateData?.tags || []).map(t =>
             t.id === tag.id ? { ...t, x: newPos.x, y: newPos.y } : t
         );
         const newData = { ...templateData, tags: updatedTags };
@@ -210,7 +210,7 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
 
     const handleTagRemoved = (tagOrId) => {
         const id = tagOrId.id || tagOrId; // Handle object or ID
-        const updatedTags = templateData.tags.filter(t => t.id !== id);
+        const updatedTags = (templateData?.tags || []).filter(t => t.id !== id);
         const newData = { ...templateData, tags: updatedTags };
         setTemplateData(newData);
         try {
@@ -229,7 +229,7 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
             const pages = pdfDoc.getPages();
 
             // Iterate over placed tags
-            for (const tag of templateData.tags) {
+            for (const tag of (templateData?.tags || [])) {
                 const page = pages[tag.page - 1];
                 if (!page) continue;
 

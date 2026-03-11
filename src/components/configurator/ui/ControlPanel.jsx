@@ -132,10 +132,10 @@ export function ControlPanel({ isAcama = false }) {
                         }}
                         className="w-full px-4 py-3 border border-slate-300 rounded-lg font-semibold text-sm bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                     >
-                        {isAcamaEpona && Object.entries(EPONA_MODELS).map(([key, model]) => (
+                        {isAcamaEpona && Object.entries(EPONA_MODELS || {}).map(([key, model]) => (
                             <option key={key} value={key}>{model.label}</option>
                         ))}
-                        {isAcamaTalian5 && Object.entries(TALIAN_5_MODELS).map(([key, model]) => (
+                        {isAcamaTalian5 && Object.entries(TALIAN_5_MODELS || {}).map(([key, model]) => (
                             <option key={key} value={key}>{model.label}</option>
                         ))}
                     </select>
@@ -197,13 +197,13 @@ export function ControlPanel({ isAcama = false }) {
                         }}
                         className="w-full px-4 py-3 border border-slate-300 rounded-lg font-semibold text-sm bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                     >
-                        {isAcamaTalian4 && Object.entries(TALIAN_MODELS).map(([key, model]) => (
+                        {isAcamaTalian4 && Object.entries(TALIAN_MODELS || {}).map(([key, model]) => (
                             <option key={key} value={key}>{model.label}</option>
                         ))}
-                        {isAcamaTalian1 && Object.entries(TALIAN_1_MODELS).map(([key, model]) => (
+                        {isAcamaTalian1 && Object.entries(TALIAN_1_MODELS || {}).map(([key, model]) => (
                             <option key={key} value={key}>{model.label}</option>
                         ))}
-                        {isAcamaTalian3 && Object.entries(TALIAN_3_MODELS).map(([key, model]) => (
+                        {isAcamaTalian3 && Object.entries(TALIAN_3_MODELS || {}).map(([key, model]) => (
                             <option key={key} value={key}>{model.label}</option>
                         ))}
                     </select>

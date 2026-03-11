@@ -196,7 +196,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     }
 
     // --- B0. EPONA ---
-    if (isEpona) {
+    if (isEpona && buildingType !== 'epona_talian5') {
         // Geometric Constants from Image 3
         const mainSlope = 17 * (Math.PI / 180);
         const leftEaveH = 5.0;
@@ -326,6 +326,95 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         );
     }
 
+    // --- B0.5 TALIAN 5 ---
+    if (buildingType === 'epona_talian5') {
+        const leftEaveH = 7.9;
+        const effectiveRidgeHeight = 8.1;
+        const midEaveH = 6.0;
+        const rightEaveH = 4.3;
+
+        const offsetApexFromLeft = 1.13;
+        const apexX = -16.0 + offsetApexFromLeft; // -14.87
+        const middleColumnX = 0;
+        const leftColumnX = -16.0;
+        const rightColumnX = 11.6;
+
+        // Débords supprimés, les poteaux tombent exactement sous les sablières
+        const extendLeftX = 0;
+        const extendRightX = 0;
+
+        // Angle calculations (positive angles)
+        const leftAngle = Math.atan((effectiveRidgeHeight - leftEaveH) / offsetApexFromLeft);
+        const middleAngle = Math.atan((effectiveRidgeHeight - midEaveH) / (16.0 - offsetApexFromLeft));
+        const rightAngle = Math.atan((midEaveH - rightEaveH) / 11.6);
+
+        // Roof segments lengths
+        const leftGeoLength = (offsetApexFromLeft + extendLeftX) / Math.cos(leftAngle);
+        const middleGeoLength = (16.0 - offsetApexFromLeft) / Math.cos(middleAngle);
+        const rightGeoLength = (11.6 + extendRightX) / Math.cos(rightAngle);
+
+        const leftProfile = createTrapezoidalProfile(leftGeoLength, 0.035, 0.25);
+        const middleProfile = createTrapezoidalProfile(middleGeoLength, 0.035, 0.25);
+        const rightProfile = createTrapezoidalProfile(rightGeoLength, 0.035, 0.25);
+
+        const leftGeo = new THREE.ExtrudeGeometry(leftProfile, { depth: length + 1.0, bevelEnabled: false });
+        const middleGeo = new THREE.ExtrudeGeometry(middleProfile, { depth: length + 1.0, bevelEnabled: false });
+        const rightGeo = new THREE.ExtrudeGeometry(rightProfile, { depth: length + 1.0, bevelEnabled: false });
+
+        const perpOffset = 0.20 + 0.05 + 0.12; // 20cm (demi-IPE rafter) + 5cm (panne) + 12cm (élévation bac acier supplémentaire)
+
+        // Left Segment (Apex to Left Eave + Overhang) -> centered around midpoint
+        const leftStartX = leftColumnX - extendLeftX;
+        const leftEndX = apexX;
+        const leftMidX = (leftStartX + leftEndX) / 2;
+        const leftEdgeY = leftEaveH - extendLeftX * Math.tan(leftAngle);
+        const leftMidY = (leftEdgeY + effectiveRidgeHeight) / 2;
+        const lNX = -Math.sin(leftAngle);
+        const lNY = Math.cos(leftAngle);
+        const lFinalX = leftMidX + perpOffset * lNX;
+        const lFinalY = leftMidY + perpOffset * lNY;
+
+        // Middle Segment (Apex to Middle Column)
+        const midStartX = apexX;
+        const midEndX = middleColumnX;
+        const midMidX = (midStartX + midEndX) / 2;
+        const midMidY = (effectiveRidgeHeight + midEaveH) / 2;
+        const mNX = Math.sin(middleAngle);
+        const mNY = Math.cos(middleAngle);
+        const mFinalX = midMidX + perpOffset * mNX;
+        const mFinalY = midMidY + perpOffset * mNY;
+
+        // Right Segment (Middle Column to Right Eave + Overhang)
+        const rightStartX = middleColumnX;
+        const rightEndX = rightColumnX + extendRightX;
+        const rightMidX = (rightStartX + rightEndX) / 2;
+        const rightEdgeY = rightEaveH - extendRightX * Math.tan(rightAngle);
+        const rightMidY = (midEaveH + rightEdgeY) / 2;
+        const rNX = Math.sin(rightAngle);
+        const rNY = Math.cos(rightAngle);
+        const rFinalX = rightMidX + perpOffset * rNX;
+        const rFinalY = rightMidY + perpOffset * rNY;
+
+        return (
+            <group>
+                <mesh geometry={leftGeo} material={roofMaterial} position={[lFinalX, lFinalY, -length - 0.5]} rotation={[0, 0, leftAngle]} castShadow receiveShadow />
+                <group position={[lFinalX, lFinalY, -length / 2]} rotation={[0, 0, leftAngle]}>
+                    <SolarPanels surfaceWidth={leftGeoLength} surfaceLength={length + 1.0} />
+                </group>
+
+                <mesh geometry={middleGeo} material={roofMaterial} position={[mFinalX, mFinalY, -length - 0.5]} rotation={[0, 0, -middleAngle]} scale={[-1, 1, 1]} castShadow receiveShadow />
+                <group position={[mFinalX, mFinalY, -length / 2]} rotation={[0, 0, -middleAngle]} scale={[-1, 1, 1]}>
+                    <SolarPanels surfaceWidth={middleGeoLength} surfaceLength={length + 1.0} />
+                </group>
+
+                <mesh geometry={rightGeo} material={roofMaterial} position={[rFinalX, rFinalY, -length - 0.5]} rotation={[0, 0, -rightAngle]} scale={[-1, 1, 1]} castShadow receiveShadow />
+                <group position={[rFinalX, rFinalY, -length / 2]} rotation={[0, 0, -rightAngle]} scale={[-1, 1, 1]}>
+                    <SolarPanels surfaceWidth={rightGeoLength} surfaceLength={length + 1.0} />
+                </group>
+            </group>
+        );
+    }
+
     // --- B. ASYMETRIQUE 2 ZONES & TALIAN 5 ---
     if (isAsymetrique2) {
         // Same slope across sections for default, but TALIAN 5 has specific logic
@@ -341,39 +430,13 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
 
         let rightSpan, distRightToMiddle, mainSlope;
 
-        if (isEpona && buildingType === 'epona_talian5') { // Changed from isAcamaTalian5
-            // TALIAN 5 specific geometry (matches PortalFrame)
-            const mainPitch = 10 * (Math.PI / 180);
-            leftEaveHeightAsym2 = 7.9;
-            const rightEaveHeightT5 = 4.3;
-            const effectiveRidgeHeightT5 = 8.1;
-
-            const leftApexOffsetT5 = 0.2 / Math.tan(mainPitch);
-            const apexXT5 = -w / 2 + leftApexOffsetT5;
-            const middleColumnXT5 = -w / 2 + 15.4;
-
-            leftAngleAsym2 = mainPitch;
-            const distApexToRightEaveT5 = w / 2 - apexXT5;
-            rightAngleAsym2 = Math.atan((effectiveRidgeHeightT5 - rightEaveHeightT5) / distApexToRightEaveT5);
-            middleAngleAsym2 = rightAngleAsym2;
-
-            const distApexToMiddleT5 = middleColumnXT5 - apexXT5;
-            middleColumnHeightAsym2 = effectiveRidgeHeightT5 - (distApexToMiddleT5 * Math.tan(rightAngleAsym2));
-            ridgeHAsym2 = effectiveRidgeHeightT5;
-
-            // Spans for sections
-            rightSpan = w - leftApexOffsetT5;
-            distRightToMiddle = 11; // From user specs: sablière droite à poteau central
-            mainSlope = rightAngleAsym2;
-        } else {
-            // Default Asymetrique 2 Zones (Green Invest)
-            leftEaveHeightAsym2 = 4.0; // Base
-            mainSlope = 15 * (Math.PI / 180);
-            rightSpan = w * 0.75;
-            distRightToMiddle = rightSpan * 0.6; // Position arbitraire du poteau milieu
-            ridgeHAsym2 = 4.0 + (rightSpan * Math.tan(mainSlope));
-            middleColumnHeightAsym2 = ridgeHAsym2 - ((rightSpan - distRightToMiddle) * Math.tan(mainSlope));
-        }
+        // Default Asymetrique 2 Zones (Green Invest)
+        leftEaveHeightAsym2 = 4.0; // Base
+        mainSlope = 15 * (Math.PI / 180);
+        rightSpan = w * 0.75;
+        distRightToMiddle = rightSpan * 0.6; // Position arbitraire du poteau milieu
+        ridgeHAsym2 = 4.0 + (rightSpan * Math.tan(mainSlope));
+        middleColumnHeightAsym2 = ridgeHAsym2 - ((rightSpan - distRightToMiddle) * Math.tan(mainSlope));
 
         // Aliases for positioning meshes below
         const asymRightEaveH = 4.0;

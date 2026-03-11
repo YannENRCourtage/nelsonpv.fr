@@ -60,25 +60,64 @@ export function PortalFrame({
 
     // Determine Geometry params based on Type
     if (isEpona) {
-        // EPONA (Asymmetrical 2 Zones)
-        const mainPitch = 17 * (Math.PI / 180);
-        leftEaveHeight = 5.0;
-        rightEaveHeight = 2.6;
-        leftSpan = 11.8;
-        rightSpan = 19.65;
-        apexX = -11.8 + leftSpan;
-        effectiveRidgeHeight = leftEaveHeight + (leftSpan * Math.tan(mainPitch));
-        middleColumnX = -11.8 + 23.6;
-        lAngle = mainPitch;
-        rAngle = mainPitch;
-        const distApexToMiddle = middleColumnX - apexX;
-        middleColumnHeight = effectiveRidgeHeight - (distApexToMiddle * Math.tan(rAngle));
-        leftSectionSpan = leftSpan;
-        leftSectionAngle = lAngle;
-        middleSectionSpan = distApexToMiddle;
-        middleSectionAngle = rAngle;
-        rightSectionSpan = 7.85;
-        rightSectionAngle = rAngle;
+        if (buildingType === 'epona_talian5') {
+            // TALIAN 5 (Modèle asymétrique 3 poteaux repensé pour s'étendre aux sablières directes)
+            leftEaveHeight = 7.9;
+            rightEaveHeight = 4.3;
+            
+            // Nouveau calcul pour supprimer les débords = allonger l'entre-poteaux de 0.6m chaque côté
+            // Ancien leftSpan = 15.4 => Nouveau = 16.0. Ancien rightSpan = 11.0 => Nouveau = 11.6.
+            leftSpan = 16.0;
+            rightSpan = 11.6;
+
+            // Calcul de l'apex pour respecter la crête
+            // (8.1 - 7.9) / tan(10°) = 1.13m depuis le nouveau poteau gauche (-16.0)
+            const offsetApexFromLeft = 1.13;
+            apexX = -16.0 + offsetApexFromLeft; // -14.87
+            effectiveRidgeHeight = 8.1;
+
+            // Pente gauche: de 7.9m à 8.1m
+            leftSectionSpan = offsetApexFromLeft;
+            leftSectionAngle = Math.atan((effectiveRidgeHeight - leftEaveHeight) / leftSectionSpan);
+            lAngle = leftSectionAngle;
+
+            // Pente droite (jusqu'au poteau central fixe de 6m à X=0)
+            middleSectionSpan = 16.0 - offsetApexFromLeft; // du pic jusqu'à x=0
+            middleColumnX = 0;
+
+            // Pente depuis l'apex jusqu'au poteau central
+            middleSectionAngle = Math.atan((effectiveRidgeHeight - 6.0) / middleSectionSpan);
+
+            // Hauteur du poteau central
+            const dropToMiddle = middleSectionSpan * Math.tan(middleSectionAngle);
+            middleColumnHeight = effectiveRidgeHeight - dropToMiddle;
+
+            // Seconde moitié de la pente droite (P. central -> P. droit à X=11.6m et H=4.3m)
+            rightSectionSpan = 11.6;
+            rightSectionAngle = Math.atan((6.0 - 4.3) / rightSectionSpan);
+            rAngle = rightSectionAngle;
+
+        } else {
+            // EPONA (Asymmetrical 2 Zones original)
+            const mainPitch = 17 * (Math.PI / 180);
+            leftEaveHeight = 5.0;
+            rightEaveHeight = 2.6;
+            leftSpan = 11.8;
+            rightSpan = 19.65;
+            apexX = -11.8 + leftSpan; // 0
+            effectiveRidgeHeight = leftEaveHeight + (leftSpan * Math.tan(mainPitch));
+            middleColumnX = -11.8 + 23.6; // 11.8
+            lAngle = mainPitch;
+            rAngle = mainPitch;
+            const distApexToMiddle = middleColumnX - apexX; // 11.8
+            middleColumnHeight = effectiveRidgeHeight - (distApexToMiddle * Math.tan(rAngle));
+            leftSectionSpan = leftSpan;
+            leftSectionAngle = lAngle;
+            middleSectionSpan = distApexToMiddle;
+            middleSectionAngle = rAngle;
+            rightSectionSpan = 7.85;
+            rightSectionAngle = rAngle;
+        }
     } else if (isAsymetrique2) {
         // Standard Asymetrique 2 zones
         let mainPitch = 15 * (Math.PI / 180);
@@ -407,11 +446,27 @@ export function PortalFrame({
         const middleColumnGeo = createSlantedColumn(baseColumnProfile, 0, false, middleColHeightFinal);
 
         // Calculate rafter lengths with exact overhangs (2.55m on left, 1.25m on right)
-        // USER REQUEST 11/03/2026: Remove left awning for TALIAN 5
-        const extendLeftX = buildingType === 'epona_talian5' ? 0.05 : 2.55;
-        const extendRightX = 1.25; // Restored (from 0)
+        // positioning logic for Epona vs Talian5
+        let leftColumnX_EP;
+        let middleColumnX_EP;
+        let rightColumnX_EP;
 
+        let extendLeftX;
+        let extendRightX;
 
+        if (buildingType === 'epona_talian5') {
+            leftColumnX_EP = -15.4;
+            middleColumnX_EP = 0;
+            rightColumnX_EP = 11.0;
+            extendLeftX = 0.6; // Débord standard
+            extendRightX = 0.6;
+        } else {
+            leftColumnX_EP = -11.8;
+            middleColumnX_EP = 11.8;
+            rightColumnX_EP = 19.65;
+            extendLeftX = 2.55;
+            extendRightX = 1.25;
+        }
 
         // Left rafter spans from the left overhang edge up to the apex
         const leftTotalSpanX = leftSectionSpan + extendLeftX;
@@ -420,24 +475,15 @@ export function PortalFrame({
         // Right sections: right slope is split by the middle column.
         // Apex to middle column:
         const middleSectionRafterLength = (middleSectionSpan + horizontalOverhang / 2) / Math.cos(middleSectionAngle);
-        // Middle column to right column (No overhang):
-        const rightSectionRafterLength = rightSectionSpan / Math.cos(rightSectionAngle);
-
-
-        // Positioning logic:
-        // Left Column is at x = -11.8
-        // Apex is at x = 0
-        // Middle Column is at x = 11.8
-        // Right Column is at x = 19.65
-
-        const leftColumnX = -11.8;
+        // Middle column to right column (With overhang):
+        const rightSectionRafterLength = (rightSectionSpan + extendRightX) / Math.cos(rightSectionAngle);
 
         return (
             <group position={position}>
                 {/* Columns */}
-                <mesh geometry={leftColumnGeo} material={steelMaterial} position={[leftColumnX, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
-                <mesh geometry={middleColumnGeo} material={steelMaterial} position={[middleColumnX, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
-                <mesh geometry={rightColumnGeo} material={steelMaterial} position={[-11.8 + 31.45, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
+                <mesh geometry={leftColumnGeo} material={steelMaterial} position={[leftColumnX_EP, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
+                <mesh geometry={middleColumnGeo} material={steelMaterial} position={[middleColumnX_EP, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
+                <mesh geometry={rightColumnGeo} material={steelMaterial} position={[rightColumnX_EP, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
 
                 {/* Gusset at Apex */}
                 <group position={[apexX, effectiveRidgeHeight, 0]}>
@@ -445,31 +491,27 @@ export function PortalFrame({
                 </group>
 
                 {/* Gusset at Middle Column */}
-                <group position={[middleColumnX, middleColHeightFinal, 0]}>
+                <group position={[middleColumnX_EP, middleColHeightFinal, 0]}>
                     {createApexHaunchAssemblySCREB(middleSectionAngle, rightSectionAngle)}
                 </group>
 
                 {/* Left Rafter (from overhang edge UP to apex - pointing RIGHT) */}
-                <group position={[leftColumnX - extendLeftX, leftColHeight - (extendLeftX * Math.tan(leftSectionAngle)), 0]} rotation={[0, 0, leftSectionAngle]}>
+                <group position={[leftColumnX_EP - extendLeftX, leftColHeight - (extendLeftX * Math.tan(leftSectionAngle)), 0]} rotation={[0, 0, leftSectionAngle]}>
                     {createRafterAssembly(leftSectionRafterLength - 0.05, false, false)}
                 </group>
 
                 {/* Right Rafter Segment from Apex DOWN to Middle Column (pointing RIGHT) */}
-                <group position={[middleColumnX, middleColHeightFinal, 0]} rotation={[0, 0, -middleSectionAngle]}>
+                <group position={[middleColumnX_EP, middleColHeightFinal, 0]} rotation={[0, 0, -middleSectionAngle]}>
                     {createRafterAssembly(middleSectionRafterLength - 0.05, true)}
                 </group>
 
                 {/* Middle Rafter Segment from Middle Column DOWN to Right Column (Appentis section) */}
-                {/* User Request: Lower this part of the structure by 1.2m (same as column) */}
-                <group position={[middleColumnX + 7.85, rightColHeight, 0]} rotation={[0, 0, -rightSectionAngle]}>
+                {/* Extends beyond Right column by extendRightX */}
+                <group position={[rightColumnX_EP + extendRightX, rightColHeight - (extendRightX * Math.tan(rightSectionAngle)), 0]} rotation={[0, 0, -rightSectionAngle]}>
                     {createRafterAssembly(rightSectionRafterLength - 0.05, true)}
                 </group>
 
-
-
-                {/* Diagonal Braces matching the image (Knee Braces / Jarrets / Bracons) */}
-                {/* User Request: Removed for EPONA ACAMA */}
-
+                {/* Diagonal Braces omitted as per user request for EPONA/TALIAN 5 */}
             </group>
         );
     }

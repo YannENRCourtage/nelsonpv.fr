@@ -240,20 +240,20 @@ export const TALIAN_3_MODELS = {
 export const TALIAN_5_MODELS = {
     'TALIAN_5_MIN': {
         label: 'TALIAN 5 MIN / 31x35.3m',
-        width: 23.6,
+        width: 26.4,
         baySpacing: 6.2,
         bayCount: 5,
         fixedLength: 31.0,
         eaveHeight: 7.9,     // Sablière Gauche TALIAN 5
         rightEaveHeight: 4.3, // Sablière Droite TALIAN 5 (Appentis)
         ridgeHeight: 8.1,     // Faîtage TALIAN 5
-        roofPitch: 10,       // Pente TALIAN 5 (calculée/fixe)
+        roofPitch: 10,       // Pente TALIAN 5 (calculée/fixe dans PortalFrame)
         leftSide: 'none',
-        rightSide: 'appentis',
+        rightSide: 'none',   // L'appentis est maintenant intégré dans les 26.4m de largeur principale
     },
     'TALIAN_5_MID': {
         label: 'TALIAN 5 MID / 50x35.3m',
-        width: 23.6,
+        width: 26.4,
         baySpacing: 6.25,
         bayCount: 8,
         fixedLength: 50.0,
@@ -262,11 +262,11 @@ export const TALIAN_5_MODELS = {
         ridgeHeight: 8.1,
         roofPitch: 10,
         leftSide: 'none',
-        rightSide: 'appentis',
+        rightSide: 'none',
     },
     'TALIAN_5_MAX': {
         label: 'TALIAN 5 MAX / 62.5x35.3m',
-        width: 23.6,
+        width: 26.4,
         baySpacing: 6.25,
         bayCount: 10,
         fixedLength: 62.5,
@@ -275,7 +275,7 @@ export const TALIAN_5_MODELS = {
         ridgeHeight: 8.1,
         roofPitch: 10,
         leftSide: 'none',
-        rightSide: 'appentis',
+        rightSide: 'none',
     }
 };
 

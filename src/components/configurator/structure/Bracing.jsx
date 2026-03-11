@@ -124,34 +124,47 @@ export function Bracing({
             bracings.push(createRod(new THREE.Vector3(apexX - 0.1, apexY, zStart), new THREE.Vector3(-width / 2, leftStartH, zEnd), `roof-L-Asym-${i}-2`));
             bracings.push(createRod(new THREE.Vector3(width / 2, rightStartH, zStart), new THREE.Vector3(apexX + 0.1, apexY, zEnd), `roof-R-Asym-${i}-1`));
             bracings.push(createRod(new THREE.Vector3(apexX + 0.1, apexY, zStart), new THREE.Vector3(width / 2, rightStartH, zEnd), `roof-R-Asym-${i}-2`));
+        } else if (buildingType === 'epona_talian5') {
+            // TALIAN 5 - Contreventement de toiture (Croix de St André sous bac acier)
+            // Calculs géométriques identiques à PortalFrame / Roof
+            const leftEaveH = 7.9;
+            const effectiveRidgeHeight = 8.1;
+            const midEaveH = 6.0;
+            const rightEaveH = 4.3;
+
+            const offsetApexFromLeft = 1.13;
+            const apexX = -16.0 + offsetApexFromLeft; // -14.87
+            const middleColumnX = 0;
+            const leftColumnX = -16.0;
+            const rightColumnX = 11.6;
+
+            // Position de base de la charpente (Axe de l'IPE)
+            // On ajoute 20cm pour être au sommet du rafter, puis +5cm pour la panne, puis +12cm pour le bac acier.
+            // Le bac acier est donc à +37cm de la charpente de base.
+            // On veut la croix à -5cm du bac acier, soit à +32cm de la position de la charpente `(Y + 0.32)`.
+            const roofOffset = 0.32;
+
+            const leftStartX = leftColumnX;
+            const leftStartY = leftEaveH + roofOffset;
+            const apexY = effectiveRidgeHeight + roofOffset;
+
+            // Pente moyenne : pic à poteau droit
+            const midStartY = midEaveH + roofOffset;
+            const rightStartY = rightEaveH + roofOffset;
+
+            // Segment 1 (Poteau gauche -> Apex)
+            bracings.push(createRod(new THREE.Vector3(leftStartX, leftStartY, zStart), new THREE.Vector3(apexX, apexY, zEnd), `roof-L-T5-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(apexX, apexY, zStart), new THREE.Vector3(leftStartX, leftStartY, zEnd), `roof-L-T5-${i}-2`));
+
+            // Segment 2 (Apex -> Poteau central)
+            bracings.push(createRod(new THREE.Vector3(apexX, apexY, zStart), new THREE.Vector3(middleColumnX, midStartY, zEnd), `roof-M-T5-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(middleColumnX, midStartY, zStart), new THREE.Vector3(apexX, apexY, zEnd), `roof-M-T5-${i}-2`));
+
+            // Segment 3 (Poteau central -> Poteau droit)
+            bracings.push(createRod(new THREE.Vector3(middleColumnX, midStartY, zStart), new THREE.Vector3(rightColumnX, rightStartY, zEnd), `roof-R-T5-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(rightColumnX, rightStartY, zStart), new THREE.Vector3(middleColumnX, midStartY, zEnd), `roof-R-T5-${i}-2`));
+
         } else if (buildingType === 'epona') {
-            const mainPitch = 17 * (Math.PI / 180);
-            const apexX = 0;
-            const apexY = 5.0 + (11.8 * Math.tan(mainPitch));
-            const leftColX = -11.8, middleColX = 11.8, rightColX = 19.65;
-            const leftH = 5.0, rightH = 2.63; // Lowered by 1.2m
-            const middleH = apexY - (middleColX * Math.tan(mainPitch));
-
-            // Wall M (Double restored) - Right wall for EPONA ACAMA
-            bracings.push(createRod(new THREE.Vector3(middleColX, 0.5, zStart), new THREE.Vector3(middleColX, middleH - 0.5, zEnd), `wall-M-${i}-1`));
-            bracings.push(createRod(new THREE.Vector3(middleColX, middleH - 0.5, zStart), new THREE.Vector3(middleColX, 0.5, zEnd), `wall-M-${i}-2`));
-
-
-            // New Request (Step 423): Add Wall R single brace if not already there? 
-            // Wait, Wall R (+width/2) is already handled at line 56. 
-            // middleColX (11.8) is the RIGHT wall of the main building for EPONA.
-            // middleH is the height at 11.8
-
-
-            // Roof (Double restored)
-            bracings.push(createRod(new THREE.Vector3(leftColX, leftH, zStart), new THREE.Vector3(apexX - 0.1, apexY, zEnd), `roof-L-Epona-${i}-1`));
-            bracings.push(createRod(new THREE.Vector3(apexX - 0.05, apexY, zStart), new THREE.Vector3(leftColX, leftH, zEnd), `roof-L-Epona-${i}-2`));
-
-            bracings.push(createRod(new THREE.Vector3(apexX + 0.1, apexY, zStart), new THREE.Vector3(rightColX, rightH, zEnd), `roof-R-Epona-${i}-1`));
-            bracings.push(createRod(new THREE.Vector3(rightColX, rightH, zStart), new THREE.Vector3(apexX + 0.05, apexY, zEnd), `roof-R-Epona-${i}-2`));
-
-
-        } else if (buildingType === 'asymetrique_2') {
             // No roof bracing for asymetrique_2 as requested
         } else {
             // Symmetrical

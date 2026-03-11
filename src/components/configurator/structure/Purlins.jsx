@@ -40,7 +40,7 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
     const isEpona = isAcama && (buildingType === 'epona' || buildingType === 'epona_talian5');
 
     // --- EPONA GENERATION ---
-    if (isEpona) {
+    if (isEpona && buildingType !== 'epona_talian5') {
         const mainSlope = 17 * (Math.PI / 180);
         const extendLeftX = 2.55;
         const extendRightX = 1.25; // Restored
@@ -108,7 +108,90 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
             }
         }
     }
-    // --- MONOPENTE GENERATION ---
+    // --- TALIAN 5 GENERATION ---
+    else if (buildingType === 'epona_talian5') {
+        const purlinH = 0.05; // Demandé: 5cm d'écartement = panne de 5cm
+        const purlinW = 0.06;
+        const thick = 0.003;
+        const t5Shape = createZProfile(purlinH, purlinW, thick);
+        const t5BayGeo = new THREE.ExtrudeGeometry(t5Shape, { depth: baySpacing, bevelEnabled: false });
+
+        const perpOffset = 0.20 + (purlinH / 2) + 0.10; // Half rafter (0.2m) + half purlin + 10cm elevation
+
+        const leftEaveH = 7.9;
+        const effectiveRidgeHeight = 8.1;
+        const midEaveH = 6.0;
+        const rightEaveH = 4.3;
+
+        const offsetApexFromLeft = 1.13;
+        const apexX = -16.0 + offsetApexFromLeft; // -14.87
+        const middleColumnX = 0;
+
+        // Débords supprimés, les poteaux tombent exactement sous les sablières
+        const extendLeftX = 0;
+        const extendRightX = 0;
+
+        const leftAngle = Math.atan((effectiveRidgeHeight - leftEaveH) / offsetApexFromLeft);
+        const middleAngle = Math.atan((effectiveRidgeHeight - midEaveH) / (16.0 - offsetApexFromLeft));
+        const rightAngle = Math.atan((midEaveH - rightEaveH) / 11.6);
+
+        const leftSlopeLen = (offsetApexFromLeft + extendLeftX) / Math.cos(leftAngle);
+        const middleSlopeLen = (16.0 - offsetApexFromLeft) / Math.cos(middleAngle);
+        const rightSlopeLen = (11.6 + extendRightX) / Math.cos(rightAngle);
+
+        const numPLeft = Math.floor(leftSlopeLen / purlinSpacing);
+        const numPMid = Math.floor(middleSlopeLen / purlinSpacing);
+        const numPRight = Math.floor(rightSlopeLen / purlinSpacing);
+
+        for (let bayIndex = 0; bayIndex < bayCount; bayIndex++) {
+            const zStart = -bayIndex * baySpacing;
+
+            // Left Section (Apex down to left eave)
+            for (let i = 0; i <= numPLeft; i++) {
+                const dist = i * purlinSpacing;
+                const xLocal = -dist * Math.cos(leftAngle);
+                const yLocal = -dist * Math.sin(leftAngle);
+                const xPerp = -perpOffset * Math.sin(leftAngle);
+                const yPerp = perpOffset * Math.cos(leftAngle);
+
+                purlins.push(
+                    <mesh key={`Bay${bayIndex}-T5-L-${i}`} geometry={t5BayGeo} material={material}
+                        position={[apexX + xLocal + xPerp, effectiveRidgeHeight + yLocal + yPerp, zStart]}
+                        rotation={[0, Math.PI, -leftAngle]} />
+                );
+            }
+
+            // Middle Section (Apex down to Middle Column)
+            for (let i = 1; i <= numPMid; i++) { // Skip apex
+                const dist = i * purlinSpacing;
+                const xLocal = dist * Math.cos(middleAngle);
+                const yLocal = -dist * Math.sin(middleAngle);
+                const xPerp = perpOffset * Math.sin(middleAngle);
+                const yPerp = perpOffset * Math.cos(middleAngle);
+
+                purlins.push(
+                    <mesh key={`Bay${bayIndex}-T5-M-${i}`} geometry={t5BayGeo} material={material}
+                        position={[apexX + xLocal + xPerp, effectiveRidgeHeight + yLocal + yPerp, zStart]}
+                        rotation={[0, Math.PI, middleAngle]} />
+                );
+            }
+
+            // Right Section (Middle Column down to Right Eave)
+            for (let i = 0; i <= numPRight; i++) { // Include middle start usually overlapping but angle breaks
+                const dist = i * purlinSpacing;
+                const xLocal = dist * Math.cos(rightAngle);
+                const yLocal = -dist * Math.sin(rightAngle);
+                const xPerp = perpOffset * Math.sin(rightAngle);
+                const yPerp = perpOffset * Math.cos(rightAngle);
+
+                purlins.push(
+                    <mesh key={`Bay${bayIndex}-T5-R-${i}`} geometry={t5BayGeo} material={material}
+                        position={[middleColumnX + xLocal + xPerp, midEaveH + yLocal + yPerp, zStart]}
+                        rotation={[0, Math.PI, rightAngle]} />
+                );
+            }
+        }
+    }
     else if (isMonopente) {
         const deltaH = ridgeHeight - eaveHeight;
         const angleRad = Math.atan(deltaH / width); // Absolute angle

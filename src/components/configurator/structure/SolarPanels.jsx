@@ -6,7 +6,7 @@ import { calculateSolarLayout } from '../utils/solarLayout';
 // ... (Constants preserved if needed, but logic moved) ...
 
 export function SolarPanels({ surfaceWidth, surfaceLength, name = "Roof", forceFullCoverage = false, stretchToFit = false, customGap = null, customMargin = null }) {
-    const { hasSolar } = useConfiguratorStore(useConfiguratorValues);
+    const { hasSolar } = useConfiguratorValues();
 
     // Geometry & Material (Memoized)
     const panelGeometry = useMemo(() => new THREE.BoxGeometry(1.134, 0.04, 1.762), []);
