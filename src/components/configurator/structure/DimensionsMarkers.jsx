@@ -919,7 +919,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                                 <mesh position={rightExtData.wEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                             </>
                         )}
-                        <Text position={[width / 2 + rightExtData.extWidth / 2, 0.2, isTalian4 ? 5.0 : 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                        <Text position={[width / 2 + rightExtData.extWidth / 2, 0.2, isTalian4 ? 4.5 : 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
                             {isEpona ? '7.8m' : `${rightExtData.extWidth} m`}
                         </Text>
                     </group>
@@ -950,7 +950,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         </>
                     )}
                     <Text
-                        position={[-width / 2 - leftExtData.extWidth / 2, 0.2, isTalian4 ? 5.0 : 3.5]}
+                        position={[-width / 2 - leftExtData.extWidth / 2, 0.2, isTalian4 ? 4.5 : 3.5]}
                         rotation={[-Math.PI / 2, 0, 0]}
                         fontSize={0.8}
                         color={textColor}
