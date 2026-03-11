@@ -333,11 +333,11 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         const midEaveH = 6.0;
         const rightEaveH = 4.3;
 
-        const offsetApexFromLeft = 1.13;
-        const apexX = -16.0 + offsetApexFromLeft; // -14.87
+        const offsetApexFromLeft = 4.13;
+        const apexX = -15.4 + offsetApexFromLeft; // -11.27
         const middleColumnX = 0;
-        const leftColumnX = -16.0;
-        const rightColumnX = 11.6;
+        const leftColumnX = -15.4;
+        const rightColumnX = 11.0;
 
         // Débords supprimés, les poteaux tombent exactement sous les sablières
         const extendLeftX = 0;
@@ -345,13 +345,13 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
 
         // Angle calculations (positive angles)
         const leftAngle = Math.atan((effectiveRidgeHeight - leftEaveH) / offsetApexFromLeft);
-        const middleAngle = Math.atan((effectiveRidgeHeight - midEaveH) / (16.0 - offsetApexFromLeft));
-        const rightAngle = Math.atan((midEaveH - rightEaveH) / 11.6);
+        const middleAngle = Math.atan((effectiveRidgeHeight - midEaveH) / (15.4 - offsetApexFromLeft));
+        const rightAngle = Math.atan((midEaveH - rightEaveH) / 11.0);
 
         // Roof segments lengths
         const leftGeoLength = (offsetApexFromLeft + extendLeftX) / Math.cos(leftAngle);
-        const middleGeoLength = (16.0 - offsetApexFromLeft) / Math.cos(middleAngle);
-        const rightGeoLength = (11.6 + extendRightX) / Math.cos(rightAngle);
+        const middleGeoLength = (15.4 - offsetApexFromLeft) / Math.cos(middleAngle);
+        const rightGeoLength = (11.0 + extendRightX) / Math.cos(rightAngle);
 
         const leftProfile = createTrapezoidalProfile(leftGeoLength, 0.035, 0.25);
         const middleProfile = createTrapezoidalProfile(middleGeoLength, 0.035, 0.25);

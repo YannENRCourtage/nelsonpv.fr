@@ -75,6 +75,7 @@ export function PortalFrame({
             // USER REQUEST Ph3: Décaler le faîtage vers la droite de 3m. 1.13 + 3 = 4.13
             const offsetApexFromLeft = 4.13;
             apexX = -15.4 + offsetApexFromLeft; // -11.27
+            effectiveRidgeHeight = 8.1;
 
             // Pente gauche: de 7.9m à 8.1m
             leftSectionSpan = offsetApexFromLeft;
@@ -82,7 +83,7 @@ export function PortalFrame({
             lAngle = leftSectionAngle;
 
             // Pente droite (jusqu'au poteau central fixe de 6m à X=0)
-            middleSectionSpan = 16.0 - offsetApexFromLeft; // du pic jusqu'à x=0
+            middleSectionSpan = 15.4 - offsetApexFromLeft; // du pic jusqu'à x=0
             middleColumnX = 0;
 
             // Pente depuis l'apex jusqu'au poteau central
@@ -92,8 +93,8 @@ export function PortalFrame({
             const dropToMiddle = middleSectionSpan * Math.tan(middleSectionAngle);
             middleColumnHeight = effectiveRidgeHeight - dropToMiddle;
 
-            // Seconde moitié de la pente droite (P. central -> P. droit à X=11.6m et H=4.3m)
-            rightSectionSpan = 11.6;
+            // Seconde moitié de la pente droite (P. central -> P. droit à X=11.0m et H=4.3m)
+            rightSectionSpan = 11.0;
             rightSectionAngle = Math.atan((6.0 - 4.3) / rightSectionSpan);
             rAngle = rightSectionAngle;
 

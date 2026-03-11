@@ -332,6 +332,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     // 3d. Right Eave Height (Asymmetrical 2 Zones ONLY)
     const asym2RightEaveData = useMemo(() => {
         if (buildingType !== 'asymetrique_2' && !isEpona) return null;
+        if (buildingType === 'epona_talian5') return null; // USER REQUEST: Remove redundant line on right
         // USER REQUEST 12/01/2026: Right sablière height for asymmetric 2 zones = 4m (BUILDING, not awning)
         const h = isEpona ? 4.3 : 4.0; // Fixed right eave height for BUILDING
         const x = width / 2 + 1.5; // Right side, outside
@@ -566,6 +567,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     // 7b. EPONA/TALIAN Total Width Marker (ACAMA uniquement)
     const acamaTotalWidthData = useMemo(() => {
         if (!isEpona && !isTalian) return null;
+        if (buildingType === 'epona_talian5') return null; // USER REQUEST: Remove 26.4m line
         const totalW = buildingType === 'epona_talian5' ? 27.6 : (isEpona ? 35.3 : (isTalian4 ? 37.5 : (isTalian3 ? 21.1 : 23.5)));
         const zPos = 6.0;
 
