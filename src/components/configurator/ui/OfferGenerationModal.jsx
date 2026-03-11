@@ -71,6 +71,8 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
                 console.error("Erreur téléchargement image:", e);
                 return null;
             }
+        }
+        return null;
     };
 
     // Helper: Convert Data URL to Uint8Array for pdf-lib
