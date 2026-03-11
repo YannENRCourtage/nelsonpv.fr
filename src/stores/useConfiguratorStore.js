@@ -219,6 +219,8 @@ export const TALIAN_3_MODELS = {
         rightSide: 'auvent',
         leftWidth: 1.8,
         rightWidth: 1.8,
+        fixedPower: 240.1,
+        fixedPanelCount: 522,
     },
     'TALIAN_3_MID': {
         label: 'TALIAN 3 MID / 68x21.1m',
@@ -232,6 +234,8 @@ export const TALIAN_3_MODELS = {
         rightSide: 'auvent',
         leftWidth: 1.8,
         rightWidth: 1.8,
+        fixedPower: 314.6,
+        fixedPanelCount: 684,
     },
     'TALIAN_3_MAX': {
         label: 'TALIAN 3 MAX / 90.1x21.1m',
@@ -245,6 +249,8 @@ export const TALIAN_3_MODELS = {
         rightSide: 'auvent',
         leftWidth: 1.8,
         rightWidth: 1.8,
+        fixedPower: 414.0,
+        fixedPanelCount: 900,
     }
 };
 
@@ -632,6 +638,8 @@ export const useConfiguratorValues = () => {
                     model = TALIAN_MODELS[state.selectedTalianModel];
                 } else if (TALIAN_1_MODELS[state.selectedTalian1Model] && Math.abs(state.width - 18.8) < 0.1) {
                     model = TALIAN_1_MODELS[state.selectedTalian1Model];
+                } else if (TALIAN_3_MODELS[state.selectedTalian3Model] && Math.abs(state.width - 17.5) < 0.1) {
+                    model = TALIAN_3_MODELS[state.selectedTalian3Model];
                 }
             }
 

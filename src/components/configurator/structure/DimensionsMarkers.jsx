@@ -1084,6 +1084,47 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 )
             }
 
+            {/* 7c. TALIAN 4 Appentis Width Markers (11.2m) */}
+            {talian4AppentisWidthData && (
+                <group>
+                    {/* Left Appentis */}
+                    <Line points={talian4AppentisWidthData.left.points[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={talian4AppentisWidthData.left.points[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={talian4AppentisWidthData.left.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={talian4AppentisWidthData.left.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text
+                        position={[talian4AppentisWidthData.left.mid.x, 0.2, talian4AppentisWidthData.left.mid.z]}
+                        rotation={[-Math.PI / 2, 0, 0]}
+                        fontSize={0.8}
+                        color={textColor}
+                        anchorX="center"
+                        anchorY="bottom"
+                        outlineWidth={0.1}
+                        outlineColor="#ffffff"
+                    >
+                        11.2 m
+                    </Text>
+
+                    {/* Right Appentis */}
+                    <Line points={talian4AppentisWidthData.right.points[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={talian4AppentisWidthData.right.points[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={talian4AppentisWidthData.right.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={talian4AppentisWidthData.right.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text
+                        position={[talian4AppentisWidthData.right.mid.x, 0.2, talian4AppentisWidthData.right.mid.z]}
+                        rotation={[-Math.PI / 2, 0, 0]}
+                        fontSize={0.8}
+                        color={textColor}
+                        anchorX="center"
+                        anchorY="bottom"
+                        outlineWidth={0.1}
+                        outlineColor="#ffffff"
+                    >
+                        11.2 m
+                    </Text>
+                </group>
+            )}
+
             {/* 11. EPONA SPECIFIC MARKERS */}
             {
                 eponaMarkers && (
