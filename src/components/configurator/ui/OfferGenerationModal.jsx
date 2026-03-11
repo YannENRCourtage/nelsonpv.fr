@@ -96,6 +96,29 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
         }
     };
 
+    // Helper: Ensure Image is PNG/JPEG using Canvas (Handles WebP conversion)
+    const ensureCompatibleDataUrl = async (dataUrl) => {
+        if (!dataUrl) return null;
+        // If already PNG or JPEG, we still might want to normalize to PNG if WebP is suspected
+        if (dataUrl.startsWith('data:image/png') || dataUrl.startsWith('data:image/jpeg')) {
+             return dataUrl;
+        }
+        
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                resolve(canvas.toDataURL('image/png'));
+            };
+            img.onerror = () => resolve(dataUrl); // Fallback
+            img.src = dataUrl;
+        });
+    };
+
     // --- INITIALIZATON ---
     useEffect(() => {
         if (isOpen) {
@@ -262,9 +285,10 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
 
                 // Handle Images
                 if (tag.key === '{{img_2d}}' && generatedImages?.img3D) {
-                    const imgBytes = dataURLToUint8Array(generatedImages.img3D);
+                    const normalizedUrl = await ensureCompatibleDataUrl(generatedImages.img3D);
+                    const imgBytes = dataURLToUint8Array(normalizedUrl);
                     if (imgBytes) {
-                        const isJpeg = generatedImages.img3D.toLowerCase().startsWith('data:image/jp');
+                        const isJpeg = normalizedUrl.toLowerCase().startsWith('data:image/jp');
                         const img = isJpeg ? await pdfDoc.embedJpg(imgBytes) : await pdfDoc.embedPng(imgBytes);
                         
                         // Decreased by further 20% from 320 -> 256
@@ -284,10 +308,11 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
                 const captureToUse = projectCaptureImg || generatedImages?.mapImg;
 
                 if (tag.key === '{{img_capture}}' && captureToUse) {
-                    const capBytes = dataURLToUint8Array(captureToUse);
+                    const normalizedUrl = await ensureCompatibleDataUrl(captureToUse);
+                    const capBytes = dataURLToUint8Array(normalizedUrl);
                     if (capBytes) {
                         try {
-                            const isJpeg = captureToUse.toLowerCase().startsWith('data:image/jp');
+                            const isJpeg = normalizedUrl.toLowerCase().startsWith('data:image/jp');
                             const img = isJpeg ? await pdfDoc.embedJpg(capBytes) : await pdfDoc.embedPng(capBytes);
                             
                             // Increased by 80% from 300 -> 540
@@ -302,7 +327,7 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
                         } catch (embedErr) {
                             console.error("Embedding failure, retrying with opposite type", embedErr);
                             // Fallback try: if it was thought to be PNG but failed, try JPG and vice versa
-                            const isJpeg = captureToUse.toLowerCase().startsWith('data:image/jp');
+                            const isJpeg = normalizedUrl.toLowerCase().startsWith('data:image/jp');
                             const img = isJpeg ? await pdfDoc.embedPng(capBytes) : await pdfDoc.embedJpg(capBytes);
                             
                             const captureDims = img.scaleToFit(540, 405);
