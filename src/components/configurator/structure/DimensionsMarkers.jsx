@@ -82,7 +82,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // 2. Length Arrow (Right Side)
     const { lengthPoints, lengthStart, lengthEnd, xSide } = useMemo(() => {
-        const x = width / 2 + rightWidth + 3.0;
+        const x = width / 2 + rightWidth + (buildingType === 'epona_talian5' ? 1.0 : 3.0); // USER REQUEST: Rapprocher le trait (initialement +3.0)
         const start = new THREE.Vector3(x, 0.1, 0);
         const end = new THREE.Vector3(x, 0.1, -length);
         const mid = new THREE.Vector3(x, 0.1, -length / 2);
@@ -562,6 +562,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     // 7b. EPONA/TALIAN Total Width Marker (ACAMA uniquement)
     const acamaTotalWidthData = useMemo(() => {
         if (!isEpona && !isTalian) return null;
+        if (buildingType === 'epona_talian5') return null; // USER REQUEST: Suppress 26.4m total width line
         const totalW = buildingType === 'epona_talian5' ? 27.6 : (isEpona ? 35.3 : (isTalian4 ? 37.5 : (isTalian3 ? 21.1 : 23.5)));
         const zPos = (isTalian1 || isTalian3) ? 7.0 : 6.0;
 
@@ -636,8 +637,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         // --- LARGEURS ---
 
         // Right Span (11.6m pour T5, 7.85m pour EPONA)
-        const rightSpanLength = buildingType === 'epona_talian5' ? 11.6 : 7.85;
-        const rightSpanLabel = buildingType === 'epona_talian5' ? "11.6 m" : "7.8 m";
+        const rightSpanLength = buildingType === 'epona_talian5' ? 11.0 : 7.85;
+        const rightSpanLabel = buildingType === 'epona_talian5' ? "11 m" : "7.8 m"; 
         const rSpanStart = new THREE.Vector3(midPostX, 0.1, zFront);
         const rSpanEnd = new THREE.Vector3(rightPostX, 0.1, zFront);
         const rSpanMid = new THREE.Vector3(midPostX + rightSpanLength / 2, 0.1, zFront);
@@ -706,10 +707,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             mHeightVal = 6.0;
             mGapBottom = mHeightVal / 2 - 0.6;
             mGapTop = mHeightVal / 2 + 0.6;
-            mHeightStart = new THREE.Vector3(mHeightX, eponaBaseY, midHeightZ);
-            mHeightEnd = new THREE.Vector3(mHeightX, mHeightVal, midHeightZ);
-            mHeightPoints.push([mHeightStart, new THREE.Vector3(mHeightX, mGapBottom, midHeightZ)]);
-            mHeightPoints.push([new THREE.Vector3(mHeightX, mGapTop, midHeightZ), mHeightEnd]);
+            mHeightStart = new THREE.Vector3(mHeightX - 0.5, eponaBaseY, midHeightZ); // USER REQUEST: Move to the left of the post
+            mHeightEnd = new THREE.Vector3(mHeightX - 0.5, mHeightVal, midHeightZ);
+            mHeightPoints.push([mHeightStart, new THREE.Vector3(mHeightX - 0.5, mGapBottom, midHeightZ)]);
+            mHeightPoints.push([new THREE.Vector3(mHeightX - 0.5, mGapTop, midHeightZ), mHeightEnd]);
         }
 
         // --- HAUTEUR GAUCHE (TALIAN_5: 7.9m) ou (EPONA: 5.0m) ---
@@ -1118,7 +1119,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Text
                         position={[
                             0, // Center text over building
-                            Math.min(eaveHeight, ridgeHeight) + (buildingType === 'epona_talian5' ? 1 : 4), // Demande spécifique Talian 5: Abaisser de 1m (initialement +2m dans le code, demande utilisateur de réduire d'1m par rapport à l'existant)
+                            Math.min(eaveHeight, ridgeHeight) + (buildingType === 'epona_talian5' ? 0 : 4), // Demande spécifique Talian 5: Abaisser encore (initialement +1m)
                             -length / 2 // Move back to the middle of the building (neg Z)
                         ]}
                         rotation={[-Math.PI / 2, 0, Math.PI / 2]} // 90° Counter-clockwise Horizontal

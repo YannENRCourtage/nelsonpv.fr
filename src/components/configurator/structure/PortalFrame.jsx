@@ -67,8 +67,8 @@ export function PortalFrame({
             
             // Nouveau calcul pour supprimer les débords = allonger l'entre-poteaux de 0.6m chaque côté
             // Ancien leftSpan = 15.4 => Nouveau = 16.0. Ancien rightSpan = 11.0 => Nouveau = 11.6.
-            leftSpan = 16.0;
-            rightSpan = 11.6;
+            leftSpan = 15.4;
+            rightSpan = 11.0;
 
             // Calcul de l'apex pour respecter la crête
             // (8.1 - 7.9) / tan(10°) = 1.13m depuis le nouveau poteau gauche (-16.0)
@@ -458,8 +458,8 @@ export function PortalFrame({
             leftColumnX_EP = -15.4;
             middleColumnX_EP = 0;
             rightColumnX_EP = 11.0;
-            extendLeftX = 0.6; // Débord standard
-            extendRightX = 0.6;
+            extendLeftX = 0; // Aucun débord
+            extendRightX = 0;
         } else {
             leftColumnX_EP = -11.8;
             middleColumnX_EP = 11.8;

@@ -57,14 +57,16 @@ export function Bracing({
             <BraceRod key={key} start={start} end={end} material={bracingMaterial} thickness={0.03} />
         );
 
-        // Main Left Wall (-width/2)
-        bracings.push(createRod(new THREE.Vector3(-width / 2, yBot, zStart), new THREE.Vector3(-width / 2, yTopMainLeft, zEnd), `wall-L-${i}-1`));
-        bracings.push(createRod(new THREE.Vector3(-width / 2, yTopMainLeft, zStart), new THREE.Vector3(-width / 2, yBot, zEnd), `wall-L-${i}-2`));
+        // Main Left Wall (-width/2 ou -15.4 pour T5)
+        const xLeftWall = buildingType === 'epona_talian5' ? -15.4 : -width / 2;
+        bracings.push(createRod(new THREE.Vector3(xLeftWall, yBot, zStart), new THREE.Vector3(xLeftWall, yTopMainLeft, zEnd), `wall-L-${i}-1`));
+        bracings.push(createRod(new THREE.Vector3(xLeftWall, yTopMainLeft, zStart), new THREE.Vector3(xLeftWall, yBot, zEnd), `wall-L-${i}-2`));
 
-        // Main Right Wall (+width/2) - User Request: Only one brace for EPONA ACAMA
+        // Main Right Wall (+width/2 ou +11.0 pour T5)
         if (!isAcama || buildingType !== 'epona') {
-            bracings.push(createRod(new THREE.Vector3(width / 2, yBot, zStart), new THREE.Vector3(width / 2, yTopMainRight, zEnd), `wall-R-${i}-1`));
-            bracings.push(createRod(new THREE.Vector3(width / 2, yTopMainRight, zStart), new THREE.Vector3(width / 2, yBot, zEnd), `wall-R-${i}-2`));
+            const xRightWall = buildingType === 'epona_talian5' ? 11.0 : width / 2;
+            bracings.push(createRod(new THREE.Vector3(xRightWall, yBot, zStart), new THREE.Vector3(xRightWall, yTopMainRight, zEnd), `wall-R-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(xRightWall, yTopMainRight, zStart), new THREE.Vector3(xRightWall, yBot, zEnd), `wall-R-${i}-2`));
         }
 
 
