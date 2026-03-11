@@ -99,13 +99,11 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
     // Helper: Ensure Image is PNG/JPEG using Canvas (Handles WebP conversion)
     const ensureCompatibleDataUrl = async (dataUrl) => {
         if (!dataUrl) return null;
-        // If already PNG or JPEG, we still might want to normalize to PNG if WebP is suspected
-        if (dataUrl.startsWith('data:image/png') || dataUrl.startsWith('data:image/jpeg')) {
-             return dataUrl;
-        }
         
         return new Promise((resolve) => {
             const img = new Image();
+            // Important for potential CORS if fetched from proxy/firebase
+            img.crossOrigin = "anonymous";
             img.onload = () => {
                 const canvas = document.createElement('canvas');
                 canvas.width = img.width;
@@ -114,7 +112,10 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
                 ctx.drawImage(img, 0, 0);
                 resolve(canvas.toDataURL('image/png'));
             };
-            img.onerror = () => resolve(dataUrl); // Fallback
+            img.onerror = (err) => {
+                console.error("Canvas conversion error", err);
+                resolve(dataUrl); // Fallback to original
+            };
             img.src = dataUrl;
         });
     };
@@ -288,18 +289,28 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
                     const normalizedUrl = await ensureCompatibleDataUrl(generatedImages.img3D);
                     const imgBytes = dataURLToUint8Array(normalizedUrl);
                     if (imgBytes) {
-                        const isJpeg = normalizedUrl.toLowerCase().startsWith('data:image/jp');
-                        const img = isJpeg ? await pdfDoc.embedJpg(imgBytes) : await pdfDoc.embedPng(imgBytes);
-                        
-                        // Decreased by further 20% from 320 -> 256
-                        const imgDims = img.scaleToFit(256, 192);
-
-                        page.drawImage(img, {
-                            x: x,
-                            y: y - imgDims.height,
-                            width: imgDims.width,
-                            height: imgDims.height,
-                        });
+                        // Following normalization, we expect a PNG (or at least a valid standard image)
+                        // Using embedPng as primary, with a descriptive catch
+                        try {
+                            const img = await pdfDoc.embedPng(imgBytes);
+                            const imgDims = img.scaleToFit(256, 192);
+                            page.drawImage(img, {
+                                x: x,
+                                y: y - imgDims.height,
+                                width: imgDims.width,
+                                height: imgDims.height,
+                            });
+                        } catch (e) {
+                            console.error("Failed to embed 2D image", e);
+                            // Very last resort if embedPng failed despite normalization
+                            try {
+                                const img = await pdfDoc.embedJpg(imgBytes);
+                                const imgDims = img.scaleToFit(256, 192);
+                                page.drawImage(img, { x, y: y - imgDims.height, width: imgDims.width, height: imgDims.height });
+                            } catch (e2) {
+                                console.error("Final fallback failed for 2D image");
+                            }
+                        }
                     }
                     continue;
                 }
@@ -312,12 +323,9 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
                     const capBytes = dataURLToUint8Array(normalizedUrl);
                     if (capBytes) {
                         try {
-                            const isJpeg = normalizedUrl.toLowerCase().startsWith('data:image/jp');
-                            const img = isJpeg ? await pdfDoc.embedJpg(capBytes) : await pdfDoc.embedPng(capBytes);
-                            
-                            // Increased by 80% from 300 -> 540
+                            // Normalized images SHOULD be standard PNGs
+                            const img = await pdfDoc.embedPng(capBytes);
                             const captureDims = img.scaleToFit(540, 405);
-
                             page.drawImage(img, {
                                 x: x,
                                 y: y - captureDims.height,
@@ -325,18 +333,19 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
                                 height: captureDims.height,
                             });
                         } catch (embedErr) {
-                            console.error("Embedding failure, retrying with opposite type", embedErr);
-                            // Fallback try: if it was thought to be PNG but failed, try JPG and vice versa
-                            const isJpeg = normalizedUrl.toLowerCase().startsWith('data:image/jp');
-                            const img = isJpeg ? await pdfDoc.embedPng(capBytes) : await pdfDoc.embedJpg(capBytes);
-                            
-                            const captureDims = img.scaleToFit(540, 405);
-                            page.drawImage(img, {
-                                x: x,
-                                y: y - captureDims.height,
-                                width: captureDims.width,
-                                height: captureDims.height,
-                            });
+                            console.error("Embedding capture failure after normalization, trying JPG", embedErr);
+                            try {
+                                const img = await pdfDoc.embedJpg(capBytes);
+                                const captureDims = img.scaleToFit(540, 405);
+                                page.drawImage(img, {
+                                    x: x,
+                                    y: y - captureDims.height,
+                                    width: captureDims.width,
+                                    height: captureDims.height,
+                                });
+                            } catch (embedErr2) {
+                                console.error("Total failure to embed capture", embedErr2);
+                            }
                         }
                     }
                     continue;
