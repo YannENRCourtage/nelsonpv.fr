@@ -690,7 +690,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const rHeightPoints = [];
         const rightHeightZ = 3.5; // Demande utilisateur: Avancer l'indication de 4.3m pour qu'elle soit devant le poteau. Initial = -0.5 ou 1.0, on met Z=3.5
         let rGapBottom, rGapTop, rHeightStart, rHeightEnd, rHeightVal, rHeightX;
-        rHeightX = rightPostX;
+        rHeightX = buildingType === 'epona_talian5' ? rightPostX : rightPostX + 2.0;
         if (buildingType === 'epona_talian5') {
             rHeightVal = 4.3;
             rGapBottom = rHeightVal / 2 - 0.6;
@@ -729,7 +729,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const lHeightPoints = [];
         const leftHeightZ = 3.5;
         let lGapBottom, lGapTop, lHeightStart, lHeightEnd, lHeightVal, lHeightX;
-        lHeightX = leftPostX;
+        lHeightX = buildingType === 'epona_talian5' ? leftPostX : leftPostX - 3.0;
         if (buildingType === 'epona_talian5') {
             lHeightVal = 7.9;
             lGapBottom = lHeightVal / 2 - 0.6;

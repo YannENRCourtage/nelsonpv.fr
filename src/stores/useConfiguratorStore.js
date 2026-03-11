@@ -602,7 +602,18 @@ export const useConfiguratorValues = () => {
 
         // Puissance par panneau : 460Wc pour ACAMA, 465Wc pour GREEN INVEST
         const PANEL_WATT = state.isAcama ? 460 : 465;
-        const solarPower = (solarCount * PANEL_WATT) / 1000;
+        let finalSolarCount = solarCount;
+        let finalSolarPower = (solarCount * PANEL_WATT) / 1000;
+
+        // Override for ACAMA EPONA models if fixed values exist
+        if (state.isAcama && state.buildingType === 'epona') {
+            const model = EPONA_MODELS[state.selectedEponaModel];
+            if (model?.fixedPower !== undefined) {
+                finalSolarPower = model.fixedPower;
+                finalSolarCount = model.fixedPanelCount || solarCount;
+            }
+        }
+
         const availableWidths = TYPE_WIDTHS_MAP[state.buildingType] || TYPE_WIDTHS_MAP['symetrique'];
 
         return {
@@ -610,7 +621,7 @@ export const useConfiguratorValues = () => {
             availableWidths,
             length,
             ridgeHeight,
-            solarStats: { count: solarCount, power: solarPower },
+            solarStats: { count: finalSolarCount, power: finalSolarPower },
         };
     }, [
         state,
