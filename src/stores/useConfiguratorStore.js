@@ -233,42 +233,39 @@ export const TALIAN_3_MODELS = {
 
 /**
  * ACAMA TALIAN 5 Model Definitions
- * - buildingType = 'symetrique' (handled as asym2 in PortalFrame)
- * - width = 27.3m
- * - asym style with 3 columns
+ * - Clone exact de EPONA
+ * - buildingType = 'epona_talian5'
  */
 export const TALIAN_5_MODELS = {
     'TALIAN_5_MIN': {
-        label: 'TALIAN 5 MIN / 31x27.6m / 866m² / 179.9 kWc',
-        width: 27.6,
+        label: 'TALIAN 5 MIN / 31x35.3m',
+        width: 23.6,
         baySpacing: 6.2,
         bayCount: 5,
         fixedLength: 31.0,
-        eaveHeight: 7.9,        // Sablière Gauche
-        rightEaveHeight: 4.3,   // Sablière Droite
-        roofPitch: 10,
+        eaveHeight: 5.0,     // Sablière Gauche EPONA
+        rightEaveHeight: 3.8, // Sablière Droite EPONA
+        ridgeHeight: 9.41,   // Faîtage EPONA
+        roofPitch: 17,       // Pente EPONA
         leftSide: 'none',
         rightSide: 'none',
-        leftWidth: 15.4,        // Entre sablière gauche et poteau central
-        rightWidth: 11.0,       // Entre poteau central et sablière droite. (Total spans 26.4m, width 27.6m -> 1.2m débord total)
     },
     'TALIAN_5_MID': {
-        label: 'TALIAN 5 MID / 50x27.6m / 1414m² / 296.2 kWc',
-        width: 27.6,
+        label: 'TALIAN 5 MID / 50x35.3m',
+        width: 23.6,
         baySpacing: 6.25,
         bayCount: 8,
         fixedLength: 50.0,
-        eaveHeight: 7.9,
-        rightEaveHeight: 4.3,
-        roofPitch: 10,
+        eaveHeight: 5.0,
+        rightEaveHeight: 3.8,
+        ridgeHeight: 9.41,
+        roofPitch: 17,
         leftSide: 'none',
         rightSide: 'none',
-        leftWidth: 15.4,
-        rightWidth: 11.0,
     },
     'TALIAN_5_MAX': {
-        label: 'TALIAN 5 MAX / 62.5x27.6m / 1677m² / 349.1 kWc',
-        width: 27.6,
+        label: 'TALIAN 5 MAX / 62.5x35.3m',
+        width: 23.6,
         baySpacing: 6.25,
         bayCount: 10,
         fixedLength: 62.5,
@@ -456,13 +453,14 @@ export const useConfiguratorStore = create((set, get) => ({
         if (!model) return;
         set({
             selectedTalian5Model: modelKey,
-            buildingType: 'asymetrique_2', // TALIAN 5 uses Asymetrique 2 logic for rendering
+            buildingType: 'epona_talian5', // Switch to EPONA logic
             width: model.width,
             baySpacing: model.baySpacing,
             bayCount: model.bayCount,
             fixedLength: model.fixedLength,
             eaveHeight: model.eaveHeight,
             roofPitch: model.roofPitch,
+            ridgeHeight: model.ridgeHeight,
             leftSide: model.leftSide,
             rightSide: model.rightSide,
             leftWidth: model.leftWidth,
@@ -529,11 +527,11 @@ export const useConfiguratorValues = () => {
         if (state.isAcama && state.buildingType === 'symetrique' && Math.abs(state.width - 17.5) < 0.1) {
             return 4.5; // TALIAN 3 Fixed Ridge Height
         }
-        if (state.isAcama && state.buildingType === 'asymetrique_2' && Math.abs(state.width - 27.6) < 0.1) {
-            return 8.1; // TALIAN 5 Fixed Ridge Height
+        if (state.isAcama && state.buildingType === 'epona_talian5' && Math.abs(state.width - 23.6) < 0.1) {
+            return 9.41; // TALIAN 5 (EPONA Clone) Fixed Ridge Height
         }
         if (state.isAcama && state.buildingType === 'epona' && Math.abs(state.width - 23.6) < 0.1) {
-            return 9.4; // EPONA Fixed Ridge Height
+            return 9.41; // EPONA Fixed Ridge Height
         }
 
         // Default calculation

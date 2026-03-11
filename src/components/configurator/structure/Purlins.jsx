@@ -37,7 +37,7 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
     const perpOffset = rafterOffset + (purlinHeight / 2) + 0.001; // Small 1mm tolerance
 
     const purlins = [];
-    const isEpona = isAcama && buildingType === 'epona';
+    const isEpona = isAcama && (buildingType === 'epona' || buildingType === 'epona_talian5');
 
     // --- EPONA GENERATION ---
     if (isEpona) {

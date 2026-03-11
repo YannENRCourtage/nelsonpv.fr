@@ -46,8 +46,8 @@ export function ControlPanel({ isAcama = false }) {
     const isAcamaTalian3 = isAcama && buildingType === 'symetrique' && !!TALIAN_3_MODELS[selectedTalian3Model] && Math.abs(width - 17.5) < 0.1;
     const isAcamaTalian = isAcamaTalian4 || isAcamaTalian1 || isAcamaTalian3;
 
-    const isAcamaAsymetrique = isAcama && (buildingType === 'epona' || buildingType === 'asymetrique_2');
-    const isAcamaTalian5 = isAcama && buildingType === 'asymetrique_2' && !!TALIAN_5_MODELS[selectedTalian5Model] && Math.abs(width - 27.6) < 0.1;
+    const isAcamaAsymetrique = isAcama && (buildingType === 'epona' || buildingType === 'epona_talian5' || buildingType === 'asymetrique_2');
+    const isAcamaTalian5 = isAcama && buildingType === 'epona_talian5' && !!TALIAN_5_MODELS[selectedTalian5Model];
     const isAcamaEpona = isAcama && buildingType === 'epona';
 
     // When ACAMA user picks 'Asymétrique', auto-load EPONA_45 if not already an asymmetric type
@@ -147,14 +147,14 @@ export function ControlPanel({ isAcama = false }) {
                         </div>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
                             <span>Longueur : <strong>{isAcamaEpona ? EPONA_MODELS[selectedEponaModel]?.fixedLength : TALIAN_5_MODELS[selectedTalian5Model]?.fixedLength}m</strong></span>
-                            <span>Largeur totale : <strong>{isAcamaEpona ? '35.3m' : '27.6m'}</strong></span>
+                            <span>Largeur totale : <strong>35.3m</strong></span>
                             <span>Travées : <strong>{isAcamaEpona ? `${EPONA_MODELS[selectedEponaModel]?.bayCount} × ${EPONA_MODELS[selectedEponaModel]?.baySpacing}m` : `${TALIAN_5_MODELS[selectedTalian5Model]?.bayCount} × ${TALIAN_5_MODELS[selectedTalian5Model]?.baySpacing}m`}</strong></span>
-                            <span>Pente : <strong>{isAcamaEpona ? '17°' : '10°'}</strong></span>
-                            <span>Faîtage : <strong>{isAcamaEpona ? '9.4m' : '8.1m'}</strong></span>
-                            <span>Sablière G : <strong>{isAcamaEpona ? '5m' : '7.9m'}</strong></span>
-                            <span>Sablière D : <strong>{isAcamaEpona ? '3.8m' : '4.3m'}</strong></span>
-                            <span>{isAcamaEpona ? 'Auvent G' : 'Appentis G'} : <strong>{isAcamaEpona ? '2.5m' : '15.4m'}</strong></span>
-                            <span>{isAcamaEpona ? 'Appentis D' : 'Appentis D'} : <strong>{isAcamaEpona ? '7.8m' : '11m'}</strong></span>
+                            <span>Pente : <strong>17°</strong></span>
+                            <span>Faîtage : <strong>9.4m</strong></span>
+                            <span>Sablière G : <strong>5m</strong></span>
+                            <span>Sablière D : <strong>3.8m</strong></span>
+                            <span>Appentis G : <strong>9.3m</strong></span>
+                            <span>Auvent D : <strong>2.5m</strong></span>
                         </div>
                     </div>
                 </div>

@@ -39,15 +39,16 @@ export function PortalFrame({
 
     // --- HEIGHT & ANGLE LOGIC (Hoisted) ---
     const isMonopente = buildingType === 'monopente';
-    const isAsymetrique = buildingType === 'asymetrique_1';
+    const isAsymetrique = buildingType === 'asymetrique';
     const isAsymetrique2 = buildingType === 'asymetrique_2';
 
     const isSymetrique = buildingType === 'symetrique';
-    const isEpona = isAcama && buildingType === 'epona';
+    const isEpona = isAcama && (buildingType === 'epona' || buildingType === 'epona_talian5');
 
     // ACAMA: TALIAN 5 is also an Asymetrique 2 Zones structure
-    const isTalian5 = isAcama && buildingType === 'asymetrique_2' && Math.abs(width - 27.6) < 0.1;
+    // const isTalian5 = isAcama && buildingType === 'asymetrique_2' && Math.abs(width - 27.6) < 0.1; // OBSOLÈTE
 
+    // Variables dimensionnelles calculées
     let leftSpan, rightSpan, lAngle, rAngle, effectiveRidgeHeight, apexX;
     let leftEaveHeight = eaveHeight; // Default
     let rightEaveHeight = eaveHeight; // Default
@@ -58,49 +59,7 @@ export function PortalFrame({
     let leftSectionAngle, rightSectionAngle, middleSectionAngle;
 
     // Determine Geometry params based on Type
-    if (isTalian5) {
-        // TALIAN 5: Asymmetrical with 3 columns, strictly 10° pitch from LEFT eave
-        // USER REQUEST 10/03/2026: Fixed Ridge 8.1, Left Eave 7.9, Right Eave 4.3, Total 27.6m
-        // Spans: Left Eave -> Mid Column = 15.4m. Mid Column -> Right Eave = 11m. Total inner = 26.4m.
-        // Assume Columns: Left = -width/2 + 0.6, Mid = Left+15.4, Right = Mid+11.
-        // Let's keep Left column at -width/2 and overhangs outside, OR Columns on the grid.
-        // Usually, in Nelson, columns are at -width/2 and width/2, with width being the distance.
-        // Wait, width = 27.6m in store. So from -13.8 to 13.8.
-        // If left column is at -13.8, Mid is at -13.8+15.4 = 1.6, Right is at 1.6+11 = 12.6.
-        // Remaining to 13.8 is 1.2m (Right Overhang). Left overhang 0.
-        const mainPitch = 10 * (Math.PI / 180);
-        leftEaveHeight = 7.9;
-        rightEaveHeight = 4.3;
-        effectiveRidgeHeight = 8.1;
-
-        // Apex offset from Left Eave to reach 8.1m at 10° pitch:
-        // 7.9 + x*tan(10) = 8.1 -> x = 0.2 / tan(10) ~= 1.134m
-        const leftApexOffset = 0.2 / Math.tan(mainPitch);
-        apexX = -width / 2 + leftApexOffset;
-
-        // Middle column at 15.4m from left sabliere
-        middleColumnX = -width / 2 + 15.4;
-
-        lAngle = mainPitch;
-        // Right angle: from Ridge (-12.86m, 8.1m) to Right Sabliere (+14m, 4.3m)
-        const distApexToRightEave = width / 2 - apexX;
-        const totalDrop = effectiveRidgeHeight - rightEaveHeight;
-        rAngle = Math.atan(totalDrop / distApexToRightEave);
-
-        // Middle Column Height calculation
-        const distApexToMiddle = middleColumnX - apexX;
-        middleColumnHeight = effectiveRidgeHeight - (distApexToMiddle * Math.tan(rAngle));
-
-        leftSectionSpan = leftApexOffset;
-        leftSectionAngle = lAngle;
-        middleSectionSpan = middleColumnX - apexX;
-        middleSectionAngle = rAngle;
-        rightSectionSpan = 11.0; // Distance from mid column to right column
-        rightSectionAngle = rAngle;
-
-        // NEW: Right Column is NOT under sabliere. xR = 1.6 + 11 = 12.6.
-        // It has a 1.2m overhang to reach the 13.8m mark (27.6/2).
-    } else if (isEpona) {
+    if (isEpona) {
         // EPONA (Asymmetrical 2 Zones)
         const mainPitch = 17 * (Math.PI / 180);
         leftEaveHeight = 5.0;
@@ -426,65 +385,6 @@ export function PortalFrame({
     // but standard `angleRad` might be close enough or we can accept slight mismatch for now.
     // The previous implementation used `angleRad` for columns globally.
 
-    // --- TALIAN 5 (3 Columns, Exact Render with Overhang) ---
-    if (isTalian5) {
-        const rafterDepth = 0.35;
-        const leftRafterVert = rafterDepth / Math.cos(leftSectionAngle);
-        const middleRafterVert = rafterDepth / Math.cos(middleSectionAngle);
-        const rightRafterVert = rafterDepth / Math.cos(rightSectionAngle);
-
-        const leftColOffset = leftRafterVert - 0.20;
-        const middleColOffset = middleRafterVert - 0.20;
-        const rightColOffset = rightRafterVert - 0.20;
-
-        const leftColHeightFinal = leftEaveHeight + leftColOffset;
-        const middleColHeightFinal = middleColumnHeight + middleColOffset;
-
-        // Height of rafter at Right Column position (x=12.4)
-        const distMidToRightCol = 11.0;
-        const rightColHeightFinal = middleColumnHeight - (distMidToRightCol * Math.tan(rightSectionAngle)) + rightColOffset;
-
-        // Assembly
-        const leftColumnGeoT5 = createSlantedColumn(baseColumnProfile, 0, false, leftColHeightFinal);
-        const middleColumnGeoT5 = createSlantedColumn(baseColumnProfile, 0, false, middleColHeightFinal);
-        const rightColumnGeoT5 = createSlantedColumn(baseColumnProfile, 0, false, rightColHeightFinal);
-
-        // Sections
-        const leftRafterT5 = createRafterAssembly(leftSectionSpan / Math.cos(leftSectionAngle), false);
-        const middleRafterT5 = createRafterAssembly(middleSectionSpan / Math.cos(middleSectionAngle), true);
-        const rightRafterT5 = createRafterAssembly(rightSectionSpan / Math.cos(rightSectionAngle), true);
-
-        return (
-            <group position={position}>
-                {/* Columns */}
-                <mesh geometry={leftColumnGeoT5} material={steelMaterial} position={[-width / 2, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
-                <mesh geometry={middleColumnGeoT5} material={steelMaterial} position={[middleColumnX, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
-                <mesh geometry={rightColumnGeoT5} material={steelMaterial} position={[middleColumnX + 11.0, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
-
-                {/* Left Section (Eave to Apex) */}
-                <group position={[-width / 2, leftEaveHeight, 0]} rotation={[0, 0, leftSectionAngle]}>
-                    {leftRafterT5}
-                </group>
-
-                {/* Middle Section (Apex to Mid Column) */}
-                <group position={[apexX, effectiveRidgeHeight, 0]} rotation={[0, 0, -middleSectionAngle]}>
-                    {middleRafterT5}
-                </group>
-
-                {/* Right Section (Mid Column to Right Eave - with 1.2m overhang) */}
-                <group position={[middleColumnX, middleColumnHeight, 0]} rotation={[0, 0, -rightSectionAngle]}>
-                    {/* The rafter length must include the overhang up to width/2 */}
-                    {createRafterAssembly((rightSectionSpan + 1.2 + horizontalOverhang) / Math.cos(rightSectionAngle), true)}
-                </group>
-
-                {/* Apex Haunch */}
-                <group position={[apexX, effectiveRidgeHeight, 0]}>
-                    {createApexHaunchAssemblySCREB(leftSectionAngle, middleSectionAngle)}
-                </group>
-            </group>
-        );
-    }
-
     // --- EPONA (3 Columns, Exact Render) ---
     if (isEpona) {
         const rafterDepth = 0.35;
@@ -743,11 +643,10 @@ export function PortalFrame({
                 {columns.map(x => createVerticalCol(x))}
 
                 {/* Rafter (Single Piece) */}
+                {/* Group Position: Top of Left Column (Ridge Height) */}
                 <group position={[0, centerHeight, 0]} rotation={[0, 0, rotZ]}>
                     {/* Rafter is centered in local X.
-                         USER REQUEST 14/01/2026: Shift 50% to right along slope.
-
-                {/* BRACING (Croix de St André) for PL 15.8m, 20.2m, 24.6m */}
+                         USER REQUEST 14/01/2026: Shift 50% to right along slope. */}
                     <mesh geometry={rafterGeo} material={steelMaterial} position={[isOmbrierePL ? (rafterLen * 0.5) : 0, 0, 0]} rotation={[0, -Math.PI / 2, 0]} castShadow />
                 </group>
 

@@ -17,9 +17,8 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     const isMonopente = buildingType === 'monopente';
     const isAsymetrique = buildingType === 'asymetrique_1';
     const isAsymetrique2 = buildingType === 'asymetrique_2';
-    const isEpona = isAcama && buildingType === 'epona';
-    const isAcamaTalian5 = false; // TALIAN 5 supprimé - 05/03/2026
-
+    const isEpona = isAcama && (buildingType === 'epona' || buildingType === 'epona_talian5');
+    // const isAcamaTalian5 = isAcama && buildingType === 'asymetrique_2' && Math.abs(width - 27.6) < 0.1; // OBSOLÈTE
     // ==========================================
     // HOOKS (Must be unconditional)
     // ==========================================
@@ -306,11 +305,12 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
                     rotation={[0, 0, mainSlope]}
                     castShadow receiveShadow />
 
-                {!isAcamaTalian5 && (
+                <group>
+                    {/* Faitages pour Asym 2 ou EPONA */}
                     <group position={[lFinalX, lFinalY, -length / 2]} rotation={[0, 0, mainSlope]}>
                         <SolarPanels surfaceWidth={leftRoofLength} surfaceLength={length + 1.0} />
                     </group>
-                )}
+                </group>
 
                 {/* Right Panel */}
                 <mesh geometry={rightGeo} material={roofMaterial}
@@ -327,7 +327,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     }
 
     // --- B. ASYMETRIQUE 2 ZONES & TALIAN 5 ---
-    if (isAsymetrique2 || isAcamaTalian5) {
+    if (isAsymetrique2) {
         // Same slope across sections for default, but TALIAN 5 has specific logic
         let leftAngleAsym2 = 15 * (Math.PI / 180);
         let middleAngleAsym2 = 15 * (Math.PI / 180);
@@ -341,7 +341,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
 
         let rightSpan, distRightToMiddle, mainSlope;
 
-        if (isAcamaTalian5) {
+        if (isEpona && buildingType === 'epona_talian5') { // Changed from isAcamaTalian5
             // TALIAN 5 specific geometry (matches PortalFrame)
             const mainPitch = 10 * (Math.PI / 180);
             leftEaveHeightAsym2 = 7.9;
