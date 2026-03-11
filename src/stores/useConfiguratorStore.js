@@ -111,19 +111,23 @@ export const TALIAN_MODELS = {
         rightSide: 'appentis',
         leftWidth: 11.2,
         rightWidth: 11.2,
+        fixedPower: 309.1,
+        fixedPanelCount: 672,
     },
     'TALIAN_4_MID': {
-        label: 'TALIAN 4 MID / 45.2x37.5m',
+        label: 'TALIAN 4 MID / 42.2x37.5m',
         width: 13.7,
-        baySpacing: 7.533,
+        baySpacing: 7.033, // Updated to fit 42.2m (6 bays)
         bayCount: 6,
-        fixedLength: 45.2,
+        fixedLength: 42.2, // Updated from 45.2 to 42.2
         eaveHeight: 4.5,
         roofPitch: 6,
         leftSide: 'appentis',
         rightSide: 'appentis',
         leftWidth: 11.2,
         rightWidth: 11.2,
+        fixedPower: 368.0,
+        fixedPanelCount: 800,
     },
     'TALIAN_4_MAX': {
         label: 'TALIAN 4 MAX / 63.4x37.5m',
@@ -137,6 +141,8 @@ export const TALIAN_MODELS = {
         rightSide: 'appentis',
         leftWidth: 11.2,
         rightWidth: 11.2,
+        fixedPower: 500.0,
+        fixedPanelCount: 1120,
     }
 };
 
@@ -159,6 +165,8 @@ export const TALIAN_1_MODELS = {
         rightSide: 'auvent',
         leftWidth: 2.3,
         rightWidth: 2.3,
+        fixedPower: 266.8,
+        fixedPanelCount: 580,
     },
     'TALIAN_1_MID': {
         label: 'TALIAN 1 MID / 60.5x23.5m',
@@ -172,6 +180,8 @@ export const TALIAN_1_MODELS = {
         rightSide: 'auvent',
         leftWidth: 2.3,
         rightWidth: 2.3,
+        fixedPower: 303.6,
+        fixedPanelCount: 660,
     },
     'TALIAN_1_MAX': {
         label: 'TALIAN 1 MAX / 68x23.5m',
@@ -185,6 +195,8 @@ export const TALIAN_1_MODELS = {
         rightSide: 'auvent',
         leftWidth: 2.3,
         rightWidth: 2.3,
+        fixedPower: 340.4,
+        fixedPanelCount: 740,
     }
 };
 
@@ -609,9 +621,20 @@ export const useConfiguratorValues = () => {
         let finalSolarCount = solarCount;
         let finalSolarPower = (solarCount * PANEL_WATT) / 1000;
 
-        // Override for ACAMA EPONA models if fixed values exist
-        if (state.isAcama && state.buildingType === 'epona') {
-            const model = EPONA_MODELS[state.selectedEponaModel];
+        // Override for ACAMA EPONA/TALIAN models if fixed values exist
+        if (state.isAcama) {
+            let model = null;
+            if (state.buildingType === 'epona') {
+                model = EPONA_MODELS[state.selectedEponaModel];
+            } else if (state.buildingType === 'symetrique') {
+                // Check if it's one of the TALIAN families
+                if (TALIAN_MODELS[state.selectedTalianModel] && Math.abs(state.width - 13.7) < 0.1) {
+                    model = TALIAN_MODELS[state.selectedTalianModel];
+                } else if (TALIAN_1_MODELS[state.selectedTalian1Model] && Math.abs(state.width - 18.8) < 0.1) {
+                    model = TALIAN_1_MODELS[state.selectedTalian1Model];
+                }
+            }
+
             if (model?.fixedPower !== undefined) {
                 finalSolarPower = model.fixedPower;
                 finalSolarCount = model.fixedPanelCount || solarCount;

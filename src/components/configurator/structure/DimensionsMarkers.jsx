@@ -599,6 +599,43 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(xMid.x + gapSize / 2, yPos, zPos), xEnd]
             ]
         };
+    // 7c. TALIAN 4 Appentis Width Markers (11.2m)
+    const talian4AppentisWidthData = useMemo(() => {
+        if (!isTalian4 || !isAcama) return null;
+
+        const leftAppentisStart = -37.5 / 2;
+        const leftAppentisEnd = -13.7 / 2;
+        const rightAppentisStart = 13.7 / 2;
+        const rightAppentisEnd = 37.5 / 2;
+        const yPos = 0.1;
+        const zPos = 4.5; // Slightly behind the total width marker (6.0)
+
+        const lMid = (leftAppentisStart + leftAppentisEnd) / 2;
+        const rMid = (rightAppentisStart + rightAppentisEnd) / 2;
+        const textGap = 1.0;
+
+        return {
+            left: {
+                start: new THREE.Vector3(leftAppentisStart, yPos, zPos),
+                end: new THREE.Vector3(leftAppentisEnd, yPos, zPos),
+                mid: new THREE.Vector3(lMid, yPos, zPos),
+                points: [
+                    [new THREE.Vector3(leftAppentisStart, yPos, zPos), new THREE.Vector3(lMid - textGap / 2, yPos, zPos)],
+                    [new THREE.Vector3(lMid + textGap / 2, yPos, zPos), new THREE.Vector3(leftAppentisEnd, yPos, zPos)]
+                ]
+            },
+            right: {
+                start: new THREE.Vector3(rightAppentisStart, yPos, zPos),
+                end: new THREE.Vector3(rightAppentisEnd, yPos, zPos),
+                mid: new THREE.Vector3(rMid, yPos, zPos),
+                points: [
+                    [new THREE.Vector3(rightAppentisStart, yPos, zPos), new THREE.Vector3(rMid - textGap / 2, yPos, zPos)],
+                    [new THREE.Vector3(rMid + textGap / 2, yPos, zPos), new THREE.Vector3(rightAppentisEnd, yPos, zPos)]
+                ]
+            }
+        };
+    }, [isTalian4, isAcama]);
+
     }, [isEpona, isTalian, isTalian4, isTalian3, isTalian1, gapSize, buildingType]);
 
 
