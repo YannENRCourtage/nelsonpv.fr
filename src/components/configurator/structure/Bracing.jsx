@@ -40,10 +40,16 @@ export function Bracing({
         const yBot = 0.5;
 
         // --- Main Building Eaves ---
-        const yTopMainLeft = (buildingType === 'monopente') ? ridgeHeight - 0.5 : eaveHeight - 0.5;
+        let yTopMainLeft = (buildingType === 'monopente') ? ridgeHeight - 0.5 : eaveHeight - 0.5;
         let yTopMainRight = eaveHeight - 0.5;
-        if (buildingType === 'asymetrique_1') yTopMainRight = 3.9;
-        else if (buildingType === 'asymetrique_2') yTopMainRight = 3.7;
+        if (buildingType === 'asymetrique_1') {
+            yTopMainRight = 3.9;
+        } else if (buildingType === 'asymetrique_2') {
+            yTopMainRight = 3.7;
+        } else if (buildingType === 'epona_talian5') {
+            yTopMainLeft = 7.9; // Reach exactly the eave
+            yTopMainRight = 4.3; // Reach exactly the eave
+        }
 
 
 

@@ -877,7 +877,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={asym2RightEaveData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={asym2RightEaveData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text position={[asym2RightEaveData.xRight + 0.5, asym2RightEaveData.hVal / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                        {`4 m`}
+                        {buildingType === 'epona_talian5' ? '4.3 m' : '4 m'}
                     </Text>
                 </group>
             )}
@@ -1068,16 +1068,20 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
                         {/* --- HAUTEURS EPONA/TALIAN 5 --- */}
                         {/* Right Height 2.6m (EPONA) or 4.3m (TALIAN 5) */}
-                        {eponaMarkers.rHeightPoints?.map((p, i) => (
+                        {buildingType !== 'epona_talian5' && eponaMarkers.rHeightPoints?.map((p, i) => (
                             <Line key={`rh-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />
                         ))}
-                        <mesh position={eponaMarkers.rHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <mesh position={eponaMarkers.rHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <Text position={[eponaMarkers.rHeightX, eponaMarkers.rHeightVal / 2, eponaMarkers.rightHeightZ - 0.2]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                            {`${eponaMarkers.rHeightVal} m`}
-                        </Text>
+                        {buildingType !== 'epona_talian5' && (
+                            <>
+                                <mesh position={eponaMarkers.rHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                                <mesh position={eponaMarkers.rHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                                <Text position={[eponaMarkers.rHeightX, eponaMarkers.rHeightVal / 2, eponaMarkers.rightHeightZ - 0.2]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                                    {`${eponaMarkers.rHeightVal} m`}
+                                </Text>
+                            </>
+                        )}
 
-                        {/* Mid Height 6.0m (TALIAN 5) */}
+                        {/* Mid Height 6.0m (TALIAN 5) - USER REQUEST: Keep? The user didn't explicitly ask to remove it, but mentioned only 4.3m and 7.9m. */}
                         {eponaMarkers.mHeightPoints?.map((p, i) => (
                             <Line key={`mh-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />
                         ))}
@@ -1092,14 +1096,18 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         )}
 
                         {/* Left Height 7.9m (TALIAN 5) or 5.0m (EPONA) */}
-                        {eponaMarkers.lHeightPoints?.map((p, i) => (
+                        {buildingType !== 'epona_talian5' && eponaMarkers.lHeightPoints?.map((p, i) => (
                             <Line key={`lh-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />
                         ))}
-                        <mesh position={eponaMarkers.lHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <mesh position={eponaMarkers.lHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <Text position={[eponaMarkers.lHeightX, eponaMarkers.lHeightVal / 2, eponaMarkers.leftHeightZ + 0.2]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                            {`${eponaMarkers.lHeightVal} m`}
-                        </Text>
+                        {buildingType !== 'epona_talian5' && (
+                            <>
+                                <mesh position={eponaMarkers.lHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                                <mesh position={eponaMarkers.lHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                                <Text position={[eponaMarkers.lHeightX, eponaMarkers.lHeightVal / 2, eponaMarkers.leftHeightZ + 0.2]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                                    {`${eponaMarkers.lHeightVal} m`}
+                                </Text>
+                            </>
+                        )}
                     </group>
                 )
             }
@@ -1110,7 +1118,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Text
                         position={[
                             0, // Center text over building
-                            Math.min(eaveHeight, ridgeHeight) + (buildingType === 'epona_talian5' ? 2 : 4), // Demande spécifique Talian 5: Abaisser de 2m
+                            Math.min(eaveHeight, ridgeHeight) + (buildingType === 'epona_talian5' ? 1 : 4), // Demande spécifique Talian 5: Abaisser de 1m (initialement +2m dans le code, demande utilisateur de réduire d'1m par rapport à l'existant)
                             -length / 2 // Move back to the middle of the building (neg Z)
                         ]}
                         rotation={[-Math.PI / 2, 0, Math.PI / 2]} // 90° Counter-clockwise Horizontal
