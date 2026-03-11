@@ -706,8 +706,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             rHeightVal = 3.8; 
             rGapBottom = rHeightVal / 2 - 0.6;
             rGapTop = rHeightVal / 2 + 0.6;
-            // USER REQUEST Round 1 EPONA: Reduce trait height by 1.2m (start higher from ground)
-            rHeightStart = new THREE.Vector3(rHeightX, eponaBaseY + 1.2, markerZ); 
+            rHeightStart = new THREE.Vector3(rHeightX, eponaBaseY, markerZ); 
             rHeightEnd = new THREE.Vector3(rHeightX, rHeightVal, markerZ);
             rHeightPoints.push([rHeightStart, new THREE.Vector3(rHeightX, rGapBottom, markerZ)]);
             rHeightPoints.push([new THREE.Vector3(rHeightX, rGapTop, markerZ), rHeightEnd]);
