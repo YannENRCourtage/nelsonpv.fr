@@ -741,7 +741,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         outlineWidth={0.1}
                         outlineColor="#ffffff"
                     >
-                        {isTalian5 ? "31.0 m" : `${length} m`}
+                        {`${length} m`}
                     </Text>
                 </group>
             )}
@@ -795,7 +795,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             {/* ... (Rest of Renders) ... */}
 
             {/* 4. RIDGE HEIGHT */}
-            {!isTalian5 && (
+            {true && (
                 <group>
                     <Line points={ridgePoints[0]} color={lineColor} lineWidth={lineWidth} />
                     <Line points={ridgePoints[1]} color={lineColor} lineWidth={lineWidth} />
@@ -815,7 +815,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={asymLeftEaveData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={asymLeftEaveData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text position={[asymLeftEaveData.xLeft - 0.5, asymLeftEaveData.hVal / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                        {isTalian5 ? "7.9 m" : `${parseFloat(Number(asymLeftEaveData.hVal).toFixed(2))} m`}
+                        {`${parseFloat(Number(asymLeftEaveData.hVal).toFixed(2))} m`}
                     </Text>
                 </group>
             )}
@@ -828,7 +828,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={asym2RightEaveData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={asym2RightEaveData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text position={[asym2RightEaveData.xRight + 0.5, asym2RightEaveData.hVal / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                        {isTalian5 ? "4.3 m" : `4 m`}
+                        {`4 m`}
                     </Text>
                 </group>
             )}
@@ -923,97 +923,104 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         outlineWidth={0.1}
                         outlineColor="#ffffff"
                     >
-                        {isTalian5 ? "15.4 m" : `13.1 m`}
+                        {`13.1 m`}
                     </Text>
                 </group>
-            )}
+            )
+            }
 
             {/* 8. ASYMMETRIC 2 ZONES RIGHT DISTANCE (Middle to Right) */}
-            {asym2RightDistData && (
-                <group>
-                    <Line points={asym2RightDistData.widthPoints[0]} color={lineColor} lineWidth={lineWidth} />
-                    <Line points={asym2RightDistData.widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
-                    <mesh position={asym2RightDistData.rStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <mesh position={asym2RightDistData.rEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text
-                        position={[asym2RightDistData.rMid.x, 0.2, 1.5]}
-                        rotation={[-Math.PI / 2, 0, 0]}
-                        fontSize={0.8}
-                        color={textColor}
-                        anchorX="center"
-                        anchorY="bottom"
-                        outlineWidth={0.1}
-                        outlineColor="#ffffff"
-                    >
-                        {isTalian5 ? "11 m" : `${asym2RightDistData.distance} m`}
-                    </Text>
-                </group>
-            )}
+            {
+                asym2RightDistData && (
+                    <group>
+                        <Line points={asym2RightDistData.widthPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                        <Line points={asym2RightDistData.widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                        <mesh position={asym2RightDistData.rStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <mesh position={asym2RightDistData.rEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <Text
+                            position={[asym2RightDistData.rMid.x, 0.2, 1.5]}
+                            rotation={[-Math.PI / 2, 0, 0]}
+                            fontSize={0.8}
+                            color={textColor}
+                            anchorX="center"
+                            anchorY="bottom"
+                            outlineWidth={0.1}
+                            outlineColor="#ffffff"
+                        >
+                            {`${asym2RightDistData.distance} m`}
+                        </Text>
+                    </group >
+                )
+            }
 
             {/* 9. ACAMA TOTAL WIDTH MARKER (35.3m) */}
-            {acamaTotalWidthData && (
-                <group>
-                    <Line points={acamaTotalWidthData.points[0]} color={lineColor} lineWidth={lineWidth} />
-                    <Line points={acamaTotalWidthData.points[1]} color={lineColor} lineWidth={lineWidth} />
-                    <mesh position={acamaTotalWidthData.xStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <mesh position={acamaTotalWidthData.xEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text
-                        position={[acamaTotalWidthData.xMid.x, 0.2, acamaTotalWidthData.zPos + 0.5]}
-                        rotation={[-Math.PI / 2, 0, 0]}
-                        fontSize={0.8}
-                        color={textColor}
-                        anchorX="center"
-                        anchorY="bottom"
-                        outlineWidth={0.1}
-                        outlineColor="#ffffff"
-                    >
-                        {`${acamaTotalWidthData.totalW} m`}
-                    </Text>
-                </group>
-            )}
+            {
+                acamaTotalWidthData && (
+                    <group>
+                        <Line points={acamaTotalWidthData.points[0]} color={lineColor} lineWidth={lineWidth} />
+                        <Line points={acamaTotalWidthData.points[1]} color={lineColor} lineWidth={lineWidth} />
+                        <mesh position={acamaTotalWidthData.xStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <mesh position={acamaTotalWidthData.xEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <Text
+                            position={[acamaTotalWidthData.xMid.x, 0.2, acamaTotalWidthData.zPos + 0.5]}
+                            rotation={[-Math.PI / 2, 0, 0]}
+                            fontSize={0.8}
+                            color={textColor}
+                            anchorX="center"
+                            anchorY="bottom"
+                            outlineWidth={0.1}
+                            outlineColor="#ffffff"
+                        >
+                            {`${acamaTotalWidthData.totalW} m`}
+                        </Text>
+                    </group>
+                )
+            }
 
             {/* 11. EPONA SPECIFIC MARKERS */}
-            {eponaMarkers && (
-                <group>
-                    {/* Right Span 7.85m */}
-                    <Line points={eponaMarkers.rSpanPoints[0]} color={lineColor} lineWidth={lineWidth} />
-                    <Line points={eponaMarkers.rSpanPoints[1]} color={lineColor} lineWidth={lineWidth} />
-                    <mesh position={eponaMarkers.rSpanStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <mesh position={eponaMarkers.rSpanEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text position={[eponaMarkers.rSpanMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                        7.8 m
-                    </Text>
+            {
+                eponaMarkers && (
+                    <group>
+                        {/* Right Span 7.85m */}
+                        <Line points={eponaMarkers.rSpanPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                        <Line points={eponaMarkers.rSpanPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                        <mesh position={eponaMarkers.rSpanStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <mesh position={eponaMarkers.rSpanEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <Text position={[eponaMarkers.rSpanMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                            7.8 m
+                        </Text>
 
-                    {/* Left Awning 2.5m */}
-                    <Line points={eponaMarkers.lAwningPoints[0]} color={lineColor} lineWidth={lineWidth} />
-                    <Line points={eponaMarkers.lAwningPoints[1]} color={lineColor} lineWidth={lineWidth} />
-                    <mesh position={eponaMarkers.lAwningStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <mesh position={eponaMarkers.lAwningEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text position={[eponaMarkers.lAwningMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                        2.5 m
-                    </Text>
+                        {/* Left Awning 2.5m */}
+                        <Line points={eponaMarkers.lAwningPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                        <Line points={eponaMarkers.lAwningPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                        <mesh position={eponaMarkers.lAwningStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <mesh position={eponaMarkers.lAwningEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <Text position={[eponaMarkers.lAwningMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                            2.5 m
+                        </Text>
 
-                    {/* Left Height 5m */}
-                    <Line points={eponaMarkers.lHeightPoints[0]} color={lineColor} lineWidth={lineWidth} />
-                    <Line points={eponaMarkers.lHeightPoints[1]} color={lineColor} lineWidth={lineWidth} />
-                    <mesh position={eponaMarkers.lHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <mesh position={eponaMarkers.lHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text position={[eponaMarkers.xLeftMarker - 0.5, eponaMarkers.leftEaveH / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                        {`${eponaMarkers.leftEaveH} m`}
-                    </Text>
+                        {/* Left Height 5m */}
+                        <Line points={eponaMarkers.lHeightPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                        <Line points={eponaMarkers.lHeightPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                        <mesh position={eponaMarkers.lHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <mesh position={eponaMarkers.lHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <Text position={[eponaMarkers.xLeftMarker - 0.5, eponaMarkers.leftEaveH / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                            {`${eponaMarkers.leftEaveH} m`}
+                        </Text>
 
-                    {/* Right Height 3.8m */}
-                    <Line points={eponaMarkers.rHeightPoints[0]} color={lineColor} lineWidth={lineWidth} />
-                    <mesh position={eponaMarkers.rHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <mesh position={eponaMarkers.rHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    {/* Right Height Label Horizontal (Rotated 90 deg clockwise from vertical PI/2 -> 0) */}
-                    <Text position={[eponaMarkers.xRightMarker, eponaMarkers.rightEaveH / 2, 0]} rotation={[0, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                        {"3.8 m"}
-                    </Text>
+                        {/* Right Height 3.8m */}
+                        <Line points={eponaMarkers.rHeightPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                        <mesh position={eponaMarkers.rHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        <mesh position={eponaMarkers.rHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                        {/* Right Height Label Horizontal (Rotated 90 deg clockwise from vertical PI/2 -> 0) */}
+                        <Text position={[eponaMarkers.xRightMarker, eponaMarkers.rightEaveH / 2, 0]} rotation={[0, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                            {"3.8 m"}
+                        </Text>
 
 
-                </group>
-            )}
+                    </group>
+                )
+            }
 
             {/* SURFACE AREA */}
             <Text
@@ -1025,8 +1032,6 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         if (isAcama && buildingType === 'asymetrique_1' && (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5)) {
                             baseHeight += 0.20; // Raise by 20cm for 16.4m width
                         }
-
-                        if (isTalian5) baseHeight = 5.0; // Place it on the long slope lower down for visibility
 
                         if (isEpona) {
                             baseHeight += 1.5;
@@ -1056,7 +1061,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 outlineWidth={0.2}
                 outlineColor="#000000"
             >
-                {isTalian5 ? `${(length * 27.6).toFixed(0)} m²` : `${surfaceArea} m²`}
+                {`${surfaceArea} m²`}
             </Text>
             {/* 9. ROOF SLOPE LABELS (Faitage/Sablière) */}
 
