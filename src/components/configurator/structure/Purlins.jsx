@@ -154,9 +154,12 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
                 const xPerp = -perpOffset * Math.sin(leftAngle);
                 const yPerp = perpOffset * Math.cos(leftAngle);
 
+                // USER REQUEST: Lower left-most (eave) purlin by 25cm
+                const yOffset = (i === numPLeft) ? -0.25 : 0;
+
                 purlins.push(
                     <mesh key={`Bay${bayIndex}-T5-L-${i}`} geometry={t5BayGeo} material={material}
-                        position={[apexX + xLocal + xPerp, effectiveRidgeHeight + yLocal + yPerp, zStart]}
+                        position={[apexX + xLocal + xPerp, effectiveRidgeHeight + yLocal + yPerp + yOffset, zStart]}
                         rotation={[0, Math.PI, -leftAngle]} />
                 );
             }

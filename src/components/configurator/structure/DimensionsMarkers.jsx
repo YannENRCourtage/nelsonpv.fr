@@ -82,7 +82,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // 2. Length Arrow (Right Side)
     const { lengthPoints, lengthStart, lengthEnd, xSide } = useMemo(() => {
-        const x = width / 2 + rightWidth + (buildingType === 'epona_talian5' ? 1.0 : 3.0); // USER REQUEST: Rapprocher le trait (initialement +3.0)
+        const x = width / 2 + rightWidth + (buildingType === 'epona_talian5' ? -4.0 : 3.0); 
         const start = new THREE.Vector3(x, 0.1, 0);
         const end = new THREE.Vector3(x, 0.1, -length);
         const mid = new THREE.Vector3(x, 0.1, -length / 2);
@@ -91,11 +91,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             lengthStart: start,
             lengthEnd: end,
             lengthPoints: [
-                [start, new THREE.Vector3(mid.x, mid.y, mid.z + gapSize / 2)],
-                [new THREE.Vector3(mid.x, mid.y, mid.z - gapSize / 2), end]
+                [start, new THREE.Vector3(x, 0.1, mid.z + gapSize / 2)],
+                [new THREE.Vector3(x, 0.1, mid.z - gapSize / 2), end]
             ]
         };
-    }, [width, length, rightWidth, gapSize]);
+    }, [width, length, rightWidth, gapSize, buildingType]);
 
     // 3. Eave Height (Left Side - Wait, if Left Ext exists, Eave marker moves?)
     // Originally: `x = hasAuvent ? (width / 2 + 2.0) : (-width / 2 - 2.0);`
@@ -685,25 +685,23 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
         // --- HAUTEURS FAÇADES ---
 
-        // --- HAUTEUR DROITE (TALIAN_5: 4.3m) ou (EPONA: 2.6m/3.8m) ---
+        // --- HAUTEUR DROITE (TALIAN_5: 4.3m) ou (EPONA: 3.8m) ---
         const rHeightPoints = [];
-        const rightHeightZ = 3.5; // Demande utilisateur: Avancer l'indication de 4.3m pour qu'elle soit devant le poteau. Initial = -0.5 ou 1.0, on met Z=3.5
+        const rightHeightZ = 3.5; 
         let rGapBottom, rGapTop, rHeightStart, rHeightEnd, rHeightVal, rHeightX;
-        rHeightX = buildingType === 'epona_talian5' ? rightPostX : rightPostX + 2.0;
+        rHeightX = buildingType === 'epona_talian5' ? rightPostX + 2.0 : rightPostX + 2.0;
         if (buildingType === 'epona_talian5') {
             rHeightVal = 4.3;
-            rGapBottom = rHeightVal / 2 - 0.6;
-            rGapTop = rHeightVal / 2 + 0.6;
             rHeightStart = new THREE.Vector3(rHeightX, eponaBaseY, rightHeightZ);
             rHeightEnd = new THREE.Vector3(rHeightX, rHeightVal, rightHeightZ);
-            rHeightPoints.push([rHeightStart, new THREE.Vector3(rHeightX, rGapBottom, rightHeightZ)]);
-            rHeightPoints.push([new THREE.Vector3(rHeightX, rGapTop, rightHeightZ), rHeightEnd]);
+            // Single line under text
+            rHeightPoints.push([rHeightStart, rHeightEnd]);
         } else {
             // Epona Right Height Default
-            rHeightVal = 3.8; // USER REQUEST: Update from 2.6 to 3.8
+            rHeightVal = 3.8; 
             rGapBottom = rHeightVal / 2 - 0.6;
             rGapTop = rHeightVal / 2 + 0.6;
-            rHeightStart = new THREE.Vector3(rHeightX, eponaBaseY, markerZ); // USER REQUEST: Move to Z=0 (axis of pillars)
+            rHeightStart = new THREE.Vector3(rHeightX, eponaBaseY, markerZ); 
             rHeightEnd = new THREE.Vector3(rHeightX, rHeightVal, markerZ);
             rHeightPoints.push([rHeightStart, new THREE.Vector3(rHeightX, rGapBottom, markerZ)]);
             rHeightPoints.push([new THREE.Vector3(rHeightX, rGapTop, markerZ), rHeightEnd]);
@@ -783,12 +781,12 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             {widthPoints && (
                 <group>
                     <Line points={widthPoints[0]} color={lineColor} lineWidth={lineWidth} />
-                    <Line points={widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
-                    <mesh position={widthStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={widthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text position={[0, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                        {`${width} m`}
-                    </Text>
+                    {buildingType !== 'epona_talian5' && (
+                        <Text position={[0, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                            {`${width} m`}
+                        </Text>
+                    )}
                 </group>
             )}
 
@@ -800,7 +798,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={lengthStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={lengthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[xSide + 0.5 - (buildingType === 'epona_talian5' ? 5 : 0), 0.2, -length / 2]}
+                        position={[xSide, 0.2, -length / 2]}
                         rotation={[-Math.PI / 2, 0, Math.PI / 2]}
                         fontSize={0.8}
                         color={textColor}
@@ -815,7 +813,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             )}
 
             {/* 3. EAVE HEIGHT (Left/Standard) - EXCLUDE Asym 2, EPONA et TALIAN (marqueur sablière bâtiment masqué) */}
-            {heightPoints && buildingType !== 'asymetrique_2' && buildingType !== 'epona' && !isTalian && (
+            {heightPoints && buildingType !== 'asymetrique_2' && !isEpona && !isTalian && (
                 <group>
                     <Line points={heightPoints[0]} color={lineColor} lineWidth={lineWidth} />
                     <Line points={heightPoints[1]} color={lineColor} lineWidth={lineWidth} />
@@ -1030,18 +1028,20 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         <Line points={acamaTotalWidthData.points[1]} color={lineColor} lineWidth={lineWidth} />
                         <mesh position={acamaTotalWidthData.xStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                         <mesh position={acamaTotalWidthData.xEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <Text
-                            position={[acamaTotalWidthData.xMid.x, 0.2, acamaTotalWidthData.zPos + 0.5]}
-                            rotation={[-Math.PI / 2, 0, 0]}
-                            fontSize={0.8}
-                            color={textColor}
-                            anchorX="center"
-                            anchorY="bottom"
-                            outlineWidth={0.1}
-                            outlineColor="#ffffff"
-                        >
-                            {`${acamaTotalWidthData.totalW} m`}
-                        </Text>
+                        {buildingType !== 'epona_talian5' && (
+                            <Text
+                                position={[acamaTotalWidthData.xMid.x, 0.2, acamaTotalWidthData.zPos + 0.5]}
+                                rotation={[-Math.PI / 2, 0, 0]}
+                                fontSize={0.8}
+                                color={textColor}
+                                anchorX="center"
+                                anchorY="bottom"
+                                outlineWidth={0.1}
+                                outlineColor="#ffffff"
+                            >
+                                {`${acamaTotalWidthData.totalW} m`}
+                            </Text>
+                        )}
                     </group>
                 )
             }
@@ -1093,7 +1093,20 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         <group>
                             <mesh position={eponaMarkers.rHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                             <mesh position={eponaMarkers.rHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                            <Text position={[eponaMarkers.rHeightX + 0.5, eponaMarkers.rHeightVal / 2, eponaMarkers.markerZ || 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                            <Text 
+                                position={[
+                                    eponaMarkers.rHeightX, 
+                                    buildingType === 'epona_talian5' ? eponaMarkers.rHeightVal + 0.5 : eponaMarkers.rHeightVal / 2, 
+                                    buildingType === 'epona_talian5' ? 3.5 : (eponaMarkers.markerZ || 0)
+                                ]} 
+                                rotation={buildingType === 'epona_talian5' ? [-Math.PI / 2, 0, 0] : [0, 0, Math.PI / 2]} 
+                                fontSize={0.8} 
+                                color={textColor} 
+                                anchorX="center" 
+                                anchorY={buildingType === 'epona_talian5' ? "bottom" : "middle"} 
+                                outlineWidth={0.1} 
+                                outlineColor="#ffffff"
+                            >
                                 {`${eponaMarkers.rHeightVal} m`}
                             </Text>
                         </group>
@@ -1133,7 +1146,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <Text
                         position={[
                             buildingType === 'epona_talian5' ? -11.27 : 0, // Positionner au faitage pour Talian 5
-                            Math.min(eaveHeight, ridgeHeight) + (buildingType === 'epona_talian5' ? 0 : 4), // Demande spécifique Talian 5: Abaisser encore (initialement +1m)
+                            Math.min(eaveHeight, ridgeHeight) + (buildingType === 'epona_talian5' ? 1.5 : 4), // Raise by 1.5m for Talian 5
                             -length / 2 // Move back to the middle of the building (neg Z)
                         ]}
                         rotation={[-Math.PI / 2, 0, Math.PI / 2]} // 90° Counter-clockwise Horizontal

@@ -588,6 +588,16 @@ export const useConfiguratorValues = () => {
 
         let solarCount = 0;
         if (state.hasSolar) {
+            // Check for fixed model stats (TALIAN 5)
+            const activeModel = state.buildingType === 'epona_talian5' ? TALIAN_5_MODELS[state.selectedTalian5Model] : (state.buildingType === 'epona' ? EPONA_MODELS[state.selectedEponaModel] : null);
+
+            if (activeModel && activeModel.fixedPower) {
+                return {
+                    power: activeModel.fixedPower,
+                    count: activeModel.fixedPanelCount
+                };
+            }
+
             const halfWidth = state.width / 2;
             const angleRad = (state.roofPitch * Math.PI) / 180;
             const geoSlope = halfWidth / Math.cos(angleRad);
