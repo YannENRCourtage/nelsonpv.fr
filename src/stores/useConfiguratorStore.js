@@ -7,6 +7,7 @@ import { create } from 'zustand';
 const TYPE_WIDTHS_MAP = {
     'symetrique': [15.0, 18.6, 22.3, 26.0, 29.8, 33.5],
     'epona': [23.6], // ACAMA-only
+    'epona_talian5': [23.6], // ACAMA-only clone of epona
     'asymetrique_1': [16.4, 20.0],
     'asymetrique_2': [25.5, 29.1],
     'monopente': [12.7, 16.4],

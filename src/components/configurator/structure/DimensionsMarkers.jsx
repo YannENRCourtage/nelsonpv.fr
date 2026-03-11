@@ -844,7 +844,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <group>
                         {!isTalian4 && (
                             <>
-                                {rightExtData.widthPoints.map((p, i) => (
+                                {rightExtData.widthPoints?.map((p, i) => (
                                     <Line key={i} points={p} color={lineColor} lineWidth={lineWidth} />
                                 ))}
                                 <mesh position={rightExtData.wStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
@@ -873,7 +873,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 <group>
                     {!isTalian4 && (
                         <>
-                            {leftExtData.widthPoints.map((p, i) => (
+                            {leftExtData.widthPoints?.map((p, i) => (
                                 <Line key={i} points={p} color={lineColor} lineWidth={lineWidth} />
                             ))}
                             <mesh position={leftExtData.wStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
@@ -892,7 +892,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     >
                         {isEpona ? '2.5m' : `${leftExtData.extWidth} m`}
                     </Text>
-                    {leftExtData.heightPoints.map((p, i) => (
+                    {leftExtData.heightPoints?.map((p, i) => (
                         <Line key={i} points={p} color={lineColor} lineWidth={lineWidth} />
                     ))}
                     {isAcama && (

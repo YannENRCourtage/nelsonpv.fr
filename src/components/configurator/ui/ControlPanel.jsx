@@ -241,7 +241,7 @@ export function ControlPanel({ isAcama = false }) {
                             onChange={(e) => setWidth(Number(e.target.value))}
                             className="w-full px-4 py-3 border border-slate-300 rounded-lg font-semibold text-sm bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                         >
-                            {availableWidths.map((w) => (
+                            {availableWidths?.map((w) => (
                                 <option key={w} value={w}>{w} m</option>
                             ))}
                         </select>
