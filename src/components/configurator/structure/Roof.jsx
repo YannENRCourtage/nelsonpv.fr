@@ -339,9 +339,9 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         const leftColumnX = -15.4;
         const rightColumnX = 11.0;
 
-        // Débords supprimés, les poteaux tombent exactement sous les sablières
-        const extendLeftX = 0;
-        const extendRightX = 0;
+        // Débord de 50cm (USER REQUEST 11/03/2026)
+        const extendLeftX = 0.5;
+        const extendRightX = 0.5;
 
         // Angle calculations (positive angles)
         const leftAngle = Math.atan((effectiveRidgeHeight - leftEaveH) / offsetApexFromLeft);

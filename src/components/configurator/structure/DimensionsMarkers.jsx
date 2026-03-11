@@ -385,6 +385,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             extHeight = 5.9; // Epona left awning height
         }
 
+        const xStart = -width / 2;
+        const xEnd = -width / 2 - extWidth;
+        const xMid = -width / 2 - extWidth / 2;
         const zFront = isTalian4 ? 5.0 : 3.0;
 
         // Width Marker
@@ -563,7 +566,6 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     // 7b. EPONA/TALIAN Total Width Marker (ACAMA uniquement)
     const acamaTotalWidthData = useMemo(() => {
         if (!isEpona && !isTalian) return null;
-        if (buildingType === 'epona_talian5') return null; // USER REQUEST: Remove 26.4m line
         const totalW = buildingType === 'epona_talian5' ? 27.6 : (isEpona ? 35.3 : (isTalian4 ? 37.5 : (isTalian3 ? 21.1 : 23.5)));
         const zPos = 6.0;
 
@@ -798,7 +800,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={lengthStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={lengthEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[xSide + 0.5, 0.2, -length / 2]}
+                        position={[xSide + 0.5 - (buildingType === 'epona_talian5' ? 5 : 0), 0.2, -length / 2]}
                         rotation={[-Math.PI / 2, 0, Math.PI / 2]}
                         fontSize={0.8}
                         color={textColor}
@@ -1084,20 +1086,17 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             </>
                         )}
 
-                        {/* --- HAUTEURS EPONA/TALIAN 5 --- */}
                         {/* Right Height 2.6m (EPONA) or 4.3m (TALIAN 5) */}
-                        {buildingType !== 'epona_talian5' && eponaMarkers.rHeightPoints?.map((p, i) => (
+                        {eponaMarkers.rHeightPoints?.map((p, i) => (
                             <Line key={`rh-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />
                         ))}
-                        {buildingType !== 'epona_talian5' && (
-                            <>
-                                <mesh position={eponaMarkers.rHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                <mesh position={eponaMarkers.rHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                <Text position={[eponaMarkers.rHeightX + 0.5, eponaMarkers.rHeightVal / 2, eponaMarkers.markerZ || 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                                    {`${eponaMarkers.rHeightVal} m`}
-                                </Text>
-                            </>
-                        )}
+                        <group>
+                            <mesh position={eponaMarkers.rHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                            <mesh position={eponaMarkers.rHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                            <Text position={[eponaMarkers.rHeightX + 0.5, eponaMarkers.rHeightVal / 2, eponaMarkers.markerZ || 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                                {`${eponaMarkers.rHeightVal} m`}
+                            </Text>
+                        </group>
 
                         {/* Mid Height 6.0m (TALIAN 5) - USER REQUEST: Keep? The user didn't explicitly ask to remove it, but mentioned only 4.3m and 7.9m. */}
                         {eponaMarkers.mHeightPoints?.map((p, i) => (
@@ -1114,18 +1113,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         )}
 
                         {/* Left Height 7.9m (TALIAN 5) or 5.0m (EPONA) */}
-                        {buildingType !== 'epona_talian5' && eponaMarkers.lHeightPoints?.map((p, i) => (
+                        {eponaMarkers.lHeightPoints?.map((p, i) => (
                             <Line key={`lh-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />
                         ))}
-                        {buildingType !== 'epona_talian5' && (
-                            <>
-                                <mesh position={eponaMarkers.lHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                <mesh position={eponaMarkers.lHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                <Text position={[eponaMarkers.lHeightX - 0.5, eponaMarkers.lHeightVal / 2, eponaMarkers.markerZ || 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                                    {`${eponaMarkers.lHeightVal} m`}
-                                </Text>
-                            </>
-                        )}
+                        <group>
+                            <mesh position={eponaMarkers.lHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                            <mesh position={eponaMarkers.lHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                            <Text position={[eponaMarkers.lHeightX - 0.5, eponaMarkers.lHeightVal / 2, eponaMarkers.markerZ || 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                                {`${eponaMarkers.lHeightVal} m`}
+                            </Text>
+                        </group>
                     </group>
                 )
             }

@@ -186,7 +186,7 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
 
                 purlins.push(
                     <mesh key={`Bay${bayIndex}-T5-R-${i}`} geometry={t5BayGeo} material={material}
-                        position={[middleColumnX + xLocal + xPerp, midEaveH + yLocal + yPerp, zStart]}
+                        position={[middleColumnX + xLocal + xPerp, midEaveH + yLocal + yPerp - 0.20, zStart]}
                         rotation={[0, Math.PI, rightAngle]} />
                 );
             }
