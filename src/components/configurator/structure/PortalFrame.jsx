@@ -329,7 +329,7 @@ export function PortalFrame({
 
                 {/* Bolts */}
                 {/* Use Instances or simple mesh for now inside group (InstancedMesh is better at Frame level, but simpler here for strict placement) */}
-                {boltPositions.map((pos, idx) => (
+                {boltPositions.filter((_, idx) => hasHaunch || idx < 4).map((pos, idx) => (
                     <mesh key={idx} geometry={boltGeo} material={steelMaterial}
                         position={[isRight ? -plateThickness : plateThickness, pos[1] - 0.1, pos[0]]}
                         rotation={[0, 0, isRight ? Math.PI : 0]} />

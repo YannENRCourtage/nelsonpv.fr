@@ -637,7 +637,14 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const midPostX = buildingType === 'epona_talian5' ? 0 : 11.8;
         const rightPostX = buildingType === 'epona_talian5' ? 11.0 : 19.65;
         const zFront = 3.0; // matching default width marker `zFront`
-        const eponaBaseY = 0.1; // Definition of eponaBaseY
+        const zFrontLength = -length / 2 + length / 2; // This is basically 0, let's look at length markers
+        // The length marker starts at xSide and spans -length to 0.
+        // The point at the end of length marker is at z = 0 (or -length).
+        // User wants markers on the axis of first pillars with the point of length marker.
+        // Length marker end point is usually at Z=0 (front) or Z=-length (back).
+        // Based on the screenshot, it's the front point, which is at Z=0.
+        const markerZ = 0; 
+        const eponaBaseY = 0.1; 
 
         // --- LARGEURS ---
 
@@ -650,7 +657,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const rSpanGap = 2.0;
         const rSpanPoints = [
             [rSpanStart, new THREE.Vector3(rSpanMid.x - rSpanGap / 2, 0.1, zFront)],
-            [rSpanStart, new THREE.Vector3(rSpanMid.x - rSpanGap / 2, eponaBaseY, zFront)],
+            // USER REQUEST: Line visible to the right until the point
             [new THREE.Vector3(rSpanMid.x + rSpanGap / 2, eponaBaseY, zFront), rSpanEnd]
         ];
 
@@ -697,10 +704,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             rHeightVal = 3.8; // USER REQUEST: Update from 2.6 to 3.8
             rGapBottom = rHeightVal / 2 - 0.6;
             rGapTop = rHeightVal / 2 + 0.6;
-            rHeightStart = new THREE.Vector3(rHeightX, eponaBaseY, rightHeightZ);
-            rHeightEnd = new THREE.Vector3(rHeightX, rHeightVal, rightHeightZ);
-            rHeightPoints.push([rHeightStart, new THREE.Vector3(rHeightX, rGapBottom, rightHeightZ)]);
-            rHeightPoints.push([new THREE.Vector3(rHeightX, rGapTop, rightHeightZ), rHeightEnd]);
+            rHeightStart = new THREE.Vector3(rHeightX, eponaBaseY, markerZ); // USER REQUEST: Move to Z=0 (axis of pillars)
+            rHeightEnd = new THREE.Vector3(rHeightX, rHeightVal, markerZ);
+            rHeightPoints.push([rHeightStart, new THREE.Vector3(rHeightX, rGapBottom, markerZ)]);
+            rHeightPoints.push([new THREE.Vector3(rHeightX, rGapTop, markerZ), rHeightEnd]);
         }
 
         // --- HAUGHTEUR CENTRALE (TALIAN_5: 6.0m) ---
@@ -736,19 +743,21 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             lHeightVal = 5.0;
             lGapBottom = lHeightVal / 2 - 0.6;
             lGapTop = lHeightVal / 2 + 0.6;
-            lHeightStart = new THREE.Vector3(lHeightX, eponaBaseY, leftHeightZ);
-            lHeightEnd = new THREE.Vector3(lHeightX, lHeightVal, leftHeightZ);
-            lHeightPoints.push([lHeightStart, new THREE.Vector3(lHeightX, lGapBottom, leftHeightZ)]);
-            lHeightPoints.push([new THREE.Vector3(lHeightX, lGapTop, leftHeightZ), lHeightEnd]);
+            lHeightStart = new THREE.Vector3(lHeightX, eponaBaseY, markerZ); // USER REQUEST: Move to Z=0
+            lHeightEnd = new THREE.Vector3(lHeightX, lHeightVal, markerZ);
+            lHeightPoints.push([lHeightStart, new THREE.Vector3(lHeightX, lGapBottom, markerZ)]);
+            lHeightPoints.push([new THREE.Vector3(lHeightX, lGapTop, markerZ), lHeightEnd]);
         }
+ drum
 
         return {
             rSpanStart, rSpanEnd, rSpanMid, rSpanPoints, rightSpanLabel,
             lCenterStart, lCenterEnd, lCenterMid, lCenterPoints,
             lAwningStart, lAwningEnd, lAwningMid, lAwningPoints,
-            rHeightPoints, rHeightStart, rHeightEnd, rHeightVal, rHeightX, rightHeightZ,
+            rHeightPoints, rHeightStart, rHeightEnd, rHeightVal, rHeightX,
             mHeightPoints, mHeightStart, mHeightEnd, mHeightVal, mHeightX, midHeightZ,
-            lHeightPoints, lHeightStart, lHeightEnd, lHeightVal, lHeightX, leftHeightZ
+            lHeightPoints, lHeightStart, lHeightEnd, lHeightVal, lHeightX, markerZ
+        };
         };
     }, [isEpona, gapSize, buildingType]);
 
@@ -1088,7 +1097,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             <>
                                 <mesh position={eponaMarkers.rHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                                 <mesh position={eponaMarkers.rHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                <Text position={[eponaMarkers.rHeightX + 0.5, eponaMarkers.rHeightVal / 2, eponaMarkers.rightHeightZ]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                                <Text position={[eponaMarkers.rHeightX + 0.5, eponaMarkers.rHeightVal / 2, eponaMarkers.markerZ || 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
                                     {`${eponaMarkers.rHeightVal} m`}
                                 </Text>
                             </>
@@ -1116,12 +1125,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             <>
                                 <mesh position={eponaMarkers.lHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                                 <mesh position={eponaMarkers.lHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                <Text position={[eponaMarkers.lHeightX - 0.5, eponaMarkers.lHeightVal / 2, eponaMarkers.leftHeightZ]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                                <Text position={[eponaMarkers.lHeightX - 0.5, eponaMarkers.lHeightVal / 2, eponaMarkers.markerZ || 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
                                     {`${eponaMarkers.lHeightVal} m`}
                                 </Text>
                             </>
                         )}
- drum
                     </group>
                 )
             }
