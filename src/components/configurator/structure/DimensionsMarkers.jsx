@@ -748,7 +748,6 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             lHeightPoints.push([lHeightStart, new THREE.Vector3(lHeightX, lGapBottom, markerZ)]);
             lHeightPoints.push([new THREE.Vector3(lHeightX, lGapTop, markerZ), lHeightEnd]);
         }
- drum
 
         return {
             rSpanStart, rSpanEnd, rSpanMid, rSpanPoints, rightSpanLabel,
@@ -758,8 +757,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             mHeightPoints, mHeightStart, mHeightEnd, mHeightVal, mHeightX, midHeightZ,
             lHeightPoints, lHeightStart, lHeightEnd, lHeightVal, lHeightX, markerZ
         };
-        };
-    }, [isEpona, gapSize, buildingType]);
+    }, [isEpona, gapSize, buildingType, length]);
 
 
     // Helper for Eave Text Content
