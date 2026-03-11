@@ -71,10 +71,10 @@ export function PortalFrame({
             rightSpan = 11.0;
 
             // Calcul de l'apex pour respecter la crête
-            // (8.1 - 7.9) / tan(10°) = 1.13m depuis le nouveau poteau gauche (-16.0)
-            const offsetApexFromLeft = 1.13;
-            apexX = -16.0 + offsetApexFromLeft; // -14.87
-            effectiveRidgeHeight = 8.1;
+            // (8.1 - 7.9) / tan(10°) = 1.13m depuis le nouveau poteau gauche (-15.4)
+            // USER REQUEST Ph3: Décaler le faîtage vers la droite de 3m. 1.13 + 3 = 4.13
+            const offsetApexFromLeft = 4.13;
+            apexX = -15.4 + offsetApexFromLeft; // -11.27
 
             // Pente gauche: de 7.9m à 8.1m
             leftSectionSpan = offsetApexFromLeft;

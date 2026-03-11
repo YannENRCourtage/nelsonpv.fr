@@ -140,11 +140,11 @@ export function Bracing({
             const midEaveH = 6.0;
             const rightEaveH = 4.3;
 
-            const offsetApexFromLeft = 1.13;
-            const apexX = -16.0 + offsetApexFromLeft; // -14.87
+            const offsetApexFromLeft = 4.13;
+            const apexX = -15.4 + offsetApexFromLeft; // -11.27
             const middleColumnX = 0;
-            const leftColumnX = -16.0;
-            const rightColumnX = 11.6;
+            const leftColumnX = -15.4;
+            const rightColumnX = 11.0;
 
             // Position de base de la charpente (Axe de l'IPE)
             // On ajoute 20cm pour être au sommet du rafter, puis +5cm pour la panne, puis +12cm pour le bac acier.

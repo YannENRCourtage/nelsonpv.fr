@@ -225,6 +225,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
             // Apex at 1/4 from left
             x = -width / 2 + (width * 0.25);
+        } else if (buildingType === 'epona_talian5') {
+            // New Ridge Position: -11.27
+            x = -11.27;
+            h = 8.1;
         }
 
 
@@ -562,9 +566,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     // 7b. EPONA/TALIAN Total Width Marker (ACAMA uniquement)
     const acamaTotalWidthData = useMemo(() => {
         if (!isEpona && !isTalian) return null;
-        if (buildingType === 'epona_talian5') return null; // USER REQUEST: Suppress 26.4m total width line
         const totalW = buildingType === 'epona_talian5' ? 27.6 : (isEpona ? 35.3 : (isTalian4 ? 37.5 : (isTalian3 ? 21.1 : 23.5)));
-        const zPos = (isTalian1 || isTalian3) ? 7.0 : 6.0;
+        const zPos = 6.0;
 
         const yPos = 0.1;
 
@@ -700,7 +703,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
         // --- HAUGHTEUR CENTRALE (TALIAN_5: 6.0m) ---
         const mHeightPoints = [];
-        const midHeightZ = 4.0; // Demande utilisateur: Avancer l'indication de 6m pour qu'elle soit devant le premier poteau. Initial = -0.5 ou 1.0, on met Z=4.0
+        const midHeightZ = 3.5; // USER REQUEST Ph3: Aligner en profondeur (Z=3.5) avec les autres
         let mGapBottom, mGapTop, mHeightStart, mHeightEnd, mHeightVal, mHeightX;
         mHeightX = midPostX;
         if (buildingType === 'epona_talian5') {
@@ -1118,7 +1121,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 showDimensions && (
                     <Text
                         position={[
-                            0, // Center text over building
+                            buildingType === 'epona_talian5' ? -11.27 : 0, // Positionner au faitage pour Talian 5
                             Math.min(eaveHeight, ridgeHeight) + (buildingType === 'epona_talian5' ? 0 : 4), // Demande spécifique Talian 5: Abaisser encore (initialement +1m)
                             -length / 2 // Move back to the middle of the building (neg Z)
                         ]}
