@@ -10,8 +10,12 @@ export default function DataEnedisTab({ project, activeTab }) {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    if (activeTab === 'dataenedis' && project?.gps) {
-      fetchNeighborhoodData();
+    if (activeTab === 'dataenedis') {
+      if (project?.gps) {
+        fetchNeighborhoodData();
+      } else {
+        setLoading(false);
+      }
     }
     
     // Check if we have a token in URL (callback)

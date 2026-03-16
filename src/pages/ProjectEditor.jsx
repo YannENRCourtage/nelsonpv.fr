@@ -1721,6 +1721,7 @@ export default function ProjectEditor() {
                     { key: 'Natura 2000 Habitat', label: 'Natura 2000 Habitat' },
                     { key: 'enedisHTA', label: 'Lignes HTA' },
                     { key: 'enedisPostes', label: 'Postes HTA/BT' },
+                    { key: 'gaz', label: 'GAZ' },
                     { key: 'abf', label: 'ABF' },
                     { key: 'sdis', label: 'SDIS' },
                   ].map(layer => (
@@ -1775,6 +1776,7 @@ export default function ProjectEditor() {
                         { key: 'Natura 2000 Habitat', label: 'N2000 Hab.' },
                         { key: 'enedisHTA', label: 'L. HTA' },
                         { key: 'enedisPostes', label: 'P. HTA/BT' },
+                        { key: 'gaz', label: 'GAZ' },
                         { key: 'abf', label: 'ABF' },
                         { key: 'sdis', label: 'SDIS' },
                       ].map(layer => (

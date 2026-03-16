@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   try {
     // 1. Get IRIS code from coordinates using Etalab/Pyris API
     const pyrisUrl = `https://pyris.datajazz.io/iris?lat=${lat}&lon=${lng}`;
-    const irisResponse = await axios.get(pyrisUrl, { timeout: 5000 });
+    const irisResponse = await axios.get(pyrisUrl, { timeout: 10000 });
     const irisCode = irisResponse.data?.complete_code;
 
     if (!irisCode) {
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     // 2. Fetch consumption data from Enedis Open Data
     // Dataset: consommation-electrique-par-secteur-dactivite-a-la-maille-iris
     const enedisUrl = `https://data.enedis.fr/api/records/1.0/search/?dataset=consommation-electrique-par-secteur-dactivite-a-la-maille-iris&q=code_iris:${irisCode}&rows=10`;
-    const consumptionResponse = await axios.get(enedisUrl, { timeout: 5000 });
+    const consumptionResponse = await axios.get(enedisUrl, { timeout: 10000 });
 
     res.status(200).json({
       iris: {
