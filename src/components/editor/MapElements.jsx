@@ -419,6 +419,117 @@ function GazDynamicLayerManager({ layersRef }) {
   return null;
 }
 
+function EldLayerManager({ layersRef }) {
+  const map = useMap();
+  const [active, setActive] = useState(false);
+  const loadedIds = useRef(new Set());
+  const layerGroupRef = useRef(L.featureGroup());
+
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['eld'] = layerGroupRef.current;
+
+    const handleToggle = (e) => {
+      if (e.detail.layerKey === 'eld') {
+        const isNowActive = !map.hasLayer(layerGroupRef.current);
+        setActive(isNowActive);
+      }
+    };
+
+    window.addEventListener('map:toggle-layer', handleToggle);
+    return () => window.removeEventListener('map:toggle-layer', handleToggle);
+  }, [map, layersRef]);
+
+  const fetchData = async () => {
+    if (!active || !map) return;
+    const bounds = map.getBounds();
+    const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+    
+    // Filter out Enedis to focus on ELDs
+    const query = encodeURIComponent('NOT nom_grd:Enedis');
+    
+    const datasets = [
+      'reseau-aerien-moyenne-tension-hta',
+      'reseau-souterrain-moyenne-tension-hta',
+      'postes-de-distribution-publique-postes-htabt'
+    ];
+
+    for (const ds of datasets) {
+      const url = `https://opendata.agenceore.fr/data-fair/api/v1/datasets/${ds}/lines?bbox=${bbox}&size=1000&q=${query}`;
+      
+      try {
+        const response = await fetch(url);
+        if (!response.ok) continue;
+        const data = await response.json();
+        if (!data.results) continue;
+
+        data.results.forEach(item => {
+          const uniqueId = `${ds}-${item._id}`;
+          if (loadedIds.current.has(uniqueId)) return;
+          loadedIds.current.add(uniqueId);
+
+          try {
+            const geometry = JSON.parse(item.geometry);
+            const feature = {
+              type: 'Feature',
+              geometry: geometry,
+              properties: { ...item, _dataset: ds }
+            };
+
+            L.geoJSON(feature, {
+              pointToLayer: (f, latlng) => {
+                return L.circleMarker(latlng, {
+                  radius: 6,
+                  fillColor: '#FF4500', // OrangeRed for stations
+                  color: '#FFFFFF',
+                  weight: 2,
+                  opacity: 1,
+                  fillOpacity: 0.9
+                });
+              },
+              style: (f) => {
+                const isSouterrain = f.properties._dataset.includes('souterrain');
+                return {
+                  color: '#FF8C00', // DarkOrange for lines
+                  weight: 3,
+                  opacity: 0.9,
+                  dashArray: isSouterrain ? '5, 10' : null
+                };
+              },
+              onEachFeature: (f, layer) => {
+                const props = f.properties;
+                let popup = `<div style="font-family:sans-serif;min-width:150px;">`;
+                popup += `<h4 style="margin:0 0 8px 0;color:#E65100;font-size:14px;font-weight:bold;">⚡ Réseau ELD</h4>`;
+                if (props.nom_grd) popup += `<p style="margin:4px 0;"><strong>Opérateur:</strong> ${props.nom_grd}</p>`;
+                if (props.nom_poste) popup += `<p style="margin:4px 0;"><strong>Poste:</strong> ${props.nom_poste}</p>`;
+                if (props.tension) popup += `<p style="margin:4px 0;"><strong>Tension:</strong> ${props.tension} V</p>`;
+                if (props.commune) popup += `<p style="margin:4px 0;"><strong>Commune:</strong> ${props.commune}</p>`;
+                popup += '</div>';
+                layer.bindPopup(popup);
+              }
+            }).addTo(layerGroupRef.current);
+          } catch (e) { }
+        });
+      } catch (err) { }
+    }
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => { map.off('moveend', onMoveEnd); };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+    }
+  }, [active, map]);
+
+  return null;
+}
+
+
 const rotationIcon = L.divIcon({
   html: `<div class="bg-white rounded-full p-2 shadow-lg border-2 border-blue-500 cursor-move text-blue-600 hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L12 12h9V3"/></svg></div>`,
   className: 'bg-transparent border-none',
@@ -1393,6 +1504,15 @@ const LAYERS = {
     isOverlay: true,
     zIndex: 106,
     color: '#800080'
+  },
+  eld: {
+    name: "ELD (Réseau HTA)",
+    type: 'eld-dynamic',
+    isDynamic: true,
+    attribution: 'Agence ORE',
+    isOverlay: true,
+    zIndex: 107,
+    color: '#FF8C00'
   }
 };
 // ====================================================================
@@ -3079,6 +3199,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
           <SDISLayerManager layersRef={layersRef} />
           <GazDynamicLayerManager layersRef={layersRef} />
           <LigneBTLayerManager layersRef={layersRef} />
+          <EldLayerManager layersRef={layersRef} />
 
           {/* Controls inside map */}
           <BasemapControl layersRef={layersRef} />

@@ -1712,6 +1712,7 @@ export default function ProjectEditor() {
                     { key: 'enedisHTA', label: 'Lignes HTA' },
                     { key: 'enedisPostes', label: 'Postes HTA/BT' },
                     { key: 'gaz', label: 'GAZ' },
+                    { key: 'eld', label: 'ELD' },
                     { key: 'abf', label: 'ABF' },
                     { key: 'sdis', label: 'SDIS' },
                   ].map(layer => (
@@ -1767,6 +1768,7 @@ export default function ProjectEditor() {
                         { key: 'enedisHTA', label: 'L. HTA' },
                         { key: 'enedisPostes', label: 'P. HTA/BT' },
                         { key: 'gaz', label: 'GAZ' },
+                        { key: 'eld', label: 'ELD' },
                         { key: 'abf', label: 'ABF' },
                         { key: 'sdis', label: 'SDIS' },
                       ].map(layer => (
