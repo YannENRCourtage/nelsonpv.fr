@@ -419,140 +419,7 @@ function GazDynamicLayerManager({ layersRef }) {
   return null;
 }
 
-function EldLayerManager({ layersRef }) {
-  const map = useMap();
-  const [active, setActive] = useState(false);
-  const loadedIds = useRef(new Set());
-  const layerGroupRef = useRef(L.featureGroup());
 
-  useEffect(() => {
-    if (!layersRef.current) return;
-    layersRef.current['eld'] = layerGroupRef.current;
-
-    const checkHTA = () => {
-      const htaLayer = layersRef.current['enedisHTA'];
-      if (htaLayer && map.hasLayer(htaLayer)) {
-        setActive(true);
-      } else {
-        setActive(false);
-      }
-    };
-
-    // Robust synchronization via map events
-    map.on('layeradd layerremove', (e) => {
-      if (e.layer === layersRef.current['enedisHTA']) {
-        checkHTA();
-      }
-    });
-
-    // Initial check
-    checkHTA();
-
-    return () => {
-      map.off('layeradd layerremove');
-    };
-  }, [map, layersRef]);
-
-  const fetchData = async () => {
-    if (!active || !map) return;
-    const bounds = map.getBounds();
-    const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
-    
-    // Use the negative filter -nom_grd:Enedis which is more robust in DataFair
-    const query = encodeURIComponent('-nom_grd:Enedis');
-    
-    const datasets = [
-      'reseau-aerien-moyenne-tension-hta',
-      'reseau-souterrain-moyenne-tension-hta',
-      'postes-de-distribution-publique-postes-htabt'
-    ];
-
-    for (const ds of datasets) {
-      const url = `https://opendata.agenceore.fr/data-fair/api/v1/datasets/${ds}/lines?bbox=${bbox}&size=1000&q=${query}`;
-      
-      try {
-        const response = await fetch(url);
-        if (!response.ok) continue;
-        const data = await response.json();
-        if (!data.results) continue;
-
-        data.results.forEach(item => {
-          const uniqueId = `${ds}-${item._id}`;
-          if (loadedIds.current.has(uniqueId)) return;
-          loadedIds.current.add(uniqueId);
-
-          try {
-            const geometry = JSON.parse(item.geometry);
-            const feature = {
-              type: 'Feature',
-              geometry: geometry,
-              properties: { ...item, _dataset: ds }
-            };
-
-            // Custom pane to ensure ELD lines are above Enedis WMS
-            if (!map.getPane('eldPane')) {
-              const pane = map.createPane('eldPane');
-              pane.style.zIndex = 450;
-              pane.style.pointerEvents = 'none';
-            }
-
-            L.geoJSON(feature, {
-              pane: 'eldPane',
-              pointToLayer: (f, latlng) => {
-                return L.circleMarker(latlng, {
-                  pane: 'eldPane', // Explicitly set pane for markers too
-                  radius: 8, // Larger radius
-                  fillColor: '#FF4500', 
-                  color: '#FFFFFF',
-                  weight: 2,
-                  opacity: 1,
-                  fillOpacity: 1
-                });
-              },
-              style: (f) => {
-                const isSouterrain = f.properties._dataset?.includes('souterrain');
-                return {
-                  color: '#FF8C00', 
-                  weight: 6, // Thick line to strongly overlay yellow
-                  opacity: 1.0,
-                  dashArray: isSouterrain ? '5, 10' : null
-                };
-              },
-              onEachFeature: (f, layer) => {
-                const props = f.properties;
-                let popup = `<div style="font-family:sans-serif;min-width:180px;">`;
-                popup += `<h4 style="margin:0 0 8px 0;color:#E65100;font-size:14px;font-weight:bold;">⚡ Réseau ELD</h4>`;
-                if (props.nom_grd) popup += `<p style="margin:4px 0;"><strong>Opérateur:</strong> <span style="color:#d97706;font-weight:bold;">${props.nom_grd}</span></p>`;
-                if (props.nom_poste) popup += `<p style="margin:4px 0;"><strong>Poste:</strong> ${props.nom_poste}</p>`;
-                if (props.tension) popup += `<p style="margin:4px 0;"><strong>Tension:</strong> ${props.tension} V</p>`;
-                if (props.commune) popup += `<p style="margin:4px 0;"><strong>Commune:</strong> ${props.commune}</p>`;
-                popup += '</div>';
-                layer.bindPopup(popup);
-                
-                // Ensure ELD layers are on top
-                if (layer.bringToFront) layer.bringToFront();
-              }
-            }).addTo(layerGroupRef.current);
-          } catch (e) { }
-        });
-      } catch (err) { }
-    }
-  };
-
-  useEffect(() => {
-    if (active) {
-      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
-      fetchData();
-      const onMoveEnd = () => fetchData();
-      map.on('moveend', onMoveEnd);
-      return () => { map.off('moveend', onMoveEnd); };
-    } else {
-      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
-    }
-  }, [active, map]);
-
-  return null;
-}
 
 
 const rotationIcon = L.divIcon({
@@ -3215,7 +3082,6 @@ export default function MapElements({ style = {}, project, setProject, onAddress
           <SDISLayerManager layersRef={layersRef} />
           <GazDynamicLayerManager layersRef={layersRef} />
           <LigneBTLayerManager layersRef={layersRef} />
-          <EldLayerManager layersRef={layersRef} />
 
           {/* Controls inside map */}
           <BasemapControl layersRef={layersRef} />
