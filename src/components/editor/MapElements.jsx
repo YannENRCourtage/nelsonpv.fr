@@ -429,21 +429,28 @@ function EldLayerManager({ layersRef }) {
     if (!layersRef.current) return;
     layersRef.current['eld'] = layerGroupRef.current;
 
-    const handleToggle = (e) => {
-      if (e.detail.layerKey === 'enedisHTA') {
-        const isNowActive = !map.hasLayer(layerGroupRef.current);
-        setActive(isNowActive);
+    const checkHTA = () => {
+      const htaLayer = layersRef.current['enedisHTA'];
+      if (htaLayer && map.hasLayer(htaLayer)) {
+        setActive(true);
+      } else {
+        setActive(false);
       }
     };
 
-    window.addEventListener('map:toggle-layer', handleToggle);
+    // Robust synchronization via map events
+    map.on('layeradd layerremove', (e) => {
+      if (e.layer === layersRef.current['enedisHTA']) {
+        checkHTA();
+      }
+    });
 
-    // Initial check in case enedisHTA is already active on mount
-    if (map.hasLayer(layersRef.current['enedisHTA'])) {
-      setActive(true);
-    }
+    // Initial check
+    checkHTA();
 
-    return () => window.removeEventListener('map:toggle-layer', handleToggle);
+    return () => {
+      map.off('layeradd layerremove');
+    };
   }, [map, layersRef]);
 
   const fetchData = async () => {
@@ -451,8 +458,8 @@ function EldLayerManager({ layersRef }) {
     const bounds = map.getBounds();
     const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
     
-    // Filter out Enedis to focus on ELDs
-    const query = encodeURIComponent('NOT nom_grd:Enedis');
+    // Use the negative filter -nom_grd:Enedis which is more robust in DataFair
+    const query = encodeURIComponent('-nom_grd:Enedis');
     
     const datasets = [
       'reseau-aerien-moyenne-tension-hta',
@@ -493,8 +500,9 @@ function EldLayerManager({ layersRef }) {
               pane: 'eldPane',
               pointToLayer: (f, latlng) => {
                 return L.circleMarker(latlng, {
-                  radius: 7,
-                  fillColor: '#FF4500', // OrangeRed for stations
+                  pane: 'eldPane', // Explicitly set pane for markers too
+                  radius: 8, // Larger radius
+                  fillColor: '#FF4500', 
                   color: '#FFFFFF',
                   weight: 2,
                   opacity: 1,
@@ -504,8 +512,8 @@ function EldLayerManager({ layersRef }) {
               style: (f) => {
                 const isSouterrain = f.properties._dataset?.includes('souterrain');
                 return {
-                  color: '#FF8C00', // DarkOrange for lines
-                  weight: 4, // Slightly thicker for visibility
+                  color: '#FF8C00', 
+                  weight: 6, // Thick line to strongly overlay yellow
                   opacity: 1.0,
                   dashArray: isSouterrain ? '5, 10' : null
                 };
