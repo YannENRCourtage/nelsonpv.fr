@@ -12,6 +12,12 @@ export default async function handler(req, res) {
 
   // 1. Redirection to Enedis Authorization Server
   if (action === 'authorize') {
+    if (!CLIENT_ID || CLIENT_ID === 'undefined') {
+      return res.status(500).json({ 
+        error: 'Configuration Enedis manquante', 
+        details: 'Le Client ID Enedis n\'est pas défini dans les variables d\'environnement.' 
+      });
+    }
     const authUrl = `https://mon-compte.enedis.fr/auth/oauth2/authorize?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&duration=P6M`;
     return res.redirect(authUrl);
   }

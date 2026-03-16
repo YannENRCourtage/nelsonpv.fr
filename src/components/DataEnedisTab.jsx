@@ -58,7 +58,7 @@ export default function DataEnedisTab({ project, activeTab }) {
     );
   }
 
-  const chartData = data?.records?.filter(r => r.sector === 'Résidentiel').map(r => ({
+  const chartData = data?.records?.filter(r => r.sector_code === 'RESIDENTIEL').map(r => ({
     label: r.year,
     'Conso Totale (MWh)': r.conso_totale,
     'Conso Moyenne (MWh)': r.conso_moyenne

@@ -18,11 +18,12 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Code IRIS non trouvé pour ces coordonnées' });
     }
 
-    // 2. Fetch consumption data from Enedis Open Data
-    const enedisUrl = `https://data.enedis.fr/api/records/1.0/search/?dataset=consommation-electrique-par-secteur-dactivite-a-la-maille-iris&q=code_iris:${irisCode}&rows=10`;
+    // 2. Fetch consumption data from Enedis Open Data (New Datafair Portal)
+    const enedisUrl = `https://opendata.enedis.fr/data-fair/api/v1/datasets/consommation-electrique-par-secteur-dactivite-iris/lines?q=code_iris:${irisCode}&size=10`;
     const consumptionResponse = await axios.get(enedisUrl, { timeout: 10000 });
     
-    const records = consumptionResponse.data?.records || [];
+    // Datafair format: results array, flat structure
+    const records = consumptionResponse.data?.results || [];
 
     res.status(200).json({
       iris: {
@@ -31,11 +32,11 @@ export default async function handler(req, res) {
         commune: irisResponse.data?.commune_name || 'Inconnue'
       },
       records: records.map(r => ({
-        year: r.fields?.annee,
-        sector: r.fields?.nom_secteur,
-        conso_totale: r.fields?.conso_totale_mwh,
-        conso_moyenne: r.fields?.conso_moyenne_mwh,
-        nb_sites: r.fields?.nombre_de_points_de_livraison
+        year: r.annee,
+        sector_code: r.code_grand_secteur, // e.g. "RESIDENTIEL"
+        conso_totale: r.conso_totale_mwh,
+        conso_moyenne: r.conso_moyenne_mwh,
+        nb_sites: r.nombre_de_points_de_livraison
       }))
     });
 
