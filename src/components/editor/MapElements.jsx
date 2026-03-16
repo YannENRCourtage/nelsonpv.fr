@@ -479,33 +479,36 @@ function EldLayerManager({ layersRef }) {
             L.geoJSON(feature, {
               pointToLayer: (f, latlng) => {
                 return L.circleMarker(latlng, {
-                  radius: 6,
+                  radius: 7,
                   fillColor: '#FF4500', // OrangeRed for stations
                   color: '#FFFFFF',
                   weight: 2,
                   opacity: 1,
-                  fillOpacity: 0.9
+                  fillOpacity: 1
                 });
               },
               style: (f) => {
-                const isSouterrain = f.properties._dataset.includes('souterrain');
+                const isSouterrain = f.properties._dataset?.includes('souterrain');
                 return {
                   color: '#FF8C00', // DarkOrange for lines
-                  weight: 3,
-                  opacity: 0.9,
+                  weight: 4, // Slightly thicker for visibility
+                  opacity: 1.0,
                   dashArray: isSouterrain ? '5, 10' : null
                 };
               },
               onEachFeature: (f, layer) => {
                 const props = f.properties;
-                let popup = `<div style="font-family:sans-serif;min-width:150px;">`;
+                let popup = `<div style="font-family:sans-serif;min-width:180px;">`;
                 popup += `<h4 style="margin:0 0 8px 0;color:#E65100;font-size:14px;font-weight:bold;">⚡ Réseau ELD</h4>`;
-                if (props.nom_grd) popup += `<p style="margin:4px 0;"><strong>Opérateur:</strong> ${props.nom_grd}</p>`;
+                if (props.nom_grd) popup += `<p style="margin:4px 0;"><strong>Opérateur:</strong> <span style="color:#d97706;font-weight:bold;">${props.nom_grd}</span></p>`;
                 if (props.nom_poste) popup += `<p style="margin:4px 0;"><strong>Poste:</strong> ${props.nom_poste}</p>`;
                 if (props.tension) popup += `<p style="margin:4px 0;"><strong>Tension:</strong> ${props.tension} V</p>`;
                 if (props.commune) popup += `<p style="margin:4px 0;"><strong>Commune:</strong> ${props.commune}</p>`;
                 popup += '</div>';
                 layer.bindPopup(popup);
+                
+                // Ensure ELD layers are on top
+                if (layer.bringToFront) layer.bringToFront();
               }
             }).addTo(layerGroupRef.current);
           } catch (e) { }
