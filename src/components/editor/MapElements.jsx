@@ -343,6 +343,82 @@ function LigneBTLayerManager({ layersRef }) {
   return null;
 }
 
+function GazDynamicLayerManager({ layersRef }) {
+  const map = useMap();
+  const [active, setActive] = useState(false);
+  const loadedIds = useRef(new Set());
+  const layerGroupRef = useRef(L.featureGroup());
+
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['gaz'] = layerGroupRef.current;
+
+    const handleToggle = (e) => {
+      if (e.detail.layerKey === 'gaz') {
+        const isNowActive = !map.hasLayer(layerGroupRef.current);
+        setActive(isNowActive);
+      }
+    };
+
+    window.addEventListener('map:toggle-layer', handleToggle);
+    return () => window.removeEventListener('map:toggle-layer', handleToggle);
+  }, [map, layersRef]);
+
+  const fetchData = async () => {
+    if (!active || !map) return;
+    const bounds = map.getBounds();
+    const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+    const url = `${LAYERS.gaz.url}?bbox=${bbox}&size=1000`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!data.results) return;
+
+      data.results.forEach(item => {
+        if (loadedIds.current.has(item._id)) return;
+        loadedIds.current.add(item._id);
+
+        try {
+          const geometry = JSON.parse(item.geometry);
+          const feature = {
+            type: 'Feature',
+            geometry: geometry,
+            properties: item
+          };
+
+          L.geoJSON(feature, {
+            style: { color: LAYERS.gaz.color, weight: 3, opacity: 0.8 },
+            onEachFeature: (f, layer) => {
+              const props = f.properties;
+              let popup = `<div style="font-family:sans-serif;"><h4 style="margin:0 0 8px 0;color:${LAYERS.gaz.color};font-size:14px;font-weight:bold;">🔥 Réseau de Gaz</h4>`;
+              if (props.nom_grd) popup += `<p style="margin:4px 0;"><strong>GRD:</strong> ${props.nom_grd}</p>`;
+              if (props.commune) popup += `<p style="margin:4px 0;"><strong>Commune:</strong> ${props.commune}</p>`;
+              if (props.date_maj) popup += `<p style="margin:4px 0;"><strong>Mise à jour:</strong> ${props.date_maj}</p>`;
+              popup += '</div>';
+              layer.bindPopup(popup);
+            }
+          }).addTo(layerGroupRef.current);
+        } catch (e) { console.error("Error parsing GAZ geometry", e); }
+      });
+    } catch (err) { console.error("Error fetching GAZ data", err); }
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => { map.off('moveend', onMoveEnd); };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+    }
+  }, [active, map]);
+
+  return null;
+}
+
 const rotationIcon = L.divIcon({
   html: `<div class="bg-white rounded-full p-2 shadow-lg border-2 border-blue-500 cursor-move text-blue-600 hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L12 12h9V3"/></svg></div>`,
   className: 'bg-transparent border-none',
