@@ -4,7 +4,7 @@ import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Bui
 import html2canvas from 'html2canvas';
 import MapEditor from "../components/MapEditor";
 import StreetViewTab from "../components/StreetViewTab";
-import DataEnedisTab from "../components/DataEnedisTab";
+
 import ShadowMapTab from "../components/ShadowMapTab.jsx";
 import ChatBox from "../components/editor/ChatBox.jsx";
 import { Button } from "@/components/ui/button";
@@ -1542,17 +1542,7 @@ export default function ProjectEditor() {
             >
               Urbanisme
             </button>
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('dataenedis'); }}
-              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'dataenedis'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              Data Enedis
-            </button>
+
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('nv65'); }}
@@ -1816,12 +1806,7 @@ export default function ProjectEditor() {
               </div>
             )}
 
-            {/* Onglet Data Enedis */}
-            {activeTab === 'dataenedis' && (
-              <div className='w-full h-full'>
-                <DataEnedisTab project={project} activeTab={activeTab} />
-              </div>
-            )}
+
 
 
 
