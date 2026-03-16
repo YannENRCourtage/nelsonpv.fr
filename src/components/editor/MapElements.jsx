@@ -1310,15 +1310,13 @@ const LAYERS = {
   },
   gaz: {
     name: "Réseau Gaz",
-    type: 'wms',
-    url: 'https://opendata.agenceore.fr/data-fair/api/v1/datasets/infrastructures-reseau-gaz/wms',
-    layers: 'infrastructures-reseau-gaz',
-    format: 'image/png',
-    transparent: true,
+    type: 'gaz-dynamic',
+    isDynamic: true,
+    url: 'https://opendata.agenceore.fr/data-fair/api/v1/datasets/infrastructures-reseau-gaz/lines',
     attribution: 'Agence ORE / Data.gouv.fr',
     isOverlay: true,
     zIndex: 106,
-    opacity: 0.8
+    color: '#800080'
   }
 };
 // ====================================================================
@@ -3003,6 +3001,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
 
           {/* Layer Managers */}
           <SDISLayerManager layersRef={layersRef} />
+          <GazDynamicLayerManager layersRef={layersRef} />
           <LigneBTLayerManager layersRef={layersRef} />
 
           {/* Controls inside map */}
