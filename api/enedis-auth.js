@@ -1,5 +1,5 @@
 
-const axios = require('axios');
+import axios from 'axios';
 
 const CLIENT_ID = process.env.ENEDIS_CLIENT_ID;
 const CLIENT_SECRET = process.env.ENEDIS_CLIENT_SECRET;
