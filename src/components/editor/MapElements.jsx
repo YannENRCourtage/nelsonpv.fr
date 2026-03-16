@@ -430,13 +430,19 @@ function EldLayerManager({ layersRef }) {
     layersRef.current['eld'] = layerGroupRef.current;
 
     const handleToggle = (e) => {
-      if (e.detail.layerKey === 'eld') {
+      if (e.detail.layerKey === 'enedisHTA') {
         const isNowActive = !map.hasLayer(layerGroupRef.current);
         setActive(isNowActive);
       }
     };
 
     window.addEventListener('map:toggle-layer', handleToggle);
+
+    // Initial check in case enedisHTA is already active on mount
+    if (map.hasLayer(layersRef.current['enedisHTA'])) {
+      setActive(true);
+    }
+
     return () => window.removeEventListener('map:toggle-layer', handleToggle);
   }, [map, layersRef]);
 
@@ -476,7 +482,15 @@ function EldLayerManager({ layersRef }) {
               properties: { ...item, _dataset: ds }
             };
 
+            // Custom pane to ensure ELD lines are above Enedis WMS
+            if (!map.getPane('eldPane')) {
+              const pane = map.createPane('eldPane');
+              pane.style.zIndex = 450;
+              pane.style.pointerEvents = 'none';
+            }
+
             L.geoJSON(feature, {
+              pane: 'eldPane',
               pointToLayer: (f, latlng) => {
                 return L.circleMarker(latlng, {
                   radius: 7,
@@ -1507,15 +1521,6 @@ const LAYERS = {
     isOverlay: true,
     zIndex: 106,
     color: '#800080'
-  },
-  eld: {
-    name: "ELD (Réseau HTA)",
-    type: 'eld-dynamic',
-    isDynamic: true,
-    attribution: 'Agence ORE',
-    isOverlay: true,
-    zIndex: 107,
-    color: '#FF8C00'
   }
 };
 // ====================================================================
