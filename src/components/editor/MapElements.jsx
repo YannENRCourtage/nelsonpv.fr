@@ -1310,12 +1310,15 @@ const LAYERS = {
   },
   gaz: {
     name: "Réseau Gaz",
-    type: 'custom',
-    url: 'https://opendata.agenceore.fr/data-fair/api/v1/datasets/infrastructures-reseau-gaz/lines?format=geojson',
+    type: 'wms',
+    url: 'https://opendata.agenceore.fr/data-fair/api/v1/datasets/infrastructures-reseau-gaz/wms',
+    layers: 'infrastructures-reseau-gaz',
+    format: 'image/png',
+    transparent: true,
     attribution: 'Agence ORE / Data.gouv.fr',
     isOverlay: true,
     zIndex: 106,
-    color: '#800080' // Purple
+    opacity: 0.8
   }
 };
 // ====================================================================
@@ -1615,39 +1618,6 @@ function SDISLayerManager({ layersRef }) {
   return null;
 }
 
-function GazLayerManager({ layersRef }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!layersRef.current['gaz']) {
-      const layerConfig = LAYERS['gaz'];
-      const geoJsonLayer = L.geoJSON(null, {
-        style: { color: "#800080", weight: 3, opacity: 0.8 },
-        onEachFeature: (feature, layer) => {
-          if (feature.properties) {
-            const props = feature.properties;
-            let popupContent = '<div style="font-family:sans-serif;"><h4 style="margin:0 0 8px 0;color:#800080;font-size:16px;font-weight:bold;">🔥 Réseau de Gaz</h4>';
-            if (props.libelle) popupContent += `<p style="margin:4px 0;"><strong>Libellé:</strong> ${props.libelle}</p>`;
-            if (props.type_ouvrage) popupContent += `<p style="margin:4px 0;"><strong>Type:</strong> ${props.type_ouvrage}</p>`;
-            popupContent += '</div>';
-            layer.bindPopup(popupContent);
-          }
-        }
-      });
-      layersRef.current['gaz'] = geoJsonLayer;
-      const loadData = async () => {
-        try {
-          const response = await fetch(layerConfig.url);
-          const data = await response.json();
-          geoJsonLayer.addData(data);
-        } catch (err) { console.error("Erreur GAZ", err); }
-      };
-      map.on('layeradd', (e) => {
-        if (e.layer === geoJsonLayer && geoJsonLayer.getLayers().length === 0) loadData();
-      });
-    }
-  }, [map, layersRef]);
-  return null;
-}
 
 // ENEDIS Managers were removed in favor of WMS layers for performance with 1M points.
 
@@ -3033,7 +3003,6 @@ export default function MapElements({ style = {}, project, setProject, onAddress
 
           {/* Layer Managers */}
           <SDISLayerManager layersRef={layersRef} />
-          <GazLayerManager layersRef={layersRef} />
           <LigneBTLayerManager layersRef={layersRef} />
 
           {/* Controls inside map */}

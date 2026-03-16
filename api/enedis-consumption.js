@@ -19,32 +19,35 @@ export default async function handler(req, res) {
     }
 
     // 2. Fetch consumption data from Enedis Open Data
-    // Dataset: consommation-electrique-par-secteur-dactivite-a-la-maille-iris
     const enedisUrl = `https://data.enedis.fr/api/records/1.0/search/?dataset=consommation-electrique-par-secteur-dactivite-a-la-maille-iris&q=code_iris:${irisCode}&rows=10`;
     const consumptionResponse = await axios.get(enedisUrl, { timeout: 10000 });
+    
+    const records = consumptionResponse.data?.records || [];
 
     res.status(200).json({
       iris: {
         code: irisCode,
-        name: irisResponse.data?.name,
-        commune: irisResponse.data?.commune_name
+        name: irisResponse.data?.name || 'Inconnu',
+        commune: irisResponse.data?.commune_name || 'Inconnue'
       },
-      records: consumptionResponse.data.records.map(r => ({
-        year: r.fields.annee,
-        sector: r.fields.nom_secteur,
-        conso_totale: r.fields.conso_totale_mwh,
-        conso_moyenne: r.fields.conso_moyenne_mwh,
-        nb_sites: r.fields.nombre_de_points_de_livraison
+      records: records.map(r => ({
+        year: r.fields?.annee,
+        sector: r.fields?.nom_secteur,
+        conso_totale: r.fields?.conso_totale_mwh,
+        conso_moyenne: r.fields?.conso_moyenne_mwh,
+        nb_sites: r.fields?.nombre_de_points_de_livraison
       }))
     });
 
   } catch (error) {
     const status = error.code === 'ECONNABORTED' ? 504 : 500;
     const message = error.code === 'ECONNABORTED' ? 'Le service Enedis met trop de temps à répondre' : error.message;
-    console.error('Enedis Consumption Error:', error.message);
+    console.error('Enedis Consumption Full Error:', error);
+    console.error('Error Stack:', error.stack);
     res.status(status).json({ 
       error: 'Impossible de récupérer les données Enedis', 
-      details: message 
+      details: message,
+      code: error.code || 'UNKNOWN'
     });
   }
 }
