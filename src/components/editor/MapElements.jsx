@@ -296,9 +296,11 @@ function LigneBTLayerManager({ layersRef }) {
               } catch (e) { return null; }
             }).filter(f => f !== null)
           };
-          L.geoJSON(geoJson, {
-            style: { color: '#00008B', weight: 2, dashArray: '5, 5', opacity: 0.8 }
-          }).addTo(layerGroup);
+          if (geoJson && geoJson.type === 'FeatureCollection' && geoJson.features && geoJson.features.length > 0) {
+            L.geoJSON(geoJson, {
+              style: { color: '#00008B', weight: 2, dashArray: '5, 5', opacity: 0.8 }
+            }).addTo(layerGroup);
+          }
         }
 
         // Process Aerien (Index 1)
@@ -315,9 +317,11 @@ function LigneBTLayerManager({ layersRef }) {
               } catch (e) { return null; }
             }).filter(f => f !== null)
           };
-          L.geoJSON(geoJson, {
-            style: { color: '#00008B', weight: 2, opacity: 0.8 }
-          }).addTo(layerGroup);
+          if (geoJson && geoJson.type === 'FeatureCollection' && geoJson.features && geoJson.features.length > 0) {
+            L.geoJSON(geoJson, {
+              style: { color: '#00008B', weight: 2, opacity: 0.8 }
+            }).addTo(layerGroup);
+          }
         }
 
       } catch (err) {
@@ -1290,6 +1294,28 @@ const LAYERS = {
     opacity: 0.6,
     maxNativeZoom: 16,
     maxZoom: 22
+  },
+  abf: {
+    name: "ABF (Zones AC1)",
+    url: "https://data.geopf.fr/wms-v/ows",
+    layers: "monument_historique",
+    format: "image/png",
+    transparent: true,
+    attribution: "GéoPlateforme / IGN",
+    isOverlay: true,
+    zIndex: 105,
+    opacity: 0.6,
+    maxNativeZoom: 18,
+    maxZoom: 22
+  },
+  gaz: {
+    name: "Réseau Gaz",
+    type: 'custom',
+    url: 'https://opendata.agenceore.fr/data-fair/api/v1/datasets/infrastructures-reseau-gaz/lines?format=geojson',
+    attribution: 'Agence ORE / Data.gouv.fr',
+    isOverlay: true,
+    zIndex: 106,
+    color: '#800080' // Purple
   }
 };
 // ====================================================================
@@ -1517,51 +1543,52 @@ function SDISLayerManager({ layersRef }) {
 
           console.log(`SDIS: ${allFeatures.length} points d'eau chargés depuis ${apis.length} APIs`);
           console.log("SDIS MERGED DATA:", mergedData);
+          if (mergedData && mergedData.type === 'FeatureCollection' && mergedData.features && mergedData.features.length > 0) {
+            const geoJsonLayer = L.geoJSON(mergedData, {
+              pointToLayer: (feature, latlng) => {
+                const type = feature.properties?.type_hydrant || feature.properties?.famille_pei || '';
+                let html = '';
 
-          const geoJsonLayer = L.geoJSON(mergedData, {
-            pointToLayer: (feature, latlng) => {
-              const type = feature.properties?.type_hydrant || feature.properties?.famille_pei || '';
-              let html = '';
+                // Styling Logic based on Type
+                if (type.startsWith('PI') || type.includes('POTEAU')) {
+                  html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+                } else if (type.startsWith('BI') || type.includes('BOUCHE')) {
+                  html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+                } else if (['REA', 'RENA'].includes(type) || type.includes('Reserve') || type.includes('RESERVE')) {
+                  html = `<div style="background-color: #3B82F6; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #1E40AF; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+                } else {
+                  html = `<div style="background-color: #9CA3AF; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #4B5563;"></div>`;
+                }
 
-              // Styling Logic based on Type
-              if (type.startsWith('PI') || type.includes('POTEAU')) {
-                html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
-              } else if (type.startsWith('BI') || type.includes('BOUCHE')) {
-                html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
-              } else if (['REA', 'RENA'].includes(type) || type.includes('Reserve') || type.includes('RESERVE')) {
-                html = `<div style="background-color: #3B82F6; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #1E40AF; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
-              } else {
-                html = `<div style="background-color: #9CA3AF; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #4B5563;"></div>`;
+                return L.marker(latlng, {
+                  icon: L.divIcon({
+                    className: '',
+                    html: html,
+                    iconSize: [14, 14],
+                    iconAnchor: [7, 7]
+                  })
+                });
+              },
+              onEachFeature: (feature, layer) => {
+                if (feature.properties) {
+                  const props = feature.properties;
+                  let popupContent = '<div style="font-family: sans-serif;">';
+                  popupContent += '<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 16px; font-weight: bold;">🚒 Point d\'Eau Incendie</h4>';
+                  popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.commune || 'N/A'}</p>`;
+                  popupContent += `<p style="margin: 4px 0;"><strong>Numéro:</strong> ${props.numero_long || props.nom || 'N/A'}</p>`;
+                  popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.famille_pei || props.type_start || props.type_hydrant || 'N/A'}</p>`;
+                  popupContent += `<p style="margin: 4px 0;"><strong>État:</strong> ${props.etat || props.etat_start || 'Inconnu'}</p>`;
+                  if (props.adresse) popupContent += `<p style="margin: 4px 0;"><strong>Adresse:</strong> ${props.adresse}</p>`;
+                  if (props.volume) popupContent += `<p style="margin: 4px 0;"><strong>Volume:</strong> ${props.volume} m³</p>`;
+                  if (props.debit_1bar || props.debit) popupContent += `<p style="margin: 4px 0;"><strong>Débit (1 bar):</strong> ${props.debit_1bar || props.debit} m³/h</p>`;
+                  if (props.pression) popupContent += `<p style="margin: 4px 0;"><strong>Pression:</strong> ${props.pression} bar</p>`;
+                  popupContent += '</div>';
+                  layer.bindPopup(popupContent, { maxWidth: 300 });
+                }
               }
-
-              return L.marker(latlng, {
-                icon: L.divIcon({
-                  className: '',
-                  html: html,
-                  iconSize: [14, 14],
-                  iconAnchor: [7, 7]
-                })
-              });
-            },
-            onEachFeature: (feature, layer) => {
-              if (feature.properties) {
-                const props = feature.properties;
-                let popupContent = '<div style="font-family: sans-serif;">';
-                popupContent += '<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 16px; font-weight: bold;">🚒 Point d\'Eau Incendie</h4>';
-                popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.commune || 'N/A'}</p>`;
-                popupContent += `<p style="margin: 4px 0;"><strong>Numéro:</strong> ${props.numero_long || props.nom || 'N/A'}</p>`;
-                popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.famille_pei || props.type_start || props.type_hydrant || 'N/A'}</p>`;
-                popupContent += `<p style="margin: 4px 0;"><strong>État:</strong> ${props.etat || props.etat_start || 'Inconnu'}</p>`;
-                if (props.adresse) popupContent += `<p style="margin: 4px 0;"><strong>Adresse:</strong> ${props.adresse}</p>`;
-                if (props.volume) popupContent += `<p style="margin: 4px 0;"><strong>Volume:</strong> ${props.volume} m³</p>`;
-                if (props.debit_1bar || props.debit) popupContent += `<p style="margin: 4px 0;"><strong>Débit (1 bar):</strong> ${props.debit_1bar || props.debit} m³/h</p>`;
-                if (props.pression) popupContent += `<p style="margin: 4px 0;"><strong>Pression:</strong> ${props.pression} bar</p>`;
-                popupContent += '</div>';
-                layer.bindPopup(popupContent, { maxWidth: 300 });
-              }
-            }
-          });
-          markerClusterGroup.addLayer(geoJsonLayer);
+            });
+            markerClusterGroup.addLayer(geoJsonLayer);
+          }
         }).catch(err => console.error("Erreur chargement SDIS", err));
       };
 
@@ -1585,6 +1612,40 @@ function SDISLayerManager({ layersRef }) {
     }
   }, [map, layersRef]);
 
+  return null;
+}
+
+function GazLayerManager({ layersRef }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!layersRef.current['gaz']) {
+      const layerConfig = LAYERS['gaz'];
+      const geoJsonLayer = L.geoJSON(null, {
+        style: { color: "#800080", weight: 3, opacity: 0.8 },
+        onEachFeature: (feature, layer) => {
+          if (feature.properties) {
+            const props = feature.properties;
+            let popupContent = '<div style="font-family:sans-serif;"><h4 style="margin:0 0 8px 0;color:#800080;font-size:16px;font-weight:bold;">🔥 Réseau de Gaz</h4>';
+            if (props.libelle) popupContent += `<p style="margin:4px 0;"><strong>Libellé:</strong> ${props.libelle}</p>`;
+            if (props.type_ouvrage) popupContent += `<p style="margin:4px 0;"><strong>Type:</strong> ${props.type_ouvrage}</p>`;
+            popupContent += '</div>';
+            layer.bindPopup(popupContent);
+          }
+        }
+      });
+      layersRef.current['gaz'] = geoJsonLayer;
+      const loadData = async () => {
+        try {
+          const response = await fetch(layerConfig.url);
+          const data = await response.json();
+          geoJsonLayer.addData(data);
+        } catch (err) { console.error("Erreur GAZ", err); }
+      };
+      map.on('layeradd', (e) => {
+        if (e.layer === geoJsonLayer && geoJsonLayer.getLayers().length === 0) loadData();
+      });
+    }
+  }, [map, layersRef]);
   return null;
 }
 
@@ -2972,6 +3033,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
 
           {/* Layer Managers */}
           <SDISLayerManager layersRef={layersRef} />
+          <GazLayerManager layersRef={layersRef} />
           <LigneBTLayerManager layersRef={layersRef} />
 
           {/* Controls inside map */}

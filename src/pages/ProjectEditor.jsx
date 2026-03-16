@@ -1,9 +1,10 @@
-﻿import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Building, X, FolderHeart as HomeIcon, Map as MapIcon, ExternalLink, RotateCcw, RotateCw, Type, MessageCircle, Box, Layout, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import MapEditor from "../components/MapEditor";
 import StreetViewTab from "../components/StreetViewTab";
+import DataEnedisTab from "../components/DataEnedisTab";
 import ShadowMapTab from "../components/ShadowMapTab.jsx";
 import ChatBox from "../components/editor/ChatBox.jsx";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,8 @@ import { cn } from "@/lib/utils";
 import PredefinedBuildingsPanel from "@/components/editor/PredefinedBuildingsPanel.jsx";
 import znzvData from "@/data/znzv.json";
 import { apiService } from "@/services/api";
+import { ACAMA_PREDEFINED_BUILDINGS } from "@/data/simulatorPredefinedBuildings";
+import { calculateRequiredResteACharge } from "@/lib/profitabilityCalculations";
 
 const INCLINATION_OPTIONS = Array.from({ length: 91 }, (_, i) => {
   const percentage = Math.tan(i * Math.PI / 180) * 100;
@@ -969,15 +972,24 @@ export default function ProjectEditor() {
               {/* Desktop: Technical Fields */}
               <div className="col-span-12 space-y-2">
                 {/* --- ROW 1: Env + Building 1 --- */}
-                <div className="grid grid-cols-7 gap-2 items-end">
+                <div className="flex gap-2 items-end">
                   {/* Séisme */}
-                  <div><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de séisme">Séisme</label><Input value={p.seismicZone || ''} onChange={e => updateProject({ seismicZone: e.target.value })} className="mt-1" placeholder="Séisme" /></div>
+                  <div className="flex-1">
+                    <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de séisme">Séisme</label>
+                    <Input value={p.seismicZone || ''} onChange={e => updateProject({ seismicZone: e.target.value })} className="mt-1" placeholder="Séisme" />
+                  </div>
 
                   {/* Neige */}
-                  <div><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de neige">Neige</label><Input value={p.snowZone || ''} onChange={e => updateProject({ snowZone: e.target.value })} className="mt-1" placeholder="Neige" /></div>
+                  <div className="flex-1">
+                    <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de neige">Neige</label>
+                    <Input value={p.snowZone || ''} onChange={e => updateProject({ snowZone: e.target.value })} className="mt-1" placeholder="Neige" />
+                  </div>
 
                   {/* Vent */}
-                  <div><label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de vent">Vent</label><Input value={p.windZone || ''} onChange={e => updateProject({ windZone: e.target.value })} className="mt-1" placeholder="Vent" /></div>
+                  <div className="flex-1">
+                    <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Zone de vent">Vent</label>
+                    <Input value={p.windZone || ''} onChange={e => updateProject({ windZone: e.target.value })} className="mt-1" placeholder="Vent" />
+                  </div>
 
                   {/* Shared Logic for determining presence of second building */}
                   {(() => {
@@ -989,7 +1001,7 @@ export default function ProjectEditor() {
                     return (
                       <>
                         {/* Inclinaison 1 */}
-                        <div>
+                        <div className="flex-1">
                           <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Inclinaison">{labelPrefix1}Inclinaison</label>
                           <Select
                             value={String(p.panelAngle || '15')}
@@ -1010,7 +1022,7 @@ export default function ProjectEditor() {
                         </div>
 
                         {/* Azimut 1 */}
-                        <div>
+                        <div className="flex-1">
                           <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Azimut">{labelPrefix1}Azimut</label>
                           <Select
                             value={String(p.panelAspect || '0')}
@@ -1036,7 +1048,7 @@ export default function ProjectEditor() {
                         </div>
 
                         {/* Pondération 1 */}
-                        <div>
+                        <div className="flex-1">
                           <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Pondération">{labelPrefix1}Pondération</label>
                           <Select
                             key={`weight-${p.roofWeighting}`}
@@ -1056,27 +1068,38 @@ export default function ProjectEditor() {
                         </div>
 
                         {/* Productible 1 */}
-                        <div className="relative">
+                        <div className="flex-1">
                           <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Productible">{labelPrefix1}Productible</label>
-                          <div className="flex gap-1 mt-1">
+                          <Input
+                            value={p.solarYieldRoof1 || ''}
+                            readOnly
+                            placeholder="kWh/kWc"
+                            className={`mt-1 w-full ${p.solarYieldRoof1
+                              ? (parseFloat(p.solarYieldRoof1) >= 1120
+                                ? "bg-green-100 text-green-900 border-green-500"
+                                : "bg-red-100 text-red-900 border-red-500")
+                              : "bg-gray-50"
+                              }`}
+                          />
+                        </div>
+
+                        {/* Reste à charge 1 */}
+                        <div className="flex-1 flex gap-1 items-end">
+                          <div className="flex-1">
+                            <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Reste à charge">{labelPrefix1}Reste à charge</label>
                             <Input
-                              // Display Roof 1 productible only
-                              value={p.solarYieldRoof1 || ''}
-                              readOnly
-                              placeholder="kWh/kWc"
-                              className={`min-w-0 ${p.solarYieldRoof1
-                                ? (parseFloat(p.solarYieldRoof1) >= 1120
-                                  ? "bg-green-100 text-green-900 border-green-500"
-                                  : "bg-red-100 text-red-900 border-red-500")
-                                : "bg-gray-50"
-                                }`}
+                              value={p.resteACharge !== undefined ? p.resteACharge : ''}
+                              onChange={e => updateProject({ resteACharge: parseInt(e.target.value) || 0 })}
+                              placeholder="Reste à charge"
+                              className="mt-1 w-full bg-amber-50 border-amber-200"
                             />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className="shrink-0 aspect-square w-10 px-0"
-                              title="Calculer le productible Toiture 1"
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="shrink-0 aspect-square w-10 px-0 h-10"
+                            title="Calculer le productible Toiture 1"
                               onClick={async () => {
                                 console.log("[PVGIS L1] Starting calculation for project:", p.id, "Params:", { panelAspect: p.panelAspect, panelAngle: p.panelAngle, gps: p.gps });
                                 if (!p.gps) return toast({ title: "Erreur", description: "Veuillez renseigner les coordonnées GPS.", variant: "destructive" });
@@ -1141,6 +1164,52 @@ export default function ProjectEditor() {
                                     updateProject({
                                       solarYieldRoof1: weightedYield.toFixed(2)
                                     });
+
+                                    // CALCUL AUTO RESTE A CHARGE (ACAMA UNIQUEMENT)
+                                    if (activeTenantId === 'acama') {
+                                      try {
+                                        // 1. Trouver le bâtiment sélectionné pour avoir son coût
+                                        const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding || f.buildingName));
+                                        const firstBuilding = predefinedBuildings[0];
+                                        const buildingInfo = firstBuilding ? ACAMA_PREDEFINED_BUILDINGS.find(b => b.label === firstBuilding.buildingName) : null;
+                                        const power = p.puissance || (buildingInfo?.power) || 0;
+                                        const buildingCost = buildingInfo?.cost || 0;
+
+                                        if (power > 0) {
+                                          const simParams = {
+                                            power: power,
+                                            production: power * weightedYield,
+                                            tarifTH: 0.085,
+                                            tarifACC: 0,
+                                            turpe: 0.012,
+                                            prixAchatACC: 0,
+                                            partACC: 0,
+                                            interestRate: 3.9,
+                                            withPrime: false
+                                          };
+
+                                          const simCosts = {
+                                            installationRate: 0.50,
+                                            installation: power * 0.50 * 1000,
+                                            charpente: buildingCost,
+                                            couverture: 0,
+                                            fondations: 0,
+                                            agregateur: 2500,
+                                            raccordement: 15000,
+                                            developpement: 5000,
+                                            fraisCommerciaux: power * 30,
+                                            maintenance: 10,
+                                            resteACharge: 0
+                                          };
+
+                                          const optimalReste = calculateRequiredResteACharge(simParams, simCosts, 1.17);
+                                          updateProject({ resteACharge: optimalReste });
+                                        }
+                                      } catch (err) {
+                                        console.error("[Reste à Charge Error]", err);
+                                      }
+                                    }
+
                                     toast({
                                       title: "Succès Ligne 1",
                                       description: `T1: ${yieldT1.toFixed(2)} (${weighting}%) | T2: ${yieldT2.toFixed(2)} (${100 - weighting}%) | Pondéré: ${weightedYield.toFixed(2)} kWh/kWc`
@@ -1159,11 +1228,10 @@ export default function ProjectEditor() {
                               <Zap size={16} />
                             </Button>
                           </div>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
+                        </>
+                      );
+                    })()}
+                  </div>
 
                 {/* --- ROW 2: Building 2 (aligned vertically) --- */}
                 {(() => {
@@ -1173,14 +1241,14 @@ export default function ProjectEditor() {
                   const labelPrefix2 = "2/ ";
 
                   return (
-                    <div className="grid grid-cols-7 gap-2 items-end">
+                    <div className="flex gap-2 items-end mt-2">
                       {/* Spacers for Env cols (Séisme, Neige, Vent) */}
-                      <div></div>
-                      <div></div>
-                      <div></div>
+                      <div className="flex-1"></div>
+                      <div className="flex-1"></div>
+                      <div className="flex-1"></div>
 
                       {/* Inclinaison 2 */}
-                      <div>
+                      <div className="flex-1">
                         <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Inclinaison">{labelPrefix2}Inclinaison</label>
                         <Select
                           value={String(p.panelAngle2 || (activeTenantId === 'acama' ? '10' : '15'))}
@@ -1198,7 +1266,7 @@ export default function ProjectEditor() {
                       </div>
 
                       {/* Azimut 2 */}
-                      <div>
+                      <div className="flex-1">
                         <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Azimut">{labelPrefix2}Azimut</label>
                         <Select
                           value={String(p.panelAspect2 || '0')}
@@ -1219,7 +1287,7 @@ export default function ProjectEditor() {
                       </div>
 
                       {/* Pondération 2 */}
-                      <div>
+                      <div className="flex-1">
                         <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Pondération">{labelPrefix2}Pondération</label>
                         <Select
                           key={`weight2-${p.roofWeighting2}`}
@@ -1236,26 +1304,39 @@ export default function ProjectEditor() {
                       </div>
 
                       {/* Productible 2 */}
-                      <div className="relative">
+                      <div className="flex-1">
                         <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Productible">{labelPrefix2}Productible</label>
-                        <div className="flex gap-1 mt-1">
+                        <Input
+                          value={p.solarYieldRoof2 || ''}
+                          readOnly
+                          placeholder="kWh/kWc"
+                          className={`mt-1 w-full ${p.solarYieldRoof2
+                            ? (parseFloat(p.solarYieldRoof2) >= 1120
+                              ? "bg-green-100 text-green-900 border-green-500"
+                              : "bg-red-100 text-red-900 border-red-500")
+                            : "bg-gray-50"
+                            }`}
+                        />
+                      </div>
+
+                      {/* Reste à charge 2 */}
+                      <div className="flex-1 flex gap-1 items-end">
+                        <div className="flex-1">
+                          <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Reste à charge">{labelPrefix2}Reste à charge</label>
                           <Input
-                            value={p.solarYieldRoof2 || ''}
-                            readOnly
-                            placeholder="kWh/kWc"
-                            className={`min-w-0 ${p.solarYieldRoof2
-                              ? (parseFloat(p.solarYieldRoof2) >= 1120
-                                ? "bg-green-100 text-green-900 border-green-500"
-                                : "bg-red-100 text-red-900 border-red-500")
-                              : "bg-gray-50"
-                              }`}
+                            value={p.resteACharge2 !== undefined ? p.resteACharge2 : ''}
+                            onChange={e => updateProject({ resteACharge2: parseInt(e.target.value) || 0 })}
+                            placeholder="Reste à charge"
+                            className="mt-1 w-full bg-amber-50 border-amber-200"
+                            title="Reste à charge calculé ou saisi pour Ligne 2"
                           />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="shrink-0 aspect-square w-10 px-0"
-                            title="Calculer le productible Toiture 2"
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="shrink-0 aspect-square w-10 px-0 h-10"
+                          title="Calculer le productible Toiture 2"
                             onClick={async () => {
                               console.log("[PVGIS L2] Starting calculation for project:", p.id, "Params:", { panelAspect2: p.panelAspect2, panelAngle2: p.panelAngle2, gps: p.gps });
                               if (!p.gps) return toast({ title: "Erreur", description: "Veuillez renseigner les coordonnées GPS.", variant: "destructive" });
@@ -1320,6 +1401,51 @@ export default function ProjectEditor() {
                                   updateProject({
                                     solarYieldRoof2: weightedYield.toFixed(2)
                                   });
+
+                                  // CALCUL AUTO RESTE A CHARGE LIGNE 2 (ACAMA UNIQUEMENT)
+                                  if (activeTenantId === 'acama') {
+                                    try {
+                                      const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding || f.buildingName));
+                                      const secondBuilding = predefinedBuildings[1];
+                                      const buildingInfo = secondBuilding ? ACAMA_PREDEFINED_BUILDINGS.find(b => b.label === secondBuilding.buildingName) : null;
+                                      const power = p.puissance2 || (buildingInfo?.power) || 0;
+                                      const buildingCost = buildingInfo?.cost || 0;
+
+                                      if (power > 0) {
+                                        const simParams = {
+                                          power: power,
+                                          production: power * weightedYield,
+                                          tarifTH: 0.085,
+                                          tarifACC: 0,
+                                          turpe: 0.012,
+                                          prixAchatACC: 0,
+                                          partACC: 0,
+                                          interestRate: 3.9,
+                                          withPrime: false
+                                        };
+
+                                        const simCosts = {
+                                          installationRate: 0.50,
+                                          installation: power * 0.50 * 1000,
+                                          charpente: buildingCost,
+                                          couverture: 0,
+                                          fondations: 0,
+                                          agregateur: 2500,
+                                          raccordement: 15000,
+                                          developpement: 5000,
+                                          fraisCommerciaux: power * 30,
+                                          maintenance: 10,
+                                          resteACharge: 0
+                                        };
+
+                                        const optimalReste = calculateRequiredResteACharge(simParams, simCosts, 1.17);
+                                        updateProject({ resteACharge2: optimalReste });
+                                      }
+                                    } catch (err) {
+                                      console.error("[Reste à Charge L2 Error]", err);
+                                    }
+                                  }
+
                                   toast({
                                     title: "Succès Ligne 2",
                                     description: `T1: ${yieldT1.toFixed(2)} (${weighting}%) | T2: ${yieldT2.toFixed(2)} (${100 - weighting}%) | Pondéré: ${weightedYield.toFixed(2)} kWh/kWc`
@@ -1339,9 +1465,8 @@ export default function ProjectEditor() {
                           </Button>
                         </div>
                       </div>
-                    </div>
-                  );
-                })()}
+                    );
+                  })()}
                 {/* Desktop: Commentaires */}
                 <div className="col-span-12"><label className="text-sm font-medium">Commentaires</label><textarea value={p.comments || ''} onChange={e => updateProject({ comments: e.target.value })} className="mt-1 h-24 w-full rounded-lg border px-3 py-2 text-sm resize-y" placeholder="Commentaires" /></div>
               </div>
@@ -1405,6 +1530,7 @@ export default function ProjectEditor() {
             >
               Street View
             </button>
+
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('urbanisme'); }}
@@ -1415,6 +1541,17 @@ export default function ProjectEditor() {
               tabIndex={-1}
             >
               Urbanisme
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('dataenedis'); }}
+              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'dataenedis'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+              tabIndex={-1}
+            >
+              Data Enedis
             </button>
             <button
               type="button"
@@ -1550,131 +1687,148 @@ export default function ProjectEditor() {
           </div>
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden flex-1 min-h-[60vh] lg:min-h-0">
             {/* Onglet Carte & Urbanisme */}
-            <div className={(activeTab === 'map' || activeTab === 'urbanisme') ? 'w-full flex flex-col h-full' : 'hidden'}>
-              <div className="flex-1 min-h-[55vh] lg:min-h-0">
-                <MapEditor
-                  isUrbanismeMode={activeTab === 'urbanisme'}
-                  key={`${projectId}-${remountKey}`}
-                  onAddressFound={handleAddressFound}
-                  onAddressSearched={handleAddressSearched}
-                  project={project}
-                  setProject={setProject}
-                  setIsAzimuthDefaulted={setIsAzimuthDefaulted}
-                  symbolToPlace={symbolToPlace}
-                  setSymbolToPlace={setSymbolToPlace}
-                  activeLayers={activeLayers}
-                />
-              </div>
+            {(activeTab === 'map' || activeTab === 'urbanisme') && (
+              <div className="w-full flex flex-col h-full">
+                <div className="flex-1 min-h-[55vh] lg:min-h-0">
+                  <MapEditor
+                    isUrbanismeMode={activeTab === 'urbanisme'}
+                    key={`${projectId}-${remountKey}`}
+                    onAddressFound={handleAddressFound}
+                    onAddressSearched={handleAddressSearched}
+                    project={project}
+                    setProject={setProject}
+                    setIsAzimuthDefaulted={setIsAzimuthDefaulted}
+                    symbolToPlace={symbolToPlace}
+                    setSymbolToPlace={setSymbolToPlace}
+                    activeLayers={activeLayers}
+                  />
+                </div>
 
-              {/* Layer Toggle Buttons - Desktop: always visible; Mobile: collapsible */}
-              {/* Desktop */}
-              <div className="hidden lg:flex p-3 bg-gray-50 border-t flex-wrap gap-2">
-                {[
-                  { key: 'cadastre', label: 'Cadastre' },
-                  { key: 'zoneInondable', label: 'Zone Inondable' },
-                  { key: 'batiments', label: 'Bâtiments' },
-                  { key: 'rpg', label: 'Parcelles agricoles' },
-                  { key: 'hydro', label: 'Hydrographie' },
-                  { key: 'routes', label: 'Routes' },
-                  { key: 'voiesFerrees', label: 'Voies ferrées' },
-                  { key: 'communes', label: 'Limites communales' },
-                  { key: 'ZNIEFF 1', label: 'ZNIEFF 1' },
-                  { key: 'ZNIEFF 2', label: 'ZNIEFF 2' },
-                  { key: 'Natura 2000 Oiseaux', label: 'Natura 2000 Oiseaux' },
-                  { key: 'Natura 2000 Habitat', label: 'Natura 2000 Habitat' },
-                  { key: 'enedisHTA', label: 'Lignes HTA' },
-                  { key: 'enedisPostes', label: 'Postes HTA/BT' },
-                  { key: 'sdis', label: 'SDIS' },
-                ].map(layer => (
+                {/* Layer Toggle Buttons - Desktop: always visible */}
+                <div className="hidden lg:flex p-3 bg-gray-50 border-t flex-wrap gap-2">
+                  {[
+                    { key: 'cadastre', label: 'Cadastre' },
+                    { key: 'zoneInondable', label: 'Zone Inondable' },
+                    { key: 'batiments', label: 'Bâtiments' },
+                    { key: 'rpg', label: 'Parcelles agricoles' },
+                    { key: 'hydro', label: 'Hydrographie' },
+                    { key: 'routes', label: 'Routes' },
+                    { key: 'voiesFerrees', label: 'Voies ferrées' },
+                    { key: 'communes', label: 'Limites communales' },
+                    { key: 'ZNIEFF 1', label: 'ZNIEFF 1' },
+                    { key: 'ZNIEFF 2', label: 'ZNIEFF 2' },
+                    { key: 'Natura 2000 Oiseaux', label: 'Natura 2000 Oiseaux' },
+                    { key: 'Natura 2000 Habitat', label: 'Natura 2000 Habitat' },
+                    { key: 'enedisHTA', label: 'Lignes HTA' },
+                    { key: 'enedisPostes', label: 'Postes HTA/BT' },
+                    { key: 'abf', label: 'ABF' },
+                    { key: 'sdis', label: 'SDIS' },
+                  ].map(layer => (
+                    <button
+                      key={layer.key}
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const newActiveLayers = new Set(activeLayers);
+                        if (newActiveLayers.has(layer.key)) {
+                          newActiveLayers.delete(layer.key);
+                        } else {
+                          newActiveLayers.add(layer.key);
+                        }
+                        setActiveLayers(newActiveLayers);
+                        window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: layer.key } }));
+                      }}
+                      className={`px-3 py-1.5 text-sm border rounded transition-colors ${activeLayers.has(layer.key)
+                        ? 'bg-blue-500 text-white border-blue-600 hover:bg-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                        }`}
+                    >
+                      {layer.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Mobile - collapsible */}
+                <div className="lg:hidden">
                   <button
-                    key={layer.key}
                     type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const newActiveLayers = new Set(activeLayers);
-                      if (newActiveLayers.has(layer.key)) {
-                        newActiveLayers.delete(layer.key);
-                      } else {
-                        newActiveLayers.add(layer.key);
-                      }
-                      setActiveLayers(newActiveLayers);
-                      window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: layer.key } }));
-                    }}
-                    className={`px-3 py-1.5 text-sm border rounded transition-colors ${activeLayers.has(layer.key)
-                      ? 'bg-blue-500 text-white border-blue-600 hover:bg-blue-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-                      }`}
+                    className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 border-t text-sm font-medium text-gray-700"
+                    onClick={() => setIsLayersOpen(v => !v)}
                   >
-                    {layer.label}
+                    <span>🗺️ Calques</span>
+                    <span>{isLayersOpen ? '▲' : '▼'}</span>
                   </button>
-                ))}
+                  {isLayersOpen && (
+                    <div className="p-2 bg-gray-50 flex flex-wrap gap-1.5">
+                      {[
+                        { key: 'cadastre', label: 'Cadastre' },
+                        { key: 'zoneInondable', label: 'Z. Inond.' },
+                        { key: 'batiments', label: 'Bâtiments' },
+                        { key: 'rpg', label: 'Parcelles agr.' },
+                        { key: 'hydro', label: 'Hydro.' },
+                        { key: 'routes', label: 'Routes' },
+                        { key: 'voiesFerrees', label: 'V. ferrées' },
+                        { key: 'communes', label: 'Lim. comm.' },
+                        { key: 'ZNIEFF 1', label: 'ZNIEFF 1' },
+                        { key: 'ZNIEFF 2', label: 'ZNIEFF 2' },
+                        { key: 'Natura 2000 Oiseaux', label: 'N2000 Ois.' },
+                        { key: 'Natura 2000 Habitat', label: 'N2000 Hab.' },
+                        { key: 'enedisHTA', label: 'L. HTA' },
+                        { key: 'enedisPostes', label: 'P. HTA/BT' },
+                        { key: 'abf', label: 'ABF' },
+                        { key: 'sdis', label: 'SDIS' },
+                      ].map(layer => (
+                        <button
+                          key={layer.key}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const newActiveLayers = new Set(activeLayers);
+                            if (newActiveLayers.has(layer.key)) {
+                              newActiveLayers.delete(layer.key);
+                            } else {
+                              newActiveLayers.add(layer.key);
+                            }
+                            setActiveLayers(newActiveLayers);
+                            window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: layer.key } }));
+                          }}
+                          className={`px-2 py-1 text-xs border rounded transition-colors ${activeLayers.has(layer.key)
+                            ? 'bg-blue-500 text-white border-blue-600'
+                            : 'bg-white text-gray-700 border-gray-300'
+                            }`}
+                        >
+                          {layer.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-              {/* Mobile - collapsible */}
-              <div className="lg:hidden">
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 border-t text-sm font-medium text-gray-700"
-                  onClick={() => setIsLayersOpen(v => !v)}
-                >
-                  <span>🗺️ Calques</span>
-                  <span>{isLayersOpen ? '▲' : '▼'}</span>
-                </button>
-                {isLayersOpen && (
-                  <div className="p-2 bg-gray-50 flex flex-wrap gap-1.5">
-                    {[
-                      { key: 'cadastre', label: 'Cadastre' },
-                      { key: 'zoneInondable', label: 'Z. Inond.' },
-                      { key: 'batiments', label: 'Bâtiments' },
-                      { key: 'rpg', label: 'Parcelles agr.' },
-                      { key: 'hydro', label: 'Hydro.' },
-                      { key: 'routes', label: 'Routes' },
-                      { key: 'voiesFerrees', label: 'V. ferrées' },
-                      { key: 'communes', label: 'Lim. comm.' },
-                      { key: 'ZNIEFF 1', label: 'ZNIEFF 1' },
-                      { key: 'ZNIEFF 2', label: 'ZNIEFF 2' },
-                      { key: 'Natura 2000 Oiseaux', label: 'N2000 Ois.' },
-                      { key: 'Natura 2000 Habitat', label: 'N2000 Hab.' },
-                      { key: 'enedisHTA', label: 'L. HTA' },
-                      { key: 'enedisPostes', label: 'P. HTA/BT' },
-                      { key: 'sdis', label: 'SDIS' },
-                    ].map(layer => (
-                      <button
-                        key={layer.key}
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          const newActiveLayers = new Set(activeLayers);
-                          if (newActiveLayers.has(layer.key)) {
-                            newActiveLayers.delete(layer.key);
-                          } else {
-                            newActiveLayers.add(layer.key);
-                          }
-                          setActiveLayers(newActiveLayers);
-                          window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: layer.key } }));
-                        }}
-                        className={`px-2 py-1 text-xs border rounded transition-colors ${activeLayers.has(layer.key)
-                          ? 'bg-blue-500 text-white border-blue-600'
-                          : 'bg-white text-gray-700 border-gray-300'
-                          }`}
-                      >
-                        {layer.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            )}
 
 
             {/* Onglet Street View */}
-            <div className={activeTab === 'streetview' ? 'w-full h-full' : 'hidden'}>
-              <StreetViewTab project={project} activeTab={activeTab} />
-            </div>
+            {activeTab === 'streetview' && (
+              <div className='w-full h-full'>
+                <StreetViewTab project={project} activeTab={activeTab} />
+              </div>
+            )}
+
+            {/* Onglet Data Enedis */}
+            {activeTab === 'dataenedis' && (
+              <div className='w-full h-full'>
+                <DataEnedisTab project={project} activeTab={activeTab} />
+              </div>
+            )}
+
+
 
             {/* Onglet ShadowMap */}
-            <div className={activeTab === 'shadowmap' ? 'w-full h-full' : 'hidden'}>
-              <ShadowMapTab project={project} />
-            </div>
+            {activeTab === 'shadowmap' && (
+              <div className='w-full h-full'>
+                <ShadowMapTab project={project} />
+              </div>
+            )}
 
             {/* Onglet ZN / ZV (Neige et Vent) */}
             <div className={activeTab === 'nv65' ? 'w-full h-full' : 'hidden'}>
@@ -1905,9 +2059,6 @@ export default function ProjectEditor() {
           </div>
         </div>
       </div >
-
-
-
     </div >
   );
 }

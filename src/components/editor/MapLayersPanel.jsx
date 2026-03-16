@@ -370,6 +370,15 @@ const overlayCategories = {
             },
         },
     },
+    'Réseau Gaz': {
+        layers: {
+            'Réseau Gaz': {
+                url: 'https://opendata.agenceore.fr/data-fair/api/v1/datasets/infrastructures-reseau-gaz/lines?format=geojson',
+                attribution: 'Agence ORE',
+                type: 'gaz-custom',
+            },
+        },
+    },
 };
 const MapLayersPanel = ({ map }) => {
     const [activeBaseLayer, setActiveBaseLayer] = useState('google_satellite');
@@ -473,6 +482,11 @@ const MapLayersPanel = ({ map }) => {
                         window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'sdis' } }));
                         return newActive;
                     }
+
+                    if (layerConfig.type === 'gaz-custom' || layerName === 'Réseau Gaz') {
+                        window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'gaz' } }));
+                        return newActive;
+                    }
                     // Check zoom level for layers with minZoom
                     if (layerConfig.minZoom && map.getZoom() < layerConfig.minZoom && checked) {
                         alert(`Veuillez zoomer au niveau ${layerConfig.minZoom} ou plus pour afficher cette couche`);
@@ -505,6 +519,11 @@ const MapLayersPanel = ({ map }) => {
                                 fetch(layerConfig.url)
                                     .then(response => response.json())
                                     .then(data => {
+                                        if (!data || !data.features) {
+                                            console.error('Invalid GeoJSON data for layer:', layerName, data);
+                                            throw new Error('Données GeoJSON invalides');
+                                        }
+
                                         const markerClusterGroup = L.markerClusterGroup({
                                             chunkedLoading: true,
                                             chunkInterval: 200,
@@ -525,7 +544,9 @@ const MapLayersPanel = ({ map }) => {
                                                 });
                                             }
                                         });
-                                        const geoJsonLayer = L.geoJSON(data, {
+
+                                        if (data && data.type === 'FeatureCollection' && data.features && data.features.length > 0) {
+                                            const geoJsonLayer = L.geoJSON(data, {
                                             pointToLayer: (feature, latlng) => {
                                                 const icon = L.divIcon({
                                                     className: '',
@@ -557,6 +578,7 @@ const MapLayersPanel = ({ map }) => {
                                         });
                                         markerClusterGroup.addLayer(geoJsonLayer);
                                         markerClusterGroup.addTo(map);
+                                        }
                                         setGeoJsonLayers(prev => ({ ...prev, [layerName]: markerClusterGroup }));
                                         setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
                                     })
@@ -583,6 +605,11 @@ const MapLayersPanel = ({ map }) => {
                                 fetch(layerConfig.url)
                                     .then(response => response.json())
                                     .then(data => {
+                                        if (!data || !data.features) {
+                                            console.error('Invalid GeoJSON data for API layer:', layerName, data);
+                                            throw new Error('Données API invalides');
+                                        }
+
                                         const markerClusterGroup = L.markerClusterGroup({
                                             chunkedLoading: true,
                                             maxClusterRadius: 60,
@@ -596,7 +623,8 @@ const MapLayersPanel = ({ map }) => {
                                                 });
                                             }
                                         });
-                                        const geoJsonLayer = L.geoJSON(data, {
+                                        if (data && data.type === 'FeatureCollection' && data.features && data.features.length > 0) {
+                                            const geoJsonLayer = L.geoJSON(data, {
                                             pointToLayer: (feature, latlng) => {
                                                 return L.circleMarker(latlng, {
                                                     radius: layerName === 'Postes HTA/BT' ? 5 : 8,
@@ -636,6 +664,7 @@ const MapLayersPanel = ({ map }) => {
                                         });
                                         markerClusterGroup.addLayer(geoJsonLayer);
                                         markerClusterGroup.addTo(map);
+                                        }
                                         setGeoJsonLayers(prev => ({ ...prev, [layerName]: markerClusterGroup }));
                                         setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
                                     })
@@ -666,7 +695,13 @@ const MapLayersPanel = ({ map }) => {
                                 fetch(apiUrl)
                                     .then(response => response.json())
                                     .then(data => {
-                                        const geoJsonLayer = L.geoJSON(data, {
+                                        if (!data || !data.features) {
+                                            console.error('Invalid GeoJSON data for lazy layer:', layerName, data);
+                                            throw new Error('Données Lazy invalides');
+                                        }
+
+                                        if (data && data.type === 'FeatureCollection' && data.features && data.features.length > 0) {
+                                            const geoJsonLayer = L.geoJSON(data, {
                                             style: layerConfig.style || { color: '#FF8C00', weight: 2 },
                                             onEachFeature: (feature, layer) => {
                                                 if (feature.properties) {
@@ -681,6 +716,7 @@ const MapLayersPanel = ({ map }) => {
                                             }
                                         });
                                         geoJsonLayer.addTo(map);
+                                        }
                                         setGeoJsonLayers(prev => ({ ...prev, [layerName]: geoJsonLayer }));
                                         setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
                                     })
@@ -748,7 +784,8 @@ const MapLayersPanel = ({ map }) => {
                                         }
                                     });
 
-                                    const geoJsonLayer = L.geoJSON(mergedData, {
+                                    if (mergedData && mergedData.type === 'FeatureCollection' && mergedData.features && mergedData.features.length > 0) {
+                                        const geoJsonLayer = L.geoJSON(mergedData, {
                                         pointToLayer: (feature, latlng) => {
                                             return L.circleMarker(latlng, {
                                                 radius: 6,
@@ -784,6 +821,7 @@ const MapLayersPanel = ({ map }) => {
 
                                     markerClusterGroup.addLayer(geoJsonLayer);
                                     markerClusterGroup.addTo(map);
+                                    }
                                     setGeoJsonLayers(prev => ({ ...prev, [layerName]: markerClusterGroup }));
                                     setLoadingLayers(prev => ({ ...prev, [layerName]: false }));
                                 }).catch(err => {
