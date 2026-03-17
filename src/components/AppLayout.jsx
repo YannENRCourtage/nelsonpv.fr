@@ -479,6 +479,13 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen }) {
               </NavLink>
             )}
 
+            {(user?.activeTenantId === 'acama' || user?.tenantId === 'acama') && (
+              <NavLink to="/bp-acama" className={({ isActive }) => isActive ? 'nav-link active bp-acama' : 'nav-link bp-acama'}>
+                <TrendingUp className="w-4 h-4 mr-1 inline-block" />
+                BP ACAMA
+              </NavLink>
+            )}
+
             {(user?.role === 'admin' || user?.role === 'Administrator') && (
               <NavLink to="/monday" className={({ isActive }) => isActive ? 'nav-link active monday' : 'nav-link monday'}>
                 <Grid className="w-4 h-4 mr-1 inline-block" />

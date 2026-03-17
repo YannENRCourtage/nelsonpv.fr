@@ -15,6 +15,7 @@ import Odoo from './pages/Odoo.jsx';
 import Monday from './pages/Monday.jsx';
 import Finance from './pages/Finance.jsx';
 import DossierTracking from './pages/DossierTracking.jsx';
+import BpAcama from './pages/BpAcama.jsx';
 import { Toaster } from './components/ui/toaster.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
 import { DndProvider } from 'react-dnd';
@@ -144,6 +145,14 @@ function AppContent() {
             element={
               <ProtectedRoute requiredPermission="canAccessTracking">
                 <DossierTracking />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="bp-acama"
+            element={
+              <ProtectedRoute>
+                <BpAcama />
               </ProtectedRoute>
             }
           />
