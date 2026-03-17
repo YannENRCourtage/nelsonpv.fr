@@ -1,3 +1,4 @@
+// Re-trigger Vercel deployment 2
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { useProjects } from '@/contexts/ProjectContext.jsx';
