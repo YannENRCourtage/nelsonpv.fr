@@ -268,6 +268,12 @@ export default defineConfig({
 				secure: true,
 				rewrite: (path) => path.replace(/^\/api\/pvgis-proxy/, '')
 			},
+			'/api/proxies/isochrone': {
+				target: 'https://data.geopf.fr/navigation/isochrone',
+				changeOrigin: true,
+				secure: true,
+				rewrite: (path) => path.replace(/^\/api\/proxies\/isochrone/, '')
+			},
 			'/api': {
 				target: 'https://nelsonpv.fr',
 				changeOrigin: true,

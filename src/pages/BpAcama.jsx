@@ -22,7 +22,6 @@ const TABS = [
   { id: 'prop_be', label: 'PROPOSITION CLIENT BE', icon: FileText },
   { id: 'devis', label: 'DEVIS', icon: FileDown },
   { id: 'data', label: 'DATA', icon: BarChart3 },
-  { id: 'be', label: 'BE', icon: TrendingUp },
 ];
 
 const SUIVI_BAT_DATA = [
@@ -159,83 +158,11 @@ function SectionCard({ title, children, className }) {
 
 // ─── Tab: BUSINESS PLAN PROJETS ──────────────────────────────────────────────
 
-function TabBpProjets({ projects, selectedProject, setSelectedProject }) {
+function TabBpProjets({ projects, selectedProject, setSelectedProject, params, setParams, computeBusinessPlan, computeResteACharge }) {
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
 
-  const [params, setParams] = useState({
-    kwc: 346.84,
-    productible: 1123.08,
-    tarifBas: 0.0846,
-    tarifHaut: 0.04,
-    seuilKwhKwc: 1100,
-    maintenance: 1734.20,
-    locationCompteur: 660,
-    assurance: 867.10,
-    taxesLocales: 0,
-    gestionAdmin: 0,
-    coutCentrale: 169951.60,
-    coutCharpente: 171381.00,
-    raccordement: 18300.00,
-    frais: 3413.33,
-    soulte: -9048.54,
-    dureeEmprunt: 20,
-    tauxCredit: 4,
-    indexationTarif: 0.006,
-    indexationOpex: 0.02,
-    degradation: 0.004,
-  });
-
-  const set = useCallback((k, v) => setParams(p => ({ ...p, [k]: v })), []);
-
-  // Persistence: Load saved state or calculate defaults when project changes
-  useEffect(() => {
-    if (!selectedProject) return;
-
-    // 1. Try to load saved state
-    if (selectedProject.bpAcamaState) {
-      setParams(selectedProject.bpAcamaState);
-      return;
-    }
-
-    // 2. Otherwise calculate defaults
-    const kwc = parseFloat(selectedProject.puissance) || 346.84;
-    const prod = parseFloat(selectedProject.productible) || 1123.08;
-    
-    // Raccordement formula: 12450 + 19.5 * dist_hta
-    const distHta = parseFloat(selectedProject.dist_hta) || 0;
-    const raccordement = 12450 + (distHta * 19.5);
-
-    // Centrale logic: 490€/kWc
-    const coutCentrale = kwc * 490;
-
-    // Charpente lookup
-    const batType = SUIVI_BAT_DATA.find(b => b.type === selectedProject.type_bat) || SUIVI_BAT_DATA[SUIVI_BAT_DATA.length - 1];
-    const coutCharpente = batType.cout_bat || 171381;
-
-    // OPEX
-    const maintenance = kwc * 5;
-    const assurance = kwc * 2.5;
-    const taxesLocales = kwc * 2.5;
-
-    // Frais (roughly 1% of subtotal)
-    const subtotal = coutCentrale + coutCharpente + raccordement;
-    const frais = subtotal * 0.01;
-
-    setParams(prev => ({
-      ...prev,
-      kwc,
-      productible: prod,
-      coutCentrale,
-      coutCharpente,
-      raccordement,
-      maintenance,
-      assurance,
-      taxesLocales,
-      frais,
-      soulte: parseFloat(selectedProject.soulte) || 0
-    }));
-  }, [selectedProject]);
+  const set = useCallback((k, v) => setParams(p => ({ ...p, [k]: v })), [setParams]);
 
   const saveBp = async () => {
     if (!selectedProject) return;
@@ -544,49 +471,6 @@ function TabSuiviBatType() {
 
 // ─── Tab: BE Tables ──────────────────────────────────────────────────────────
 
-function TabBE() {
-  const prodCols = ['1 000','1 050','1 100','1 150','1 200','1 250','1 300'];
-  const prodKeys = ['p1000','p1050','p1100','p1150','p1200','p1250','p1300'];
-
-  return (
-    <div className="p-4 space-y-6">
-      <div>
-        <h3 className="text-sm font-bold text-slate-700 mb-2">PRÉSENCE DU BAC ACIER ET RENFORCEMENT DE STRUCTURE</h3>
-        <div className="overflow-auto border border-slate-200 rounded-lg">
-          <table className="text-[10px] border-collapse min-w-max">
-            <thead>
-              <tr className="bg-slate-700 text-white">
-                <th className="border border-slate-500 px-2 py-1.5" rowSpan={2}>Capacité</th>
-                {prodCols.map(p => <th key={p} className="border border-slate-500 px-2 py-1.5 text-center" colSpan={2}>{p} KWh/KWc</th>)}
-              </tr>
-              <tr className="bg-slate-600 text-white">
-                {prodCols.map(p => <React.Fragment key={p}><th className="border border-slate-500 px-2 py-1">LOYER</th><th className="border border-slate-500 px-2 py-1">SOULTE</th></React.Fragment>)}
-              </tr>
-            </thead>
-            <tbody>
-              {BE_TABLES.presence_bac.map((row, i) => (
-                <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                  <td className="border border-slate-200 px-2 py-1 font-semibold whitespace-nowrap">{row.capacite}</td>
-                  {prodKeys.map(k => {
-                    const cell = row[k] || {};
-                    const isRed = cell.loyer === null && cell.soulte === null;
-                    return (
-                      <React.Fragment key={k}>
-                        <td className={cn('border border-slate-200 px-2 py-1 text-right', isRed && 'bg-red-100 text-red-400')}>{cell.loyer ? `${fmt(cell.loyer)} €` : '—'}</td>
-                        <td className={cn('border border-slate-200 px-2 py-1 text-right', isRed && 'bg-red-100 text-red-400')}>{cell.soulte ? `${fmt(cell.soulte)} €` : '—'}</td>
-                      </React.Fragment>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-[10px] text-slate-400 mt-1">Paramètres : Tranchée partie privée : Max 100ml / Raccordement ENEDIS : max 240m</p>
-      </div>
-    </div>
-  );
-}
 
 function TabData() {
   const [rows, setRows] = useState([
@@ -684,10 +568,142 @@ function TabData() {
   );
 }
 
-function TabDevis({ selectedProject }) {
+function TabPropositionBE({ selectedProject, params }) {
   const [data, setData] = useState({
-    dateDevis: '17/03/2026',
-    dateValidite: '16/04/2026',
+    nomProjet: '',
+    mixte: 'NON',
+    typeBat: '',
+    zoneNeige: 'N/A',
+    zoneVent: 'N/A',
+    altitude: 'N/A',
+    gps: '',
+    superficie: 'N/A',
+    prodMoyen: '',
+    puissance: '',
+    tarif: '',
+    ombrage: 'NON',
+    longTranchee: 'N/A',
+    distPublique: 'N/A',
+    soulte: '',
+    optionOffert: '',
+    dateRealisation: new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+    dateValidite: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+    pcComplete: new Date(Date.now() + 56 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+    depotDepose: new Date(Date.now() + 77 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+    realiseBy: 'S.B',
+    valideBy: 'A.M',
+    remarques: '',
+  });
+
+  useEffect(() => {
+    if (selectedProject) {
+      setData(prev => ({
+        ...prev,
+        nomProjet: selectedProject.name || '',
+        mixte: selectedProject.mixte || 'NON',
+        typeBat: selectedProject.type_bat || '',
+        zoneNeige: selectedProject.snow_zone || 'N/A',
+        zoneVent: selectedProject.wind_zone || 'N/A',
+        altitude: selectedProject.altitude || 'N/A',
+        gps: selectedProject.gps || '',
+        superficie: selectedProject.surface || 'N/A',
+        prodMoyen: params?.productible || '',
+        puissance: params?.kwc || '',
+        tarif: params?.tarifBas || '0.0846',
+        ombrage: selectedProject.ombrage || 'NON',
+        longTranchee: selectedProject.dist_hta || 'N/A',
+        distPublique: selectedProject.dist_hta || 'N/A',
+        soulte: params?.soulte || '',
+      }));
+    }
+  }, [selectedProject, params]);
+
+  const update = (k, v) => setData(prev => ({ ...prev, [k]: v }));
+
+  const Section = ({ title, children }) => (
+    <div className="mb-4">
+      <div className="bg-[#1e293b] text-white text-[10px] font-bold px-3 py-1.5 uppercase tracking-wider">{title}</div>
+      <div className="bg-white border-x border-b border-slate-200">{children}</div>
+    </div>
+  );
+
+  const Row = ({ label, value, onChange, isLast }) => (
+    <div className={cn("flex border-b border-slate-100 last:border-0", isLast && "border-0")}>
+      <div className="w-1/2 bg-slate-50 px-3 py-2 text-[10px] font-bold text-slate-700 border-r border-slate-200 uppercase">{label}</div>
+      <div className="w-1/2 px-3 py-2 text-[10px] font-medium text-slate-900 flex items-center">
+        {onChange ? (
+          <input 
+            type="text" 
+            className="w-full bg-transparent outline-none border-b border-transparent focus:border-blue-500"
+            value={value ?? ''}
+            onChange={e => onChange(e.target.value)}
+          />
+        ) : (
+          <span>{value ?? '—'}</span>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="p-8 bg-slate-100 min-h-full">
+      <div className="max-w-xl mx-auto bg-white shadow-xl p-8 rounded-lg">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-black text-slate-900 border-l-4 border-blue-600 pl-4 uppercase tracking-tighter">Proposition Client BE</h2>
+          <Button size="sm" variant="outline" className="gap-2" onClick={() => window.print()}>
+            <FileDown className="w-4 h-4" /> Imprimer / PDF
+          </Button>
+        </div>
+
+        <Section title="Projet">
+          <Row label="Nom du Projet :" value={data.nomProjet} onChange={v => update('nomProjet', v)} />
+          <Row label="Présence Projet Mixte :" value={data.mixte} onChange={v => update('mixte', v)} />
+          <Row label="Type Bâtiment :" value={data.typeBat} onChange={v => update('typeBat', v)} />
+          <Row label="Zone neige :" value={data.zoneNeige} onChange={v => update('zoneNeige', v)} />
+          <Row label="Zone vent :" value={data.zoneVent} onChange={v => update('zoneVent', v)} />
+          <Row label="Altitude :" value={data.altitude} onChange={v => update('altitude', v)} />
+          <Row label="Point GPS :" value={data.gps} onChange={v => update('gps', v)} />
+          <Row label="Superficie (m²) :" value={data.superficie} onChange={v => update('superficie', v)} />
+          <Row label="Productible moyen en kWh/kWc :" value={data.prodMoyen} onChange={v => update('prodMoyen', v)} />
+          <Row label="Puissance (kWc) :" value={data.puissance} onChange={v => update('puissance', v)} />
+          <Row label="Tarif en vigueur en c€/kWh :" value={data.tarif} onChange={v => update('tarif', v)} />
+          <Row label="Présence Ombrage :" value={data.ombrage} onChange={v => update('ombrage', v)} isLast />
+        </Section>
+
+        <Section title="Raccordement Partie Privée">
+          <Row label="Longueur tranchée (ml) :" value={data.longTranchee} onChange={v => update('longTranchee', v)} isLast />
+        </Section>
+
+        <Section title="Raccordement Partie Publique">
+          <Row label="Distance (ml) :" value={data.distPublique} onChange={v => update('distPublique', v)} isLast />
+        </Section>
+
+        <Section title="Dilan Projet">
+          <Row label="Soulte :" value={fmtEur(data.soulte)} onChange={v => update('soulte', v)} />
+          <Row label="Option Offert :" value={data.optionOffert} onChange={v => update('optionOffert', v)} isLast />
+        </Section>
+
+        <Section title="Dates Clés">
+          <Row label="Date de réalisation :" value={data.dateRealisation} onChange={v => update('dateRealisation', v)} />
+          <Row label="Offre valable jusqu'au :" value={data.dateValidite} onChange={v => update('dateValidite', v)} />
+          <Row label="PC à Compléter avant le :" value={data.pcComplete} onChange={v => update('pcComplete', v)} />
+          <Row label="Dépôt à déposer avant le :" value={data.depotDepose} onChange={v => update('depotDepose', v)} isLast />
+        </Section>
+
+        <Section title="Responsabilité">
+          <Row label="Réalisé par :" value={data.realiseBy} onChange={v => update('realiseBy', v)} />
+          <Row label="Validé par :" value={data.valideBy} onChange={v => update('valideBy', v)} />
+          <Row label="Remarques :" value={data.remarques} onChange={v => update('remarques', v)} isLast />
+        </Section>
+      </div>
+    </div>
+  );
+}
+
+function TabDevis({ selectedProject, params }) {
+  const [data, setData] = useState({
+    dateDevis: new Date().toLocaleDateString('fr-FR'),
+    dateValidite: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR'),
     etudeRenfort: 0,
     etudeImplant: 0,
     etudeNoteCalcul: 0,
@@ -701,11 +717,10 @@ function TabDevis({ selectedProject }) {
     montage: 0,
     etudeElec: 0,
     securiteElec: 0,
-    onduleurs: 0,
     poseModules: 0,
   });
 
-  const kwc = parseFloat(selectedProject?.puissance) || 0;
+  const kwc = params?.kwc || 0;
   const longBat = parseFloat(selectedProject?.longueur) || 0;
   const largBat = parseFloat(selectedProject?.largeur) || 0;
   const nbTravees = parseInt(selectedProject?.nb_travees) || 0;
@@ -714,94 +729,151 @@ function TabDevis({ selectedProject }) {
 
   const update = (k, v) => setData(prev => ({ ...prev, [k]: v }));
 
-  const Row = ({ label, value, unit, onChange, isHeader, isTotal }) => (
-    <div className={cn("flex border-b border-slate-100 py-1.5 px-2 items-center hover:bg-slate-50 transition-colors", isHeader && "bg-slate-800 text-white font-bold hover:bg-slate-800", isTotal && "bg-slate-100 font-bold")}>
-      <div className={cn("text-xs flex-1", isHeader && "uppercase tracking-wider")}>{label}</div>
-      <div className="flex items-center gap-2 w-48">
+  const subtotalBat = (parseFloat(data.etudeRenfort) || 0) + 
+                     (parseFloat(data.etudeImplant) || 0) + 
+                     (parseFloat(data.etudeNoteCalcul) || 0) + 
+                     (parseFloat(data.etudeCalepinage) || 0) + 
+                     (parseFloat(data.transportCharpente) || 0) + 
+                     (parseFloat(data.fournitureBac) || 0) + 
+                     (parseFloat(data.anticondensation) || 0) + 
+                     (parseFloat(data.transportCouverture) || 0) + 
+                     (parseFloat(data.levage) || 0) + 
+                     (parseFloat(data.securite) || 0) + 
+                     (parseFloat(data.montage) || 0) +
+                     (params?.coutCharpente || 0);
+
+  const subtotalElec = (parseFloat(data.etudeElec) || 0) + 
+                      (parseFloat(data.securiteElec) || 0) + 
+                      (parseFloat(data.poseModules) || 0) +
+                      (params?.coutCentrale || 0) +
+                      (params?.onduleurs || 0);
+
+  const subtotalRaccordement = (params?.raccordement || 0);
+  
+  const totalHT = subtotalBat + subtotalElec + subtotalRaccordement;
+
+  const Row = ({ label, value, unit, onChange, isHeader, isSubtotal }) => (
+    <div className={cn(
+      "flex border-b border-slate-100 py-2 px-3 items-center hover:bg-slate-50 transition-colors", 
+      isHeader && "bg-slate-800 text-white font-bold hover:bg-slate-800", 
+      isSubtotal && "bg-slate-100 font-bold border-t-2 border-slate-200"
+    )}>
+      <div className={cn("text-base flex-1", isHeader && "uppercase tracking-wider")}>{label}</div>
+      <div className="flex items-center gap-2 w-56">
         {onChange ? (
           <input 
             type="text" 
-            className="w-full bg-transparent text-right outline-none border-b border-transparent focus:border-blue-400 text-xs px-1"
+            className="w-full bg-transparent text-right outline-none border-b border-transparent focus:border-blue-400 text-sm px-1 font-medium"
             value={value ?? ''}
             onChange={e => onChange(e.target.value)}
           />
         ) : (
-          <div className="w-full text-right text-xs font-semibold">{value ?? '—'}</div>
+          <div className="w-full text-right text-base font-bold">{typeof value === 'number' ? fmt(value, 2) : (value ?? '—')}</div>
         )}
-        <div className="w-8 text-[10px] text-slate-400 text-right">{unit}</div>
+        <div className="w-12 text-[10px] text-slate-400 text-right uppercase font-bold">{unit}</div>
       </div>
     </div>
   );
 
   return (
-    <div className="p-4 flex flex-col h-full overflow-hidden">
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-auto">
-        {/* Header Information */}
-        <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 border-b border-slate-200">
-           <div className="space-y-2">
-             <div className="flex items-center gap-2 text-xs">
-                <span className="text-slate-500 w-32">Date de réalisation :</span>
-                <input className="bg-transparent border-b border-slate-300 outline-none w-32" value={data.dateDevis} onChange={e => update('dateDevis', e.target.value)} />
-             </div>
-             <div className="flex items-center gap-2 text-xs">
-                <span className="text-slate-500 w-32">Date de validité :</span>
-                <input className="bg-transparent border-b border-slate-300 outline-none w-32" value={data.dateValidite} onChange={e => update('dateValidite', e.target.value)} />
-             </div>
-           </div>
-           <div className="text-right">
-             <div className="text-xs font-bold text-slate-800">PROJET : {selectedProject?.name || 'Non sélectionné'}</div>
-             <div className="text-[10px] text-slate-500 mt-1">Client : {selectedProject?.client_name || '—'}</div>
-           </div>
+    <div className="p-6 flex flex-col h-full overflow-hidden bg-slate-50">
+      <div className="max-w-3xl mx-auto w-full bg-white rounded-xl border border-slate-200 shadow-lg overflow-auto flex flex-col no-scrollbar">
+        {/* Toolbar */}
+        <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-white sticky top-0 z-20">
+          <div className="flex items-center gap-3">
+            <FileDown className="w-5 h-5 text-blue-600" />
+            <h3 className="font-bold text-slate-800">DEVIS TECHNIQUE</h3>
+          </div>
+          <Button size="sm" className="gap-2 shadow-sm" onClick={() => window.print()}>
+            <FileDown className="w-4 h-4" />
+            Générer le Devis
+          </Button>
         </div>
 
-        {/* LOT BATIMENT */}
-        <Row label="LOT BATIMENT" isHeader />
-        <Row label="Études :" className="font-semibold italic bg-slate-50/50" />
-        <Row label="  • Étude de renforcement" value={data.etudeRenfort} unit="€ HT" onChange={v => update('etudeRenfort', v)} />
-        <Row label="  • Réalisation du plan d'implantation et descente de charge" value={data.etudeImplant} unit="€ HT" onChange={v => update('etudeImplant', v)} />
-        <Row label="  • Réalisation du plan d'ensemble et note de calcul" value={data.etudeNoteCalcul} unit="€ HT" onChange={v => update('etudeNoteCalcul', v)} />
-        <Row label="  • Réalisation de plan de calepinage couverture" value={data.etudeCalepinage} unit="€ HT" onChange={v => update('etudeCalepinage', v)} />
-        
-        <Row label="Ossature primaire :" className="font-semibold italic bg-slate-50/50" />
-        <Row label="  • Largeur totale extérieur poteaux" value={fmt(largBat, 2)} unit="ml" />
-        <Row label="  • Longueur totale" value={fmt(longBat, 2)} unit="ml" />
-        <Row label="  • Nombre de travées" value={nbTravees} unit="u" />
-        <Row label="  • Largeur Travée" value={fmt(largTravee, 2)} unit="ml" />
-        <Row label="  • Stabilité du bâtiment par croix de Saint-André" value="Oui" unit="" />
-        <Row label="  • Finition avec une peinture anti-rouille" value="Oui" unit="" />
-        <Row label="  • Pannes galvanisées" value="Oui" unit="" />
-        <Row label="  • Transport et déchargement de Charpente métallique" value={data.transportCharpente} unit="€ HT" onChange={v => update('transportCharpente', v)} />
+        <div className="p-6 space-y-6">
+          {/* Header Information */}
+          <div className="grid grid-cols-2 gap-8 p-4 bg-slate-50 rounded-lg border border-slate-100">
+             <div className="space-y-3">
+               <div className="flex items-center gap-3 text-sm">
+                  <span className="text-slate-500 font-medium w-40">Date de réalisation :</span>
+                  <input className="bg-white border border-slate-200 rounded px-2 py-1 outline-none w-32 shadow-sm" value={data.dateDevis} onChange={e => update('dateDevis', e.target.value)} />
+               </div>
+               <div className="flex items-center gap-3 text-sm">
+                  <span className="text-slate-500 font-medium w-40">Date de validité :</span>
+                  <input className="bg-white border border-slate-200 rounded px-2 py-1 outline-none w-32 shadow-sm" value={data.dateValidite} onChange={e => update('dateValidite', e.target.value)} />
+               </div>
+             </div>
+             <div className="text-right">
+               <div className="text-sm font-black text-slate-800 uppercase">PROJET : {selectedProject?.name || 'Non sélectionné'}</div>
+               <div className="text-xs text-slate-500 mt-2 font-medium">Client : {selectedProject?.client_name || '—'}</div>
+             </div>
+          </div>
 
-        <Row label="Couverture :" className="font-semibold italic bg-slate-50/50" />
-        <Row label="  • Fourniture de la couverture en bac acier de chez BAC ACIER" value={data.fournitureBac} unit="€ HT" onChange={v => update('fournitureBac', v)} />
-        <Row label="  • Surface de couverture m²" value={fmt(surface, 0)} unit="m²" />
-        <Row label="  • Épaisseur de la couverture : 75/100" value="Oui" unit="" />
-        <Row label="  • Film anti-condensation" value={data.anticondensation} unit="€ HT" onChange={v => update('anticondensation', v)} />
-        <Row label="  • Transport et déchargement de la couverture" value={data.transportCouverture} unit="€ HT" onChange={v => update('transportCouverture', v)} />
+          <div className="border border-slate-100 rounded-lg overflow-hidden">
+            {/* LOT BATIMENT */}
+            <Row label="LOT BÂTIMENT (Charpente & Couverture)" isHeader />
+            <Row label="Études techniques" className="font-bold text-blue-700 bg-blue-50/30" />
+            <Row label="  • Étude de renforcement" value={data.etudeRenfort} unit="€ HT" onChange={v => update('etudeRenfort', v)} />
+            <Row label="  • Plan d'implantation & descente de charge" value={data.etudeImplant} unit="€ HT" onChange={v => update('etudeImplant', v)} />
+            <Row label="  • Plan d'ensemble & note de calcul" value={data.etudeNoteCalcul} unit="€ HT" onChange={v => update('etudeNoteCalcul', v)} />
+            <Row label="  • Plan de calepinage couverture" value={data.etudeCalepinage} unit="€ HT" onChange={v => update('etudeCalepinage', v)} />
+            
+            <Row label="Ossature & Charpente" className="font-bold text-blue-700 bg-blue-50/30" />
+            <Row label="  • Coût matériel Charpente (BP)" value={params?.coutCharpente} unit="€ HT" />
+            <Row label="  • Largeur totale extérieur poteaux" value={fmt(largBat, 2)} unit="ml" />
+            <Row label="  • Longueur totale" value={fmt(longBat, 2)} unit="ml" />
+            <Row label="  • Nombre de travées / Largeur travée" value={`${nbTravees} u / ${fmt(largTravee, 2)} ml`} unit="" />
+            <Row label="  • Transport et déchargement charpente" value={data.transportCharpente} unit="€ HT" onChange={v => update('transportCharpente', v)} />
 
-        <Row label="Logistique et Pose :" className="font-semibold italic bg-slate-50/50" />
-        <Row label="  • Location des engins de levage et de montage" value={data.levage} unit="€ HT" onChange={v => update('levage', v)} />
-        <Row label="  • Mise en place de la sécurité (EPI et EPC)" value={data.securite} unit="€ HT" onChange={v => update('securite', v)} />
-        <Row label="  • Prestation de montage de la charpente et pose de la couverture" value={data.montage} unit="€ HT" onChange={v => update('montage', v)} />
+            <Row label="Couverture & Finitions" className="font-bold text-blue-700 bg-blue-50/30" />
+            <Row label="  • Fourniture Bac Acier (BAC ACIER)" value={data.fournitureBac} unit="€ HT" onChange={v => update('fournitureBac', v)} />
+            <Row label="  • Surface couverture totale" value={fmt(surface, 0)} unit="m²" />
+            <Row label="  • Film anti-condensation / Épaisseur 75/100" value={data.anticondensation} unit="€ HT" onChange={v => update('anticondensation', v)} />
+            <Row label="  • Transport et déchargement couverture" value={data.transportCouverture} unit="€ HT" onChange={v => update('transportCouverture', v)} />
 
-        {/* LOT ELEC */}
-        <Row label="LOT ELEC" isHeader />
-        <Row label="Études & Sécurité :" className="font-semibold italic bg-slate-50/50" />
-        <Row label="  • Développement du projet, demande de raccordement, études PV" value={data.etudeElec} unit="€ HT" onChange={v => update('etudeElec', v)} />
-        <Row label="  • Mise en place de la sécurité (EPI et EPC)" value={data.securiteElec} unit="€ HT" onChange={v => update('securiteElec', v)} />
-        
-        <Row label="Partie Modules & Onduleurs :" className="font-semibold italic bg-slate-50/50" />
-        <Row label="  • Puissance installée" value={fmt(kwc, 2)} unit="kWc" />
-        <Row label="  • Fourniture des onduleurs" value={data.onduleurs} unit="€ HT" onChange={v => update('onduleurs', v)} />
-        <Row label="  • Pose et raccordement des modules" value={data.poseModules} unit="€ HT" onChange={v => update('poseModules', v)} />
+            <Row label="Pose & Logistique" className="font-bold text-blue-700 bg-blue-50/30" />
+            <Row label="  • Location engins de levage & montage" value={data.levage} unit="€ HT" onChange={v => update('levage', v)} />
+            <Row label="  • Sécurité chantier (EPI / EPC)" value={data.securite} unit="€ HT" onChange={v => update('securite', v)} />
+            <Row label="  • Montage charpente & pose couverture" value={data.montage} unit="€ HT" onChange={v => update('montage', v)} />
+            <Row label="SOUS-TOTAL LOT BÂTIMENT" value={subtotalBat} unit="€ HT" isSubtotal />
 
-        {/* Summary */}
-        <div className="p-4 bg-slate-900 text-white mt-4 rounded-b-lg">
-           <div className="flex justify-between items-center mb-1">
-             <span className="text-xs text-slate-400">TOTAL HT</span>
-             <span className="text-lg font-bold">Calcul en cours...</span>
-           </div>
-           <p className="text-[10px] text-slate-500 italic">Ce devis est soumis aux conditions d'intervention spécifiques définies dans le fichier Excel source.</p>
+            {/* LOT ELEC */}
+            <div className="h-6 bg-slate-50" />
+            <Row label="LOT ÉLECTRICITÉ (Photovoltaïque)" isHeader />
+            <Row label="Ingénierie & Sécurité" className="font-bold text-blue-700 bg-blue-50/30" />
+            <Row label="  • Développement, Raccordement & Études PV" value={data.etudeElec} unit="€ HT" onChange={v => update('etudeElec', v)} />
+            <Row label="  • Sécurité électrique & Travaux" value={data.securiteElec} unit="€ HT" onChange={v => update('securiteElec', v)} />
+            
+            <Row label="Matériel & Pose" className="font-bold text-blue-700 bg-blue-50/30" />
+            <Row label="  • Coût matériel Centrale PV (BP)" value={params?.coutCentrale} unit="€ HT" />
+            <Row label="  • Puissance totale installée" value={fmt(kwc, 2)} unit="kWc" />
+            <Row label="  • Fourniture des Onduleurs (BP)" value={params?.onduleurs} unit="€ HT" />
+            <Row label="  • Pose & Raccordement modules" value={data.poseModules} unit="€ HT" onChange={v => update('poseModules', v)} />
+            <Row label="SOUS-TOTAL LOT ÉLECTRICITÉ" value={subtotalElec} unit="€ HT" isSubtotal />
+
+            {/* RACCORDEMENT */}
+            <div className="h-6 bg-slate-50" />
+            <Row label="FRAIS DE RACCORDEMENT" isHeader />
+            <Row label="Coûts Enedis / Privé (BP)" value={subtotalRaccordement} unit="€ HT" isSubtotal />
+          </div>
+
+          {/* Final Summary */}
+          <div className="bg-slate-900 text-white rounded-xl p-6 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full -mr-16 -mt-16 blur-3xl" />
+            <div className="flex justify-between items-end relative z-10">
+              <div className="space-y-1">
+                <span className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Montant Total du Devis</span>
+                <p className="text-[10px] text-slate-500 max-w-sm italic leading-tight">
+                  Ce devis est une estimation basée sur les paramètres techniques du projet. 
+                  Une étude de sol et un levé topographique sont nécessaires pour validation finale.
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-blue-400 font-bold block mb-1">TOTAL HT</span>
+                <span className="text-3xl font-black tabular-nums">{fmtEur(totalHT)}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -828,6 +900,78 @@ export default function BpAcama() {
   const [activeTab, setActiveTab] = useState('bp_projets');
   const [selectedProject, setSelectedProject] = useState(null);
 
+  const [params, setParams] = useState({
+    kwc: 346.84,
+    productible: 1123.08,
+    tarifBas: 0.0846,
+    tarifHaut: 0.04,
+    seuilKwhKwc: 1100,
+    maintenance: 1734.20,
+    locationCompteur: 660,
+    assurance: 867.10,
+    taxesLocales: 0,
+    gestionAdmin: 0,
+    coutCentrale: 169951.60,
+    coutCharpente: 171381.00,
+    raccordement: 18300.00,
+    frais: 3413.33,
+    soulte: -9048.54,
+    dureeEmprunt: 20,
+    tauxCredit: 4,
+    indexationTarif: 0.006,
+    indexationOpex: 0.02,
+    degradation: 0.004,
+  });
+
+  // Persistence: Load saved state or calculate defaults when project changes
+  useEffect(() => {
+    if (!selectedProject) return;
+
+    // 1. Try to load saved state
+    if (selectedProject.bpAcamaState) {
+      setParams(selectedProject.bpAcamaState);
+      return;
+    }
+
+    // 2. Otherwise calculate defaults
+    const kwc = parseFloat(selectedProject.puissance) || 346.84;
+    const prod = parseFloat(selectedProject.productible) || 1123.08;
+    
+    // Raccordement formula: 12450 + 19.5 * dist_hta
+    const distHta = parseFloat(selectedProject.dist_hta) || 0;
+    const raccordement = 12450 + (distHta * 19.5);
+
+    // Centrale logic: 490€/kWc
+    const coutCentrale = kwc * 490;
+
+    // Charpente lookup
+    const batType = SUIVI_BAT_DATA.find(b => b.type === selectedProject.type_bat) || SUIVI_BAT_DATA[SUIVI_BAT_DATA.length - 1];
+    const coutCharpente = batType.cout_bat || 171381;
+
+    // OPEX
+    const maintenance = kwc * 5;
+    const assurance = kwc * 2.5;
+    const taxesLocales = kwc * 2.5;
+
+    // Frais (roughly 1% of subtotal)
+    const subtotal = coutCentrale + coutCharpente + raccordement;
+    const frais = subtotal * 0.01;
+
+    setParams(prev => ({
+      ...prev,
+      kwc,
+      productible: prod,
+      coutCentrale,
+      coutCharpente,
+      raccordement,
+      maintenance,
+      assurance,
+      taxesLocales,
+      frais,
+      soulte: parseFloat(selectedProject.soulte) || 0
+    }));
+  }, [selectedProject]);
+
   const isAdmin = user?.role === 'admin';
   const isAlexandru = user?.email === 'a.mihailov@acama-energies.fr';
 
@@ -846,12 +990,22 @@ export default function BpAcama() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'bp_projets': return <TabBpProjets projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} />;
+      case 'bp_projets': return (
+        <TabBpProjets 
+          projects={projects || []} 
+          selectedProject={selectedProject} 
+          setSelectedProject={setSelectedProject}
+          params={params}
+          setParams={setParams}
+          computeBusinessPlan={computeBusinessPlan}
+          computeResteACharge={computeResteACharge}
+        />
+      );
       case 'suivi': return <TabSuivi />;
       case 'suivi_bat': return <TabSuiviBatType />;
-      case 'be': return <TabBE />;
+      case 'prop_be': return <TabPropositionBE selectedProject={selectedProject} params={params} />;
       case 'data': return <TabData />;
-      case 'devis': return <TabDevis selectedProject={selectedProject} />;
+      case 'devis': return <TabDevis selectedProject={selectedProject} params={params} />;
       default: return <TabPlaceholder label={TABS.find(t => t.id === activeTab)?.label || ''} />;
     }
   };
@@ -859,7 +1013,7 @@ export default function BpAcama() {
   return (
     <div className="flex h-[calc(100vh-64px)] bg-slate-100 overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-52 bg-slate-900 text-white flex flex-col shrink-0">
+      <aside className="w-64 bg-slate-900 text-white flex flex-col shrink-0">
         <div className="px-4 py-3 border-b border-slate-700">
           <h1 className="text-sm font-bold text-white">BP ACAMA</h1>
           <p className="text-[10px] text-slate-400">Business Plan ACAMA</p>

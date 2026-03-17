@@ -31,6 +31,7 @@ import { mapData } from "@/lib/nomenclature.js";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { urbanismeService } from "@/services/UrbanismeService";
+import { isochroneService } from "@/services/IsochroneService";
 
 // --- Clé API IGN ---
 // 👇 COPIEZ VOTRE CLÉ API GÉOSERVICES IGN CI-DESSOUS 👇
@@ -625,7 +626,7 @@ function ContextMenu({ position, onAddText, onAddNote, onClose, onCheckUrbanisme
   );
 }
 
-function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject, setIsAzimuthDefaulted, isRotatingRef, isUrbanismeMode, setShowInfoPanel }) {
+function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject, setIsAzimuthDefaulted, isRotatingRef, isUrbanismeMode, setShowInfoPanel, isochroneConfig }) {
   const [mousePos, setMousePos] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [ignoreNextClick, setIgnoreNextClick] = useState(false);
@@ -778,6 +779,38 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
     }
   };
 
+  const handleIsochrone = async (latlng) => {
+    if (!isochroneConfig) return;
+    try {
+      toast({ title: "Génération Isochrone", description: "Calcul en cours..." });
+      const geojson = await isochroneService.fetchIsochrone(
+        latlng.lat,
+        latlng.lng,
+        isochroneConfig.costType,
+        isochroneConfig.costValue,
+        isochroneConfig.profile
+      );
+      
+      const id = crypto.randomUUID();
+      const label = `${isochroneConfig.costType === 'duration' ? 'Temps' : 'Distance'} : ${isochroneConfig.costValue} ${isochroneConfig.costType === 'duration' ? 'min' : 'm'}`;
+      
+      setFeatures(fs => [...fs, { 
+        id, 
+        type: 'isochrone', 
+        geojson, 
+        label,
+        at: latlng,
+        config: { ...isochroneConfig } 
+      }]);
+      
+      toast({ title: "Isochrone généré", description: label });
+      setSymbolToPlace(null);
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Erreur", description: "Impossible de générer l'isochrone.", variant: "destructive" });
+    }
+  };
+
   useMapEvents({
     click(e) {
       if (isUrbanismeMode) {
@@ -792,6 +825,10 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       if (draggingRef.current && draggingRef.current.type === 'rotate') return;
       if (mode === 'delete') return;
       if (symbolToPlace) {
+        if (symbolToPlace.type === 'isochrone') {
+          handleIsochrone(e.latlng);
+          return;
+        }
         if (symbolToPlace.type === 'photo') {
           const id = crypto.randomUUID();
           const photos = features.filter(f => f.type === 'photo');
@@ -1107,6 +1144,43 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
         );
         if (f.type === "note") return <Marker key={f.id} position={f.at} icon={noteIcon(f.value)} draggable={false} eventHandlers={baseEventHandlers} />;
         if (f.type === 'symbol' || f.type === 'photo') return <Marker key={f.id} position={f.at} icon={f.type === 'symbol' ? symbolIcon(f.emoji, f.number) : photoIcon(f.number)} draggable={false} eventHandlers={baseEventHandlers}><Tooltip>{f.type === 'symbol' ? f.label : `Photo ${f.number}`}</Tooltip></Marker>;
+        if (f.type === 'isochrone') return (
+          <Fragment key={f.id}>
+            <L.GeoJSON 
+              data={f.geojson}
+              style={{
+                color: '#3b82f6',
+                weight: 3,
+                fillColor: '#3b82f6',
+                fillOpacity: 0.2
+              }}
+              onEachFeature={(feature, layer) => {
+                layer.bindTooltip(f.label);
+                layer.on({
+                  click: (e) => {
+                    L.DomEvent.stop(e);
+                    if (mode === 'delete') {
+                      setFeatures(fs => fs.filter(item => item.id !== f.id));
+                    } else {
+                      setSelectedId(f.id);
+                    }
+                  }
+                });
+              }}
+            />
+            {f.at && (
+              <Marker 
+                position={f.at} 
+                icon={L.divIcon({ 
+                  html: '📍', 
+                  className: 'bg-transparent border-none',
+                  iconSize: [20, 20],
+                  iconAnchor: [10, 20]
+                })}
+              />
+            )}
+          </Fragment>
+        );
         return null;
       })}
 
@@ -2953,7 +3027,7 @@ function MapStateSync({ project, setProject }) {
   return null;
 }
 
-export default function MapElements({ style = {}, project, setProject, onAddressFound, onAddressSearched, setSymbolToPlace, symbolToPlace, setIsAzimuthDefaulted, isUrbanismeMode, activeLayers }) {
+export default function MapElements({ style = {}, project, setProject, onAddressFound, onAddressSearched, setSymbolToPlace, symbolToPlace, setIsAzimuthDefaulted, isUrbanismeMode, activeLayers, isochroneConfig }) {
 
   const [mode, setMode] = useState(null);
   const [temp, setTemp] = useState([]);
@@ -3212,6 +3286,7 @@ export default function MapElements({ style = {}, project, setProject, onAddress
             isRotatingRef={isRotatingRef}
             isUrbanismeMode={isUrbanismeMode}
             setShowInfoPanel={setShowInfoPanel}
+            isochroneConfig={isochroneConfig}
           />
           <ZoomIndicator />
           <MapEvents

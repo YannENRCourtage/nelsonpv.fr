@@ -61,5 +61,26 @@ export default async function handler(req, res) {
         }
     }
 
+    if (action === 'isochrone') {
+        try {
+            const params = new URLSearchParams(req.query);
+            params.delete('slug');
+            const isochroneUrl = `https://data.geopf.fr/navigation/isochrone?${params.toString()}`;
+            console.log(`[PROXY ISOCHRONE] Fetching: ${isochroneUrl}`);
+            const response = await fetch(isochroneUrl, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                return res.status(response.status).json({ error: `IGN API error: ${response.status}`, details: errorText });
+            }
+            const data = await response.json();
+            return res.status(200).json(data);
+        } catch (error) {
+            return res.status(500).json({ error: 'Internal proxy error', message: error.message });
+        }
+    }
+
     return res.status(404).json({ error: 'Proxy endpoint not found' });
 }

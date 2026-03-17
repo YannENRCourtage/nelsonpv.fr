@@ -70,6 +70,7 @@ function SymbolsPanel({ onSymbolSelect, selectedSymbol }) {
     { type: "building", label: "Bâtiment", icon: <Building className="h-6 w-6 text-slate-700" />, emoji: "🏢" },
     { type: "photo", label: "Photo", icon: <Camera className="h-6 w-6 text-slate-700" />, emoji: "📷" },
     { type: "text", label: "Texte", icon: <Type className="h-6 w-6 text-slate-700" />, emoji: "T" },
+    { type: "isochrone", label: "Isochrone", icon: <MapIcon className="h-6 w-6 text-blue-500" />, emoji: "⌚" },
   ];
 
   return (
@@ -139,6 +140,11 @@ export default function ProjectEditor() {
   const [isLayersOpen, setIsLayersOpen] = useState(false);
   const [isClientOpen, setIsClientOpen] = useState(false); // Client zone collapsed by default on mobile
   const [mobileAddressQuery, setMobileAddressQuery] = useState(''); // For mobile address search above map
+  const [isochroneConfig, setIsochroneConfig] = useState({
+    costType: 'duration', // 'duration' or 'distance'
+    costValue: 5,         // minutes or meters
+    profile: 'car'        // 'car' or 'pedestrian'
+  });
 
   useEffect(() => {
     const handleForceReset = () => {
@@ -1691,6 +1697,7 @@ export default function ProjectEditor() {
                     setIsAzimuthDefaulted={setIsAzimuthDefaulted}
                     symbolToPlace={symbolToPlace}
                     setSymbolToPlace={setSymbolToPlace}
+                    isochroneConfig={isochroneConfig}
                     activeLayers={activeLayers}
                   />
                 </div>
@@ -1905,6 +1912,71 @@ export default function ProjectEditor() {
         {/* Desktop Aside Panel */}
         <aside className="col-span-1 lg:col-span-3 hidden lg:flex flex-col gap-6">
           <SymbolsPanel onSymbolSelect={handleSymbolSelect} selectedSymbol={symbolToPlace} />
+
+          {symbolToPlace?.type === 'isochrone' && (
+            <div className="rounded-2xl bg-white p-4 shadow-sm border-2 border-blue-200">
+              <div className="flex items-center gap-2 mb-3 text-blue-700">
+                <MapIcon size={20} />
+                <h3 className="font-semibold">Paramètres Isochrone</h3>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 uppercase mb-1 block">Mode</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsochroneConfig(prev => ({ ...prev, costType: 'duration' }))}
+                      className={cn("px-3 py-2 text-sm rounded-lg border transition-colors",
+                        isochroneConfig.costType === 'duration' ? "bg-blue-50 border-blue-500 text-blue-700" : "bg-white border-gray-200 text-gray-600")}
+                    >
+                      Temps (min)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsochroneConfig(prev => ({ ...prev, costType: 'distance' }))}
+                      className={cn("px-3 py-2 text-sm rounded-lg border transition-colors",
+                        isochroneConfig.costType === 'distance' ? "bg-blue-50 border-blue-500 text-blue-700" : "bg-white border-gray-200 text-gray-600")}
+                    >
+                      Distance (m)
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-500 uppercase mb-1 block">
+                    {isochroneConfig.costType === 'duration' ? 'Durée' : 'Distance'}
+                  </label>
+                  <Input
+                    type="number"
+                    value={isochroneConfig.costValue}
+                    onChange={(e) => setIsochroneConfig(prev => ({ ...prev, costValue: parseInt(e.target.value) || 0 }))}
+                    className="h-9"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-500 uppercase mb-1 block">Transport</label>
+                  <Select
+                    value={isochroneConfig.profile}
+                    onValueChange={(val) => setIsochroneConfig(prev => ({ ...prev, profile: val }))}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Mode de transport" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="car">Voiture</SelectItem>
+                      <SelectItem value="pedestrian">Piéton</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="p-2 bg-blue-50 rounded-lg text-xs text-blue-600 italic">
+                  Cliquez sur la carte pour générer la zone.
+                </div>
+              </div>
+            </div>
+          )}
+
           <PredefinedBuildingsPanel onBuildingSelect={handleBuildingSelect} onConfigChange={handleBuildingConfigChange} tenantId={activeTenantId} />
           <div className="rounded-2xl bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between mb-4">
@@ -1970,6 +2042,7 @@ export default function ProjectEditor() {
                     { type: "building", label: "Bâtiment", icon: <Building className="h-5 w-5" />, emoji: "🏢" },
                     { type: "photo", label: "Photo", icon: <Camera className="h-5 w-5" />, emoji: "📷" },
                     { type: "text", label: "Texte", icon: <Type className="h-5 w-5" />, emoji: "T" },
+                    { type: "isochrone", label: "Isochrone", icon: <MapIcon className="h-5 w-5 text-blue-500" />, emoji: "⌚" },
                   ].map(s => (
                     <button
                       key={s.type}
