@@ -1019,10 +1019,35 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                 const buildingIndex = predefinedBuildings.findIndex(b => b.id === f.id);
                 // Only show "1/", "2/" if there are multiple predefined buildings
                 const prefix = (predefinedBuildings.length > 1 && buildingIndex !== -1) ? `${buildingIndex + 1}/ ` : '';
+                
+                // --- Dimension Sorting & Formatting logic ---
+                let d1 = f.buildingLength != null ? f.buildingLength : height;
+                let d2 = f.buildingWidth != null ? f.buildingWidth : width;
+
+                // Helper to safely parse dimension (handles string like "12.7 + 4")
+                const parseDim = (val) => {
+                  if (typeof val === 'number') return val;
+                  if (typeof val === 'string') {
+                    return val.replace(',', '.').split('+').reduce((acc, part) => acc + (parseFloat(part.trim()) || 0), 0);
+                  }
+                  return 0;
+                };
+
+                const val1 = parseDim(d1);
+                const val2 = parseDim(d2);
+
+                let dimsStr = "";
+                if (val1 >= val2) {
+                  dimsStr = `${formatDistance(val1)} x ${formatDistance(val2)}`;
+                } else {
+                  dimsStr = `${formatDistance(val2)} x ${formatDistance(val1)}`;
+                }
+                // --------------------------------------------
+
                 return (
                   <Marker position={rotatedCenter} opacity={0}>
                     <Tooltip permanent direction="center" className="measure-label">
-                      {prefix}{f.buildingName && `${f.buildingName} - `} {f.buildingLength != null ? f.buildingLength : formatDistance(height)} x {f.buildingWidth != null ? f.buildingWidth : formatDistance(width)} m ({f.buildingSurface != null ? `${f.buildingSurface} m²` : formatArea(area)} | {f.buildingPower != null ? `${f.buildingPower} kWc` : calculateSolarPower(area)})
+                      {prefix}{f.buildingName && `${f.buildingName} - `} {dimsStr} ({f.buildingSurface != null ? `${f.buildingSurface} m²` : formatArea(area)} | {f.buildingPower != null ? `${f.buildingPower} kWc` : calculateSolarPower(area)})
                     </Tooltip>
                   </Marker>
                 );
@@ -1114,7 +1139,9 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
           <Rectangle bounds={tempRectBounds} pathOptions={{ color: "#f59e0b", weight: 2, fillColor: "#f59e0b", fillOpacity: 0.2, dashArray: '5, 5' }} />
           {(() => {
             const ne = tempRectBounds.getNorthEast(); const sw = tempRectBounds.getSouthWest(); const nw = L.latLng(ne.lat, sw.lng); const width = haversine(nw, ne); const height = haversine(nw, sw); const center = tempRectBounds.getCenter(); const area = width * height;
-            return <Marker position={center} opacity={0}><Tooltip permanent direction="center" className="measure-label">{formatDistance(height)} × {formatDistance(width)} ({formatArea(area)} | {calculateSolarPower(area)})</Tooltip></Marker>;
+            const d1 = Math.max(width, height);
+            const d2 = Math.min(width, height);
+            return <Marker position={center} opacity={0}><Tooltip permanent direction="center" className="measure-label">{formatDistance(d1)} x {formatDistance(d2)} ({formatArea(area)} | {calculateSolarPower(area)})</Tooltip></Marker>;
           })()}
         </Fragment>
       )}
