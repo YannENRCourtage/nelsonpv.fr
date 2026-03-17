@@ -185,7 +185,7 @@ const escapeHtml = (unsafe) => {
 
 const textIcon = (txt) => L.divIcon({
   className: "bg-transparent border-none",
-  html: `<div class="bg-white border border-gray-500 text-black px-2 py-1 shadow-sm rounded text-[13px] whitespace-nowrap font-medium">${txt ? escapeHtml(txt) : ""}</div>`,
+  html: `<div class="bg-white border border-gray-500 text-black px-2 py-1 shadow-sm rounded text-[13px] whitespace-pre-wrap font-medium max-w-[300px]">${txt ? escapeHtml(txt).replace(/\n/g, '<br>') : ""}</div>`,
   iconSize: null, // Auto size
   iconAnchor: [0, 0] // Top-left anchor
 });
