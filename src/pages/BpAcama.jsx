@@ -159,8 +159,7 @@ function SectionCard({ title, children, className }) {
 
 // ─── Tab: BUSINESS PLAN PROJETS ──────────────────────────────────────────────
 
-function TabBpProjets({ projects }) {
-  const [selectedProject, setSelectedProject] = useState(null);
+function TabBpProjets({ projects, selectedProject, setSelectedProject }) {
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
 
@@ -827,6 +826,7 @@ export default function BpAcama() {
   const { user } = useAuth();
   const { projects } = useProjects();
   const [activeTab, setActiveTab] = useState('bp_projets');
+  const [selectedProject, setSelectedProject] = useState(null);
 
   const isAdmin = user?.role === 'admin';
   const isAlexandru = user?.email === 'a.mihailov@acama-energies.fr';
@@ -846,7 +846,7 @@ export default function BpAcama() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'bp_projets': return <TabBpProjets projects={projects || []} />;
+      case 'bp_projets': return <TabBpProjets projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} />;
       case 'suivi': return <TabSuivi />;
       case 'suivi_bat': return <TabSuiviBatType />;
       case 'be': return <TabBE />;
