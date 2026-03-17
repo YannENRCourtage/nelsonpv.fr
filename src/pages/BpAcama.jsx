@@ -685,6 +685,130 @@ function TabData() {
   );
 }
 
+function TabDevis({ selectedProject }) {
+  const [data, setData] = useState({
+    dateDevis: '17/03/2026',
+    dateValidite: '16/04/2026',
+    etudeRenfort: 0,
+    etudeImplant: 0,
+    etudeNoteCalcul: 0,
+    etudeCalepinage: 0,
+    transportCharpente: 0,
+    fournitureBac: 0,
+    anticondensation: 0,
+    transportCouverture: 0,
+    levage: 0,
+    securite: 0,
+    montage: 0,
+    etudeElec: 0,
+    securiteElec: 0,
+    onduleurs: 0,
+    poseModules: 0,
+  });
+
+  const kwc = parseFloat(selectedProject?.puissance) || 0;
+  const longBat = parseFloat(selectedProject?.longueur) || 0;
+  const largBat = parseFloat(selectedProject?.largeur) || 0;
+  const nbTravees = parseInt(selectedProject?.nb_travees) || 0;
+  const largTravee = parseFloat(selectedProject?.larg_travee) || 0;
+  const surface = parseFloat(selectedProject?.surface) || 0;
+
+  const update = (k, v) => setData(prev => ({ ...prev, [k]: v }));
+
+  const Row = ({ label, value, unit, onChange, isHeader, isTotal }) => (
+    <div className={cn("flex border-b border-slate-100 py-1.5 px-2 items-center hover:bg-slate-50 transition-colors", isHeader && "bg-slate-800 text-white font-bold hover:bg-slate-800", isTotal && "bg-slate-100 font-bold")}>
+      <div className={cn("text-xs flex-1", isHeader && "uppercase tracking-wider")}>{label}</div>
+      <div className="flex items-center gap-2 w-48">
+        {onChange ? (
+          <input 
+            type="text" 
+            className="w-full bg-transparent text-right outline-none border-b border-transparent focus:border-blue-400 text-xs px-1"
+            value={value ?? ''}
+            onChange={e => onChange(e.target.value)}
+          />
+        ) : (
+          <div className="w-full text-right text-xs font-semibold">{value ?? '—'}</div>
+        )}
+        <div className="w-8 text-[10px] text-slate-400 text-right">{unit}</div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="p-4 flex flex-col h-full overflow-hidden">
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-auto">
+        {/* Header Information */}
+        <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 border-b border-slate-200">
+           <div className="space-y-2">
+             <div className="flex items-center gap-2 text-xs">
+                <span className="text-slate-500 w-32">Date de réalisation :</span>
+                <input className="bg-transparent border-b border-slate-300 outline-none w-32" value={data.dateDevis} onChange={e => update('dateDevis', e.target.value)} />
+             </div>
+             <div className="flex items-center gap-2 text-xs">
+                <span className="text-slate-500 w-32">Date de validité :</span>
+                <input className="bg-transparent border-b border-slate-300 outline-none w-32" value={data.dateValidite} onChange={e => update('dateValidite', e.target.value)} />
+             </div>
+           </div>
+           <div className="text-right">
+             <div className="text-xs font-bold text-slate-800">PROJET : {selectedProject?.name || 'Non sélectionné'}</div>
+             <div className="text-[10px] text-slate-500 mt-1">Client : {selectedProject?.client_name || '—'}</div>
+           </div>
+        </div>
+
+        {/* LOT BATIMENT */}
+        <Row label="LOT BATIMENT" isHeader />
+        <Row label="Études :" className="font-semibold italic bg-slate-50/50" />
+        <Row label="  • Étude de renforcement" value={data.etudeRenfort} unit="€ HT" onChange={v => update('etudeRenfort', v)} />
+        <Row label="  • Réalisation du plan d'implantation et descente de charge" value={data.etudeImplant} unit="€ HT" onChange={v => update('etudeImplant', v)} />
+        <Row label="  • Réalisation du plan d'ensemble et note de calcul" value={data.etudeNoteCalcul} unit="€ HT" onChange={v => update('etudeNoteCalcul', v)} />
+        <Row label="  • Réalisation de plan de calepinage couverture" value={data.etudeCalepinage} unit="€ HT" onChange={v => update('etudeCalepinage', v)} />
+        
+        <Row label="Ossature primaire :" className="font-semibold italic bg-slate-50/50" />
+        <Row label="  • Largeur totale extérieur poteaux" value={fmt(largBat, 2)} unit="ml" />
+        <Row label="  • Longueur totale" value={fmt(longBat, 2)} unit="ml" />
+        <Row label="  • Nombre de travées" value={nbTravees} unit="u" />
+        <Row label="  • Largeur Travée" value={fmt(largTravee, 2)} unit="ml" />
+        <Row label="  • Stabilité du bâtiment par croix de Saint-André" value="Oui" unit="" />
+        <Row label="  • Finition avec une peinture anti-rouille" value="Oui" unit="" />
+        <Row label="  • Pannes galvanisées" value="Oui" unit="" />
+        <Row label="  • Transport et déchargement de Charpente métallique" value={data.transportCharpente} unit="€ HT" onChange={v => update('transportCharpente', v)} />
+
+        <Row label="Couverture :" className="font-semibold italic bg-slate-50/50" />
+        <Row label="  • Fourniture de la couverture en bac acier de chez BAC ACIER" value={data.fournitureBac} unit="€ HT" onChange={v => update('fournitureBac', v)} />
+        <Row label="  • Surface de couverture m²" value={fmt(surface, 0)} unit="m²" />
+        <Row label="  • Épaisseur de la couverture : 75/100" value="Oui" unit="" />
+        <Row label="  • Film anti-condensation" value={data.anticondensation} unit="€ HT" onChange={v => update('anticondensation', v)} />
+        <Row label="  • Transport et déchargement de la couverture" value={data.transportCouverture} unit="€ HT" onChange={v => update('transportCouverture', v)} />
+
+        <Row label="Logistique et Pose :" className="font-semibold italic bg-slate-50/50" />
+        <Row label="  • Location des engins de levage et de montage" value={data.levage} unit="€ HT" onChange={v => update('levage', v)} />
+        <Row label="  • Mise en place de la sécurité (EPI et EPC)" value={data.securite} unit="€ HT" onChange={v => update('securite', v)} />
+        <Row label="  • Prestation de montage de la charpente et pose de la couverture" value={data.montage} unit="€ HT" onChange={v => update('montage', v)} />
+
+        {/* LOT ELEC */}
+        <Row label="LOT ELEC" isHeader />
+        <Row label="Études & Sécurité :" className="font-semibold italic bg-slate-50/50" />
+        <Row label="  • Développement du projet, demande de raccordement, études PV" value={data.etudeElec} unit="€ HT" onChange={v => update('etudeElec', v)} />
+        <Row label="  • Mise en place de la sécurité (EPI et EPC)" value={data.securiteElec} unit="€ HT" onChange={v => update('securiteElec', v)} />
+        
+        <Row label="Partie Modules & Onduleurs :" className="font-semibold italic bg-slate-50/50" />
+        <Row label="  • Puissance installée" value={fmt(kwc, 2)} unit="kWc" />
+        <Row label="  • Fourniture des onduleurs" value={data.onduleurs} unit="€ HT" onChange={v => update('onduleurs', v)} />
+        <Row label="  • Pose et raccordement des modules" value={data.poseModules} unit="€ HT" onChange={v => update('poseModules', v)} />
+
+        {/* Summary */}
+        <div className="p-4 bg-slate-900 text-white mt-4 rounded-b-lg">
+           <div className="flex justify-between items-center mb-1">
+             <span className="text-xs text-slate-400">TOTAL HT</span>
+             <span className="text-lg font-bold">Calcul en cours...</span>
+           </div>
+           <p className="text-[10px] text-slate-500 italic">Ce devis est soumis aux conditions d'intervention spécifiques définies dans le fichier Excel source.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Tab: Simple placeholder ─────────────────────────────────────────────────
 
 function TabPlaceholder({ label }) {
@@ -727,6 +851,7 @@ export default function BpAcama() {
       case 'suivi_bat': return <TabSuiviBatType />;
       case 'be': return <TabBE />;
       case 'data': return <TabData />;
+      case 'devis': return <TabDevis selectedProject={selectedProject} />;
       default: return <TabPlaceholder label={TABS.find(t => t.id === activeTab)?.label || ''} />;
     }
   };
