@@ -14,6 +14,7 @@ import CDP from './pages/CDP.jsx';
 import Odoo from './pages/Odoo.jsx';
 import Monday from './pages/Monday.jsx';
 import Finance from './pages/Finance.jsx';
+import DossierTracking from './pages/DossierTracking.jsx';
 import { Toaster } from './components/ui/toaster.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
 import { DndProvider } from 'react-dnd';
@@ -135,6 +136,14 @@ function AppContent() {
             element={
               <ProtectedRoute requiredPermission="canAccessFinance">
                 <Finance />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="tracking"
+            element={
+              <ProtectedRoute requiredPermission="canAccessTracking">
+                <DossierTracking />
               </ProtectedRoute>
             }
           />

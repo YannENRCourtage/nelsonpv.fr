@@ -4,7 +4,7 @@ import Footer from './Footer.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useProject } from '../contexts/ProjectContext.jsx';
 import { Button } from './ui/button.jsx';
-import { LogOut, FileDown, Save, Bell, Users, Shield, Grid, TrendingUp, Menu, X, Shuffle } from 'lucide-react';
+import { LogOut, FileDown, Save, Bell, Users, Shield, Grid, TrendingUp, Menu, X, Shuffle, List as ListIcon } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast.js";
 import jsPDF from "jspdf";
 import html2canvas from 'html2canvas';
@@ -253,6 +253,25 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen }) {
     return false;
   };
 
+  const isTrackingAuthorized = () => {
+    if (!user) return false;
+    const { activeTenantId } = useAuth();
+    if (activeTenantId !== 'green-invest') return false;
+
+    const email = user.email?.toLowerCase();
+    const firstName = (user.firstName || user.displayName || '').toLowerCase();
+    const lastName = (user.lastName || '').toLowerCase();
+
+    // Admins (Véro, Yann sont admins)
+    if (user.role === 'admin' || user.role === 'Administrator') return true;
+
+    // Laurent GUYON
+    if (firstName.includes('laurent') && lastName.includes('guyon')) return true;
+    if (email?.includes('guyon')) return true;
+
+    return false;
+  };
+
   const handleTransferProject = async (projectId, targetTenantId, options) => {
     try {
       await apiService.transferProject(projectId, targetTenantId, options.transferLinkedData);
@@ -467,6 +486,13 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen }) {
               </NavLink>
             )}
 
+            {isTrackingAuthorized() && (
+              <NavLink to="/tracking" className={({ isActive }) => isActive ? 'nav-link active tracking' : 'nav-link tracking'}>
+                <ListIcon className="w-4 h-4 mr-1 inline-block" />
+                Suivi dossiers
+              </NavLink>
+            )}
+
             {(user?.role === 'admin' || user?.role === 'Administrator') && (
               <NavLink to="/admin" className={({ isActive }) => isActive ? 'nav-link active admin' : 'nav-link admin'}>
                 <Shield className="w-4 h-4 mr-1 inline-block" />
@@ -653,6 +679,17 @@ export default function AppLayout() {
               >
                 <Grid className="w-4 h-4 mr-2 inline-block" />
                 Monday
+              </NavLink>
+            )}
+
+            {isTrackingAuthorized() && (
+              <NavLink
+                to="/tracking"
+                className={({ isActive }) => isActive ? 'mobile-nav-link active tracking' : 'mobile-nav-link tracking'}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <ListIcon className="w-4 h-4 mr-2 inline-block" />
+                Suivi dossiers
               </NavLink>
             )}
 

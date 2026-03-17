@@ -22,7 +22,11 @@ export const ProtectedRoute = ({ children, requiredRole, requiredPermission }) =
 
     if (requiredPermission) {
         const isAdmin = user?.role === 'admin' || user?.role === 'Administrator';
-        const hasPermission = isAdmin || (user?.permissions?.[requiredPermission] === true);
+        const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
+        
+        // Custom logic for tracking page specifically or general permission check
+        const hasPermission = isAdmin || (requiredPermission === 'canAccessTracking' && isLaurentGuyon) || (user?.permissions?.[requiredPermission] === true);
+        
         if (!hasPermission) {
             console.log(`Access denied: User ${user?.email} does not have permission ${requiredPermission}`, user?.permissions);
             return <Navigate to="/" replace />;
