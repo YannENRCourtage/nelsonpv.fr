@@ -443,8 +443,8 @@ const pegmanIcon = L.divIcon({
 
 // --- Components ---
 
-function TextInputPopup({ at, onCancel, onSubmit }) {
-  const [value, setValue] = useState("");
+function TextInputPopup({ at, onCancel, onSubmit, initialValue = "" }) {
+  const [value, setValue] = useState(initialValue);
   const markerRef = useRef(null);
 
   useEffect(() => {
@@ -454,23 +454,39 @@ function TextInputPopup({ at, onCancel, onSubmit }) {
     }
   }, []);
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (value.trim()) onSubmit(value.trim());
+    }
+  };
+
   return (
     <Marker ref={markerRef} position={at} opacity={0}>
-      <Popup autoClose={false} closeOnClick={false} closeButton={false} autoPan={false} className="text-input-popup">
-        <form onSubmit={(e) => { e.preventDefault(); if (value.trim()) onSubmit(value.trim()); }} className="min-w-[260px] space-y-2 bg-white p-3 rounded-lg shadow-lg">
+      <Popup autoClose={false} closeOnClick={false} closeButton={false} autoPan={false} className="text-input-popup" minWidth={150}>
+        <div className="min-w-[260px] space-y-2 bg-white p-3 rounded-lg shadow-lg">
           <label className="text-sm font-semibold text-gray-700">Ajouter un texte</label>
-          <input
+          <textarea
             autoFocus
-            className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[100px]"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="Saisir le texte…"
+            onKeyDown={handleKeyDown}
+            placeholder="Saisir le texte… (Maj+Entrée pour la ligne)"
           />
           <div className="flex gap-2 pt-1">
-            <button type="submit" className="rounded bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-white text-sm font-medium transition-colors">Valider</button>
-            <button type="button" className="rounded bg-gray-200 hover:bg-gray-300 px-3 py-1.5 text-sm text-gray-700 font-medium transition-colors" onClick={onCancel}>Annuler</button>
+            <button
+              type="button"
+              className="rounded bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-white text-sm font-medium transition-colors"
+              onClick={() => { if (value.trim()) onSubmit(value.trim()); }}
+            >
+              Valider
+            </button>
+            <button type="button" className="rounded bg-gray-200 hover:bg-gray-300 px-3 py-1.5 text-sm text-gray-700 font-medium transition-colors" onClick={onCancel}>
+              Annuler
+            </button>
           </div>
-        </form>
+        </div>
       </Popup>
     </Marker>
   );
@@ -1044,7 +1060,26 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
             </Fragment>
           );
         }
-        if (f.type === "text") return <Marker key={f.id} position={f.at} icon={textIcon(f.value)} draggable={false} eventHandlers={baseEventHandlers} />;
+        if (f.type === "text") return (
+          <Marker
+            key={f.id}
+            position={f.at}
+            icon={textIcon(f.value)}
+            draggable={false}
+            eventHandlers={{
+              ...baseEventHandlers,
+              click: (e) => {
+                L.DomEvent.stop(e);
+                if (mode === 'delete') {
+                  setFeatures(fs => fs.filter(item => item.id !== f.id));
+                } else {
+                  setAskTextAt(f.at);
+                  setSelectedId(f.id);
+                }
+              }
+            }}
+          />
+        );
         if (f.type === "note") return <Marker key={f.id} position={f.at} icon={noteIcon(f.value)} draggable={false} eventHandlers={baseEventHandlers} />;
         if (f.type === 'symbol' || f.type === 'photo') return <Marker key={f.id} position={f.at} icon={f.type === 'symbol' ? symbolIcon(f.emoji, f.number) : photoIcon(f.number)} draggable={false} eventHandlers={baseEventHandlers}><Tooltip>{f.type === 'symbol' ? f.label : `Photo ${f.number}`}</Tooltip></Marker>;
         return null;
@@ -1134,7 +1169,24 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
         </>
       )}
 
-      {askTextAt && <TextInputPopup at={askTextAt} onCancel={() => { setAskTextAt(null); setMode(null); }} onSubmit={(val) => { const id = crypto.randomUUID(); setFeatures((arr) => [...arr, { id, type: "text", at: askTextAt, value: val }]); setAskTextAt(null); setMode(null); }} />}
+      {askTextAt && (
+        <TextInputPopup
+          at={askTextAt}
+          initialValue={selectedId && features.find(f => f.id === selectedId)?.type === 'text' ? features.find(f => f.id === selectedId).value : ""}
+          onCancel={() => { setAskTextAt(null); setSelectedId(null); setMode(null); }}
+          onSubmit={(val) => {
+            if (selectedId && features.find(f => f.id === selectedId)?.type === 'text') {
+              setFeatures(fs => fs.map(f => f.id === selectedId ? { ...f, value: val } : f));
+            } else {
+              const id = crypto.randomUUID();
+              setFeatures((arr) => [...arr, { id, type: "text", at: askTextAt, value: val }]);
+            }
+            setAskTextAt(null);
+            setSelectedId(null);
+            setMode(null);
+          }}
+        />
+      )}
       {askNoteAt && <TextInputPopup at={askNoteAt} onCancel={() => { setAskNoteAt(null); setMode(null); }} onSubmit={(val) => { const id = crypto.randomUUID(); setFeatures((arr) => [...arr, { id, type: "note", at: askNoteAt, value: val }]); setAskNoteAt(null); setMode(null); }} />}
       {urbanismeInfo && <UrbanismePopup info={urbanismeInfo} onClose={() => setUrbanismeInfo(null)} />}
       {contextMenu && <ContextMenu

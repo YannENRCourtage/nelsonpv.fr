@@ -1085,15 +1085,17 @@ export default function ProjectEditor() {
 
                         {/* Reste à charge 1 */}
                         <div className="flex-1 flex gap-1 items-end">
-                          <div className="flex-1">
-                            <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Reste à charge">{labelPrefix1}Reste à charge</label>
-                            <Input
-                              value={p.resteACharge !== undefined ? p.resteACharge : ''}
-                              onChange={e => updateProject({ resteACharge: parseInt(e.target.value) || 0 })}
-                              placeholder="Reste à charge"
-                              className="mt-1 w-full bg-amber-50 border-amber-200"
-                            />
-                          </div>
+                          {activeTenantId !== 'green-invest' && (
+                            <div className="flex-1">
+                              <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Reste à charge">{labelPrefix1}Reste à charge</label>
+                              <Input
+                                value={p.resteACharge !== undefined ? p.resteACharge : ''}
+                                onChange={e => updateProject({ resteACharge: parseInt(e.target.value) || 0 })}
+                                placeholder="Reste à charge"
+                                className="mt-1 w-full bg-amber-50 border-amber-200"
+                              />
+                            </div>
+                          )}
                           <Button
                             type="button"
                             variant="outline"
@@ -1321,16 +1323,18 @@ export default function ProjectEditor() {
 
                       {/* Reste à charge 2 */}
                       <div className="flex-1 flex gap-1 items-end">
-                        <div className="flex-1">
-                          <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Reste à charge">{labelPrefix2}Reste à charge</label>
-                          <Input
-                            value={p.resteACharge2 !== undefined ? p.resteACharge2 : ''}
-                            onChange={e => updateProject({ resteACharge2: parseInt(e.target.value) || 0 })}
-                            placeholder="Reste à charge"
-                            className="mt-1 w-full bg-amber-50 border-amber-200"
-                            title="Reste à charge calculé ou saisi pour Ligne 2"
-                          />
-                        </div>
+                        {activeTenantId !== 'green-invest' && (
+                          <div className="flex-1">
+                            <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Reste à charge">{labelPrefix2}Reste à charge</label>
+                            <Input
+                              value={p.resteACharge2 !== undefined ? p.resteACharge2 : ''}
+                              onChange={e => updateProject({ resteACharge2: parseInt(e.target.value) || 0 })}
+                              placeholder="Reste à charge"
+                              className="mt-1 w-full bg-amber-50 border-amber-200"
+                              title="Reste à charge calculé ou saisi pour Ligne 2"
+                            />
+                          </div>
+                        )}
                         <Button
                           type="button"
                           variant="outline"
@@ -1481,18 +1485,15 @@ export default function ProjectEditor() {
       </div>
 
       {/* Floating Chat Bubble - Mobile only */}
-      < div className="lg:hidden" >
+      <div className="lg:hidden">
         {isChatOpen && (
           <div className="fixed inset-0 z-[25000] bg-black/50" onClick={() => setIsChatOpen(false)} />
-        )
-        }
-        {
-          isChatOpen && (
-            <div className="fixed bottom-20 right-4 z-[26000] w-[90vw] max-w-sm h-[60vh] rounded-2xl shadow-2xl overflow-hidden">
-              <ChatBox className="h-full" />
-            </div>
-          )
-        }
+        )}
+        {isChatOpen && (
+          <div className="fixed bottom-20 right-4 z-[26000] w-[90vw] max-w-sm h-[60vh] rounded-2xl shadow-2xl overflow-hidden">
+            <ChatBox className="h-full" />
+          </div>
+        )}
         <button
           type="button"
           onClick={() => setIsChatOpen(v => !v)}
@@ -1501,7 +1502,7 @@ export default function ProjectEditor() {
         >
           {isChatOpen ? <X size={24} /> : <MessageCircle size={24} />}
         </button>
-      </div >
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="col-span-1 lg:col-span-9 relative flex flex-col">

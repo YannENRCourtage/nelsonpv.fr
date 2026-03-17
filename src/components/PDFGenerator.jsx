@@ -182,6 +182,21 @@ const PDFGenerator = ({ project }) => {
               <span style={labelStyle}>Zone de séisme :</span>
               <span style={valueStyle}>{p.seismicZone || 'N/A'}</span>
             </div>
+            {p.tenantId !== 'green-invest' && p.resteACharge !== undefined && (
+              <div style={fieldStyle}>
+                <span style={labelStyle}>Reste à charge :</span>
+                <span style={valueStyle}>
+                  {hasSecondBuilding && p.resteACharge2 !== undefined
+                    ? (
+                      <>
+                        <div style={{ marginBottom: '2px' }}>1/ {p.resteACharge} €</div>
+                        <div>2/ {p.resteACharge2} €</div>
+                      </>
+                    )
+                    : `${p.resteACharge} €`}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
