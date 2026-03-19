@@ -226,13 +226,16 @@ const photoIcon = (number) => L.divIcon({
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
-const companyIcon = (isSelected) => L.divIcon({
-  html: `<div class="flex items-center justify-center bg-white rounded-full shadow-lg border-2 ${isSelected ? 'border-amber-500 scale-125 z-[1000]' : 'border-blue-700'} h-8 w-8 text-blue-800 transition-all">
-           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="22"></line><line x1="15" y1="22" x2="15" y2="22"></line><line x1="12" y1="18" x2="12" y2="18"></line><line x1="12" y1="14" x2="12" y2="14"></line><line x1="12" y1="10" x2="12" y2="10"></line><line x1="8" y1="18" x2="8" y2="18"></line><line x1="8" y1="14" x2="8" y2="14"></line><line x1="8" y1="10" x2="8" y2="10"></line><line x1="16" y1="18" x2="16" y2="18"></line><line x1="16" y1="14" x2="16" y2="14"></line><line x1="16" y1="10" x2="16" y2="10"></line></svg>
+const companyIcon = (name, isSelected) => L.divIcon({
+  html: `<div class="flex items-center gap-2 group transition-all" style="z-index: ${isSelected ? 1000 : 1}">
+           <div class="w-3 h-3 rounded-full border-2 border-white shadow-md ${isSelected ? 'bg-amber-500 scale-150 shadow-amber-200' : 'bg-blue-600 outline outline-4 outline-blue-600/10'}"></div>
+           <div class="${isSelected ? 'flex' : 'hidden md:group-hover:flex'} bg-white/95 backdrop-blur-sm border border-slate-200 px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap">
+             <span class="text-[10px] font-black text-slate-800 tracking-tight uppercase">${name}</span>
+           </div>
          </div>`,
   className: 'bg-transparent border-none',
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
+  iconSize: [20, 20],
+  iconAnchor: [6, 6],
 });
 // --- Ligne BT Manager (Enedis) ---
 function LigneBTLayerManager({ layersRef }) {
@@ -964,6 +967,15 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
         if (setTargetPos) setTargetPos(e.latlng);
         if (setShowInfoPanel) setShowInfoPanel(true);
       }
+    },
+    moveend() {
+      window.dispatchEvent(new CustomEvent('map:idle', { 
+        detail: { 
+          center: map.getCenter(), 
+          zoom: map.getZoom(),
+          bounds: map.getBounds()
+        } 
+      }));
     },
     keydown(e) {
       if (e.originalEvent.key === "Escape") {
@@ -3342,22 +3354,22 @@ export default function MapElements({
             <Marker
               key={c.id}
               position={[c.lat, c.lon]}
-              icon={companyIcon(selectedCompany?.id === c.id)}
+              icon={companyIcon(c.name, selectedCompany?.id === c.id)}
               eventHandlers={{
                 click: () => setSelectedCompany(c)
               }}
             >
-              <Popup>
-                <div className="p-1 min-w-[150px]">
-                  <p className="font-bold text-sm mb-1">{c.name}</p>
-                  <p className="text-[10px] text-blue-600 uppercase font-bold bg-blue-50 px-1 inline-block rounded">{c.activity}</p>
-                  <p className="text-[11px] text-gray-400 mt-2 line-clamp-2">{c.address}</p>
-                  <button
-                    className="mt-3 w-full bg-blue-600 text-white rounded py-1 font-bold text-xs hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
+              <Popup className="company-popup">
+                <div className="p-2 min-w-[200px]">
+                  <p className="font-black text-slate-900 text-sm mb-1 leading-tight">{c.name}</p>
+                  <p className="text-[10px] text-blue-600 uppercase font-black bg-blue-50 px-2 py-0.5 inline-block rounded-full mb-3">{c.activity}</p>
+                  <p className="text-[11px] text-slate-400 font-medium leading-relaxed mb-4">{c.address}</p>
+                  <Button
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2 h-9 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-100 transition-all active:scale-95"
                     onClick={() => setSelectedCompany(c)}
                   >
-                    Sélectionner
-                  </button>
+                    Détails complets
+                  </Button>
                 </div>
               </Popup>
             </Marker>

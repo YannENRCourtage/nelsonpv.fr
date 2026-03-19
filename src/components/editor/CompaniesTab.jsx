@@ -1,28 +1,30 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Building, MapPin, Info, ExternalLink, Loader2, Navigation } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Search, Building, MapPin, Info, ExternalLink, Loader2, Navigation, FileText, PieChart, Users, Calendar, Globe, Briefcase } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function CompaniesTab({ project, companies, setCompanies, selectedCompany, setSelectedCompany }) {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [radius, setRadius] = useState(5); // km
+  const [radius, setRadius] = useState(2); // km
+  const [autoLoad, setAutoLoad] = useState(true);
+  const lastCoordsRef = useRef(null);
 
-  const fetchCompanies = useCallback(async (query = '', lat = null, lon = null) => {
+  const fetchCompanies = useCallback(async (query = '', lat = null, lon = null, r = radius) => {
     setLoading(true);
     try {
       let url = `/api/sirene?per_page=100`;
       if (query) url += `&q=${encodeURIComponent(query)}`;
-      if (lat && lon) url += `&lat=${lat}&lon=${lon}&radius=${radius}`;
+      if (lat && lon) url += `&lat=${lat}&lon=${lon}&radius=${r}`;
 
       const res = await fetch(url);
       if (!res.ok) throw new Error('Erreur lors de la récupération des sociétés');
       const data = await res.json();
       
-      // Map results to a consistent format
       const formatted = (data.results || []).map(c => ({
         id: c.siren + (c.siege?.siret || ''),
         name: c.nom_complet,
@@ -32,10 +34,15 @@ export default function CompaniesTab({ project, companies, setCompanies, selecte
         lat: parseFloat(c.siege?.latitude),
         lon: parseFloat(c.siege?.longitude),
         activity: c.activite_principale,
+        activityLabel: c.libelle_activite_principale,
         section: c.section,
         category: c.categorie_entreprise,
         dateCreation: c.date_creation,
         trancheEffectif: c.tranche_effectif_salarie,
+        etat: c.etat_administratif,
+        natureJuridique: c.nature_juridique_libelle || c.nature_juridique,
+        dirigeants: c.dirigeants || [],
+        finances: c.finances || {},
       })).filter(c => !isNaN(c.lat) && !isNaN(c.lon));
 
       setCompanies(formatted);
@@ -46,6 +53,29 @@ export default function CompaniesTab({ project, companies, setCompanies, selecte
       setLoading(false);
     }
   }, [radius, setCompanies]);
+
+  // Handle map movement events
+  useEffect(() => {
+    const handleMapMove = (e) => {
+      if (!autoLoad) return;
+      const { center, zoom } = e.detail;
+      // Only fetch if zoom is high enough to discover details
+      if (zoom < 14) return; 
+
+      const dist = lastCoordsRef.current ? 
+        Math.sqrt(Math.pow(center.lat - lastCoordsRef.current.lat, 2) + Math.pow(center.lng - lastCoordsRef.current.lng, 2)) : 
+        1000;
+
+      // Threshold to avoid too many requests
+      if (dist > 0.005) { 
+        lastCoordsRef.current = center;
+        fetchCompanies('', center.lat, center.lng, 2); 
+      }
+    };
+
+    window.addEventListener('map:idle', handleMapMove);
+    return () => window.removeEventListener('map:idle', handleMapMove);
+  }, [autoLoad, fetchCompanies]);
 
   useEffect(() => {
     if (project?.gps && companies.length === 0 && !loading) {
@@ -68,224 +98,272 @@ export default function CompaniesTab({ project, companies, setCompanies, selecte
 
   const handleGotoCompany = (c) => {
      setSelectedCompany(c);
-     // Dispatch event to focus map - assumed event listener in MapElements
-     window.dispatchEvent(new CustomEvent('map:goto-location', { detail: { lat: c.lat, lng: c.lon, zoom: 18 } }));
+     window.dispatchEvent(new CustomEvent('map:goto-location', { detail: { lat: c.lat, lng: c.lon, zoom: 19 } }));
   };
 
   return (
-    <div className="flex h-full w-full bg-white border-l border-gray-200 shadow-xl overflow-hidden">
+    <div className="flex h-full w-full bg-white border-l border-gray-200 shadow-xl overflow-hidden font-sans">
       {/* Sidebar List */}
-      <div className="w-80 flex flex-col border-r border-gray-100 bg-gray-50/50">
-        <div className="p-4 border-b bg-white space-y-3">
-          <h3 className="font-bold text-gray-800 flex items-center gap-2">
-            <Building className="w-5 h-5 text-blue-600" />
-            Sociétés à proximité
-          </h3>
+      <div className="w-80 flex flex-col border-r border-gray-100 bg-slate-50">
+        <div className="p-4 border-b bg-white space-y-3 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+              <Building className="w-5 h-5 text-blue-600" />
+              Explorateur SIRENE
+            </h3>
+            <div className="flex items-center gap-2" title="Chargement automatique lors du déplacement de la carte">
+               <span className="text-[10px] text-slate-400 font-bold uppercase">Auto</span>
+               <input 
+                  type="checkbox" 
+                  checked={autoLoad} 
+                  onChange={(e) => setAutoLoad(e.target.checked)} 
+                  className="w-3.5 h-3.5 accent-blue-600 cursor-pointer"
+               />
+            </div>
+          </div>
           
           <form onSubmit={handleSearch} className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
             <Input
               type="search"
-              placeholder="Nom, SIREN, Activité..."
-              className="pl-9 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+              placeholder="Siren, Nom, Activité..."
+              className="pl-9 bg-slate-50 border-slate-200 focus:bg-white h-9 rounded-xl transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </form>
 
-          <div className="flex items-center justify-between text-xs text-gray-500 px-1">
+          <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium px-1 uppercase tracking-wider">
              <span>Rayon : {radius} km</span>
              <input 
                 type="range" 
-                min="1" 
-                max="50" 
+                min="0.5" 
+                max="20" 
+                step="0.5"
                 value={radius} 
-                onChange={(e) => setRadius(parseInt(e.target.value))}
-                className="w-24 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                onChange={(e) => setRadius(parseFloat(e.target.value))}
+                className="w-24 h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
              />
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {loading ? (
-            <div className="flex flex-col items-center justify-center p-12 text-gray-400">
-              <Loader2 className="w-8 h-8 animate-spin mb-2" />
-              <p className="text-sm">Recherche en cours...</p>
+            <div className="flex flex-col items-center justify-center p-12 text-slate-400">
+              <Loader2 className="w-8 h-8 animate-spin mb-3 text-blue-500" />
+              <p className="text-xs font-medium uppercase tracking-widest">Recherche...</p>
             </div>
           ) : companies.length > 0 ? (
-            <div className="divide-y divide-gray-100">
+            <div className="p-2 space-y-1">
+              <div className="px-2 py-1 flex justify-between items-center text-[10px] text-slate-400 font-bold uppercase italic">
+                 <span>{companies.length} résultats</span>
+              </div>
               {companies.map((c) => (
                 <div
                   key={c.id}
                   onClick={() => handleGotoCompany(c)}
                   className={cn(
-                    "p-4 cursor-pointer transition-all hover:bg-white group relative",
-                    selectedCompany?.id === c.id ? "bg-white border-l-4 border-blue-500 shadow-sm" : "border-l-4 border-transparent"
+                    "p-3 cursor-pointer rounded-xl transition-all group relative border",
+                    selectedCompany?.id === c.id 
+                      ? "bg-white border-blue-200 shadow-md translate-x-1" 
+                      : "bg-transparent border-transparent hover:bg-white hover:border-slate-100 hover:shadow-sm"
                   )}
                 >
-                  <h4 className="font-semibold text-gray-900 leading-tight group-hover:text-blue-600 truncate" title={c.name}>
-                    {c.name}
-                  </h4>
-                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                    <Badge variant="outline" className="text-[10px] py-0 px-1 font-normal opacity-70">
+                  <div className="flex justify-between items-start gap-2">
+                    <h4 className="font-bold text-slate-900 leading-tight text-sm group-hover:text-blue-600 line-clamp-2" title={c.name}>
+                      {c.name}
+                    </h4>
+                    {c.etat === 'A' && <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0 mt-1" title="Actif" />}
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    <Badge variant="outline" className="text-[9px] py-0 px-1 border-slate-200 text-slate-500 bg-white font-medium truncate max-w-[200px]">
                       {c.activity}
                     </Badge>
+                  </div>
+
+                  <p className="text-[10px] text-slate-400 mt-2 flex items-start gap-1">
+                    <MapPin className="w-2.5 h-2.5 flex-shrink-0 mt-0.5" />
+                    <span className="line-clamp-1">{c.address}</span>
                   </p>
-                  <p className="text-[11px] text-gray-400 mt-2 flex items-start gap-1">
-                    <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                    <span className="line-clamp-2">{c.address}</span>
-                  </p>
-                  
-                  {selectedCompany?.id === c.id && (
-                    <div className="mt-3 pt-3 border-t border-gray-50 grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-1">
-                        <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">SIREN</div>
-                        <div className="text-[11px] text-gray-700 font-mono">{c.siren}</div>
-                        <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Effectifs</div>
-                        <div className="text-[11px] text-gray-700">{c.trancheEffectif || 'Non renseigné'}</div>
-                        <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Création</div>
-                        <div className="text-[11px] text-gray-700">{c.dateCreation}</div>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
           ) : (
-            <div className="p-8 text-center text-gray-400">
-              <Building className="w-12 h-12 mx-auto mb-3 opacity-20" />
-              <p className="text-sm">Aucune société trouvée dans cette zone.</p>
+            <div className="p-8 text-center text-slate-400 mt-10">
+              <Building className="w-12 h-12 mx-auto mb-4 opacity-10" />
+              <p className="text-sm font-medium">Aucun résultat</p>
+              <p className="text-[10px] uppercase mt-2 opacity-60">Zoomez ou déplacez la carte</p>
               <Button 
-                variant="ghost" 
+                variant="outline" 
                 size="sm" 
-                className="mt-4 text-blue-600"
+                className="mt-6 rounded-full text-[10px] uppercase font-bold"
                 onClick={() => {
-                  if (project?.gps) {
-                    const parts = project.gps.split(',').map(s => parseFloat(s.trim()));
-                    fetchCompanies('', parts[0], parts[1]);
-                  }
+                   if (project?.gps) {
+                      const parts = project.gps.split(',').map(s => parseFloat(s.trim()));
+                      fetchCompanies('', parts[0], parts[1]);
+                   }
                 }}
               >
-                Réessayer la recherche
+                Réinitialiser la vue
               </Button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Detail Area / Map Controls View */}
-      <div className="flex-1 bg-gray-50 relative flex flex-col">
+      {/* Detail Area */}
+      <div className="flex-1 bg-white relative flex flex-col overflow-hidden">
           {selectedCompany ? (
-            <div className="p-8 max-w-2xl mx-auto w-full space-y-8 animate-in fade-in duration-500">
-                <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 flex flex-col items-center text-center">
-                    <div className="w-20 h-20 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
-                        <Building className="w-10 h-10 text-blue-600" />
-                    </div>
-                    <h2 className="text-3xl font-black text-gray-900 mb-2 leading-tight">{selectedCompany.name}</h2>
-                    <p className="text-blue-600 font-medium px-4 py-1 bg-blue-50 rounded-full text-sm mb-4">
-                        {selectedCompany.activity}
-                    </p>
-                    <div className="flex items-center gap-2 text-gray-500 mb-8">
-                        <MapPin className="w-4 h-4" />
-                        <span className="text-lg">{selectedCompany.address}</span>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full text-left">
-                        <div className="bg-gray-50 rounded-2xl p-4">
-                            <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">SIREN</p>
-                            <p className="font-mono text-gray-700">{selectedCompany.siren}</p>
+            <div className="flex flex-col h-full overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
+                {/* Header Section */}
+                <div className="p-6 md:p-10 bg-slate-50/50 border-b relative">
+                    <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-10">
+                        <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-xl border border-blue-50 flex items-center justify-center flex-shrink-0 self-start">
+                            <Building className="w-12 h-12 text-blue-600" />
                         </div>
-                        <div className="bg-gray-50 rounded-2xl p-4">
-                            <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">SIRET Siège</p>
-                            <p className="font-mono text-sm text-gray-700">{selectedCompany.siret}</p>
+                        <div className="flex-1 text-center md:text-left pt-2">
+                            <h2 className="text-3xl font-black text-slate-900 mb-2 leading-none tracking-tight">{selectedCompany.name}</h2>
+                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 mt-3">
+                                <span className="text-blue-700 font-bold px-3 py-1 bg-blue-100 rounded-lg text-[11px] flex items-center gap-1.5 uppercase tracking-wider">
+                                    <Briefcase className="w-3.5 h-3.5" />
+                                    {selectedCompany.activityLabel || selectedCompany.activity}
+                                </span>
+                                <span className="flex items-center gap-1.5 text-slate-400 text-sm font-medium">
+                                    <MapPin className="w-4 h-4 text-slate-300" />
+                                    {selectedCompany.address}
+                                </span>
+                            </div>
                         </div>
-                        <div className="bg-gray-50 rounded-2xl p-4">
-                            <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Catégorie</p>
-                            <p className="font-medium text-gray-700">{selectedCompany.category || 'PME'}</p>
-                        </div>
-                        <div className="bg-gray-50 rounded-2xl p-4">
-                            <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Section</p>
-                            <p className="font-medium text-gray-700 truncate" title={selectedCompany.section}>{selectedCompany.section}</p>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-4 mt-8 w-full">
-                        <Button 
-                            className="bg-blue-600 hover:bg-blue-700 flex-1 h-12 rounded-xl text-lg font-bold shadow-lg shadow-blue-200"
-                            onClick={() => window.open(`https://annuaire-entreprises.data.gouv.fr/entreprise/${selectedCompany.siren}`, '_blank')}
-                        >
-                            <ExternalLink className="w-5 h-5 mr-2" />
-                            Voir sur l'Annuaire
-                        </Button>
-                        <Button 
-                            variant="outline"
-                            className="flex-1 h-12 rounded-xl border-2 border-gray-100 font-bold hover:bg-gray-50 transition-colors"
-                            onClick={() => window.dispatchEvent(new CustomEvent('map:goto-location', { detail: { lat: selectedCompany.lat, lng: selectedCompany.lon, zoom: 19 } }))}
-                        >
-                            <Navigation className="w-5 h-5 mr-2" />
-                            Centrer sur la carte
-                        </Button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-                         <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                             <Info className="w-4 h-4 text-blue-500" />
-                             Informations Légales
-                         </h4>
-                         <div className="space-y-4">
-                             <div className="flex justify-between items-center py-2 border-b border-gray-50">
-                                 <span className="text-sm text-gray-500">Date de création</span>
-                                 <span className="text-sm font-medium">{selectedCompany.dateCreation}</span>
-                             </div>
-                             <div className="flex justify-between items-center py-2 border-b border-gray-50">
-                                 <span className="text-sm text-gray-500">Tranche d'effectifs</span>
-                                 <span className="text-sm font-medium">{selectedCompany.trancheEffectif || 'Inconnu'}</span>
-                             </div>
-                             <div className="flex justify-between items-center py-2 border-b border-gray-50">
-                                 <span className="text-sm text-gray-500">Lat / Lon</span>
-                                 <span className="text-sm font-mono">{selectedCompany.lat.toFixed(6)}, {selectedCompany.lon.toFixed(6)}</span>
-                             </div>
-                         </div>
-                    </div>
-                    
-                    <div className="bg-blue-600 rounded-3xl p-8 shadow-xl text-white flex flex-col justify-center items-center relative overflow-hidden group">
-                        <Building className="w-24 h-24 absolute -bottom-4 -right-4 text-white/10 rotate-12 group-hover:scale-110 transition-transform" />
-                        <h4 className="text-xl font-black mb-2 relative z-10">Potentiel Solaire</h4>
-                        <p className="text-center text-blue-100 text-sm relative z-10">Analysez la toiture de cette entreprise pour évaluer son potentiel de production photovoltaïque.</p>
-                        <Button 
-                            className="mt-6 bg-white text-blue-700 hover:bg-blue-50 font-black px-8 h-12 rounded-2xl relative z-10"
-                            onClick={() => window.dispatchEvent(new CustomEvent('map:goto-location', { detail: { lat: selectedCompany.lat, lng: selectedCompany.lon, zoom: 19 } }))}
-                        >
-                            Démarrer l'étude
-                        </Button>
-                    </div>
+                {/* Content with Tabs */}
+                <div className="flex-1 overflow-hidden flex flex-col px-6 md:px-10 pb-6">
+                    <Tabs defaultValue="infos" className="w-full h-full flex flex-col mt-6">
+                        <TabsList className="bg-slate-100/50 p-1 rounded-2xl w-fit mb-6">
+                            <TabsTrigger value="infos" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl px-6 font-bold text-[11px] uppercase tracking-wider h-10">
+                                <Info className="w-3.5 h-3.5 mr-2" />
+                                Identité
+                            </TabsTrigger>
+                            <TabsTrigger value="finance" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl px-6 font-bold text-[11px] uppercase tracking-wider h-10">
+                                <PieChart className="w-3.5 h-3.5 mr-2" />
+                                Finances
+                            </TabsTrigger>
+                            <TabsTrigger value="docs" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl px-6 font-bold text-[11px] uppercase tracking-wider h-10">
+                                <Building className="w-3.5 h-3.5 mr-2" />
+                                Etablissements
+                            </TabsTrigger>
+                            <TabsTrigger value="links" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl px-6 font-bold text-[11px] uppercase tracking-wider h-10">
+                                <Globe className="w-3.5 h-3.5 mr-2" />
+                                Liens utiles
+                            </TabsTrigger>
+                        </TabsList>
+
+                        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                            <TabsContent value="infos" className="mt-0 space-y-8 pb-10">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <InfoCard label="SIREN" value={selectedCompany.siren} icon={<Building className="w-3.5 h-3.5"/>} mono />
+                                    <InfoCard label="SIRET Siège" value={selectedCompany.siret} icon={<Briefcase className="w-3.5 h-3.5"/>} mono />
+                                    <InfoCard label="Nature Juridique" value={selectedCompany.natureJuridique || 'Non spécifié'} icon={<Info className="w-3.5 h-3.5"/>} />
+                                    <InfoCard label="Catégorie" value={selectedCompany.category || 'PME'} icon={<Users className="w-3.5 h-3.5"/>} />
+                                    <InfoCard label="Création" value={selectedCompany.dateCreation} icon={<Calendar className="w-3.5 h-3.5"/>} />
+                                    <InfoCard label="Effectifs" value={selectedCompany.trancheEffectif || 'Non renseigné'} icon={<Users className="w-3.5 h-3.5"/>} />
+                                </div>
+
+                                <div className="bg-slate-50 rounded-[3rem] p-10 border border-slate-100 flex flex-col md:flex-row items-center gap-10">
+                                     <div className="flex-1">
+                                        <h4 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">Potentiel Solaire</h4>
+                                        <p className="text-slate-500 text-sm leading-relaxed max-w-lg">
+                                            Cette entreprise dispose d'une infrastructure favorable à l'installation de panneaux solaires. 
+                                            Analysez la surface de toiture disponible pour estimer la capacité de production photovoltaïque.
+                                        </p>
+                                        <Button 
+                                            className="mt-8 bg-blue-600 hover:bg-blue-700 text-white font-black px-10 h-14 rounded-[1.5rem] shadow-xl shadow-blue-200 flex items-center gap-2 transition-all hover:-translate-y-1 active:scale-95"
+                                            onClick={() => window.dispatchEvent(new CustomEvent('map:goto-location', { detail: { lat: selectedCompany.lat, lng: selectedCompany.lon, zoom: 19 } }))}
+                                        >
+                                            <Navigation className="w-5 h-5" />
+                                            Démarrer l'étude
+                                        </Button>
+                                     </div>
+                                     <div className="w-48 h-48 bg-blue-600 rounded-[2.5rem] flex flex-col items-center justify-center text-white relative overflow-hidden group shadow-2xl shadow-blue-300">
+                                         <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
+                                         <Building className="w-24 h-24 opacity-10 absolute -bottom-6 -right-6 rotate-12 group-hover:scale-110 transition-transform" />
+                                         <span className="text-4xl font-black mb-1 tracking-tighter italic">Bientôt</span>
+                                         <span className="text-[10px] uppercase font-bold tracking-[0.2em] opacity-80">Solar Rank</span>
+                                     </div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="finance" className="mt-0 pb-10">
+                                <div className="py-20 text-center border-4 border-dashed border-slate-50 rounded-[4rem]">
+                                    <PieChart className="w-20 h-20 text-slate-100 mx-auto mb-6" />
+                                    <h5 className="text-xl font-black text-slate-300 tracking-tight">Données confidentielles</h5>
+                                    <p className="text-sm text-slate-300 max-w-xs mx-auto mt-2 leading-relaxed">Les bilans et comptes de résultats ne sont pas disponibles en libre accès pour cette entité Sirene.</p>
+                                </div>
+                            </TabsContent>
+                            
+                            <TabsContent value="docs" className="mt-0 pb-10">
+                                <div className="bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden shadow-sm">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-slate-50/50 text-slate-500 text-[10px] uppercase font-black tracking-widest border-b">
+                                            <tr>
+                                                <th className="px-8 py-5">Nom / SIRET</th>
+                                                <th className="px-8 py-5">Adresse</th>
+                                                <th className="px-8 py-5">État</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            <tr className="hover:bg-slate-50/30 transition-colors">
+                                                <td className="px-8 py-6">
+                                                    <p className="font-bold text-slate-900">Siège Social</p>
+                                                    <p className="text-[11px] font-mono text-slate-400 mt-0.5">{selectedCompany.siret}</p>
+                                                </td>
+                                                <td className="px-8 py-6 text-slate-600 text-[12px] font-medium leading-relaxed">{selectedCompany.address}</td>
+                                                <td className="px-8 py-6">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                                                        <span className="text-[10px] font-black uppercase tracking-wider text-green-700">Ouvert</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="links" className="mt-0 space-y-3 pb-10 max-w-xl">
+                                <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6 ml-1">Ressources officielles externes</p>
+                                <LinkRow label="Annuaire des Entreprises" url={`https://annuaire-entreprises.data.gouv.fr/entreprise/${selectedCompany.siren}`} color="blue" />
+                                <LinkRow label="Societe.com" url={`https://www.societe.com/cgi-bin/search?champs=${selectedCompany.siren}`} color="slate" />
+                                <LinkRow label="Pappers" url={`https://www.pappers.fr/entreprise/${selectedCompany.siren}`} color="slate" />
+                                <LinkRow label="Infogreffe" url={`https://www.infogreffe.fr/recherche-entreprise-dirigeant/resultats-recherche-entreprise-dirigeant?siren=${selectedCompany.siren}`} color="slate" />
+                                <LinkRow label="Google Maps" url={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedCompany.name + ' ' + selectedCompany.address)}`} color="slate" />
+                            </TabsContent>
+                        </div>
+                    </Tabs>
                 </div>
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-                <div className="w-32 h-32 bg-gray-100 rounded-full flex items-center justify-center mb-8 relative">
-                    <Building className="w-16 h-16 text-gray-300" />
-                    <div className="absolute inset-0 border-4 border-dashed border-gray-200 rounded-full animate-spin-slow" />
-                </div>
-                <h3 className="text-2xl font-black text-gray-800 mb-4">Sélectionnez une entreprise</h3>
-                <p className="text-gray-500 max-w-sm">
-                    Utilisez la liste à gauche ou la barre de recherche pour trouver une société et afficher ses détails.
-                </p>
+            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white relative overflow-hidden">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-blue-50/40 rounded-full blur-[120px] -z-1" />
                 
-                <div className="mt-12 grid grid-cols-2 gap-4 w-full max-w-md">
-                    <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100 text-left">
-                        <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center mb-3">
-                            <Navigation className="w-4 h-4 text-green-600" />
-                        </div>
-                        <p className="font-bold text-gray-800 text-sm">Géo-recherche</p>
-                        <p className="text-xs text-gray-500">Trouvez les sociétés proches du projet.</p>
+                <div className="relative z-10 animate-in fade-in zoom-in-95 duration-1000">
+                    <div className="w-32 h-32 bg-white rounded-[3rem] flex items-center justify-center mb-8 mx-auto shadow-2xl border border-slate-50 rotate-3 transition-transform hover:rotate-0">
+                        <Building className="w-16 h-16 text-blue-100" />
                     </div>
-                    <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100 text-left">
-                        <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center mb-3">
-                            <Info className="w-4 h-4 text-amber-600" />
-                        </div>
-                        <p className="font-bold text-gray-800 text-sm">Infos Siren</p>
-                        <p className="text-xs text-gray-500">Accédez aux données légales complètes.</p>
+                    <h3 className="text-4xl font-black text-slate-900 mb-4 tracking-tighter">Explorez le territoire</h3>
+                    <p className="text-slate-400 max-w-sm mx-auto text-lg font-medium leading-relaxed">
+                        Naviguez sur la carte, zoomez et découvrez les entreprises actives dans la zone en temps réel.
+                    </p>
+                    
+                    <div className="mt-14 flex flex-col md:flex-row gap-6 items-center justify-center">
+                         <div className="flex items-center gap-2.5 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] bg-white px-6 py-3 rounded-full border border-slate-100 shadow-sm">
+                            <Navigation className="w-3.5 h-3.5 text-blue-600 animate-pulse" /> Auto-chargement
+                         </div>
+                         <div className="flex items-center gap-2.5 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] bg-white px-6 py-3 rounded-full border border-slate-100 shadow-sm">
+                            <PieChart className="w-3.5 h-3.5 text-blue-600" /> +100k Données
+                         </div>
                     </div>
                 </div>
             </div>
@@ -293,4 +371,37 @@ export default function CompaniesTab({ project, companies, setCompanies, selecte
       </div>
     </div>
   );
+}
+
+function InfoCard({ label, value, icon, mono }) {
+    return (
+        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm transition-all hover:bg-slate-50/50 hover:shadow-md hover:border-blue-100 group">
+            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest flex items-center gap-1.5 mb-2.5 opacity-80 group-hover:opacity-100 group-hover:text-blue-500 transition-colors">
+                {icon}
+                {label}
+            </p>
+            <p className={cn("text-slate-900 font-bold tracking-tight text-sm truncate", mono && "font-mono text-xs text-slate-700")}>
+                {value || '-'}
+            </p>
+        </div>
+    );
+}
+
+function LinkRow({ label, url, color }) {
+    return (
+        <a 
+            href={url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center justify-between p-5 bg-slate-50/50 hover:bg-white rounded-[1.5rem] border border-slate-100 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-50/50 transition-all group active:scale-[0.98]"
+        >
+            <span className="font-bold text-slate-700 text-sm flex items-center gap-3">
+                <div className={cn("w-2.5 h-2.5 rounded-full shadow-inner", color === 'blue' ? 'bg-blue-600' : 'bg-slate-300')} />
+                {label}
+            </span>
+            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm border opacity-0 group-hover:opacity-100 transition-all">
+                <ExternalLink className="w-4 h-4 text-blue-600" />
+            </div>
+        </a>
+    );
 }
