@@ -144,6 +144,8 @@ export default function ProjectEditor() {
     costValue: 5,         // minutes or meters
     profile: 'car'        // 'car' or 'pedestrian'
   });
+  const [companies, setCompanies] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState(null);
 
   useEffect(() => {
     const handleForceReset = () => {
@@ -1563,17 +1565,6 @@ export default function ProjectEditor() {
             </button>
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('capareseau'); }}
-              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'capareseau'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              Caparéseau
-            </button>
-            <button
-              type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('terravisu'); }}
               className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'terravisu'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
@@ -1676,6 +1667,9 @@ export default function ProjectEditor() {
                     setSymbolToPlace={setSymbolToPlace}
                     isochroneConfig={isochroneConfig}
                     activeLayers={activeLayers}
+                    companies={companies}
+                    selectedCompany={selectedCompany}
+                    setSelectedCompany={setSelectedCompany}
                   />
                 </div>
 
@@ -1700,6 +1694,8 @@ export default function ProjectEditor() {
                     { key: 'abf', label: 'ABF' },
                     { key: 'sdis', label: 'SDIS' },
                     { key: 'capareseau', label: 'Caparéseau' },
+                    { key: 'companies', label: 'Sociétés' },
+                    { key: 'altimetry', label: 'Altimétrie' },
                   ].map(layer => (
                     <button
                       key={layer.key}
@@ -1756,6 +1752,8 @@ export default function ProjectEditor() {
                         { key: 'abf', label: 'ABF' },
                         { key: 'sdis', label: 'SDIS' },
                         { key: 'capareseau', label: 'Caparéseau' },
+                        { key: 'companies', label: 'Sociétés' },
+                        { key: 'altimetry', label: 'Altimétrie' },
                       ].map(layer => (
                         <button
                           key={layer.key}

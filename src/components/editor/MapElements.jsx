@@ -1871,6 +1871,16 @@ const LAYERS = {
     isOverlay: true,
     zIndex: 108,
     minZoom: 16
+  },
+  altimetry: {
+    name: "Altimétrie",
+    url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",
+    attrib: '© IGN',
+    isOverlay: true,
+    zIndex: 1,
+    opacity: 0.7,
+    maxNativeZoom: 18,
+    maxZoom: 22
   }
 };
 // ====================================================================
