@@ -19,56 +19,52 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { lat, lon, radius = 5, per_page = 50, q = '', near = '0' } = req.query;
+        const { lat, lon, radius = 5, per_page = 50, q = '', near = '0', action = 'search', sector = '' } = req.query;
         
-        let baseUrl = "https://recherche-entreprises.api.gouv.fr/search?";
-        const params = new URLSearchParams();
+        // --- ACTION : SEARCH / GEO-SEARCH (SIRENE/MELODI) ---
+        if (action === 'search') {
+            let baseUrl = "https://recherche-entreprises.api.gouv.fr/search?";
+            const params = new URLSearchParams();
 
-        // Si near=1, on utilise l'endpoint near_point (plus précis pour la carte)
-        if (near === '1' && lat && lon) {
-            baseUrl = "https://recherche-entreprises.api.gouv.fr/near_point?";
-            params.append('lat', lat);
-            params.append('long', lon); // Longitude s'écrit "long" pour cet endpoint
-            params.append('radius', radius);
-        } else {
-            // Sinon recherche standard par mot-clé ou géo-search standard
-            if (q) params.append('q', q);
-            if (lat && lon) {
+            if (near === '1' && lat && lon) {
+                baseUrl = "https://recherche-entreprises.api.gouv.fr/near_point?";
                 params.append('lat', lat);
-                params.append('lon', lon);
+                params.append('long', lon);
                 params.append('radius', radius);
+            } else {
+                if (q) params.append('q', q);
+                if (lat && lon) {
+                    params.append('lat', lat);
+                    params.append('lon', lon);
+                    params.append('radius', radius);
+                }
             }
+
+            const perPageValue = Math.min(parseInt(per_page) || 20, 20);
+            params.append('per_page', perPageValue.toString());
+            params.append('limite_matching', 'true');
+            params.append('etat_administratif', 'A');
+
+            const url = baseUrl + params.toString();
+            console.log(`[PROXY SEARCH] Fetching: ${url}`);
+            const response = await fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': 'NelsonPV-App/1.0' } });
+            if (!response.ok) return res.status(response.status).json({ error: `Sirene error: ${response.status}` });
+            const data = await response.json();
+            return res.status(200).json(data);
         }
 
-        // Sanitize and cap per_page (Max 25 for near_point)
-        const perPageValue = Math.min(parseInt(per_page) || 20, 20);
-        params.append('per_page', perPageValue.toString());
-        params.append('limite_matching', 'true');
-        params.append('etat_administratif', 'A'); // Uniquement les entreprises actives
-
-        const url = baseUrl + params.toString();
-        console.log(`[PROXY MELODI/SIRENE] Fetching: ${url}`);
-
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'User-Agent': 'NelsonPV-App/1.0'
-            }
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`[PROXY ERROR] ${response.status}: ${errorText}`);
-            res.status(response.status).json({
-                error: `Sirene API error: ${response.status}`,
-                details: errorText
-            });
-            return;
+        // --- ACTION : CONSUMPTION (ENEDIS OPEN DATA) ---
+        if (action === 'consumption') {
+            // On cherche la consommation moyenne par secteur ou code NAF
+            const enedisUrl = `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/consommation-electrique-par-secteur-d-activite/records?limit=1&where=nom_secteur%20like%20%22${encodeURIComponent(sector)}%22`;
+            console.log(`[PROXY ENEDIS] Fetching: ${enedisUrl}`);
+            const response = await fetch(enedisUrl);
+            if (!response.ok) return res.status(response.status).json({ error: `Enedis error: ${response.status}` });
+            const data = await response.json();
+            return res.status(200).json(data);
         }
 
-        const data = await response.json();
-        res.status(200).json(data);
+        res.status(400).json({ error: 'Invalid action' });
 
     } catch (error) {
         console.error('Proxy Error:', error);
