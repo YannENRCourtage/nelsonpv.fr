@@ -1931,8 +1931,6 @@ function SDISLayerManager({ layersRef, activeLayers }) {
   const active = activeLayers?.has('sdis');
   const layerGroupRef = useRef(L.markerClusterGroup({
     chunkedLoading: true,
-    chunkInterval: 200,
-    chunkDelay: 50,
     maxClusterRadius: 50,
     disableClusteringAtZoom: 17,
     spiderfyOnMaxZoom: true,
@@ -1953,6 +1951,7 @@ function SDISLayerManager({ layersRef, activeLayers }) {
       });
     }
   }));
+  const loadingRef = useRef(false);
 
   useEffect(() => {
     if (!layersRef.current) return;
@@ -1960,52 +1959,102 @@ function SDISLayerManager({ layersRef, activeLayers }) {
   }, [layersRef]);
 
   const loadData = async () => {
-    const layerConfig = LAYERS['sdis'];
-    const apis = layerConfig.apis || [];
-    try {
-      const results = await Promise.all(apis.map(url => {
-        let proxyUrl = url;
-        if (url.includes('sdis17.fr')) proxyUrl = url.replace('https://api.deci.sdis17.fr', '/sdis-proxy/17');
-        else if (url.includes('sdis84.fr')) proxyUrl = url.replace('https://api.deci.sdis84.fr', '/sdis-proxy/84');
-        else if (url.includes('sdis81.fr')) proxyUrl = url.replace('https://api.deci.sdis81.fr', '/sdis-proxy/81');
-        return fetch(proxyUrl).then(r => r.ok ? r.json() : { features: [] }).catch(() => ({ features: [] }));
-      }));
+    if (!active || !map || loadingRef.current) return;
+    const zoom = map.getZoom();
+    if (zoom < 14) {
+      layerGroupRef.current.clearLayers();
+      return;
+    }
 
-      const allFeatures = results.flatMap(r => r.features || []);
+    loadingRef.current = true;
+    const bounds = map.getBounds();
+    const south = bounds.getSouth();
+    const west = bounds.getWest();
+    const north = bounds.getNorth();
+    const east = bounds.getEast();
+
+    // Overpass QL query: seeking fire stations and hydrants in current BBOX
+    const query = `
+      [out:json][timeout:25];
+      (
+        node["amenity"="fire_station"](${south},${west},${north},${east});
+        node["emergency"="fire_hydrant"](${south},${west},${north},${east});
+        node["fire_hydrant:type"](${south},${west},${north},${east});
+        way["amenity"="fire_station"](${south},${west},${north},${east});
+      );
+      out body;
+      >;
+      out skel qt;
+    `;
+
+    try {
+      const response = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `data=${encodeURIComponent(query)}`
+      });
+      const data = await response.json();
+      
+      if (!data.elements) return;
+
       layerGroupRef.current.clearLayers();
 
-      if (allFeatures.length > 0) {
-        L.geoJSON({ type: 'FeatureCollection', features: allFeatures }, {
-          pointToLayer: (feature, latlng) => {
-            const type = feature.properties?.type_hydrant || feature.properties?.famille_pei || '';
-            let html = '';
-            if (type.startsWith('PI') || type.includes('POTEAU')) html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
-            else if (type.startsWith('BI') || type.includes('BOUCHE')) html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
-            else if (['REA', 'RENA'].includes(type) || type.includes('Reserve')) html = `<div style="background-color: #3B82F6; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #1E40AF; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
-            else html = `<div style="background-color: #9CA3AF; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #4B5563;"></div>`;
+      data.elements.forEach(el => {
+        // We focus on nodes for individual points; ways would need centroid calculation
+        if (el.type !== 'node') return; 
 
-            return L.marker(latlng, {
-              icon: L.divIcon({ className: '', html: html, iconSize: [14, 14], iconAnchor: [7, 7] })
-            });
-          },
-          onEachFeature: (feature, layer) => {
-            const props = feature.properties;
-            let popupContent = '<div style="font-family: sans-serif;">';
-            popupContent += '<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 16px; font-weight: bold;">🚒 Point d\'Eau Incendie</h4>';
-            popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.commune || 'N/A'}</p>`;
-            popupContent += `<p style="margin: 4px 0;"><strong>Numéro:</strong> ${props.numero_long || props.nom || 'N/A'}</p>`;
-            popupContent += '</div>';
-            layer.bindPopup(popupContent, { maxWidth: 300 });
-          }
-        }).addTo(layerGroupRef.current);
-      }
-    } catch (err) { console.error("Error loading SDIS data", err); }
+        const latlng = [el.lat, el.lon];
+        const tags = el.tags || {};
+        const isStation = tags.amenity === 'fire_station';
+        
+        let html = '';
+        if (isStation) {
+          html = `<div style="background-color: #DC143C; width: 20px; height: 20px; border: 2px solid white; display:flex; align-items:center; justify-content:center; box-shadow: 0 0 5px rgba(0,0,0,0.5); border-radius: 4px;"><span style="font-size: 12px;">🚒</span></div>`;
+        } else {
+          html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.5);"></div>`;
+        }
+
+        const marker = L.marker(latlng, {
+          icon: L.divIcon({
+            className: 'sdis-icon',
+            html: html,
+            iconSize: isStation ? [20, 20] : [14, 14],
+            iconAnchor: isStation ? [10, 10] : [7, 7]
+          })
+        });
+
+        let popupContent = '<div style="font-family: sans-serif; min-width: 180px; padding: 5px;">';
+        if (isStation) {
+          popupContent += `<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 15px; font-weight: bold; border-bottom: 1px solid #fee2e2; padding-bottom: 4px;">🚒 Caserne de Pompiers</h4>`;
+          if (tags.name) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Nom:</strong> ${tags.name}</p>`;
+          if (tags.operator) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Opérateur:</strong> ${tags.operator}</p>`;
+        } else {
+          popupContent += `<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 15px; font-weight: bold; border-bottom: 1px solid #fee2e2; padding-bottom: 4px;">🚰 Point d'Eau Incendie</h4>`;
+          const type = tags['fire_hydrant:type'] || tags.emergency_type || 'Poteau';
+          popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Type:</strong> ${type}</p>`;
+          if (tags['fire_hydrant:diameter']) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Diamètre:</strong> ${tags['fire_hydrant:diameter']} mm</p>`;
+          if (tags['fire_hydrant:pressure']) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Pression:</strong> ${tags['fire_hydrant:pressure']}</p>`;
+          if (tags.ref) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Réf:</strong> ${tags.ref}</p>`;
+        }
+        popupContent += '</div>';
+
+        marker.bindPopup(popupContent, { minWidth: 200 });
+        marker.addTo(layerGroupRef.current);
+      });
+    } catch (err) {
+      console.error("Error fetching SDIS data from Overpass", err);
+    } finally {
+      loadingRef.current = false;
+    }
   };
 
   useEffect(() => {
     if (active) {
       if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
-      if (layerGroupRef.current.getLayers().length === 0) loadData();
+      loadData();
+      const onMapChange = () => loadData();
+      map.on('moveend zoomend', onMapChange);
+      return () => { map.off('moveend zoomend', onMapChange); };
     } else {
       if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
     }
