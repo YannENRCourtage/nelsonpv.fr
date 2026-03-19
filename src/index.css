@@ -197,6 +197,15 @@ body,
   @apply bg-blue-900/50 text-blue-300;
 }
 
+/* Suivi dossiers (tracking) - couleur différente de Monday */
+.nav-link.active.tracking {
+  @apply bg-amber-100 text-amber-800;
+}
+
+.dark .nav-link.active.tracking {
+  @apply bg-amber-900/50 text-amber-300;
+}
+
 .nav-link.active.finance {
   @apply bg-sky-100 text-sky-800;
 }
@@ -425,6 +434,15 @@ body,
 
 .dark .mobile-nav-link.active.admin {
   @apply bg-gray-800 text-gray-300;
+}
+
+/* Suivi dossiers mobile */
+.mobile-nav-link.active.tracking {
+  @apply bg-amber-100 text-amber-800;
+}
+
+.dark .mobile-nav-link.active.tracking {
+  @apply bg-amber-900/50 text-amber-300;
 }
 
 /* Tablet: Adjust header padding */

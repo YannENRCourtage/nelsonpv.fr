@@ -479,7 +479,9 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen }) {
               </NavLink>
             )}
 
-            {(user?.activeTenantId === 'acama' || user?.tenantId === 'acama') && (
+            {(user?.activeTenantId === 'acama' || user?.tenantId === 'acama' ||
+              user?.role === 'admin' || user?.role === 'Administrator' ||
+              user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr') && (
               <NavLink to="/bp-acama" className={({ isActive }) => isActive ? 'nav-link active bp-acama' : 'nav-link bp-acama'}>
                 <TrendingUp className="w-4 h-4 mr-1 inline-block" />
                 BP ACAMA
@@ -675,6 +677,19 @@ export default function AppLayout() {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 ODOO
+              </NavLink>
+            )}
+
+            {(user?.activeTenantId === 'acama' || user?.tenantId === 'acama' ||
+              user?.role === 'admin' || user?.role === 'Administrator' ||
+              user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr') && (
+              <NavLink
+                to="/bp-acama"
+                className={({ isActive }) => isActive ? 'mobile-nav-link active bp-acama' : 'mobile-nav-link bp-acama'}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <TrendingUp className="w-4 h-4 mr-2 inline-block" />
+                BP ACAMA
               </NavLink>
             )}
 

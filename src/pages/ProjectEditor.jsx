@@ -7,6 +7,7 @@ import StreetViewTab from "../components/StreetViewTab";
 
 import ShadowMapTab from "../components/ShadowMapTab.jsx";
 import ChatBox from "../components/editor/ChatBox.jsx";
+import CompaniesTab from "../components/editor/CompaniesTab.jsx";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -145,6 +146,8 @@ export default function ProjectEditor() {
     costValue: 5,         // minutes or meters
     profile: 'car'        // 'car' or 'pedestrian'
   });
+  const [companies, setCompanies] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState(null);
 
   useEffect(() => {
     const handleForceReset = () => {
@@ -1552,6 +1555,18 @@ export default function ProjectEditor() {
 
             <button
               type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('companies'); }}
+              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'companies'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+              tabIndex={-1}
+            >
+              Sociétés
+            </button>
+
+            <button
+              type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('nv65'); }}
               className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'nv65'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
@@ -1699,6 +1714,9 @@ export default function ProjectEditor() {
                     setSymbolToPlace={setSymbolToPlace}
                     isochroneConfig={isochroneConfig}
                     activeLayers={activeLayers}
+                    companies={companies}
+                    selectedCompany={selectedCompany}
+                    setSelectedCompany={setSelectedCompany}
                   />
                 </div>
 
@@ -1818,10 +1836,21 @@ export default function ProjectEditor() {
 
 
 
-            {/* Onglet ShadowMap */}
             {activeTab === 'shadowmap' && (
               <div className='w-full h-full'>
                 <ShadowMapTab project={project} />
+              </div>
+            )}
+
+            {activeTab === 'companies' && (
+              <div className='w-full h-full flex overflow-hidden'>
+                 <CompaniesTab 
+                    project={project} 
+                    companies={companies} 
+                    setCompanies={setCompanies} 
+                    selectedCompany={selectedCompany} 
+                    setSelectedCompany={setSelectedCompany} 
+                 />
               </div>
             )}
 

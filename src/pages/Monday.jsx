@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
     Plus, Trash2, Edit2, GripVertical, Download, Upload, Save, X, MoreVertical,
     Search, Filter, CheckSquare, Square, Trash, Copy, ArrowUp, ArrowDown,
@@ -579,6 +579,35 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
     // Helpers
     const [newColName, setNewColName] = useState('');
     const fileInputRef = useRef(null);
+    const tableContainerRef = useRef(null);
+    const isDraggingScroll = useRef(false);
+    const dragStartX = useRef(0);
+    const dragScrollLeft = useRef(0);
+
+    const handleTablePointerDown = useCallback((e) => {
+        if (e.button !== 0) return; // Bouton gauche uniquement
+        const isInteractive = e.target.closest('button, input, select, [role="button"], a, th');
+        if (isInteractive) return;
+        isDraggingScroll.current = true;
+        dragStartX.current = e.clientX;
+        dragScrollLeft.current = tableContainerRef.current.scrollLeft;
+        document.body.style.cursor = 'grabbing';
+        // Capture du pointer pour recevoir les événements même pendant un drag HTML5 natif
+        try { tableContainerRef.current.setPointerCapture(e.pointerId); } catch (_) {}
+    }, []);
+
+    const handleTablePointerMove = useCallback((e) => {
+        if (!isDraggingScroll.current) return;
+        const walk = (e.clientX - dragStartX.current) * 1.5;
+        tableContainerRef.current.scrollLeft = dragScrollLeft.current - walk;
+    }, []);
+
+    const handleTablePointerUp = useCallback((e) => {
+        if (!isDraggingScroll.current) return;
+        isDraggingScroll.current = false;
+        document.body.style.cursor = 'default';
+        try { tableContainerRef.current.releasePointerCapture(e.pointerId); } catch (_) {}
+    }, []);
 
     // Helper function: Calculate total for TTC columns (Mensualités TTC or Montants TTC)
     const calculateTTCTotal = (rows) => {
@@ -1155,7 +1184,13 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
             </div>
 
             {/* Table Container */}
-            <div className="flex-1 overflow-auto border rounded-xl shadow-sm bg-white relative">
+            <div 
+                className="flex-1 overflow-auto border rounded-xl shadow-sm bg-white relative select-none"
+                ref={tableContainerRef}
+                onPointerDown={handleTablePointerDown}
+                onPointerMove={handleTablePointerMove}
+                onPointerUp={handleTablePointerUp}
+            >
                 <table className="w-full text-sm text-left relative border-collapse lg:table-fixed table-auto">
                     <thead className="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0 z-10 shadow-sm layer-20">
                         <tr>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
     Plus, Trash2, Search, Download, Save, Grid, 
     ArrowUpDown, Filter, MoreHorizontal, ChevronLeft,
@@ -17,13 +17,13 @@ import * as XLSX from 'xlsx';
 import { cn } from '@/lib/utils';
 
 // Version sentinel – bump this to force a data reset on next load
-const DATA_VERSION = 'v2-2026-03-17';
+const DATA_VERSION = 'v4-2026-03-18';
 
 const INITIAL_TRACKING_DATA = [
     {
         ref_projet: "HERIT 33860 VAL DE LIVENNE", num_facture: "FAC000000608", date_facture: "07/11/2025",
         echeance: "07/12/2025", total_ht: "2 000", tva: "400", total_ttc: "2 400",
-        conditions_reglement: "30 jours à réception de la facture", kwc: "100", jalon1_pdb: "PDB",
+        conditions_reglement: "30 jours à réception de la facture", kwc: "100", jalon1_pdb: "",
         jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "52", ca_pv: "45", total: "97",
         type_bat: "AS 7,2 30x16m", cout_enr_c: "5,2%", cout_kwc: "0,020 €",
         adresse: "460 ROUTE DE LA FONTAINE", cp_ville: "33860 Val-de-Livenne, France", parcelle: "ZN269",
@@ -33,7 +33,7 @@ const INITIAL_TRACKING_DATA = [
         ref_projet: "HERIT 33860 VAL DE LIVENNE", num_facture: "FAC000000609", date_facture: "07/11/2025",
         echeance: "07/12/2025", total_ht: "2 500", tva: "500", total_ttc: "3 000",
         conditions_reglement: "30 jours à réception de la facture", kwc: "102", jalon1_pdb: "",
-        jalon2_pc_dp: "PC/DP", jalon3_bail: "", nb_bat: "", ca_cm: "33", ca_pv: "29", total: "102 (156)",
+        jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "33", ca_pv: "29", total: "102 (156)",
         type_bat: "55.5 45x18m", cout_enr_c: "", cout_kwc: "",
         adresse: "", cp_ville: "", parcelle: "",
         mail: "", tel: "", type_projet: "", pdb_signee: ""
@@ -41,7 +41,7 @@ const INITIAL_TRACKING_DATA = [
     {
         ref_projet: "DUHARD 17130 JUSSAS", num_facture: "FAC000000610", date_facture: "10/11/2025",
         echeance: "10/12/2025", total_ht: "3 240", tva: "648", total_ttc: "3 888",
-        conditions_reglement: "30 jours à réception de la facture", kwc: "162", jalon1_pdb: "PDB",
+        conditions_reglement: "30 jours à réception de la facture", kwc: "162", jalon1_pdb: "",
         jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "83", ca_pv: "73", total: "156",
         type_bat: "SS.5 45x18,6m", cout_enr_c: "5,2%", cout_kwc: "0,020 €",
         adresse: "Le veau d'or", cp_ville: "17130 Jussas, France", parcelle: "A885, A1664",
@@ -51,7 +51,7 @@ const INITIAL_TRACKING_DATA = [
         ref_projet: "DUHARD 17130 JUSSAS", num_facture: "FAC000000611", date_facture: "10/11/2025",
         echeance: "10/12/2025", total_ht: "4 050", tva: "810", total_ttc: "4 860",
         conditions_reglement: "30 jours à réception de la facture", kwc: "", jalon1_pdb: "",
-        jalon2_pc_dp: "PC/DP", jalon3_bail: "", nb_bat: "", ca_cm: "", ca_pv: "", total: "",
+        jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "", ca_pv: "", total: "",
         type_bat: "", cout_enr_c: "", cout_kwc: "",
         adresse: "", cp_ville: "", parcelle: "",
         mail: "", tel: "", type_projet: "", pdb_signee: ""
@@ -59,7 +59,7 @@ const INITIAL_TRACKING_DATA = [
     {
         ref_projet: "MARTIN 33220 SAINT AVIT SAINT NAZAIRE", num_facture: "FAC000000612", date_facture: "13/11/2025",
         echeance: "13/12/2025", total_ht: "6 740", tva: "1 348", total_ttc: "8 088",
-        conditions_reglement: "30 jours à réception de la facture", kwc: "337", jalon1_pdb: "PDB",
+        conditions_reglement: "30 jours à réception de la facture", kwc: "337", jalon1_pdb: "",
         jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "", ca_pv: "", total: "",
         type_bat: "S7,7 52,5x26m+4m auvent Sud", cout_enr_c: "", cout_kwc: "",
         adresse: "La chataignière sud", cp_ville: "33220 Saint-Avit-Saint-Nazaire, France", parcelle: "D610",
@@ -68,7 +68,7 @@ const INITIAL_TRACKING_DATA = [
     {
         ref_projet: "RODIER VARGAS 30128 GARONS", num_facture: "FAC000000613", date_facture: "14/11/2025",
         echeance: "14/12/2025", total_ht: "10 320", tva: "2 064", total_ttc: "12 384",
-        conditions_reglement: "30 jours à réception de la facture", kwc: "516", jalon1_pdb: "PDB",
+        conditions_reglement: "30 jours à réception de la facture", kwc: "516", jalon1_pdb: "",
         jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "", ca_pv: "", total: "",
         type_bat: "S7,7 67,5x26,05m+9,25 appentis Sud", cout_enr_c: "", cout_kwc: "",
         adresse: "Lou Coussoun", cp_ville: "30128 Garons, France", parcelle: "AR 91",
@@ -77,7 +77,7 @@ const INITIAL_TRACKING_DATA = [
     {
         ref_projet: "SOLLE 31580 LECUSSAN", num_facture: "FAC000000614", date_facture: "19/11/2025",
         echeance: "19/12/2025", total_ht: "5 800", tva: "1 160", total_ttc: "6 960",
-        conditions_reglement: "30 jours à réception de la facture", kwc: "290", jalon1_pdb: "PDB",
+        conditions_reglement: "30 jours à réception de la facture", kwc: "290", jalon1_pdb: "",
         jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "", ca_pv: "", total: "",
         type_bat: "S6,6 60x22,3m", cout_enr_c: "", cout_kwc: "",
         adresse: "490 chemin de la Cassoulade", cp_ville: "31580 Lécussan, France", parcelle: "A114 A116 A133 A112 A115 A113 A105",
@@ -86,7 +86,7 @@ const INITIAL_TRACKING_DATA = [
     {
         ref_projet: "SAINT ARAILLES 32100 CONDOM", num_facture: "FAC000000615", date_facture: "01/12/2025",
         echeance: "31/12/2025", total_ht: "5 120", tva: "1 100", total_ttc: "6 220",
-        conditions_reglement: "30 jours à réception de la facture", kwc: "256", jalon1_pdb: "PDB",
+        conditions_reglement: "30 jours à réception de la facture", kwc: "256", jalon1_pdb: "",
         jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "", ca_pv: "", total: "",
         type_bat: "AS9.2 52.5x20m + 4m auvent Sud", cout_enr_c: "", cout_kwc: "",
         adresse: "2910 Chemin de l'Osse", cp_ville: "32100 Condom, France", parcelle: "K 76",
@@ -95,7 +95,7 @@ const INITIAL_TRACKING_DATA = [
     {
         ref_projet: "CONSOLI 2 24130 PRIGONRIEUX", num_facture: "FAC000000620", date_facture: "09/01/2026",
         echeance: "08/02/2026", total_ht: "9 760", tva: "1 952", total_ttc: "11 712",
-        conditions_reglement: "30 jours à réception de la facture", kwc: "488", jalon1_pdb: "PDB",
+        conditions_reglement: "30 jours à réception de la facture", kwc: "488", jalon1_pdb: "",
         jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "251", ca_pv: "220", total: "471",
         type_bat: "S7,7 76x26m +4m d'auvent Sud", cout_enr_c: "5,2%", cout_kwc: "0,020 €",
         adresse: "Sivadol", cp_ville: "24130 Prigonrieux, France", parcelle: "ZN 119",
@@ -104,7 +104,7 @@ const INITIAL_TRACKING_DATA = [
     {
         ref_projet: "MISSAULT 24800 ST MARTIN DE FRESSINGEAS", num_facture: "FAC000000623", date_facture: "20/01/2026",
         echeance: "20/01/2026", total_ht: "7 720", tva: "1 544", total_ttc: "9 264",
-        conditions_reglement: "30 jours à réception de la facture", kwc: "386", jalon1_pdb: "PDB",
+        conditions_reglement: "30 jours à réception de la facture", kwc: "386", jalon1_pdb: "",
         jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "199", ca_pv: "174", total: "373",
         type_bat: "2 X ASP 12.4 30x29m", cout_enr_c: "5,2%", cout_kwc: "0,020 €",
         adresse: "Route de la Baine", cp_ville: "24800 Saint-Martin-de-Fressingeas, France", parcelle: "D513 D514 D515 D516 D517 D518 D519 D535",
@@ -113,8 +113,8 @@ const INITIAL_TRACKING_DATA = [
     {
         ref_projet: "CASSAGNE 32220 PUYLAUSIC", num_facture: "FAC000000624", date_facture: "21/01/2026",
         echeance: "21/01/2026", total_ht: "3 925", tva: "785", total_ttc: "4 710",
-        conditions_reglement: "30 jours à réception de la facture", kwc: "152", jalon1_pdb: "PDB",
-        jalon2_pc_dp: "PC/DP", jalon3_bail: "", nb_bat: "", ca_cm: "81", ca_pv: "71", total: "152",
+        conditions_reglement: "30 jours à réception de la facture", kwc: "152", jalon1_pdb: "",
+        jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "81", ca_pv: "71", total: "152",
         type_bat: "AS 7,2 30x16m + 2 auvents Nord et Sud = 30x24m", cout_enr_c: "5,2%", cout_kwc: "0,025 €",
         adresse: "647 Chemin du monge", cp_ville: "32220 Puylausic, France", parcelle: "AL 24 + AL 26",
         mail: "cassagne.arnaud@laposte.net", tel: "06 47 92 54 04", type_projet: "AS 7.2 30x16M + 2 auvents Nord et Sud = 30x24m", pdb_signee: "09/01/26"
@@ -122,7 +122,7 @@ const INITIAL_TRACKING_DATA = [
     {
         ref_projet: "MISSAULT 24470 SAINT SAUD LACOUSSIERE", num_facture: "FAC000000625", date_facture: "30/01/2026",
         echeance: "30/01/2026", total_ht: "8 000", tva: "1 600", total_ttc: "9 600",
-        conditions_reglement: "30 jours à réception de la facture", kwc: "400", jalon1_pdb: "PDB",
+        conditions_reglement: "30 jours à réception de la facture", kwc: "400", jalon1_pdb: "",
         jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "2", ca_cm: "206", ca_pv: "180", total: "386",
         type_bat: "2 X S4.4 de 42m donc 42x15m + 2 auvents de chaque côté", cout_enr_c: "5,2%", cout_kwc: "0,020 €",
         adresse: "1348 Route des bouleaux", cp_ville: "24470 Saint-Saud-Lacoussière, France", parcelle: "A 1223",
@@ -131,8 +131,8 @@ const INITIAL_TRACKING_DATA = [
     {
         ref_projet: "CHAUCHET 17150 MIRAMBEAU", num_facture: "FAC000000626", date_facture: "06/02/2026",
         echeance: "06/02/2026", total_ht: "6 525", tva: "1 305", total_ttc: "7 830",
-        conditions_reglement: "30 jours à réception de la facture", kwc: "145", jalon1_pdb: "PDB",
-        jalon2_pc_dp: "PC/DP", jalon3_bail: "", nb_bat: "", ca_cm: "75", ca_pv: "65", total: "140",
+        conditions_reglement: "30 jours à réception de la facture", kwc: "145", jalon1_pdb: "",
+        jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "75", ca_pv: "65", total: "140",
         type_bat: "AS9.2 37.5x20+ 4m auvent Sud", cout_enr_c: "5,2%", cout_kwc: "0,045 €",
         adresse: "La Garenne", cp_ville: "Mirambeau, 17150 Mirambeau, France", parcelle: "ZV 130 - ZV 285",
         mail: "fabrice.chauchet@sfr.fr", tel: "06 18 38 16 89", type_projet: "30x16m sans poteaux asymétrique", pdb_signee: "02/06/25"
@@ -140,7 +140,7 @@ const INITIAL_TRACKING_DATA = [
     {
         ref_projet: "LECONTE 33190 SAINT LAURENT DU PLAN", num_facture: "FAC000000627", date_facture: "09/02/2026",
         echeance: "11/03/2026", total_ht: "8 700", tva: "1 740", total_ttc: "10 440",
-        conditions_reglement: "30 jours à réception de la facture", kwc: "435", jalon1_pdb: "PDB",
+        conditions_reglement: "30 jours à réception de la facture", kwc: "435", jalon1_pdb: "",
         jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "224", ca_pv: "196", total: "420",
         type_bat: "S8.8 60x29.8m +4m auvent Sud", cout_enr_c: "5,2%", cout_kwc: "0,020 €",
         adresse: "1 Jacob", cp_ville: "33190 SAINT LAURENT DU PLAN", parcelle: "B100 B332",
@@ -176,7 +176,7 @@ const INITIAL_TRACKING_DATA = [
     {
         ref_projet: "RECKINGER 32700 LECTOURE", num_facture: "FAC000000630", date_facture: "02/03/2026",
         echeance: "01/04/2026", total_ht: "11 300", tva: "2 260", total_ttc: "13 560",
-        conditions_reglement: "30 jours à réception de la facture", kwc: "565", jalon1_pdb: "PDB",
+        conditions_reglement: "30 jours à réception de la facture", kwc: "565", jalon1_pdb: "",
         jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "291", ca_pv: "254", total: "545",
         type_bat: "S8.8 67.5x29.75m + 2 auvents donc 67.5x33.75m", cout_enr_c: "5,2%", cout_kwc: "0,020 €",
         adresse: "6720 route de Nérac", cp_ville: "32700 LECTOURE", parcelle: "L025",
@@ -185,7 +185,7 @@ const INITIAL_TRACKING_DATA = [
     {
         ref_projet: "RECKINGER 32700 LECTOURE", num_facture: "FAC000000630", date_facture: "02/03/2026",
         echeance: "01/04/2026", total_ht: "4 480", tva: "896", total_ttc: "5 376",
-        conditions_reglement: "30 jours à réception de la facture", kwc: "224", jalon1_pdb: "PDB",
+        conditions_reglement: "30 jours à réception de la facture", kwc: "224", jalon1_pdb: "",
         jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "115", ca_pv: "101", total: "216",
         type_bat: "AS9.2 37.5x20m + 2 auvents", cout_enr_c: "5,2%", cout_kwc: "0,020 €",
         adresse: "6720 route de Nérac", cp_ville: "32700 LECTOURE", parcelle: "L025",
@@ -194,7 +194,7 @@ const INITIAL_TRACKING_DATA = [
     {
         ref_projet: "MARTINEZ 34230 AUMELAS", num_facture: "FAC000000632", date_facture: "12/03/2026",
         echeance: "27/03/2026", total_ht: "5 100", tva: "1 020", total_ttc: "6 120",
-        conditions_reglement: "30 jours à réception de la facture", kwc: "255", jalon1_pdb: "PDB",
+        conditions_reglement: "30 jours à réception de la facture", kwc: "255", jalon1_pdb: "",
         jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "131", ca_pv: "115", total: "246",
         type_bat: "S7.7 45x26m (328kWc) + 2 auvents", cout_enr_c: "5,2%", cout_kwc: "0,020 €",
         adresse: "mas du Barral", cp_ville: "34230 AUMELAS", parcelle: "D 98 D 157",
@@ -203,7 +203,7 @@ const INITIAL_TRACKING_DATA = [
     {
         ref_projet: "MARTINEZ 34230 AUMELAS", num_facture: "FAC000000632", date_facture: "12/03/2026",
         echeance: "27/03/2026", total_ht: "5 800", tva: "1 160", total_ttc: "6 960",
-        conditions_reglement: "30 jours à réception de la facture", kwc: "290", jalon1_pdb: "PDB",
+        conditions_reglement: "30 jours à réception de la facture", kwc: "290", jalon1_pdb: "",
         jalon2_pc_dp: "", jalon3_bail: "", nb_bat: "", ca_cm: "149", ca_pv: "131", total: "280",
         type_bat: "S8.8 45x30m (430kWc) + 1 appentis Sud + 1 auvent Nord", cout_enr_c: "5,2%", cout_kwc: "0,020 €",
         adresse: "mas du Barral", cp_ville: "34230 AUMELAS", parcelle: "D 157",
@@ -213,6 +213,74 @@ const INITIAL_TRACKING_DATA = [
 
 
 const TABLE_ID = 'tracking_dossiers';
+const DATE_COLUMNS = ['date_facture', 'echeance', 'pdb_signee', 'jalon1_pdb', 'jalon2_pc_dp', 'jalon3_bail'];
+const CONDITION_REGLEMENT_OPTIONS = [
+    "30 jours à réception de la facture",
+    "A réception de la facture",
+    "Avoir sur facturation"
+];
+
+// Helper to convert DD/MM/YYYY to YYYY-MM-DD
+const toInputDate = (dateStr) => {
+    if (!dateStr) return "";
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return "";
+    const [d, m, y] = parts;
+    const year = y.length === 2 ? `20${y}` : y;
+    return `${year}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+};
+
+// Helper to convert YYYY-MM-DD to DD/MM/YYYY
+const fromInputDate = (dateStr) => {
+    if (!dateStr) return "";
+    const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}/${y.slice(-2)}`;
+};
+
+// --- Dropdown pour Conditions Règlement ---
+const ConditionReglementCell = ({ value, onChange, onClose }) => {
+    const [inputVal, setInputVal] = useState(value);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        // Focus l'input automatiquement
+        if (ref.current) ref.current.focus();
+    }, []);
+
+    return (
+        <div className="relative w-full h-full" style={{ minWidth: 220 }}>
+            <input
+                ref={ref}
+                className="w-full h-full px-3 text-xs border-none outline-none bg-white"
+                value={inputVal}
+                onChange={(e) => {
+                    setInputVal(e.target.value);
+                    onChange(e.target.value);
+                }}
+                onBlur={(e) => {
+                    // Delay to allow click on option buttons
+                    setTimeout(() => onClose(), 150);
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') onClose(); }}
+                placeholder="Saisir ou choisir..."
+            />
+            {/* Options dropdown panel */}
+            <div className="absolute left-0 top-full z-50 bg-white border border-slate-200 rounded-md shadow-lg w-full min-w-max"
+                onMouseDown={(e) => e.preventDefault()} // prevent blur before click
+            >
+                {CONDITION_REGLEMENT_OPTIONS.map(opt => (
+                    <button
+                        key={opt}
+                        className={`w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 transition-colors truncate ${inputVal === opt ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-700'}`}
+                        onClick={() => { setInputVal(opt); onChange(opt); onClose(); }}
+                    >
+                        {opt}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
 
 // --- Resizable Header Component ---
 const ResizableHeader = ({ col, label, width, onResize, isResizing, setIsResizing, onSort, sortDirection }) => {
@@ -304,6 +372,42 @@ export default function DossierTracking() {
 
     const fileInputRef = useRef(null);
     const containerRef = useRef(null);
+    const isDragging = useRef(false);
+    const startX = useRef(0);
+    const scrollLeft = useRef(0);
+
+    const handleMouseDown = useCallback((e) => {
+        // Only drag if clicking middle button or if user is NOT clicking an interactive element
+        const isInteractive = e.target.closest('button, input, [role="button"], a');
+        if (isInteractive) return;
+
+        isDragging.current = true;
+        startX.current = e.pageX - containerRef.current.offsetLeft;
+        scrollLeft.current = containerRef.current.scrollLeft;
+        
+        // Add cursor style to body
+        document.body.style.cursor = 'grabbing';
+    }, []);
+
+    const handleMouseMove = useCallback((e) => {
+        if (!isDragging.current) return;
+        e.preventDefault();
+        const x = e.pageX - containerRef.current.offsetLeft;
+        const walk = (x - startX.current) * 1.5; // Scroll speed multiplier
+        containerRef.current.scrollLeft = scrollLeft.current - walk;
+    }, []);
+
+    const handleMouseUp = useCallback(() => {
+        if (!isDragging.current) return;
+        isDragging.current = false;
+        document.body.style.cursor = 'default';
+    }, []);
+
+    useEffect(() => {
+        // Attach on document to catch mouseup even outside the container
+        document.addEventListener('mouseup', handleMouseUp);
+        return () => document.removeEventListener('mouseup', handleMouseUp);
+    }, [handleMouseUp]);
 
     // Initial columns width
     useEffect(() => {
@@ -315,21 +419,35 @@ export default function DossierTracking() {
     }, []);
 
     useEffect(() => {
-        const versionKey = `tracking_data_version_${TABLE_ID}`;
-        const storedVersion = localStorage.getItem(versionKey);
-        const needsReset = storedVersion !== DATA_VERSION;
-
+        let initialized = false;
         const unsubscribe = apiService.subscribeToMondayRows(TABLE_ID, async (fetchedRows) => {
-            if (needsReset) {
-                // Force reset: clear old data and insert the correct dataset
-                try {
-                    await apiService.batchReplaceMondayRows(TABLE_ID, INITIAL_TRACKING_DATA);
-                    localStorage.setItem(versionKey, DATA_VERSION);
-                } catch (err) {
-                    console.error('Failed to reset tracking data:', err);
+            if (!initialized) {
+                initialized = true;
+                if (fetchedRows.length === 0) {
+                    // Aucune donnée en base : on peuple avec les données initiales
+                    try {
+                        await apiService.batchReplaceMondayRows(TABLE_ID, INITIAL_TRACKING_DATA);
+                        setRows(INITIAL_TRACKING_DATA.map((r, i) => ({ ...r, id: String(i) })));
+                    } catch (err) {
+                        console.error('Failed to populate initial tracking data:', err);
+                    }
+                } else {
+                    // Trier par createdAt croissant pour que les nouvelles lignes apparaissent en bas
+                    const sorted = [...fetchedRows].sort((a, b) => {
+                        const tA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
+                        const tB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
+                        return tA - tB;
+                    });
+                    setRows(sorted);
                 }
             } else {
-                setRows(fetchedRows);
+                // Mises à jour temps réel normales - trier aussi
+                const sorted = [...fetchedRows].sort((a, b) => {
+                    const tA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt || 0);
+                    const tB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt || 0);
+                    return tA - tB;
+                });
+                setRows(sorted);
             }
             setLoading(false);
         });
@@ -338,6 +456,9 @@ export default function DossierTracking() {
 
     const handleAddRow = async () => {
         const emptyRow = COLUMNS.reduce((acc, col) => ({ ...acc, [col.key]: "" }), {});
+        // Optimistic update: show row immediately before Firebase confirms
+        const tempId = `temp_${Date.now()}`;
+        setRows(prev => [...prev, { ...emptyRow, id: tempId }]);
         await apiService.addMondayRow(TABLE_ID, emptyRow);
     };
 
@@ -353,6 +474,22 @@ export default function DossierTracking() {
             }
             setSelectedRows(new Set());
         }
+    };
+
+    const handleDuplicateSelected = async () => {
+        if (selectedRows.size === 0) return;
+        const rowsToDuplicate = rows.filter(r => selectedRows.has(r.id));
+        for (const row of rowsToDuplicate) {
+            const { id, ...rowData } = row;
+            await apiService.addMondayRow(TABLE_ID, rowData);
+        }
+        setSelectedRows(new Set());
+    };
+
+    const handleDeleteRow = async (rowId) => {
+        // Optimistic: remove immediately from UI
+        setRows(prev => prev.filter(r => r.id !== rowId));
+        await apiService.deleteMondayRow(TABLE_ID, rowId);
     };
 
     const handleExport = () => {
@@ -505,6 +642,15 @@ export default function DossierTracking() {
                         <>
                             <div className="h-6 w-[1px] bg-slate-200 mx-1" />
                             <Button 
+                                variant="ghost"
+                                size="sm" 
+                                onClick={handleDuplicateSelected}
+                                className="h-8 px-3 text-xs text-blue-600 hover:bg-blue-50"
+                            >
+                                <Copy className="w-3.5 h-3.5 mr-1.5" />
+                                Dupliquer ({selectedRows.size})
+                            </Button>
+                            <Button 
                                 variant="destructive" 
                                 size="sm" 
                                 onClick={handleDeleteSelected}
@@ -525,7 +671,12 @@ export default function DossierTracking() {
             </div>
 
             {/* Table Area - Full Height Scrollable (both axes) */}
-            <div className="flex-1 overflow-auto relative" ref={containerRef}>
+            <div 
+                className="flex-1 overflow-auto relative select-none" 
+                ref={containerRef}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+            >
                 <table className="border-collapse" style={{ minWidth: `${COLUMNS.length * 162 + 80}px` }}>
                     <thead className="sticky top-0 z-20">
                         <tr>
@@ -566,13 +717,20 @@ export default function DossierTracking() {
                                 )}
                             >
                                 <td className="border-b border-r sticky left-0 bg-white group-hover:bg-blue-50/40 z-10">
-                                    <div className="flex items-center justify-center h-9">
+                                    <div className="flex items-center justify-center gap-1 h-9 px-1">
                                         <input 
                                             type="checkbox" 
                                             checked={selectedRows.has(row.id)}
                                             onChange={() => toggleRowSelection(row.id)}
                                             className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                         />
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteRow(row.id); }}
+                                            className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-red-100 rounded text-red-400 hover:text-red-600 transition-all"
+                                            title="Supprimer cette ligne"
+                                        >
+                                            <Trash2 className="w-3 h-3" />
+                                        </button>
                                     </div>
                                 </td>
                                 <td className="border-b border-r text-center text-[10px] text-slate-400 bg-white group-hover:bg-blue-50/40">
@@ -596,16 +754,41 @@ export default function DossierTracking() {
                                         >
                                             <div className="flex items-center h-9 group/cell">
                                                 {isEditing ? (
-                                                    <input 
-                                                        autoFocus
-                                                        className="w-full h-full px-3 text-xs border-none outline-none bg-transparent"
+                                                    <div className="w-full h-full flex items-center">
+                                                        {DATE_COLUMNS.includes(col.key) ? (
+                                                            <input 
+                                                                type="date"
+                                                                autoFocus
+                                                                className="w-full h-full px-2 text-xs border-none outline-none bg-white"
+                                                                value={toInputDate(row[col.key])}
+                                                                onChange={(e) => {
+                                                                    const formatted = fromInputDate(e.target.value);
+                                                                    handleUpdateCell(row.id, col.key, formatted);
+                                                                }}
+                                                                onBlur={() => setEditingCell(null)}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') setEditingCell(null);
+                                                                }}
+                                                            />
+                                                        ) : col.key === 'conditions_reglement' ? (
+                                                    <ConditionReglementCell
                                                         value={row[col.key] || ""}
-                                                        onChange={(e) => handleUpdateCell(row.id, col.key, e.target.value)}
-                                                        onBlur={() => setEditingCell(null)}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') setEditingCell(null);
-                                                        }}
+                                                        onChange={(val) => handleUpdateCell(row.id, col.key, val)}
+                                                        onClose={() => setEditingCell(null)}
                                                     />
+                                                        ) : (
+                                                            <input 
+                                                                autoFocus
+                                                                className="w-full h-full px-3 text-xs border-none outline-none bg-transparent"
+                                                                value={row[col.key] || ""}
+                                                                onChange={(e) => handleUpdateCell(row.id, col.key, e.target.value)}
+                                                                onBlur={() => setEditingCell(null)}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') setEditingCell(null);
+                                                                }}
+                                                            />
+                                                        )}
+                                                    </div>
                                                 ) : (
                                                     <div className="w-full px-3 text-xs text-slate-700 truncate flex items-center justify-between">
                                                         <span className="truncate">{row[col.key] || <span className="text-slate-200">--</span>}</span>

@@ -226,6 +226,14 @@ const photoIcon = (number) => L.divIcon({
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
+const companyIcon = (isSelected) => L.divIcon({
+  html: `<div class="flex items-center justify-center bg-white rounded-full shadow-lg border-2 ${isSelected ? 'border-amber-500 scale-125 z-[1000]' : 'border-blue-700'} h-8 w-8 text-blue-800 transition-all">
+           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="22" x2="9" y2="22"></line><line x1="15" y1="22" x2="15" y2="22"></line><line x1="12" y1="18" x2="12" y2="18"></line><line x1="12" y1="14" x2="12" y2="14"></line><line x1="12" y1="10" x2="12" y2="10"></line><line x1="8" y1="18" x2="8" y2="18"></line><line x1="8" y1="14" x2="8" y2="14"></line><line x1="8" y1="10" x2="8" y2="10"></line><line x1="16" y1="18" x2="16" y2="18"></line><line x1="16" y1="14" x2="16" y2="14"></line><line x1="16" y1="10" x2="16" y2="10"></line></svg>
+         </div>`,
+  className: 'bg-transparent border-none',
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+});
 // --- Ligne BT Manager (Enedis) ---
 function LigneBTLayerManager({ layersRef }) {
   const map = useMap();
@@ -3027,7 +3035,23 @@ function MapStateSync({ project, setProject }) {
   return null;
 }
 
-export default function MapElements({ style = {}, project, setProject, onAddressFound, onAddressSearched, setSymbolToPlace, symbolToPlace, setIsAzimuthDefaulted, isUrbanismeMode, activeLayers, isochroneConfig }) {
+export default function MapElements({ 
+  style = {}, 
+  project, 
+  setProject, 
+  onAddressFound, 
+  onAddressSearched, 
+  setSymbolToPlace, 
+  symbolToPlace, 
+  setIsAzimuthDefaulted,     
+  isUrbanismeMode, 
+  activeLayers, 
+  isochroneConfig,
+  companies = [],
+  selectedCompany = null,
+  setSelectedCompany
+}) {
+
 
   const [mode, setMode] = useState(null);
   const [temp, setTemp] = useState([]);
@@ -3054,6 +3078,18 @@ export default function MapElements({ style = {}, project, setProject, onAddress
 
   const [targetPos, setTargetPos] = useState(null); // initialized in MapTargetInfo via useEffect
   const [map, setMap] = useState(null); // State for map instance
+  
+  // Custom navigation handler for companies from the sidebar
+  useEffect(() => {
+    const handleGoto = (e) => {
+      const { lat, lng, zoom } = e.detail;
+      if (map) {
+        map.setView([lat, lng], zoom || 18, { animate: true });
+      }
+    };
+    window.addEventListener('map:goto-location', handleGoto);
+    return () => window.removeEventListener('map:goto-location', handleGoto);
+  }, [map]);
   const [hoverInfo, setHoverInfo] = useState(null); // New state for shared hover info
   const [showInfoPanel, setShowInfoPanel] = useState(true); // Always visible by défaut
   const layersRef = useRef({});
@@ -3172,7 +3208,20 @@ export default function MapElements({ style = {}, project, setProject, onAddress
     const handleMapReset = () => {
       setFeaturesWrapper([]); // User interaction (clearing)
       setTemp([]);
-      // ...
+      // ... existing refs ...
+  const map = useMap();
+  
+  // Custom navigation handler for companies
+  useEffect(() => {
+    const handleGoto = (e) => {
+      const { lat, lng, zoom } = e.detail;
+      if (map) {
+        map.setView([lat, lng], zoom || 18, { animate: true });
+      }
+    };
+    window.addEventListener('map:goto-location', handleGoto);
+    return () => window.removeEventListener('map:goto-location', handleGoto);
+  }, [map]);
     };
     window.addEventListener('map:reset', handleMapReset);
     return () => window.removeEventListener('map:reset', handleMapReset);
@@ -3288,6 +3337,32 @@ export default function MapElements({ style = {}, project, setProject, onAddress
             setShowInfoPanel={setShowInfoPanel}
             isochroneConfig={isochroneConfig}
           />
+          {/* Sociétés Markers */}
+          {companies.map(c => (
+            <Marker
+              key={c.id}
+              position={[c.lat, c.lon]}
+              icon={companyIcon(selectedCompany?.id === c.id)}
+              eventHandlers={{
+                click: () => setSelectedCompany(c)
+              }}
+            >
+              <Popup>
+                <div className="p-1 min-w-[150px]">
+                  <p className="font-bold text-sm mb-1">{c.name}</p>
+                  <p className="text-[10px] text-blue-600 uppercase font-bold bg-blue-50 px-1 inline-block rounded">{c.activity}</p>
+                  <p className="text-[11px] text-gray-400 mt-2 line-clamp-2">{c.address}</p>
+                  <button
+                    className="mt-3 w-full bg-blue-600 text-white rounded py-1 font-bold text-xs hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
+                    onClick={() => setSelectedCompany(c)}
+                  >
+                    Sélectionner
+                  </button>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+
           <ZoomIndicator />
           <MapEvents
             project={project}

@@ -64,7 +64,23 @@ function MapControls({ project }) {
   );
 }
 
-export default function MapEditor({ project, setProject, onAddressFound, onAddressSearched, symbolToPlace, setSymbolToPlace, photos, setPhotos, setIsAzimuthDefaulted, isUrbanismeMode, activeLayers, isochroneConfig }) {
+export default function MapEditor({ 
+  project, 
+  setProject, 
+  onAddressFound, 
+  onAddressSearched, 
+  symbolToPlace, 
+  setSymbolToPlace, 
+  photos, 
+  setPhotos, 
+  setIsAzimuthDefaulted, 
+  isUrbanismeMode, 
+  activeLayers, 
+  isochroneConfig,
+  companies,
+  selectedCompany,
+  setSelectedCompany
+}) {
   return (
     <div className="relative w-full h-full">
       <MapControls project={project} />
@@ -82,6 +98,9 @@ export default function MapEditor({ project, setProject, onAddressFound, onAddre
         isUrbanismeMode={isUrbanismeMode}
         activeLayers={activeLayers}
         isochroneConfig={isochroneConfig}
+        companies={companies}
+        selectedCompany={selectedCompany}
+        setSelectedCompany={setSelectedCompany}
       />
     </div>
   );
