@@ -910,6 +910,18 @@ function ContextMenu({ position, onAddText, onAddNote, onClose, onCheckUrbanisme
   );
 }
 
+function useDeleteKey(onDelete) {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Delete" || (e.key === "Backspace" && !['INPUT', 'TEXTAREA'].includes(e.target.tagName))) {
+        onDelete();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onDelete]);
+}
+
 function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject, setIsAzimuthDefaulted, isRotatingRef, isUrbanismeMode, setShowInfoPanel, isochroneConfig }) {
   const [mousePos, setMousePos] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
