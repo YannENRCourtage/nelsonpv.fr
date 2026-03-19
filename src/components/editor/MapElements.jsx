@@ -494,7 +494,8 @@ function CompaniesLayerManager({ layersRef, onCompaniesUpdate }) {
             icon: companyIcon(item.name, false)
           });
           marker.on('click', (e) => {
-             L.DomEvent.stopPropagation(e);
+             if (e.originalEvent) e.originalEvent.stopPropagation();
+             console.log("[CompaniesLayerManager] Clicked company:", item.name);
              window.dispatchEvent(new CustomEvent('map:select-company', { detail: { company: item } }));
           });
           marker.addTo(layerGroupRef.current);
@@ -571,7 +572,8 @@ function CapareseauLayerManager({ layersRef }) {
           });
 
           marker.on('click', (e) => {
-             L.DomEvent.stopPropagation(e);
+             if (e.originalEvent) e.originalEvent.stopPropagation();
+             console.log("[CapareseauLayerManager] Clicked substation:", item.nom_du_poste);
              window.dispatchEvent(new CustomEvent('map:select-substation', { detail: { substation: item } }));
           });
           marker.addTo(layerGroupRef.current);
@@ -3733,8 +3735,8 @@ function MapSidePanel({ type, data, onClose }) {
 
   return (
     <div 
-      className={`absolute top-4 ${side}-4 z-[3000] w-[350px] max-h-[calc(100%-2rem)] bg-white/95 backdrop-blur-md shadow-2xl border border-gray-200 rounded-xl flex flex-col overflow-hidden animate-in slide-in-from-${side} duration-300`}
-      style={{ pointerEvents: 'auto' }}
+      className={`absolute top-4 ${side}-4 z-[5000] w-[350px] max-h-[calc(100%-2rem)] bg-white shadow-2xl border border-gray-200 rounded-xl flex flex-col overflow-hidden`}
+      style={{ pointerEvents: 'auto', display: 'flex' }}
     >
       {/* Header */}
       <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
