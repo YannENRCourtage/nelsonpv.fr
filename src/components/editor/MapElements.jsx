@@ -493,7 +493,8 @@ function CompaniesLayerManager({ layersRef, onCompaniesUpdate }) {
           const marker = L.marker([item.lat, item.lon], {
             icon: companyIcon(item.name, false)
           });
-          marker.on('click', () => {
+          marker.on('click', (e) => {
+             L.DomEvent.stopPropagation(e);
              window.dispatchEvent(new CustomEvent('map:select-company', { detail: { company: item } }));
           });
           marker.addTo(layerGroupRef.current);
@@ -569,8 +570,8 @@ function CapareseauLayerManager({ layersRef }) {
             icon: powerIcon(item.nom_du_poste, item.capacite_disponible_mw || 0)
           });
 
-          marker.on('click', () => {
-             // Dispatch event or call prop to set selected substation
+          marker.on('click', (e) => {
+             L.DomEvent.stopPropagation(e);
              window.dispatchEvent(new CustomEvent('map:select-substation', { detail: { substation: item } }));
           });
           marker.addTo(layerGroupRef.current);
@@ -3712,6 +3713,122 @@ export default function MapElements({
             onClose={() => setSelectedSubstation(null)} 
           />
         </MapContainer>
+      </div>
+    </div>
+  );
+}
+
+function MapSidePanel({ type, data, onClose }) {
+  if (!data) return null;
+
+  const isCompany = type === 'company';
+  const title = isCompany ? (data.nom_raison_sociale || data.name || "Détails Entreprise") : (data.nom_du_poste || "Poste Source");
+  const side = isCompany ? "right" : "left";
+
+  const copyToClipboard = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copié !", description: `"${text}" copié dans le presse-papier.`, ...toastStyle });
+  };
+
+  return (
+    <div 
+      className={`absolute top-4 ${side}-4 z-[3000] w-[350px] max-h-[calc(100%-2rem)] bg-white/95 backdrop-blur-md shadow-2xl border border-gray-200 rounded-xl flex flex-col overflow-hidden animate-in slide-in-from-${side} duration-300`}
+      style={{ pointerEvents: 'auto' }}
+    >
+      {/* Header */}
+      <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+        <h3 className="font-bold text-gray-900 truncate pr-4">{title}</h3>
+        <button onClick={onClose} className="p-1 hover:bg-gray-200 rounded-full transition-colors">
+          <XIcon size={18} className="text-gray-500" />
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="p-4 overflow-y-auto space-y-4">
+        {isCompany ? (
+          <>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Identité</label>
+              <div className="space-y-1">
+                <div className="flex justify-between items-start group cursor-pointer" onClick={() => copyToClipboard(data.siret)}>
+                  <span className="text-xs text-gray-500">SIRET</span>
+                  <span className="text-xs font-medium text-gray-900 flex items-center gap-1">
+                    {data.siret} <Copy size={10} className="opacity-0 group-hover:opacity-100" />
+                  </span>
+                </div>
+                <div className="flex justify-between items-start group cursor-pointer" onClick={() => copyToClipboard(data.adresse)}>
+                  <span className="text-xs text-gray-500">Adresse</span>
+                  <span className="text-xs font-medium text-gray-900 text-right max-w-[180px] flex items-center gap-1">
+                    {data.adresse} <Copy size={10} className="opacity-0 group-hover:opacity-100" />
+                  </span>
+                </div>
+                <div className="flex justify-between items-start">
+                  <span className="text-xs text-gray-500">Effectifs</span>
+                  <span className="text-xs font-medium text-gray-900">{data.tranche_effectif || 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-2 border-t">
+              <label className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Potentiel Solaire</label>
+              <div className="p-3 bg-green-50 rounded-lg border border-green-100">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs text-green-700">Surface estimée</span>
+                  <span className="text-sm font-bold text-green-900">~250 m²</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-green-700">Puissance estimée</span>
+                  <span className="text-sm font-bold text-green-900">36 kWc</span>
+                </div>
+              </div>
+            </div>
+            
+            {data.dirigeants && data.dirigeants.length > 0 && (
+              <div className="space-y-2 pt-2 border-t">
+                <label className="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Dirigeants</label>
+                <div className="space-y-1">
+                  {data.dirigeants.map((d, i) => (
+                    <div key={i} className="text-xs font-medium text-gray-900 flex items-center gap-1">
+                      👤 {d.prenoms} {d.nom}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-orange-600 uppercase tracking-wider">Capacités (S3REnR)</label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2 bg-orange-50 rounded border border-orange-100">
+                  <div className="text-[10px] text-orange-700">Réservée</div>
+                  <div className="text-sm font-bold text-orange-900">{data.capacite_reservee_mw || 0} MW</div>
+                </div>
+                <div className="p-2 bg-blue-50 rounded border border-blue-100">
+                  <div className="text-[10px] text-blue-700">Disponible</div>
+                  <div className="text-sm font-bold text-blue-900">{data.capacite_disponible_mw || 0} MW</div>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-1 pt-2 border-t">
+               <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500">Tension</span>
+                  <span className="text-xs font-medium text-gray-900">{data.niveau_de_tension || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500">Type</span>
+                  <span className="text-xs font-medium text-gray-900">{data.ouvrage_type || 'Poste Source'}</span>
+                </div>
+            </div>
+          </>
+        )}
+      </div>
+      
+      {/* Footer Branding */}
+      <div className="p-3 bg-gray-50 border-t flex justify-center italic">
+        <span className="text-[10px] text-gray-400">Données MELODI / RSI / ODRÉ • NELSON</span>
       </div>
     </div>
   );
