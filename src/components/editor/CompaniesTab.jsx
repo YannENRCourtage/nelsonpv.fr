@@ -1,18 +1,63 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Building, MapPin, Info, ExternalLink, Loader2, Navigation, FileText, PieChart, Users, Calendar, Globe, Briefcase } from 'lucide-react';
+import { Search, Building, MapPin, Info, ExternalLink, Loader2, Navigation, FileText, PieChart, Users, Calendar, Globe, Briefcase, Maximize2, Layers } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, ScaleControl } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-export default function CompaniesTab({ project, companies, setCompanies, selectedCompany, setSelectedCompany }) {
+// Fix Leaflet icons
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+const secondaryCompanyIcon = (name, isSelected) => L.divIcon({
+  html: `<div class="flex items-center gap-2 group transition-all" style="z-index: ${isSelected ? 1000 : 1}">
+           <div class="w-3 h-3 rounded-full border-2 border-white shadow-md ${isSelected ? 'bg-amber-500 scale-150 shadow-amber-200' : 'bg-blue-600 outline outline-4 outline-blue-600/10'}"></div>
+           <div class="${isSelected ? 'flex' : 'hidden group-hover:flex'} bg-white/95 backdrop-blur-sm border border-slate-200 px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap">
+             <span class="text-[10px] font-black text-slate-800 tracking-tight uppercase">${name}</span>
+           </div>
+         </div>`,
+  className: 'bg-transparent border-none',
+  iconSize: [20, 20],
+  iconAnchor: [6, 6],
+});
+
+function MapInstanceCapturer({ setMap }) {
+  const map = useMap();
+  useEffect(() => {
+    setMap(map);
+  }, [map, setMap]);
+  return null;
+}
+
+function MapSync({ onMove }) {
+  useMapEvents({
+    moveend: (e) => {
+      const map = e.target;
+      onMove({
+        center: map.getCenter(),
+        zoom: map.getZoom()
+      });
+    }
+  });
+  return null;
+}
+
+export default function CompaniesTab({ project, companies = [], setCompanies, selectedCompany, setSelectedCompany }) {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [radius, setRadius] = useState(2); // km
   const [autoLoad, setAutoLoad] = useState(true);
   const lastCoordsRef = useRef(null);
+  const [mapInstance, setMapInstance] = useState(null);
 
   const fetchCompanies = useCallback(async (query = '', lat = null, lon = null, r = radius) => {
     setLoading(true);
@@ -54,19 +99,17 @@ export default function CompaniesTab({ project, companies, setCompanies, selecte
     }
   }, [radius, setCompanies]);
 
-  // Handle map movement events
+  // Handle map movement events from ANY map (sidebar map or main map)
   useEffect(() => {
     const handleMapMove = (e) => {
       if (!autoLoad) return;
       const { center, zoom } = e.detail;
-      // Only fetch if zoom is high enough to discover details
       if (zoom < 14) return; 
 
       const dist = lastCoordsRef.current ? 
         Math.sqrt(Math.pow(center.lat - lastCoordsRef.current.lat, 2) + Math.pow(center.lng - lastCoordsRef.current.lng, 2)) : 
         1000;
 
-      // Threshold to avoid too many requests
       if (dist > 0.005) { 
         lastCoordsRef.current = center;
         fetchCompanies('', center.lat, center.lng, 2); 
@@ -78,13 +121,13 @@ export default function CompaniesTab({ project, companies, setCompanies, selecte
   }, [autoLoad, fetchCompanies]);
 
   useEffect(() => {
-    if (project?.gps && companies.length === 0 && !loading) {
+    if (project?.gps && companies.length === 0 && !loading && !selectedCompany) {
       const parts = project.gps.split(',').map(s => parseFloat(s.trim()));
       if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
         fetchCompanies('', parts[0], parts[1]);
       }
     }
-  }, [project?.gps, fetchCompanies, companies.length, loading]);
+  }, [project?.gps, fetchCompanies, (companies || []).length, loading, selectedCompany]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -98,13 +141,22 @@ export default function CompaniesTab({ project, companies, setCompanies, selecte
 
   const handleGotoCompany = (c) => {
      setSelectedCompany(c);
+     // Sync BOTH maps if needed, by dispatching the event
      window.dispatchEvent(new CustomEvent('map:goto-location', { detail: { lat: c.lat, lng: c.lon, zoom: 19 } }));
+     // If the local map exists, move it too
+     if (mapInstance) {
+       mapInstance.setView([c.lat, c.lon], 19);
+     }
+  };
+
+  const onSecondaryMapIdle = (detail) => {
+     window.dispatchEvent(new CustomEvent('map:idle', { detail }));
   };
 
   return (
     <div className="flex h-full w-full bg-white border-l border-gray-200 shadow-xl overflow-hidden font-sans">
       {/* Sidebar List */}
-      <div className="w-80 flex flex-col border-r border-gray-100 bg-slate-50">
+      <div className="w-80 flex flex-col border-r border-gray-100 bg-slate-50 relative z-20">
         <div className="p-4 border-b bg-white space-y-3 sticky top-0 z-10 shadow-sm">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-slate-800 flex items-center gap-2">
@@ -153,10 +205,10 @@ export default function CompaniesTab({ project, companies, setCompanies, selecte
               <Loader2 className="w-8 h-8 animate-spin mb-3 text-blue-500" />
               <p className="text-xs font-medium uppercase tracking-widest">Recherche...</p>
             </div>
-          ) : companies.length > 0 ? (
+          ) : (companies || []).length > 0 ? (
             <div className="p-2 space-y-1">
               <div className="px-2 py-1 flex justify-between items-center text-[10px] text-slate-400 font-bold uppercase italic">
-                 <span>{companies.length} résultats</span>
+                 <span>{(companies || []).length} résultats</span>
               </div>
               {companies.map((c) => (
                 <div
@@ -212,7 +264,7 @@ export default function CompaniesTab({ project, companies, setCompanies, selecte
         </div>
       </div>
 
-      {/* Detail Area */}
+      {/* Detail Area / Interactive Map */}
       <div className="flex-1 bg-white relative flex flex-col overflow-hidden">
           {selectedCompany ? (
             <div className="flex flex-col h-full overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
@@ -222,8 +274,15 @@ export default function CompaniesTab({ project, companies, setCompanies, selecte
                         <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-xl border border-blue-50 flex items-center justify-center flex-shrink-0 self-start">
                             <Building className="w-12 h-12 text-blue-600" />
                         </div>
-                        <div className="flex-1 text-center md:text-left pt-2">
-                            <h2 className="text-3xl font-black text-slate-900 mb-2 leading-none tracking-tight">{selectedCompany.name}</h2>
+                        <div className="flex-1 text-center md:text-left pt-2 relative">
+                            <button 
+                                onClick={() => setSelectedCompany(null)}
+                                className="absolute -top-4 -right-4 p-2 text-slate-300 hover:text-slate-600 transition-colors"
+                                title="Retour à la carte"
+                            >
+                                <Maximize2 className="w-5 h-5" />
+                            </button>
+                            <h2 className="text-2xl font-black text-slate-900 mb-2 leading-none tracking-tight">{selectedCompany.name}</h2>
                             <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 mt-3">
                                 <span className="text-blue-700 font-bold px-3 py-1 bg-blue-100 rounded-lg text-[11px] flex items-center gap-1.5 uppercase tracking-wider">
                                     <Briefcase className="w-3.5 h-3.5" />
@@ -345,25 +404,77 @@ export default function CompaniesTab({ project, companies, setCompanies, selecte
                 </div>
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white relative overflow-hidden">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-blue-50/40 rounded-full blur-[120px] -z-1" />
-                
-                <div className="relative z-10 animate-in fade-in zoom-in-95 duration-1000">
-                    <div className="w-32 h-32 bg-white rounded-[3rem] flex items-center justify-center mb-8 mx-auto shadow-2xl border border-slate-50 rotate-3 transition-transform hover:rotate-0">
-                        <Building className="w-16 h-16 text-blue-100" />
-                    </div>
-                    <h3 className="text-4xl font-black text-slate-900 mb-4 tracking-tighter">Explorez le territoire</h3>
-                    <p className="text-slate-400 max-w-sm mx-auto text-lg font-medium leading-relaxed">
-                        Naviguez sur la carte, zoomez et découvrez les entreprises actives dans la zone en temps réel.
-                    </p>
+            <div className="flex-1 relative bg-slate-100 flex flex-col h-full overflow-hidden">
+                <MapContainer
+                    center={project?.gps ? project.gps.split(',').map(s => parseFloat(s.trim())) : [46.2276, 2.2137]}
+                    zoom={project?.gps ? 14 : 6}
+                    style={{ height: '100%', width: '100%' }}
+                    zoomControl={false}
+                >
+                    <TileLayer
+                        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                    />
+                    <MapInstanceCapturer setMap={setMapInstance} />
+                    <MapSync onMove={onSecondaryMapIdle} />
+                    <ScaleControl position="bottomright" />
                     
-                    <div className="mt-14 flex flex-col md:flex-row gap-6 items-center justify-center">
-                         <div className="flex items-center gap-2.5 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] bg-white px-6 py-3 rounded-full border border-slate-100 shadow-sm">
-                            <Navigation className="w-3.5 h-3.5 text-blue-600 animate-pulse" /> Auto-chargement
-                         </div>
-                         <div className="flex items-center gap-2.5 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] bg-white px-6 py-3 rounded-full border border-slate-100 shadow-sm">
-                            <PieChart className="w-3.5 h-3.5 text-blue-600" /> +100k Données
-                         </div>
+                    {(companies || []).map(c => (
+                        <Marker
+                            key={c.id}
+                            position={[c.lat, c.lon]}
+                            icon={secondaryCompanyIcon(c.name, false)}
+                            eventHandlers={{
+                                click: () => setSelectedCompany(c)
+                            }}
+                        >
+                            <Popup>
+                                <div className="p-2 min-w-[200px] text-center">
+                                    <p className="font-black text-slate-800 text-sm mb-1">{c.name}</p>
+                                    <p className="text-[10px] italic text-slate-400 mb-2">{c.address}</p>
+                                    <Button size="sm" className="h-7 text-[10px] w-full bg-blue-600" onClick={() => setSelectedCompany(c)}>Détails</Button>
+                                </div>
+                            </Popup>
+                        </Marker>
+                    ))}
+                </MapContainer>
+
+                {/* Overlays on map */}
+                <div className="absolute top-6 right-6 pointer-events-none z-[1000] flex flex-col items-end gap-3">
+                    <div className="bg-white/80 backdrop-blur-xl p-4 rounded-3xl shadow-2xl border border-white flex items-center gap-4 pointer-events-auto animate-in slide-in-from-top-4 duration-700">
+                        <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white">
+                           <Globe className="w-5 h-5 animate-spin-slow" />
+                        </div>
+                        <div>
+                           <p className="text-slate-900 font-black tracking-tight text-sm leading-none">Exploration Interactive</p>
+                           <p className="text-slate-500 text-[10px] font-bold uppercase mt-1">Déplacez-vous pour découvrir</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-none z-[1000] animate-in slide-in-from-bottom-4 duration-700">
+                     <div className="bg-slate-900/90 backdrop-blur-md px-6 py-2 rounded-full text-white text-[10px] font-bold uppercase tracking-[0.3em] shadow-2xl flex items-center gap-3">
+                        <Loader2 className={cn("w-3 h-3 animate-spin", !loading && "hidden")} />
+                        {loading ? 'Recherche en cours...' : 'Prêt à explorer'}
+                     </div>
+                </div>
+
+                {/* Legend Overlay */}
+                <div className="absolute bottom-10 right-6 z-[1000] bg-white/95 backdrop-blur-sm p-3 rounded-2xl shadow-xl border border-slate-100 pointer-events-auto">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Source des données</p>
+                    <div className="space-y-1.5 font-bold text-[10px] text-slate-600">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-blue-600" />
+                            <span>Sirene (INSEE)</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                             <div className="w-2 h-2 rounded-full bg-green-500" />
+                             <span>MELODI API</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                             <div className="w-2 h-2 rounded-full bg-slate-400" />
+                             <span>URSSAF Open Data</span>
+                        </div>
                     </div>
                 </div>
             </div>
