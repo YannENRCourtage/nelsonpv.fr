@@ -114,17 +114,25 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
   const [loadingConsumption, setLoadingConsumption] = useState(false);
 
   useEffect(() => {
-    if (selectedCompany && selectedCompany.activityLabel) {
+    if (selectedCompany && selectedCompany.section) {
        const fetchConsumption = async () => {
           setLoadingConsumption(true);
           try {
-             // On extrait le premier mot ou on simplifie le secteur
-             const sector = selectedCompany.activityLabel.split(' ')[0];
+             // Mapping Section SIRENE -> Secteur Enedis
+             let sector = 'Tertiaire';
+             const s = selectedCompany.section;
+             if (s === 'A') sector = 'Agriculture';
+             else if (['B', 'C', 'D', 'E'].includes(s)) sector = 'Industrie';
+             else if (s === 'F') sector = 'Construction';
+             
              const res = await fetch(`/api/melodi?action=consumption&sector=${encodeURIComponent(sector)}`);
              if (res.ok) {
                 const data = await res.json();
                 if (data.results && data.results.length > 0) {
-                   setConsumptionData(data.results[0]);
+                   setConsumptionData({
+                      ...data.results[0],
+                      nom_secteur: sector // Force the display sector
+                   });
                 }
              }
           } catch (e) { console.error(e); }
