@@ -553,13 +553,14 @@ function PostesHTALayerManager({ layersRef, activeLayers }) {
   const fetchData = async () => {
     if (!active || !map) return;
     const bounds = map.getBounds();
-    const latMax = bounds.getNorth();
     const lonMin = bounds.getWest();
     const latMin = bounds.getSouth();
     const lonMax = bounds.getEast();
+    const latMax = bounds.getNorth();
 
-    const whereClause = `within_box(geometry, ${latMax}, ${lonMin}, ${latMin}, ${lonMax})`;
-    const url = `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/postes-electriques-de-distribution-publique-postes-htabt/records?limit=1000&where=${encodeURIComponent(whereClause)}`;
+    // DataFair API bbox format: minLon,minLat,maxLon,maxLat
+    const bbox = `${lonMin},${latMin},${lonMax},${latMax}`;
+    const url = `https://opendata.enedis.fr/data-fair/api/v1/datasets/poste-electrique/lines?size=1000&bbox=${bbox}`;
 
     try {
       const response = await fetch(url);
@@ -572,7 +573,7 @@ function PostesHTALayerManager({ layersRef, activeLayers }) {
         type: 'FeatureCollection',
         features: data.results.map(r => ({
           type: 'Feature',
-          geometry: r.geometry,
+          geometry: typeof r.geometry === 'string' ? JSON.parse(r.geometry) : r.geometry,
           properties: r
         }))
       };
@@ -630,56 +631,54 @@ function HTALayerManager({ layersRef, activeLayers }) {
   const fetchData = async () => {
     if (!active || !map) return;
     const bounds = map.getBounds();
-    const latMax = bounds.getNorth();
     const lonMin = bounds.getWest();
     const latMin = bounds.getSouth();
     const lonMax = bounds.getEast();
+    const latMax = bounds.getNorth();
 
-    const whereClause = `within_box(geometry, ${latMax}, ${lonMin}, ${latMin}, ${lonMax})`;
+    // DataFair API bbox format: minLon,minLat,maxLon,maxLat
+    const bbox = `${lonMin},${latMin},${lonMax},${latMax}`;
     const urls = [
-      `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-moyenne-tension-hta/records?limit=1000&where=${encodeURIComponent(whereClause)}`,
-      `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-moyenne-tension-hta/records?limit=1000&where=${encodeURIComponent(whereClause)}`
+      `https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-hta/lines?size=1000&bbox=${bbox}`,
+      `https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-souterrain-hta/lines?size=1000&bbox=${bbox}`
     ];
 
     try {
-      const results = await Promise.all(urls.map(u => fetch(u).then(r => r.json())));
+      const rawResults = await Promise.all(urls.map(u => fetch(u).then(r => r.json())));
       layerGroupRef.current.clearLayers();
 
-      if (results[0].results) {
-        const geoJson = {
-          type: 'FeatureCollection',
-          features: results[0].results.map(r => ({ type: 'Feature', geometry: r.geometry, properties: r }))
-        };
-        L.geoJSON(geoJson, {
-          style: { color: "#FF8C00", weight: 3, opacity: 0.8 },
-          onEachFeature: (feature, layer) => {
-            const props = feature.properties;
-            let popupContent = '<div style="font-family: sans-serif; font-size: 13px;">';
-            popupContent += '<h4 style="margin: 0 0 6px 0; color: #FF8C00; font-size: 15px; font-weight: bold;">⚡ Ligne HTA Aérienne</h4>';
-            if (props.lib_ligne) popupContent += `<p style="margin: 3px 0;"><strong>Ligne:</strong> ${props.lib_ligne}</p>`;
-            popupContent += '</div>';
-            layer.bindPopup(popupContent);
-          }
-        }).addTo(layerGroupRef.current);
-      }
+      rawResults.forEach((data, index) => {
+        if (!data.results) return;
+        const isSouterraine = index === 1;
 
-      if (results[1].results) {
         const geoJson = {
           type: 'FeatureCollection',
-          features: results[1].results.map(r => ({ type: 'Feature', geometry: r.geometry, properties: r }))
+          features: data.results.map(r => ({
+            type: 'Feature',
+            geometry: typeof r.geometry === 'string' ? JSON.parse(r.geometry) : r.geometry,
+            properties: r
+          }))
         };
+
         L.geoJSON(geoJson, {
-          style: { color: "yellow", weight: 3, dashArray: '5, 5', opacity: 1 },
+          style: {
+            color: isSouterraine ? 'yellow' : '#FF8C00',
+            weight: 3,
+            dashArray: isSouterraine ? '5, 5' : null,
+            opacity: 0.8
+          },
           onEachFeature: (feature, layer) => {
             const props = feature.properties;
-            let popupContent = '<div style="font-family: sans-serif; font-size: 13px;">';
-            popupContent += '<h4 style="margin: 0 0 6px 0; color: #facc15; font-size: 15px; font-weight: bold;">⚡ Ligne HTA Souterraine</h4>';
-            if (props.lib_ligne) popupContent += `<p style="margin: 3px 0;"><strong>Ligne:</strong> ${props.lib_ligne}</p>`;
-            popupContent += '</div>';
-            layer.bindPopup(popupContent);
+            layer.bindPopup(`
+              <div style="font-family: sans-serif;">
+                <h4 style="margin:0 0 5px 0; color: ${isSouterraine ? '#E6B400' : '#FF8C00'};">⚡ Ligne HTA ${isSouterraine ? 'Souterraine' : 'Aérienne'}</h4>
+                <p style="margin:2px 0; font-size:12px;"><strong>Longueur:</strong> ${props.longueur_reseau || '?'} m</p>
+                <p style="margin:2px 0; font-size:12px;"><strong>Départ:</strong> ${props.nom_depart || '?'}</p>
+              </div>
+            `);
           }
         }).addTo(layerGroupRef.current);
-      }
+      });
     } catch (err) { console.error("Error fetching HTA lines data", err); }
   };
 
