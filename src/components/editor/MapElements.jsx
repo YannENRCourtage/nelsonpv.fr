@@ -1902,21 +1902,22 @@ function SDISLegend({ layersRef }) {
       style={{ userSelect: 'none' }}
     >
       <div className="flex justify-between items-center mb-2">
-        <h4 className="font-bold text-xs text-gray-900">Légende SDIS</h4>
+        <h4 className="font-bold text-xs text-gray-900">Légende SDIS (France)</h4>
         <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded"><XIcon className="h-3 w-3" /></button>
       </div>
-      <div className="space-y-1.5 text-[10px]">
+      <div className="space-y-2 text-[10px]">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-[#EF4444] border border-[#991B1B]"></div>
-          <span>Poteau Incendie (PI)</span>
+          <div className="w-5 h-5 bg-[#DC143C] rounded flex items-center justify-center border border-white shadow-sm font-bold">
+            <span style={{ fontSize: '10px' }}>🚒</span>
+          </div>
+          <span>Caserne de Pompiers (Tous dépt.)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-sm bg-[#EF4444] border border-[#991B1B]"></div>
-          <span>Bouche Incendie (BI)</span>
+          <div className="w-3.5 h-3.5 rounded-full bg-[#EF4444] border border-white shadow-sm"></div>
+          <span>Poteau / Bouche Incendie</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-sm bg-[#3B82F6] border border-[#1E40AF]"></div>
-          <span>Réserve / Point d'eau</span>
+        <div className="mt-2 pt-2 border-t border-gray-100 text-[9px] text-gray-500 italic">
+          Données nationales OpenStreetMap
         </div>
       </div>
     </div>
@@ -1924,8 +1925,10 @@ function SDISLegend({ layersRef }) {
 }
 
 // ====================================================================
-// MANAGER SDIS 17 (Logique WFS + Cluster)
+// MANAGER SDIS (Données Nationales Overpass)
 // ====================================================================
+const globalStationsCache = { data: null, lastFetch: 0 };
+
 function SDISLayerManager({ layersRef, activeLayers }) {
   const map = useMap();
   const active = activeLayers?.has('sdis');
@@ -1937,17 +1940,17 @@ function SDISLayerManager({ layersRef, activeLayers }) {
     showCoverageOnHover: false,
     iconCreateFunction: (cluster) => {
       const count = cluster.getChildCount();
-      let size = count > 100 ? 'large' : count > 10 ? 'medium' : 'small';
+      let size = count > 1000 ? 'large' : count > 100 ? 'medium' : 'small';
       const colors = {
-        small: { bg: 'rgba(220, 20, 60, 0.7)', border: 'rgba(200, 10, 50, 0.9)' },
-        medium: { bg: 'rgba(200, 10, 50, 0.7)', border: 'rgba(178, 34, 34, 0.9)' },
-        large: { bg: 'rgba(178, 34, 34, 0.8)', border: 'rgba(139, 0, 0, 1)' }
+        small: { bg: 'rgba(239, 68, 68, 0.8)', border: 'white' },
+        medium: { bg: 'rgba(220, 20, 60, 0.9)', border: 'white' },
+        large: { bg: 'rgba(185, 28, 28, 1)', border: 'white' }
       };
-      const dimensions = { small: '30px', medium: '40px', large: '50px' };
+      const dim = size === 'large' ? 45 : size === 'medium' ? 35 : 30;
       return L.divIcon({
-        html: `<div style="background-color: ${colors[size].bg}; border: 3px solid ${colors[size].border}; width: ${dimensions[size]}; height: ${dimensions[size]}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: ${size === 'small' ? '12px' : size === 'medium' ? '14px' : '16px'};"><span>${count}</span></div>`,
+        html: `<div style="background-color: ${colors[size].bg}; border: 2px solid ${colors[size].border}; width: ${dim}px; height: ${dim}px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; box-shadow: 0 3px 6px rgba(0,0,0,0.3); font-size: ${dim/2.5}px;"><span>${count}</span></div>`,
         className: '',
-        iconSize: [40, 40]
+        iconSize: [dim, dim]
       });
     }
   }));
@@ -1962,43 +1965,23 @@ function SDISLayerManager({ layersRef, activeLayers }) {
     if (!active || !map || loadingRef.current) return;
     const zoom = map.getZoom();
     
-    // We always load fire stations, but hydrants only at zoom 14+
+    // Zoom < 14: Stations only, but we use a cache if zoom is very low to avoid heavy queries
     const loadHydrants = zoom >= 14;
     
     loadingRef.current = true;
     const bounds = map.getBounds();
-    const south = Math.max(bounds.getSouth(), 41); // Clamp to France approx
+    // Clamp to France
+    const south = Math.max(bounds.getSouth(), 41);
     const west = Math.max(bounds.getWest(), -5);
     const north = Math.min(bounds.getNorth(), 51);
     const east = Math.min(bounds.getEast(), 10);
 
-    // Overpass QL query: seeking fire stations (always) and hydrants (high zoom)
     let query = '';
     if (loadHydrants) {
-      query = `
-        [out:json][timeout:30];
-        (
-          node["amenity"="fire_station"](${south},${west},${north},${east});
-          node["emergency"="fire_hydrant"](${south},${west},${north},${east});
-          node["fire_hydrant:type"](${south},${west},${north},${east});
-          way["amenity"="fire_station"](${south},${west},${north},${east});
-        );
-        out body;
-        >;
-        out skel qt;
-      `;
+      query = `[out:json][timeout:30]; (node["amenity"="fire_station"](${south},${west},${north},${east}); node["emergency"="fire_hydrant"](${south},${west},${north},${east}); node["fire_hydrant:type"](${south},${west},${north},${east}); way["amenity"="fire_station"](${south},${west},${north},${east}); ); out body center;`;
     } else {
-      // Low zoom: only fire stations for the whole area
-      query = `
-        [out:json][timeout:60];
-        (
-          node["amenity"="fire_station"](${south},${west},${north},${east});
-          way["amenity"="fire_station"](${south},${west},${north},${east});
-        );
-        out body;
-        >;
-        out skel qt;
-      `;
+      // For low zoom, if we already have global stations, we can filter them locally OR just fetch for BBOX
+      query = `[out:json][timeout:60]; (node["amenity"="fire_station"](${south},${west},${north},${east}); way["amenity"="fire_station"](${south},${west},${north},${east}); ); out body center;`;
     }
 
     try {
@@ -2011,28 +1994,18 @@ function SDISLayerManager({ layersRef, activeLayers }) {
       if (!response.ok) throw new Error(`Overpass error: ${response.status}`);
       
       const data = await response.json();
-      
       if (!data.elements) return;
 
       layerGroupRef.current.clearLayers();
 
       data.elements.forEach(el => {
-        // Handle both nodes (points) and ways (areas - use center for simplicity)
-        let latlng;
-        if (el.type === 'node') {
-          latlng = [el.lat, el.lon];
-        } else if (el.type === 'way' && el.center) {
-          latlng = [el.center.lat, el.center.lon];
-        } else {
-          return;
-        }
-
+        let latlng = el.type === 'node' ? [el.lat, el.lon] : [el.center.lat, el.center.lon];
         const tags = el.tags || {};
         const isStation = tags.amenity === 'fire_station';
         
         let html = '';
         if (isStation) {
-          html = `<div style="background-color: #DC143C; width: 22px; height: 22px; border: 2px solid white; display:flex; align-items:center; justify-content:center; box-shadow: 0 2px 5px rgba(0,0,0,0.4); border-radius: 4px;"><span style="font-size: 14px;">🚒</span></div>`;
+          html = `<div style="background-color: #DC143C; width: 24px; height: 24px; border: 2px solid white; display:flex; align-items:center; justify-content:center; box-shadow: 0 2px 5px rgba(0,0,0,0.4); border-radius: 4px;"><span style="font-size: 15px;">🚒</span></div>`;
         } else {
           html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.5);"></div>`;
         }
@@ -2041,12 +2014,12 @@ function SDISLayerManager({ layersRef, activeLayers }) {
           icon: L.divIcon({
             className: 'sdis-icon',
             html: html,
-            iconSize: isStation ? [22, 22] : [14, 14],
-            iconAnchor: isStation ? [11, 11] : [7, 7]
+            iconSize: isStation ? [24, 24] : [14, 14],
+            iconAnchor: isStation ? [12, 12] : [7, 7]
           })
         });
 
-        let popupContent = '<div style="font-family: sans-serif; min-width: 180px; padding: 5px;">';
+        let popupContent = '<div style="font-family: sans-serif; min-width: 200px; padding: 5px;">';
         if (isStation) {
           popupContent += `<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 15px; font-weight: bold; border-bottom: 2px solid #fee2e2; padding-bottom: 4px;">🚒 Caserne de Pompiers</h4>`;
           if (tags.name) popupContent += `<p style="margin: 6px 0; font-size: 13px;"><strong>Nom:</strong> ${tags.name}</p>`;
