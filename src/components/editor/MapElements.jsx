@@ -597,6 +597,212 @@ function CapareseauLayerManager({ layersRef }) {
   return null;
 }
 
+function PostesHTALayerManager({ layersRef }) {
+  const map = useMap();
+  const [active, setActive] = useState(false);
+  const layerGroupRef = useRef(L.markerClusterGroup({
+    chunkedLoading: true,
+    maxClusterRadius: 60,
+    iconCreateFunction: (cluster) => {
+      const count = cluster.getChildCount();
+      return L.divIcon({
+        html: `<div style="background: #FFA500; color:white; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">${count}</div>`,
+        className: '',
+        iconSize: L.point(35, 35)
+      });
+    }
+  }));
+
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['enedisPostes'] = layerGroupRef.current;
+
+    const handleToggle = (e) => {
+      if (e.detail.layerKey === 'enedisPostes') {
+        const isNowActive = !map.hasLayer(layerGroupRef.current);
+        setActive(isNowActive);
+      }
+    };
+
+    window.addEventListener('map:toggle-layer', handleToggle);
+    return () => window.removeEventListener('map:toggle-layer', handleToggle);
+  }, [map, layersRef]);
+
+  const fetchData = async () => {
+    if (!active || !map) return;
+    const bounds = map.getBounds();
+    const latMax = bounds.getNorth();
+    const lonMin = bounds.getWest();
+    const latMin = bounds.getSouth();
+    const lonMax = bounds.getEast();
+
+    const whereClause = `within_box(geometry, ${latMax}, ${lonMin}, ${latMin}, ${lonMax})`;
+    const url = `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/postes-electriques-de-distribution-publique-postes-htabt/records?limit=1000&where=${encodeURIComponent(whereClause)}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!data.results) return;
+
+      // Clear if moving a lot? Actually, let's just add new ones if we had a set, 
+      // but markerCluster is better with clear/add or just keeping all.
+      // Small data, let's just clear and re-add for simplicity and freshness.
+      layerGroupRef.current.clearLayers();
+
+      const geoJson = {
+        type: 'FeatureCollection',
+        features: data.results.map(r => ({
+          type: 'Feature',
+          geometry: r.geometry,
+          properties: r
+        }))
+      };
+
+      L.geoJSON(geoJson, {
+        pointToLayer: (feature, latlng) => {
+          return L.circleMarker(latlng, {
+            radius: 5,
+            fillColor: "#FFA500",
+            color: "#000",
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.8
+          });
+        },
+        onEachFeature: (feature, layer) => {
+          const props = feature.properties;
+          let popupContent = '<div style="font-family: sans-serif;">';
+          popupContent += `<h4 style="margin: 0 0 8px 0; color: #FFA500; font-size: 17px; font-weight: bold;">⚡ Poste HTA/BT</h4>`;
+          if (props.nom_poste) popupContent += `<p style="margin: 4px 0;"><strong>Nom:</strong> ${props.nom_poste}</p>`;
+          if (props.type_poste) popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.type_poste}</p>`;
+          if (props.code_commune) popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.code_commune}</p>`;
+          popupContent += '</div>';
+          layer.bindPopup(popupContent, { maxWidth: 320 });
+        }
+      }).addTo(layerGroupRef.current);
+
+    } catch (err) { console.error("Error fetching Postes HTA data", err); }
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => { map.off('moveend', onMoveEnd); };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+    }
+  }, [active, map]);
+
+  return null;
+}
+
+function HTALayerManager({ layersRef }) {
+  const map = useMap();
+  const [active, setActive] = useState(false);
+  const layerGroupRef = useRef(L.featureGroup());
+
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['enedisHTA'] = layerGroupRef.current;
+
+    const handleToggle = (e) => {
+      if (e.detail.layerKey === 'enedisHTA') {
+        const isNowActive = !map.hasLayer(layerGroupRef.current);
+        setActive(isNowActive);
+      }
+    };
+
+    window.addEventListener('map:toggle-layer', handleToggle);
+    return () => window.removeEventListener('map:toggle-layer', handleToggle);
+  }, [map, layersRef]);
+
+  const fetchData = async () => {
+    if (!active || !map) return;
+    const bounds = map.getBounds();
+    const latMax = bounds.getNorth();
+    const lonMin = bounds.getWest();
+    const latMin = bounds.getSouth();
+    const lonMax = bounds.getEast();
+
+    const whereClause = `within_box(geometry, ${latMax}, ${lonMin}, ${latMin}, ${lonMax})`;
+    const urls = [
+      `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-moyenne-tension-hta/records?limit=1000&where=${encodeURIComponent(whereClause)}`,
+      `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-moyenne-tension-hta/records?limit=1000&where=${encodeURIComponent(whereClause)}`
+    ];
+
+    try {
+      const results = await Promise.all(urls.map(u => fetch(u).then(r => r.json())));
+      layerGroupRef.current.clearLayers();
+
+      // Aerien (Index 0) - Orange
+      if (results[0].results) {
+        const geoJson = {
+          type: 'FeatureCollection',
+          features: results[0].results.map(r => ({
+            type: 'Feature',
+            geometry: r.geometry,
+            properties: r
+          }))
+        };
+        L.geoJSON(geoJson, {
+          style: { color: '#FF8C00', weight: 4, opacity: 0.9 },
+          onEachFeature: (feature, layer) => {
+            const props = feature.properties;
+            let popupContent = '<div style="font-family: sans-serif;">';
+            popupContent += `<h4 style="margin: 0 0 6px 0; color: #FF8C00; font-size: 15px;">⚡ Ligne HTA Aérienne</h4>`;
+            if (props.lib_ligne) popupContent += `<p style="margin: 3px 0;"><strong>Ligne:</strong> ${props.lib_ligne}</p>`;
+            if (props.nom_commune) popupContent += `<p style="margin: 3px 0;"><strong>Commune:</strong> ${props.nom_commune}</p>`;
+            popupContent += '</div>';
+            layer.bindPopup(popupContent);
+          }
+        }).addTo(layerGroupRef.current);
+      }
+
+      // Souterrain (Index 1) - Orange Dashed
+      if (results[1].results) {
+        const geoJson = {
+          type: 'FeatureCollection',
+          features: results[1].results.map(r => ({
+            type: 'Feature',
+            geometry: r.geometry,
+            properties: r
+          }))
+        };
+        L.geoJSON(geoJson, {
+          style: { color: '#FF8C00', weight: 3, dashArray: '8, 8', opacity: 0.8 },
+          onEachFeature: (feature, layer) => {
+            const props = feature.properties;
+            let popupContent = '<div style="font-family: sans-serif;">';
+            popupContent += `<h4 style="margin: 0 0 6px 0; color: #FF8C00; font-size: 15px;">⚡ Ligne HTA Souterraine</h4>`;
+            if (props.lib_ligne) popupContent += `<p style="margin: 3px 0;"><strong>Ligne:</strong> ${props.lib_ligne}</p>`;
+            if (props.nom_commune) popupContent += `<p style="margin: 3px 0;"><strong>Commune:</strong> ${props.nom_commune}</p>`;
+            popupContent += '</div>';
+            layer.bindPopup(popupContent);
+          }
+        }).addTo(layerGroupRef.current);
+      }
+
+    } catch (err) { console.error("Error fetching HTA lines data", err); }
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => { map.off('moveend', onMoveEnd); };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+    }
+  }, [active, map]);
+
+  return null;
+}
+
 
 const rotationIcon = L.divIcon({
   html: `<div class="bg-white rounded-full p-2 shadow-lg border-2 border-blue-500 cursor-move text-blue-600 hover:scale-110 transition-transform"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L12 12h9V3"/></svg></div>`,
@@ -668,128 +874,6 @@ function TextInputPopup({ at, onCancel, onSubmit, initialValue = "" }) {
   );
 }
 
-function MapSidePanel({ type, data, onClose }) {
-  if (!data) return null;
-
-  const copyToClipboard = (text, label) => {
-    navigator.clipboard.writeText(text);
-    toast({ title: "Copié !", description: `${label} copié dans le presse-papier.` });
-  };
-
-  const isSubstation = type === 'substation';
-
-  return (
-    <div className={`absolute top-4 ${isSubstation ? 'left-4' : 'right-4'} bottom-4 z-[2000] w-96 bg-white/90 backdrop-blur-xl border border-slate-200/50 rounded-2xl shadow-2xl flex flex-col font-sans animate-in ${isSubstation ? 'slide-in-from-left-10' : 'slide-in-from-right-10'}`}>
-      <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white/50 rounded-t-2xl">
-        <h3 className="font-black text-slate-800 flex items-center gap-2 text-sm uppercase tracking-tighter">
-          {isSubstation ? <Zap className="w-5 h-5 text-amber-500 fill-amber-500" /> : <Building className="w-5 h-5 text-blue-600" />}
-          {isSubstation ? "Détails Poste Source" : "Fiche Entreprise"}
-        </h3>
-        <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-600">
-          <XIcon className="w-5 h-5" />
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
-        {isSubstation ? (
-          <div className="space-y-6">
-             <div className="space-y-1">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nom du Poste</p>
-                <div onClick={() => copyToClipboard(data.nom_du_poste, "Nom")} className="group flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100 cursor-pointer hover:bg-amber-50 hover:border-amber-200 transition-all">
-                  <span className="font-bold text-slate-900 text-lg">{data.nom_du_poste}</span>
-                  <Copy className="w-4 h-4 text-slate-300 group-hover:text-amber-500" />
-                </div>
-             </div>
-
-             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tension</p>
-                   <div className="bg-slate-50 p-2 rounded-lg text-sm font-bold text-slate-700">{data.niveau_de_tension || 'HTA/HTB'}</div>
-                </div>
-                <div className="space-y-1">
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Département</p>
-                   <div className="bg-slate-50 p-2 rounded-lg text-sm font-bold text-slate-700">{data.code_departement}</div>
-                </div>
-             </div>
-
-             <div className="space-y-3">
-                <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                   <span className="text-sm font-bold text-slate-600">Capacité Globale</span>
-                   <span className="text-lg font-black text-slate-900">{data.capacite_globale_mw || 0} MW</span>
-                </div>
-                <div className="flex justify-between items-center p-4 bg-red-50/50 rounded-2xl border border-red-100">
-                   <span className="text-sm font-bold text-red-700">Capacité Réservée</span>
-                   <span className="text-lg font-black text-red-900">{data.capacite_reservee_mw || 0} MW</span>
-                </div>
-                <div className="flex justify-between items-center p-5 bg-amber-50 rounded-3xl border-2 border-amber-200 shadow-xl shadow-amber-100/50">
-                   <span className="text-base font-black text-amber-900">Disponible</span>
-                   <span className="text-2xl font-black text-amber-600">{data.capacite_disponible_mw || 0} MW</span>
-                </div>
-             </div>
-             
-             <p className="text-[10px] text-slate-400 italic text-center">Source: ODRÉ (S3REnR) - Mise à jour quotidienne</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-             <div className="space-y-1">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Raison Sociale</p>
-                <div onClick={() => copyToClipboard(data.name, "Raison sociale")} className="group flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100 cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-all">
-                  <span className="font-bold text-slate-900 text-lg leading-tight">{data.name}</span>
-                  <Copy className="w-4 h-4 text-slate-300 group-hover:text-blue-500" />
-                </div>
-             </div>
-
-             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">SIRET</p>
-                   <div onClick={() => copyToClipboard(data.siret, "SIRET")} className="group flex justify-between items-center bg-slate-50 p-2 rounded-lg cursor-pointer hover:bg-blue-50 transition-all">
-                      <span className="text-xs font-bold text-slate-700 font-mono tracking-tighter">{data.siret}</span>
-                      <Copy className="w-3 h-3 text-slate-300 group-hover:text-blue-500" />
-                   </div>
-                </div>
-                <div className="space-y-1">
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Code APE</p>
-                   <div className="bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">{data.ape || 'N/A'}</div>
-                </div>
-             </div>
-
-             <div className="space-y-1">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Adresse Siège</p>
-                <div onClick={() => copyToClipboard(data.address, "Adresse")} className="group flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100 cursor-pointer hover:bg-blue-50 transition-all">
-                  <span className="text-xs font-medium text-slate-600 line-clamp-2">{data.address}</span>
-                  <Copy className="w-4 h-4 text-slate-300 group-hover:text-blue-500" />
-                </div>
-             </div>
-
-             <div className="pt-2">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Dirigeant(s)</p>
-                <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 space-y-3">
-                   {data.leaders && data.leaders.length > 0 ? data.leaders.map((l, i) => (
-                      <div key={i} className="flex flex-col gap-0.5 pb-2 border-b border-slate-200 last:border-0 last:pb-0">
-                         <span className="text-sm font-bold text-slate-900">{l.name} {l.firstname}</span>
-                         <span className="text-[10px] text-blue-600 font-bold uppercase">{l.role || 'Gérant'}</span>
-                      </div>
-                   )) : (
-                      <p className="text-xs text-slate-400 italic">Aucun dirigeant identifié.</p>
-                   )}
-                </div>
-             </div>
-
-             <div className="bg-blue-600/5 rounded-3xl p-5 border border-blue-100">
-                <p className="text-[11px] font-black text-blue-800 uppercase tracking-widest mb-3 flex items-center gap-2">
-                   <Sun className="w-4 h-4" /> Potentiel Solaire
-                </p>
-                <div className="flex justify-between items-center">
-                   <span className="text-sm font-medium text-blue-700">Estimation Nelson</span>
-                   <span className="text-xl font-black text-blue-900">{calculateSolarPower((data.surface || 500))}</span>
-                </div>
-             </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function UrbanismePopup({ info, onClose }) {
   if (!info) return null;
@@ -1612,79 +1696,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 // ====================================================================
 // STYLES PERSONNALISÉS (SLD) POUR ENEDIS
 // ====================================================================
-const ENEDIS_POSTES_SLD = `
-<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld">
-  <NamedLayer>
-    <Name>poste_electrique</Name>
-    <UserStyle>
-      <FeatureTypeStyle>
-        <Rule>
-          <PointSymbolizer>
-            <Graphic>
-              <Mark>
-                <WellKnownName>square</WellKnownName>
-                <Fill><CssParameter name="fill">#FF0000</CssParameter></Fill>
-                <Stroke><CssParameter name="stroke">#FFFFFF</CssParameter><CssParameter name="stroke-width">1</CssParameter></Stroke>
-              </Mark>
-              <Size>14</Size>
-            </Graphic>
-          </PointSymbolizer>
-          <TextSymbolizer>
-            <Label>⚡</Label>
-            <Font>
-              <CssParameter name="font-family">Arial</CssParameter>
-              <CssParameter name="font-size">12</CssParameter>
-              <CssParameter name="font-weight">bold</CssParameter>
-            </Font>
-            <LabelPlacement>
-              <PointPlacement>
-                <AnchorPoint><AnchorPointX>0.5</AnchorPointX><AnchorPointY>0.5</AnchorPointY></AnchorPoint>
-              </PointPlacement>
-            </LabelPlacement>
-            <Fill><CssParameter name="fill">#FFFFFF</CssParameter></Fill>
-          </TextSymbolizer>
-        </Rule>
-      </FeatureTypeStyle>
-    </UserStyle>
-  </NamedLayer>
-</StyledLayerDescriptor>`.trim();
-
-const ENEDIS_HTA_SLD = `
-<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld">
-  <NamedLayer>
-    <Name>reseau_hta</Name>
-    <UserStyle>
-      <FeatureTypeStyle>
-        <Rule>
-          <LineSymbolizer>
-            <Stroke>
-              <CssParameter name="stroke">#FFFF00</CssParameter>
-              <CssParameter name="stroke-width">3</CssParameter>
-              <CssParameter name="stroke-opacity">1</CssParameter>
-            </Stroke>
-          </LineSymbolizer>
-        </Rule>
-      </FeatureTypeStyle>
-    </UserStyle>
-  </NamedLayer>
-  <NamedLayer>
-    <Name>reseau_souterrain_hta</Name>
-    <UserStyle>
-      <FeatureTypeStyle>
-        <Rule>
-          <LineSymbolizer>
-            <Stroke>
-              <CssParameter name="stroke">#FFFF00</CssParameter>
-              <CssParameter name="stroke-width">3</CssParameter>
-              <CssParameter name="stroke-opacity">1</CssParameter>
-              <CssParameter name="stroke-dasharray">10 10</CssParameter>
-            </Stroke>
-          </LineSymbolizer>
-        </Rule>
-      </FeatureTypeStyle>
-    </UserStyle>
-  </NamedLayer>
-</StyledLayerDescriptor>`.trim();
+// --- Layers Data ---
 
 // ====================================================================
 // LISTE DES CALQUES
@@ -1718,33 +1730,24 @@ const LAYERS = {
   // ENEDIS - Réseau électrique (Using WMS for performance with 1M points)
   enedisHTA: {
     name: "Lignes HTA",
-    url: "https://geobretagne.fr/geoserver/enedis/wms",
-    layers: "reseau_hta,reseau_souterrain_hta",
-    format: "image/png",
-    transparent: true,
-    attribution: "Enedis / GéoBretagne",
+    type: 'custom',
+    urls: [
+      "https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-moyenne-tension-hta/records",
+      "https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-moyenne-tension-hta/records"
+    ],
     isOverlay: true,
+    isDynamic: true,
     zIndex: 50,
-    opacity: 1.0, // Full opacity as requested
-    minZoom: 9,
-    maxNativeZoom: 18,
-    maxZoom: 22,
-    sld_body: ENEDIS_HTA_SLD
+    minZoom: 9
   },
   enedisPostes: {
     name: "Postes HTA/BT",
-    url: "https://geobretagne.fr/geoserver/enedis/wms",
-    layers: "poste_electrique",
-    format: "image/png",
-    transparent: true,
-    attribution: "Enedis / GéoBretagne",
+    type: 'custom',
+    url: "https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/postes-electriques-de-distribution-publique-postes-htabt/records",
     isOverlay: true,
+    isDynamic: true,
     zIndex: 51,
-    opacity: 1.0, // Full opacity as requested
-    minZoom: 9,
-    maxNativeZoom: 18,
-    maxZoom: 22,
-    sld_body: ENEDIS_POSTES_SLD
+    minZoom: 9
   },
   enedisLigneBT: {
     name: "Lignes BT",
@@ -3375,6 +3378,7 @@ export default function MapElements({
   activeLayers, 
   isochroneConfig
 }) {
+  const map = useMap();
   const [companies, setCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [selectedSubstation, setSelectedSubstation] = useState(null);
@@ -3404,8 +3408,6 @@ export default function MapElements({
   const [rectangleStart, setRectangleStart] = useState(null);
 
   const [targetPos, setTargetPos] = useState(null); // initialized in MapTargetInfo via useEffect
-  const [map, setMap] = useState(null); // State for map instance
-  
   // Custom navigation and selection handlers
   useEffect(() => {
     const handleGoto = (e) => {
@@ -3544,26 +3546,12 @@ export default function MapElements({
   // Map Reset Handler
   useEffect(() => {
     const handleMapReset = () => {
-      setFeaturesWrapper([]); // User interaction (clearing)
+      setFeaturesWrapper([]);
       setTemp([]);
-      // ... existing refs ...
-  const map = useMap();
-  
-  // Custom navigation handler for companies
-  useEffect(() => {
-    const handleGoto = (e) => {
-      const { lat, lng, zoom } = e.detail;
-      if (map) {
-        map.setView([lat, lng], zoom || 18, { animate: true });
-      }
-    };
-    window.addEventListener('map:goto-location', handleGoto);
-    return () => window.removeEventListener('map:goto-location', handleGoto);
-  }, [map]);
     };
     window.addEventListener('map:reset', handleMapReset);
     return () => window.removeEventListener('map:reset', handleMapReset);
-  }, [map]);
+  }, []);
 
   // Synchronisation déclarative des calques (Remplace l'écouteur d'événements pour plus de robustesse)
   useEffect(() => {
@@ -3596,7 +3584,6 @@ export default function MapElements({
     <div className="relative h-full w-full flex flex-col">
       <div className="flex-1 relative min-h-0">
         <MapContainer
-          ref={setMap}
           center={[44.82619, -0.67201]}
           zoom={6}
           maxZoom={22}
@@ -3614,7 +3601,6 @@ export default function MapElements({
             style={{ position: 'absolute', inset: 0, zIndex: 400, pointerEvents: 'none' }}
             onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
           />
-          <MapInstance setMap={setMap} />
           <MapDrawingTools mode={mode} setMode={setMode} />
           <LayersBootstrap layersRef={layersRef} />
 
@@ -3622,6 +3608,8 @@ export default function MapElements({
           <SDISLayerManager layersRef={layersRef} />
           <GazDynamicLayerManager layersRef={layersRef} />
           <LigneBTLayerManager layersRef={layersRef} />
+          <HTALayerManager layersRef={layersRef} />
+          <PostesHTALayerManager layersRef={layersRef} />
           <CapareseauLayerManager layersRef={layersRef} />
           <CompaniesLayerManager layersRef={layersRef} onCompaniesUpdate={setCompanies} />
 
@@ -3703,18 +3691,19 @@ export default function MapElements({
             setHoverInfo={setHoverInfo}
           />
 
-          {/* New Side Panels */}
-          <MapSidePanel 
-            type="company" 
-            data={selectedCompany} 
-            onClose={() => setSelectedCompany(null)} 
-          />
-          <MapSidePanel 
-            type="substation" 
-            data={selectedSubstation} 
-            onClose={() => setSelectedSubstation(null)} 
-          />
         </MapContainer>
+
+        {/* New Side Panels (Outside MapContainer for z-index/overlay reliability) */}
+        <MapSidePanel 
+          type="company" 
+          data={selectedCompany} 
+          onClose={() => setSelectedCompany(null)} 
+        />
+        <MapSidePanel 
+          type="substation" 
+          data={selectedSubstation} 
+          onClose={() => setSelectedSubstation(null)} 
+        />
       </div>
     </div>
   );
