@@ -3438,7 +3438,6 @@ export default function MapElements({
               <div className="flex flex-col items-start gap-2">
                 <MapTargetInfo targetPos={targetPos} setTargetPos={setTargetPos} hoverInfo={hoverInfo} showInfoPanel={showInfoPanel} setShowInfoPanel={setShowInfoPanel} project={project} setProject={setProject} />
                 <MiniMap />
-                <LayerToggleListener layersRef={layersRef} />
                 <ScaleControl position="bottomleft" metric={true} imperial={false} />
               </div>
             </div>
