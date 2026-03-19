@@ -1961,31 +1961,45 @@ function SDISLayerManager({ layersRef, activeLayers }) {
   const loadData = async () => {
     if (!active || !map || loadingRef.current) return;
     const zoom = map.getZoom();
-    if (zoom < 14) {
-      layerGroupRef.current.clearLayers();
-      return;
-    }
-
+    
+    // We always load fire stations, but hydrants only at zoom 14+
+    const loadHydrants = zoom >= 14;
+    
     loadingRef.current = true;
     const bounds = map.getBounds();
-    const south = bounds.getSouth();
-    const west = bounds.getWest();
-    const north = bounds.getNorth();
-    const east = bounds.getEast();
+    const south = Math.max(bounds.getSouth(), 41); // Clamp to France approx
+    const west = Math.max(bounds.getWest(), -5);
+    const north = Math.min(bounds.getNorth(), 51);
+    const east = Math.min(bounds.getEast(), 10);
 
-    // Overpass QL query: seeking fire stations and hydrants in current BBOX
-    const query = `
-      [out:json][timeout:25];
-      (
-        node["amenity"="fire_station"](${south},${west},${north},${east});
-        node["emergency"="fire_hydrant"](${south},${west},${north},${east});
-        node["fire_hydrant:type"](${south},${west},${north},${east});
-        way["amenity"="fire_station"](${south},${west},${north},${east});
-      );
-      out body;
-      >;
-      out skel qt;
-    `;
+    // Overpass QL query: seeking fire stations (always) and hydrants (high zoom)
+    let query = '';
+    if (loadHydrants) {
+      query = `
+        [out:json][timeout:30];
+        (
+          node["amenity"="fire_station"](${south},${west},${north},${east});
+          node["emergency"="fire_hydrant"](${south},${west},${north},${east});
+          node["fire_hydrant:type"](${south},${west},${north},${east});
+          way["amenity"="fire_station"](${south},${west},${north},${east});
+        );
+        out body;
+        >;
+        out skel qt;
+      `;
+    } else {
+      // Low zoom: only fire stations for the whole area
+      query = `
+        [out:json][timeout:60];
+        (
+          node["amenity"="fire_station"](${south},${west},${north},${east});
+          way["amenity"="fire_station"](${south},${west},${north},${east});
+        );
+        out body;
+        >;
+        out skel qt;
+      `;
+    }
 
     try {
       const response = await fetch('https://overpass-api.de/api/interpreter', {
@@ -1993,6 +2007,9 @@ function SDISLayerManager({ layersRef, activeLayers }) {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `data=${encodeURIComponent(query)}`
       });
+      
+      if (!response.ok) throw new Error(`Overpass error: ${response.status}`);
+      
       const data = await response.json();
       
       if (!data.elements) return;
@@ -2000,16 +2017,22 @@ function SDISLayerManager({ layersRef, activeLayers }) {
       layerGroupRef.current.clearLayers();
 
       data.elements.forEach(el => {
-        // We focus on nodes for individual points; ways would need centroid calculation
-        if (el.type !== 'node') return; 
+        // Handle both nodes (points) and ways (areas - use center for simplicity)
+        let latlng;
+        if (el.type === 'node') {
+          latlng = [el.lat, el.lon];
+        } else if (el.type === 'way' && el.center) {
+          latlng = [el.center.lat, el.center.lon];
+        } else {
+          return;
+        }
 
-        const latlng = [el.lat, el.lon];
         const tags = el.tags || {};
         const isStation = tags.amenity === 'fire_station';
         
         let html = '';
         if (isStation) {
-          html = `<div style="background-color: #DC143C; width: 20px; height: 20px; border: 2px solid white; display:flex; align-items:center; justify-content:center; box-shadow: 0 0 5px rgba(0,0,0,0.5); border-radius: 4px;"><span style="font-size: 12px;">🚒</span></div>`;
+          html = `<div style="background-color: #DC143C; width: 22px; height: 22px; border: 2px solid white; display:flex; align-items:center; justify-content:center; box-shadow: 0 2px 5px rgba(0,0,0,0.4); border-radius: 4px;"><span style="font-size: 14px;">🚒</span></div>`;
         } else {
           html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.5);"></div>`;
         }
@@ -2018,18 +2041,19 @@ function SDISLayerManager({ layersRef, activeLayers }) {
           icon: L.divIcon({
             className: 'sdis-icon',
             html: html,
-            iconSize: isStation ? [20, 20] : [14, 14],
-            iconAnchor: isStation ? [10, 10] : [7, 7]
+            iconSize: isStation ? [22, 22] : [14, 14],
+            iconAnchor: isStation ? [11, 11] : [7, 7]
           })
         });
 
         let popupContent = '<div style="font-family: sans-serif; min-width: 180px; padding: 5px;">';
         if (isStation) {
-          popupContent += `<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 15px; font-weight: bold; border-bottom: 1px solid #fee2e2; padding-bottom: 4px;">🚒 Caserne de Pompiers</h4>`;
-          if (tags.name) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Nom:</strong> ${tags.name}</p>`;
+          popupContent += `<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 15px; font-weight: bold; border-bottom: 2px solid #fee2e2; padding-bottom: 4px;">🚒 Caserne de Pompiers</h4>`;
+          if (tags.name) popupContent += `<p style="margin: 6px 0; font-size: 13px;"><strong>Nom:</strong> ${tags.name}</p>`;
           if (tags.operator) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Opérateur:</strong> ${tags.operator}</p>`;
+          if (tags['addr:city']) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Ville:</strong> ${tags['addr:city']}</p>`;
         } else {
-          popupContent += `<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 15px; font-weight: bold; border-bottom: 1px solid #fee2e2; padding-bottom: 4px;">🚰 Point d'Eau Incendie</h4>`;
+          popupContent += `<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 15px; font-weight: bold; border-bottom: 2px solid #fee2e2; padding-bottom: 4px;">🚰 Point d'Eau Incendie</h4>`;
           const type = tags['fire_hydrant:type'] || tags.emergency_type || 'Poteau';
           popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Type:</strong> ${type}</p>`;
           if (tags['fire_hydrant:diameter']) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Diamètre:</strong> ${tags['fire_hydrant:diameter']} mm</p>`;
