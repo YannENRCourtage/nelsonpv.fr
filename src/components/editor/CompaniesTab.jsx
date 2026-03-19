@@ -63,7 +63,7 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
     setLoading(true);
     try {
       // Utilisation de l'API MELODI (Proxy unifié SIRENE/URSSAF/MELODI)
-      let url = `/api/melodi?per_page=100`;
+      let url = `/api/melodi?per_page=20`;
       if (query) {
         url += `&q=${encodeURIComponent(query)}`;
       } else if (lat && lon) {

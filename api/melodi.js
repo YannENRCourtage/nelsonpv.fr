@@ -40,7 +40,9 @@ export default async function handler(req, res) {
             }
         }
 
-        params.append('per_page', per_page);
+        // Sanitize and cap per_page (Max 25 for near_point)
+        const perPageValue = Math.min(parseInt(per_page) || 20, 20);
+        params.append('per_page', perPageValue.toString());
         params.append('limite_matching', 'true');
         params.append('etat_administratif', 'A'); // Uniquement les entreprises actives
 
