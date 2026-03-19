@@ -3365,6 +3365,57 @@ function MapStateSync({ project, setProject }) {
   return null;
 }
 
+function MapInternalController({ layersRef, activeLayers, setSelectedCompany, setSelectedSubstation }) {
+  const map = useMap();
+
+  // 1. Navigation and selection handlers
+  useEffect(() => {
+    const handleGoto = (e) => {
+      const { lat, lng, zoom } = e.detail;
+      if (map) {
+        map.setView([lat, lng], zoom || 18, { animate: true });
+      }
+    };
+
+    const handleSelectCompany = (e) => setSelectedCompany(e.detail.company);
+    const handleSelectSubstation = (e) => setSelectedSubstation(e.detail.substation);
+
+    window.addEventListener('map:goto-location', handleGoto);
+    window.addEventListener('map:select-company', handleSelectCompany);
+    window.addEventListener('map:select-substation', handleSelectSubstation);
+
+    return () => {
+      window.removeEventListener('map:goto-location', handleGoto);
+      window.removeEventListener('map:select-company', handleSelectCompany);
+      window.removeEventListener('map:select-substation', handleSelectSubstation);
+    };
+  }, [map, setSelectedCompany, setSelectedSubstation]);
+
+  // 2. Synchronisation déclarative des calques
+  useEffect(() => {
+    if (!map || !layersRef.current || !activeLayers) return;
+
+    Object.keys(LAYERS).forEach(key => {
+      const layerDef = LAYERS[key];
+      if (!layerDef.isOverlay) return;
+
+      const layer = layersRef.current[key];
+      if (!layer) return;
+
+      const shouldBeVisible = activeLayers.has(key);
+      const isVisible = map.hasLayer(layer);
+
+      if (shouldBeVisible && !isVisible) {
+        layer.addTo(map);
+      } else if (!shouldBeVisible && isVisible) {
+        map.removeLayer(layer);
+      }
+    });
+  }, [map, activeLayers, layersRef]);
+
+  return null;
+}
+
 export default function MapElements({ 
   style = {}, 
   project, 
@@ -3378,7 +3429,6 @@ export default function MapElements({
   activeLayers, 
   isochroneConfig
 }) {
-  const map = useMap();
   const [companies, setCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [selectedSubstation, setSelectedSubstation] = useState(null);
@@ -3408,28 +3458,6 @@ export default function MapElements({
   const [rectangleStart, setRectangleStart] = useState(null);
 
   const [targetPos, setTargetPos] = useState(null); // initialized in MapTargetInfo via useEffect
-  // Custom navigation and selection handlers
-  useEffect(() => {
-    const handleGoto = (e) => {
-      const { lat, lng, zoom } = e.detail;
-      if (map) {
-        map.setView([lat, lng], zoom || 18, { animate: true });
-      }
-    };
-
-    const handleSelectCompany = (e) => setSelectedCompany(e.detail.company);
-    const handleSelectSubstation = (e) => setSelectedSubstation(e.detail.substation);
-
-    window.addEventListener('map:goto-location', handleGoto);
-    window.addEventListener('map:select-company', handleSelectCompany);
-    window.addEventListener('map:select-substation', handleSelectSubstation);
-
-    return () => {
-      window.removeEventListener('map:goto-location', handleGoto);
-      window.removeEventListener('map:select-company', handleSelectCompany);
-      window.removeEventListener('map:select-substation', handleSelectSubstation);
-    };
-  }, [map]);
   const [hoverInfo, setHoverInfo] = useState(null); // New state for shared hover info
   const [showInfoPanel, setShowInfoPanel] = useState(true); // Always visible by défaut
   const layersRef = useRef({});
@@ -3553,29 +3581,6 @@ export default function MapElements({
     return () => window.removeEventListener('map:reset', handleMapReset);
   }, []);
 
-  // Synchronisation déclarative des calques (Remplace l'écouteur d'événements pour plus de robustesse)
-  useEffect(() => {
-    if (!map || !layersRef.current || !activeLayers) return;
-
-    Object.keys(LAYERS).forEach(key => {
-      const layerDef = LAYERS[key];
-      if (!layerDef.isOverlay) return; // Ne gère que les couches overlay
-
-      const layer = layersRef.current[key];
-      if (!layer) return;
-
-      const shouldBeVisible = activeLayers.has(key);
-      const isVisible = map.hasLayer(layer);
-
-      if (shouldBeVisible && !isVisible) {
-        console.log(`[MapElements] Adding layer: ${key}`);
-        layer.addTo(map);
-      } else if (!shouldBeVisible && isVisible) {
-        console.log(`[MapElements] Removing layer: ${key}`);
-        map.removeLayer(layer);
-      }
-    });
-  }, [map, activeLayers]);
 
   // Ref to track if manual rotation is in progress
   const isRotatingRef = useRef(false);
@@ -3596,6 +3601,14 @@ export default function MapElements({
         >
           {/* Nouveau composant de synchro */}
           <MapStateSync project={project} setProject={setProject} />
+
+          {/* Controller for map instance logic (goto, layer sync) */}
+          <MapInternalController 
+            layersRef={layersRef} 
+            activeLayers={activeLayers} 
+            setSelectedCompany={setSelectedCompany} 
+            setSelectedSubstation={setSelectedSubstation} 
+          />
 
           <div
             style={{ position: 'absolute', inset: 0, zIndex: 400, pointerEvents: 'none' }}
