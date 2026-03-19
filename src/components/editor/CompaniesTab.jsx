@@ -62,8 +62,8 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
   const fetchCompanies = useCallback(async (query = '', lat = null, lon = null, r = radius) => {
     setLoading(true);
     try {
-      // Utilisation du proxy unifié avec near=1 pour la découverte géo
-      let url = `/api/proxies/sirene?per_page=100`;
+      // Utilisation de l'API MELODI (Proxy unifié SIRENE/URSSAF/MELODI)
+      let url = `/api/melodi?per_page=100`;
       if (query) {
         url += `&q=${encodeURIComponent(query)}`;
       } else if (lat && lon) {
@@ -172,7 +172,7 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-slate-800 flex items-center gap-2">
               <Building className="w-5 h-5 text-blue-600" />
-              Explorateur SIRENE
+              Données MELODI / RSI
             </h3>
             <div className="flex items-center gap-2" title="Chargement automatique lors du déplacement de la carte">
                <span className="text-[10px] text-slate-400 font-bold uppercase">Auto</span>
