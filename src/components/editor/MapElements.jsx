@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { urbanismeService } from "@/services/UrbanismeService";
 import { isochroneService } from "@/services/IsochroneService";
+import { Zap, Sun } from 'lucide-react';
 
 // --- Clé API IGN ---
 // 👇 COPIEZ VOTRE CLÉ API GÉOSERVICES IGN CI-DESSOUS 👇
@@ -447,6 +448,76 @@ function GazDynamicLayerManager({ layersRef }) {
   return null;
 }
 
+function CompaniesLayerManager({ layersRef, onCompaniesUpdate }) {
+  const map = useMap();
+  const [active, setActive] = useState(false);
+  const loadedIds = useRef(new Set());
+  const layerGroupRef = useRef(L.featureGroup());
+
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['companies'] = layerGroupRef.current;
+
+    const handleToggle = (e) => {
+      if (e.detail.layerKey === 'companies') {
+        const isNowActive = !map.hasLayer(layerGroupRef.current);
+        setActive(isNowActive);
+      }
+    };
+
+    window.addEventListener('map:toggle-layer', handleToggle);
+    return () => window.removeEventListener('map:toggle-layer', handleToggle);
+  }, [map, layersRef]);
+
+  const fetchData = async () => {
+    if (!active || !map || map.getZoom() < 16) {
+       if (map.getZoom() < 16) layerGroupRef.current.clearLayers();
+       return;
+    }
+    const bounds = map.getBounds();
+    const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
+    const url = `/api/melodi?action=search&bbox=${bbox}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!data.results) return;
+
+      onCompaniesUpdate(data.results);
+
+      data.results.forEach(item => {
+        if (loadedIds.current.has(item.id)) return;
+        loadedIds.current.add(item.id);
+
+        if (item.lat && item.lon) {
+          const marker = L.marker([item.lat, item.lon], {
+            icon: companyIcon(item.name, false)
+          });
+          marker.on('click', () => {
+             window.dispatchEvent(new CustomEvent('map:select-company', { detail: { company: item } }));
+          });
+          marker.addTo(layerGroupRef.current);
+        }
+      });
+    } catch (err) { console.error("Error fetching companies data", err); }
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => { map.off('moveend', onMoveEnd); };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+    }
+  }, [active, map]);
+
+  return null;
+  return null;
+}
+
 function CapareseauLayerManager({ layersRef }) {
   const map = useMap();
   const [active, setActive] = useState(false);
@@ -487,7 +558,6 @@ function CapareseauLayerManager({ layersRef }) {
       if (!data.results) return;
 
       data.results.forEach(item => {
-        // Unique ID for Poste Source
         const id = (item.nom_du_poste || 'unknown') + (item.niveau_de_tension || 'unknown');
         if (loadedIds.current.has(id)) return;
         loadedIds.current.add(id);
@@ -499,46 +569,10 @@ function CapareseauLayerManager({ layersRef }) {
             icon: powerIcon(item.nom_du_poste, item.capacite_disponible_mw || 0)
           });
 
-          let popup = `
-            <div style="font-family: 'Inter', sans-serif; min-width: 240px; padding: 12px; border-radius: 12px; background: #ffffff;">
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; border-bottom: 2px solid #fef3c7; padding-bottom: 8px;">
-                <div style="background: #fef3c7; p: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                </div>
-                <h4 style="margin: 0; color: #1e293b; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em;">
-                  ${item.nom_du_poste}
-                </h4>
-              </div>
-              
-              <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="color: #64748b; font-weight: 500;">Niveau de Tension</span>
-                  <span style="font-weight: 700; color: #1e293b; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${item.niveau_de_tension || 'HTA/HTB'}</span>
-                </div>
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px; background: #f8fafc; border-radius: 8px;">
-                  <span style="color: #64748b; font-weight: 500;">Capacité Globale</span>
-                  <span style="font-weight: 800; color: #1e293b;">${item.capacite_globale_mw || 0} MW</span>
-                </div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px; background: #f8fafc; border-radius: 8px;">
-                  <span style="color: #64748b; font-weight: 500;">Réservée (S3REnR)</span>
-                  <span style="font-weight: 800; color: #ef4444;">${item.capacite_reservee_mw || 0} MW</span>
-                </div>
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; margin-top: 4px;">
-                  <span style="color: #92400e; font-weight: 700;">Disponible</span>
-                  <span style="font-weight: 900; color: #b45309; font-size: 14px;">${item.capacite_disponible_mw || 0} MW</span>
-                </div>
-              </div>
-              
-              <div style="margin-top: 12px; font-size: 10px; color: #94a3b8; font-style: italic; border-top: 1px solid #f1f5f9; padding-top: 8px; display: flex; justify-content: space-between;">
-                <span>Données S3REnR</span>
-                <span>Source: ODRÉ</span>
-              </div>
-            </div>
-          `;
-          marker.bindPopup(popup);
+          marker.on('click', () => {
+             // Dispatch event or call prop to set selected substation
+             window.dispatchEvent(new CustomEvent('map:select-substation', { detail: { substation: item } }));
+          });
           marker.addTo(layerGroupRef.current);
         }
       });
@@ -631,15 +665,127 @@ function TextInputPopup({ at, onCancel, onSubmit, initialValue = "" }) {
   );
 }
 
-function useDeleteKey(onDelete) {
-  useEffect(() => {
-    const h = (e) => {
-      if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
-      if (e.key === "Delete" || e.key === "Backspace") onDelete();
-    };
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, [onDelete]);
+function MapSidePanel({ type, data, onClose }) {
+  if (!data) return null;
+
+  const copyToClipboard = (text, label) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copié !", description: `${label} copié dans le presse-papier.` });
+  };
+
+  const isSubstation = type === 'substation';
+
+  return (
+    <div className={`absolute top-4 ${isSubstation ? 'left-4' : 'right-4'} bottom-4 z-[2000] w-96 bg-white/90 backdrop-blur-xl border border-slate-200/50 rounded-2xl shadow-2xl flex flex-col font-sans animate-in ${isSubstation ? 'slide-in-from-left-10' : 'slide-in-from-right-10'}`}>
+      <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white/50 rounded-t-2xl">
+        <h3 className="font-black text-slate-800 flex items-center gap-2 text-sm uppercase tracking-tighter">
+          {isSubstation ? <Zap className="w-5 h-5 text-amber-500 fill-amber-500" /> : <Building className="w-5 h-5 text-blue-600" />}
+          {isSubstation ? "Détails Poste Source" : "Fiche Entreprise"}
+        </h3>
+        <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-600">
+          <XIcon className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+        {isSubstation ? (
+          <div className="space-y-6">
+             <div className="space-y-1">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nom du Poste</p>
+                <div onClick={() => copyToClipboard(data.nom_du_poste, "Nom")} className="group flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100 cursor-pointer hover:bg-amber-50 hover:border-amber-200 transition-all">
+                  <span className="font-bold text-slate-900 text-lg">{data.nom_du_poste}</span>
+                  <Copy className="w-4 h-4 text-slate-300 group-hover:text-amber-500" />
+                </div>
+             </div>
+
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tension</p>
+                   <div className="bg-slate-50 p-2 rounded-lg text-sm font-bold text-slate-700">{data.niveau_de_tension || 'HTA/HTB'}</div>
+                </div>
+                <div className="space-y-1">
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Département</p>
+                   <div className="bg-slate-50 p-2 rounded-lg text-sm font-bold text-slate-700">{data.code_departement}</div>
+                </div>
+             </div>
+
+             <div className="space-y-3">
+                <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                   <span className="text-sm font-bold text-slate-600">Capacité Globale</span>
+                   <span className="text-lg font-black text-slate-900">{data.capacite_globale_mw || 0} MW</span>
+                </div>
+                <div className="flex justify-between items-center p-4 bg-red-50/50 rounded-2xl border border-red-100">
+                   <span className="text-sm font-bold text-red-700">Capacité Réservée</span>
+                   <span className="text-lg font-black text-red-900">{data.capacite_reservee_mw || 0} MW</span>
+                </div>
+                <div className="flex justify-between items-center p-5 bg-amber-50 rounded-3xl border-2 border-amber-200 shadow-xl shadow-amber-100/50">
+                   <span className="text-base font-black text-amber-900">Disponible</span>
+                   <span className="text-2xl font-black text-amber-600">{data.capacite_disponible_mw || 0} MW</span>
+                </div>
+             </div>
+             
+             <p className="text-[10px] text-slate-400 italic text-center">Source: ODRÉ (S3REnR) - Mise à jour quotidienne</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+             <div className="space-y-1">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Raison Sociale</p>
+                <div onClick={() => copyToClipboard(data.name, "Raison sociale")} className="group flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100 cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-all">
+                  <span className="font-bold text-slate-900 text-lg leading-tight">{data.name}</span>
+                  <Copy className="w-4 h-4 text-slate-300 group-hover:text-blue-500" />
+                </div>
+             </div>
+
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">SIRET</p>
+                   <div onClick={() => copyToClipboard(data.siret, "SIRET")} className="group flex justify-between items-center bg-slate-50 p-2 rounded-lg cursor-pointer hover:bg-blue-50 transition-all">
+                      <span className="text-xs font-bold text-slate-700 font-mono tracking-tighter">{data.siret}</span>
+                      <Copy className="w-3 h-3 text-slate-300 group-hover:text-blue-500" />
+                   </div>
+                </div>
+                <div className="space-y-1">
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Code APE</p>
+                   <div className="bg-slate-50 p-2 rounded-lg text-xs font-bold text-slate-700">{data.ape || 'N/A'}</div>
+                </div>
+             </div>
+
+             <div className="space-y-1">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Adresse Siège</p>
+                <div onClick={() => copyToClipboard(data.address, "Adresse")} className="group flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100 cursor-pointer hover:bg-blue-50 transition-all">
+                  <span className="text-xs font-medium text-slate-600 line-clamp-2">{data.address}</span>
+                  <Copy className="w-4 h-4 text-slate-300 group-hover:text-blue-500" />
+                </div>
+             </div>
+
+             <div className="pt-2">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Dirigeant(s)</p>
+                <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 space-y-3">
+                   {data.leaders && data.leaders.length > 0 ? data.leaders.map((l, i) => (
+                      <div key={i} className="flex flex-col gap-0.5 pb-2 border-b border-slate-200 last:border-0 last:pb-0">
+                         <span className="text-sm font-bold text-slate-900">{l.name} {l.firstname}</span>
+                         <span className="text-[10px] text-blue-600 font-bold uppercase">{l.role || 'Gérant'}</span>
+                      </div>
+                   )) : (
+                      <p className="text-xs text-slate-400 italic">Aucun dirigeant identifié.</p>
+                   )}
+                </div>
+             </div>
+
+             <div className="bg-blue-600/5 rounded-3xl p-5 border border-blue-100">
+                <p className="text-[11px] font-black text-blue-800 uppercase tracking-widest mb-3 flex items-center gap-2">
+                   <Sun className="w-4 h-4" /> Potentiel Solaire
+                </p>
+                <div className="flex justify-between items-center">
+                   <span className="text-sm font-medium text-blue-700">Estimation Nelson</span>
+                   <span className="text-xl font-black text-blue-900">{calculateSolarPower((data.surface || 500))}</span>
+                </div>
+             </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function UrbanismePopup({ info, onClose }) {
@@ -1704,6 +1850,15 @@ const LAYERS = {
     attribution: 'ODRÉ / S3REnR',
     isOverlay: true,
     zIndex: 107
+  },
+  companies: {
+    name: "Sociétés",
+    type: 'companies',
+    isDynamic: true,
+    attribution: 'SIRENE / MELODI',
+    isOverlay: true,
+    zIndex: 108,
+    minZoom: 16
   }
 };
 // ====================================================================
@@ -3193,11 +3348,11 @@ export default function MapElements({
   setIsAzimuthDefaulted,     
   isUrbanismeMode, 
   activeLayers, 
-  isochroneConfig,
-  companies = [],
-  selectedCompany = null,
-  setSelectedCompany
+  isochroneConfig
 }) {
+  const [companies, setCompanies] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [selectedSubstation, setSelectedSubstation] = useState(null);
 
 
   const [mode, setMode] = useState(null);
@@ -3226,7 +3381,7 @@ export default function MapElements({
   const [targetPos, setTargetPos] = useState(null); // initialized in MapTargetInfo via useEffect
   const [map, setMap] = useState(null); // State for map instance
   
-  // Custom navigation handler for companies from the sidebar
+  // Custom navigation and selection handlers
   useEffect(() => {
     const handleGoto = (e) => {
       const { lat, lng, zoom } = e.detail;
@@ -3234,8 +3389,19 @@ export default function MapElements({
         map.setView([lat, lng], zoom || 18, { animate: true });
       }
     };
+
+    const handleSelectCompany = (e) => setSelectedCompany(e.detail.company);
+    const handleSelectSubstation = (e) => setSelectedSubstation(e.detail.substation);
+
     window.addEventListener('map:goto-location', handleGoto);
-    return () => window.removeEventListener('map:goto-location', handleGoto);
+    window.addEventListener('map:select-company', handleSelectCompany);
+    window.addEventListener('map:select-substation', handleSelectSubstation);
+
+    return () => {
+      window.removeEventListener('map:goto-location', handleGoto);
+      window.removeEventListener('map:select-company', handleSelectCompany);
+      window.removeEventListener('map:select-substation', handleSelectSubstation);
+    };
   }, [map]);
   const [hoverInfo, setHoverInfo] = useState(null); // New state for shared hover info
   const [showInfoPanel, setShowInfoPanel] = useState(true); // Always visible by défaut
@@ -3432,6 +3598,7 @@ export default function MapElements({
           <GazDynamicLayerManager layersRef={layersRef} />
           <LigneBTLayerManager layersRef={layersRef} />
           <CapareseauLayerManager layersRef={layersRef} />
+          <CompaniesLayerManager layersRef={layersRef} onCompaniesUpdate={setCompanies} />
 
           {/* Controls inside map */}
           <BasemapControl layersRef={layersRef} />
@@ -3485,31 +3652,7 @@ export default function MapElements({
             setShowInfoPanel={setShowInfoPanel}
             isochroneConfig={isochroneConfig}
           />
-          {/* Sociétés Markers */}
-          {companies.map(c => (
-            <Marker
-              key={c.id}
-              position={[c.lat, c.lon]}
-              icon={companyIcon(c.name, selectedCompany?.id === c.id)}
-              eventHandlers={{
-                click: () => setSelectedCompany(c)
-              }}
-            >
-              <Popup className="company-popup">
-                <div className="p-2 min-w-[200px]">
-                  <p className="font-black text-slate-900 text-sm mb-1 leading-tight">{c.name}</p>
-                  <p className="text-[10px] text-blue-600 uppercase font-black bg-blue-50 px-2 py-0.5 inline-block rounded-full mb-3">{c.activity}</p>
-                  <p className="text-[11px] text-slate-400 font-medium leading-relaxed mb-4">{c.address}</p>
-                  <Button
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-2 h-9 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-100 transition-all active:scale-95"
-                    onClick={() => setSelectedCompany(c)}
-                  >
-                    Détails complets
-                  </Button>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+          {/* Sociétés UI (Managed by Manager now) */}
 
           <ZoomIndicator />
           <MapEvents
@@ -3533,6 +3676,18 @@ export default function MapElements({
             setFeatures={setFeaturesWrapper} // Use Wrapper
             features={features}
             setHoverInfo={setHoverInfo}
+          />
+
+          {/* New Side Panels */}
+          <MapSidePanel 
+            type="company" 
+            data={selectedCompany} 
+            onClose={() => setSelectedCompany(null)} 
+          />
+          <MapSidePanel 
+            type="substation" 
+            data={selectedSubstation} 
+            onClose={() => setSelectedSubstation(null)} 
           />
         </MapContainer>
       </div>

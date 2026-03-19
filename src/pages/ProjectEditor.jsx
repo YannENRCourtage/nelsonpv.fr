@@ -7,7 +7,6 @@ import StreetViewTab from "../components/StreetViewTab";
 
 import ShadowMapTab from "../components/ShadowMapTab.jsx";
 import ChatBox from "../components/editor/ChatBox.jsx";
-import CompaniesTab from "../components/editor/CompaniesTab.jsx";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -71,7 +70,6 @@ function SymbolsPanel({ onSymbolSelect, selectedSymbol }) {
     { type: "building", label: "Bâtiment", icon: <Building className="h-6 w-6 text-slate-700" />, emoji: "🏢" },
     { type: "photo", label: "Photo", icon: <Camera className="h-6 w-6 text-slate-700" />, emoji: "📷" },
     { type: "text", label: "Texte", icon: <Type className="h-6 w-6 text-slate-700" />, emoji: "T" },
-    { type: "isochrone", label: "Isochrone", icon: <MapIcon className="h-6 w-6 text-blue-500" />, emoji: "⌚" },
   ];
 
   return (
@@ -146,8 +144,6 @@ export default function ProjectEditor() {
     costValue: 5,         // minutes or meters
     profile: 'car'        // 'car' or 'pedestrian'
   });
-  const [companies, setCompanies] = useState([]);
-  const [selectedCompany, setSelectedCompany] = useState(null);
 
   useEffect(() => {
     const handleForceReset = () => {
@@ -1553,17 +1549,6 @@ export default function ProjectEditor() {
               Urbanisme
             </button>
 
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('companies'); }}
-              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'companies'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              Sociétés
-            </button>
 
             <button
               type="button"
@@ -1691,9 +1676,6 @@ export default function ProjectEditor() {
                     setSymbolToPlace={setSymbolToPlace}
                     isochroneConfig={isochroneConfig}
                     activeLayers={activeLayers}
-                    companies={companies}
-                    selectedCompany={selectedCompany}
-                    setSelectedCompany={setSelectedCompany}
                   />
                 </div>
 
@@ -1821,17 +1803,6 @@ export default function ProjectEditor() {
               </div>
             )}
 
-            {activeTab === 'companies' && (
-              <div className='w-full h-full flex overflow-hidden'>
-                 <CompaniesTab 
-                    project={project} 
-                    companies={companies} 
-                    setCompanies={setCompanies} 
-                    selectedCompany={selectedCompany} 
-                    setSelectedCompany={setSelectedCompany} 
-                 />
-              </div>
-            )}
 
 
 

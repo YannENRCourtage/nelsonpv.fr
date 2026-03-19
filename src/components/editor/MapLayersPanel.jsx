@@ -149,6 +149,15 @@ const baseLayers = {
 };
 // Overlay layers with comprehensive French data
 const overlayCategories = {
+    'Économie et Entreprises': {
+        layers: {
+            'Sociétés': {
+                type: 'companies-custom',
+                attribution: 'Sirene / Melodi',
+                minZoom: 16,
+            },
+        },
+    },
     'Altimétrie': {
         layers: {
             'Courbes de niveau': {
@@ -159,6 +168,11 @@ const overlayCategories = {
             'Relief ombré': {
                 url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ELEVATION.SLOPES&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
                 attribution: 'IGN-F/Géoportail',
+                type: 'tile',
+            },
+            'RGE ALTI (Précis)': {
+                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+                attribution: 'IGN-F/Géoportail / data.gouv.fr',
                 type: 'tile',
             },
         },
@@ -493,6 +507,10 @@ const MapLayersPanel = ({ map }) => {
                     }
                     if (layerConfig.type === 'capareseau-custom' || layerName === 'Caparéseau (Capacités)') {
                         window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'capareseau' } }));
+                        return newActive;
+                    }
+                    if (layerConfig.type === 'companies-custom' || layerName === 'Sociétés') {
+                        window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'companies' } }));
                         return newActive;
                     }
                     // Check zoom level for layers with minZoom
