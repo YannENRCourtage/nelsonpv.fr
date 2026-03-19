@@ -1567,18 +1567,6 @@ export default function ProjectEditor() {
 
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('nv65'); }}
-              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'nv65'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              ZN / ZV
-            </button>
-
-            <button
-              type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('owners'); }}
               className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'owners'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
@@ -1620,17 +1608,6 @@ export default function ProjectEditor() {
               tabIndex={-1}
             >
               DVF
-            </button>
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('windy'); }}
-              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'windy'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              Windy
             </button>
             <button
               type="button"
@@ -1697,7 +1674,7 @@ export default function ProjectEditor() {
               </button>
             </div>
           </div>
-          <div className="rounded-2xl bg-white shadow-sm overflow-hidden flex-1 min-h-[60vh] lg:min-h-0">
+          <div className="rounded-2xl bg-white shadow-sm overflow-hidden flex-1 min-h-[60vh] lg:h-[750px]">
             {/* Onglet Carte & Urbanisme */}
             {(activeTab === 'map' || activeTab === 'urbanisme') && (
               <div className="w-full flex flex-col h-full">
@@ -1740,6 +1717,7 @@ export default function ProjectEditor() {
                     { key: 'gaz', label: 'GAZ' },
                     { key: 'abf', label: 'ABF' },
                     { key: 'sdis', label: 'SDIS' },
+                    { key: 'capareseau', label: 'Caparéseau' },
                   ].map(layer => (
                     <button
                       key={layer.key}
@@ -1795,6 +1773,7 @@ export default function ProjectEditor() {
                         { key: 'gaz', label: 'GAZ' },
                         { key: 'abf', label: 'ABF' },
                         { key: 'sdis', label: 'SDIS' },
+                        { key: 'capareseau', label: 'Caparéseau' },
                       ].map(layer => (
                         <button
                           key={layer.key}
@@ -1854,15 +1833,6 @@ export default function ProjectEditor() {
               </div>
             )}
 
-            {/* Onglet ZN / ZV (Neige et Vent) */}
-            <div className={activeTab === 'nv65' ? 'w-full h-full' : 'hidden'}>
-              <iframe
-                src="https://nv65.nmoreaux.com/"
-                className="w-full h-full border-0"
-                title="Zones Neige et Vent NV65"
-                allow="geolocation"
-              />
-            </div>
 
 
 
@@ -1907,31 +1877,6 @@ export default function ProjectEditor() {
               />
             </div>
 
-            {/* Onglet Windy */}
-            <div className={activeTab === 'windy' ? 'w-full h-full' : 'hidden'}>
-              {(() => {
-                // Parse GPS from project.gps (format "lat, lon")
-                let lat = 44.8378;
-                let lon = -0.5795;
-                if (project?.gps) {
-                  const parts = project.gps.split(',').map(s => parseFloat(s.trim()));
-                  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-                    lat = parts[0];
-                    lon = parts[1];
-                  }
-                }
-                const windyUrl = `https://embed.windy.com/embed2.html?lat=${lat}&lon=${lon}&detailLat=${lat}&detailLon=${lon}&width=650&height=450&zoom=11&level=surface&overlay=wind&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1`;
-
-                return (
-                  <iframe
-                    src={windyUrl}
-                    className="w-full h-full border-0"
-                    title="Météo Windy"
-                    allow="geolocation"
-                  />
-                );
-              })()}
-            </div>
 
 
 

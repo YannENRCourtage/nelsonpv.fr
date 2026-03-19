@@ -64,6 +64,17 @@ export default async function handler(req, res) {
             return res.status(200).json(data);
         }
 
+        // --- ACTION : CAPARESEAU (ODRÉ / S3REnR) ---
+        if (action === 'capareseau') {
+            const { dataset, where } = req.query;
+            const odreUrl = `https://opendata.reseaux-energies.fr/api/explore/v2.1/catalog/datasets/${dataset}/records?limit=100&where=${encodeURIComponent(where)}`;
+            console.log(`[PROXY CAPARESEAU] Fetching: ${odreUrl}`);
+            const response = await fetch(odreUrl);
+            if (!response.ok) return res.status(response.status).json({ error: `ODRE error: ${response.status}` });
+            const data = await response.json();
+            return res.status(200).json(data);
+        }
+
         res.status(400).json({ error: 'Invalid action' });
 
     } catch (error) {

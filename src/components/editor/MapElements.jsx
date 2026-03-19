@@ -237,6 +237,22 @@ const companyIcon = (name, isSelected) => L.divIcon({
   iconSize: [20, 20],
   iconAnchor: [6, 6],
 });
+
+const powerIcon = (name, capacity) => L.divIcon({
+  html: `<div class="flex flex-col items-center group">
+           <div class="bg-amber-100 border-2 border-amber-500 rounded-full p-1 shadow-md group-hover:scale-110 transition-transform">
+             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+           </div>
+           <div class="bg-white/95 border border-amber-200 px-1.5 py-0.5 rounded shadow-lg mt-0.5 whitespace-nowrap hidden group-hover:block z-[2000]">
+             <span class="text-[10px] font-black text-amber-900 uppercase tracking-tight">${name}</span>
+             <span class="text-[10px] font-black text-amber-700 ml-1 bg-amber-50 px-1 rounded">${capacity} MW</span>
+           </div>
+         </div>`,
+  className: 'bg-transparent border-none',
+  iconSize: [24, 40],
+  iconAnchor: [12, 12],
+});
+
 // --- Ligne BT Manager (Enedis) ---
 function LigneBTLayerManager({ layersRef }) {
   const map = useMap();
@@ -431,7 +447,118 @@ function GazDynamicLayerManager({ layersRef }) {
   return null;
 }
 
+function CapareseauLayerManager({ layersRef }) {
+  const map = useMap();
+  const [active, setActive] = useState(false);
+  const loadedIds = useRef(new Set());
+  const layerGroupRef = useRef(L.featureGroup());
 
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['capareseau'] = layerGroupRef.current;
+
+    const handleToggle = (e) => {
+      if (e.detail.layerKey === 'capareseau') {
+        const isNowActive = !map.hasLayer(layerGroupRef.current);
+        setActive(isNowActive);
+      }
+    };
+
+    window.addEventListener('map:toggle-layer', handleToggle);
+    return () => window.removeEventListener('map:toggle-layer', handleToggle);
+  }, [map, layersRef]);
+
+  const fetchData = async () => {
+    if (!active || !map) return;
+    const bounds = map.getBounds();
+    const latMax = bounds.getNorth();
+    const lonMin = bounds.getWest();
+    const latMin = bounds.getSouth();
+    const lonMax = bounds.getEast();
+
+    // S3REnR Dataset on ODRÉ (RTE + Enedis)
+    const dataset = 'capacites-daccueil-du-reseau-pour-le-raccordement-au-reseau-electrique';
+    const whereClause = `within_box(geo_shape, ${latMax}, ${lonMin}, ${latMin}, ${lonMax})`;
+    const url = `/api/melodi?action=capareseau&dataset=${dataset}&where=${encodeURIComponent(whereClause)}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!data.results) return;
+
+      data.results.forEach(item => {
+        // Unique ID for Poste Source
+        const id = (item.nom_du_poste || 'unknown') + (item.niveau_de_tension || 'unknown');
+        if (loadedIds.current.has(id)) return;
+        loadedIds.current.add(id);
+
+        if (item.geo_point_2d) {
+          const latlng = [item.geo_point_2d.lat, item.geo_point_2d.lon];
+          
+          const marker = L.marker(latlng, {
+            icon: powerIcon(item.nom_du_poste, item.capacite_disponible_mw || 0)
+          });
+
+          let popup = `
+            <div style="font-family: 'Inter', sans-serif; min-width: 240px; padding: 12px; border-radius: 12px; background: #ffffff;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; border-bottom: 2px solid #fef3c7; padding-bottom: 8px;">
+                <div style="background: #fef3c7; p: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                </div>
+                <h4 style="margin: 0; color: #1e293b; font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em;">
+                  ${item.nom_du_poste}
+                </h4>
+              </div>
+              
+              <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="color: #64748b; font-weight: 500;">Niveau de Tension</span>
+                  <span style="font-weight: 700; color: #1e293b; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${item.niveau_de_tension || 'HTA/HTB'}</span>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px; background: #f8fafc; border-radius: 8px;">
+                  <span style="color: #64748b; font-weight: 500;">Capacité Globale</span>
+                  <span style="font-weight: 800; color: #1e293b;">${item.capacite_globale_mw || 0} MW</span>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px; background: #f8fafc; border-radius: 8px;">
+                  <span style="color: #64748b; font-weight: 500;">Réservée (S3REnR)</span>
+                  <span style="font-weight: 800; color: #ef4444;">${item.capacite_reservee_mw || 0} MW</span>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; margin-top: 4px;">
+                  <span style="color: #92400e; font-weight: 700;">Disponible</span>
+                  <span style="font-weight: 900; color: #b45309; font-size: 14px;">${item.capacite_disponible_mw || 0} MW</span>
+                </div>
+              </div>
+              
+              <div style="margin-top: 12px; font-size: 10px; color: #94a3b8; font-style: italic; border-top: 1px solid #f1f5f9; padding-top: 8px; display: flex; justify-content: space-between;">
+                <span>Données S3REnR</span>
+                <span>Source: ODRÉ</span>
+              </div>
+            </div>
+          `;
+          marker.bindPopup(popup);
+          marker.addTo(layerGroupRef.current);
+        }
+      });
+    } catch (err) { console.error("Error fetching Capareseau data", err); }
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => { map.off('moveend', onMoveEnd); };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+    }
+  }, [active, map]);
+
+  return null;
+}
 
 
 const rotationIcon = L.divIcon({
@@ -1569,6 +1696,14 @@ const LAYERS = {
     isOverlay: true,
     zIndex: 106,
     color: '#800080'
+  },
+  capareseau: {
+    name: "Caparéseau (S3REnR)",
+    type: 'capareseau',
+    isDynamic: true,
+    attribution: 'ODRÉ / S3REnR',
+    isOverlay: true,
+    zIndex: 107
   }
 };
 // ====================================================================
@@ -3296,6 +3431,7 @@ export default function MapElements({
           <SDISLayerManager layersRef={layersRef} />
           <GazDynamicLayerManager layersRef={layersRef} />
           <LigneBTLayerManager layersRef={layersRef} />
+          <CapareseauLayerManager layersRef={layersRef} />
 
           {/* Controls inside map */}
           <BasemapControl layersRef={layersRef} />

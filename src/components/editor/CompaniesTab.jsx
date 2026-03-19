@@ -56,8 +56,8 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
   const [searchQuery, setSearchQuery] = useState('');
   const [radius, setRadius] = useState(2); // km
   const [autoLoad, setAutoLoad] = useState(true);
-  const lastCoordsRef = useRef(null);
   const [mapInstance, setMapInstance] = useState(null);
+  const [cooldown, setCooldown] = useState(false);
 
   const fetchCompanies = useCallback(async (query = '', lat = null, lon = null, r = radius) => {
     setLoading(true);
@@ -71,6 +71,11 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
       }
 
       const res = await fetch(url);
+      if (res.status === 429) {
+          setCooldown(true);
+          setTimeout(() => setCooldown(false), 10000); // 10s recovery
+          throw new Error('Trop de requêtes. Veuillez patienter 10 secondes.');
+      }
       if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
           throw new Error(errData.error || 'Erreur lors de la récupération des sociétés');
@@ -95,6 +100,8 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
         natureJuridique: c.nature_juridique_libelle || c.nature_juridique,
         dirigeants: c.dirigeants || [],
         finances: c.finances || {},
+        bodacc: c.annonces_bodacc || [],
+        complements: c.complements || {},
       })).filter(c => !isNaN(c.lat) && !isNaN(c.lon));
 
       setCompanies(formatted);
@@ -148,7 +155,7 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
   useEffect(() => {
     let timeoutId = null;
     const handleMapMove = (e) => {
-      if (!autoLoad) return;
+      if (!autoLoad || cooldown) return;
       const { center, zoom } = e.detail;
       if (zoom < 14) return; 
 
@@ -162,7 +169,7 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
           lastCoordsRef.current = center;
           fetchCompanies('', center.lat, center.lng, radius); 
         }
-      }, 800);
+      }, 1500); // 1.5s debounce to safely avoid 429
     };
 
     window.addEventListener('map:idle', handleMapMove);
@@ -170,7 +177,7 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
       window.removeEventListener('map:idle', handleMapMove);
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [autoLoad, fetchCompanies, radius]);
+  }, [autoLoad, cooldown, fetchCompanies, radius]);
 
   useEffect(() => {
     if (project?.gps && companies.length === 0 && !loading && !selectedCompany) {
@@ -193,9 +200,7 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
 
   const handleGotoCompany = (c) => {
      setSelectedCompany(c);
-     // Sync BOTH maps if needed, by dispatching the event
-     window.dispatchEvent(new CustomEvent('map:goto-location', { detail: { lat: c.lat, lng: c.lon, zoom: 19 } }));
-     // If the local map exists, move it too
+     // We only move the local map context here to avoid cluttering the main map with points
      if (mapInstance) {
        mapInstance.setView([c.lat, c.lon], 19);
      }
@@ -470,6 +475,26 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
                                         </div>
                                     </div>
                                 )}
+
+                                {selectedCompany.bodacc && selectedCompany.bodacc.length > 0 && (
+                                    <div className="mt-6">
+                                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest flex items-center gap-1.5 mb-3">
+                                            <FileText className="w-3 h-3"/>
+                                            Annonces BODACC
+                                        </p>
+                                        <div className="space-y-2">
+                                            {selectedCompany.bodacc.slice(0, 3).map((an, idx) => (
+                                                <div key={idx} className="bg-amber-50/50 border border-amber-100 rounded-xl p-3">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-[9px] font-black text-amber-600 uppercase italic">{an.date}</span>
+                                                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-amber-100 rounded uppercase">{an.type}</span>
+                                                    </div>
+                                                    <p className="text-[10px] text-slate-700 leading-relaxed line-clamp-2">{an.libelle}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </TabsContent>
 
                             <TabsContent value="energy" className="mt-0 space-y-6 pb-10">
@@ -502,7 +527,11 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
 
                                         <Button 
                                             className="mt-6 w-full bg-amber-500 hover:bg-amber-600 text-white font-black h-12 rounded-2xl shadow-lg transition-all flex items-center gap-2"
-                                            onClick={() => window.dispatchEvent(new CustomEvent('map:goto-location', { detail: { lat: selectedCompany.lat, lng: selectedCompany.lon, zoom: 19 } }))}
+                                            onClick={() => {
+                                                if (mapInstance) {
+                                                    mapInstance.setView([selectedCompany.lat, selectedCompany.lon], 19);
+                                                }
+                                            }}
                                         >
                                             <Maximize2 className="w-4 h-4" />
                                             Étudier sur carte
@@ -563,13 +592,26 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
 }
 
 function InfoCard({ label, value, icon, mono }) {
+    const handleCopy = () => {
+        if (!value) return;
+        navigator.clipboard.writeText(value);
+        toast({ title: "Copié !", description: `${label} copié dans le presse-papier.` });
+    };
+
     return (
-        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm transition-all hover:bg-slate-50/50 hover:shadow-md hover:border-blue-100 group">
+        <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm transition-all hover:bg-slate-50/50 hover:shadow-md hover:border-blue-100 group relative">
+            <button 
+                onClick={handleCopy}
+                className="absolute top-4 right-4 text-slate-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all p-1"
+                title="Copier la valeur"
+            >
+                <FileText className="w-3.5 h-3.5" />
+            </button>
             <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest flex items-center gap-1.5 mb-2.5 opacity-80 group-hover:opacity-100 group-hover:text-blue-500 transition-colors">
                 {icon}
                 {label}
             </p>
-            <p className={cn("text-slate-900 font-bold tracking-tight text-sm truncate", mono && "font-mono text-xs text-slate-700")}>
+            <p className={cn("text-slate-900 font-bold tracking-tight text-sm truncate pr-6", mono && "font-mono text-xs text-slate-700")}>
                 {value || '-'}
             </p>
         </div>

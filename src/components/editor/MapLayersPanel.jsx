@@ -193,6 +193,10 @@ const overlayCategories = {
                 style: { color: '#DC143C', weight: 2 },
                 minZoom: 8,
             },
+            'Caparéseau (Capacités)': {
+                type: 'capareseau-custom',
+                attribution: 'ODRÉ / S3REnR',
+            },
             'Lignes aériennes HTA': {
                 url: 'https://data.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-moyenne-tension-hta/exports/geojson',
                 attribution: 'ENEDIS',
@@ -485,6 +489,10 @@ const MapLayersPanel = ({ map }) => {
 
                     if (layerConfig.type === 'gaz-custom' || layerName === 'Réseau Gaz') {
                         window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'gaz' } }));
+                        return newActive;
+                    }
+                    if (layerConfig.type === 'capareseau-custom' || layerName === 'Caparéseau (Capacités)') {
+                        window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'capareseau' } }));
                         return newActive;
                     }
                     // Check zoom level for layers with minZoom
