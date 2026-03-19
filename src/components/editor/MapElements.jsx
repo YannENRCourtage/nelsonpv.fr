@@ -255,143 +255,100 @@ const powerIcon = (name, capacity) => L.divIcon({
 });
 
 // --- Ligne BT Manager (Enedis) ---
-function LigneBTLayerManager({ layersRef }) {
+// --- Layer Managers ---
+
+function LigneBTLayerManager({ layersRef, activeLayers }) {
   const map = useMap();
-  const [debouncedBounds, setDebouncedBounds] = useState(null);
-
-  // Debounce bounds change
-  useEffect(() => {
-    const handleMoveEnd = () => {
-      const b = map.getBounds();
-      // Only update if zoom is sufficient
-      if (map.getZoom() >= (LAYERS.enedisLigneBT.minZoom || 13)) {
-        setDebouncedBounds(b);
-      }
-    };
-    map.on('moveend', handleMoveEnd);
-    return () => map.off('moveend', handleMoveEnd);
-  }, [map]);
+  const active = activeLayers?.has('enedisLigneBT');
+  const layerGroupRef = useRef(L.featureGroup());
 
   useEffect(() => {
-    if (!debouncedBounds) return;
-
-    // Check if layer is active
-    if (!layersRef.current['enedisLigneBT'] || !map.hasLayer(layersRef.current['enedisLigneBT'])) return;
-
-    const fetchEnedisData = async () => {
-      const bounds = debouncedBounds;
-      // Format: lat_max, lon_min, lat_min, lon_max for within_box(geo_shape, ...) NO.
-      // ODS v2.1 API uses standard OGC filter? No, it uses 'where'.
-      // Docs say: within_box(geo_shape, latS, lonW, latN, lonE) -> NO
-      // Correct for ODS: within_box(geom_col, lat_top_left, lon_top_left, lat_bottom_right, lon_bottom_right)
-      // Actually, let's use the simplest: y1, x1, y2, x2 order depends on API version.
-      // Let's use `geofilter.polygon` with ODS v1 API which is safer/easier.
-      // Or v2 export with bbox?
-
-      // Let's try v2.1 records API with 'where' clause.
-      // where=within_box(geo_shape, 46.5, 0.5, 46.4, 0.6)  (TopLeft Lat, TopLeft Lon, BottomRight Lat, BottomRight Lon)
-
-      const latMax = bounds.getNorth();
-      const lonMin = bounds.getWest();
-      const latMin = bounds.getSouth();
-      const lonMax = bounds.getEast();
-
-      const whereClause = `within_box(geometry, ${latMax}, ${lonMin}, ${latMin}, ${lonMax})`;
-      const limit = 1000;
-
-      const urls = [
-        `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/reseau-souterrain-bt/records?limit=${limit}&where=${encodeURIComponent(whereClause)}`,
-        `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/reseau-aerien-bt/records?limit=${limit}&where=${encodeURIComponent(whereClause)}`
-      ];
-
-      try {
-        const results = await Promise.all(urls.map(u => fetch(u).then(r => r.json())));
-
-        // Clear existing layer content
-        const layerGroup = layersRef.current['enedisLigneBT'];
-        layerGroup.clearLayers();
-
-        // Process Souterrain (Index 0)
-        if (results[0].results) {
-          const geoJson = {
-            type: 'FeatureCollection',
-            features: results[0].results.map(r => {
-              try {
-                return {
-                  type: 'Feature',
-                  geometry: typeof r.geometry === 'string' ? JSON.parse(r.geometry) : r.geometry,
-                  properties: { ...r, _type: 'souterrain' }
-                };
-              } catch (e) { return null; }
-            }).filter(f => f !== null)
-          };
-          if (geoJson && geoJson.type === 'FeatureCollection' && geoJson.features && geoJson.features.length > 0) {
-            L.geoJSON(geoJson, {
-              style: { color: '#00008B', weight: 2, dashArray: '5, 5', opacity: 0.8 }
-            }).addTo(layerGroup);
-          }
-        }
-
-        // Process Aerien (Index 1)
-        if (results[1].results) {
-          const geoJson = {
-            type: 'FeatureCollection',
-            features: results[1].results.map(r => {
-              try {
-                return {
-                  type: 'Feature',
-                  geometry: typeof r.geometry === 'string' ? JSON.parse(r.geometry) : r.geometry,
-                  properties: { ...r, _type: 'aerien' }
-                };
-              } catch (e) { return null; }
-            }).filter(f => f !== null)
-          };
-          if (geoJson && geoJson.type === 'FeatureCollection' && geoJson.features && geoJson.features.length > 0) {
-            L.geoJSON(geoJson, {
-              style: { color: '#00008B', weight: 2, opacity: 0.8 }
-            }).addTo(layerGroup);
-          }
-        }
-
-      } catch (err) {
-        console.error("Error fetching Enedis BT data", err);
-      }
-    };
-
-    fetchEnedisData();
-
-  }, [debouncedBounds, map, layersRef]);
-
-  // Init layer group if not exists
-  useEffect(() => {
-    if (!layersRef.current['enedisLigneBT']) {
-      layersRef.current['enedisLigneBT'] = L.layerGroup();
-    }
+    if (!layersRef.current) return;
+    layersRef.current['enedisLigneBT'] = layerGroupRef.current;
   }, [layersRef]);
+
+  const fetchData = async () => {
+    if (!active || !map || map.getZoom() < (LAYERS.enedisLigneBT.minZoom || 13)) {
+      layerGroupRef.current.clearLayers();
+      return;
+    }
+
+    const bounds = map.getBounds();
+    const latMax = bounds.getNorth();
+    const lonMin = bounds.getWest();
+    const latMin = bounds.getSouth();
+    const lonMax = bounds.getEast();
+
+    const whereClause = `within_box(geometry, ${latMax}, ${lonMin}, ${latMin}, ${lonMax})`;
+    const limit = 1000;
+
+    const urls = [
+      `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/reseau-souterrain-bt/records?limit=${limit}&where=${encodeURIComponent(whereClause)}`,
+      `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/reseau-aerien-bt/records?limit=${limit}&where=${encodeURIComponent(whereClause)}`
+    ];
+
+    try {
+      const results = await Promise.all(urls.map(u => fetch(u).then(r => r.json())));
+      layerGroupRef.current.clearLayers();
+
+      // Process Souterrain (Index 0)
+      if (results[0].results) {
+        const geoJson = {
+          type: 'FeatureCollection',
+          features: results[0].results.map(r => ({
+            type: 'Feature',
+            geometry: r.geometry,
+            properties: { ...r, _type: 'souterrain' }
+          }))
+        };
+        L.geoJSON(geoJson, {
+          style: { color: '#00008B', weight: 2, dashArray: '5, 5', opacity: 0.8 }
+        }).addTo(layerGroupRef.current);
+      }
+
+      // Process Aerien (Index 1)
+      if (results[1].results) {
+        const geoJson = {
+          type: 'FeatureCollection',
+          features: results[1].results.map(r => ({
+            type: 'Feature',
+            geometry: r.geometry,
+            properties: { ...r, _type: 'aerien' }
+          }))
+        };
+        L.geoJSON(geoJson, {
+          style: { color: '#00008B', weight: 2, opacity: 0.8 }
+        }).addTo(layerGroupRef.current);
+      }
+    } catch (err) { console.error("Error fetching Enedis BT data", err); }
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => { map.off('moveend', onMoveEnd); };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+      layerGroupRef.current.clearLayers();
+    }
+  }, [active, map]);
 
   return null;
 }
 
-function GazDynamicLayerManager({ layersRef }) {
+function GazDynamicLayerManager({ layersRef, activeLayers }) {
   const map = useMap();
-  const [active, setActive] = useState(false);
+  const active = activeLayers?.has('gaz');
   const loadedIds = useRef(new Set());
   const layerGroupRef = useRef(L.featureGroup());
 
   useEffect(() => {
     if (!layersRef.current) return;
     layersRef.current['gaz'] = layerGroupRef.current;
-
-    const handleToggle = (e) => {
-      if (e.detail.layerKey === 'gaz') {
-        const isNowActive = !map.hasLayer(layerGroupRef.current);
-        setActive(isNowActive);
-      }
-    };
-
-    window.addEventListener('map:toggle-layer', handleToggle);
-    return () => window.removeEventListener('map:toggle-layer', handleToggle);
-  }, [map, layersRef]);
+  }, [layersRef]);
 
   const fetchData = async () => {
     if (!active || !map) return;
@@ -409,7 +366,7 @@ function GazDynamicLayerManager({ layersRef }) {
         loadedIds.current.add(item._id);
 
         try {
-          const geometry = JSON.parse(item.geometry);
+          const geometry = typeof item.geometry === 'string' ? JSON.parse(item.geometry) : item.geometry;
           const feature = {
             type: 'Feature',
             geometry: geometry,
@@ -448,26 +405,16 @@ function GazDynamicLayerManager({ layersRef }) {
   return null;
 }
 
-function CompaniesLayerManager({ layersRef, onCompaniesUpdate }) {
+function CompaniesLayerManager({ layersRef, activeLayers, onCompaniesUpdate }) {
   const map = useMap();
-  const [active, setActive] = useState(false);
+  const active = activeLayers?.has('companies');
   const loadedIds = useRef(new Set());
   const layerGroupRef = useRef(L.featureGroup());
 
   useEffect(() => {
     if (!layersRef.current) return;
     layersRef.current['companies'] = layerGroupRef.current;
-
-    const handleToggle = (e) => {
-      if (e.detail.layerKey === 'companies') {
-        const isNowActive = !map.hasLayer(layerGroupRef.current);
-        setActive(isNowActive);
-      }
-    };
-
-    window.addEventListener('map:toggle-layer', handleToggle);
-    return () => window.removeEventListener('map:toggle-layer', handleToggle);
-  }, [map, layersRef]);
+  }, [layersRef]);
 
   const fetchData = async () => {
     if (!active || !map || map.getZoom() < 16) {
@@ -517,29 +464,18 @@ function CompaniesLayerManager({ layersRef, onCompaniesUpdate }) {
   }, [active, map]);
 
   return null;
-  return null;
 }
 
-function CapareseauLayerManager({ layersRef }) {
+function CapareseauLayerManager({ layersRef, activeLayers }) {
   const map = useMap();
-  const [active, setActive] = useState(false);
+  const active = activeLayers?.has('capareseau');
   const loadedIds = useRef(new Set());
   const layerGroupRef = useRef(L.featureGroup());
 
   useEffect(() => {
     if (!layersRef.current) return;
     layersRef.current['capareseau'] = layerGroupRef.current;
-
-    const handleToggle = (e) => {
-      if (e.detail.layerKey === 'capareseau') {
-        const isNowActive = !map.hasLayer(layerGroupRef.current);
-        setActive(isNowActive);
-      }
-    };
-
-    window.addEventListener('map:toggle-layer', handleToggle);
-    return () => window.removeEventListener('map:toggle-layer', handleToggle);
-  }, [map, layersRef]);
+  }, [layersRef]);
 
   const fetchData = async () => {
     if (!active || !map) return;
@@ -549,7 +485,6 @@ function CapareseauLayerManager({ layersRef }) {
     const latMin = bounds.getSouth();
     const lonMax = bounds.getEast();
 
-    // S3REnR Dataset on ODRÉ (RTE + Enedis)
     const dataset = 'capacites-daccueil-du-reseau-pour-le-raccordement-au-reseau-electrique';
     const whereClause = `within_box(geo_shape, ${latMax}, ${lonMin}, ${latMin}, ${lonMax})`;
     const url = `/api/melodi?action=capareseau&dataset=${dataset}&where=${encodeURIComponent(whereClause)}`;
@@ -566,14 +501,11 @@ function CapareseauLayerManager({ layersRef }) {
 
         if (item.geo_point_2d) {
           const latlng = [item.geo_point_2d.lat, item.geo_point_2d.lon];
-          
           const marker = L.marker(latlng, {
             icon: powerIcon(item.nom_du_poste, item.capacite_disponible_mw || 0)
           });
-
           marker.on('click', (e) => {
              if (e.originalEvent) e.originalEvent.stopPropagation();
-             console.log("[CapareseauLayerManager] Clicked substation:", item.nom_du_poste);
              window.dispatchEvent(new CustomEvent('map:select-substation', { detail: { substation: item } }));
           });
           marker.addTo(layerGroupRef.current);
@@ -597,16 +529,16 @@ function CapareseauLayerManager({ layersRef }) {
   return null;
 }
 
-function PostesHTALayerManager({ layersRef }) {
+function PostesHTALayerManager({ layersRef, activeLayers }) {
   const map = useMap();
-  const [active, setActive] = useState(false);
+  const active = activeLayers?.has('enedisPostes');
   const layerGroupRef = useRef(L.markerClusterGroup({
     chunkedLoading: true,
     maxClusterRadius: 60,
     iconCreateFunction: (cluster) => {
       const count = cluster.getChildCount();
       return L.divIcon({
-        html: `<div style="background: #FFA500; color:white; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">${count}</div>`,
+        html: `<div style="background: #DC143C; color:white; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">${count}</div>`,
         className: '',
         iconSize: L.point(35, 35)
       });
@@ -616,17 +548,7 @@ function PostesHTALayerManager({ layersRef }) {
   useEffect(() => {
     if (!layersRef.current) return;
     layersRef.current['enedisPostes'] = layerGroupRef.current;
-
-    const handleToggle = (e) => {
-      if (e.detail.layerKey === 'enedisPostes') {
-        const isNowActive = !map.hasLayer(layerGroupRef.current);
-        setActive(isNowActive);
-      }
-    };
-
-    window.addEventListener('map:toggle-layer', handleToggle);
-    return () => window.removeEventListener('map:toggle-layer', handleToggle);
-  }, [map, layersRef]);
+  }, [layersRef]);
 
   const fetchData = async () => {
     if (!active || !map) return;
@@ -644,9 +566,6 @@ function PostesHTALayerManager({ layersRef }) {
       const data = await response.json();
       if (!data.results) return;
 
-      // Clear if moving a lot? Actually, let's just add new ones if we had a set, 
-      // but markerCluster is better with clear/add or just keeping all.
-      // Small data, let's just clear and re-add for simplicity and freshness.
       layerGroupRef.current.clearLayers();
 
       const geoJson = {
@@ -660,27 +579,26 @@ function PostesHTALayerManager({ layersRef }) {
 
       L.geoJSON(geoJson, {
         pointToLayer: (feature, latlng) => {
-          return L.circleMarker(latlng, {
-            radius: 5,
-            fillColor: "#FFA500",
-            color: "#000",
-            weight: 1,
-            opacity: 1,
-            fillOpacity: 0.8
+          return L.marker(latlng, {
+            icon: L.divIcon({
+              className: 'hta-poste-icon',
+              html: '<div style="background-color: red; width: 12px; height: 12px; border: 1.5px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>',
+              iconSize: [12, 12],
+              iconAnchor: [6, 6]
+            })
           });
         },
         onEachFeature: (feature, layer) => {
           const props = feature.properties;
-          let popupContent = '<div style="font-family: sans-serif;">';
-          popupContent += `<h4 style="margin: 0 0 8px 0; color: #FFA500; font-size: 17px; font-weight: bold;">⚡ Poste HTA/BT</h4>`;
-          if (props.nom_poste) popupContent += `<p style="margin: 4px 0;"><strong>Nom:</strong> ${props.nom_poste}</p>`;
-          if (props.type_poste) popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.type_poste}</p>`;
-          if (props.code_commune) popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.code_commune}</p>`;
+          let popupContent = '<div style="font-family: sans-serif; min-width: 200px;">';
+          popupContent += `<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 16px; font-weight: bold;">⚡ Poste HTA/BT</h4>`;
+          if (props.nom_poste) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Nom:</strong> ${props.nom_poste}</p>`;
+          if (props.type_poste) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Type:</strong> ${props.type_poste}</p>`;
+          if (props.code_commune) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Code Commune:</strong> ${props.code_commune}</p>`;
           popupContent += '</div>';
           layer.bindPopup(popupContent, { maxWidth: 320 });
         }
       }).addTo(layerGroupRef.current);
-
     } catch (err) { console.error("Error fetching Postes HTA data", err); }
   };
 
@@ -699,25 +617,15 @@ function PostesHTALayerManager({ layersRef }) {
   return null;
 }
 
-function HTALayerManager({ layersRef }) {
+function HTALayerManager({ layersRef, activeLayers }) {
   const map = useMap();
-  const [active, setActive] = useState(false);
+  const active = activeLayers?.has('enedisHTA');
   const layerGroupRef = useRef(L.featureGroup());
 
   useEffect(() => {
     if (!layersRef.current) return;
     layersRef.current['enedisHTA'] = layerGroupRef.current;
-
-    const handleToggle = (e) => {
-      if (e.detail.layerKey === 'enedisHTA') {
-        const isNowActive = !map.hasLayer(layerGroupRef.current);
-        setActive(isNowActive);
-      }
-    };
-
-    window.addEventListener('map:toggle-layer', handleToggle);
-    return () => window.removeEventListener('map:toggle-layer', handleToggle);
-  }, [map, layersRef]);
+  }, [layersRef]);
 
   const fetchData = async () => {
     if (!active || !map) return;
@@ -737,54 +645,41 @@ function HTALayerManager({ layersRef }) {
       const results = await Promise.all(urls.map(u => fetch(u).then(r => r.json())));
       layerGroupRef.current.clearLayers();
 
-      // Aerien (Index 0) - Orange
       if (results[0].results) {
         const geoJson = {
           type: 'FeatureCollection',
-          features: results[0].results.map(r => ({
-            type: 'Feature',
-            geometry: r.geometry,
-            properties: r
-          }))
+          features: results[0].results.map(r => ({ type: 'Feature', geometry: r.geometry, properties: r }))
         };
         L.geoJSON(geoJson, {
-          style: { color: '#FF8C00', weight: 4, opacity: 0.9 },
+          style: { color: "#FF8C00", weight: 3, opacity: 0.8 },
           onEachFeature: (feature, layer) => {
             const props = feature.properties;
-            let popupContent = '<div style="font-family: sans-serif;">';
-            popupContent += `<h4 style="margin: 0 0 6px 0; color: #FF8C00; font-size: 15px;">⚡ Ligne HTA Aérienne</h4>`;
+            let popupContent = '<div style="font-family: sans-serif; font-size: 13px;">';
+            popupContent += '<h4 style="margin: 0 0 6px 0; color: #FF8C00; font-size: 15px; font-weight: bold;">⚡ Ligne HTA Aérienne</h4>';
             if (props.lib_ligne) popupContent += `<p style="margin: 3px 0;"><strong>Ligne:</strong> ${props.lib_ligne}</p>`;
-            if (props.nom_commune) popupContent += `<p style="margin: 3px 0;"><strong>Commune:</strong> ${props.nom_commune}</p>`;
             popupContent += '</div>';
             layer.bindPopup(popupContent);
           }
         }).addTo(layerGroupRef.current);
       }
 
-      // Souterrain (Index 1) - Orange Dashed
       if (results[1].results) {
         const geoJson = {
           type: 'FeatureCollection',
-          features: results[1].results.map(r => ({
-            type: 'Feature',
-            geometry: r.geometry,
-            properties: r
-          }))
+          features: results[1].results.map(r => ({ type: 'Feature', geometry: r.geometry, properties: r }))
         };
         L.geoJSON(geoJson, {
-          style: { color: '#FF8C00', weight: 3, dashArray: '8, 8', opacity: 0.8 },
+          style: { color: "yellow", weight: 3, dashArray: '5, 5', opacity: 1 },
           onEachFeature: (feature, layer) => {
             const props = feature.properties;
-            let popupContent = '<div style="font-family: sans-serif;">';
-            popupContent += `<h4 style="margin: 0 0 6px 0; color: #FF8C00; font-size: 15px;">⚡ Ligne HTA Souterraine</h4>`;
+            let popupContent = '<div style="font-family: sans-serif; font-size: 13px;">';
+            popupContent += '<h4 style="margin: 0 0 6px 0; color: #facc15; font-size: 15px; font-weight: bold;">⚡ Ligne HTA Souterraine</h4>';
             if (props.lib_ligne) popupContent += `<p style="margin: 3px 0;"><strong>Ligne:</strong> ${props.lib_ligne}</p>`;
-            if (props.nom_commune) popupContent += `<p style="margin: 3px 0;"><strong>Commune:</strong> ${props.nom_commune}</p>`;
             popupContent += '</div>';
             layer.bindPopup(popupContent);
           }
         }).addTo(layerGroupRef.current);
       }
-
     } catch (err) { console.error("Error fetching HTA lines data", err); }
   };
 
@@ -2032,156 +1927,90 @@ function SDISLegend({ layersRef }) {
 // ====================================================================
 // MANAGER SDIS 17 (Logique WFS + Cluster)
 // ====================================================================
-function SDISLayerManager({ layersRef }) {
+function SDISLayerManager({ layersRef, activeLayers }) {
   const map = useMap();
+  const active = activeLayers?.has('sdis');
+  const layerGroupRef = useRef(L.markerClusterGroup({
+    chunkedLoading: true,
+    chunkInterval: 200,
+    chunkDelay: 50,
+    maxClusterRadius: 50,
+    disableClusteringAtZoom: 17,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    iconCreateFunction: (cluster) => {
+      const count = cluster.getChildCount();
+      let size = count > 100 ? 'large' : count > 10 ? 'medium' : 'small';
+      const colors = {
+        small: { bg: 'rgba(220, 20, 60, 0.7)', border: 'rgba(200, 10, 50, 0.9)' },
+        medium: { bg: 'rgba(200, 10, 50, 0.7)', border: 'rgba(178, 34, 34, 0.9)' },
+        large: { bg: 'rgba(178, 34, 34, 0.8)', border: 'rgba(139, 0, 0, 1)' }
+      };
+      const dimensions = { small: '30px', medium: '40px', large: '50px' };
+      return L.divIcon({
+        html: `<div style="background-color: ${colors[size].bg}; border: 3px solid ${colors[size].border}; width: ${dimensions[size]}; height: ${dimensions[size]}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: ${size === 'small' ? '12px' : size === 'medium' ? '14px' : '16px'};"><span>${count}</span></div>`,
+        className: '',
+        iconSize: [40, 40]
+      });
+    }
+  }));
 
   useEffect(() => {
-    console.log('[SDISLayerManager] useEffect triggered');
-    console.log('[SDISLayerManager] Current sdis layer:', layersRef.current['sdis']);
+    if (!layersRef.current) return;
+    layersRef.current['sdis'] = layerGroupRef.current;
+  }, [layersRef]);
 
-    // Initialiser la couche SDIS si elle n'existe pas encore
-    if (!layersRef.current['sdis']) {
-      console.log('[SDISLayerManager] Creating new SDIS layer');
-      const layerConfig = LAYERS['sdis'];
+  const loadData = async () => {
+    const layerConfig = LAYERS['sdis'];
+    const apis = layerConfig.apis || [];
+    try {
+      const results = await Promise.all(apis.map(url => {
+        let proxyUrl = url;
+        if (url.includes('sdis17.fr')) proxyUrl = url.replace('https://api.deci.sdis17.fr', '/sdis-proxy/17');
+        else if (url.includes('sdis84.fr')) proxyUrl = url.replace('https://api.deci.sdis84.fr', '/sdis-proxy/84');
+        else if (url.includes('sdis81.fr')) proxyUrl = url.replace('https://api.deci.sdis81.fr', '/sdis-proxy/81');
+        return fetch(proxyUrl).then(r => r.ok ? r.json() : { features: [] }).catch(() => ({ features: [] }));
+      }));
 
-      // Créer un groupe de clusters pour gérer les marqueurs
-      const markerClusterGroup = L.markerClusterGroup({
-        chunkedLoading: true,
-        chunkInterval: 200,
-        chunkDelay: 50,
-        maxClusterRadius: 50,
-        disableClusteringAtZoom: 17,
-        spiderfyOnMaxZoom: true,
-        showCoverageOnHover: false,
-        iconCreateFunction: function (cluster) {
-          const count = cluster.getChildCount();
-          let size = 'small';
-          if (count > 100) size = 'large';
-          else if (count > 10) size = 'medium';
+      const allFeatures = results.flatMap(r => r.features || []);
+      layerGroupRef.current.clearLayers();
 
-          return L.divIcon({
-            html: `<div style="background-color: ${size === 'small' ? 'rgba(220, 20, 60, 0.7)' : size === 'medium' ? 'rgba(200, 10, 50, 0.7)' : 'rgba(178, 34, 34, 0.8)'}; border: 3px solid ${size === 'small' ? 'rgba(200, 10, 50, 0.9)' : size === 'medium' ? 'rgba(178, 34, 34, 0.9)' : 'rgba(139, 0, 0, 1)'}; width: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; height: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: ${size === 'small' ? '12px' : size === 'medium' ? '14px' : '16px'};"><span>${count}</span></div>`,
-            className: '',
-            iconSize: L.point(40, 40)
-          });
-        }
-      });
+      if (allFeatures.length > 0) {
+        L.geoJSON({ type: 'FeatureCollection', features: allFeatures }, {
+          pointToLayer: (feature, latlng) => {
+            const type = feature.properties?.type_hydrant || feature.properties?.famille_pei || '';
+            let html = '';
+            if (type.startsWith('PI') || type.includes('POTEAU')) html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+            else if (type.startsWith('BI') || type.includes('BOUCHE')) html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+            else if (['REA', 'RENA'].includes(type) || type.includes('Reserve')) html = `<div style="background-color: #3B82F6; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #1E40AF; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+            else html = `<div style="background-color: #9CA3AF; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #4B5563;"></div>`;
 
-      // Sauvegarder dans layersRef pour que le toggle fonctionne
-      layersRef.current['sdis'] = markerClusterGroup;
-
-      // Fonction pour charger les données depuis les 3 APIs
-      const loadData = () => {
-        const apis = layerConfig.apis || [];
-        console.log("FETCH SDIS FROM APIS:", apis);
-
-        Promise.all(apis.map(url => {
-          // Determine correct proxy path based on domain
-          let proxyUrl = url;
-          if (url.includes('sdis17.fr')) proxyUrl = url.replace('https://api.deci.sdis17.fr', '/sdis-proxy/17');
-          else if (url.includes('sdis84.fr')) proxyUrl = url.replace('https://api.deci.sdis84.fr', '/sdis-proxy/84');
-          else if (url.includes('sdis81.fr')) proxyUrl = url.replace('https://api.deci.sdis81.fr', '/sdis-proxy/81');
-
-          console.log(`SDIS Fetching: ${proxyUrl} (Original: ${url})`);
-
-          return fetch(proxyUrl)
-            .then(async r => {
-              if (!r.ok) {
-                console.error(`Status ${r.status} for ${proxyUrl}`);
-                throw new Error(`HTTP ${r.status}`);
-              }
-              const text = await r.text();
-              try {
-                return JSON.parse(text);
-              } catch (e) {
-                console.error(`JSON Parse Error for ${proxyUrl}:`, e);
-                return { features: [] };
-              }
-            })
-        })).then(results => {
-          // Fusionner toutes les features
-          const allFeatures = results.flatMap(r => {
-            if (!r.features) {
-              console.warn("SDIS result missing features array:", r);
-              return [];
-            }
-            return r.features;
-          });
-          const mergedData = {
-            type: 'FeatureCollection',
-            features: allFeatures
-          };
-
-          console.log(`SDIS: ${allFeatures.length} points d'eau chargés depuis ${apis.length} APIs`);
-          console.log("SDIS MERGED DATA:", mergedData);
-          if (mergedData && mergedData.type === 'FeatureCollection' && mergedData.features && mergedData.features.length > 0) {
-            const geoJsonLayer = L.geoJSON(mergedData, {
-              pointToLayer: (feature, latlng) => {
-                const type = feature.properties?.type_hydrant || feature.properties?.famille_pei || '';
-                let html = '';
-
-                // Styling Logic based on Type
-                if (type.startsWith('PI') || type.includes('POTEAU')) {
-                  html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
-                } else if (type.startsWith('BI') || type.includes('BOUCHE')) {
-                  html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
-                } else if (['REA', 'RENA'].includes(type) || type.includes('Reserve') || type.includes('RESERVE')) {
-                  html = `<div style="background-color: #3B82F6; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #1E40AF; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
-                } else {
-                  html = `<div style="background-color: #9CA3AF; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #4B5563;"></div>`;
-                }
-
-                return L.marker(latlng, {
-                  icon: L.divIcon({
-                    className: '',
-                    html: html,
-                    iconSize: [14, 14],
-                    iconAnchor: [7, 7]
-                  })
-                });
-              },
-              onEachFeature: (feature, layer) => {
-                if (feature.properties) {
-                  const props = feature.properties;
-                  let popupContent = '<div style="font-family: sans-serif;">';
-                  popupContent += '<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 16px; font-weight: bold;">🚒 Point d\'Eau Incendie</h4>';
-                  popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.commune || 'N/A'}</p>`;
-                  popupContent += `<p style="margin: 4px 0;"><strong>Numéro:</strong> ${props.numero_long || props.nom || 'N/A'}</p>`;
-                  popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.famille_pei || props.type_start || props.type_hydrant || 'N/A'}</p>`;
-                  popupContent += `<p style="margin: 4px 0;"><strong>État:</strong> ${props.etat || props.etat_start || 'Inconnu'}</p>`;
-                  if (props.adresse) popupContent += `<p style="margin: 4px 0;"><strong>Adresse:</strong> ${props.adresse}</p>`;
-                  if (props.volume) popupContent += `<p style="margin: 4px 0;"><strong>Volume:</strong> ${props.volume} m³</p>`;
-                  if (props.debit_1bar || props.debit) popupContent += `<p style="margin: 4px 0;"><strong>Débit (1 bar):</strong> ${props.debit_1bar || props.debit} m³/h</p>`;
-                  if (props.pression) popupContent += `<p style="margin: 4px 0;"><strong>Pression:</strong> ${props.pression} bar</p>`;
-                  popupContent += '</div>';
-                  layer.bindPopup(popupContent, { maxWidth: 300 });
-                }
-              }
+            return L.marker(latlng, {
+              icon: L.divIcon({ className: '', html: html, iconSize: [14, 14], iconAnchor: [7, 7] })
             });
-            markerClusterGroup.addLayer(geoJsonLayer);
+          },
+          onEachFeature: (feature, layer) => {
+            const props = feature.properties;
+            let popupContent = '<div style="font-family: sans-serif;">';
+            popupContent += '<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 16px; font-weight: bold;">🚒 Point d\'Eau Incendie</h4>';
+            popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.commune || 'N/A'}</p>`;
+            popupContent += `<p style="margin: 4px 0;"><strong>Numéro:</strong> ${props.numero_long || props.nom || 'N/A'}</p>`;
+            popupContent += '</div>';
+            layer.bindPopup(popupContent, { maxWidth: 300 });
           }
-        }).catch(err => console.error("Erreur chargement SDIS", err));
-      };
+        }).addTo(layerGroupRef.current);
+      }
+    } catch (err) { console.error("Error loading SDIS data", err); }
+  };
 
-      const handleLayerAdd = (e) => {
-        if (e.layer === markerClusterGroup) {
-          console.log("SDIS layer added - checking data");
-          if (markerClusterGroup.getLayers().length === 0) {
-            loadData();
-          }
-        }
-      };
-
-      map.on('layeradd', handleLayerAdd);
-
-      // Charger les données une seule fois
-      loadData();
-
-      return () => {
-        map.off('layeradd', handleLayerAdd);
-      };
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      if (layerGroupRef.current.getLayers().length === 0) loadData();
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
     }
-  }, [map, layersRef]);
+  }, [active, map]);
 
   return null;
 }
@@ -2189,39 +2018,6 @@ function SDISLayerManager({ layersRef }) {
 
 // ENEDIS Managers were removed in favor of WMS layers for performance with 1M points.
 
-// ====================================================================
-// LAYER TOGGLE LISTENER (for ProjectEditor buttons)
-// ====================================================================
-function LayerToggleListener({ layersRef }) {
-  const map = useMap();
-
-  useEffect(() => {
-    const handleToggleLayer = (e) => {
-      const { layerKey } = e.detail;
-      console.log(`[LayerToggleListener] Toggle event received for layer: ${layerKey}`);
-      console.log(`[LayerToggleListener] layersRef.current:`, Object.keys(layersRef.current));
-
-      if (layersRef.current[layerKey]) {
-        console.log(`[LayerToggleListener] Layer ${layerKey} found in layersRef`);
-        if (map.hasLayer(layersRef.current[layerKey])) {
-          console.log(`[LayerToggleListener] Removing layer ${layerKey} from map`);
-          map.removeLayer(layersRef.current[layerKey]);
-        } else {
-          console.log(`[LayerToggleListener] Adding layer ${layerKey} to map`);
-          console.log(`[LayerToggleListener] Layer object:`, layersRef.current[layerKey]);
-          layersRef.current[layerKey].addTo(map);
-        }
-      } else {
-        console.warn(`[LayerToggleListener] Layer ${layerKey} NOT found in layersRef!`);
-      }
-    };
-
-    window.addEventListener('map:toggle-layer', handleToggleLayer);
-    return () => window.removeEventListener('map:toggle-layer', handleToggleLayer);
-  }, [map, layersRef]);
-
-  return null;
-}
 
 // Overlay controls removed - now handled via buttons below map in ProjectEditor.jsx
 
@@ -3618,13 +3414,13 @@ export default function MapElements({
           <LayersBootstrap layersRef={layersRef} />
 
           {/* Layer Managers */}
-          <SDISLayerManager layersRef={layersRef} />
-          <GazDynamicLayerManager layersRef={layersRef} />
-          <LigneBTLayerManager layersRef={layersRef} />
-          <HTALayerManager layersRef={layersRef} />
-          <PostesHTALayerManager layersRef={layersRef} />
-          <CapareseauLayerManager layersRef={layersRef} />
-          <CompaniesLayerManager layersRef={layersRef} onCompaniesUpdate={setCompanies} />
+          <SDISLayerManager layersRef={layersRef} activeLayers={activeLayers} />
+          <GazDynamicLayerManager layersRef={layersRef} activeLayers={activeLayers} />
+          <LigneBTLayerManager layersRef={layersRef} activeLayers={activeLayers} />
+          <HTALayerManager layersRef={layersRef} activeLayers={activeLayers} />
+          <PostesHTALayerManager layersRef={layersRef} activeLayers={activeLayers} />
+          <CapareseauLayerManager layersRef={layersRef} activeLayers={activeLayers} />
+          <CompaniesLayerManager layersRef={layersRef} activeLayers={activeLayers} onCompaniesUpdate={setCompanies} />
 
           {/* Controls inside map */}
           <BasemapControl layersRef={layersRef} />
