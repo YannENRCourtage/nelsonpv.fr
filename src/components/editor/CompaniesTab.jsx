@@ -62,12 +62,19 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
   const fetchCompanies = useCallback(async (query = '', lat = null, lon = null, r = radius) => {
     setLoading(true);
     try {
-      let url = `/api/sirene?per_page=100`;
-      if (query) url += `&q=${encodeURIComponent(query)}`;
-      if (lat && lon) url += `&lat=${lat}&lon=${lon}&radius=${r}`;
+      // Utilisation du proxy unifié avec near=1 pour la découverte géo
+      let url = `/api/proxies/sirene?per_page=100`;
+      if (query) {
+        url += `&q=${encodeURIComponent(query)}`;
+      } else if (lat && lon) {
+        url += `&lat=${lat}&lon=${lon}&radius=${r}&near=1`;
+      }
 
       const res = await fetch(url);
-      if (!res.ok) throw new Error('Erreur lors de la récupération des sociétés');
+      if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Erreur lors de la récupération des sociétés');
+      }
       const data = await res.json();
       
       const formatted = (data.results || []).map(c => ({
@@ -93,7 +100,11 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
       setCompanies(formatted);
     } catch (err) {
       console.error(err);
-      toast({ title: "Erreur", description: "Impossible de charger les sociétés.", variant: "destructive" });
+      toast({ 
+        title: "Erreur de chargement", 
+        description: err.message || "Impossible de charger les sociétés. Vérifiez l'état de l'API SIRENE.", 
+        variant: "destructive" 
+      });
     } finally {
       setLoading(false);
     }
@@ -329,6 +340,32 @@ export default function CompaniesTab({ project, companies = [], setCompanies, se
                                     <InfoCard label="Création" value={selectedCompany.dateCreation} icon={<Calendar className="w-3.5 h-3.5"/>} />
                                     <InfoCard label="Effectifs" value={selectedCompany.trancheEffectif || 'Non renseigné'} icon={<Users className="w-3.5 h-3.5"/>} />
                                 </div>
+
+                                {selectedCompany.dirigeants && selectedCompany.dirigeants.length > 0 && (
+                                    <div className="mt-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                        <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest flex items-center gap-1.5 mb-4 px-1">
+                                            <Users className="w-3.5 h-3.5"/>
+                                            Dirigeants
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {selectedCompany.dirigeants.slice(0, 6).map((d, idx) => (
+                                                <div key={idx} className="bg-white border border-slate-100 rounded-2xl px-4 py-2 flex items-center gap-3 shadow-sm hover:border-blue-200 transition-all group/dir">
+                                                    <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 font-bold text-[10px] group-hover/dir:bg-blue-600 group-hover/dir:text-white transition-colors">
+                                                        {d.nom ? d.nom[0] : (d.prenoms ? d.prenoms[0] : '?')}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[11px] font-bold text-slate-800 leading-tight">
+                                                            {d.prenoms} {d.nom}
+                                                        </p>
+                                                        <p className="text-[9px] text-slate-400 uppercase font-bold tracking-tight mt-0.5">
+                                                            {d.qualite || (d.fonction_ou_role ? d.fonction_ou_role : 'Mandataire')}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="bg-slate-50 rounded-[3rem] p-10 border border-slate-100 flex flex-col md:flex-row items-center gap-10">
                                      <div className="flex-1">

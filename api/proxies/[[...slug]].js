@@ -82,5 +82,50 @@ export default async function handler(req, res) {
         }
     }
 
+    if (action === 'sirene') {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        if (req.method === 'OPTIONS') return res.status(200).end();
+        if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+        
+        try {
+            const { lat, lon, near } = req.query;
+            let baseUrl = "https://recherche-entreprises.api.gouv.fr/search?";
+            if (near === '1' && lat && lon) {
+                baseUrl = "https://recherche-entreprises.api.gouv.fr/near_point?";
+            }
+
+            const params = new URLSearchParams(req.query);
+            params.delete('slug'); 
+            params.delete('near');
+            // near_point expects 'lat', 'long' (not 'lon')
+            if (near === '1' && lon) {
+                params.set('long', lon);
+                params.delete('lon');
+            }
+            if (!req.query.limite_matching) params.set('limite_matching', 'true');
+
+            const sireneUrl = baseUrl + params.toString();
+            console.log(`[PROXY SIRENE] Fetching: ${sireneUrl}`);
+            const response = await fetch(sireneUrl, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json', 'User-Agent': 'NelsonPV-App/1.0' }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`[PROXY SIRENE] API Error ${response.status}:`, errorText);
+                return res.status(response.status).json({ error: `Sirene API error: ${response.status}`, details: errorText });
+            }
+
+            const data = await response.json();
+            return res.status(200).json(data);
+        } catch (error) {
+            console.error('Error proxying Sirene request:', error);
+            return res.status(500).json({ error: 'Internal proxy error', message: error.message });
+        }
+    }
+
     return res.status(404).json({ error: 'Proxy endpoint not found' });
 }
