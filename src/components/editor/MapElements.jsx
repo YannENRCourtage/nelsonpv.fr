@@ -26,7 +26,7 @@ import html2canvas from "html2canvas";
 import SearchField from "./SearchField.jsx";
 import { toast } from "@/components/ui/use-toast.js";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer } from 'recharts';
-import { X as XIcon, Download, Save, Copy, RotateCw, MapPin, Maximize, Building, AlertCircle, FileText, Map as MapIcon, ExternalLink } from 'lucide-react';
+import { X as XIcon, Download, Save, Copy, RotateCw, MapPin, Maximize, Building, AlertCircle, FileText, Map as MapIcon, ExternalLink, Loader2 } from 'lucide-react';
 import { mapData } from "@/lib/nomenclature.js";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
@@ -227,16 +227,16 @@ const photoIcon = (number) => L.divIcon({
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
-const companyIcon = (name, isSelected) => L.divIcon({
+const companyIcon = (name, isSelected, type = 'moral') => L.divIcon({
   html: `<div class="flex items-center gap-2 group transition-all" style="z-index: ${isSelected ? 1000 : 1}">
-           <div class="w-3 h-3 rounded-full border-2 border-white shadow-md ${isSelected ? 'bg-amber-500 scale-150 shadow-amber-200' : 'bg-blue-600 outline outline-4 outline-blue-600/10'}"></div>
-           <div class="${isSelected ? 'flex' : 'hidden md:group-hover:flex'} bg-white/95 backdrop-blur-sm border border-slate-200 px-2 py-0.5 rounded-md shadow-sm whitespace-nowrap">
-             <span class="text-[10px] font-black text-slate-800 tracking-tight uppercase">${name}</span>
+           <div class="w-3.5 h-3.5 rounded-full border-2 border-white shadow-lg transition-transform ${isSelected ? 'bg-amber-500 scale-125 ring-4 ring-amber-500/20' : 'bg-blue-600 hover:scale-110'}"></div>
+           <div class="${isSelected ? 'flex' : 'hidden md:group-hover:flex'} bg-slate-900 text-white border border-slate-700 px-2 py-0.5 rounded shadow-xl whitespace-nowrap -mt-8 ml-2 absolute">
+             <span class="text-[10px] font-bold tracking-tight uppercase">${name}</span>
            </div>
          </div>`,
   className: 'bg-transparent border-none',
   iconSize: [20, 20],
-  iconAnchor: [6, 6],
+  iconAnchor: [7, 7],
 });
 
 const powerIcon = (name, capacity) => L.divIcon({
@@ -254,90 +254,7 @@ const powerIcon = (name, capacity) => L.divIcon({
   iconAnchor: [12, 12],
 });
 
-// --- Ligne BT Manager (Enedis) ---
 // --- Layer Managers ---
-
-function LigneBTLayerManager({ layersRef, activeLayers }) {
-  const map = useMap();
-  const active = activeLayers?.has('enedisLigneBT');
-  const layerGroupRef = useRef(L.featureGroup());
-
-  useEffect(() => {
-    if (!layersRef.current) return;
-    layersRef.current['enedisLigneBT'] = layerGroupRef.current;
-  }, [layersRef]);
-
-  const fetchData = async () => {
-    if (!active || !map || map.getZoom() < (LAYERS.enedisLigneBT.minZoom || 13)) {
-      layerGroupRef.current.clearLayers();
-      return;
-    }
-
-    const bounds = map.getBounds();
-    const latMax = bounds.getNorth();
-    const lonMin = bounds.getWest();
-    const latMin = bounds.getSouth();
-    const lonMax = bounds.getEast();
-
-    const whereClause = `within_box(geometry, ${latMax}, ${lonMin}, ${latMin}, ${lonMax})`;
-    const limit = 1000;
-
-    const urls = [
-      `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/reseau-souterrain-bt/records?limit=${limit}&where=${encodeURIComponent(whereClause)}`,
-      `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/reseau-aerien-bt/records?limit=${limit}&where=${encodeURIComponent(whereClause)}`
-    ];
-
-    try {
-      const results = await Promise.all(urls.map(u => fetch(u).then(r => r.json())));
-      layerGroupRef.current.clearLayers();
-
-      // Process Souterrain (Index 0)
-      if (results[0].results) {
-        const geoJson = {
-          type: 'FeatureCollection',
-          features: results[0].results.map(r => ({
-            type: 'Feature',
-            geometry: r.geometry,
-            properties: { ...r, _type: 'souterrain' }
-          }))
-        };
-        L.geoJSON(geoJson, {
-          style: { color: '#00008B', weight: 2, dashArray: '5, 5', opacity: 0.8 }
-        }).addTo(layerGroupRef.current);
-      }
-
-      // Process Aerien (Index 1)
-      if (results[1].results) {
-        const geoJson = {
-          type: 'FeatureCollection',
-          features: results[1].results.map(r => ({
-            type: 'Feature',
-            geometry: r.geometry,
-            properties: { ...r, _type: 'aerien' }
-          }))
-        };
-        L.geoJSON(geoJson, {
-          style: { color: '#00008B', weight: 2, opacity: 0.8 }
-        }).addTo(layerGroupRef.current);
-      }
-    } catch (err) { console.error("Error fetching Enedis BT data", err); }
-  };
-
-  useEffect(() => {
-    if (active) {
-      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
-      fetchData();
-      const onMoveEnd = () => fetchData();
-      map.on('moveend', onMoveEnd);
-      return () => { map.off('moveend', onMoveEnd); };
-    } else {
-      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
-      layerGroupRef.current.clearLayers();
-    }
-  }, [active, map]);
-
-  return null;
-}
 
 function GazDynamicLayerManager({ layersRef, activeLayers }) {
   const map = useMap();
@@ -405,7 +322,136 @@ function GazDynamicLayerManager({ layersRef, activeLayers }) {
   return null;
 }
 
-function CompaniesLayerManager({ layersRef, activeLayers, onCompaniesUpdate }) {
+function CompanyDetailsPanel({ data, onClose, copyToClipboard }) {
+  const [details, setDetails] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchExtraDetails = async () => {
+      if (!data.siege?.siret) return;
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/melodi?action=details&siret=${data.siege.siret}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.etablissement) setDetails(json.etablissement);
+        }
+      } catch (err) { console.error("Error fetching extra siren details", err); }
+      finally { setLoading(false); }
+    };
+    fetchExtraDetails();
+  }, [data]);
+
+  const siren = data.siren;
+  const siret = data.siege?.siret;
+  const etat = details?.periodesEtablissement?.[0]?.etatAdministratifEtablissement || data.etat_administratif;
+  const statusLabel = etat === 'A' ? 'Actif' : 'Cessé';
+  const creationDate = details?.dateCreationEtablissement || data.date_creation;
+  const address = data.siege?.adresse;
+  const naf = data.activite_principale;
+
+  return (
+    <div className="space-y-4 relative">
+      {loading && (
+        <div className="absolute inset-0 bg-white/60 z-50 flex items-center justify-center backdrop-blur-[1px] rounded-xl">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="animate-spin text-blue-600" size={24} />
+            <span className="text-[10px] font-bold text-blue-600 uppercase">Synchronisation Insee...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Identity Section */}
+      <div className="space-y-2">
+        <label className="text-[10px] font-bold text-blue-600 uppercase tracking-wider flex items-center gap-2">
+          <FileText size={12} /> Identité (Insee)
+        </label>
+        <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-2">
+           <div className="flex justify-between items-center group cursor-pointer" onClick={() => copyToClipboard(siren)}>
+            <span className="text-[11px] text-gray-500 font-medium">SIREN</span>
+            <span className="text-[11px] font-bold text-gray-900 flex items-center gap-1">
+              {siren} <Copy size={10} className="opacity-0 group-hover:opacity-100 text-blue-500" />
+            </span>
+          </div>
+          <div className="flex justify-between items-center group cursor-pointer" onClick={() => copyToClipboard(siret)}>
+            <span className="text-[11px] text-gray-500 font-medium">SIRET (Siège)</span>
+            <span className="text-[11px] font-bold text-gray-900 flex items-center gap-1">
+              {siret} <Copy size={10} className="opacity-0 group-hover:opacity-100 text-blue-500" />
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-[11px] text-gray-500 font-medium">État</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${etat === 'A' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              {statusLabel}
+            </span>
+          </div>
+          <div className="flex justify-between items-start">
+            <span className="text-[11px] text-gray-500 font-medium whitespace-nowrap pr-4">Naf / Secteur</span>
+            <span className="text-[11px] font-bold text-gray-900 text-right leading-tight">{naf}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-[11px] text-gray-500 font-medium">Création</span>
+            <span className="text-[11px] font-bold text-gray-900">{creationDate || 'N/A'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Social Seat Section */}
+      <div className="space-y-2 pt-2">
+        <label className="text-[10px] font-bold text-amber-600 uppercase tracking-wider flex items-center gap-2">
+          <Building size={12} /> Localisation
+        </label>
+        <div className="bg-amber-50/30 p-3 rounded-lg border border-amber-100/50 space-y-2">
+          <div className="flex justify-between items-start group cursor-pointer" onClick={() => copyToClipboard(address)}>
+            <span className="text-[11px] text-amber-700/70 font-medium whitespace-nowrap pr-4">Adresse</span>
+            <span className="text-[11px] font-bold text-slate-900 text-right flex items-center gap-1">
+              {address} <Copy size={10} className="opacity-0 group-hover:opacity-100 text-amber-500" />
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Potentiel Section */}
+      <div className="space-y-2 pt-2 border-t">
+        <label className="text-[10px] font-bold text-green-600 uppercase tracking-wider flex items-center gap-2">
+          <Zap size={12} /> Potentiel Solaire
+        </label>
+        <div className="p-3 bg-green-50 rounded-lg border border-green-100">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-xs text-green-700">Surface est.</span>
+            <span className="text-sm font-black text-green-900">~300 m²</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-green-700">Puissance est.</span>
+            <span className="text-sm font-black text-green-900">45 kWc</span>
+          </div>
+        </div>
+      </div>
+
+      {/* External Links */}
+      <div className="grid grid-cols-2 gap-2 pt-2">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="h-8 text-[10px] gap-1"
+          onClick={() => window.open(`https://annuaire-entreprises.data.gouv.fr/entreprise/${siren}`, '_blank')}
+        >
+          <ExternalLink size={10} /> Annuaire Ent.
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="h-8 text-[10px] gap-1"
+          onClick={() => window.open(`https://www.infogreffe.fr/recherche-entreprise-dirigeants/resultat-de-recherche-multi-critere?siren=${siren}`, '_blank')}
+        >
+          <ExternalLink size={10} /> Infogreffe
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CompaniesLayerManager({ layersRef, activeLayers, onCompaniesUpdate, setSelectedCompany, setLoadingCompanies }) {
   const map = useMap();
   const active = activeLayers?.has('companies');
   const loadedIds = useRef(new Set());
@@ -425,6 +471,8 @@ function CompaniesLayerManager({ layersRef, activeLayers, onCompaniesUpdate }) {
     const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
     const url = `/api/melodi?action=search&bbox=${bbox}`;
 
+    setLoadingCompanies(true);
+
     try {
       const response = await fetch(url);
       const data = await response.json();
@@ -433,22 +481,29 @@ function CompaniesLayerManager({ layersRef, activeLayers, onCompaniesUpdate }) {
       onCompaniesUpdate(data.results);
 
       data.results.forEach(item => {
-        if (loadedIds.current.has(item.id)) return;
-        loadedIds.current.add(item.id);
+        const id = item.siren;
+        if (loadedIds.current.has(id)) return;
+        loadedIds.current.add(id);
 
-        if (item.lat && item.lon) {
-          const marker = L.marker([item.lat, item.lon], {
-            icon: companyIcon(item.name, false)
+        const lat = item.siege?.latitude;
+        const lon = item.siege?.longitude;
+
+        if (lat && lon) {
+          const marker = L.marker([lat, lon], {
+            icon: companyIcon(item.nom_raison_sociale || item.name, false)
           });
           marker.on('click', (e) => {
              if (e.originalEvent) e.originalEvent.stopPropagation();
-             console.log("[CompaniesLayerManager] Clicked company:", item.name);
-             window.dispatchEvent(new CustomEvent('map:select-company', { detail: { company: item } }));
+             setSelectedCompany(item);
           });
           marker.addTo(layerGroupRef.current);
         }
       });
-    } catch (err) { console.error("Error fetching companies data", err); }
+    } catch (err) { 
+      console.error("Error fetching companies data", err); 
+    } finally {
+      setLoadingCompanies(false);
+    }
   };
 
   useEffect(() => {
@@ -618,6 +673,282 @@ function PostesHTALayerManager({ layersRef, activeLayers }) {
   return null;
 }
 
+function PostesSourcesRTELayerManager({ layersRef, activeLayers }) {
+  const map = useMap();
+  const active = activeLayers?.has('postesSourcesRTE');
+  const loadedIds = useRef(new Set());
+  const layerGroupRef = useRef(L.featureGroup());
+
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['postesSourcesRTE'] = layerGroupRef.current;
+  }, [layersRef]);
+
+  const fetchData = async () => {
+    if (!active || !map) return;
+    const bounds = map.getBounds();
+    const latMax = bounds.getNorth();
+    const lonMin = bounds.getWest();
+    const latMin = bounds.getSouth();
+    const lonMax = bounds.getEast();
+
+    // Use within_box for ODRE API v2.1
+    const whereClause = `within_box(geo_point_2d, ${latMin}, ${lonMin}, ${latMax}, ${lonMax}) AND fonction="Poste de transformation"`;
+    const url = `https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/postes-electriques-rte/records?where=${encodeURIComponent(whereClause)}&limit=100`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!data.results) return;
+
+      data.results.forEach(item => {
+        if (loadedIds.current.has(item.code_poste)) return;
+        loadedIds.current.add(item.code_poste);
+
+        if (item.geo_point_2d) {
+          const latlng = [item.geo_point_2d.lat, item.geo_point_2d.lon];
+          const marker = L.marker(latlng, {
+            icon: L.divIcon({
+              className: 'rte-substation-icon',
+              html: `<div style="background: #3b82f6; width: 18px; height: 18px; border-radius: 4px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">
+                       <svg viewBox="0 0 24 24" width="12" height="12" stroke="white" stroke-width="3" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                     </div>`,
+              iconSize: [18, 18],
+              iconAnchor: [9, 9]
+            })
+          });
+
+          let popup = `
+            <div style="font-family: sans-serif; min-width: 200px; padding: 4px;">
+              <h4 style="margin: 0 0 8px 0; color: #3b82f6; font-size: 15px; font-weight: bold; border-bottom: 1px solid #eee; pb-1;">⚡ Poste Source RTE</h4>
+              <p style="margin: 4px 0; font-size: 12px;"><strong>Code:</strong> ${item.code_poste || 'N/A'}</p>
+              <p style="margin: 4px 0; font-size: 12px;"><strong>Nom:</strong> ${item.nom_poste || 'N/A'}</p>
+              <p style="margin: 4px 0; font-size: 12px;"><strong>Fonction:</strong> ${item.fonction || 'N/A'}</p>
+              <p style="margin: 4px 0; font-size: 12px;"><strong>État:</strong> ${item.etat || 'N/A'}</p>
+              <p style="margin: 4px 0; font-size: 12px;"><strong>Tension:</strong> ${item.tension || 'N/A'}</p>
+              <p style="margin: 4px 0; font-size: 12px;"><strong>Département:</strong> ${item.departement || 'N/A'}</p>
+            </div>
+          `;
+          marker.bindPopup(popup);
+          marker.addTo(layerGroupRef.current);
+        }
+      });
+    } catch (err) { console.error("Error fetching RTE data", err); }
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => { map.off('moveend', onMoveEnd); };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+    }
+  }, [active, map]);
+
+  return null;
+}
+
+function BTLayerManager({ layersRef, activeLayers }) {
+  const map = useMap();
+  const active = activeLayers?.has('enedisLigneBT');
+  const layerGroupRef = useRef(L.featureGroup());
+
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['enedisLigneBT'] = layerGroupRef.current;
+  }, [layersRef]);
+
+  const fetchData = async () => {
+    if (!active || !map) return;
+    const bounds = map.getBounds();
+    const lonMin = bounds.getWest();
+    const latMin = bounds.getSouth();
+    const lonMax = bounds.getEast();
+    const latMax = bounds.getNorth();
+
+    const bbox = `${lonMin},${latMin},${lonMax},${latMax}`;
+    const urls = [
+      `https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-bt/lines?size=1000&bbox=${bbox}`,
+      `https://opendata.enedis.fr/data-fair/api/v1/datasets/reseau-souterrain-bt/lines?size=1000&bbox=${bbox}`
+    ];
+
+    try {
+      const rawResults = await Promise.all(urls.map(u => fetch(u).then(r => r.json())));
+      layerGroupRef.current.clearLayers();
+
+      rawResults.forEach((data, index) => {
+        if (!data.results) return;
+        const isSouterraine = index === 1;
+
+        const geoJson = {
+          type: 'FeatureCollection',
+          features: data.results.map(r => ({
+            type: 'Feature',
+            geometry: typeof r.geometry === 'string' ? JSON.parse(r.geometry) : r.geometry,
+            properties: r
+          }))
+        };
+
+        L.geoJSON(geoJson, {
+          style: {
+            color: '#00BFFF', // Light Blue (DeepSkyBlue)
+            weight: 3,
+            dashArray: isSouterraine ? '5, 5' : null,
+            opacity: 0.8
+          },
+          onEachFeature: (feature, layer) => {
+            const props = feature.properties;
+            layer.bindPopup(`
+              <div style="font-family: sans-serif;">
+                <h4 style="margin:0 0 5px 0; color: #00BFFF;">⚡ Ligne BT ${isSouterraine ? 'Souterraine' : 'Aérienne'}</h4>
+                <p style="margin:2px 0; font-size:12px;"><strong>Longueur:</strong> ${props.longueur_reseau || '?'} m</p>
+              </div>
+            `);
+          }
+        }).addTo(layerGroupRef.current);
+      });
+    } catch (err) { console.error("Error fetching BT lines data", err); }
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => { map.off('moveend', onMoveEnd); };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+    }
+  }, [active, map]);
+
+  return null;
+}
+
+function RoutingLayerManager({ isRoutingActive, routingPoints, setRoutingPoints, onRouteUpdate }) {
+  const map = useMap();
+  const [routeData, setRouteData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Handle map clicks when routing is active
+  useMapEvents({
+    click(e) {
+      if (!isRoutingActive) return;
+      const newPoint = e.latlng;
+      setRoutingPoints(prev => [...prev, newPoint]);
+    }
+  });
+
+  // Calculate route when points change
+  // Calculate route when points change
+  useEffect(() => {
+    if (!isRoutingActive) {
+      if (routingPoints.length > 0) setRoutingPoints([]);
+      if (routeData) setRouteData(null);
+      if (onRouteUpdate) onRouteUpdate(null);
+      return;
+    }
+
+    const calculateRoute = async () => {
+      if (routingPoints.length < 2) {
+        setRouteData(null);
+        if (onRouteUpdate) onRouteUpdate(null);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const start = routingPoints[0];
+        const end = routingPoints[routingPoints.length - 1];
+        const intermediates = routingPoints.slice(1, -1);
+
+        const startStr = `${start.lng},${start.lat}`;
+        const endStr = `${end.lng},${end.lat}`;
+        
+        let url = `https://data.geopf.fr/navigation/itineraire?resource=bdtopo-osrm&profile=car&optimization=fastest&start=${startStr}&end=${endStr}`;
+        
+        if (intermediates.length > 0) {
+          const interStr = intermediates.map(p => `${p.lng},${p.lat}`).join('|');
+          url += `&intermediates=${interStr}`;
+        }
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Erreur lors du calcul de l'itinéraire");
+        
+        const data = await res.json();
+        setRouteData(data);
+        if (onRouteUpdate) {
+          onRouteUpdate({
+            totalDistance: data.distance,
+            totalDuration: data.duration,
+            portions: data.portions || []
+          });
+        }
+      } catch (err) {
+        console.error("[Routing] Error:", err);
+        toast({ title: "Erreur Itinéraire", description: err.message, variant: "destructive" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    calculateRoute();
+  }, [routingPoints, isRoutingActive, onRouteUpdate]);
+
+  if (!isRoutingActive) return null;
+
+  return (
+    <LayerGroup>
+      {/* Markers for waypoints */}
+      {routingPoints.map((p, i) => (
+        <Marker 
+          key={`point-${i}`} 
+          position={p} 
+          icon={L.divIcon({
+            html: `<div class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold border-2 border-white shadow-md">${i + 1}</div>`,
+            className: 'bg-transparent',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          })}
+        />
+      ))}
+
+      {/* Polyline for the route */}
+      {routeData?.geometry && (
+        <Polyline 
+          positions={L.GeoJSON.coordsToLatLngs(routeData.geometry.coordinates)}
+          pathOptions={{ color: '#2563eb', weight: 5, opacity: 0.8 }}
+        >
+          <Tooltip sticky>
+            <div className="p-1">
+              <p className="font-bold">Itinéraire</p>
+              <p>Distance: {(routeData.distance / 1000).toFixed(2)} km</p>
+              <p>Durée: {Math.round(routeData.duration)} min</p>
+            </div>
+          </Tooltip>
+        </Polyline>
+      )}
+
+      {/* Floating clear button overlay (optional, but requested implicitly by "clear" in plan) */}
+      {routingPoints.length > 0 && (
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[2000]">
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            onClick={(e) => { e.stopPropagation(); setRoutingPoints([]); setRouteData(null); }}
+            className="shadow-lg"
+          >
+            Effacer l'itinéraire
+          </Button>
+        </div>
+      )}
+    </LayerGroup>
+  );
+}
+
 function HTALayerManager({ layersRef, activeLayers }) {
   const map = useMap();
   const active = activeLayers?.has('enedisHTA');
@@ -662,7 +993,7 @@ function HTALayerManager({ layersRef, activeLayers }) {
 
         L.geoJSON(geoJson, {
           style: {
-            color: isSouterraine ? 'yellow' : '#FF8C00',
+            color: 'yellow',
             weight: 3,
             dashArray: isSouterraine ? '5, 5' : null,
             opacity: 0.8
@@ -671,7 +1002,7 @@ function HTALayerManager({ layersRef, activeLayers }) {
             const props = feature.properties;
             layer.bindPopup(`
               <div style="font-family: sans-serif;">
-                <h4 style="margin:0 0 5px 0; color: ${isSouterraine ? '#E6B400' : '#FF8C00'};">⚡ Ligne HTA ${isSouterraine ? 'Souterraine' : 'Aérienne'}</h4>
+                <h4 style="margin:0 0 5px 0; color: #E6B400;">⚡ Ligne HTA ${isSouterraine ? 'Souterraine' : 'Aérienne'}</h4>
                 <p style="margin:2px 0; font-size:12px;"><strong>Longueur:</strong> ${props.longueur_reseau || '?'} m</p>
                 <p style="margin:2px 0; font-size:12px;"><strong>Départ:</strong> ${props.nom_depart || '?'}</p>
               </div>
@@ -1590,7 +1921,79 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 // ====================================================================
 // STYLES PERSONNALISÉS (SLD) POUR ENEDIS
 // ====================================================================
-// --- Layers Data ---
+const ENEDIS_POSTES_SLD = `
+<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld">
+  <NamedLayer>
+    <Name>poste_electrique</Name>
+    <UserStyle>
+      <FeatureTypeStyle>
+        <Rule>
+          <PointSymbolizer>
+            <Graphic>
+              <Mark>
+                <WellKnownName>square</WellKnownName>
+                <Fill><CssParameter name="fill">#FF0000</CssParameter></Fill>
+                <Stroke><CssParameter name="stroke">#FFFFFF</CssParameter><CssParameter name="stroke-width">1</CssParameter></Stroke>
+              </Mark>
+              <Size>14</Size>
+            </Graphic>
+          </PointSymbolizer>
+          <TextSymbolizer>
+            <Label>⚡</Label>
+            <Font>
+              <CssParameter name="font-family">Arial</CssParameter>
+              <CssParameter name="font-size">12</CssParameter>
+              <CssParameter name="font-weight">bold</CssParameter>
+            </Font>
+            <LabelPlacement>
+              <PointPlacement>
+                <AnchorPoint><AnchorPointX>0.5</AnchorPointX><AnchorPointY>0.5</AnchorPointY></AnchorPoint>
+              </PointPlacement>
+            </LabelPlacement>
+            <Fill><CssParameter name="fill">#FFFFFF</CssParameter></Fill>
+          </TextSymbolizer>
+        </Rule>
+      </FeatureTypeStyle>
+    </UserStyle>
+  </NamedLayer>
+</StyledLayerDescriptor>`.trim();
+
+const ENEDIS_HTA_SLD = `
+<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld">
+  <NamedLayer>
+    <Name>reseau_hta</Name>
+    <UserStyle>
+      <FeatureTypeStyle>
+        <Rule>
+          <LineSymbolizer>
+            <Stroke>
+              <CssParameter name="stroke">#FFFF00</CssParameter>
+              <CssParameter name="stroke-width">3</CssParameter>
+              <CssParameter name="stroke-opacity">1</CssParameter>
+              <CssParameter name="stroke-dasharray">10 10</CssParameter>
+            </Stroke>
+          </LineSymbolizer>
+        </Rule>
+      </FeatureTypeStyle>
+    </UserStyle>
+  </NamedLayer>
+  <NamedLayer>
+    <Name>reseau_souterrain_hta</Name>
+    <UserStyle>
+      <FeatureTypeStyle>
+        <Rule>
+          <LineSymbolizer>
+            <Stroke>
+              <CssParameter name="stroke">#FFFF00</CssParameter>
+              <CssParameter name="stroke-width">3</CssParameter>
+              <CssParameter name="stroke-opacity">1</CssParameter>
+            </Stroke>
+          </LineSymbolizer>
+        </Rule>
+      </FeatureTypeStyle>
+    </UserStyle>
+  </NamedLayer>
+</StyledLayerDescriptor>`.trim();
 
 // ====================================================================
 // LISTE DES CALQUES
@@ -1624,24 +2027,33 @@ const LAYERS = {
   // ENEDIS - Réseau électrique (Using WMS for performance with 1M points)
   enedisHTA: {
     name: "Lignes HTA",
-    type: 'custom',
-    urls: [
-      "https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-aeriennes-moyenne-tension-hta/records",
-      "https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/lignes-electriques-souterraines-moyenne-tension-hta/records"
-    ],
+    url: "https://geobretagne.fr/geoserver/enedis/wms",
+    layers: "reseau_hta,reseau_souterrain_hta",
+    format: "image/png",
+    transparent: true,
+    attribution: "Enedis / GéoBretagne",
     isOverlay: true,
-    isDynamic: true,
     zIndex: 50,
-    minZoom: 9
+    opacity: 1.0,
+    minZoom: 9,
+    maxNativeZoom: 18,
+    maxZoom: 22,
+    sld_body: ENEDIS_HTA_SLD
   },
   enedisPostes: {
     name: "Postes HTA/BT",
-    type: 'custom',
-    url: "https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/postes-electriques-de-distribution-publique-postes-htabt/records",
+    url: "https://geobretagne.fr/geoserver/enedis/wms",
+    layers: "poste_electrique",
+    format: "image/png",
+    transparent: true,
+    attribution: "Enedis / GéoBretagne",
     isOverlay: true,
-    isDynamic: true,
     zIndex: 51,
-    minZoom: 9
+    opacity: 1.0,
+    minZoom: 9,
+    maxNativeZoom: 18,
+    maxZoom: 22,
+    sld_body: ENEDIS_POSTES_SLD
   },
   enedisLigneBT: {
     name: "Lignes BT",
@@ -1665,8 +2077,15 @@ const LAYERS = {
     isOverlay: true,
     zIndex: 100
   },
-
-  // Urbanisme
+  postesSourcesRTE: {
+    name: "Postes sources RTE",
+    type: 'custom',
+    url: 'https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/postes-electriques-rte/records',
+    attribution: 'ODRÉ / RTE',
+    isOverlay: true,
+    zIndex: 55,
+    minZoom: 8
+  },
   // Urbanisme
   zoneInondable: {
     name: "Zone Inondable",
@@ -1902,22 +2321,21 @@ function SDISLegend({ layersRef }) {
       style={{ userSelect: 'none' }}
     >
       <div className="flex justify-between items-center mb-2">
-        <h4 className="font-bold text-xs text-gray-900">Légende SDIS (France)</h4>
+        <h4 className="font-bold text-xs text-gray-900">Légende SDIS</h4>
         <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded"><XIcon className="h-3 w-3" /></button>
       </div>
-      <div className="space-y-2 text-[10px]">
+      <div className="space-y-1.5 text-[10px]">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 bg-[#DC143C] rounded flex items-center justify-center border border-white shadow-sm font-bold">
-            <span style={{ fontSize: '10px' }}>🚒</span>
-          </div>
-          <span>Caserne de Pompiers (Tous dépt.)</span>
+          <div className="w-3 h-3 rounded-full bg-[#EF4444] border border-[#991B1B]"></div>
+          <span>Poteau Incendie (PI)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3.5 h-3.5 rounded-full bg-[#EF4444] border border-white shadow-sm"></div>
-          <span>Poteau / Bouche Incendie</span>
+          <div className="w-3 h-3 rounded-sm bg-[#EF4444] border border-[#991B1B]"></div>
+          <span>Bouche Incendie (BI)</span>
         </div>
-        <div className="mt-2 pt-2 border-t border-gray-100 text-[9px] text-gray-500 italic">
-          Données nationales OpenStreetMap
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-sm bg-[#3B82F6] border border-[#1E40AF]"></div>
+          <span>Réserve / Point d'eau</span>
         </div>
       </div>
     </div>
@@ -1927,139 +2345,190 @@ function SDISLegend({ layersRef }) {
 // ====================================================================
 // MANAGER SDIS (Données Nationales Overpass)
 // ====================================================================
-const globalStationsCache = { data: null, lastFetch: 0 };
-
-function SDISLayerManager({ layersRef, activeLayers }) {
+function SDISLayerManager({ layersRef }) {
   const map = useMap();
-  const active = activeLayers?.has('sdis');
-  const layerGroupRef = useRef(L.markerClusterGroup({
-    chunkedLoading: true,
-    maxClusterRadius: 50,
-    disableClusteringAtZoom: 17,
-    spiderfyOnMaxZoom: true,
-    showCoverageOnHover: false,
-    iconCreateFunction: (cluster) => {
-      const count = cluster.getChildCount();
-      let size = count > 1000 ? 'large' : count > 100 ? 'medium' : 'small';
-      const colors = {
-        small: { bg: 'rgba(239, 68, 68, 0.8)', border: 'white' },
-        medium: { bg: 'rgba(220, 20, 60, 0.9)', border: 'white' },
-        large: { bg: 'rgba(185, 28, 28, 1)', border: 'white' }
+
+  useEffect(() => {
+    if (!layersRef.current['sdis']) {
+      const layerConfig = LAYERS['sdis'];
+      const markerClusterGroup = L.markerClusterGroup({
+        chunkedLoading: true,
+        chunkInterval: 200,
+        chunkDelay: 50,
+        maxClusterRadius: 50,
+        disableClusteringAtZoom: 17,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        iconCreateFunction: function (cluster) {
+          const count = cluster.getChildCount();
+          let size = 'small';
+          if (count > 100) size = 'large';
+          else if (count > 10) size = 'medium';
+
+          return L.divIcon({
+            html: `<div style="background-color: ${size === 'small' ? 'rgba(220, 20, 60, 0.7)' : size === 'medium' ? 'rgba(200, 10, 50, 0.7)' : 'rgba(178, 34, 34, 0.8)'}; border: 3px solid ${size === 'small' ? 'rgba(200, 10, 50, 0.9)' : size === 'medium' ? 'rgba(178, 34, 34, 0.9)' : 'rgba(139, 0, 0, 1)'}; width: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; height: ${size === 'small' ? '30px' : size === 'medium' ? '40px' : '50px'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: ${size === 'small' ? '12px' : size === 'medium' ? '14px' : '16px'};"><span>${count}</span></div>`,
+            className: '',
+            iconSize: L.point(40, 40)
+          });
+        }
+      });
+
+      layersRef.current['sdis'] = markerClusterGroup;
+
+      const loadData = () => {
+        const apis = layerConfig.apis || [];
+        Promise.all(apis.map(url => {
+          let proxyUrl = url;
+          if (url.includes('sdis17.fr')) proxyUrl = url.replace('https://api.deci.sdis17.fr', '/sdis-proxy/17');
+          else if (url.includes('sdis84.fr')) proxyUrl = url.replace('https://api.deci.sdis84.fr', '/sdis-proxy/84');
+          else if (url.includes('sdis81.fr')) proxyUrl = url.replace('https://api.deci.sdis81.fr', '/sdis-proxy/81');
+
+          return fetch(proxyUrl)
+            .then(async r => {
+              if (!r.ok) throw new Error(`HTTP ${r.status}`);
+              const text = await r.text();
+              try { return JSON.parse(text); } catch (e) { return { features: [] }; }
+            })
+        })).then(results => {
+          const allFeatures = results.flatMap(r => r.features || []);
+          const mergedData = { type: 'FeatureCollection', features: allFeatures };
+
+          if (mergedData.features.length > 0) {
+            const geoJsonLayer = L.geoJSON(mergedData, {
+              pointToLayer: (feature, latlng) => {
+                const type = feature.properties?.type_hydrant || feature.properties?.famille_pei || '';
+                let html = '';
+
+                if (type.startsWith('PI') || type.includes('POTEAU')) {
+                  html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+                } else if (type.startsWith('BI') || type.includes('BOUCHE')) {
+                  html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+                } else if (['REA', 'RENA'].includes(type) || type.includes('Reserve') || type.includes('RESERVE')) {
+                  html = `<div style="background-color: #3B82F6; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #1E40AF; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
+                } else {
+                  html = `<div style="background-color: #9CA3AF; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #4B5563;"></div>`;
+                }
+
+                return L.marker(latlng, {
+                  icon: L.divIcon({
+                    className: '',
+                    html: html,
+                    iconSize: [14, 14],
+                    iconAnchor: [7, 7]
+                  })
+                });
+              },
+              onEachFeature: (feature, layer) => {
+                if (feature.properties) {
+                  const props = feature.properties;
+                  let popupContent = '<div style="font-family: sans-serif;">';
+                  popupContent += '<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 16px; font-weight: bold;">🚒 Point d\'Eau Incendie</h4>';
+                  popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.commune || 'N/A'}</p>`;
+                  popupContent += `<p style="margin: 4px 0;"><strong>Numéro:</strong> ${props.numero_long || props.nom || 'N/A'}</p>`;
+                  popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.famille_pei || props.type_start || props.type_hydrant || 'N/A'}</p>`;
+                  popupContent += `<p style="margin: 4px 0;"><strong>État:</strong> ${props.etat || props.etat_start || 'Inconnu'}</p>`;
+                  if (props.adresse) popupContent += `<p style="margin: 4px 0;"><strong>Adresse:</strong> ${props.adresse}</p>`;
+                  if (props.volume) popupContent += `<p style="margin: 4px 0;"><strong>Volume:</strong> ${props.volume} m³</p>`;
+                  if (props.debit_1bar || props.debit) popupContent += `<p style="margin: 4px 0;"><strong>Débit (1 bar):</strong> ${props.debit_1bar || props.debit} m³/h</p>`;
+                  if (props.pression) popupContent += `<p style="margin: 4px 0;"><strong>Pression:</strong> ${props.pression} bar</p>`;
+                  popupContent += '</div>';
+                  layer.bindPopup(popupContent, { maxWidth: 300 });
+                }
+              }
+            });
+            markerClusterGroup.addLayer(geoJsonLayer);
+          }
+        }).catch(err => console.error("Erreur chargement SDIS", err));
       };
-      const dim = size === 'large' ? 45 : size === 'medium' ? 35 : 30;
-      return L.divIcon({
-        html: `<div style="background-color: ${colors[size].bg}; border: 2px solid ${colors[size].border}; width: ${dim}px; height: ${dim}px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; box-shadow: 0 3px 6px rgba(0,0,0,0.3); font-size: ${dim/2.5}px;"><span>${count}</span></div>`,
-        className: '',
-        iconSize: [dim, dim]
-      });
-    }
-  }));
-  const loadingRef = useRef(false);
 
-  useEffect(() => {
-    if (!layersRef.current) return;
-    layersRef.current['sdis'] = layerGroupRef.current;
-  }, [layersRef]);
-
-  const loadData = async () => {
-    if (!active || !map || loadingRef.current) return;
-    const zoom = map.getZoom();
-    
-    // Zoom < 14: Stations only, but we use a cache if zoom is very low to avoid heavy queries
-    const loadHydrants = zoom >= 14;
-    
-    loadingRef.current = true;
-    const bounds = map.getBounds();
-    // Clamp to France
-    const south = Math.max(bounds.getSouth(), 41);
-    const west = Math.max(bounds.getWest(), -5);
-    const north = Math.min(bounds.getNorth(), 51);
-    const east = Math.min(bounds.getEast(), 10);
-
-    let query = '';
-    if (loadHydrants) {
-      query = `[out:json][timeout:30]; (node["amenity"="fire_station"](${south},${west},${north},${east}); node["emergency"="fire_hydrant"](${south},${west},${north},${east}); node["fire_hydrant:type"](${south},${west},${north},${east}); way["amenity"="fire_station"](${south},${west},${north},${east}); ); out body center;`;
-    } else {
-      // For low zoom, if we already have global stations, we can filter them locally OR just fetch for BBOX
-      query = `[out:json][timeout:60]; (node["amenity"="fire_station"](${south},${west},${north},${east}); way["amenity"="fire_station"](${south},${west},${north},${east}); ); out body center;`;
-    }
-
-    try {
-      const response = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `data=${encodeURIComponent(query)}`
-      });
-      
-      if (!response.ok) throw new Error(`Overpass error: ${response.status}`);
-      
-      const data = await response.json();
-      if (!data.elements) return;
-
-      layerGroupRef.current.clearLayers();
-
-      data.elements.forEach(el => {
-        let latlng = el.type === 'node' ? [el.lat, el.lon] : [el.center.lat, el.center.lon];
-        const tags = el.tags || {};
-        const isStation = tags.amenity === 'fire_station';
-        
-        let html = '';
-        if (isStation) {
-          html = `<div style="background-color: #DC143C; width: 24px; height: 24px; border: 2px solid white; display:flex; align-items:center; justify-content:center; box-shadow: 0 2px 5px rgba(0,0,0,0.4); border-radius: 4px;"><span style="font-size: 15px;">🚒</span></div>`;
-        } else {
-          html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.5);"></div>`;
+      const handleLayerAdd = (e) => {
+        if (e.layer === markerClusterGroup) {
+          if (markerClusterGroup.getLayers().length === 0) loadData();
         }
+      };
 
-        const marker = L.marker(latlng, {
-          icon: L.divIcon({
-            className: 'sdis-icon',
-            html: html,
-            iconSize: isStation ? [24, 24] : [14, 14],
-            iconAnchor: isStation ? [12, 12] : [7, 7]
-          })
-        });
-
-        let popupContent = '<div style="font-family: sans-serif; min-width: 200px; padding: 5px;">';
-        if (isStation) {
-          popupContent += `<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 15px; font-weight: bold; border-bottom: 2px solid #fee2e2; padding-bottom: 4px;">🚒 Caserne de Pompiers</h4>`;
-          if (tags.name) popupContent += `<p style="margin: 6px 0; font-size: 13px;"><strong>Nom:</strong> ${tags.name}</p>`;
-          if (tags.operator) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Opérateur:</strong> ${tags.operator}</p>`;
-          if (tags['addr:city']) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Ville:</strong> ${tags['addr:city']}</p>`;
-        } else {
-          popupContent += `<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 15px; font-weight: bold; border-bottom: 2px solid #fee2e2; padding-bottom: 4px;">🚰 Point d'Eau Incendie</h4>`;
-          const type = tags['fire_hydrant:type'] || tags.emergency_type || 'Poteau';
-          popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Type:</strong> ${type}</p>`;
-          if (tags['fire_hydrant:diameter']) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Diamètre:</strong> ${tags['fire_hydrant:diameter']} mm</p>`;
-          if (tags['fire_hydrant:pressure']) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Pression:</strong> ${tags['fire_hydrant:pressure']}</p>`;
-          if (tags.ref) popupContent += `<p style="margin: 4px 0; font-size: 13px;"><strong>Réf:</strong> ${tags.ref}</p>`;
-        }
-        popupContent += '</div>';
-
-        marker.bindPopup(popupContent, { minWidth: 200 });
-        marker.addTo(layerGroupRef.current);
-      });
-    } catch (err) {
-      console.error("Error fetching SDIS data from Overpass", err);
-    } finally {
-      loadingRef.current = false;
-    }
-  };
-
-  useEffect(() => {
-    if (active) {
-      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      map.on('layeradd', handleLayerAdd);
       loadData();
-      const onMapChange = () => loadData();
-      map.on('moveend zoomend', onMapChange);
-      return () => { map.off('moveend zoomend', onMapChange); };
-    } else {
-      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+      return () => { map.off('layeradd', handleLayerAdd); };
     }
-  }, [active, map]);
+  }, [map, layersRef]);
 
   return null;
 }
 
+function LigneBTLayerManager({ layersRef, activeLayers }) {
+  const map = useMap();
+  const active = activeLayers?.has('enedisLigneBT');
+  const [debouncedBounds, setDebouncedBounds] = useState(null);
+
+  useEffect(() => {
+    if (!active) return;
+    const handleMoveEnd = () => {
+      if (map.getZoom() >= 13) setDebouncedBounds(map.getBounds());
+    };
+    map.on('moveend', handleMoveEnd);
+    return () => map.off('moveend', handleMoveEnd);
+  }, [map, active]);
+
+  useEffect(() => {
+    if (!active || !debouncedBounds || !layersRef.current) return;
+    
+    if (!layersRef.current['enedisLigneBT']) {
+      layersRef.current['enedisLigneBT'] = L.layerGroup();
+    }
+    const layerGroup = layersRef.current['enedisLigneBT'];
+    if (!map.hasLayer(layerGroup)) layerGroup.addTo(map);
+
+    const fetchBT = async () => {
+      const bounds = debouncedBounds;
+      const where = `within_box(geometry, ${bounds.getNorth()}, ${bounds.getWest()}, ${bounds.getSouth()}, ${bounds.getEast()})`;
+      const base = "https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets";
+      
+      try {
+        const [resSout, resAer] = await Promise.all([
+          fetch(`${base}/reseau-souterrain-bt/records?limit=1000&where=${encodeURIComponent(where)}`).then(r => r.json()),
+          fetch(`${base}/reseau-aerien-bt/records?limit=1000&where=${encodeURIComponent(where)}`).then(r => r.json())
+        ]);
+
+        layerGroup.clearLayers();
+
+        const skyBlue = "#00BFFF";
+
+        if (resSout.results) {
+          const features = resSout.results.map(r => ({
+            type: 'Feature',
+            geometry: typeof r.geometry === 'string' ? JSON.parse(r.geometry) : r.geometry,
+            properties: r
+          }));
+          L.geoJSON({ type: 'FeatureCollection', features }, {
+            style: { color: skyBlue, weight: 2, dashArray: '5, 5', opacity: 0.8 }
+          }).addTo(layerGroup);
+        }
+
+        if (resAer.results) {
+          const features = resAer.results.map(r => ({
+            type: 'Feature',
+            geometry: typeof r.geometry === 'string' ? JSON.parse(r.geometry) : r.geometry,
+            properties: r
+          }));
+          L.geoJSON({ type: 'FeatureCollection', features }, {
+            style: { color: skyBlue, weight: 2, opacity: 0.8 }
+          }).addTo(layerGroup);
+        }
+      } catch (err) { console.error("BT Fetch Error", err); }
+    };
+
+    fetchBT();
+  }, [debouncedBounds, active, map, layersRef]);
+
+  useEffect(() => {
+    if (!active && layersRef.current['enedisLigneBT'] && map.hasLayer(layersRef.current['enedisLigneBT'])) {
+      map.removeLayer(layersRef.current['enedisLigneBT']);
+    }
+  }, [active, map, layersRef]);
+
+  return null;
+}
 
 // ENEDIS Managers were removed in favor of WMS layers for performance with 1M points.
 
@@ -3268,11 +3737,17 @@ export default function MapElements({
   setIsAzimuthDefaulted,     
   isUrbanismeMode, 
   activeLayers, 
-  isochroneConfig
+  isochroneConfig,
+  isRoutingActive,
+  setIsRoutingActive,
+  routingPoints,
+  setRoutingPoints
 }) {
   const [companies, setCompanies] = useState([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [selectedSubstation, setSelectedSubstation] = useState(null);
+  const [selectedRoutingData, setSelectedRoutingData] = useState(null);
 
 
   const [mode, setMode] = useState(null);
@@ -3461,11 +3936,10 @@ export default function MapElements({
           {/* Layer Managers */}
           <SDISLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <GazDynamicLayerManager layersRef={layersRef} activeLayers={activeLayers} />
-          <LigneBTLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <HTALayerManager layersRef={layersRef} activeLayers={activeLayers} />
+          <BTLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <PostesHTALayerManager layersRef={layersRef} activeLayers={activeLayers} />
-          <CapareseauLayerManager layersRef={layersRef} activeLayers={activeLayers} />
-          <CompaniesLayerManager layersRef={layersRef} activeLayers={activeLayers} onCompaniesUpdate={setCompanies} />
+          <PostesSourcesRTELayerManager layersRef={layersRef} activeLayers={activeLayers} />
 
           {/* Controls inside map */}
           <BasemapControl layersRef={layersRef} />
@@ -3544,7 +4018,22 @@ export default function MapElements({
             setHoverInfo={setHoverInfo}
           />
 
-        </MapContainer>
+          {/* --- Routing Tool --- */}
+        <RoutingLayerManager 
+          isRoutingActive={isRoutingActive}
+          routingPoints={routingPoints}
+          setRoutingPoints={setRoutingPoints}
+          onRouteUpdate={setSelectedRoutingData}
+        />
+        <MapSidePanel 
+          type="routing" 
+          data={selectedRoutingData} 
+          onClose={() => {
+            setSelectedRoutingData(null);
+            setIsRoutingActive(false);
+          }} 
+        />
+      </MapContainer>
 
         {/* New Side Panels (Outside MapContainer for z-index/overlay reliability) */}
         <MapSidePanel 
@@ -3566,13 +4055,29 @@ function MapSidePanel({ type, data, onClose }) {
   if (!data) return null;
 
   const isCompany = type === 'company';
-  const title = isCompany ? (data.nom_raison_sociale || data.name || "Détails Entreprise") : (data.nom_du_poste || "Poste Source");
+  const isRouting = type === 'routing';
+  
+  let title = "Détails";
+  if (isCompany) title = data.nom_raison_sociale || data.name || "Détails Entreprise";
+  else if (isRouting) title = "Détails de l'itinéraire";
+  else title = data.nom_du_poste || "Poste Source";
+
   const side = isCompany ? "right" : "left";
 
   const copyToClipboard = (text) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
     toast({ title: "Copié !", description: `"${text}" copié dans le presse-papier.`, ...toastStyle });
+  };
+
+  const formatDuration = (seconds) => {
+    const minutes = Math.ceil(seconds / 60);
+    if (minutes >= 60) {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return `${h}h${m.toString().padStart(2, '0')}min`;
+    }
+    return `${minutes} min`;
   };
 
   return (
@@ -3590,57 +4095,71 @@ function MapSidePanel({ type, data, onClose }) {
 
       {/* Content */}
       <div className="p-4 overflow-y-auto space-y-4">
-        {isCompany ? (
-          <>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Identité</label>
-              <div className="space-y-1">
-                <div className="flex justify-between items-start group cursor-pointer" onClick={() => copyToClipboard(data.siret)}>
-                  <span className="text-xs text-gray-500">SIRET</span>
-                  <span className="text-xs font-medium text-gray-900 flex items-center gap-1">
-                    {data.siret} <Copy size={10} className="opacity-0 group-hover:opacity-100" />
-                  </span>
-                </div>
-                <div className="flex justify-between items-start group cursor-pointer" onClick={() => copyToClipboard(data.adresse)}>
-                  <span className="text-xs text-gray-500">Adresse</span>
-                  <span className="text-xs font-medium text-gray-900 text-right max-w-[180px] flex items-center gap-1">
-                    {data.adresse} <Copy size={10} className="opacity-0 group-hover:opacity-100" />
-                  </span>
-                </div>
-                <div className="flex justify-between items-start">
-                  <span className="text-xs text-gray-500">Effectifs</span>
-                  <span className="text-xs font-medium text-gray-900">{data.tranche_effectif || 'N/A'}</span>
-                </div>
+        {isRouting ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <div className="text-[10px] text-blue-700 font-bold uppercase">Distance Totale</div>
+                <div className="text-lg font-bold text-blue-900">{(data.totalDistance / 1000).toFixed(2)} km</div>
+              </div>
+              <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                <div className="text-[10px] text-indigo-700 font-bold uppercase">Temps Total</div>
+                <div className="text-lg font-bold text-indigo-900">{formatDuration(data.totalDuration)}</div>
               </div>
             </div>
 
-            <div className="space-y-2 pt-2 border-t">
-              <label className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Potentiel Solaire</label>
-              <div className="p-3 bg-green-50 rounded-lg border border-green-100">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs text-green-700">Surface estimée</span>
-                  <span className="text-sm font-bold text-green-900">~250 m²</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-green-700">Puissance estimée</span>
-                  <span className="text-sm font-bold text-green-900">36 kWc</span>
-                </div>
+            <div className="space-y-3">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Étapes du trajet</label>
+              <div className="space-y-2">
+                {data.portions.map((portion, idx) => (
+                  <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="flex flex-col items-center">
+                      <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold">
+                        {idx + 1}
+                      </div>
+                      {idx < data.portions.length - 1 && <div className="w-0.5 h-8 bg-gray-200 my-1"></div>}
+                      {idx === data.portions.length - 1 && (
+                        <>
+                           <div className="w-0.5 h-8 bg-gray-200 my-1"></div>
+                           <div className="w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] font-bold">
+                            {idx + 2}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex-1 pt-0.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-semibold text-gray-700">Portion {idx + 1}</span>
+                        <span className="text-[10px] bg-white px-2 py-0.5 rounded border text-blue-600 font-bold">
+                          {formatDuration(portion.duration)}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-gray-500 mt-1">
+                        {(portion.distance / 1000).toFixed(2)} km
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
             
-            {data.dirigeants && data.dirigeants.length > 0 && (
-              <div className="space-y-2 pt-2 border-t">
-                <label className="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Dirigeants</label>
-                <div className="space-y-1">
-                  {data.dirigeants.map((d, i) => (
-                    <div key={i} className="text-xs font-medium text-gray-900 flex items-center gap-1">
-                      👤 {d.prenoms} {d.nom}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
+            <Button 
+              variant="outline" 
+              className="w-full text-red-600 border-red-200 hover:bg-red-50"
+              onClick={() => {
+                onClose();
+                // Clear state is handled by onClose parent logic if we pass the right props
+              }}
+            >
+              Effacer le tracé
+            </Button>
+          </div>
+        ) : isCompany ? (
+          <CompanyDetailsPanel 
+            data={data} 
+            onClose={onClose} 
+            copyToClipboard={copyToClipboard} 
+          />
         ) : (
           <>
             <div className="space-y-2">
@@ -3669,10 +4188,9 @@ function MapSidePanel({ type, data, onClose }) {
           </>
         )}
       </div>
-      
       {/* Footer Branding */}
       <div className="p-3 bg-gray-50 border-t flex justify-center italic">
-        <span className="text-[10px] text-gray-400">Données MELODI / RSI / ODRÉ • NELSON</span>
+        <span className="text-[10px] text-gray-400">Données MELODI / SIRENE • NELSON</span>
       </div>
     </div>
   );

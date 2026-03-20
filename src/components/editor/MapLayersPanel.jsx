@@ -248,6 +248,15 @@ const overlayCategories = {
             },
         },
     },
+    'Réseau électrique RTE': {
+        layers: {
+            'Postes sources RTE': {
+                type: 'postes-sources-rte-custom',
+                attribution: 'ODRÉ / RTE',
+                minZoom: 8,
+            },
+        },
+    },
     'Environnement et zones protégées': {
         layers: {
             'Forêts publiques': {
@@ -511,6 +520,10 @@ const MapLayersPanel = ({ map }) => {
                     }
                     if (layerConfig.type === 'companies-custom' || layerName === 'Sociétés') {
                         window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'companies' } }));
+                        return newActive;
+                    }
+                    if (layerConfig.type === 'postes-sources-rte-custom') {
+                        window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'postesSourcesRTE' } }));
                         return newActive;
                     }
                     // Check zoom level for layers with minZoom

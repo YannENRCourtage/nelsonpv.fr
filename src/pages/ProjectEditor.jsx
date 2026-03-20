@@ -136,6 +136,8 @@ export default function ProjectEditor() {
   const [isSymbolsOpen, setIsSymbolsOpen] = useState(false);
   const [isBuildingsOpen, setIsBuildingsOpen] = useState(false);
   const [isCapturesOpen, setIsCapturesOpen] = useState(false);
+  const [isRoutingActive, setIsRoutingActive] = useState(false);
+  const [routingPoints, setRoutingPoints] = useState([]);
   const [isLayersOpen, setIsLayersOpen] = useState(false);
   const [isClientOpen, setIsClientOpen] = useState(false); // Client zone collapsed by default on mobile
   const [mobileAddressQuery, setMobileAddressQuery] = useState(''); // For mobile address search above map
@@ -1551,6 +1553,17 @@ export default function ProjectEditor() {
               Urbanisme
             </button>
 
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('societes'); }}
+              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'societes'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+              tabIndex={-1}
+            >
+              Sociétés
+            </button>
 
             <button
               type="button"
@@ -1670,6 +1683,10 @@ export default function ProjectEditor() {
                     companies={companies}
                     selectedCompany={selectedCompany}
                     setSelectedCompany={setSelectedCompany}
+                    isRoutingActive={isRoutingActive}
+                    setIsRoutingActive={setIsRoutingActive}
+                    routingPoints={routingPoints}
+                    setRoutingPoints={setRoutingPoints}
                   />
                 </div>
 
@@ -1689,13 +1706,12 @@ export default function ProjectEditor() {
                     { key: 'Natura 2000 Oiseaux', label: 'Natura 2000 Oiseaux' },
                     { key: 'Natura 2000 Habitat', label: 'Natura 2000 Habitat' },
                     { key: 'enedisHTA', label: 'Lignes HTA' },
+                    { key: 'enedisLigneBT', label: 'Ligne BT' },
                     { key: 'enedisPostes', label: 'Postes HTA/BT' },
                     { key: 'gaz', label: 'GAZ' },
                     { key: 'abf', label: 'ABF' },
                     { key: 'sdis', label: 'SDIS' },
-                    { key: 'capareseau', label: 'Caparéseau' },
-                    { key: 'companies', label: 'Sociétés' },
-                    { key: 'altimetry', label: 'Altimétrie' },
+                    { key: 'postesSourcesRTE', label: 'Postes Sources RTE' },
                   ].map(layer => (
                     <button
                       key={layer.key}
@@ -1747,13 +1763,12 @@ export default function ProjectEditor() {
                         { key: 'Natura 2000 Oiseaux', label: 'N2000 Ois.' },
                         { key: 'Natura 2000 Habitat', label: 'N2000 Hab.' },
                         { key: 'enedisHTA', label: 'L. HTA' },
+                        { key: 'enedisLigneBT', label: 'L. BT' },
                         { key: 'enedisPostes', label: 'P. HTA/BT' },
                         { key: 'gaz', label: 'GAZ' },
                         { key: 'abf', label: 'ABF' },
                         { key: 'sdis', label: 'SDIS' },
-                        { key: 'capareseau', label: 'Caparéseau' },
-                        { key: 'companies', label: 'Sociétés' },
-                        { key: 'altimetry', label: 'Altimétrie' },
+                        { key: 'postesSourcesRTE', label: 'P. Sources RTE' },
                       ].map(layer => (
                         <button
                           key={layer.key}
@@ -1804,6 +1819,17 @@ export default function ProjectEditor() {
 
 
 
+
+            {/* Onglet Sociétés */}
+            <div className={activeTab === 'societes' ? 'w-full h-full overflow-hidden' : 'hidden'}>
+              <iframe
+                src="https://carte-entreprises.fr/"
+                className="w-full border-0"
+                style={{ marginTop: '-65px', height: 'calc(100% + 65px)' }}
+                title="Sociétés"
+                allow="geolocation"
+              />
+            </div>
 
             {/* Onglet Propriétaires */}
             <div className={activeTab === 'owners' ? 'w-full h-full' : 'hidden'}>

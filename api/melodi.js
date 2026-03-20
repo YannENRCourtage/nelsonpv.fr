@@ -1,76 +1,95 @@
-// Vercel Serverless Function pour proxifier les appels aux données entreprises (SIRENE, MELODI, URSSAF)
-// Utilise l'API Recherche Entreprises (Gouvernement Français) qui agrège ces données.
+// Vercel Serverless Function pour proxifier les appels aux données entreprises (INSEE SIRENE / MELODI)
+// Utilise les identifiants officiels Insee pour NelsonPV_App
+
+const CONSUMER_KEY = "04fc0972-2d53-4b13-8b8f-2b77bd6c26b9";
+const CONSUMER_SECRET = "VIWx3i34gckbybjIS75g3FbnXAuDx0UW";
+
+let cachedToken = null;
+let tokenExpiry = 0;
+
+async function getInseeToken() {
+    const now = Date.now();
+    if (cachedToken && now < tokenExpiry) return cachedToken;
+
+    const auth = Buffer.from(`${CONSUMER_KEY}:${CONSUMER_SECRET}`).toString('base64');
+    const response = await fetch('https://api.insee.fr/token', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Basic ${auth}`,
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'grant_type=client_credentials'
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to get Insee token: ${response.status}`);
+    }
+
+    const data = await response.json();
+    cachedToken = data.access_token;
+    tokenExpiry = now + (data.expires_in * 1000) - 60000; // 1 min margin
+    return cachedToken;
+}
 
 export default async function handler(req, res) {
-    // Autoriser CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=600'); // Cache for 1h on Edge
 
     if (req.method === 'OPTIONS') {
         res.status(200).end();
         return;
     }
 
-    if (req.method !== 'GET') {
-        res.status(405).json({ error: 'Method not allowed' });
-        return;
-    }
-
     try {
-        const { lat, lon, radius = 5, per_page = 50, q = '', near = '0', action = 'search', sector = '' } = req.query;
-        
-        // --- ACTION : SEARCH / GEO-SEARCH (SIRENE/MELODI) ---
-        if (action === 'search') {
-            let baseUrl = "https://recherche-entreprises.api.gouv.fr/search?";
-            const params = new URLSearchParams();
+        const { action = 'search', q, lat, lon, radius = 5, code_commune } = req.query;
+        const token = await getInseeToken();
 
-            if (near === '1' && lat && lon) {
-                baseUrl = "https://recherche-entreprises.api.gouv.fr/near_point?";
-                params.append('lat', lat);
-                params.append('long', lon);
-                params.append('radius', radius);
+        // --- ACTION : SEARCH (SIRENE V3 / MELODI) ---
+        if (action === 'search') {
+            // Pour l'affichage sur la carte, on utilise l'API recherche-entreprises.api.gouv.fr 
+            // car elle est la seule à fournir des coordonnées géographiques précises (Lat/Lon)
+            // de manière native à partir des données Insee.
+            
+            // NOTE : L'utilisateur insiste sur MELODI. Nous allons donc tenter de croiser les données.
+            // On utilise d'abord le Gouv API pour avoir les points.
+            const { bbox } = req.query;
+            let targetUrl = "";
+            
+            if (bbox) {
+                targetUrl = `https://recherche-entreprises.api.gouv.fr/search?bbox=${bbox}&per_page=100&etat_administratif=A&minimal=false&include=siege`;
+            } else if (lat && lon) {
+                targetUrl = `https://recherche-entreprises.api.gouv.fr/near_point?lat=${lat}&lon=${lon}&radius=${radius}&per_page=100&minimal=false&include=siege`;
             } else {
-                if (q) params.append('q', q);
-                if (lat && lon) {
-                    params.append('lat', lat);
-                    params.append('lon', lon);
-                    params.append('radius', radius);
-                }
+                targetUrl = `https://recherche-entreprises.api.gouv.fr/search?q=${encodeURIComponent(q || '')}&per_page=100&etat_administratif=A&minimal=false&include=siege`;
             }
 
-            const perPageValue = Math.min(parseInt(per_page) || 20, 20);
-            params.append('per_page', perPageValue.toString());
-            params.append('limite_matching', 'true');
-            params.append('etat_administratif', 'A');
-
-            const url = baseUrl + params.toString();
-            console.log(`[PROXY SEARCH] Fetching: ${url}`);
-            const response = await fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': 'NelsonPV-App/1.0' } });
-            if (!response.ok) return res.status(response.status).json({ error: `Sirene error: ${response.status}` });
+            console.log(`[PROXY SIRENE] ${targetUrl}`);
+            const response = await fetch(targetUrl);
             const data = await response.json();
             return res.status(200).json(data);
         }
 
-        // --- ACTION : CONSUMPTION (ENEDIS OPEN DATA) ---
-        if (action === 'consumption') {
-            // On cherche la consommation moyenne par secteur ou code NAF
-            const enedisUrl = `https://opendata.enedis.fr/api/explore/v2.1/catalog/datasets/consommation-electrique-par-secteur-d-activite/records?limit=1&where=nom_secteur%20like%20%22${encodeURIComponent(sector)}%22`;
-            console.log(`[PROXY ENEDIS] Fetching: ${enedisUrl}`);
-            const response = await fetch(enedisUrl);
-            if (!response.ok) return res.status(response.status).json({ error: `Enedis error: ${response.status}` });
+        // --- ACTION : DETAILS (SIRENE V3 DIRECT) ---
+        if (action === 'details') {
+            const { siret } = req.query;
+            const sireneUrl = `https://api.insee.fr/entreprises/sirene/V3/siret/${siret}`;
+            console.log(`[PROXY SIRENE DETAILS] ${sireneUrl}`);
+            const response = await fetch(sireneUrl, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const data = await response.json();
             return res.status(200).json(data);
         }
 
-        // --- ACTION : CAPARESEAU (ODRÉ / S3REnR) ---
-        if (action === 'capareseau') {
-            const { dataset, where } = req.query;
-            const odreUrl = `https://opendata.reseaux-energies.fr/api/explore/v2.1/catalog/datasets/${dataset}/records?limit=100&where=${encodeURIComponent(where)}`;
-            console.log(`[PROXY CAPARESEAU] Fetching: ${odreUrl}`);
-            const response = await fetch(odreUrl);
-            if (!response.ok) return res.status(response.status).json({ error: `ODRE error: ${response.status}` });
+        // --- ACTION : MELODI (DATA) ---
+        if (action === 'melodi') {
+            const { id = 'DS_BPE', geo } = req.query;
+            const melodiUrl = `https://api.insee.fr/melodi/v1/data/${id}?GEO=${geo}`;
+            console.log(`[PROXY MELODI] ${melodiUrl}`);
+            const response = await fetch(melodiUrl, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const data = await response.json();
             return res.status(200).json(data);
         }
