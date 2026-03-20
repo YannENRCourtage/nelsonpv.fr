@@ -528,6 +528,8 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
     }
   };
 
+  // Remove auto-calculation of kwc as requested by user
+  /*
   useEffect(() => {
     if (params.nbModules && params.puissanceUnitaire) {
       const calculatedKwc = (params.nbModules * params.puissanceUnitaire) / 1000;
@@ -536,6 +538,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
       }
     }
   }, [params.nbModules, params.puissanceUnitaire, setParams]);
+  */
 
   const totalConstruction = params.coutCentrale + params.coutCharpente + params.raccordement + params.frais + params.soulte;
   const tva = totalConstruction * 0.20;
@@ -619,7 +622,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
             <SectionCard title="Données du projet">
               <Field label="Nombre de modules" value={params.nbModules} onChange={v => set('nbModules', v)} type="number" suffix="modules" />
               <Field label="Puissance unitaire" value={params.puissanceUnitaire} onChange={v => set('puissanceUnitaire', v)} type="number" suffix="Wc" />
-              <Field label="Puissance installée" value={params.kwc} type="number" suffix="kWc" disabled />
+              <Field label="Puissance installée" value={params.kwc} onChange={v => set('kwc', v)} type="number" suffix="kWc" />
               <Field label="Surface totale installée" value={params.surfaceTotale} onChange={v => set('surfaceTotale', v)} type="number" suffix="m²" />
               <div className="h-2" />
               <Field label="Productible (KWh/KWc)" value={params.productible} onChange={v => set('productible', v)} type="number" />
@@ -1102,9 +1105,9 @@ function TabPropositionClientBAC({ projects, selectedProject, setSelectedProject
         nomProjet: selectedProject.name || '',
         mixte: selectedProject.mixte || 'NON',
         typeBat: selectedProject.type_bat || '',
-        zoneNeige: selectedProject.urbanData?.neige || selectedProject.neige || 'N/A',
-        zoneVent: selectedProject.urbanData?.vents || selectedProject.vent || 'N/A',
-        altitude: selectedProject.urbanData?.alti || selectedProject.alti || 'N/A',
+        zoneNeige: selectedProject.urbanData?.neige || selectedProject.neige || selectedProject.urbanisme?.neige || 'N/A',
+        zoneVent: selectedProject.urbanData?.vents || selectedProject.vent || selectedProject.urbanisme?.vents || 'N/A',
+        altitude: selectedProject.urbanData?.alti || selectedProject.alti || selectedProject.urbanisme?.alti || 'N/A',
         gps: (selectedProject.lat && selectedProject.lng) ? `${fmt(selectedProject.lat, 6)}, ${fmt(selectedProject.lng, 6)}` : (selectedProject.gps || '0'),
         superficie: selectedProject.surface || 'N/A',
         prodMoyen: params?.productible || selectedProject.productible || '',
@@ -1170,10 +1173,10 @@ function TabPropositionClientBAC({ projects, selectedProject, setSelectedProject
               <Row label="PROJET :" value={data.nomProjet} onChange={v => update('nomProjet', v)} />
               <Row label="Projet Mixte" value={data.mixte} onChange={v => update('mixte', v)} options={['NON','OUI']} type="select" />
               <Row label="Type Bâtiment" value={data.typeBat} onChange={v => update('typeBat', v)} />
-              <Row label="Zone neige :" value={data.zoneNeige} />
-              <Row label="Zone vent :" value={data.zoneVent} />
-              <Row label="Altitude :" value={data.altitude} />
-              <Row label="POINT GPS" value={data.gps} />
+              <Row label="Zone neige :" value={data.zoneNeige} onChange={v => update('zoneNeige', v)} />
+              <Row label="Zone vent :" value={data.zoneVent} onChange={v => update('zoneVent', v)} />
+              <Row label="Altitude :" value={data.altitude} onChange={v => update('altitude', v)} />
+              <Row label="POINT GPS" value={data.gps} onChange={v => update('gps', v)} />
               <Row label="Superficie (m²) :" value={data.superficie} onChange={v => update('superficie', v)} />
               <Row label="Productible (kWh/kWc)" value={data.prodMoyen} />
               <Row label="Puissance (kWc) :" value={data.puissance} />
@@ -1225,9 +1228,9 @@ function TabPropositionBE({ projects, selectedProject, setSelectedProject, param
         nomProjet: selectedProject.name || '',
         mixte: selectedProject.mixte || 'NON',
         typeBat: selectedProject.type_bat || '',
-        zoneNeige: selectedProject.urbanData?.neige || 'N/A',
-        zoneVent: selectedProject.urbanData?.vents || 'N/A',
-        altitude: selectedProject.urbanData?.alti || 'N/A',
+        zoneNeige: selectedProject.urbanData?.neige || selectedProject.neige || selectedProject.urbanisme?.neige || 'N/A',
+        zoneVent: selectedProject.urbanData?.vents || selectedProject.vent || selectedProject.urbanisme?.vents || 'N/A',
+        altitude: selectedProject.urbanData?.alti || selectedProject.alti || selectedProject.urbanisme?.alti || 'N/A',
         gps: (selectedProject.lat && selectedProject.lng) ? `${fmt(selectedProject.lat, 4)} / ${fmt(selectedProject.lng, 4)}` : '0',
         superficie: selectedProject.surface || 'N/A',
         prodMoyen: params?.productible || selectedProject.productible || '',
@@ -1291,10 +1294,10 @@ function TabPropositionBE({ projects, selectedProject, setSelectedProject, param
               <Row label="PROJET :" value={data.nomProjet} onChange={v => update('nomProjet', v)} />
               <Row label="Projet Mixte" value={data.mixte} onChange={v => update('mixte', v)} options={['NON','OUI']} type="select" />
               <Row label="Type Bâtiment" value={data.typeBat} onChange={v => update('typeBat', v)} />
-              <Row label="Zone neige :" value={data.zoneNeige} />
-              <Row label="Zone vent :" value={data.zoneVent} />
-              <Row label="Altitude :" value={data.altitude} />
-              <Row label="POINT GPS" value={data.gps} />
+              <Row label="Zone neige :" value={data.zoneNeige} onChange={v => update('zoneNeige', v)} />
+              <Row label="Zone vent :" value={data.zoneVent} onChange={v => update('zoneVent', v)} />
+              <Row label="Altitude :" value={data.altitude} onChange={v => update('altitude', v)} />
+              <Row label="POINT GPS" value={data.gps} onChange={v => update('gps', v)} />
               <Row label="Superficie (m²) :" value={data.superficie} onChange={v => update('superficie', v)} />
               <Row label="Productible (kWh/kWc)" value={data.prodMoyen} />
               <Row label="Puissance (kWc) :" value={data.puissance} />
@@ -1421,7 +1424,7 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
                  <div className="bg-[#002060] text-white p-4 rounded-md shadow-md text-left min-w-[300px] border-l-4 border-blue-400">
                   <div className="font-bold border-b border-blue-800/50 pb-1 mb-2 uppercase text-[10px] tracking-widest text-blue-200">Informations Client</div>
                   <div className="space-y-1 text-xs">
-                    <p><span className="text-blue-300 font-medium mr-2">Nom / Prénom :</span> <span className="font-bold uppercase">{selectedProject?.client_name || '—'} {selectedProject?.client_firstname || ''}</span></p>
+                    <p><span className="text-blue-300 font-medium mr-2">Nom / Prénom :</span> <span className="font-bold uppercase">{selectedProject?.name || selectedProject?.client_name || '—'} {selectedProject?.firstName || selectedProject?.client_firstname || ''}</span></p>
                     <p><span className="text-blue-300 font-medium mr-2">Adresse :</span> <span className="font-bold">{selectedProject?.address || '—'}</span></p>
                     <p><span className="text-blue-300 font-medium mr-2">CP / Ville :</span> <span className="font-bold">{selectedProject?.zip || '—'} {selectedProject?.city || '—'}</span></p>
                     <p><span className="text-blue-300 font-medium mr-2">Téléphone :</span> <span className="font-bold">{selectedProject?.phone || '—'}</span></p>
@@ -1768,7 +1771,7 @@ export default function BpAcama() {
       }
       case 'prop_be': return <TabPropositionBE projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} />;
       case 'data': return <TabData />;
-      case 'devis': return <TabDevis projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} />;
+      case 'devis': return <TabDevis projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} setParams={setParams} />;
       default: return <TabPlaceholder label={TABS.find(t => t.id === activeTab)?.label || ''} />;
     }
   };

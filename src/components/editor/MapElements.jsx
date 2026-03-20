@@ -692,9 +692,8 @@ function PostesSourcesRTELayerManager({ layersRef, activeLayers }) {
     const latMin = bounds.getSouth();
     const lonMax = bounds.getEast();
 
-    // Use within_box for ODRE API v2.1
-    const whereClause = `within_box(geo_point_2d, ${latMin}, ${lonMin}, ${latMax}, ${lonMax}) AND fonction="Poste de transformation"`;
-    const url = `https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/postes-electriques-rte/records?where=${encodeURIComponent(whereClause)}&limit=100`;
+    // Use in_bbox for ODRE API v2.1: in_bbox(field, lonMin, latMin, lonMax, latMax)
+    const url = `https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/postes-electriques-rte/records?where=in_bbox(geo_point_2d, ${lonMin}, ${latMin}, ${lonMax}, ${latMax})&limit=100`;
 
     try {
       const response = await fetch(url);
