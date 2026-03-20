@@ -711,7 +711,7 @@ function PostesSourcesRTELayerManager({ layersRef, activeLayers }) {
           const marker = L.marker(latlng, {
             icon: L.divIcon({
               className: 'rte-substation-icon',
-              html: `<div style="background: #3b82f6; width: 18px; height: 18px; border-radius: 4px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">
+              html: `<div style="background: #f97316; width: 22px; height: 22px; border-radius: 6px; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;">
                        <svg viewBox="0 0 24 24" width="12" height="12" stroke="white" stroke-width="3" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                      </div>`,
               iconSize: [18, 18],
