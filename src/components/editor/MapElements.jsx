@@ -760,7 +760,7 @@ function PostesSourcesRTELayerManager({ layersRef, activeLayers }) {
 
           <p style="margin: 10px 0 0 0; font-size: 10px; color: #888; text-align: right;">Mis à jour le ${updated}</p>
         </div>
-      \`;
+      `;
       marker.bindPopup(popup);
       marker.addTo(layerGroupRef.current);
     });
