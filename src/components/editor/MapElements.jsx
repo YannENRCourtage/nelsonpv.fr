@@ -739,26 +739,26 @@ function PostesSourcesRTELayerManager({ layersRef, activeLayers }) {
       const grd1Cdr = vals.GRD1_CDR ? vals.GRD1_CDR + ' MW' : 'N/A';
       const updated = item.updated ? new Date(item.updated).toLocaleDateString('fr-FR') : 'N/A';
 
-      let popup = \`
+      let popup = `
         <div style="font-family: sans-serif; min-width: 260px; padding: 4px;">
-          <h4 style="margin: 0 0 4px 0; color: #f97316; font-size: 16px; font-weight: bold; padding-bottom: 2px;">\${item.name || 'Poste Source'}</h4>
-          <p style="margin: 0 0 10px 0; font-size: 11px; color: #555;">Code: \${item.code || 'N/A'} - Inscrit au S3REnR \${item.territory_name || 'N/A'}</p>
+          <h4 style="margin: 0 0 4px 0; color: #f97316; font-size: 16px; font-weight: bold; padding-bottom: 2px;">${item.name || 'Poste Source'}</h4>
+          <p style="margin: 0 0 10px 0; font-size: 11px; color: #555;">Code: ${item.code || 'N/A'} - Inscrit au S3REnR ${item.territory_name || 'N/A'}</p>
           
           <h5 style="margin: 8px 0 4px 0; color: #333; font-size: 13px; font-weight: 600; border-bottom: 1px solid #ddd; padding-bottom: 2px;">SUIVI DES ENR</h5>
           <ul style="margin: 4px 0; padding-left: 20px; font-size: 12px; color: #444;">
-            <li style="margin-bottom: 3px;">Quote-part unitaire: <b>\${qp}</b></li>
-            <li style="margin-bottom: 3px;">Capacité réservée: <b>\${ess3r}</b></li>
-            <li style="margin-bottom: 3px;">Reste à affecter: <b>\${na}</b></li>
-            <li style="margin-bottom: 3px;">Projets en file d'attente: <b>\${fileAttente}</b></li>
+            <li style="margin-bottom: 3px;">Quote-part unitaire: <b>${qp}</b></li>
+            <li style="margin-bottom: 3px;">Capacité réservée: <b>${ess3r}</b></li>
+            <li style="margin-bottom: 3px;">Reste à affecter: <b>${na}</b></li>
+            <li style="margin-bottom: 3px;">Projets en file d'attente: <b>${fileAttente}</b></li>
           </ul>
 
           <h5 style="margin: 10px 0 4px 0; color: #333; font-size: 13px; font-weight: 600; border-bottom: 1px solid #ddd; padding-bottom: 2px;">CAPACITÉ DISPONIBLE (CDR)</h5>
           <ul style="margin: 4px 0; padding-left: 20px; font-size: 12px; color: #444;">
-            <li style="margin-bottom: 3px;">Réseau Transport (RTE): <b>\${rteCdr}</b></li>
-            <li style="margin-bottom: 3px;">Réseau Distribution (GRD): <b>\${grd1Cdr}</b></li>
+            <li style="margin-bottom: 3px;">Réseau Transport (RTE): <b>${rteCdr}</b></li>
+            <li style="margin-bottom: 3px;">Réseau Distribution (GRD): <b>${grd1Cdr}</b></li>
           </ul>
 
-          <p style="margin: 10px 0 0 0; font-size: 10px; color: #888; text-align: right;">Mis à jour le \${updated}</p>
+          <p style="margin: 10px 0 0 0; font-size: 10px; color: #888; text-align: right;">Mis à jour le ${updated}</p>
         </div>
       \`;
       marker.bindPopup(popup);
