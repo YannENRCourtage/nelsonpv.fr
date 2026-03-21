@@ -679,6 +679,8 @@ function PostesSourcesRTELayerManager({ layersRef, activeLayers }) {
   const loadedIds = useRef(new Set());
   const layerGroupRef = useRef(L.featureGroup());
 
+  const allPostsRef = useRef(null);
+
   useEffect(() => {
     if (!layersRef.current) return;
     layersRef.current['postesSourcesRTE'] = layerGroupRef.current;
@@ -686,55 +688,82 @@ function PostesSourcesRTELayerManager({ layersRef, activeLayers }) {
 
   const fetchData = async () => {
     if (!active || !map) return;
-    const bounds = map.getBounds();
-    const latMax = bounds.getNorth();
-    const lonMin = bounds.getWest();
-    const latMin = bounds.getSouth();
-    const lonMax = bounds.getEast();
-
-    // Use within_bbox for ODRE API v2.1: within_bbox(field, west, south, east, north)
-    const bbox = `${lonMin},${latMin},${lonMax},${latMax}`;
-    const where = `within_bbox(geo_point_2d,${bbox})`;
-    const url = `https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/postes-electriques-rte/records?where=${encodeURIComponent(where)}&refine=fonction:Poste%20de%20transformation&limit=100`;
-
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-      if (!data.results) return;
-
-      data.results.forEach(item => {
-        if (loadedIds.current.has(item.code_poste)) return;
-        loadedIds.current.add(item.code_poste);
-
-        if (item.geo_point_2d) {
-          const latlng = [item.geo_point_2d.lat, item.geo_point_2d.lon];
-          const marker = L.marker(latlng, {
-            icon: L.divIcon({
-              className: 'rte-substation-icon',
-              html: `<div style="background: #f97316; width: 22px; height: 22px; border-radius: 6px; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;">
-                       <svg viewBox="0 0 24 24" width="12" height="12" stroke="white" stroke-width="3" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                     </div>`,
-              iconSize: [18, 18],
-              iconAnchor: [9, 9]
-            })
-          });
-
-          let popup = `
-            <div style="font-family: sans-serif; min-width: 200px; padding: 4px;">
-              <h4 style="margin: 0 0 8px 0; color: #3b82f6; font-size: 15px; font-weight: bold; border-bottom: 1px solid #eee; pb-1;">⚡ Poste Source RTE</h4>
-              <p style="margin: 4px 0; font-size: 12px;"><strong>Code:</strong> ${item.code_poste || 'N/A'}</p>
-              <p style="margin: 4px 0; font-size: 12px;"><strong>Nom:</strong> ${item.nom_poste || 'N/A'}</p>
-              <p style="margin: 4px 0; font-size: 12px;"><strong>Fonction:</strong> ${item.fonction || 'N/A'}</p>
-              <p style="margin: 4px 0; font-size: 12px;"><strong>État:</strong> ${item.etat || 'N/A'}</p>
-              <p style="margin: 4px 0; font-size: 12px;"><strong>Tension:</strong> ${item.tension || 'N/A'}</p>
-              <p style="margin: 4px 0; font-size: 12px;"><strong>Département:</strong> ${item.departement || 'N/A'}</p>
-            </div>
-          `;
-          marker.bindPopup(popup);
-          marker.addTo(layerGroupRef.current);
+    
+    // Fetch data once
+    if (!allPostsRef.current) {
+      try {
+        const response = await fetch('/datas/capareseau_map.json');
+        if (response.ok) {
+          allPostsRef.current = await response.json();
+        } else {
+          console.error("Failed to load Capareseau map data");
+          return;
         }
+      } catch (err) {
+        console.error("Error fetching Capareseau map data", err);
+        return;
+      }
+    }
+
+    const bounds = map.getBounds();
+
+    allPostsRef.current.forEach(item => {
+      // Validate coordinates
+      if (item.Y === undefined || item.X === undefined) return;
+      
+      const latlng = [parseFloat(item.Y), parseFloat(item.X)];
+      
+      // Only render markers within current bounds
+      if (!bounds.contains(latlng)) return;
+
+      if (loadedIds.current.has(item.code)) return;
+      loadedIds.current.add(item.code);
+
+      const marker = L.marker(latlng, {
+        icon: L.divIcon({
+          className: 'rte-substation-icon',
+          html: `<div style="background: #f97316; width: 22px; height: 22px; border-radius: 6px; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;">
+                   <svg viewBox="0 0 24 24" width="12" height="12" stroke="white" stroke-width="3" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                 </div>`,
+          iconSize: [22, 22],
+          iconAnchor: [11, 11]
+        })
       });
-    } catch (err) { console.error("Error fetching RTE data", err); }
+
+      const vals = item.values || {};
+      const qp = vals.INFO_QP ? vals.INFO_QP : 'N/A';
+      const ess3r = vals.INFO_ESS3R ? vals.INFO_ESS3R + ' MW' : '0 MW';
+      const na = vals.INFO_NA ? vals.INFO_NA + ' MW' : '0 MW';
+      const fileAttente = vals.INFO_FAS3R ? vals.INFO_FAS3R + ' MW' : '0 MW';
+      const rteCdr = vals.RTE_CDR ? vals.RTE_CDR + ' MW' : 'N/A';
+      const grd1Cdr = vals.GRD1_CDR ? vals.GRD1_CDR + ' MW' : 'N/A';
+      const updated = item.updated ? new Date(item.updated).toLocaleDateString('fr-FR') : 'N/A';
+
+      let popup = \`
+        <div style="font-family: sans-serif; min-width: 260px; padding: 4px;">
+          <h4 style="margin: 0 0 4px 0; color: #f97316; font-size: 16px; font-weight: bold; padding-bottom: 2px;">\${item.name || 'Poste Source'}</h4>
+          <p style="margin: 0 0 10px 0; font-size: 11px; color: #555;">Code: \${item.code || 'N/A'} - Inscrit au S3REnR \${item.territory_name || 'N/A'}</p>
+          
+          <h5 style="margin: 8px 0 4px 0; color: #333; font-size: 13px; font-weight: 600; border-bottom: 1px solid #ddd; padding-bottom: 2px;">SUIVI DES ENR</h5>
+          <ul style="margin: 4px 0; padding-left: 20px; font-size: 12px; color: #444;">
+            <li style="margin-bottom: 3px;">Quote-part unitaire: <b>\${qp}</b></li>
+            <li style="margin-bottom: 3px;">Capacité réservée: <b>\${ess3r}</b></li>
+            <li style="margin-bottom: 3px;">Reste à affecter: <b>\${na}</b></li>
+            <li style="margin-bottom: 3px;">Projets en file d'attente: <b>\${fileAttente}</b></li>
+          </ul>
+
+          <h5 style="margin: 10px 0 4px 0; color: #333; font-size: 13px; font-weight: 600; border-bottom: 1px solid #ddd; padding-bottom: 2px;">CAPACITÉ DISPONIBLE (CDR)</h5>
+          <ul style="margin: 4px 0; padding-left: 20px; font-size: 12px; color: #444;">
+            <li style="margin-bottom: 3px;">Réseau Transport (RTE): <b>\${rteCdr}</b></li>
+            <li style="margin-bottom: 3px;">Réseau Distribution (GRD): <b>\${grd1Cdr}</b></li>
+          </ul>
+
+          <p style="margin: 10px 0 0 0; font-size: 10px; color: #888; text-align: right;">Mis à jour le \${updated}</p>
+        </div>
+      \`;
+      marker.bindPopup(popup);
+      marker.addTo(layerGroupRef.current);
+    });
   };
 
   useEffect(() => {
