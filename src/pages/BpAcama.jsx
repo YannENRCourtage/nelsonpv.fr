@@ -841,7 +841,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
 
 
       <div className="mt-4">
-        <TableauPrevisionnel params={bpParams} rows={rows} />
+        <TableauPrevisionnel params={params} rows={rows} />
       </div>
 
       {/* Render Charts */}
