@@ -198,7 +198,9 @@ function computeBusinessPlan(params) {
     const rem_acc_y = Math.max(0, prodACC - ph);
     const new_pb = Math.max(0, pb - rem_acc_y);
 
-    const ca = (prodACC * tarifACC * idxT) + (new_pb * tarifBas * idxT) + (new_ph * tarifHaut * idxT);
+    const tBas = tarifBas * idxT;
+    const tHaut = tarifHaut * idxT;
+    const ca = (prodACC * tarifACC * idxT) + (new_pb * tBas) + (new_ph * tHaut);
 
     if (i === 1) {
       fraisDSRFInit = (ca / 1.35 * 0.5) * (tauxCredit / 100 * 0.35);
