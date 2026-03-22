@@ -118,6 +118,8 @@ function computeBusinessPlan(params) {
     raccordement = 0,
     frais = 0,
     soulte = 0,
+    loyerCoeff = 0,
+    soulteCoeff = 0,
     dureeEmprunt = 20,
     tauxCredit = 4,
     indexationTarif = 0.006,
@@ -125,7 +127,34 @@ function computeBusinessPlan(params) {
     degradation = 0.004,
   } = params;
 
-  const totalConstruction = coutCentrale + coutCharpente + raccordement + frais;
+  // 1. First pass: calculate total CA and Opex (excluding loyer/soulte) to get the margin
+  let totalCA = 0;
+  let totalOpexBase = 0;
+  for (let i = 1; i <= 20; i++) {
+    const deg = Math.pow(1 - degradation, i - 1);
+    const idxT = Math.pow(1 + indexationTarif, i - 1);
+    const idxOpex = Math.pow(1 + indexationOpex, i - 1);
+
+    const ph = prodHautInit * deg;
+    const pb = prodBasInit * deg;
+    const tBas = tarifBas * idxT;
+    const tHaut = tarifHaut * idxT;
+    const caYear = (pb * tBas) + (ph * tHaut);
+    totalCA += caYear;
+
+    const opexBaseYear = (maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin) * idxOpex;
+    totalOpexBase += opexBaseYear;
+  }
+
+  const margin = totalCA - totalOpexBase;
+  const calculatedLoyer = (margin * loyerCoeff) / 20;
+  const calculatedSoulte = (margin * soulteCoeff) / 2;
+
+  // Use either provided soulte/loyer or calculated ones
+  const finalSoulte = soulteCoeff !== 0 ? calculatedSoulte : soulte;
+  const finalLoyer = loyerCoeff !== 0 ? calculatedLoyer : 0;
+
+  const totalConstruction = coutCentrale + coutCharpente + raccordement + frais + finalSoulte;
   const apport10 = totalConstruction * 0.1;
   const emprunt = totalConstruction - apport10;
   const txMensuel = tauxCredit / 100 / 12;
@@ -147,7 +176,7 @@ function computeBusinessPlan(params) {
   let cfCumule = 0;
   let sumCA = 0;
   
-  const opexBase = maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin;
+  const opexBase = maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin + finalLoyer;
 
   // For IRR we need array of cash flows: Year 0 = -Apport (Wait, in Excel D61 = -K19)
   const cashFlowFP = [-apport10];
@@ -233,6 +262,7 @@ function computeBusinessPlan(params) {
       ass,
       taxes,
       admin,
+      loyer: finalLoyer * idxOpex,
       opex, // Total indexed OPEX
       ebitda,
       amortissement,
@@ -272,9 +302,42 @@ function computeBusinessPlan(params) {
     emprunt,
     triProjet,
     triFP,
-    tempsRetour
+    tempsRetour,
+    loyer: finalLoyer,
+    soulte: finalSoulte
   };
 }
+
+function calculateGoalSeekDSCR(params, type, target = 1.17) {
+  if (!params.kwc) throw new Error("Aucun projet chargé ou puissance nulle.");
+  
+  let lo = 0, hi = 20; // Wide range for coeff
+  let bestCoeff = 0;
+  
+  for (let i = 0; i < 100; i++) {
+    const mid = (lo + hi) / 2;
+    const testParams = { ...params };
+    if (type === 'loyer') {
+      testParams.loyerCoeff = mid;
+      testParams.soulteCoeff = 0;
+    } else {
+      testParams.loyerCoeff = 0;
+      testParams.soulteCoeff = mid;
+    }
+    
+    const { dscrMoyen } = computeBusinessPlan(testParams);
+    
+    // DSCR decreases as coeff increases (higher rent/soulte = less cash flow for debt)
+    if (dscrMoyen > target) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+    bestCoeff = mid;
+  }
+  return bestCoeff;
+}
+
 
 function computeResteACharge(params, targetDscr = 1.16) {
   // Binary search: find the apport needed so dscrMoyen >= targetDscr
@@ -461,6 +524,7 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="Annuité du crédit bancaire" propName="serviceDette" isCurrency />
             <DataRow label="Taxes locales (y compris TURPE)" propName="taxes" isCurrency />
             <DataRow label="Gestion administrative" propName="admin" isCurrency />
+            <DataRow label="Location terrain" propName="loyer" isCurrency />
             <DataRow label="Remplacement des onduleurs" propName="mra" isCurrency />
             <tr className="border-b border-slate-200 bg-white">
               <td className="px-2 py-1 font-bold bg-slate-50">Total des charges</td>
@@ -512,7 +576,7 @@ function TableauPrevisionnel({ params, rows }) {
 
 // ─── Tab: BUSINESS PLAN PROJETS ──────────────────────────────────────────────
 
-function TabBpProjets({ projects, selectedProject, setSelectedProject, params, setParams, computeBusinessPlan, computeResteACharge }) {
+function TabBpProjets({ projects, selectedProject, setSelectedProject, params, setParams, computeBusinessPlan, computeResteACharge, calculateGoalSeekDSCR, bpResults, totalInvestissement, apport10 }) {
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
 
@@ -528,26 +592,26 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
     }
   };
 
-  // Remove auto-calculation of kwc as requested by user
-  /*
-  useEffect(() => {
-    if (params.nbModules && params.puissanceUnitaire) {
-      const calculatedKwc = (params.nbModules * params.puissanceUnitaire) / 1000;
-      if (Math.abs(calculatedKwc - params.kwc) > 0.01) {
-        setParams(p => ({ ...p, kwc: calculatedKwc }));
-      }
+  const { rows, dscrMoyen, annuite, emprunt, triProjet, triFP, tempsRetour, loyer, soulte: calcSoulte } = bpResults;
+
+  const handleGoalSeek = (type) => {
+    if (!selectedProject) {
+      toast({ title: 'Erreur', variant: 'destructive', description: "Veuillez d'abord sélectionner un projet." });
+      return;
     }
-  }, [params.nbModules, params.puissanceUnitaire, setParams]);
-  */
-
-  const totalConstruction = params.coutCentrale + params.coutCharpente + params.raccordement + params.frais + params.soulte;
-  const tva = totalConstruction * 0.20;
-  const totalInvestissement = totalConstruction + tva;
-  const apport10 = totalInvestissement * 0.1;
-  const apportSoulte = apport10 + params.soulte;
-
-  const bpParams = { ...params, totalInvestissement, apport: apport10 };
-  const { rows, dscrMoyen, annuite, emprunt, triProjet, triFP, tempsRetour } = useMemo(() => computeBusinessPlan(bpParams), [JSON.stringify(bpParams)]);
+    try {
+      const target = params.targetDSCR || 1.17;
+      const resultCoeff = calculateGoalSeekDSCR({ ...params, totalInvestissement, apport: apport10 }, type, target);
+      setParams(p => ({ 
+        ...p, 
+        [type === 'loyer' ? 'loyerCoeff' : 'soulteCoeff']: resultCoeff, 
+        [type === 'loyer' ? 'soulteCoeff' : 'loyerCoeff']: 0 
+      }));
+      toast({ title: 'Calcul terminé', description: `Valeur cible atteinte pour un DSCR de ${fmt(target, 2)}` });
+    } catch (e) {
+      toast({ title: 'Erreur de calcul', variant: 'destructive', description: e.message });
+    }
+  };
 
   const resteACharge = useMemo(() => computeResteACharge({ ...params, totalInvestissement }, 1.16), [JSON.stringify({ ...params, totalInvestissement })]);
 
@@ -728,11 +792,49 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
 
           <SectionCard title="Rentabilité">
             <div className="space-y-1 text-xs">
-              <div className="flex justify-between"><span className="text-slate-500">TRI FP 20 ans :</span><b className={triFP >= 0.05 ? "text-green-600" : "text-slate-800"}>{triFP ? fmtPct(triFP) : 'N/A'}</b></div>
-              <div className="flex justify-between"><span className="text-slate-500">TRI Projet 20 ans :</span><b className={triProjet >= 0.05 ? "text-green-600" : "text-slate-800"}>{fmtPct(triProjet)}</b></div>
-              <div className="flex justify-between"><span className="text-slate-500">Temps de Retour :</span><b>{fmt(tempsRetour, 2)} ans</b></div>
+              <div className="flex justify-between items-center bg-amber-50 p-1 rounded border border-amber-100 mb-2">
+                <span className="font-bold text-amber-800 uppercase">Cible DSCR :</span>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    className="w-16 border border-amber-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-amber-500 text-right"
+                    value={params.targetDSCR}
+                    onChange={e => set('targetDSCR', parseFloat(e.target.value))}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                <div className="flex flex-col">
+                   <span className="text-slate-500">Location annuelle :</span>
+                   <span className="text-[10px] text-slate-400 font-mono">Coeff: {fmt(params.loyerCoeff, 4)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <b className="text-blue-700">{fmtEur(loyer)}</b>
+                  <Button onClick={() => handleGoalSeek('loyer')} size="xs" variant="destructive" className="h-6 px-1 text-[9px] font-black uppercase tracking-tighter shadow-sm hover:scale-105 transition-transform bg-gradient-to-r from-red-600 to-red-500 border-none">EXECUTION</Button>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                <div className="flex flex-col">
+                   <span className="text-slate-500">Soulte 20 ans :</span>
+                   <span className="text-[10px] text-slate-400 font-mono">Coeff: {fmt(params.soulteCoeff, 4)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <b className="text-blue-700">{fmtEur(calcSoulte)}</b>
+                  <Button onClick={() => handleGoalSeek('soulte')} size="xs" variant="destructive" className="h-6 px-1 text-[9px] font-black uppercase tracking-tighter shadow-sm hover:scale-105 transition-transform bg-gradient-to-r from-red-600 to-red-500 border-none">EXECUTION</Button>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <div className="flex justify-between"><span className="text-slate-500">TRI FP 20 ans :</span><b className={triFP >= 0.05 ? "text-green-600" : "text-slate-800"}>{triFP ? fmtPct(triFP) : 'N/A'}</b></div>
+                <div className="flex justify-between"><span className="text-slate-500">TRI Projet 20 ans :</span><b className={triProjet >= 0.05 ? "text-green-600" : "text-slate-800"}>{fmtPct(triProjet)}</b></div>
+                <div className="flex justify-between"><span className="text-slate-500">Temps de Retour :</span><b>{fmt(tempsRetour, 2)} ans</b></div>
+              </div>
+              
               <div className="flex justify-between border-t border-slate-100 pt-1 mt-1 font-semibold text-blue-800">
-                <span>Prix au Wc global hors raccordement :</span>
+                <span>Prix au Wc global :</span>
                 <span>{params.kwc > 0 ? fmt((params.coutCentrale + params.coutCharpente) / (params.kwc * 1000), 2) : '0,00'} €/Wc</span>
               </div>
             </div>
@@ -1210,7 +1312,7 @@ function TabPropositionClientBAC({ projects, selectedProject, setSelectedProject
   );
 }
 
-function TabPropositionBE({ projects, selectedProject, setSelectedProject, params }) {
+function TabPropositionBE({ projects, selectedProject, setSelectedProject, params, bpResults }) {
   const [data, setData] = useState({
     nomProjet: '', mixte: 'NON', typeBat: '', zoneNeige: 'N/A', zoneVent: 'N/A', altitude: 'N/A', gps: '', superficie: 'N/A',
     prodMoyen: '', puissance: '', tarif: '', ombrage: 'NON', longTranchee: '30', distPublique: '173', soulte: '', optionOffert: '',
@@ -1237,10 +1339,11 @@ function TabPropositionBE({ projects, selectedProject, setSelectedProject, param
         puissance: params?.kwc || selectedProject.puissance || '',
         tarif: params?.tarifBas || '0,0846',
         ombrage: selectedProject.ombrage || 'NON',
-        soulte: params?.soulte || '',
+        soulte: bpResults?.soulte || params?.soulte || '',
       }));
     }
-  }, [selectedProject, params]);
+  }, [selectedProject, params, bpResults]);
+
 
   const update = (k, v) => setData(prev => ({ ...prev, [k]: v }));
 
@@ -1680,6 +1783,9 @@ export default function BpAcama() {
     indexationTarif: 0.006,
     indexationOpex: 0.02,
     degradation: 0.004,
+    loyerCoeff: 2.6366,
+    soulteCoeff: 0,
+    targetDSCR: 1.17,
   });
 
   // Persistence: Load saved state or calculate defaults when project changes
@@ -1731,6 +1837,14 @@ export default function BpAcama() {
     }));
   }, [selectedProject]);
 
+  const totalConstruction = params.coutCentrale + params.coutCharpente + params.raccordement + params.frais + params.soulte;
+  const tva = totalConstruction * 0.20;
+  const totalInvestissement = totalConstruction + tva;
+  const apport10 = totalInvestissement * 0.1;
+
+  const bpResults = useMemo(() => computeBusinessPlan({ ...params, totalInvestissement, apport: apport10 }), [JSON.stringify(params), totalInvestissement, apport10]);
+
+
   const isAdmin = user?.role === 'admin';
   const isAlexandru = user?.email === 'a.mihailov@acama-energies.fr';
 
@@ -1759,12 +1873,15 @@ export default function BpAcama() {
           setParams={setParams}
           computeBusinessPlan={computeBusinessPlan}
           computeResteACharge={computeResteACharge}
+          calculateGoalSeekDSCR={calculateGoalSeekDSCR}
+          bpResults={bpResults}
+          totalInvestissement={totalInvestissement}
+          apport10={apport10}
         />
       );
       case 'suivi': return <TabSuivi projects={projects || []} projectEdits={projectEdits} updateProjectEdit={updateProjectEdit} />;
       case 'suivi_bat': return <TabSuiviBatType batEdits={batEdits} updateBatEdit={updateBatEdit} />;
       case 'prop_bac': {
-        const totalConstruction = params.coutCentrale + params.coutCharpente + params.raccordement + params.frais + params.soulte;
         const totalInvestissement = totalConstruction * 1.20;
         const resteACharge = computeResteACharge({ ...params, totalInvestissement }, 1.16);
         return <TabPropositionClientBAC projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} resteACharge={resteACharge} />;
