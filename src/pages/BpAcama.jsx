@@ -128,45 +128,38 @@ function computeBusinessPlan(params) {
   } = params;
 
   const prodTotale = kwc * productible;
-  const prodHautInit = Math.max(0, prodTotale * ((productible - seuilKwhKwc) / productible));
+  const prodHautInit = Math.max(0, prodTotale * ((productible - seuilKwhKwc) / (productible || 1)));
   const prodBasInit = prodTotale - prodHautInit;
 
   // 1. First pass: calculate total CA and Opex (excluding loyer/soulte) to get the margin
   let totalCA = 0;
-  let totalOpexBase = 0;
-  for (let i = 1; i <= 20; i++) {
-    const deg = Math.pow(1 - degradation, i - 1);
-    const idxT = Math.pow(1 + indexationTarif, i - 1);
-    const idxOpex = Math.pow(1 + indexationOpex, i - 1);
+  let totalOpexBaseSum = 0;
+  for (let y = 1; y <= 20; y++) {
+    const d = Math.pow(1 - degradation, y - 1);
+    const it = Math.pow(1 + indexationTarif, y - 1);
+    const io = Math.pow(1 + indexationOpex, y - 1);
 
-    const ph = prodHautInit * deg;
-    const pb = prodBasInit * deg;
-    const tBas = tarifBas * idxT;
-    const tHaut = tarifHaut * idxT;
-    const caYear = (pb * tBas) + (ph * tHaut);
+    const ph_test = prodHautInit * d;
+    const pb_test = prodBasInit * d;
+    const tb_test = tarifBas * it;
+    const th_test = tarifHaut * it;
+    const caYear = (pb_test * tb_test) + (ph_test * th_test);
     totalCA += caYear;
 
-    const opexBaseYear = (maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin) * idxOpex;
-    totalOpexBase += opexBaseYear;
+    const op = (maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin) * io;
+    totalOpexBaseSum += op;
   }
 
-  const margin = totalCA - totalOpexBase;
+  const margin = totalCA - totalOpexBaseSum;
   const calculatedLoyer = (margin * loyerCoeff) / 20;
   const calculatedSoulte = (margin * soulteCoeff) / 2;
 
-  // Use either provided soulte/loyer or calculated ones
   const finalSoulte = soulteCoeff !== 0 ? calculatedSoulte : soulte;
   const finalLoyer = loyerCoeff !== 0 ? calculatedLoyer : 0;
 
   const totalConstruction = coutCentrale + coutCharpente + raccordement + frais + finalSoulte;
   const apport10 = totalConstruction * 0.1;
   const emprunt = totalConstruction - apport10;
-  const txMensuel = tauxCredit / 100 / 12;
-  const annuite = emprunt > 0 ? -PMT(tauxCredit / 100, dureeEmprunt, -emprunt) : 0; 
-  // Wait, PMT with annual rate for Annual payment.
-  // Actually, VPM(K18; K17; K20) means VPM(taux, periods, pv).
-  // So VPM(4%, 20, Emprunt) = -PMT(0.04, 20, Emprunt) -> returns negative. The formula E56 is `-VPM`.
-  // Wait, E56 = -VPM($K$18; $K$17; $K$20). So it's positive payment.
   const serviceDette = emprunt > 0 ? -PMT(tauxCredit / 100, dureeEmprunt, emprunt) : 0;
 
   const rows = [];
@@ -1842,7 +1835,11 @@ export default function BpAcama() {
   const totalInvestissement = totalConstruction + tva;
   const apport10 = totalInvestissement * 0.1;
 
-  const bpResults = useMemo(() => computeBusinessPlan({ ...params, totalInvestissement, apport: apport10 }), [params, totalInvestissement, apport10]);
+  const bpResults = useMemo(() => computeBusinessPlan({ ...params, totalInvestissement, apport: apport10 }), [
+    params.kwc, params.productible, params.tarifBas, params.tarifHaut, params.coutCentrale, params.coutCharpente,
+    params.raccordement, params.frais, params.soulte, params.loyerCoeff, params.soulteCoeff,
+    params.tauxCredit, params.dureeEmprunt, totalInvestissement, apport10
+  ]);
 
 
   const isAdmin = user?.role === 'admin';
