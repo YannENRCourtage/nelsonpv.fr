@@ -678,9 +678,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
   const prodTotale = params.kwc * params.productible;
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-4 print:p-0 print:bg-white text-slate-900">
       {/* Project selector & Actions */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-3">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-3 print:hidden">
         <span className="text-xs font-semibold text-blue-700">Projet CRM :</span>
         <div className="relative flex-1" ref={dropdownRef}>
           <button onClick={() => setShowSearch(!showSearch)} className="flex items-center gap-2 bg-white border border-blue-300 rounded px-3 py-1.5 text-xs w-full text-left hover:bg-blue-50">
@@ -711,7 +711,10 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
           )}
         </div>
         {selectedProject && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 print:hidden">
+            <Button size="sm" onClick={() => window.print()} className="bg-slate-800 hover:bg-slate-900 text-white text-xs h-8 mr-2">
+              <FileText className="w-3 h-3 mr-1" /> Générer PDF
+            </Button>
             <Button size="sm" onClick={saveBp} className="bg-green-600 hover:bg-green-700 text-white text-xs h-8">
               <Save className="w-3 h-3 mr-1" /> Sauvegarder BP
             </Button>
@@ -1844,7 +1847,30 @@ export default function BpAcama() {
 
     // 1. Try to load saved state
     if (selectedProject.bpAcamaState) {
-      setParams(selectedProject.bpAcamaState);
+      const state = selectedProject.bpAcamaState;
+      
+      const kwc1 = parseFloat(selectedProject.puissance) || 0;
+      const kwc2 = parseFloat(selectedProject.puissance2) || 0;
+      const kwc3 = parseFloat(selectedProject.puissance3) || 0;
+      const kwc4 = parseFloat(selectedProject.puissance4) || 0;
+      const projectKwc = kwc1 + kwc2 + kwc3 + kwc4;
+      const surfaceTotale = (parseFloat(selectedProject.surface) || 0) + (parseFloat(selectedProject.surface2) || 0) + (parseFloat(selectedProject.surface3) || 0) + (parseFloat(selectedProject.surface4) || 0) || 1150;
+      const puissanceUnitaire = state.puissanceUnitaire || 490;
+      
+      const prevKwc = parseFloat(state.kwc) || 0;
+      const kwc = prevKwc > 0 ? prevKwc : (projectKwc > 0 ? projectKwc : 346.84);
+      const nbModules = state.nbModules || Math.round((kwc * 1000) / puissanceUnitaire);
+
+      setParams({
+        ...state,
+        kwc,
+        nbModules,
+        puissanceUnitaire,
+        surfaceTotale: state.surfaceTotale || surfaceTotale,
+        productible: state.productible || parseFloat(selectedProject.productible) || 1123.08,
+        tarifACC: state.tarifACC ?? 0.12,
+        partACC: state.partACC ?? 0,
+      });
       return;
     }
 
