@@ -125,6 +125,8 @@ function computeBusinessPlan(params) {
     indexationTarif = 0.006,
     indexationOpex = 0.02,
     degradation = 0.004,
+    tarifACC = 0.12,
+    partACC = 0,
   } = params;
 
   const prodTotale = kwc * productible;
@@ -141,9 +143,12 @@ function computeBusinessPlan(params) {
 
     const ph_test = prodHautInit * d;
     const pb_test = prodBasInit * d;
-    const tb_test = tarifBas * it;
-    const th_test = tarifHaut * it;
-    const caYear = (pb_test * tb_test) + (ph_test * th_test);
+    const prodACC = (ph_test + pb_test) * partACC;
+    const new_ph_test = Math.max(0, ph_test - prodACC);
+    const rem_acc = Math.max(0, prodACC - ph_test);
+    const new_pb_test = Math.max(0, pb_test - rem_acc);
+
+    const caYear = (prodACC * tarifACC * it) + (new_pb_test * tarifBas * it) + (new_ph_test * tarifHaut * it);
     totalCA += caYear;
 
     const op = (maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin) * io;
@@ -188,9 +193,12 @@ function computeBusinessPlan(params) {
     const ph = prodHautInit * deg;
     const pb = prodBasInit * deg;
 
-    const tBas = tarifBas * idxT;
-    const tHaut = tarifHaut * idxT;
-    const ca = (pb * tBas) + (ph * tHaut);
+    const prodACC = (ph + pb) * partACC;
+    const new_ph = Math.max(0, ph - prodACC);
+    const rem_acc_y = Math.max(0, prodACC - ph);
+    const new_pb = Math.max(0, pb - rem_acc_y);
+
+    const ca = (prodACC * tarifACC * idxT) + (new_pb * tarifBas * idxT) + (new_ph * tarifHaut * idxT);
 
     if (i === 1) {
       fraisDSRFInit = (ca / 1.35 * 0.5) * (tauxCredit / 100 * 0.35);
@@ -282,12 +290,15 @@ function computeBusinessPlan(params) {
 
   const dscrMoyen = dscrs.length > 0 ? dscrs.reduce((a, b) => a + b, 0) / dscrs.length : 0;
   
+  // Gains sur 20 ans: turnover vs costs & investment
+  const gainsVrai = sumCA - sumOpex - totalConstruction;
+
   // Rentabilité
   const triProjet = IRR(cashFlowProjet, 0.05); // W8
   let triFP = IRR(cashFlowFP, 0.05); // W7
-  if (triFP < -0.99 || triFP > 10) triFP = null; // Equivalent to #NOMBRE! if no convergence
+  if (triFP < -0.99 || triFP > 10) triFP = null; 
   
-  const tempsRetour = totalConstruction / (sumCAFDS / 20); // W9
+  const tempsRetour = totalConstruction / (Math.max(1, (sumCA - sumOpex)) / 20); // W9: investment / average margin
 
   return { 
     rows, 
@@ -304,7 +315,7 @@ function computeBusinessPlan(params) {
     apport10,
     sumCA,
     sumOpex,
-    gains: cfCumule
+    gains: gainsVrai
   };
 }
 
@@ -339,7 +350,8 @@ function calculateGoalSeekDSCR(params, type, target = 1.17) {
 }
 
 
-function computeResteACharge(params, targetDscr = 1.16) {
+function computeResteACharge(params) {
+  const targetDscr = params.targetDSCR || 1.16;
   // Binary search: find the apport needed so dscrMoyen >= targetDscr
   let lo = 0, hi = params.totalInvestissement * 0.9;
   for (let i = 0; i < 60; i++) {
@@ -370,19 +382,30 @@ const useDragScroll = () => {
     setStartX(e.pageX - ref.current.offsetLeft);
     setScrollLeft(ref.current.scrollLeft);
   };
-  const onMouseUp = () => setIsDragging(false);
-  const onMouseLeave = () => setIsDragging(false);
-  const onMouseMove = (e) => {
-    if (!isDragging || !ref.current) return;
-    e.preventDefault();
-    const x = e.pageX - ref.current.offsetLeft;
-    const walk = (x - startX) * 1.5;
-    ref.current.scrollLeft = scrollLeft - walk;
-  };
+
+  useEffect(() => {
+    const handleMouseUp = () => setIsDragging(false);
+    const handleMouseMove = (e) => {
+      if (!isDragging || !ref.current) return;
+      e.preventDefault();
+      const x = e.pageX - ref.current.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      ref.current.scrollLeft = scrollLeft - walk;
+    };
+
+    if (isDragging) {
+      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('mousemove', handleMouseMove);
+    }
+    return () => {
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [isDragging, startX, scrollLeft]);
 
   return { 
     ref, 
-    onMouseDown, onMouseUp, onMouseLeave, onMouseMove,
+    onMouseDown,
     className: cn("overflow-auto border border-slate-200 rounded-lg select-none cursor-grab", isDragging && "cursor-grabbing") 
   };
 };
@@ -457,7 +480,7 @@ function Field({ label, value, onChange, type = 'text', suffix, className, step,
             "border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none transition-colors focus:ring-1 focus:ring-blue-500",
             disabled ? "bg-slate-50 text-slate-400 cursor-not-allowed" : "text-slate-900 bg-white"
           )}
-          value={value ?? ''}
+          value={type === 'number' && typeof value === 'number' ? (Math.round(value * 100) / 100).toString() : (value ?? '')}
           onChange={e => onChange?.(type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value)}
           step={step ?? (type === 'number' ? 'any' : undefined)}
         />
@@ -618,16 +641,17 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
         [type === 'loyer' ? 'loyerCoeff' : 'soulteCoeff']: resultCoeff, 
         [type === 'loyer' ? 'soulteCoeff' : 'loyerCoeff']: 0 
       }));
-      toast({ title: 'Calcul terminé', description: `Valeur cible atteinte pour un DSCR de ${fmt(target, 2)}` });
+      toast({ title: 'Calcul terminé', description: `Valeur cible atteinte pour un DSCR moyen de ${fmtPct(target)}` });
     } catch (e) {
       toast({ title: 'Erreur de calcul', variant: 'destructive', description: e.message });
     }
   };
 
-  const resteACharge = useMemo(() => computeResteACharge({ ...params, totalInvestissement }, 1.16), [JSON.stringify({ ...params, totalInvestissement })]);
+  const resteACharge = useMemo(() => computeResteACharge({ ...params, totalInvestissement }), [JSON.stringify({ ...params, totalInvestissement })]);
 
-  const dscrColor = dscrMoyen >= 1.16 ? 'text-green-600 bg-green-50' : dscrMoyen >= 1.10 ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50';
-  const DscrIcon = dscrMoyen >= 1.16 ? CheckCircle : dscrMoyen >= 1.10 ? AlertTriangle : AlertCircle;
+  const limitDSCR = params.targetDSCR || 1.16;
+  const dscrColor = dscrMoyen >= limitDSCR ? 'text-green-600 bg-green-50' : dscrMoyen >= (limitDSCR - 0.06) ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50';
+  const DscrIcon = dscrMoyen >= limitDSCR ? CheckCircle : dscrMoyen >= (limitDSCR - 0.06) ? AlertTriangle : AlertCircle;
 
   const filteredProjects = projects.filter(p =>
     p.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -711,6 +735,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               <Field label="Tarif ≤ 1 100 KWh/KWc" value={params.tarifBas} onChange={v => set('tarifBas', v)} type="number" step={0.0001} suffix="€/kWh" />
               <Field label="Tarif > 1 100 KWh/KWc" value={params.tarifHaut} onChange={v => set('tarifHaut', v)} type="number" step={0.0001} suffix="€/kWh" />
               <Field label="Seuil (KWh/KWc)" value={params.seuilKwhKwc} onChange={v => set('seuilKwhKwc', v)} type="number" />
+              <div className="h-2 border-t border-slate-100 my-2" />
+              <Field label="Tarif ACC" value={params.tarifACC} onChange={v => set('tarifACC', v)} type="number" step={0.005} suffix="€/kWh" />
+              <Field label="Part ACC" value={params.partACC * 100} onChange={v => set('partACC', v / 100)} type="number" step={1} suffix="%" />
             </SectionCard>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -781,14 +808,14 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
             <DscrIcon className={cn('w-8 h-8 mx-auto mb-1', dscrColor.split(' ')[0])} />
             <div className="text-2xl font-black text-slate-900">{fmtPct(dscrMoyen)}</div>
             <div className={cn('text-xs font-semibold mt-1 px-2 py-0.5 rounded-full inline-block', dscrColor)}>DSCR MOYEN 20 ANS</div>
-            <div className="text-[10px] text-slate-500 mt-1">Seuil bancaire : 116%</div>
+            <div className="text-[10px] text-slate-500 mt-1">Seuil bancaire : {fmtPct(params.targetDSCR || 1.16)}</div>
           </div>
 
           {/* Reste à charge */}
           <div className="bg-slate-900 rounded-xl p-4 text-center">
             <div className="text-xs text-slate-400 uppercase tracking-wider">Reste à charge calculé</div>
             <div className="text-2xl font-black text-white mt-1">{fmtEur(resteACharge)}</div>
-            <div className="text-[10px] text-slate-400 mt-1">Pour atteindre DSCR ≥ 116%</div>
+            <div className="text-[10px] text-slate-400 mt-1">Pour atteindre DSCR ≥ {fmtPct(params.targetDSCR || 1.16)}</div>
             {selectedProject && (
               <Button onClick={applyToProject} size="sm" className="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white text-xs">
                 <Save className="w-3 h-3 mr-1" /> Appliquer au projet
@@ -1648,7 +1675,7 @@ function TabCalcul({ projects }) {
           capacite: bp.kwc || p.puissance || '',
           etude_ch: '', etude_bas: '',
           etude_charpente: bp.coutCharpente || '',
-          etude_pv: '', gestion_admin: bp.gestionAdmin || '',
+          etude_pv: '', gestion_admin: bp.gestionAdmin || (bp.kwc ? (parseFloat(bp.kwc) * 1.1).toFixed(2) : ''),
           cout_maintenance: bp.maintenance || '',
           taxes: bp.taxesLocales || '',
           cout_loc_compteur: bp.locationCompteur || '',
@@ -1805,6 +1832,8 @@ export default function BpAcama() {
     loyerCoeff: 2.6366,
     soulteCoeff: 0,
     targetDSCR: 1.17,
+    tarifACC: 0.12,
+    partACC: 0,
   });
 
   // Persistence: Load saved state or calculate defaults when project changes
@@ -1922,6 +1951,7 @@ export default function BpAcama() {
       maintenance,
       assurance,
       taxesLocales,
+      gestionAdmin: totalKwc * 1.1,
       frais,
       soulte: parseFloat(selectedProject.soulte) || 0
     }));
