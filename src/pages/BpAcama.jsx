@@ -168,6 +168,7 @@ function computeBusinessPlan(params) {
   let detteDebut = emprunt;
   let cfCumule = 0;
   let sumCA = 0;
+  let sumOpex = 0;
   
   const opexBase = maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin + finalLoyer;
 
@@ -197,6 +198,7 @@ function computeBusinessPlan(params) {
     } else { sumCA += ca; }
 
     const opex = opexBase * idxOpex;
+    sumOpex += opex;
     
     // We reconstruct the flat OPEX values matching existing display
     const maint = maintenance * idxOpex;
@@ -226,7 +228,6 @@ function computeBusinessPlan(params) {
     
     const resApresIS = resFiscal - is;
     const cafds = ebitda - is;
-    sumCAFDS += cafds;
 
     const mra = (20 * kwc) / 10;
     
@@ -300,7 +301,10 @@ function computeBusinessPlan(params) {
     soulte: finalSoulte,
     totalConstruction,
     totalInvestissement,
-    apport10
+    apport10,
+    sumCA,
+    sumOpex,
+    gains: cfCumule
   };
 }
 
@@ -575,6 +579,17 @@ function TableauPrevisionnel({ params, rows }) {
 function TabBpProjets({ projects, selectedProject, setSelectedProject, params, setParams, computeBusinessPlan, computeResteACharge, calculateGoalSeekDSCR, bpResults, totalInvestissement, apport10, totalConstruction, tva, apportSoulte }) {
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowSearch(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const set = useCallback((k, v) => setParams(p => ({ ...p, [k]: v })), [setParams]);
 
@@ -588,7 +603,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
     }
   };
 
-  const { rows, dscrMoyen, annuite, emprunt, triProjet, triFP, tempsRetour, loyer, soulte: calcSoulte } = bpResults;
+  const { rows, dscrMoyen, annuite, emprunt, triProjet, triFP, tempsRetour, loyer, soulte: calcSoulte, sumCA, sumOpex, gains } = bpResults;
 
   const handleGoalSeek = (type) => {
     if (!selectedProject) {
@@ -641,9 +656,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
       {/* Project selector & Actions */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-3">
         <span className="text-xs font-semibold text-blue-700">Projet CRM :</span>
-        <div className="relative flex-1">
+        <div className="relative flex-1" ref={dropdownRef}>
           <button onClick={() => setShowSearch(!showSearch)} className="flex items-center gap-2 bg-white border border-blue-300 rounded px-3 py-1.5 text-xs w-full text-left hover:bg-blue-50">
-            {selectedProject ? selectedProject.name : 'Sélectionner un projet...'}
+            {selectedProject ? selectedProject.name : 'Sélectionner un projet CRM...'}
             <ChevronDown className="w-3 h-3 ml-auto" />
           </button>
           {showSearch && (
@@ -657,10 +672,11 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               <div className="max-h-64 overflow-y-auto">
                 {filteredProjects.map(p => {
                   const totalP = (parseFloat(p.puissance) || 0) + (parseFloat(p.puissance2) || 0) + (parseFloat(p.puissance3) || 0) + (parseFloat(p.puissance4) || 0);
+                  const roundedP = Math.round(totalP * 100) / 100;
                   return (
                     <button key={p.id} onClick={() => applyProject(p)} className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 border-b border-slate-50">
                       <div className="font-medium">{p.name}</div>
-                      <div className="text-slate-500">{p.city} • {totalP > 0 ? totalP : (p.puissance || 0)} kWc</div>
+                      <div className="text-slate-500">{p.city} • {roundedP > 0 ? roundedP.toFixed(2) : (parseFloat(p.puissance) || 0).toFixed(2)} kWc</div>
                     </button>
                   );
                 })}
@@ -826,7 +842,11 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                 </div>
               </div>
 
-              <div className="pt-2">
+              <div className="pt-2 space-y-1">
+                <div className="flex justify-between text-[11px] border-b border-slate-50 pb-1"><span className="text-slate-500">Chiffre d'affaires sur 20 ans :</span><b className="text-blue-800">{fmtEur(sumCA)}</b></div>
+                <div className="flex justify-between text-[11px] border-b border-slate-50 pb-1"><span className="text-slate-500">Charges d'exploitation sur 20 ans :</span><b className="text-red-700">{fmtEur(sumOpex)}</b></div>
+                <div className="flex justify-between text-[11px] border-b border-slate-100 pb-1 mb-2"><span className="text-slate-500 text-blue-900 font-bold">Gains sur 20 ans :</span><b className="text-green-700">{fmtEur(gains)}</b></div>
+                
                 <div className="flex justify-between"><span className="text-slate-500">TRI FP 20 ans :</span><b className={triFP >= 0.05 ? "text-green-600" : "text-slate-800"}>{triFP ? fmtPct(triFP) : 'N/A'}</b></div>
                 <div className="flex justify-between"><span className="text-slate-500">TRI Projet 20 ans :</span><b className={triProjet >= 0.05 ? "text-green-600" : "text-slate-800"}>{fmtPct(triProjet)}</b></div>
                 <div className="flex justify-between"><span className="text-slate-500">Temps de Retour :</span><b>{fmt(tempsRetour, 2)} ans</b></div>
