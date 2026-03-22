@@ -781,6 +781,80 @@ function PostesSourcesRTELayerManager({ layersRef, activeLayers }) {
   return null;
 }
 
+function ABFLayerManager({ layersRef, activeLayers, project }) {
+  const map = useMap();
+  const active = activeLayers?.has('abf');
+  const layerGroupRef = useRef(L.featureGroup());
+  const [monument, setMonument] = useState(null);
+
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['abf_vector'] = layerGroupRef.current;
+  }, [layersRef]);
+
+  const fetchMonument = async () => {
+    if (!project?.gps) return;
+    const parts = project.gps.split(',');
+    if (parts.length !== 2) return;
+    const lat = parseFloat(parts[0].trim());
+    const lng = parseFloat(parts[1].trim());
+    if (isNaN(lat) || isNaN(lng)) return;
+
+    try {
+      const geom = JSON.stringify({ type: "Point", coordinates: [lng, lat] });
+      const url = `https://apicarto.ign.fr/api/monuments-historiques/get-by-geom?geom=${encodeURIComponent(geom)}&buffer=1000`;
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data && data.features && data.features.length > 0) {
+        setMonument(data.features[0]);
+      } else {
+        setMonument(null);
+      }
+    } catch (err) {
+      console.error("Error fetching ABF monument", err);
+    }
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchMonument();
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+      layerGroupRef.current.clearLayers();
+    }
+  }, [active, map, project?.gps]);
+
+  useEffect(() => {
+    if (active && monument) {
+      layerGroupRef.current.clearLayers();
+      const coords = monument.geometry.coordinates;
+      const latlng = [coords[1], coords[0]];
+      
+      const orangeDot = L.marker(latlng, {
+        icon: L.divIcon({
+          className: '',
+          html: `<div style="background-color: #f97316; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 2px #f97316, 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+          iconSize: [12, 12],
+          iconAnchor: [6, 6]
+        })
+      });
+
+      const props = monument.properties;
+      let popup = `<div style="font-family: sans-serif;">
+        <h4 style="margin: 0 0 4px 0; color: #f97316; font-weight: bold;">🏰 Monument Historique</h4>
+        <p style="margin: 2px 0; font-size: 13px;"><strong>Nom:</strong> ${props.nom || 'N/A'}</p>
+        <p style="margin: 2px 0; font-size: 13px;"><strong>Commune:</strong> ${props.commune || 'N/A'}</p>
+        <p style="margin: 2px 0; font-size: 13px;"><strong>Type:</strong> ${props.nature || 'N/A'}</p>
+      </div>`;
+      orangeDot.bindPopup(popup).addTo(layerGroupRef.current);
+    }
+  }, [active, monument]);
+
+  return null;
+}
+
 function BTLayerManager({ layersRef, activeLayers }) {
   const map = useMap();
   const active = activeLayers?.has('enedisLigneBT');
@@ -2426,14 +2500,15 @@ function SDISLayerManager({ layersRef }) {
           if (mergedData.features.length > 0) {
             const geoJsonLayer = L.geoJSON(mergedData, {
               pointToLayer: (feature, latlng) => {
-                const type = feature.properties?.type_hydrant || feature.properties?.famille_pei || '';
+                const typeRaw = feature.properties?.type_hydrant || feature.properties?.famille_pei || '';
+                const type = typeRaw.toUpperCase();
                 let html = '';
 
                 if (type.startsWith('PI') || type.includes('POTEAU')) {
                   html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
                 } else if (type.startsWith('BI') || type.includes('BOUCHE')) {
                   html = `<div style="background-color: #EF4444; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #991B1B; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
-                } else if (['REA', 'RENA'].includes(type) || type.includes('Reserve') || type.includes('RESERVE')) {
+                } else if (['REA', 'RENA'].includes(type) || type.includes('RESERVE')) {
                   html = `<div style="background-color: #3B82F6; width: 14px; height: 14px; border-radius: 2px; border: 2px solid #1E40AF; box-shadow: 0 1px 3px rgba(0,0,0,0.5);"></div>`;
                 } else {
                   html = `<div style="background-color: #9CA3AF; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #4B5563;"></div>`;
@@ -3964,6 +4039,7 @@ export default function MapElements({
           <LayersBootstrap layersRef={layersRef} />
 
           {/* Layer Managers */}
+          <ABFLayerManager layersRef={layersRef} activeLayers={activeLayers} project={project} />
           <SDISLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <GazDynamicLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <HTALayerManager layersRef={layersRef} activeLayers={activeLayers} />
