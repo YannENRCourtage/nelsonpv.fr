@@ -1842,7 +1842,7 @@ export default function BpAcama() {
   const totalInvestissement = totalConstruction + tva;
   const apport10 = totalInvestissement * 0.1;
 
-  const bpResults = useMemo(() => computeBusinessPlan({ ...params, totalInvestissement, apport: apport10 }), [JSON.stringify(params), totalInvestissement, apport10]);
+  const bpResults = useMemo(() => computeBusinessPlan({ ...params, totalInvestissement, apport: apport10 }), [params, totalInvestissement, apport10]);
 
 
   const isAdmin = user?.role === 'admin';
@@ -1882,11 +1882,10 @@ export default function BpAcama() {
       case 'suivi': return <TabSuivi projects={projects || []} projectEdits={projectEdits} updateProjectEdit={updateProjectEdit} />;
       case 'suivi_bat': return <TabSuiviBatType batEdits={batEdits} updateBatEdit={updateBatEdit} />;
       case 'prop_bac': {
-        const totalInvestissement = totalConstruction * 1.20;
         const resteACharge = computeResteACharge({ ...params, totalInvestissement }, 1.16);
         return <TabPropositionClientBAC projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} resteACharge={resteACharge} />;
       }
-      case 'prop_be': return <TabPropositionBE projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} />;
+      case 'prop_be': return <TabPropositionBE projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} bpResults={bpResults} />;
       case 'data': return <TabData />;
       case 'devis': return <TabDevis projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} setParams={setParams} />;
       default: return <TabPlaceholder label={TABS.find(t => t.id === activeTab)?.label || ''} />;
