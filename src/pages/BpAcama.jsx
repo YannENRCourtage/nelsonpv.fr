@@ -127,6 +127,10 @@ function computeBusinessPlan(params) {
     degradation = 0.004,
   } = params;
 
+  const prodTotale = kwc * productible;
+  const prodHautInit = Math.max(0, prodTotale * ((productible - seuilKwhKwc) / productible));
+  const prodBasInit = prodTotale - prodHautInit;
+
   // 1. First pass: calculate total CA and Opex (excluding loyer/soulte) to get the margin
   let totalCA = 0;
   let totalOpexBase = 0;
@@ -164,10 +168,6 @@ function computeBusinessPlan(params) {
   // So VPM(4%, 20, Emprunt) = -PMT(0.04, 20, Emprunt) -> returns negative. The formula E56 is `-VPM`.
   // Wait, E56 = -VPM($K$18; $K$17; $K$20). So it's positive payment.
   const serviceDette = emprunt > 0 ? -PMT(tauxCredit / 100, dureeEmprunt, emprunt) : 0;
-
-  const prodTotale = kwc * productible;
-  const prodHautInit = Math.max(0, prodTotale * ((productible - seuilKwhKwc) / productible));
-  const prodBasInit = prodTotale - prodHautInit;
 
   const rows = [];
   let dscrs = [];
