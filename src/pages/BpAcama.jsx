@@ -655,12 +655,15 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                 </div>
               </div>
               <div className="max-h-64 overflow-y-auto">
-                {filteredProjects.map(p => (
-                  <button key={p.id} onClick={() => applyProject(p)} className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 border-b border-slate-50">
-                    <div className="font-medium">{p.name}</div>
-                    <div className="text-slate-500">{p.city} • {p.puissance} kWc</div>
-                  </button>
-                ))}
+                {filteredProjects.map(p => {
+                  const totalP = (parseFloat(p.puissance) || 0) + (parseFloat(p.puissance2) || 0) + (parseFloat(p.puissance3) || 0) + (parseFloat(p.puissance4) || 0);
+                  return (
+                    <button key={p.id} onClick={() => applyProject(p)} className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 border-b border-slate-50">
+                      <div className="font-medium">{p.name}</div>
+                      <div className="text-slate-500">{p.city} • {totalP > 0 ? totalP : (p.puissance || 0)} kWc</div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1795,24 +1798,92 @@ export default function BpAcama() {
     }
 
     // 2. Otherwise calculate defaults
-    const kwc = parseFloat(selectedProject.puissance) || 346.84;
+    // Sum all building powers and surfaces
+    const kwc1 = parseFloat(selectedProject.puissance) || 0;
+    const kwc2 = parseFloat(selectedProject.puissance2) || 0;
+    const kwc3 = parseFloat(selectedProject.puissance3) || 0;
+    const kwc4 = parseFloat(selectedProject.puissance4) || 0;
+    const totalKwc = kwc1 + kwc2 + kwc3 + kwc4 || 346.84;
+
+    const surf1 = parseFloat(selectedProject.surface) || 0;
+    const surf2 = parseFloat(selectedProject.surface2) || 0;
+    const surf3 = parseFloat(selectedProject.surface3) || 0;
+    const surf4 = parseFloat(selectedProject.surface4) || 0;
+    const totalSurface = surf1 + surf2 + surf3 + surf4 || 1150;
+
     const prod = parseFloat(selectedProject.productible) || 1123.08;
-    
-    // Raccordement formula: 12450 + 19.5 * dist_hta
     const distHta = parseFloat(selectedProject.dist_hta) || 0;
-    const raccordement = 12450 + (distHta * 19.5);
+    const puissanceUnitaire = 490; // Default Acama module
+    const nbModules = Math.round((totalKwc * 1000) / puissanceUnitaire);
+
+    // Dynamic Raccordement logic based on 17+ Excel snippets
+    const calculateRaccordement = (cap, dist) => {
+      if (cap <= 0) return 0;
+      
+      if (cap < 100) {
+        if (dist < 50) return 8000;
+        if (dist < 100) return 10000;
+        if (dist < 150) return 12000;
+        if (dist < 200) return 14000;
+        if (dist < 250) return 16000;
+        return 16000 + (dist - 250) * 20; 
+      } else if (cap < 200) {
+        if (dist < 100) return 16100;
+        if (dist < 150) return 17900;
+        if (dist < 200) return 19600;
+        if (dist < 250) return 21300;
+        if (dist < 300) return 23000;
+        if (dist < 350) return 24800;
+        if (dist < 400) return 26500;
+        return 26500 + (dist - 400) * 35;
+      } else if (cap < 300) {
+        if (dist < 50) return 18300;
+        if (dist < 100) return 20100;
+        if (dist < 150) return 21800;
+        if (dist < 200) return 23500;
+        if (dist < 250) return 25300;
+        if (dist < 300) return 27000;
+        if (dist < 350) return 28700;
+        if (dist < 400) return 30500;
+        if (dist < 450) return 31900;
+        return 31900 + (dist - 450) * 40;
+      } else if (cap < 400) {
+        if (dist < 50) return 24300; // Heuristic
+        if (dist < 100) return 26100;
+        if (dist < 200) return 30500;
+        if (dist < 300) return 34500;
+        if (dist < 400) return 38500;
+        if (dist < 450) return 41900;
+        return 41900 + (dist - 450) * 50;
+      } else if (cap < 600) {
+        if (dist < 50) return 32600;
+        if (dist < 100) return 35100;
+        if (dist < 150) return 37100;
+        if (dist < 200) return 38700;
+        if (dist < 250) return 39100;
+        if (dist < 300) return 40400;
+        if (dist < 350) return 42200;
+        if (dist < 400) return 43900;
+        if (dist < 450) return 45300;
+        return 45300 + (dist - 450) * 60;
+      }
+      // Heuristic for > 600
+      return 45300 + (cap - 600) * 80 + (dist * 30);
+    };
+
+    const raccordement = calculateRaccordement(totalKwc, distHta);
 
     // Centrale logic: 490€/kWc
-    const coutCentrale = kwc * 490;
+    const coutCentrale = totalKwc * 490;
 
     // Charpente lookup
     const batType = SUIVI_BAT_DATA.find(b => b.type === selectedProject.type_bat) || SUIVI_BAT_DATA[SUIVI_BAT_DATA.length - 1];
     const coutCharpente = batType.cout_bat || 171381;
 
     // OPEX
-    const maintenance = kwc * 5;
-    const assurance = kwc * 2.5;
-    const taxesLocales = kwc * 2.5;
+    const maintenance = totalKwc * 5;
+    const assurance = totalKwc * 2.5;
+    const taxesLocales = totalKwc * 2.5;
 
     // Frais (roughly 1% of subtotal)
     const subtotal = coutCentrale + coutCharpente + raccordement;
@@ -1820,7 +1891,10 @@ export default function BpAcama() {
 
     setParams(prev => ({
       ...prev,
-      kwc,
+      kwc: totalKwc,
+      surfaceTotale: totalSurface,
+      nbModules,
+      puissanceUnitaire,
       productible: prod,
       coutCentrale,
       coutCharpente,
@@ -1869,7 +1943,23 @@ export default function BpAcama() {
           selectedProject={selectedProject} 
           setSelectedProject={setSelectedProject}
           params={params}
-          setParams={setParams}
+          setParams={(next) => {
+            if (typeof next === 'function') {
+              setParams(prev => {
+                const updated = next(prev);
+                // Handle inter-dependencies: nbModules, puissanceUnitaire -> kwc
+                if (updated.nbModules !== prev.nbModules || updated.puissanceUnitaire !== prev.puissanceUnitaire) {
+                  updated.kwc = (updated.nbModules * updated.puissanceUnitaire) / 1000;
+                } else if (updated.kwc !== prev.kwc) {
+                  // kwc -> nbModules
+                  updated.nbModules = Math.round((updated.kwc * 1000) / updated.puissanceUnitaire);
+                }
+                return updated;
+              });
+            } else {
+              setParams(next);
+            }
+          }}
           computeBusinessPlan={computeBusinessPlan}
           computeResteACharge={computeResteACharge}
           calculateGoalSeekDSCR={calculateGoalSeekDSCR}
