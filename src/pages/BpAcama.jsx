@@ -297,7 +297,10 @@ function computeBusinessPlan(params) {
     triFP,
     tempsRetour,
     loyer: finalLoyer,
-    soulte: finalSoulte
+    soulte: finalSoulte,
+    totalConstruction,
+    totalInvestissement,
+    apport10
   };
 }
 
@@ -569,7 +572,7 @@ function TableauPrevisionnel({ params, rows }) {
 
 // ─── Tab: BUSINESS PLAN PROJETS ──────────────────────────────────────────────
 
-function TabBpProjets({ projects, selectedProject, setSelectedProject, params, setParams, computeBusinessPlan, computeResteACharge, calculateGoalSeekDSCR, bpResults, totalInvestissement, apport10 }) {
+function TabBpProjets({ projects, selectedProject, setSelectedProject, params, setParams, computeBusinessPlan, computeResteACharge, calculateGoalSeekDSCR, bpResults, totalInvestissement, apport10, totalConstruction, tva, apportSoulte }) {
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
 
@@ -1830,16 +1833,15 @@ export default function BpAcama() {
     }));
   }, [selectedProject]);
 
-  const totalConstruction = params.coutCentrale + params.coutCharpente + params.raccordement + params.frais + params.soulte;
-  const tva = totalConstruction * 0.20;
-  const totalInvestissement = totalConstruction + tva;
-  const apport10 = totalInvestissement * 0.1;
-
-  const bpResults = useMemo(() => computeBusinessPlan({ ...params, totalInvestissement, apport: apport10 }), [
+  const bpResults = useMemo(() => computeBusinessPlan(params), [
     params.kwc, params.productible, params.tarifBas, params.tarifHaut, params.coutCentrale, params.coutCharpente,
     params.raccordement, params.frais, params.soulte, params.loyerCoeff, params.soulteCoeff,
-    params.tauxCredit, params.dureeEmprunt, totalInvestissement, apport10
+    params.tauxCredit, params.dureeEmprunt, params.maintenance, params.assurance, params.taxesLocales, params.gestionAdmin, params.locationCompteur
   ]);
+
+  const { totalConstruction, totalInvestissement, apport10, soulte: calcSoulte } = bpResults;
+  const tva = totalConstruction * 0.20;
+  const apportSoulte = apport10 + calcSoulte;
 
 
   const isAdmin = user?.role === 'admin';
@@ -1874,6 +1876,9 @@ export default function BpAcama() {
           bpResults={bpResults}
           totalInvestissement={totalInvestissement}
           apport10={apport10}
+          totalConstruction={totalConstruction}
+          tva={tva}
+          apportSoulte={apportSoulte}
         />
       );
       case 'suivi': return <TabSuivi projects={projects || []} projectEdits={projectEdits} updateProjectEdit={updateProjectEdit} />;
