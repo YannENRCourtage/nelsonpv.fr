@@ -781,6 +781,75 @@ function PostesSourcesRTELayerManager({ layersRef, activeLayers }) {
   return null;
 }
 
+function DemographicLayerManager({ layersRef, activeLayers }) {
+  const map = useMap();
+  const active = activeLayers?.has('demographic');
+  const loadedCodes = useRef(new Set());
+  const layerGroupRef = useRef(L.featureGroup());
+
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['demographic'] = layerGroupRef.current;
+  }, [layersRef]);
+
+  const fetchData = async () => {
+    if (!active || !map) return;
+    const bounds = map.getBounds();
+    const latMoy = bounds.getCenter().lat;
+    const lonMoy = bounds.getCenter().lng;
+
+    const url = `/api/melodi?action=population&lat=${latMoy}&lon=${lonMoy}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!data.results) return;
+
+      data.results.forEach(item => {
+        if (loadedCodes.current.has(item.code)) return;
+        loadedCodes.current.add(item.code);
+
+        if (item.lat && item.lon) {
+          const marker = L.marker([item.lat, item.lon], {
+            icon: L.divIcon({
+              className: 'demographic-icon',
+              html: `<div style="background: #10b981; color: white; padding: 4px 8px; border-radius: 20px; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-size: 11px; font-weight: bold; white-space: nowrap;">
+                       👥 ${item.population.toLocaleString('fr-FR')}
+                     </div>`,
+              iconSize: null,
+              iconAnchor: [20, 15]
+            })
+          });
+          
+          let popup = `
+            <div style="font-family: sans-serif; min-width: 180px;">
+              <h4 style="margin: 0 0 4px 0; color: #10b981; font-size: 14px; font-weight: bold;">${item.name}</h4>
+              <p style="margin: 4px 0; font-size: 12px;"><strong>Population:</strong> ${item.population.toLocaleString('fr-FR')} hab.</p>
+              <p style="margin: 4px 0; font-size: 11px; color: #666;">Source: INSEE Melodi</p>
+            </div>
+          `;
+          marker.bindPopup(popup);
+          marker.addTo(layerGroupRef.current);
+        }
+      });
+    } catch (err) { console.error("Error fetching demographic data", err); }
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => { map.off('moveend', onMoveEnd); };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+    }
+  }, [active, map]);
+
+  return null;
+}
+
 function ABFLayerManager({ layersRef, activeLayers, project }) {
   const map = useMap();
   const active = activeLayers?.has('abf');
@@ -2294,6 +2363,13 @@ const LAYERS = {
     isOverlay: true,
     zIndex: 108,
     minZoom: 16
+  },
+  demographic: {
+    name: "Démographie",
+    type: 'custom',
+    attribution: 'INSEE / Melodi',
+    isOverlay: true,
+    zIndex: 109
   },
   altimetry: {
     name: "Altimétrie",
@@ -4046,6 +4122,7 @@ export default function MapElements({
           <BTLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <PostesHTALayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <PostesSourcesRTELayerManager layersRef={layersRef} activeLayers={activeLayers} />
+          <DemographicLayerManager layersRef={layersRef} activeLayers={activeLayers} />
 
           {/* Controls inside map */}
           <BasemapControl layersRef={layersRef} />

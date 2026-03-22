@@ -34,31 +34,32 @@ function MapControls({ project, isRoutingActive, setIsRoutingActive }) {
   };
 
   return (
-    <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2 items-end hide-on-capture">
+    <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2 items-start hide-on-capture w-[160px]">
       <Button
         type="button"
         onClick={goToProjectAddress}
-        className="bg-white text-gray-800 hover:bg-gray-100 shadow-md"
+        className="bg-white text-gray-800 hover:bg-gray-100 shadow-md w-full justify-start"
       >
-        <HomeIcon size={16} className="mr-2 lg:mr-2" />
-        <span className="hidden lg:inline">Adresse </span>Projet
+        <HomeIcon size={16} className="mr-2" />
+        <span className="hidden lg:inline text-xs font-medium truncate">Adresse Projet</span>
+        <span className="lg:hidden">Projet</span>
       </Button>
 
-      <div className="flex gap-2 items-start">
+      <div className="flex gap-2 items-start w-full">
         <Button
           type="button"
           onClick={toggleRouting}
-          className={`shadow-md transition-colors ${isRoutingActive 
+          className={`shadow-md transition-colors flex-1 min-w-0 px-2 justify-start ${isRoutingActive 
             ? "bg-blue-600 text-white hover:bg-blue-700" 
             : "bg-white text-gray-800 hover:bg-gray-100"}`}
           title="Calculer l'itinéraire"
         >
-          <Route size={16} className="lg:mr-2" />
-          <span className="hidden lg:inline">Itinéraire</span>
+          <Route size={16} className="lg:mr-1 shrink-0" />
+          <span className="hidden lg:inline text-xs truncate">Itinéraire</span>
         </Button>
 
         {/* Boutons Zoom style Leaflet */}
-        <div className="flex flex-col bg-white rounded-md shadow-md border-2 border-black/20 overflow-hidden w-[34px]">
+        <div className="flex flex-col bg-white rounded-md shadow-md border-2 border-black/20 overflow-hidden w-[34px] shrink-0">
           <button
             type="button"
             onClick={handleZoomIn}

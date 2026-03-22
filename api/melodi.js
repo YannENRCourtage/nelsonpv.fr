@@ -94,6 +94,44 @@ export default async function handler(req, res) {
             return res.status(200).json(data);
         }
 
+        // --- ACTION : POPULATION (INSEE MELODI) ---
+        if (action === 'population') {
+            const { lat, lon } = req.query;
+            const geoUrl = `https://recherche-entreprises.api.gouv.fr/near_point?lat=${lat}&lon=${lon}&radius=1&per_page=1&minimal=true`;
+            const geoRes = await fetch(geoUrl);
+            const geoData = await geoRes.json();
+            
+            if (!geoData.results || geoData.results.length === 0) {
+                return res.status(404).json({ error: 'Commune not found' });
+            }
+            
+            const inseeCode = geoData.results[0].com_code;
+            const melodiUrl = `https://api.insee.fr/melodi/v1/data/DS_POPULATIONS_REFERENCE?GEO=${inseeCode}`;
+            const response = await fetch(melodiUrl, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const popData = await response.json();
+            
+            return res.status(200).json({
+                results: [{
+                    code: inseeCode,
+                    name: geoData.results[0].nom_commune,
+                    lat: parseFloat(lat),
+                    lon: parseFloat(lon),
+                    population: popData.observations?.[0]?.value || 0
+                }]
+            });
+        }
+
+        // --- ACTION : CAPARESEAU (ODRE) ---
+        if (action === 'capareseau') {
+            const { dataset, where } = req.query;
+            const odreUrl = `https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets/${dataset}/records?where=${encodeURIComponent(where)}&limit=100`;
+            const response = await fetch(odreUrl);
+            const data = await response.json();
+            return res.status(200).json(data);
+        }
+
         res.status(400).json({ error: 'Invalid action' });
 
     } catch (error) {

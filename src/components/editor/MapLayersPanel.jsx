@@ -357,6 +357,10 @@ const overlayCategories = {
                 attribution: 'IGN-F/Géoportail',
                 type: 'tile',
             },
+            'Démographie': {
+                type: 'demographic-custom',
+                attribution: 'INSEE / Melodi',
+            },
         },
     },
     'Sécurité': {
@@ -524,6 +528,10 @@ const MapLayersPanel = ({ map }) => {
                     }
                     if (layerConfig.type === 'postes-sources-rte-custom') {
                         window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'postesSourcesRTE' } }));
+                        return newActive;
+                    }
+                    if (layerConfig.type === 'demographic-custom' || layerName === 'Démographie') {
+                        window.dispatchEvent(new CustomEvent('map:toggle-layer', { detail: { layerKey: 'demographic' } }));
                         return newActive;
                     }
                     // Check zoom level for layers with minZoom
