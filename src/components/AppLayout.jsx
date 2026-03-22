@@ -427,7 +427,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen }) {
   }
 
   return (
-    <header className="app-header">
+    <header className="app-header no-print">
       <div className="app-header__container">
         <div className="flex items-center gap-8">
           <Link to="/" className="app-header__logo">

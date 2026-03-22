@@ -38,10 +38,10 @@ function MapControls({ project, isRoutingActive, setIsRoutingActive }) {
       <Button
         type="button"
         onClick={goToProjectAddress}
-        className="bg-white text-gray-800 hover:bg-gray-100 shadow-md w-full justify-start"
+        className="bg-white text-gray-800 hover:bg-gray-100 shadow-md w-full justify-center px-4"
       >
         <HomeIcon size={16} className="mr-2" />
-        <span className="hidden lg:inline text-xs font-medium truncate">Adresse Projet</span>
+        <span className="hidden lg:inline text-sm font-medium truncate">Adresse Projet</span>
         <span className="lg:hidden">Projet</span>
       </Button>
 
@@ -49,13 +49,13 @@ function MapControls({ project, isRoutingActive, setIsRoutingActive }) {
         <Button
           type="button"
           onClick={toggleRouting}
-          className={`shadow-md transition-colors flex-1 min-w-0 px-2 justify-start ${isRoutingActive 
+          className={`shadow-md transition-colors flex-1 min-w-0 px-2 justify-center ${isRoutingActive 
             ? "bg-blue-600 text-white hover:bg-blue-700" 
             : "bg-white text-gray-800 hover:bg-gray-100"}`}
           title="Calculer l'itinéraire"
         >
-          <Route size={16} className="lg:mr-1 shrink-0" />
-          <span className="hidden lg:inline text-xs truncate">Itinéraire</span>
+          <Route size={16} className="lg:mr-2 shrink-0" />
+          <span className="hidden lg:inline text-sm font-medium truncate">Itinéraire</span>
         </Button>
 
         {/* Boutons Zoom style Leaflet */}

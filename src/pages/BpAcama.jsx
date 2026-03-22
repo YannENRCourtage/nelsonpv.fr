@@ -13,6 +13,16 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ComposedChart } from 'recharts';
 
+const PRINT_STYLES = `
+  @media print {
+    @page { size: portrait; margin: 15mm; }
+    .no-print { display: none !important; }
+    .print-p-0 { padding: 0 !important; }
+    .print-bg-white { background: white !important; }
+    .print-portrait { width: 210mm !important; margin: 0 auto !important; }
+  }
+`;
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const TABS = [
@@ -283,6 +293,7 @@ function computeBusinessPlan(params) {
       serviceDette: sd,
       rembPrincipal,
       dscr,
+      prodACC,
       tresorerie,
       cfCumule
     });
@@ -538,6 +549,7 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="Production avec dégradation" propName="prod" format={v => fmt(v, 0)} />
             <DataRow label="Production < 1100KWh/KWc" propName="prodBas" format={v => fmt(v, 0)} />
             <DataRow label="Production > 1100KWh/KWc" propName="prodHaut" format={v => fmt(v, 0)} />
+            <DataRow label="Vente ACC" propName="prodACC" format={v => fmt(v, 0)} />
             <DataRow label="Jusque 1 100KWh/KWc" propName="tBas" isCurrency />
             <DataRow label="Au-delà de 1 100KWh/KWc" propName="tHaut" isCurrency />
             <DataRow label="CA" propName="ca" isCurrency />
@@ -753,7 +765,14 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                   className="border border-slate-200 rounded px-2 py-1 text-xs w-full focus:ring-1 focus:ring-blue-500 outline-none bg-white"
                   value={params.typeBat || ''}
                   onChange={e => {
-                    const bat = SUIVI_BAT_DATA.find(b => b.type === e.target.value);
+                    const selectedType = e.target.value;
+                    const bat = SUIVI_BAT_DATA.find(b => b.type === selectedType);
+                    
+                    if (selectedType === selectedProject?.bpAcamaState?.typeBat) {
+                      setParams(p => ({ ...p, ...selectedProject.bpAcamaState }));
+                      return;
+                    }
+
                     if (bat) {
                       setParams(p => ({
                         ...p,
@@ -1309,7 +1328,7 @@ function TabPropositionClientBAC({ projects, selectedProject, setSelectedProject
 
   return (
     <div className="p-4 bg-slate-100 min-h-full overflow-auto">
-      <div className="max-w-[1200px] mx-auto bg-white shadow-xl p-8 border border-slate-300 rounded-sm">
+      <div className="max-w-[1200px] mx-auto bg-white shadow-xl p-8 border border-slate-300 rounded-sm print:shadow-none print:border-0 print-portrait">
         <div className="flex justify-between items-center mb-8 bg-white no-print">
           <div className="flex items-center gap-4">
              <div className="px-3 py-2 bg-[#002060] rounded-sm flex items-center justify-center text-white font-black text-lg">BAC</div>
@@ -1431,7 +1450,7 @@ function TabPropositionBE({ projects, selectedProject, setSelectedProject, param
 
   return (
     <div className="p-4 bg-slate-100 min-h-full overflow-auto">
-      <div className="max-w-[1200px] mx-auto bg-white shadow-xl p-8 border border-slate-300 rounded-sm">
+      <div className="max-w-[1200px] mx-auto bg-white shadow-xl p-8 border border-slate-300 rounded-sm print:shadow-none print:border-0 print-portrait">
         <div className="flex justify-between items-center mb-8 bg-white no-print">
           <div className="flex items-center gap-4">
              <div className="px-3 py-2 bg-[#002060] rounded-sm flex items-center justify-center text-white font-black text-lg">BE</div>
@@ -1536,7 +1555,7 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
 
   return (
     <div className="p-4 flex flex-col h-full overflow-hidden bg-slate-50">
-      <div className="max-w-[1200px] mx-auto w-full bg-white rounded-xl border border-slate-200 shadow-lg overflow-auto flex flex-col no-scrollbar">
+      <div className="max-w-[1200px] mx-auto w-full bg-white rounded-xl border border-slate-200 shadow-lg overflow-auto flex flex-col no-scrollbar print:shadow-none print:border-0 print:rounded-none print-portrait">
         <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-white sticky top-0 z-20">
           <div className="flex items-center gap-3"><FileDown className="w-5 h-5 text-blue-600" /><h3 className="font-bold text-slate-800">DEVIS TECHNIQUE</h3></div>
           <div className="flex items-center gap-4">
@@ -1555,7 +1574,14 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
                     className="bg-white border border-slate-200 rounded px-2 py-1 outline-none w-48 shadow-sm text-xs"
                     value={params.typeBat || ''}
                     onChange={e => {
-                      const bat = SUIVI_BAT_DATA.find(b => b.type === e.target.value);
+                      const selectedType = e.target.value;
+                      const bat = SUIVI_BAT_DATA.find(b => b.type === selectedType);
+                      
+                      if (selectedType === selectedProject?.bpAcamaState?.typeBat) {
+                        setParams(p => ({ ...p, ...selectedProject.bpAcamaState }));
+                        return;
+                      }
+
                       if (bat) {
                         setParams(p => ({
                           ...p,
@@ -1563,7 +1589,8 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
                           coutCharpente: bat.cout_bat,
                           kwc: bat.kwc,
                           surfaceTotale: bat.surfTot,
-                          spv: bat.spv
+                          spv: bat.spv,
+                          productible: bat.prodMoyen || p.productible
                         }));
                       }
                     }}
@@ -2063,7 +2090,8 @@ export default function BpAcama() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-slate-100 overflow-hidden">
+    <div className="flex h-[calc(100vh-64px)] bg-slate-100 overflow-hidden print:h-auto print:overflow-visible">
+      <style>{PRINT_STYLES}</style>
       {/* Sidebar */}
       <aside className="w-64 bg-slate-900 text-white flex flex-col shrink-0">
         <div className="px-4 py-3 border-b border-slate-700">
