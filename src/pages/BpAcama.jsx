@@ -2237,8 +2237,27 @@ export default function BpAcama() {
     }));
   }, [selectedProject]);
 
-  const bp = useMemo(() => computeBusinessPlan({ ...collapsedParams, apport: resteACharge }), [collapsedParams, resteACharge]);
-  const { rows, annuite, emprunt, totalConstruction, totalInvestissement, apport10, soulte: calcSoulte } = bp;
+  const collapsedParams = useMemo(() => {
+    const buildings = params.buildings || [];
+    const totalConst = buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0) + (parseFloat(b.raccordement) || 0) + (parseFloat(b.frais) || 0) + (parseFloat(b.soulte) || 0), 0);
+    return {
+      ...params,
+      kwc: buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0), 0),
+      // Average productible weight by kwc for better accuracy? For now simple average
+      productible: buildings.length > 0 ? (buildings.reduce((sum, b) => sum + (parseFloat(b.productible) || 0) * (parseFloat(b.kwc) || 0), 0) / buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0), 0) || 1123.08) : 1123.08,
+      coutCentrale: buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0), 0),
+      coutCharpente: buildings.reduce((sum, b) => sum + (parseFloat(b.coutCharpente) || 0), 0),
+      raccordement: buildings.reduce((sum, b) => sum + (parseFloat(b.raccordement) || 0), 0),
+      frais: buildings.reduce((sum, b) => sum + (parseFloat(b.frais) || 0), 0),
+      soulte: buildings.reduce((sum, b) => sum + (parseFloat(b.soulte) || 0), 0),
+      totalInvestissement: totalConst * 1.2
+    };
+  }, [params]);
+
+  const resteACharge = useMemo(() => computeResteACharge(collapsedParams), [collapsedParams]);
+
+  const bpResults = useMemo(() => computeBusinessPlan({ ...collapsedParams, apport: resteACharge }), [collapsedParams, resteACharge]);
+  const { rows, annuite, emprunt, totalConstruction, totalInvestissement, apport10, soulte: calcSoulte } = bpResults;
   const tva = totalConstruction * 0.20;
   const apportSoulte = apport10 + calcSoulte;
 
