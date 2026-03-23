@@ -1062,7 +1062,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                 <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">RESTE À CHARGE</div>
                 <div className="text-3xl font-black">{fmtEur(resteACharge)}</div>
               </div>
-              <Button onClick={applyCalculatedResteACharge} className="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs py-5">
+              <Button onClick={applyToProject} className="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs py-5">
                 <RefreshCw className="w-3.5 h-3.5 mr-2" /> Appliquer
               </Button>
             </div>
