@@ -542,7 +542,8 @@ function TableauPrevisionnel({ params, rows }) {
           </thead>
           <tbody>
             <tr className="bg-amber-400 text-slate-900 font-bold uppercase">
-                <td className="px-2 py-1 border border-slate-300" colSpan={2}>CHIFFRE D'AFFAIRES</td>
+                <td className="px-2 py-1 border border-slate-300">CHIFFRE D'AFFAIRES</td>
+                <td className="border border-slate-300"></td>
                 {rows.map((_, i)=><td key={i} className="border border-slate-300"></td>)}
             </tr>
             <DataRow label="Puissance" propName="kwcDeg" format={v => fmt(v, 2)} />
@@ -555,7 +556,8 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="CA" propName="ca" isCurrency />
 
             <tr className="bg-amber-400 text-slate-900 font-bold uppercase">
-                <td className="px-2 py-1 border border-slate-300" colSpan={2}>CHARGE D'EXPLOITATION</td>
+                <td className="px-2 py-1 border border-slate-300">CHARGE D'EXPLOITATION</td>
+                <td className="border border-slate-300"></td>
                 {rows.map((_, i)=><td key={i} className="border border-slate-300"></td>)}
             </tr>
             <DataRow label="Maintenance" propName="maint" isCurrency />
@@ -566,16 +568,18 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="Gestion administrative" propName="admin" isCurrency />
             <DataRow label="Location terrain" propName="loyer" isCurrency />
             <DataRow label="Remplacement des onduleurs" propName="mra" isCurrency />
-            <tr className="border border-slate-200 bg-slate-50">
-              <td className="px-2 py-1 font-bold">Total des charges</td>
+            <tr className="border border-slate-200 bg-slate-50 font-bold">
+              <td className="px-2 py-1">Total des charges</td>
+              <td className="px-2 py-1 text-right text-red-700 border-l border-slate-200">{fmtEur(bp.totalConstruction / 20)}</td>
               {rows.map((r, i) => (
-                <td key={i} className="px-1 py-1 text-right border-l border-slate-200 font-bold text-red-700">{fmtEur(r.opex + r.serviceDette + r.mra)}</td>
+                <td key={i} className="px-1 py-1 text-right border-l border-slate-200 text-red-700">{fmtEur(r.opex + r.serviceDette + r.mra)}</td>
               ))}
             </tr>
             <DataRow label="OPEX" propName="opex" isCurrency />
 
             <tr className="bg-amber-400 text-slate-900 font-bold uppercase">
-                <td className="px-2 py-1 border border-slate-300" colSpan={1}>RESULTATS</td>
+                <td className="px-2 py-1 border border-slate-300">RESULTATS</td>
+                <td className="border border-slate-300"></td>
                 {rows.map((_, i)=><td key={i} className="border border-slate-300"></td>)}
             </tr>
             <DataRow label="EBITDA" propName="ebitda" isCurrency />
@@ -588,7 +592,7 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="Résultat IS" propName="is" isCurrency />
             <DataRow label="Résultat après IS" propName="resApresIS" isCurrency />
 
-            <tr className="bg-slate-200 border-none"><td colSpan={1+rows.length} className="h-2"></td></tr>
+            <tr className="bg-slate-200 border-none"><td colSpan={2+rows.length} className="h-2"></td></tr>
             <DataRow label="Dette début période" propName="detteDebut" isCurrency />
             <DataRow label="CAFDS" propName="cafds" isCurrency />
             <DataRow label="MRA onduleurs" propName="mra" isCurrency />
@@ -597,8 +601,9 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="DSCR" propName="dscr" isPercent />
             <tr className="border border-slate-300 bg-amber-400 font-black">
               <td className="px-2 py-1 uppercase">Trésorerie nette annuelle</td>
+              <td className="px-2 py-1 text-right border-l border-slate-300">{fmtEur(-apport10)}</td>
               {rows.map((r, i) => (
-                <td key={i} className="px-1 py-1 text-right border-l border-slate-300 text-slate-900">{fmtEur(r.tresorerie)}</td>
+                <td key={i} className="px-1 py-1 text-right border-l border-slate-300">{fmtEur(r.tresorerie)}</td>
               ))}
             </tr>
           </tbody>
@@ -832,7 +837,8 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
         )}
       </div>
 
-      <div id="pdf-section-1" className="flex flex-col gap-4">
+      {selectedProject && (<>
+        <div id="pdf-section-1" className="flex flex-col gap-4">
         <PDFHeader selectedProject={selectedProject} />
         
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
@@ -998,16 +1004,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                         {(params.buildings || []).map(b => (
                           <td key={b.id} className="py-2">
                             {b.projectType !== 'BE' && (
-                              <select 
-                                className="bg-white border border-blue-200 rounded px-1 py-1 text-[11px] w-full font-bold text-blue-900"
-                                value={b.typeBat || ''} 
-                                onChange={e => updateBuildingParam(b.id, 'typeBat', e.target.value)}
-                              >
-                                <option value="">— Sélectionner —</option>
-                                 {SUIVI_BAT_DATA.filter(m => m.id !== 'BAC+BE').map(d => (
-                                   <option key={d.id} value={d.id}>{d.id}</option>
-                                 ))}
-                              </select>
+                              <div className="bg-slate-100 border border-slate-200 rounded px-2 py-1.5 text-[11px] font-black text-blue-900 text-center">
+                                {b.typeBat || '—'}
+                              </div>
                             )}
                           </td>
                         ))}
@@ -1090,7 +1089,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                   </tbody>
                 </table>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-1 items-end bg-blue-50/30 rounded px-3 py-2">
+               <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-1 items-end bg-blue-50/30 rounded px-3 py-2">
                 <div className="flex items-center gap-2">
                    <span className="text-[11px] text-slate-400 font-bold uppercase">Total Construction :</span>
                    <span className="text-[13px] font-bold text-slate-800">{fmtEur(totalConstruction)}</span>
@@ -1100,6 +1099,13 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                    <span className="text-md font-black text-blue-900">{fmtEur(totalInvestissement)}</span>
                 </div>
               </div>
+            </SectionCard>
+
+            <SectionCard title="INDICES & DÉGRADATION" id="pdf-section-indices" className="grid grid-cols-1 gap-y-2">
+              <Field label="P. Unitaire" value={params.puissanceUnitaire} onChange={v => setParams(p => ({ ...p, puissanceUnitaire: v }))} type="number" suffix="Wc" />
+              <Field label="Indice Tarifs" value={params.indexationTarif * 100} onChange={v => setParams(p => ({ ...p, indexationTarif: v / 100 }))} type="number" suffix="%" step="0.1" />
+              <Field label="Indice OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" />
+              <Field label="Dégradation" value={params.degradation * 100} onChange={v => setParams(p => ({ ...p, degradation: v / 100 }))} type="number" suffix="%" step="0.1" />
             </SectionCard>
           </div>
 
@@ -1120,15 +1126,37 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               <Field label="Gestion" value={params.gestionAdmin} onChange={v => setParams(p => ({ ...p, gestionAdmin: v }))} type="number" suffix="€" className="h-10" />
             </SectionCard>
 
-            <SectionCard title="INDICES & DÉGRADATION" id="pdf-section-indices" className="grid grid-cols-1 gap-y-2">
-              <Field label="P. Unitaire" value={params.puissanceUnitaire} onChange={v => setParams(p => ({ ...p, puissanceUnitaire: v }))} type="number" suffix="Wc" />
-              <Field label="Indice Tarifs" value={params.indexationTarif * 100} onChange={v => setParams(p => ({ ...p, indexationTarif: v / 100 }))} type="number" suffix="%" step="0.1" />
-              <Field label="Indice OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" />
-              <Field label="Dégradation" value={params.degradation * 100} onChange={v => setParams(p => ({ ...p, degradation: v / 100 }))} type="number" suffix="%" step="0.1" />
-            </SectionCard>
+
+
+            <SectionCard title="BANQUE" id="pdf-section-banque" className="grow bg-slate-50 border-slate-200">
+               <div className="space-y-4">
+                 <div className="grid grid-cols-1 gap-y-2">
+                   <Field label="Durée de l'emprunt" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" size="sm" />
+                   <Field label="Taux de crédit" value={params.tauxCredit} onChange={v => setParams(p => ({ ...p, tauxCredit: v }))} type="number" suffix="%" size="sm" />
+                   <Field label="P. Unitaire" value={params.puissanceUnitaire} onChange={v => setParams(p => ({ ...p, puissanceUnitaire: v }))} type="number" suffix="Wc" size="sm" />
+                   <Field label="Dégradation modules" value={params.degradation * 100} onChange={v => setParams(p => ({ ...p, degradation: v / 100 }))} type="number" suffix="%" step="0.1" size="sm" />
+                   <Field label="Indexation tarif" value={params.indexationTarif * 100} onChange={v => setParams(p => ({ ...p, indexationTarif: v / 100 }))} type="number" suffix="%" step="0.1" size="sm" />
+                   <Field label="Indexation OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" size="sm" />
+                 </div>
+                 
+                 <div className="pt-2 border-t border-slate-200 mt-2 space-y-1">
+                   <div className="flex justify-between text-[11px]">
+                     <span className="text-slate-500 italic">Apport (10%) :</span>
+                     <span className="font-bold text-slate-700">{fmtEur(apport10)}</span>
+                   </div>
+                   <div className="flex justify-between text-[11px]">
+                     <span className="text-slate-500 italic">Emprunt :</span>
+                     <span className="font-bold text-slate-700">{fmtEur(emprunt)}</span>
+                   </div>
+                   <div className="flex justify-between text-[11px] mt-2 pt-1 border-t border-slate-200 font-bold">
+                     <span className="text-slate-700 font-bold">Annuité :</span>
+                     <span className="text-slate-900">{fmtEur(bp.annuite)}</span>
+                   </div>
+                 </div>
+               </div>
+             </SectionCard>
           </div>
 
-          {/* Column 3: Results and Banking (Reduced) */}
           <div className="lg:col-span-6 xl:col-span-4 space-y-6 flex flex-col h-full">
             <div className="bg-white rounded-lg border border-slate-200 p-6 flex flex-col items-center justify-center text-center space-y-2 shadow-sm border-t-4 border-t-green-500">
               <div className="p-2 bg-green-50 rounded-full mb-1"><CheckCircle className="w-6 h-6 text-green-500" /></div>
@@ -1157,59 +1185,49 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
             </SectionCard>
 
             <SectionCard title="RENTABILITÉ" id="pdf-section-renta" className="bg-amber-50/30 border-amber-100">
-               <div className="space-y-4">
-                 <Field label="CIBLE DSCR :" value={params.targetDSCR * 100} onChange={v => setParams(p => ({ ...p, targetDSCR: v / 100 }))} type="number" suffix="%" step="1" className="bg-amber-100/50 p-2 rounded" />
-                 
-                 <div className="space-y-1.5 pt-4 border-t border-amber-100">
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">CA 20 ans :</span><span className="font-bold text-blue-800">{fmtEur(bp.sumCA)}</span></div>
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Gains 20 ans :</span><span className="font-bold text-green-700">{fmtEur(bp.gains)}</span></div>
-                   <div className="space-y-1 pt-2 border-t border-amber-50 mt-1">
-                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">TRI Projet :</span><span className="font-bold text-green-600">{fmtPct(bp.triProjet)}</span></div>
-                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">TRI FP :</span><span className="font-bold text-green-600">{fmtPct(bp.triFP)}</span></div>
-                     <div className="pt-2 border-t border-slate-200 mt-2 space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-500">Temps de retour :</span>
-                  <span className="font-bold text-blue-600">{fmt(bp.payback, 1)} ans</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-500">Prix au Wc global :</span>
-                  <span className="font-bold text-slate-700">{fmtEur(totalInvestissement / (bp.rows[0]?.kwcDeg || 1))} /Wc</span>
-                </div>
-              </div>
-                   </div>
+                <div className="space-y-4">
+                  <Field label="CIBLE DSCR :" value={params.targetDSCR * 100} onChange={v => setParams(p => ({ ...p, targetDSCR: v / 100 }))} type="number" suffix="%" step="1" className="bg-amber-100/50 p-2 rounded" />
+                  
+                  <div className="space-y-1.5 pt-4 border-t border-amber-100">
+                    <div className="flex justify-between text-[11px] items-center">
+                       <span className="text-slate-500">Location annuelle : </span>
+                       <div className="flex items-center gap-2">
+                         <span className="text-[9px] text-slate-400 font-mono">Coeff: {fmt(params.loyerCoeff || 0, 4)}</span>
+                         <span className="font-bold text-blue-600">{fmtEur(bp.loyer)}</span>
+                       </div>
+                    </div>
+                    <div className="flex justify-between text-[11px] items-center">
+                       <span className="text-slate-500">Soulte 20 ans : </span>
+                       <div className="flex items-center gap-2">
+                         <span className="text-[9px] text-slate-400 font-mono">Coeff: {fmt(params.soulteCoeff || 0, 4)}</span>
+                         <span className="font-bold text-blue-600">{fmtEur(bp.soulte)}</span>
+                       </div>
+                    </div>
+                    <div className="pt-2 mt-1 border-t border-amber-50" />
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">CA 20 ans :</span><span className="font-bold text-blue-800">{fmtEur(bp.sumCA)}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500 text-red-500">Charges d'exploitation sur 20 ans :</span><span className="font-bold text-red-600">{fmtEur(bp.sumOpex + (collapsedParams.kwc * 40))}</span></div>
+                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Gains 20 ans :</span><span className="font-bold text-green-700">{fmtEur(bp.gains)}</span></div>
+                    <div className="space-y-1 pt-2 border-t border-amber-50 mt-1">
+                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">TRI Projet :</span><span className="font-bold text-green-600">{fmtPct(bp.triProjet)}</span></div>
+                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">TRI FP :</span><span className="font-bold text-green-600">{fmtPct(bp.triFP)}</span></div>
+                      <div className="pt-2 border-t border-slate-200 mt-2 space-y-2">
+                 <div className="flex justify-between text-xs">
+                   <span className="text-slate-500">Temps de retour :</span>
+                   <span className="font-bold text-blue-600">{fmt(bp.payback, 1)} ans</span>
+                 </div>
+                 <div className="flex justify-between text-xs">
+                   <span className="text-slate-500">Prix au Wc global :</span>
+                   <span className="font-bold text-slate-700">{fmtEur(totalInvestissement / (bp.rows[0]?.kwcDeg || 1))} /Wc</span>
                  </div>
                </div>
-            </SectionCard>
-
-            <SectionCard title="BANQUE" id="pdf-section-banque" className="bg-slate-50 border-slate-200">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                  <Field label="Durée de l'emprunt" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" size="sm" />
-                  <Field label="Taux de crédit" value={params.tauxCredit} onChange={v => setParams(p => ({ ...p, tauxCredit: v }))} type="number" suffix="%" size="sm" />
-                  <Field label="P. Unitaire" value={params.puissanceUnitaire} onChange={v => setParams(p => ({ ...p, puissanceUnitaire: v }))} type="number" suffix="Wc" size="sm" />
-                  <Field label="Dégradation modules" value={params.degradation * 100} onChange={v => setParams(p => ({ ...p, degradation: v / 100 }))} type="number" suffix="%" step="0.1" size="sm" />
-                  <Field label="Indexation tarif" value={params.indexationTarif * 100} onChange={v => setParams(p => ({ ...p, indexationTarif: v / 100 }))} type="number" suffix="%" step="0.1" size="sm" />
-                  <Field label="Indexation OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" size="sm" />
-                </div>
-                
-                <div className="pt-2 border-t border-slate-200 mt-2 space-y-1">
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-500 italic">Apport (10%) :</span>
-                    <span className="font-bold text-slate-700">{fmtEur(apport10)}</span>
-                  </div>
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-500 italic">Emprunt :</span>
-                    <span className="font-bold text-slate-700">{fmtEur(emprunt)}</span>
-                  </div>
-                  <div className="flex justify-between text-[11px] mt-2 pt-1 border-t border-slate-200 font-bold">
-                    <span className="text-slate-700 font-bold">Annuité :</span>
-                    <span className="text-slate-900">{fmtEur(bp.annuite)}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </SectionCard>
+             </SectionCard>
           </div>
-        </div>
+
+          </div>
+
 
         <div className="grid grid-cols-2 gap-6 bg-white rounded-lg border border-slate-200 p-4">
           <div id="pdf-chart-tresorerie" className="h-[300px]">
@@ -1245,8 +1263,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
            <TableauPrevisionnel params={collapsedParams} rows={rows} />
         </div>
       </div>
-    </div>
-  );
+      </>)}
+  </div>
+);
 }
 
 // ─── Tab: SUIVI ───────────────────────────────────────────────────────────────
