@@ -819,7 +819,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
           <div className="flex items-center gap-2 shrink-0">
             <Button size="sm" onClick={() => generateBpAcamaPDF({ 
                 elementId: 'bp-acama-content', 
-                sections: ['pdf-section-data', 'pdf-section-invest', 'pdf-section-tarifs', 'pdf-section-opex', 'pdf-section-indices', 'pdf-section-renta', 'pdf-section-banque'],
+                sections: ['pdf-section-1', 'pdf-section-2'],
                 fileName: `BP_Acama_${selectedProject.name}_${new Date().toISOString().split('T')[0]}.pdf` 
               })} className="bg-slate-800 hover:bg-slate-900 text-white text-[11px] h-8 px-3">
               <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF
@@ -1240,7 +1240,10 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
       </div>
 
       <div id="pdf-section-2" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
-        <TableauPrevisionnel params={collapsedParams} rows={rows} />
+        <PDFHeader selectedProject={selectedProject} />
+        <div className="mt-4">
+           <TableauPrevisionnel params={collapsedParams} rows={rows} />
+        </div>
       </div>
     </div>
   );
