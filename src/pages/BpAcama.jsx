@@ -360,13 +360,14 @@ function calculateGoalSeekDSCR(params, type, target = 1.17) {
 
 
 function computeResteACharge(params) {
-  const targetDscr = params.targetDSCR || 1.16;
+  if (!params.totalInvestissement || params.totalInvestissement <= 0) return 0;
+  const targetDscr = params.targetDSCR || 1.17;
   // Binary search: find the additional apport needed so dscrMoyen >= targetDscr
-  let lo = 0, hi = params.totalInvestissement * 0.9;
+  let lo = 0, hi = params.totalInvestissement;
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2;
     const { dscrMoyen } = computeBusinessPlan({ ...params, apport: mid });
-    if (dscrMoyen >= targetDscr) { hi = mid; } else { lo = mid; }
+    if (isNaN(dscrMoyen) || dscrMoyen >= targetDscr) { hi = mid; } else { lo = mid; }
   }
   return Math.max(0, Math.ceil(hi));
 }
@@ -642,10 +643,24 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
   }, []);
 
   const updateBuildingParam = (id, k, v) => {
-    setParams(prev => ({
-      ...prev,
-      buildings: (prev.buildings || []).map(b => b.id === id ? { ...b, [k]: v } : b)
-    }));
+    setParams(prev => {
+      const newBuildings = (prev.buildings || []).map(b => {
+        if (b.id === id) {
+          const updated = { ...b, [k]: v };
+          if (k === 'typeBat' && v) {
+            const batData = SUIVI_BAT_DATA.find(d => d.type === v);
+            if (batData) {
+              updated.kwc = batData.kwc || updated.kwc;
+              updated.productible = batData.prodMoyen || updated.productible || 1100;
+              updated.coutCharpente = batData.cout_bat || updated.coutCharpente;
+            }
+          }
+          return updated;
+        }
+        return b;
+      });
+      return { ...prev, buildings: newBuildings };
+    });
   };
 
   const addBuilding = () => {
@@ -853,12 +868,16 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                       <td className="text-[11px] text-slate-500 font-medium pt-2">Type de bâtiment</td>
                       {(params.buildings || []).map(b => (
                         <td key={b.id} className="pt-2">
-                          <input 
-                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-center uppercase"
+                          <select 
+                            className="bg-white border border-slate-200 rounded px-1 py-1 text-[10px] w-full outline-none focus:ring-1 focus:ring-blue-400"
                             value={b.typeBat || ''} 
                             onChange={e => updateBuildingParam(b.id, 'typeBat', e.target.value)}
-                            placeholder="..."
-                          />
+                          >
+                            <option value="">— Choisir —</option>
+                            {SUIVI_BAT_DATA.map(d => (
+                              <option key={d.type} value={d.type}>{d.type}</option>
+                            ))}
+                          </select>
                         </td>
                       ))}
                     </tr>
@@ -946,6 +965,25 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                     </tr>
                   </thead>
                   <tbody>
+                    {(params.projectType === 'BAC' || params.projectType === 'BAC + BE') && (
+                      <tr className="bg-blue-50/50">
+                        <td className="text-[11px] text-blue-700 font-bold pr-2 py-2">Modèle bâtiment</td>
+                        {(params.buildings || []).map(b => (
+                          <td key={b.id} className="py-2">
+                            <select 
+                              className="bg-white border border-blue-200 rounded px-1 py-1 text-[9px] w-full font-bold text-blue-900"
+                              value={b.typeBat || ''} 
+                              onChange={e => updateBuildingParam(b.id, 'typeBat', e.target.value)}
+                            >
+                              <option value="">— Sélectionner —</option>
+                              {SUIVI_BAT_DATA.map(d => (
+                                <option key={d.type} value={d.type}>{d.type}</option>
+                              ))}
+                            </select>
+                          </td>
+                        ))}
+                      </tr>
+                    )}
                     <tr className="h-2"></tr>
                     <tr>
                       <td className="text-[11px] text-slate-500 font-medium pt-1">Centrale solaire</td>
@@ -1095,6 +1133,23 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Payback :</span><span className="font-bold">{fmt(bp.tempsRetour, 1)} ans</span></div>
                  </div>
                </div>
+            </SectionCard>
+
+            <SectionCard title="BANQUE" className="bg-slate-50 border-slate-200">
+              <div className="space-y-2">
+                <Field label="Durée Emprunt" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" />
+                <Field label="Taux Crédit" value={params.tauxCredit} onChange={v => setParams(p => ({ ...p, tauxCredit: v }))} type="number" suffix="%" />
+                <div className="pt-2 border-t border-slate-100 mt-2">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 italic">Emprunt total :</span>
+                    <span className="font-bold text-slate-700">{fmtEur(bp.emprunt)}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 italic">Annuité :</span>
+                    <span className="font-bold text-slate-700">{fmtEur(bp.annuite)}</span>
+                  </div>
+                </div>
+              </div>
             </SectionCard>
           </div>
         </div>
@@ -2224,9 +2279,19 @@ export default function BpAcama() {
     const initialBuildings = [];
     const prod = parseFloat(selectedProject.productible) || 1123.08;
 
-    if (b1 > 0 || (!b2 && !b3 && !b4)) {
-      initialBuildings.push({ id: 1, typeBat: selectedProject.type_bat || '', kwc: b1 || 346.84, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
-    }
+    // Always ensure at least one building row, loading b1 if available
+    initialBuildings.push({ 
+      id: 1, 
+      typeBat: selectedProject.type_bat || '', 
+      kwc: b1 || 346.84, 
+      productible: prod, 
+      coutCentrale: 0, 
+      coutCharpente: 0, 
+      raccordement: 0, 
+      frais: 0, 
+      soulte: 0 
+    });
+
     if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', kwc: b2, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
     if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', kwc: b3, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
     if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', kwc: b4, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
