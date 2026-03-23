@@ -653,15 +653,22 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               updated.kwc = batData.kwc || updated.kwc;
               updated.productible = batData.prodMoyen || updated.productible || 1100;
               updated.coutCharpente = batData.cout_bat || updated.coutCharpente;
+              updated.coutCentrale = updated.kwc * 490;
             }
+          }
+          if (k === 'projectType' && v === 'BE') {
+             updated.coutCharpente = 10000;
           }
           if (k === 'surfaceToiture' || (k === 'projectType' && v === 'BE')) {
             const surf = k === 'surfaceToiture' ? parseFloat(v) || 0 : b.surfaceToiture || 0;
             if (updated.projectType === 'BE' && surf > 0) {
-              // Panel: 1.762 * 1.134 = 1.998 m2
               const panels = Math.floor(surf / (1.762 * 1.134));
               updated.kwc = (panels * (prev.puissanceUnitaire || 460)) / 1000;
+              updated.coutCentrale = updated.kwc * 490;
             }
+          }
+          if (k === 'kwc') {
+            updated.coutCentrale = (parseFloat(v) || 0) * 490;
           }
           return updated;
         }
@@ -693,12 +700,16 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
     const totalKwc = buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0), 0);
     const totalCentrale = buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0), 0);
     const totalCharpente = buildings.reduce((sum, b) => sum + (parseFloat(b.coutCharpente) || 0), 0);
-    const totalRaccordement = buildings.reduce((sum, b) => sum + (parseFloat(b.raccordement) || 0), 0);
-    const totalFrais = buildings.reduce((sum, b) => sum + (parseFloat(b.frais) || 0), 0);
-    const totalSoulte = buildings.reduce((sum, b) => sum + (parseFloat(b.soulte) || 0), 0);
+    
+    // Global fields from root params
+    const totalRaccordement = parseFloat(params.raccordement) || 0;
+    const totalFrais = parseFloat(params.frais) || 0;
+    const totalSoulte = parseFloat(params.soulte) || 0;
     
     const totalProdKwh = buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0) * (parseFloat(b.productible) || 0), 0);
     const averageProd = totalKwc > 0 ? totalProdKwh / totalKwc : 0;
+
+    const totalConst = totalCentrale + totalCharpente + totalRaccordement + totalFrais;
 
     return {
       ...params,
@@ -708,7 +719,8 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
       coutCharpente: totalCharpente,
       raccordement: totalRaccordement,
       frais: totalFrais,
-      soulte: totalSoulte
+      soulte: totalSoulte,
+      totalInvestissement: totalConst * 1.2
     };
   }, [params]);
 
@@ -809,7 +821,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
           <div className="flex items-center gap-2 shrink-0">
             <Button size="sm" onClick={() => generateBpAcamaPDF({ 
                 elementId: 'bp-acama-content', 
-                sections: ['pdf-section-1', 'pdf-section-2'],
+                sections: ['pdf-section-data', 'pdf-section-invest', 'pdf-section-tarifs', 'pdf-section-opex', 'pdf-section-indices', 'pdf-section-renta', 'pdf-section-banque'],
                 fileName: `BP_Acama_${selectedProject.name}_${new Date().toISOString().split('T')[0]}.pdf` 
               })} className="bg-slate-800 hover:bg-slate-900 text-white text-[11px] h-8 px-3">
               <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF
@@ -826,7 +838,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
         <PDFHeader selectedProject={selectedProject} />
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-8 max-w-4xl">
             <SectionCard 
               title="DONNÉES DU PROJET" 
               id="pdf-section-data"
@@ -988,21 +1000,23 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                     </tr>
                   </thead>
                   <tbody>
-                    {(params.projectType === 'BAC' || params.projectType === 'BAC + BE') && (
+                    {(params.buildings || []).some(b => b.projectType === 'BAC' || b.projectType === 'BAC + BE') && (
                       <tr className="bg-blue-50/50">
                         <td className="text-[11px] text-blue-700 font-bold pr-2 py-2">Modèle bâtiment</td>
                         {(params.buildings || []).map(b => (
                           <td key={b.id} className="py-2">
-                            <select 
-                              className="bg-white border border-blue-200 rounded px-1 py-1 text-[9px] w-full font-bold text-blue-900"
-                              value={b.typeBat || ''} 
-                              onChange={e => updateBuildingParam(b.id, 'typeBat', e.target.value)}
-                            >
-                              <option value="">— Sélectionner —</option>
-                              {SUIVI_BAT_DATA.map(d => (
-                                <option key={d.type} value={d.type}>{d.type}</option>
-                              ))}
-                            </select>
+                            {b.projectType !== 'BE' && (
+                              <select 
+                                className="bg-white border border-blue-200 rounded px-1 py-1 text-[9px] w-full font-bold text-blue-900"
+                                value={b.typeBat || ''} 
+                                onChange={e => updateBuildingParam(b.id, 'typeBat', e.target.value)}
+                              >
+                                <option value="">— Sélectionner —</option>
+                                {SUIVI_BAT_DATA.map(d => (
+                                  <option key={d.type} value={d.type}>{d.type}</option>
+                                ))}
+                              </select>
+                            )}
                           </td>
                         ))}
                       </tr>
@@ -1011,13 +1025,8 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                     <tr>
                       <td className="text-[11px] text-slate-500 font-medium pt-1">Centrale solaire</td>
                       {(params.buildings || []).map(b => (
-                        <td key={b.id} className="pt-1">
-                          <input 
-                            type="number"
-                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-right"
-                            value={b.coutCentrale || ''} 
-                            onChange={e => updateBuildingParam(b.id, 'coutCentrale', parseFloat(e.target.value) || 0)}
-                          />
+                        <td key={b.id} className="pt-1 text-right text-xs font-bold text-slate-700 pr-2">
+                           {fmtEur(b.coutCentrale)}
                         </td>
                       ))}
                     </tr>
@@ -1034,51 +1043,51 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                         </td>
                       ))}
                     </tr>
-                    <tr>
-                      <td className="text-[11px] text-slate-500 font-medium">Raccordement</td>
+                    <tr className="bg-slate-50 font-bold italic">
+                      <td className="text-[10px] text-slate-400 py-1">Sous-total technique</td>
                       {(params.buildings || []).map(b => (
-                        <td key={b.id}>
-                          <input 
-                            type="number"
-                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-right"
-                            value={b.raccordement || ''} 
-                            onChange={e => updateBuildingParam(b.id, 'raccordement', parseFloat(e.target.value) || 0)}
-                          />
+                        <td key={b.id} className="text-right text-[10px] pr-2">
+                          {fmtEur((parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0))}
                         </td>
                       ))}
                     </tr>
-                    <tr>
-                      <td className="text-[11px] text-slate-500 font-medium">Frais</td>
-                      {(params.buildings || []).map(b => (
-                        <td key={b.id}>
-                          <input 
-                            type="number"
-                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-right"
-                            value={b.frais || ''} 
-                            onChange={e => updateBuildingParam(b.id, 'frais', parseFloat(e.target.value) || 0)}
-                          />
-                        </td>
-                      ))}
+
+                    <tr className="h-4"></tr>
+                    <tr className="border-t border-slate-200">
+                      <td className="text-[11px] text-slate-600 font-bold pt-3" colSpan={(params.buildings || []).length + 1}>FRAIS COMMUNS :</td>
                     </tr>
                     <tr>
-                      <td className="text-[11px] text-slate-500 font-medium">Soulte / Rente</td>
-                      {(params.buildings || []).map(b => (
-                        <td key={b.id}>
-                          <input 
-                            type="number"
-                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-right"
-                            value={b.soulte || ''} 
-                            onChange={e => updateBuildingParam(b.id, 'soulte', parseFloat(e.target.value) || 0)}
-                          />
-                        </td>
-                      ))}
+                      <td className="text-[11px] text-slate-500 font-medium pl-2">Raccordement</td>
+                      <td colSpan={(params.buildings || []).length} className="pt-1">
+                        <input 
+                          type="number"
+                          className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-48 outline-none focus:ring-1 focus:ring-blue-400 text-right"
+                          value={params.raccordement || ''} 
+                          onChange={e => setParams(p => ({ ...p, raccordement: parseFloat(e.target.value) || 0 }))}
+                        />
+                      </td>
                     </tr>
                     <tr>
-                      <td className="text-[11px] text-blue-700 font-bold uppercase pt-2 border-t border-slate-100 mt-2">Sous-total Invest.</td>
-                      {(params.buildings || []).map(b => {
-                        const sub = (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0) + (parseFloat(b.raccordement) || 0) + (parseFloat(b.frais) || 0) + (parseFloat(b.soulte) || 0);
-                        return <td key={b.id} className="text-right text-[11px] font-black text-blue-900 border-t border-blue-50 pt-2 pr-4">{fmtEur(sub)}</td>;
-                      })}
+                      <td className="text-[11px] text-slate-500 font-medium pl-2">Frais</td>
+                      <td colSpan={(params.buildings || []).length} className="pt-1">
+                        <input 
+                          type="number"
+                          className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-48 outline-none focus:ring-1 focus:ring-blue-400 text-right"
+                          value={params.frais || ''} 
+                          onChange={e => setParams(p => ({ ...p, frais: parseFloat(e.target.value) || 0 }))}
+                        />
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="text-[11px] text-slate-500 font-medium pl-2">Soulte / Rente</td>
+                      <td colSpan={(params.buildings || []).length} className="pt-1">
+                        <input 
+                          type="number"
+                          className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-48 outline-none focus:ring-1 focus:ring-blue-400 text-right"
+                          value={params.soulte || ''} 
+                          onChange={e => setParams(p => ({ ...p, soulte: parseFloat(e.target.value) || 0 }))}
+                        />
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -1097,6 +1106,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
 
             <div className="grid grid-cols-2 gap-6">
               <SectionCard title="TARIFS D'ACHAT" id="pdf-section-tarifs" className="grid grid-cols-1 gap-y-2">
+                <Field label="Seuil" value={params.seuilKwhKwc} onChange={v => setParams(p => ({ ...p, seuilKwhKwc: v }))} type="number" suffix="kWh/kWc" />
                 <Field label="Tarif ≤ 1 100" value={params.tarifBas} onChange={v => setParams(p => ({ ...p, tarifBas: v }))} type="number" suffix="€" precision={4} step="0.001" />
                 <Field label="Tarif > 1 100" value={params.tarifHaut} onChange={v => setParams(p => ({ ...p, tarifHaut: v }))} type="number" suffix="€" precision={4} step="0.001" />
                 <Field label="Tarif ACC" value={params.tarifACC} onChange={v => setParams(p => ({ ...p, tarifACC: v }))} type="number" suffix="€" precision={4} step="0.001" />
@@ -1135,9 +1145,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               </Button>
             </div>
 
-            <SectionCard title="RENTABILITÉ" className="bg-amber-50/30 border-amber-100">
+            <SectionCard title="RENTABILITÉ" id="pdf-section-renta" className="bg-amber-50/30 border-amber-100">
                <div className="space-y-4">
-                 <Field label="CIBLE DSCR :" value={params.targetDSCR * 100} onChange={v => setParams(p => ({ ...p, targetDSCR: v / 100 }))} type="number" suffix="%" step="0.01" className="bg-amber-100/50 p-2 rounded" />
+                 <Field label="CIBLE DSCR :" value={params.targetDSCR * 100} onChange={v => setParams(p => ({ ...p, targetDSCR: v / 100 }))} type="number" suffix="%" step="1" className="bg-amber-100/50 p-2 rounded" />
                  
                  <div className="space-y-1.5 pt-2 border-t border-amber-100">
                    <div className="flex justify-between items-center text-[11px]">
@@ -1157,14 +1167,19 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                  </div>
 
                  <div className="space-y-1.5 pt-4 border-t border-amber-100">
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">TRI Projet :</span><span className="font-bold text-green-600">{fmtPct(bp.triProjet)}</span></div>
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">TRI FP :</span><span className="font-bold text-green-600">{fmtPct(bp.triFP)}</span></div>
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Payback :</span><span className="font-bold">{fmt(bp.tempsRetour, 1)} ans</span></div>
+                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">CA an 1 :</span><span className="font-bold text-blue-600">{fmtEur(bp.rows[0]?.ca)}</span></div>
+                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">CA 20 ans :</span><span className="font-bold text-blue-800">{fmtEur(bp.sumCA)}</span></div>
+                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Gains 20 ans :</span><span className="font-bold text-green-700">{fmtEur(bp.gains)}</span></div>
+                   <div className="space-y-1 pt-2 border-t border-amber-50 mt-1">
+                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">TRI Projet :</span><span className="font-bold text-green-600">{fmtPct(bp.triProjet)}</span></div>
+                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">TRI FP :</span><span className="font-bold text-green-600">{fmtPct(bp.triFP)}</span></div>
+                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">Temps de retour :</span><span className="font-bold">{fmt(bp.tempsRetour, 1)} ans</span></div>
+                   </div>
                  </div>
                </div>
             </SectionCard>
 
-            <SectionCard title="BANQUE" className="bg-slate-50 border-slate-200">
+            <SectionCard title="BANQUE" id="pdf-section-banque" className="bg-slate-50 border-slate-200">
               <div className="space-y-2">
                 <Field label="Durée Emprunt" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" />
                 <Field label="Taux Crédit" value={params.tauxCredit} onChange={v => setParams(p => ({ ...p, tauxCredit: v }))} type="number" suffix="%" />
@@ -1189,6 +1204,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                   <div className="flex justify-between text-[11px] mt-2 pt-1 border-t border-slate-200 font-bold">
                     <span className="text-slate-700 font-bold">Annuité :</span>
                     <span className="text-slate-900">{fmtEur(bp.annuite)}</span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 mt-2">
+                    <Field label="Indice OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" size="sm" />
                   </div>
                 </div>
               </div>
@@ -2297,6 +2315,9 @@ export default function BpAcama() {
     degradation: 0.004,
     loyerCoeff: 2.6366,
     soulteCoeff: 0,
+    raccordement: 18300.00,
+    frais: 3413.33,
+    soulte: -9048.54,
     targetDSCR: 1.17,
     tarifACC: 0.12,
     partACC: 0,
@@ -2328,20 +2349,20 @@ export default function BpAcama() {
         surfaceToiture: 0,
         kwc: b1 || 346.84, 
         productible: prod, 
-        coutCentrale: 0, 
-        coutCharpente: 0, 
-        raccordement: 0, 
-        frais: 0, 
-        soulte: 0 
+        coutCentrale: (b1 || 346.84) * 490, 
+        coutCharpente: 0 
       });
     }
-    if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b2, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
-    if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b3, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
-    if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b4, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
+    if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b2, productible: prod, coutCentrale: b2 * 490, coutCharpente: 0 });
+    if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b3, productible: prod, coutCentrale: b3 * 490, coutCharpente: 0 });
+    if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b4, productible: prod, coutCentrale: b4 * 490, coutCharpente: 0 });
 
     setParams(prev => ({
       ...prev,
-      buildings: initialBuildings
+      buildings: initialBuildings,
+      raccordement: parseFloat(selectedProject.raccordement) || 0,
+      frais: parseFloat(selectedProject.frais) || 0,
+      soulte: parseFloat(selectedProject.soulte) || 0
     }));
   }, [selectedProject]);
 
