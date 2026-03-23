@@ -837,7 +837,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
           {/* Column 1: Projects and Investment */}
-          <div className="lg:col-span-2 space-y-8 max-w-4xl">
+          <div className="space-y-8 flex flex-col h-full">
             <SectionCard 
               title="DONNÉES DU PROJET" 
               id="pdf-section-data"
@@ -1120,32 +1120,11 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               <Field label="Gestion" value={params.gestionAdmin} onChange={v => setParams(p => ({ ...p, gestionAdmin: v }))} type="number" suffix="€" className="h-10" />
             </SectionCard>
 
-            <SectionCard title="BANQUE" id="pdf-section-banque" className="bg-slate-50 border-slate-200">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                  <Field label="Durée de l'emprunt" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" />
-                  <Field label="Taux de crédit" value={params.tauxCredit} onChange={v => setParams(p => ({ ...p, tauxCredit: v }))} type="number" suffix="%" />
-                  <Field label="P. Unitaire" value={params.puissanceUnitaire} onChange={v => setParams(p => ({ ...p, puissanceUnitaire: v }))} type="number" suffix="Wc" />
-                  <Field label="Dégradation modules" value={params.degradation * 100} onChange={v => setParams(p => ({ ...p, degradation: v / 100 }))} type="number" suffix="%" step="0.1" />
-                  <Field label="Indexation tarif" value={params.indexationTarif * 100} onChange={v => setParams(p => ({ ...p, indexationTarif: v / 100 }))} type="number" suffix="%" step="0.1" />
-                  <Field label="Indexation OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" />
-                </div>
-                
-                <div className="pt-2 border-t border-slate-200 mt-2 space-y-1">
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-500 italic">Apport (10%) :</span>
-                    <span className="font-bold text-slate-700">{fmtEur(apport10)}</span>
-                  </div>
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-500 italic">Emprunt :</span>
-                    <span className="font-bold text-slate-700">{fmtEur(emprunt)}</span>
-                  </div>
-                  <div className="flex justify-between text-[11px] mt-2 pt-1 border-t border-slate-200 font-bold">
-                    <span className="text-slate-700 font-bold">Annuité :</span>
-                    <span className="text-slate-900">{fmtEur(bp.annuite)}</span>
-                  </div>
-                </div>
-              </div>
+            <SectionCard title="INDICES & DÉGRADATION" id="pdf-section-indices" className="grid grid-cols-1 gap-y-2">
+              <Field label="P. Unitaire" value={params.puissanceUnitaire} onChange={v => setParams(p => ({ ...p, puissanceUnitaire: v }))} type="number" suffix="Wc" />
+              <Field label="Indice Tarifs" value={params.indexationTarif * 100} onChange={v => setParams(p => ({ ...p, indexationTarif: v / 100 }))} type="number" suffix="%" step="0.1" />
+              <Field label="Indice OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" />
+              <Field label="Dégradation" value={params.degradation * 100} onChange={v => setParams(p => ({ ...p, degradation: v / 100 }))} type="number" suffix="%" step="0.1" />
             </SectionCard>
           </div>
 
