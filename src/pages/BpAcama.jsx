@@ -166,7 +166,7 @@ function computeBusinessPlan(params) {
 
   const totalConstruction = coutCentrale + coutCharpente + raccordement + frais + finalSoulte;
   const apport10 = totalConstruction * 0.1;
-  const emprunt = totalConstruction - apport10;
+  const emprunt = Math.max(0, totalConstruction - apport10 - (params.apport || 0));
   const serviceDette = emprunt > 0 ? -PMT(tauxCredit / 100, dureeEmprunt, emprunt) : 0;
 
   const rows = [];
@@ -258,8 +258,8 @@ function computeBusinessPlan(params) {
       year: 2025 + i,
       kwcDeg: pKw,
       prod: pb + ph,
-      prodBas: pb,
-      prodHaut: ph,
+      prodBas: new_pb,
+      prodHaut: new_ph,
       tBas,
       tHaut,
       ca,
@@ -357,15 +357,14 @@ function calculateGoalSeekDSCR(params, type, target = 1.17) {
 
 function computeResteACharge(params) {
   const targetDscr = params.targetDSCR || 1.16;
-  // Binary search: find the apport needed so dscrMoyen >= targetDscr
+  // Binary search: find the additional apport needed so dscrMoyen >= targetDscr
   let lo = 0, hi = params.totalInvestissement * 0.9;
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2;
     const { dscrMoyen } = computeBusinessPlan({ ...params, apport: mid });
     if (dscrMoyen >= targetDscr) { hi = mid; } else { lo = mid; }
   }
-  const minApport = params.totalInvestissement * 0.1;
-  return Math.max(0, Math.ceil(hi) - minApport);
+  return Math.max(0, Math.ceil(hi));
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -589,13 +588,6 @@ function TableauPrevisionnel({ params, rows }) {
                 <td key={i} className="px-2 py-1 text-right border-l border-slate-200 font-bold">{fmtEur(r.tresorerie)}</td>
               ))}
             </tr>
-            <tr className="border-b border-slate-200 bg-slate-200">
-              <td className="px-2 py-1 font-bold uppercase">Cash Flow Cumulé</td>
-              <td className="px-2 py-1">-</td>
-              {rows.map((r, i) => (
-                <td key={i} className="px-2 py-1 text-right border-l border-slate-300 font-bold text-green-700 bg-green-50/50">{fmtEur(r.cfCumule)}</td>
-              ))}
-            </tr>
           </tbody>
         </table>
       </div>
@@ -632,7 +624,13 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
     }
   };
 
-  const { rows, dscrMoyen, annuite, emprunt, triProjet, triFP, tempsRetour, loyer, soulte: calcSoulte, sumCA, sumOpex, gains } = bpResults;
+  const resteACharge = useMemo(() => computeResteACharge({ ...params, totalInvestissement }), [JSON.stringify({ ...params, totalInvestissement }), totalInvestissement]);
+  
+  // Projected results including the calculated reste à charge
+  const projectedResults = useMemo(() => computeBusinessPlan({ ...params, apport: resteACharge }), [JSON.stringify({ ...params, totalInvestissement }), resteACharge]);
+
+  const { rows, annuite, emprunt, triProjet, triFP, tempsRetour, loyer, soulte: calcSoulte, sumCA, sumOpex, gains } = projectedResults;
+  const displayDscrMoyen = projectedResults.dscrMoyen;
 
   const handleGoalSeek = (type) => {
     if (!selectedProject) {
@@ -653,11 +651,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
     }
   };
 
-  const resteACharge = useMemo(() => computeResteACharge({ ...params, totalInvestissement }), [JSON.stringify({ ...params, totalInvestissement })]);
-
   const limitDSCR = params.targetDSCR || 1.16;
-  const dscrColor = dscrMoyen >= limitDSCR ? 'text-green-600 bg-green-50' : dscrMoyen >= (limitDSCR - 0.06) ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50';
-  const DscrIcon = dscrMoyen >= limitDSCR ? CheckCircle : dscrMoyen >= (limitDSCR - 0.06) ? AlertTriangle : AlertCircle;
+  const dscrColor = displayDscrMoyen >= limitDSCR ? 'text-green-600 bg-green-50' : displayDscrMoyen >= (limitDSCR - 0.06) ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50';
+  const DscrIcon = displayDscrMoyen >= limitDSCR ? CheckCircle : displayDscrMoyen >= (limitDSCR - 0.06) ? AlertTriangle : AlertCircle;
 
   const filteredProjects = projects.filter(p =>
     p.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -820,9 +816,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
         {/* RIGHT: Results */}
         <div className="space-y-4">
           {/* DSCR box */}
-          <div className={cn('rounded-xl border-2 p-4 text-center', dscrMoyen >= 1.16 ? 'border-green-300 bg-green-50' : dscrMoyen >= 1.10 ? 'border-orange-300 bg-orange-50' : 'border-red-300 bg-red-50')}>
+          <div className={cn('rounded-xl border-2 p-4 text-center', displayDscrMoyen >= limitDSCR ? 'border-green-300 bg-green-50' : displayDscrMoyen >= (limitDSCR - 0.06) ? 'border-orange-300 bg-orange-50' : 'border-red-300 bg-red-50')}>
             <DscrIcon className={cn('w-8 h-8 mx-auto mb-1', dscrColor.split(' ')[0])} />
-            <div className="text-2xl font-black text-slate-900">{fmtPct(dscrMoyen)}</div>
+            <div className="text-2xl font-black text-slate-900">{fmtPct(displayDscrMoyen)}</div>
             <div className={cn('text-xs font-semibold mt-1 px-2 py-0.5 rounded-full inline-block', dscrColor)}>DSCR MOYEN 20 ANS</div>
             <div className="text-[10px] text-slate-500 mt-1">Seuil bancaire : {fmtPct(params.targetDSCR || 1.16)}</div>
           </div>
@@ -2007,7 +2003,8 @@ export default function BpAcama() {
   const bpResults = useMemo(() => computeBusinessPlan(params), [
     params.kwc, params.productible, params.tarifBas, params.tarifHaut, params.coutCentrale, params.coutCharpente,
     params.raccordement, params.frais, params.soulte, params.loyerCoeff, params.soulteCoeff,
-    params.tauxCredit, params.dureeEmprunt, params.maintenance, params.assurance, params.taxesLocales, params.gestionAdmin, params.locationCompteur
+    params.tauxCredit, params.dureeEmprunt, params.maintenance, params.assurance, params.taxesLocales, params.gestionAdmin, params.locationCompteur,
+    params.partACC, params.tarifACC, params.indexationTarif, params.indexationOpex, params.degradation, params.apport, params.targetDSCR
   ]);
 
   const { totalConstruction, totalInvestissement, apport10, soulte: calcSoulte } = bpResults;
