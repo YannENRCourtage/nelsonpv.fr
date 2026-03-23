@@ -568,7 +568,6 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="Remplacement des onduleurs" propName="mra" isCurrency />
             <tr className="border border-slate-200 bg-slate-50">
               <td className="px-2 py-1 font-bold">Total des charges</td>
-              <td className="px-2 py-1 text-slate-400 text-center">-</td>
               {rows.map((r, i) => (
                 <td key={i} className="px-1 py-1 text-right border-l border-slate-200 font-bold text-red-700">{fmtEur(r.opex + r.serviceDette + r.mra)}</td>
               ))}
@@ -576,7 +575,7 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="OPEX" propName="opex" isCurrency />
 
             <tr className="bg-amber-400 text-slate-900 font-bold uppercase">
-                <td className="px-2 py-1 border border-slate-300" colSpan={2}>RESULTATS</td>
+                <td className="px-2 py-1 border border-slate-300" colSpan={1}>RESULTATS</td>
                 {rows.map((_, i)=><td key={i} className="border border-slate-300"></td>)}
             </tr>
             <DataRow label="EBITDA" propName="ebitda" isCurrency />
@@ -589,7 +588,7 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="Résultat IS" propName="is" isCurrency />
             <DataRow label="Résultat après IS" propName="resApresIS" isCurrency />
 
-            <tr className="bg-slate-200 border-none"><td colSpan={2+rows.length} className="h-2"></td></tr>
+            <tr className="bg-slate-200 border-none"><td colSpan={1+rows.length} className="h-2"></td></tr>
             <DataRow label="Dette début période" propName="detteDebut" isCurrency />
             <DataRow label="CAFDS" propName="cafds" isCurrency />
             <DataRow label="MRA onduleurs" propName="mra" isCurrency />
@@ -598,7 +597,6 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="DSCR" propName="dscr" isPercent />
             <tr className="border border-slate-300 bg-amber-400 font-black">
               <td className="px-2 py-1 uppercase">Trésorerie nette annuelle</td>
-              <td className="px-2 py-1 text-slate-700 text-center">-</td>
               {rows.map((r, i) => (
                 <td key={i} className="px-1 py-1 text-right border-l border-slate-300 text-slate-900">{fmtEur(r.tresorerie)}</td>
               ))}
@@ -837,11 +835,13 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
       <div id="pdf-section-1" className="flex flex-col gap-4">
         <PDFHeader selectedProject={selectedProject} />
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+          {/* Column 1: Projects and Investment */}
           <div className="lg:col-span-2 space-y-8 max-w-4xl">
             <SectionCard 
               title="DONNÉES DU PROJET" 
               id="pdf-section-data"
+              className="bg-white border-t-4 border-t-blue-500 shadow-sm grow"
               actions={
                 <button 
                   onClick={addBuilding} 
@@ -858,44 +858,36 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                     <tr>
                       <th className="w-32"></th>
                       {(params.buildings || []).map((b, i) => (
-                        <th key={b.id} className="text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full border border-slate-200">Bâtiment {i+1}</span>
-                            {(params.buildings || []).length > 1 && (
-                              <button onClick={() => removeBuilding(b.id)} className="text-slate-300 hover:text-red-500"><X className="w-3 h-3" /></button>
-                            )}
-                          </div>
-                        </th>
+                        <th key={b.id} className="text-center text-[10px] uppercase text-slate-400 font-bold">Bâtiment {i+1}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     <tr className="h-2"></tr>
                     <tr>
-                      <td className="text-[11px] text-blue-700 font-bold pt-2">Type de projet</td>
+                      <td className="text-[12px] text-blue-700 font-bold pt-2">Type de projet</td>
                       {(params.buildings || []).map(b => (
                         <td key={b.id} className="pt-2">
                           <select 
-                            className="bg-white border border-blue-300 rounded px-1 py-1 text-[10px] w-full font-bold text-blue-900"
+                            className="bg-white border border-blue-300 rounded px-1 py-1 text-[11px] w-full font-bold text-blue-900"
                             value={b.projectType || 'BAC'} 
                             onChange={e => updateBuildingParam(b.id, 'projectType', e.target.value)}
                           >
                             <option value="BAC">BAC</option>
                             <option value="BE">BE</option>
-                            <option value="BAC + BE">BAC + BE</option>
                           </select>
                         </td>
                       ))}
                     </tr>
                     <tr>
-                      <td className="text-[11px] text-slate-500 font-medium pt-2">Type de bâtiment</td>
+                      <td className="text-[12px] text-slate-500 font-medium pt-2">Type de bâtiment</td>
                       {(params.buildings || []).map(b => (
                         <td key={b.id} className="pt-2">
                           {b.projectType === 'BE' ? (
                             <div className="flex items-center gap-1">
                               <input 
                                 type="number"
-                                className="bg-white border border-slate-200 rounded px-1 py-1 text-[10px] w-full outline-none focus:ring-1 focus:ring-blue-400 text-center"
+                                className="bg-white border border-slate-200 rounded px-1 py-1 text-[11px] w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
                                 value={b.surfaceToiture || ''} 
                                 onChange={e => updateBuildingParam(b.id, 'surfaceToiture', parseFloat(e.target.value) || 0)}
                                 placeholder="m²"
@@ -903,7 +895,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                             </div>
                           ) : (
                             <select 
-                              className="bg-white border border-slate-200 rounded px-1 py-1 text-[10px] w-full outline-none focus:ring-1 focus:ring-blue-400"
+                              className="bg-white border border-slate-200 rounded px-1 py-1 text-[11px] w-full outline-none focus:ring-1 focus:ring-blue-400 font-bold"
                               value={b.typeBat || ''} 
                               onChange={e => updateBuildingParam(b.id, 'typeBat', e.target.value)}
                             >
@@ -917,20 +909,20 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                       ))}
                     </tr>
                     <tr>
-                      <td className="text-[11px] text-slate-500 font-medium">Nombre de panneaux</td>
+                      <td className="text-[12px] text-slate-500 font-medium">Nombre de panneaux</td>
                       {(params.buildings || []).map(b => {
                         const nb = Math.ceil((parseFloat(b.kwc) || 0) * 1000 / (parseFloat(params.puissanceUnitaire) || 460));
                         return <td key={b.id} className="text-center text-[11px] font-bold text-slate-700">{nb} un.</td>;
                       })}
                     </tr>
                     <tr>
-                      <td className="text-[11px] text-slate-500 font-medium">Puissance installée</td>
+                      <td className="text-[12px] text-slate-500 font-medium">Puissance installée</td>
                       {(params.buildings || []).map(b => (
                         <td key={b.id}>
                           <div className="flex items-center gap-1">
                             <input 
                               type="number"
-                              className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-center"
+                              className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
                               value={b.kwc || ''} 
                               onChange={e => updateBuildingParam(b.id, 'kwc', parseFloat(e.target.value) || 0)}
                             />
@@ -940,13 +932,13 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                       ))}
                     </tr>
                     <tr>
-                      <td className="text-[11px] text-slate-500 font-medium">Productible</td>
+                      <td className="text-[12px] text-slate-500 font-medium">Productible</td>
                       {(params.buildings || []).map(b => (
                         <td key={b.id}>
                           <div className="flex items-center gap-1">
                             <input 
                               type="number"
-                              className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-center"
+                              className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
                               value={b.productible || ''} 
                               onChange={e => updateBuildingParam(b.id, 'productible', parseFloat(e.target.value) || 0)}
                             />
@@ -957,7 +949,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                     </tr>
                     <tr className="h-4"></tr>
                     <tr>
-                      <td className="text-[11px] text-slate-500 font-medium">Surface installée</td>
+                      <td className="text-[12px] text-slate-500 font-medium">Surface installée</td>
                       {(params.buildings || []).map(b => {
                         const nb = Math.ceil((parseFloat(b.kwc) || 0) * 1000 / (parseFloat(params.puissanceUnitaire) || 460));
                         const surf = nb * (1.762 * 1.134);
@@ -965,19 +957,19 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                       })}
                     </tr>
                     <tr>
-                      <td className="text-[11px] text-blue-700 font-bold uppercase pt-2 border-t border-slate-50 mt-2">Sous-total Prod.</td>
+                      <td className="text-[12px] text-blue-700 font-bold uppercase pt-2 border-t border-slate-50 mt-2">Sous-total Prod.</td>
                       {(params.buildings || []).map(b => {
                         const yearlyProd = (parseFloat(b.kwc) || 0) * (parseFloat(b.productible) || 0);
-                        return <td key={b.id} className="text-center text-[11px] font-black text-blue-900 border-t border-blue-50 pt-2">{fmt(yearlyProd, 0)} kWh/an</td>;
+                        return <td key={b.id} className="text-center text-[12px] font-black text-blue-900 border-t border-blue-50 pt-2">{fmt(yearlyProd, 0)} kWh/an</td>;
                       })}
                     </tr>
                   </tbody>
                 </table>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between bg-blue-50/30 rounded px-3 py-2">
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">Production totale cumulée</span>
-                  <span className="text-sm font-black text-blue-900">{fmt(collapsedParams.kwc * collapsedParams.productible, 0)} kWh/an</span>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-1 items-end bg-blue-50/30 rounded px-3 py-2">
+                <div className="flex items-center gap-2">
+                   <span className="text-[11px] text-slate-400 font-bold uppercase">Production totale cumulée</span>
+                   <span className="text-sm font-black text-blue-900">{fmt(collapsedParams.kwc * collapsedParams.productible, 0)} kWh/an</span>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="flex flex-col items-end">
@@ -988,12 +980,12 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               </div>
             </SectionCard>
 
-            <SectionCard title="INVESTISSEMENT" id="pdf-section-invest">
+            <SectionCard title="INVESTISSEMENT" id="pdf-section-invest" className="grow">
               <div className="overflow-x-auto pb-1">
                 <table className="w-full text-left border-separate border-spacing-x-4">
                   <thead>
                     <tr>
-                      <th className="w-32"></th>
+                      <th className="w-1/3"></th>
                       {(params.buildings || []).map((b, i) => (
                         <th key={b.id} className="text-center text-[10px] uppercase text-slate-400 font-bold">Bâtiment {i+1}</th>
                       ))}
@@ -1002,19 +994,19 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                   <tbody>
                     {(params.buildings || []).some(b => b.projectType === 'BAC' || b.projectType === 'BAC + BE') && (
                       <tr className="bg-blue-50/50">
-                        <td className="text-[11px] text-blue-700 font-bold pr-2 py-2">Modèle bâtiment</td>
+                        <td className="text-[12px] text-blue-700 font-bold pr-2 py-2">Modèle bâtiment</td>
                         {(params.buildings || []).map(b => (
                           <td key={b.id} className="py-2">
                             {b.projectType !== 'BE' && (
                               <select 
-                                className="bg-white border border-blue-200 rounded px-1 py-1 text-[9px] w-full font-bold text-blue-900"
+                                className="bg-white border border-blue-200 rounded px-1 py-1 text-[11px] w-full font-bold text-blue-900"
                                 value={b.typeBat || ''} 
                                 onChange={e => updateBuildingParam(b.id, 'typeBat', e.target.value)}
                               >
                                 <option value="">— Sélectionner —</option>
-                                {SUIVI_BAT_DATA.map(d => (
-                                  <option key={d.type} value={d.type}>{d.type}</option>
-                                ))}
+                                 {SUIVI_BAT_DATA.filter(m => m.id !== 'BAC+BE').map(d => (
+                                   <option key={d.id} value={d.id}>{d.id}</option>
+                                 ))}
                               </select>
                             )}
                           </td>
@@ -1023,7 +1015,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                     )}
                     <tr className="h-2"></tr>
                     <tr>
-                      <td className="text-[11px] text-slate-500 font-medium pt-1">Centrale solaire</td>
+                      <td className="text-[12px] text-slate-500 font-medium pt-1">Centrale solaire</td>
                       {(params.buildings || []).map(b => (
                         <td key={b.id} className="pt-1 text-right text-xs font-bold text-slate-700 pr-2">
                            {fmtEur(b.coutCentrale)}
@@ -1031,12 +1023,12 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                       ))}
                     </tr>
                     <tr>
-                      <td className="text-[11px] text-slate-500 font-medium">Charpente / Bâtiment</td>
+                      <td className="text-[12px] text-slate-500 font-medium">Charpente / Bâtiment</td>
                       {(params.buildings || []).map(b => (
                         <td key={b.id}>
                           <input 
                             type="number"
-                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-right"
+                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-right font-bold"
                             value={b.coutCharpente || ''} 
                             onChange={e => updateBuildingParam(b.id, 'coutCharpente', parseFloat(e.target.value) || 0)}
                           />
@@ -1044,9 +1036,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                       ))}
                     </tr>
                     <tr className="bg-slate-50 font-bold italic">
-                      <td className="text-[10px] text-slate-400 py-1">Sous-total technique</td>
+                      <td className="text-[11px] text-slate-400 py-1">Sous-total technique</td>
                       {(params.buildings || []).map(b => (
-                        <td key={b.id} className="text-right text-[10px] pr-2">
+                        <td key={b.id} className="text-right text-[11px] pr-2">
                           {fmtEur((parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0))}
                         </td>
                       ))}
@@ -1057,36 +1049,42 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                       <td className="text-[11px] text-slate-600 font-bold pt-3" colSpan={(params.buildings || []).length + 1}>FRAIS COMMUNS :</td>
                     </tr>
                     <tr>
-                      <td className="text-[11px] text-slate-500 font-medium pl-2">Raccordement</td>
-                      <td colSpan={(params.buildings || []).length} className="pt-1">
-                        <input 
-                          type="number"
-                          className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-48 outline-none focus:ring-1 focus:ring-blue-400 text-right"
-                          value={params.raccordement || ''} 
-                          onChange={e => setParams(p => ({ ...p, raccordement: parseFloat(e.target.value) || 0 }))}
-                        />
+                      <td className="text-[12px] text-slate-500 font-medium pl-2">Raccordement</td>
+                      <td colSpan={(params.buildings || []).length} className="pt-1 text-center">
+                        <div className="inline-flex items-center gap-2">
+                          <input 
+                            type="number"
+                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-48 outline-none focus:ring-1 focus:ring-blue-400 text-right font-bold"
+                            value={params.raccordement || ''} 
+                            onChange={e => setParams(p => ({ ...p, raccordement: parseFloat(e.target.value) || 0 }))}
+                          />
+                        </div>
                       </td>
                     </tr>
                     <tr>
-                      <td className="text-[11px] text-slate-500 font-medium pl-2">Frais</td>
-                      <td colSpan={(params.buildings || []).length} className="pt-1">
-                        <input 
-                          type="number"
-                          className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-48 outline-none focus:ring-1 focus:ring-blue-400 text-right"
-                          value={params.frais || ''} 
-                          onChange={e => setParams(p => ({ ...p, frais: parseFloat(e.target.value) || 0 }))}
-                        />
+                      <td className="text-[12px] text-slate-500 font-medium pl-2">Frais</td>
+                      <td colSpan={(params.buildings || []).length} className="pt-1 text-center">
+                        <div className="inline-flex items-center gap-2">
+                          <input 
+                            type="number"
+                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-48 outline-none focus:ring-1 focus:ring-blue-400 text-right font-bold"
+                            value={params.frais || ''} 
+                            onChange={e => setParams(p => ({ ...p, frais: parseFloat(e.target.value) || 0 }))}
+                          />
+                        </div>
                       </td>
                     </tr>
                     <tr>
-                      <td className="text-[11px] text-slate-500 font-medium pl-2">Soulte / Rente</td>
-                      <td colSpan={(params.buildings || []).length} className="pt-1">
-                        <input 
-                          type="number"
-                          className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-48 outline-none focus:ring-1 focus:ring-blue-400 text-right"
-                          value={params.soulte || ''} 
-                          onChange={e => setParams(p => ({ ...p, soulte: parseFloat(e.target.value) || 0 }))}
-                        />
+                      <td className="text-[12px] text-slate-500 font-medium pl-2">Soulte / Rente</td>
+                      <td colSpan={(params.buildings || []).length} className="pt-1 text-center">
+                        <div className="inline-flex items-center gap-2">
+                          <input 
+                            type="number"
+                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-48 outline-none focus:ring-1 focus:ring-blue-400 text-right font-bold"
+                            value={params.soulte || ''} 
+                            onChange={e => setParams(p => ({ ...p, soulte: parseFloat(e.target.value) || 0 }))}
+                          />
+                        </div>
                       </td>
                     </tr>
                   </tbody>
@@ -1094,40 +1092,65 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               </div>
               <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-1 items-end bg-blue-50/30 rounded px-3 py-2">
                 <div className="flex items-center gap-2">
-                   <span className="text-[10px] text-slate-400 font-bold uppercase">Total Construction :</span>
-                   <span className="text-xs font-bold text-slate-800">{fmtEur(totalConstruction)}</span>
+                   <span className="text-[11px] text-slate-400 font-bold uppercase">Total Construction :</span>
+                   <span className="text-[13px] font-bold text-slate-800">{fmtEur(totalConstruction)}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                   <span className="text-[10px] text-slate-400 font-bold uppercase">Total avec TVA (20%) :</span>
-                   <span className="text-sm font-black text-blue-900">{fmtEur(totalInvestissement)}</span>
+                   <span className="text-[11px] text-slate-400 font-bold uppercase">Total avec TVA (20%) :</span>
+                   <span className="text-md font-black text-blue-900">{fmtEur(totalInvestissement)}</span>
                 </div>
               </div>
             </SectionCard>
-
-            <div className="grid grid-cols-2 gap-6">
-              <SectionCard title="TARIFS D'ACHAT" id="pdf-section-tarifs" className="grid grid-cols-1 gap-y-2">
-                <Field label="Seuil" value={params.seuilKwhKwc} onChange={v => setParams(p => ({ ...p, seuilKwhKwc: v }))} type="number" suffix="kWh/kWc" />
-                <Field label="Tarif ≤ 1 100" value={params.tarifBas} onChange={v => setParams(p => ({ ...p, tarifBas: v }))} type="number" suffix="€" precision={4} step="0.001" />
-                <Field label="Tarif > 1 100" value={params.tarifHaut} onChange={v => setParams(p => ({ ...p, tarifHaut: v }))} type="number" suffix="€" precision={4} step="0.001" />
-                <Field label="Tarif ACC" value={params.tarifACC} onChange={v => setParams(p => ({ ...p, tarifACC: v }))} type="number" suffix="€" precision={4} step="0.001" />
-                <Field label="Part ACC" value={params.partACC * 100} onChange={v => setParams(p => ({ ...p, partACC: v/100 }))} type="number" suffix="%" />
-              </SectionCard>
-              <SectionCard title="INDICES & DÉGRADATION" id="pdf-section-indices" className="grid grid-cols-1 gap-y-2">
-                <Field label="P. Unitaire" value={params.puissanceUnitaire} onChange={v => setParams(p => ({ ...p, puissanceUnitaire: v }))} type="number" suffix="Wc" />
-                <Field label="Indice Tarifs" value={params.indexationTarif * 100} onChange={v => setParams(p => ({ ...p, indexationTarif: v / 100 }))} type="number" suffix="%" step="0.1" />
-                <Field label="Indice OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" />
-                <Field label="Dégradation" value={params.degradation * 100} onChange={v => setParams(p => ({ ...p, degradation: v / 100 }))} type="number" suffix="%" step="0.1" />
-              </SectionCard>
-              <SectionCard title="OPEX ANNUELS" id="pdf-section-opex" className="grid grid-cols-1 gap-y-2">
-                <Field label="Maintenance" value={params.maintenance} onChange={v => setParams(p => ({ ...p, maintenance: v }))} type="number" suffix="€" />
-                <Field label="Assurance" value={params.assurance} onChange={v => setParams(p => ({ ...p, assurance: v }))} type="number" suffix="€" />
-                <Field label="Taxes locales" value={params.taxesLocales} onChange={v => setParams(p => ({ ...p, taxesLocales: v }))} type="number" suffix="€" />
-                <Field label="Gestion" value={params.gestionAdmin} onChange={v => setParams(p => ({ ...p, gestionAdmin: v }))} type="number" suffix="€" />
-              </SectionCard>
-            </div>
           </div>
 
-          <div className="space-y-6">
+          {/* Column 2: Parameters */}
+          <div className="space-y-6 flex flex-col h-full">
+            <SectionCard title="TARIFS D'ACHAT" id="pdf-section-tarifs" className="grid grid-cols-1 gap-y-2 grow">
+              <Field label="Seuil" value={params.seuilKwhKwc} onChange={v => setParams(p => ({ ...p, seuilKwhKwc: v }))} type="number" suffix="kWh/kWc" />
+              <Field label="Tarif ≤ 1 100" value={params.tarifBas} onChange={v => setParams(p => ({ ...p, tarifBas: v }))} type="number" suffix="€" precision={4} step="0.001" />
+              <Field label="Tarif > 1 100" value={params.tarifHaut} onChange={v => setParams(p => ({ ...p, tarifHaut: v }))} type="number" suffix="€" precision={4} step="0.001" />
+              <Field label="Tarif ACC" value={params.tarifACC} onChange={v => setParams(p => ({ ...p, tarifACC: v }))} type="number" suffix="€" precision={4} step="0.001" />
+              <Field label="Part ACC" value={params.partACC * 100} onChange={v => setParams(p => ({ ...p, partACC: v/100 }))} type="number" suffix="%" className="h-10" />
+            </SectionCard>
+
+            <SectionCard title="OPEX ANNUELS" id="pdf-section-opex" className="grid grid-cols-1 gap-y-2">
+              <Field label="Maintenance" value={params.maintenance} onChange={v => setParams(p => ({ ...p, maintenance: v }))} type="number" suffix="€" className="h-10" />
+              <Field label="Assurance" value={params.assurance} onChange={v => setParams(p => ({ ...p, assurance: v }))} type="number" suffix="€" className="h-10" />
+              <Field label="Taxes locales" value={params.taxesLocales} onChange={v => setParams(p => ({ ...p, taxesLocales: v }))} type="number" suffix="€" className="h-10" />
+              <Field label="Gestion" value={params.gestionAdmin} onChange={v => setParams(p => ({ ...p, gestionAdmin: v }))} type="number" suffix="€" className="h-10" />
+            </SectionCard>
+
+            <SectionCard title="BANQUE" id="pdf-section-banque" className="bg-slate-50 border-slate-200">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                  <Field label="Durée de l'emprunt" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" />
+                  <Field label="Taux de crédit" value={params.tauxCredit} onChange={v => setParams(p => ({ ...p, tauxCredit: v }))} type="number" suffix="%" />
+                  <Field label="P. Unitaire" value={params.puissanceUnitaire} onChange={v => setParams(p => ({ ...p, puissanceUnitaire: v }))} type="number" suffix="Wc" />
+                  <Field label="Dégradation modules" value={params.degradation * 100} onChange={v => setParams(p => ({ ...p, degradation: v / 100 }))} type="number" suffix="%" step="0.1" />
+                  <Field label="Indexation tarif" value={params.indexationTarif * 100} onChange={v => setParams(p => ({ ...p, indexationTarif: v / 100 }))} type="number" suffix="%" step="0.1" />
+                  <Field label="Indexation OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" />
+                </div>
+                
+                <div className="pt-2 border-t border-slate-200 mt-2 space-y-1">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 italic">Apport (10%) :</span>
+                    <span className="font-bold text-slate-700">{fmtEur(apport10)}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 italic">Emprunt :</span>
+                    <span className="font-bold text-slate-700">{fmtEur(emprunt)}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] mt-2 pt-1 border-t border-slate-200 font-bold">
+                    <span className="text-slate-700 font-bold">Annuité :</span>
+                    <span className="text-slate-900">{fmtEur(bp.annuite)}</span>
+                  </div>
+                </div>
+              </div>
+            </SectionCard>
+          </div>
+
+          {/* Column 3: Results and Banking */}
+          <div className="space-y-6 flex flex-col h-full">
             <div className="bg-white rounded-lg border border-slate-200 p-6 flex flex-col items-center justify-center text-center space-y-2 shadow-sm border-t-4 border-t-green-500">
               <div className="p-2 bg-green-50 rounded-full mb-1"><CheckCircle className="w-6 h-6 text-green-500" /></div>
               <div className="text-4xl font-black text-green-600">{fmtPct(bp.dscrMoyen)}</div>
@@ -1145,68 +1168,63 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               </Button>
             </div>
 
+            <SectionCard title="INDICATEURS" id="pdf-section-indic">
+               <div className="space-y-2">
+                 <div className="flex justify-between text-xs"><span className="text-slate-500">Apport avec soulte :</span><span className="font-bold text-blue-800">{fmtEur(apport10 + (calcSoulte > 0 ? calcSoulte : 0))}</span></div>
+                 <div className="flex justify-between text-xs"><span className="text-slate-500">Emprunt net :</span><span className="font-bold text-blue-800">{fmtEur(emprunt)}</span></div>
+                 <div className="flex justify-between text-xs"><span className="text-slate-500">CA an 1 :</span><span className="font-bold text-blue-600">{fmtEur(bp.rows[0]?.ca)}</span></div>
+                 <div className="flex justify-between text-xs"><span className="text-slate-500">Total charges an 1 :</span><span className="font-bold text-red-600">{fmtEur((bp.rows[0]?.opex || 0) + (bp.rows[0]?.serviceDette || 0))}</span></div>
+               </div>
+            </SectionCard>
+
             <SectionCard title="RENTABILITÉ" id="pdf-section-renta" className="bg-amber-50/30 border-amber-100">
                <div className="space-y-4">
                  <Field label="CIBLE DSCR :" value={params.targetDSCR * 100} onChange={v => setParams(p => ({ ...p, targetDSCR: v / 100 }))} type="number" suffix="%" step="1" className="bg-amber-100/50 p-2 rounded" />
                  
-                 <div className="space-y-1.5 pt-2 border-t border-amber-100">
-                   <div className="flex justify-between items-center text-[11px]">
-                     <span className="text-slate-500">Location :</span>
-                     <div className="flex items-center gap-2">
-                       <span className="font-bold text-blue-800">{fmtEur(bp.loyer)}</span>
-                       <Button onClick={() => handleGoalSeek('loyer')} size="xs" className="h-6 px-1.5 bg-red-600 text-[10px] text-white uppercase">FIXER</Button>
-                     </div>
-                   </div>
-                   <div className="flex justify-between items-center text-[11px]">
-                     <span className="text-slate-500">Soulte 20 ans :</span>
-                     <div className="flex items-center gap-2">
-                       <span className="font-bold text-blue-800">{fmtEur(calcSoulte)}</span>
-                       <Button onClick={() => handleGoalSeek('soulte')} size="xs" className="h-6 px-1.5 bg-red-600 text-[10px] text-white uppercase">FIXER</Button>
-                     </div>
-                   </div>
-                 </div>
-
                  <div className="space-y-1.5 pt-4 border-t border-amber-100">
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">CA an 1 :</span><span className="font-bold text-blue-600">{fmtEur(bp.rows[0]?.ca)}</span></div>
                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">CA 20 ans :</span><span className="font-bold text-blue-800">{fmtEur(bp.sumCA)}</span></div>
                    <div className="flex justify-between text-[11px]"><span className="text-slate-500">Gains 20 ans :</span><span className="font-bold text-green-700">{fmtEur(bp.gains)}</span></div>
                    <div className="space-y-1 pt-2 border-t border-amber-50 mt-1">
                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">TRI Projet :</span><span className="font-bold text-green-600">{fmtPct(bp.triProjet)}</span></div>
                      <div className="flex justify-between text-[11px]"><span className="text-slate-500">TRI FP :</span><span className="font-bold text-green-600">{fmtPct(bp.triFP)}</span></div>
-                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">Temps de retour :</span><span className="font-bold">{fmt(bp.tempsRetour, 1)} ans</span></div>
+                     <div className="pt-2 border-t border-slate-200 mt-2 space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Temps de retour :</span>
+                  <span className="font-bold text-blue-600">{fmt(bp.payback, 1)} ans</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Prix au Wc global :</span>
+                  <span className="font-bold text-slate-700">{fmtEur(totalInvest / (bp.rows[0]?.kwcDeg || 1))} /Wc</span>
+                </div>
+              </div>
                    </div>
                  </div>
                </div>
             </SectionCard>
 
             <SectionCard title="BANQUE" id="pdf-section-banque" className="bg-slate-50 border-slate-200">
-              <div className="space-y-2">
-                <Field label="Durée Emprunt" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" />
-                <Field label="Taux Crédit" value={params.tauxCredit} onChange={v => setParams(p => ({ ...p, tauxCredit: v }))} type="number" suffix="%" />
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                  <Field label="Durée de l'emprunt" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" size="sm" />
+                  <Field label="Taux de crédit" value={params.tauxCredit} onChange={v => setParams(p => ({ ...p, tauxCredit: v }))} type="number" suffix="%" size="sm" />
+                  <Field label="P. Unitaire" value={params.puissanceUnitaire} onChange={v => setParams(p => ({ ...p, puissanceUnitaire: v }))} type="number" suffix="Wc" size="sm" />
+                  <Field label="Dégradation modules" value={params.degradation * 100} onChange={v => setParams(p => ({ ...p, degradation: v / 100 }))} type="number" suffix="%" step="0.1" size="sm" />
+                  <Field label="Indexation tarif" value={params.indexationTarif * 100} onChange={v => setParams(p => ({ ...p, indexationTarif: v / 100 }))} type="number" suffix="%" step="0.1" size="sm" />
+                  <Field label="Indexation OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" size="sm" />
+                </div>
                 
                 <div className="pt-2 border-t border-slate-200 mt-2 space-y-1">
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-500 italic">Apport :</span>
+                    <span className="text-slate-500 italic">Apport (10%) :</span>
                     <span className="font-bold text-slate-700">{fmtEur(apport10)}</span>
                   </div>
                   <div className="flex justify-between text-[11px]">
                     <span className="text-slate-500 italic">Emprunt :</span>
                     <span className="font-bold text-slate-700">{fmtEur(emprunt)}</span>
                   </div>
-                  <div className="flex justify-between text-[11px] pt-1 border-t border-slate-100">
-                    <span className="text-slate-500 italic">Apport avec soulte :</span>
-                    <span className="font-bold text-blue-800">{fmtEur(apport10 + (calcSoulte > 0 ? calcSoulte : 0))}</span>
-                  </div>
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-500 italic">Emprunt avec soulte :</span>
-                    <span className="font-bold text-blue-800">{fmtEur(emprunt + (calcSoulte < 0 ? Math.abs(calcSoulte) : 0))}</span>
-                  </div>
                   <div className="flex justify-between text-[11px] mt-2 pt-1 border-t border-slate-200 font-bold">
                     <span className="text-slate-700 font-bold">Annuité :</span>
                     <span className="text-slate-900">{fmtEur(bp.annuite)}</span>
-                  </div>
-                  <div className="pt-2 border-t border-slate-100 mt-2">
-                    <Field label="Indice OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" size="sm" />
                   </div>
                 </div>
               </div>
@@ -2332,30 +2350,51 @@ export default function BpAcama() {
       return;
     }
 
-    // 2. Otherwise calculate defaults from project fields
-    const b1 = parseFloat(selectedProject.puissance) || 0;
-    const b2 = parseFloat(selectedProject.puissance2) || 0;
-    const b3 = parseFloat(selectedProject.puissance3) || 0;
-    const b4 = parseFloat(selectedProject.puissance4) || 0;
+    // 2. Otherwise calculate from project features (rectangles)
+    const features = selectedProject.features || [];
+    const buildingFeatures = features.filter(f => f.type === 'rectangle');
     
-    const initialBuildings = [];
     const prod = parseFloat(selectedProject.productible) || 1123.08;
+    const initialBuildings = [];
 
-    if (b1 > 0 || (!b2 && !b3 && !b4)) {
-      initialBuildings.push({ 
-        id: 1, 
-        typeBat: selectedProject.type_bat || '', 
-        projectType: 'BAC',
-        surfaceToiture: 0,
-        kwc: b1 || 346.84, 
-        productible: prod, 
-        coutCentrale: (b1 || 346.84) * 490, 
-        coutCharpente: 0 
+    if (buildingFeatures.length > 0) {
+      buildingFeatures.forEach((f, idx) => {
+        initialBuildings.push({
+          id: idx + 1,
+          typeBat: f.buildingName || '',
+          projectType: f.projectType || 'BAC',
+          surfaceToiture: f.surface || 0,
+          kwc: f.power || 100,
+          productible: prod,
+          coutCentrale: (f.power || 100) * 490,
+          coutCharpente: f.projectType === 'BE' ? 10000 : 0,
+          numPanneaux: Math.round((f.power || 100) * 1000 / (params.puissanceUnitaire || 460))
+        });
       });
+    } else {
+      // Fallback to legacy puissance fields or default
+      const b1 = parseFloat(selectedProject.puissance) || 0;
+      const b2 = parseFloat(selectedProject.puissance2) || 0;
+      const b3 = parseFloat(selectedProject.puissance3) || 0;
+      const b4 = parseFloat(selectedProject.puissance4) || 0;
+
+      if (b1 > 0 || (!b2 && !b3 && !b4)) {
+        initialBuildings.push({ 
+          id: 1, 
+          typeBat: selectedProject.type_bat || '', 
+          projectType: 'BAC',
+          surfaceToiture: 0,
+          kwc: b1 || 346.84, 
+          productible: prod, 
+          coutCentrale: (b1 || 346.84) * 490, 
+          coutCharpente: 0,
+          numPanneaux: Math.round((b1 || 346.84) * 1000 / (params.puissanceUnitaire || 460))
+        });
+      }
+      if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b2, productible: prod, coutCentrale: b2 * 490, coutCharpente: 0, numPanneaux: Math.round(b2 * 1000 / (params.puissanceUnitaire || 460)) });
+      if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b3, productible: prod, coutCentrale: b3 * 490, coutCharpente: 0, numPanneaux: Math.round(b3 * 1000 / (params.puissanceUnitaire || 460)) });
+      if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b4, productible: prod, coutCentrale: b4 * 490, coutCharpente: 0, numPanneaux: Math.round(b4 * 1000 / (params.puissanceUnitaire || 460)) });
     }
-    if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b2, productible: prod, coutCentrale: b2 * 490, coutCharpente: 0 });
-    if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b3, productible: prod, coutCentrale: b3 * 490, coutCharpente: 0 });
-    if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b4, productible: prod, coutCentrale: b4 * 490, coutCharpente: 0 });
 
     setParams(prev => ({
       ...prev,
