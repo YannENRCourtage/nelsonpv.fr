@@ -476,10 +476,10 @@ function ProjectSelect({ projects, selectedProject, onSelect, className }) {
   );
 }
 
-function Field({ label, value, onChange, type = 'text', suffix, className, step, disabled, precision = 2 }) {
+function Field({ label, value, onChange, type = 'text', suffix, className, step, disabled, precision = 2, hideLabel = false }) {
   return (
     <div className={cn('flex items-center gap-2', className)}>
-      <label className="text-xs text-slate-600 w-48 shrink-0">{label}</label>
+      {!hideLabel && <label className="text-[11px] text-slate-500 w-32 shrink-0">{label}</label>}
       <div className="flex items-center gap-1 flex-1 relative">
         <input
           type={type}
@@ -498,10 +498,13 @@ function Field({ label, value, onChange, type = 'text', suffix, className, step,
   );
 }
 
-function SectionCard({ title, children, className, id }) {
+function SectionCard({ title, children, className, id, actions }) {
   return (
-    <div id={id} className={cn('bg-white rounded-lg border border-slate-200 p-4 space-y-2', className)}>
-      <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-slate-100 pb-2">{title}</h3>
+    <div id={id} className={cn('bg-white rounded-lg border border-slate-200 p-4 space-y-3', className)}>
+      <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-1">
+        <h3 className="text-[11px] font-bold text-slate-800 uppercase tracking-wider">{title}</h3>
+        {actions && <div className="flex items-center gap-2">{actions}</div>}
+      </div>
       {children}
     </div>
   );
@@ -510,16 +513,12 @@ function SectionCard({ title, children, className, id }) {
 // ─── Shared Component: Tableau Previsionnel ───────────────────────────────
 
 function TableauPrevisionnel({ params, rows }) {
-  const SectionTitle = ({ title }) => (
-    <td className="bg-amber-400 font-bold px-2 py-1 uppercase" colSpan={2}>{title}</td>
-  );
-
   const DataRow = ({ label, propName, isPercent, isCurrency, format }) => (
     <tr className="border-b border-slate-200 bg-white hover:bg-slate-50">
-      <td className="px-2 py-1 font-medium bg-slate-50 w-64 align-top">{label}</td>
-      <td className="px-2 py-1 text-slate-400 w-8 align-top">-</td>
+      <td className="px-2 py-1 font-medium bg-slate-50 align-top text-[9px] border border-slate-200">{label}</td>
+      <td className="px-2 py-1 text-slate-400 w-8 align-top text-center border border-slate-200 text-[9px]">-</td>
       {rows.map((r, i) => (
-        <td key={i} className="px-2 py-1 text-right border-l border-slate-100 min-w-24 font-medium align-top">
+        <td key={i} className="px-1 py-1 text-right border border-slate-200 font-medium align-top text-[9px]">
           {format ? format(r[propName]) : (isCurrency ? fmtEur(r[propName]) : (isPercent ? fmtPct(r[propName]) : fmt(r[propName], 2)))}
         </td>
       ))}
@@ -527,19 +526,23 @@ function TableauPrevisionnel({ params, rows }) {
   );
 
   return (
-    <SectionCard title="PLAN D'AFFAIRES PREVISIONNEL">
-      <div className="overflow-auto border border-slate-200 mt-2 max-h-[70vh]">
-        <table className="text-[10px] w-full border-collapse">
-          <thead className="sticky top-0 z-10">
-            <tr>
-              <td className="bg-slate-100" colSpan={2}></td>
+    <SectionCard title="PLAN D'AFFAIRES PREVISIONNEL" className="p-0 border-none shadow-none">
+      <div className="overflow-x-auto w-full">
+        <table className="text-[9px] w-full border-collapse table-fixed">
+          <thead>
+            <tr className="bg-slate-100">
+              <td className="w-[180px] p-2 border border-slate-200"></td>
+              <td className="w-8 p-1 border border-slate-200"></td>
               {rows.map((r, i) => (
-                <td key={i} className="px-2 py-1 bg-slate-100 border-l border-slate-200 text-center font-bold">{r.year}</td>
+                <td key={i} className="p-1 border border-slate-200 text-center font-bold bg-slate-50">{r.year}</td>
               ))}
             </tr>
           </thead>
           <tbody>
-            <tr><SectionTitle title="CHIFFRE D'AFFAIRES" />{rows.map((_, i)=><td key={i} className="bg-amber-400"></td>)}</tr>
+            <tr className="bg-amber-400 text-slate-900 font-bold uppercase">
+                <td className="px-2 py-1 border border-slate-300" colSpan={2}>CHIFFRE D'AFFAIRES</td>
+                {rows.map((_, i)=><td key={i} className="border border-slate-300"></td>)}
+            </tr>
             <DataRow label="Puissance" propName="kwcDeg" format={v => fmt(v, 2)} />
             <DataRow label="Production avec dégradation" propName="prod" format={v => fmt(v, 0)} />
             <DataRow label="Production < 1100KWh/KWc" propName="prodBas" format={v => fmt(v, 0)} />
@@ -549,7 +552,10 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="Au-delà de 1 100KWh/KWc" propName="tHaut" isCurrency />
             <DataRow label="CA" propName="ca" isCurrency />
 
-            <tr><SectionTitle title="CHARGE D'EXPLOITATION" />{rows.map((_, i)=><td key={i} className="bg-amber-400"></td>)}</tr>
+            <tr className="bg-amber-400 text-slate-900 font-bold uppercase">
+                <td className="px-2 py-1 border border-slate-300" colSpan={2}>CHARGE D'EXPLOITATION</td>
+                {rows.map((_, i)=><td key={i} className="border border-slate-300"></td>)}
+            </tr>
             <DataRow label="Maintenance" propName="maint" isCurrency />
             <DataRow label="Location du compteur" propName="loc" isCurrency />
             <DataRow label="Assurance" propName="ass" isCurrency />
@@ -558,16 +564,19 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="Gestion administrative" propName="admin" isCurrency />
             <DataRow label="Location terrain" propName="loyer" isCurrency />
             <DataRow label="Remplacement des onduleurs" propName="mra" isCurrency />
-            <tr className="border-b border-slate-200 bg-white">
-              <td className="px-2 py-1 font-bold bg-slate-50">Total des charges</td>
-              <td className="px-2 py-1 text-slate-400">-</td>
+            <tr className="border border-slate-200 bg-slate-50">
+              <td className="px-2 py-1 font-bold">Total des charges</td>
+              <td className="px-2 py-1 text-slate-400 text-center">-</td>
               {rows.map((r, i) => (
-                <td key={i} className="px-2 py-1 text-right border-l border-slate-100 font-bold">{fmtEur(r.opex + r.serviceDette + r.mra)}</td>
+                <td key={i} className="px-1 py-1 text-right border-l border-slate-200 font-bold text-red-700">{fmtEur(r.opex + r.serviceDette + r.mra)}</td>
               ))}
             </tr>
             <DataRow label="OPEX" propName="opex" isCurrency />
 
-            <tr><SectionTitle title="RESULTATS" />{rows.map((_, i)=><td key={i} className="bg-amber-400"></td>)}</tr>
+            <tr className="bg-amber-400 text-slate-900 font-bold uppercase">
+                <td className="px-2 py-1 border border-slate-300" colSpan={2}>RESULTATS</td>
+                {rows.map((_, i)=><td key={i} className="border border-slate-300"></td>)}
+            </tr>
             <DataRow label="EBITDA" propName="ebitda" isCurrency />
             <DataRow label="Amortissement" propName="amortissement" isCurrency />
             <DataRow label="EBIT" propName="ebit" isCurrency />
@@ -578,18 +587,18 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="Résultat IS" propName="is" isCurrency />
             <DataRow label="Résultat après IS" propName="resApresIS" isCurrency />
 
-            <tr><td className="bg-white" colSpan={2+rows.length} style={{height: 10}}></td></tr>
+            <tr className="bg-slate-200 border-none"><td colSpan={2+rows.length} className="h-2"></td></tr>
             <DataRow label="Dette début période" propName="detteDebut" isCurrency />
             <DataRow label="CAFDS" propName="cafds" isCurrency />
             <DataRow label="MRA onduleurs" propName="mra" isCurrency />
             <DataRow label="Service de la Dette" propName="serviceDette" isCurrency />
             <DataRow label="Remb principal" propName="rembPrincipal" isCurrency />
             <DataRow label="DSCR" propName="dscr" isPercent />
-            <tr className="border-b border-slate-200 bg-amber-400">
-              <td className="px-2 py-1 font-bold uppercase">Trésorerie nette annuelle avant imposition</td>
-              <td className="px-2 py-1 text-slate-700">-</td>
+            <tr className="border border-slate-300 bg-amber-400 font-black">
+              <td className="px-2 py-1 uppercase">Trésorerie nette annuelle</td>
+              <td className="px-2 py-1 text-slate-700 text-center">-</td>
               {rows.map((r, i) => (
-                <td key={i} className="px-2 py-1 text-right border-l border-slate-200 font-bold">{fmtEur(r.tresorerie)}</td>
+                <td key={i} className="px-1 py-1 text-right border-l border-slate-300 text-slate-900">{fmtEur(r.tresorerie)}</td>
               ))}
             </tr>
           </tbody>
@@ -603,12 +612,17 @@ function TableauPrevisionnel({ params, rows }) {
 
 function TabBpProjets({ projects, selectedProject, setSelectedProject, params, setParams, computeBusinessPlan, computeResteACharge, calculateGoalSeekDSCR, bpResults, totalInvestissement, apport10, totalConstruction, tva, apportSoulte }) {
   const PDFHeader = () => (
-    <div className="pdf-header hidden flex-row justify-between items-center w-full mb-6 border-b-2 border-slate-900 pb-4">
-      <img src="/logo-nelson.png" alt="Logo" className="h-12" />
-      <div className="text-right">
-        <h1 className="text-xl font-black text-slate-900 uppercase">NELSON - Business Plan</h1>
-        <p className="text-sm font-bold text-blue-600">{selectedProject?.name}</p>
-        <p className="text-[10px] text-slate-500">{new Date().toLocaleDateString('fr-FR')}</p>
+    <div className="pdf-header hidden flex flex-row justify-between items-start w-full mb-4 border-b-2 border-slate-800 pb-3">
+      <div className="flex flex-col">
+        <img src="/logo-nelson.png" alt="Logo" className="h-10 w-auto object-contain mb-1" />
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Business Plan Acama</span>
+      </div>
+      <div className="text-right flex flex-col items-end">
+        <h1 className="text-lg font-black text-slate-900 uppercase leading-tight">{selectedProject?.name || 'Projet Sans Nom'}</h1>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase">{params.projectType || 'BAC'}</span>
+          <p className="text-[10px] font-bold text-slate-500">{new Date().toLocaleDateString('fr-FR')}</p>
+        </div>
       </div>
     </div>
   );
@@ -626,7 +640,53 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const set = useCallback((k, v) => setParams(p => ({ ...p, [k]: v })), [setParams]);
+  const updateBuildingParam = (id, k, v) => {
+    setParams(prev => ({
+      ...prev,
+      buildings: (prev.buildings || []).map(b => b.id === id ? { ...b, [k]: v } : b)
+    }));
+  };
+
+  const addBuilding = () => {
+    if ((params.buildings || []).length >= 4) return;
+    const newId = (params.buildings || []).length + 1;
+    setParams(prev => ({
+      ...prev,
+      buildings: [...(prev.buildings || []), { id: newId, typeBat: '', kwc: 100, productible: 1123.08, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 }]
+    }));
+  };
+
+  const removeBuilding = (id) => {
+    if ((params.buildings || []).length <= 1) return;
+    setParams(prev => ({
+      ...prev,
+      buildings: prev.buildings.filter(b => b.id !== id).map((b, i) => ({ ...b, id: i + 1 }))
+    }));
+  };
+
+  const collapsedParams = useMemo(() => {
+    const buildings = params.buildings || [];
+    const totalKwc = buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0), 0);
+    const totalCentrale = buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0), 0);
+    const totalCharpente = buildings.reduce((sum, b) => sum + (parseFloat(b.coutCharpente) || 0), 0);
+    const totalRaccordement = buildings.reduce((sum, b) => sum + (parseFloat(b.raccordement) || 0), 0);
+    const totalFrais = buildings.reduce((sum, b) => sum + (parseFloat(b.frais) || 0), 0);
+    const totalSoulte = buildings.reduce((sum, b) => sum + (parseFloat(b.soulte) || 0), 0);
+    
+    const totalProdKwh = buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0) * (parseFloat(b.productible) || 0), 0);
+    const averageProd = totalKwc > 0 ? totalProdKwh / totalKwc : 0;
+
+    return {
+      ...params,
+      kwc: totalKwc,
+      productible: averageProd,
+      coutCentrale: totalCentrale,
+      coutCharpente: totalCharpente,
+      raccordement: totalRaccordement,
+      frais: totalFrais,
+      soulte: totalSoulte
+    };
+  }, [params]);
 
   const saveBp = async () => {
     if (!selectedProject) return;
@@ -638,13 +698,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
     }
   };
 
-  const resteACharge = useMemo(() => computeResteACharge({ ...params, totalInvestissement }), [JSON.stringify({ ...params, totalInvestissement }), totalInvestissement]);
-  
-  // Projected results including the calculated reste à charge
-  const projectedResults = useMemo(() => computeBusinessPlan({ ...params, apport: resteACharge }), [JSON.stringify({ ...params, totalInvestissement }), resteACharge]);
-
-  const { rows, annuite, emprunt, triProjet, triFP, tempsRetour, loyer, soulte: calcSoulte, sumCA, sumOpex, gains } = projectedResults;
-  const displayDscrMoyen = projectedResults.dscrMoyen;
+  const resteACharge = useMemo(() => computeResteACharge(collapsedParams), [collapsedParams]);
+  const bp = useMemo(() => computeBusinessPlan({ ...collapsedParams, apport: resteACharge }), [collapsedParams, resteACharge]);
+  const { rows, annuite, emprunt } = bp;
 
   const handleGoalSeek = (type) => {
     if (!selectedProject) {
@@ -694,284 +750,384 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
   return (
     <div id="bp-acama-content" className="flex flex-col gap-4 p-4 text-slate-900">
       {/* Project selector & Actions */}
-      <div data-html2canvas-ignore="true" className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-3">
-        <span className="text-xs font-semibold text-blue-700">Projet CRM :</span>
-        <div className="relative flex-1" ref={dropdownRef}>
-          <button onClick={() => setShowSearch(!showSearch)} className="flex items-center gap-2 bg-white border border-blue-300 rounded px-3 py-1.5 text-xs w-full text-left hover:bg-blue-50">
-            {selectedProject ? selectedProject.name : 'Sélectionner un projet CRM...'}
-            <ChevronDown className="w-3 h-3 ml-auto" />
-          </button>
-          {showSearch && (
-            <div className="absolute top-8 left-0 z-50 bg-white border border-slate-200 rounded-lg shadow-xl w-80">
-              <div className="p-2 border-b border-slate-100">
-                <div className="flex items-center gap-2 bg-slate-50 rounded px-2 py-1">
-                  <Search className="w-3 h-3 text-slate-400" />
-                  <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." className="bg-transparent text-xs outline-none flex-1" />
+      <div data-html2canvas-ignore="true" className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-blue-700">Projet CRM :</span>
+          <div className="relative w-48" ref={dropdownRef}>
+            <button onClick={() => setShowSearch(!showSearch)} className="flex items-center gap-2 bg-white border border-blue-300 rounded px-2 py-1.5 text-[11px] w-full text-left hover:bg-blue-50">
+              <span className="truncate">{selectedProject ? selectedProject.name : 'Choisir...'}</span>
+              <ChevronDown className="w-3 h-3 ml-auto shrink-0" />
+            </button>
+            {showSearch && (
+              <div className="absolute top-8 left-0 z-50 bg-white border border-slate-200 rounded-lg shadow-xl w-80">
+                <div className="p-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2 bg-slate-50 rounded px-2 py-1">
+                    <Search className="w-3 h-3 text-slate-400" />
+                    <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." className="bg-transparent text-xs outline-none flex-1" />
+                  </div>
                 </div>
-              </div>
-              <div className="max-h-64 overflow-y-auto">
-                {filteredProjects.map(p => {
-                  const totalP = (parseFloat(p.puissance) || 0) + (parseFloat(p.puissance2) || 0) + (parseFloat(p.puissance3) || 0) + (parseFloat(p.puissance4) || 0);
-                  const roundedP = Math.round(totalP * 100) / 100;
-                  return (
+                <div className="max-h-64 overflow-y-auto">
+                  {filteredProjects.map(p => (
                     <button key={p.id} onClick={() => applyProject(p)} className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 border-b border-slate-50">
                       <div className="font-medium uppercase">{p.name || 'Projet sans nom'}</div>
                       <div className="text-slate-500 font-medium opacity-70">{p.city || p.address || '—'}</div>
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-blue-700 whitespace-nowrap">Type de projet :</span>
+          <select 
+            value={params.projectType || 'BAC'} 
+            onChange={e => setParams(p => ({ ...p, projectType: e.target.value }))}
+            className="bg-white border border-blue-300 rounded px-2 py-1.5 text-[11px] outline-none focus:ring-1 focus:ring-blue-400"
+          >
+            <option value="BAC">BAC</option>
+            <option value="BE">BE</option>
+            <option value="BAC + BE">BAC + BE</option>
+          </select>
+        </div>
+
+        <div className="flex-1" />
+
         {selectedProject && (
           <div className="flex items-center gap-2">
             <Button size="sm" onClick={() => generateBpAcamaPDF({ 
                 elementId: 'bp-acama-content', 
                 sections: ['pdf-section-1', 'pdf-section-2'],
                 fileName: `BP_Acama_${selectedProject.name}_${new Date().toISOString().split('T')[0]}.pdf` 
-              })} className="bg-slate-800 hover:bg-slate-900 text-white text-xs h-8 mr-2">
-              <FileText className="w-3 h-3 mr-1" /> Générer PDF
+              })} className="bg-slate-800 hover:bg-slate-900 text-white text-[11px] h-8 px-3">
+              <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF
             </Button>
-            <Button size="sm" onClick={saveBp} className="bg-green-600 hover:bg-green-700 text-white text-xs h-8">
-              <Save className="w-3 h-3 mr-1" /> Sauvegarder BP
+            <Button size="sm" onClick={saveBp} className="bg-green-600 hover:bg-green-700 text-white text-[11px] h-8 px-3">
+              <Save className="w-3.5 h-3.5 mr-1.5" /> Sauvegarder
             </Button>
-            <button onClick={() => { setSelectedProject(null); setSearch(''); }} className="text-slate-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+            <button onClick={() => { setSelectedProject(null); setSearch(''); }} className="text-slate-400 hover:text-red-500 p-1 transition-colors"><X className="w-4 h-4" /></button>
           </div>
         )}
       </div>
 
-      {/* PAGE 1: Inputs, Results, and Charts */}
       <div id="pdf-section-1" className="flex flex-col gap-4">
-        <PDFHeader />
-        <div className="grid grid-cols-3 gap-4">
-          {/* LEFT: Inputs */}
-          <div className="col-span-2 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <SectionCard title="Données du projet">
-                <Field label="Nombre de modules" value={params.nbModules} onChange={v => set('nbModules', v)} type="number" suffix="modules" />
-                <Field label="Puissance unitaire" value={params.puissanceUnitaire} onChange={v => set('puissanceUnitaire', v)} type="number" suffix="Wc" />
-                <Field label="Puissance installée" value={params.kwc} onChange={v => set('kwc', v)} type="number" suffix="kWc" />
-                <Field label="Surface totale installée" value={params.surfaceTotale} onChange={v => set('surfaceTotale', v)} type="number" suffix="m²" />
-                <div className="h-2" />
-                <Field label="Productible (KWh/KWc)" value={params.productible} onChange={v => set('productible', v)} type="number" />
-                <div className="text-xs text-slate-500 pt-1">Production totale : <b>{fmt(prodTotale)} KWh/an</b></div>
-              </SectionCard>
-              <SectionCard title="Tarifs d'achat">
-                <Field label="Tarif ≤ 1 100 KWh/KWc" value={params.tarifBas} onChange={v => set('tarifBas', Math.max(0, v))} type="number" step={0.001} precision={4} suffix="€/kWh" />
-                <Field label="Tarif > 1 100 KWh/KWc" value={params.tarifHaut} onChange={v => set('tarifHaut', Math.max(0, v))} type="number" step={0.001} precision={4} suffix="€/kWh" />
-                <Field label="Seuil (KWh/KWc)" value={params.seuilKwhKwc} onChange={v => set('seuilKwhKwc', Math.max(0, v))} type="number" />
-                <div className="h-2 border-t border-slate-100 my-2" />
-                <Field label="Tarif ACC" value={params.tarifACC} onChange={v => set('tarifACC', Math.max(0, v))} type="number" step={0.001} precision={4} suffix="€/kWh" />
-                <Field label="Part ACC" value={params.partACC * 100} onChange={v => set('partACC', Math.min(100, Math.max(0, v)) / 100)} type="number" step={1} suffix="%" />
-              </SectionCard>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <SectionCard title="Investissement">
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="text-xs text-slate-600 w-48 shrink-0">Type de bâtiment</label>
-                  <select 
-                    className="border border-slate-200 rounded px-2 py-1 text-xs w-full focus:ring-1 focus:ring-blue-500 outline-none bg-white font-medium"
-                    value={params.typeBat || ''}
-                    onChange={e => {
-                      const selectedType = e.target.value;
-                      const bat = SUIVI_BAT_DATA.find(b => b.type === selectedType);
-                      
-                      if (selectedType === selectedProject?.bpAcamaState?.typeBat) {
-                        setParams(p => ({ ...p, ...selectedProject.bpAcamaState }));
-                        return;
-                      }
-
-                      if (bat) {
-                        setParams(p => ({
-                          ...p,
-                          typeBat: bat.type,
-                          coutCharpente: bat.cout_bat,
-                          kwc: bat.kwc,
-                          surfaceTotale: bat.surfTot,
-                          spv: bat.spv,
-                          productible: bat.prodMoyen || p.productible
-                        }));
-                      }
-                    }}
-                  >
-                    <option value="">Sélectionner un bâtiment...</option>
-                    {SUIVI_BAT_DATA.map(b => <option key={b.type} value={b.type}>{b.type}</option>)}
-                  </select>
-                </div>
-                <Field label="Centrale solaire" value={params.coutCentrale} onChange={v => set('coutCentrale', v)} type="number" suffix="€" />
-                <Field label="Charpente / Bâtiment" value={params.coutCharpente} onChange={v => set('coutCharpente', v)} type="number" suffix="€" />
-                <Field label="Raccordement" value={params.raccordement} onChange={v => set('raccordement', v)} type="number" suffix="€" />
-                <Field label="Frais" value={params.frais} onChange={v => set('frais', v)} type="number" suffix="€" />
-                <Field 
-                  label="Soulte / Rente sur 20 ans" 
-                  value={params.loyerCoeff !== 0 ? (loyer * 20) : (params.soulteCoeff !== 0 ? calcSoulte : params.soulte)} 
-                  onChange={v => set('soulte', v)} 
-                  type="number" 
-                  suffix="€" 
-                  disabled={params.loyerCoeff !== 0 || params.soulteCoeff !== 0}
-                />
-                <div className="border-t border-slate-100 pt-1 space-y-1 text-xs">
-                  <div className="flex justify-between"><span className="text-slate-500">Total construction :</span><b>{fmtEur(totalConstruction)}</b></div>
-                  <div className="flex justify-between"><span className="text-slate-500">TVA 20% :</span><b>{fmtEur(tva)}</b></div>
-                  <div className="flex justify-between text-blue-700 font-bold"><span className="font-semibold text-slate-700">Total investissement :</span><b>{fmtEur(totalInvestissement)}</b></div>
-                </div>
-              </SectionCard>
-              <SectionCard title="OPEX annuels">
-                <Field label="Maintenance" value={params.maintenance} onChange={v => set('maintenance', v)} type="number" suffix="€/an" />
-                <Field label="Location compteur" value={params.locationCompteur} onChange={v => set('locationCompteur', v)} type="number" suffix="€/an" />
-                <Field label="Assurance" value={params.assurance} onChange={v => set('assurance', v)} type="number" suffix="€/an" />
-                <Field label="Taxes locales" value={params.taxesLocales} onChange={v => set('taxesLocales', v)} type="number" suffix="€/an" />
-                <Field label="Gestion administrative" value={params.gestionAdmin} onChange={v => set('gestionAdmin', v)} type="number" suffix="€/an" />
-              </SectionCard>
-            </div>
-            <SectionCard title="Banque">
-              <div className="grid grid-cols-3 gap-3">
-                <Field label="Durée de l'emprunt" value={params.dureeEmprunt} onChange={v => set('dureeEmprunt', v)} type="number" suffix="ans" />
-                <Field label="Taux de crédit" value={params.tauxCredit} onChange={v => set('tauxCredit', v)} type="number" step={0.1} suffix="%" />
-                <Field label="Indexation tarif" value={params.indexationTarif * 100} onChange={v => set('indexationTarif', v / 100)} type="number" step={0.1} suffix="%" />
-                <Field label="Indexation OPEX" value={params.indexationOpex * 100} onChange={v => set('indexationOpex', v / 100)} type="number" step={0.1} suffix="%" />
-                <Field label="Dégradation modules" value={params.degradation * 100} onChange={v => set('degradation', v / 100)} type="number" step={0.1} suffix="%" />
+        <PDFHeader selectedProject={selectedProject} />
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <SectionCard 
+              title="DONNÉES DU PROJET" 
+              id="pdf-section-data"
+              actions={
+                <button 
+                  onClick={addBuilding} 
+                  disabled={(params.buildings || []).length >= 4}
+                  className="bg-blue-600 hover:bg-blue-700 text-white w-5 h-5 rounded-full flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+              }
+            >
+              <div className="overflow-x-auto pb-1">
+                <table className="w-full text-left border-separate border-spacing-x-4">
+                  <thead>
+                    <tr>
+                      <th className="w-32"></th>
+                      {(params.buildings || []).map((b, i) => (
+                        <th key={b.id} className="text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full border border-slate-200">Bâtiment {i+1}</span>
+                            {(params.buildings || []).length > 1 && (
+                              <button onClick={() => removeBuilding(b.id)} className="text-slate-300 hover:text-red-500"><X className="w-3 h-3" /></button>
+                            )}
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="h-2"></tr>
+                    <tr>
+                      <td className="text-[11px] text-slate-500 font-medium pt-2">Type de bâtiment</td>
+                      {(params.buildings || []).map(b => (
+                        <td key={b.id} className="pt-2">
+                          <input 
+                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-center uppercase"
+                            value={b.typeBat || ''} 
+                            onChange={e => updateBuildingParam(b.id, 'typeBat', e.target.value)}
+                            placeholder="..."
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="text-[11px] text-slate-500 font-medium">Puissance installée</td>
+                      {(params.buildings || []).map(b => (
+                        <td key={b.id}>
+                          <div className="flex items-center gap-1">
+                            <input 
+                              type="number"
+                              className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-center"
+                              value={b.kwc || ''} 
+                              onChange={e => updateBuildingParam(b.id, 'kwc', parseFloat(e.target.value) || 0)}
+                            />
+                            <span className="text-[10px] text-slate-400 w-6">kWc</span>
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="text-[11px] text-slate-500 font-medium">Productible</td>
+                      {(params.buildings || []).map(b => (
+                        <td key={b.id}>
+                          <div className="flex items-center gap-1">
+                            <input 
+                              type="number"
+                              className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-center"
+                              value={b.productible || ''} 
+                              onChange={e => updateBuildingParam(b.id, 'productible', parseFloat(e.target.value) || 0)}
+                            />
+                            <span className="text-[10px] text-slate-400 w-[45px] whitespace-nowrap">kWh/kWc</span>
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="h-4"></tr>
+                    <tr>
+                      <td className="text-[11px] text-slate-500 font-medium">Nombre de modules</td>
+                      {(params.buildings || []).map(b => {
+                        const nb = Math.ceil((parseFloat(b.kwc) || 0) * 1000 / (parseFloat(params.puissanceUnitaire) || 460));
+                        return <td key={b.id} className="text-center text-xs font-bold text-slate-700">{nb} modules</td>;
+                      })}
+                    </tr>
+                    <tr>
+                      <td className="text-[11px] text-slate-500 font-medium">Surface installée</td>
+                      {(params.buildings || []).map(b => {
+                        const nb = Math.ceil((parseFloat(b.kwc) || 0) * 1000 / (parseFloat(params.puissanceUnitaire) || 460));
+                        const surf = nb * (1.762 * 1.134);
+                        return <td key={b.id} className="text-center text-xs font-bold text-slate-700">{fmt(surf, 0)} m²</td>;
+                      })}
+                    </tr>
+                    <tr>
+                      <td className="text-[11px] text-blue-700 font-bold uppercase pt-2 border-t border-slate-50 mt-2">Sous-total Prod.</td>
+                      {(params.buildings || []).map(b => {
+                        const yearlyProd = (parseFloat(b.kwc) || 0) * (parseFloat(b.productible) || 0);
+                        return <td key={b.id} className="text-center text-[11px] font-black text-blue-900 border-t border-blue-50 pt-2">{fmt(yearlyProd, 0)} kWh/an</td>;
+                      })}
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-              <div className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-2 text-xs">
-                <div className="flex justify-between"><span className="text-slate-500">Apport (10%) :</span><b>{fmtEur(apport10)}</b></div>
-                <div className="flex justify-between"><span className="text-slate-500">Emprunt :</span><b>{fmtEur(emprunt)}</b></div>
-                <div className="flex justify-between"><span className="text-slate-500">Annuité :</span><b>{fmtEur(annuite)}</b></div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between bg-blue-50/30 rounded px-3 py-2">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">Production totale cumulée</span>
+                  <span className="text-sm font-black text-blue-900">{fmt(collapsedParams.kwc * collapsedParams.productible, 0)} kWh/an</span>
+                </div>
+                <div className="flex items-center gap-6">
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">Puissance Totale</span>
+                    <span className="text-xs font-bold text-slate-700">{fmt(collapsedParams.kwc, 2)} kWc</span>
+                  </div>
+                </div>
               </div>
             </SectionCard>
+
+            <SectionCard title="INVESTISSEMENT" id="pdf-section-invest">
+              <div className="overflow-x-auto pb-1">
+                <table className="w-full text-left border-separate border-spacing-x-4">
+                  <thead>
+                    <tr>
+                      <th className="w-32"></th>
+                      {(params.buildings || []).map((b, i) => (
+                        <th key={b.id} className="text-center text-[10px] uppercase text-slate-400 font-bold">Bâtiment {i+1}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="h-2"></tr>
+                    <tr>
+                      <td className="text-[11px] text-slate-500 font-medium pt-1">Centrale solaire</td>
+                      {(params.buildings || []).map(b => (
+                        <td key={b.id} className="pt-1">
+                          <input 
+                            type="number"
+                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-right"
+                            value={b.coutCentrale || ''} 
+                            onChange={e => updateBuildingParam(b.id, 'coutCentrale', parseFloat(e.target.value) || 0)}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="text-[11px] text-slate-500 font-medium">Charpente / Bâtiment</td>
+                      {(params.buildings || []).map(b => (
+                        <td key={b.id}>
+                          <input 
+                            type="number"
+                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-right"
+                            value={b.coutCharpente || ''} 
+                            onChange={e => updateBuildingParam(b.id, 'coutCharpente', parseFloat(e.target.value) || 0)}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="text-[11px] text-slate-500 font-medium">Raccordement</td>
+                      {(params.buildings || []).map(b => (
+                        <td key={b.id}>
+                          <input 
+                            type="number"
+                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-right"
+                            value={b.raccordement || ''} 
+                            onChange={e => updateBuildingParam(b.id, 'raccordement', parseFloat(e.target.value) || 0)}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="text-[11px] text-slate-500 font-medium">Frais</td>
+                      {(params.buildings || []).map(b => (
+                        <td key={b.id}>
+                          <input 
+                            type="number"
+                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-right"
+                            value={b.frais || ''} 
+                            onChange={e => updateBuildingParam(b.id, 'frais', parseFloat(e.target.value) || 0)}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="text-[11px] text-slate-500 font-medium">Soulte / Rente</td>
+                      {(params.buildings || []).map(b => (
+                        <td key={b.id}>
+                          <input 
+                            type="number"
+                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-right"
+                            value={b.soulte || ''} 
+                            onChange={e => updateBuildingParam(b.id, 'soulte', parseFloat(e.target.value) || 0)}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="text-[11px] text-blue-700 font-bold uppercase pt-2 border-t border-slate-100 mt-2">Sous-total Invest.</td>
+                      {(params.buildings || []).map(b => {
+                        const sub = (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0) + (parseFloat(b.raccordement) || 0) + (parseFloat(b.frais) || 0) + (parseFloat(b.soulte) || 0);
+                        return <td key={b.id} className="text-right text-[11px] font-black text-blue-900 border-t border-blue-50 pt-2 pr-4">{fmtEur(sub)}</td>;
+                      })}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-1 items-end bg-blue-50/30 rounded px-3 py-2">
+                <div className="flex items-center gap-2">
+                   <span className="text-[10px] text-slate-400 font-bold uppercase">Total Construction :</span>
+                   <span className="text-xs font-bold text-slate-800">{fmtEur(totalConstruction)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                   <span className="text-[10px] text-slate-400 font-bold uppercase">Total avec TVA (20%) :</span>
+                   <span className="text-sm font-black text-blue-900">{fmtEur(totalInvestissement)}</span>
+                </div>
+              </div>
+            </SectionCard>
+
+            <div className="grid grid-cols-2 gap-6">
+              <SectionCard title="TARIFS D'ACHAT" id="pdf-section-tarifs" className="grid grid-cols-1 gap-y-2">
+                <Field label="Tarif ≤ 1 100" value={params.tarifBas} onChange={v => setParams(p => ({ ...p, tarifBas: v }))} type="number" suffix="€" precision={4} step="0.001" />
+                <Field label="Tarif > 1 100" value={params.tarifHaut} onChange={v => setParams(p => ({ ...p, tarifHaut: v }))} type="number" suffix="€" precision={4} step="0.001" />
+                <Field label="Tarif ACC" value={params.tarifACC} onChange={v => setParams(p => ({ ...p, tarifACC: v }))} type="number" suffix="€" precision={4} step="0.001" />
+                <Field label="Part ACC" value={params.partACC * 100} onChange={v => setParams(p => ({ ...p, partACC: v/100 }))} type="number" suffix="%" />
+              </SectionCard>
+              <SectionCard title="OPEX ANNUELS" id="pdf-section-opex" className="grid grid-cols-1 gap-y-2">
+                <Field label="Maintenance" value={params.maintenance} onChange={v => setParams(p => ({ ...p, maintenance: v }))} type="number" suffix="€" />
+                <Field label="Assurance" value={params.assurance} onChange={v => setParams(p => ({ ...p, assurance: v }))} type="number" suffix="€" />
+                <Field label="Taxes locales" value={params.taxesLocales} onChange={v => setParams(p => ({ ...p, taxesLocales: v }))} type="number" suffix="€" />
+                <Field label="Gestion" value={params.gestionAdmin} onChange={v => setParams(p => ({ ...p, gestionAdmin: v }))} type="number" suffix="€" />
+              </SectionCard>
+            </div>
           </div>
 
-          {/* RIGHT: Results */}
-          <div className="space-y-4">
-            {/* DSCR box */}
-            <div className={cn('rounded-xl border-2 p-4 text-center', displayDscrMoyen >= limitDSCR ? 'border-green-300 bg-green-50' : displayDscrMoyen >= (limitDSCR - 0.06) ? 'border-orange-300 bg-orange-50' : 'border-red-300 bg-red-50')}>
-              <DscrIcon className={cn('w-8 h-8 mx-auto mb-1', dscrColor.split(' ')[0])} />
-              <div className="text-2xl font-black text-slate-900">{fmtPct(displayDscrMoyen)}</div>
-              <div className={cn('text-xs font-semibold mt-1 px-2 py-0.5 rounded-full inline-block', dscrColor)}>DSCR MOYEN 20 ANS</div>
-              <div className="text-[10px] text-slate-500 mt-1">Seuil bancaire : {fmtPct(params.targetDSCR || 1.16)}</div>
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg border border-slate-200 p-6 flex flex-col items-center justify-center text-center space-y-2 shadow-sm border-t-4 border-t-green-500">
+              <div className="p-2 bg-green-50 rounded-full mb-1"><CheckCircle className="w-6 h-6 text-green-500" /></div>
+              <div className="text-4xl font-black text-green-600">{fmtPct(bp.dscrMoyen)}</div>
+              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">DSCR MOYEN 20 ANS</div>
+              <div className="text-[10px] text-slate-400">Seuil bancaire : 110%</div>
             </div>
 
-            {/* Reste à charge */}
-            <div className="bg-slate-900 rounded-xl p-4 text-center">
-              <div className="text-xs text-slate-400 uppercase tracking-wider">Reste à charge calculé</div>
-              <div className="text-2xl font-black text-white mt-1">{fmtEur(resteACharge)}</div>
-              <div className="text-[10px] text-slate-400 mt-1">Pour atteindre DSCR ≥ {fmtPct(params.targetDSCR || 1.16)}</div>
-              {selectedProject && (
-                <Button onClick={applyToProject} size="sm" data-html2canvas-ignore="true" className="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white text-xs">
-                  <Save className="w-3 h-3 mr-1" /> Appliquer au projet
-                </Button>
-              )}
+            <div className="bg-blue-600 rounded-lg p-6 text-white shadow-xl shadow-blue-100 space-y-4">
+              <div className="space-y-1">
+                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">RESTE À CHARGE</div>
+                <div className="text-3xl font-black">{fmtEur(resteACharge)}</div>
+              </div>
+              <Button onClick={applyCalculatedResteACharge} className="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs py-5">
+                <RefreshCw className="w-3.5 h-3.5 mr-2" /> Appliquer
+              </Button>
             </div>
 
-            <SectionCard title="Indicateurs">
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between"><span className="text-slate-500">Apport avec soulte :</span><b>{fmtEur(apportSoulte)}</b></div>
-                <div className="flex justify-between"><span className="text-slate-500">Emprunt net :</span><b>{fmtEur(emprunt)}</b></div>
-                <div className="flex justify-between"><span className="text-slate-500">CA an 1 :</span><b>{fmtEur(rows[0]?.ca)}</b></div>
-                <div className="flex justify-between"><span className="text-slate-500">Total charges an 1 :</span><b>{fmtEur(rows[0]?.opex + rows[0]?.serviceDette)}</b></div>
-              </div>
-            </SectionCard>
+            <SectionCard title="RENTABILITÉ" className="bg-amber-50/30 border-amber-100">
+               <div className="space-y-4">
+                 <Field label="CIBLE DSCR :" value={params.targetDSCR * 100} onChange={v => setParams(p => ({ ...p, targetDSCR: v / 100 }))} type="number" suffix="%" step="0.01" className="bg-amber-100/50 p-2 rounded" />
+                 
+                 <div className="space-y-1.5 pt-2 border-t border-amber-100">
+                   <div className="flex justify-between items-center text-[11px]">
+                     <span className="text-slate-500">Location :</span>
+                     <div className="flex items-center gap-2">
+                       <span className="font-bold text-blue-800">{fmtEur(bp.loyer)}</span>
+                       <Button onClick={() => handleGoalSeek('loyer')} size="xs" className="h-6 px-1.5 bg-red-600 text-[10px] text-white uppercase">FIXER</Button>
+                     </div>
+                   </div>
+                   <div className="flex justify-between items-center text-[11px]">
+                     <span className="text-slate-500">Soulte 20 ans :</span>
+                     <div className="flex items-center gap-2">
+                       <span className="font-bold text-blue-800">{fmtEur(calcSoulte)}</span>
+                       <Button onClick={() => handleGoalSeek('soulte')} size="xs" className="h-6 px-1.5 bg-red-600 text-[10px] text-white uppercase">FIXER</Button>
+                     </div>
+                   </div>
+                 </div>
 
-            <SectionCard title="Rentabilité">
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between items-center bg-amber-50 p-1 rounded border border-amber-100 mb-2">
-                  <span className="font-bold text-amber-800 uppercase">Cible DSCR :</span>
-                  <div className="flex items-center gap-2">
-                    <input 
-                      type="number" 
-                      step="0.1" 
-                      className="w-16 border border-amber-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-amber-500 text-right font-medium"
-                      value={params.targetDSCR}
-                      onChange={e => set('targetDSCR', parseFloat(e.target.value))}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                  <div className="flex flex-col">
-                    <span className="text-slate-500">Location annuelle :</span>
-                    <span className="text-[10px] text-slate-400 font-mono">Coeff: {fmt(params.loyerCoeff, 4)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <b className="text-blue-700">{fmtEur(resteACharge > 0 ? 0 : loyer)}</b>
-                    <Button data-html2canvas-ignore="true" onClick={() => handleGoalSeek('loyer')} size="xs" variant="destructive" className="h-6 px-1 text-[9px] font-black uppercase tracking-tighter shadow-sm hover:scale-105 transition-transform bg-gradient-to-r from-red-600 to-red-500 border-none">EXECUTION</Button>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                  <div className="flex flex-col">
-                    <span className="text-slate-500">Soulte 20 ans :</span>
-                    <span className="text-[10px] text-slate-400 font-mono">Coeff: {fmt(params.soulteCoeff, 4)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <b className="text-blue-700">{fmtEur(resteACharge > 0 ? 0 : calcSoulte)}</b>
-                    <Button data-html2canvas-ignore="true" onClick={() => handleGoalSeek('soulte')} size="xs" variant="destructive" className="h-6 px-1 text-[9px] font-black uppercase tracking-tighter shadow-sm hover:scale-105 transition-transform bg-gradient-to-r from-red-600 to-red-500 border-none">EXECUTION</Button>
-                  </div>
-                </div>
-
-                <div className="pt-2 space-y-1">
-                  <div className="flex justify-between text-[11px] border-b border-slate-50 pb-1"><span className="text-slate-500">Chiffre d'affaires sur 20 ans :</span><b className="text-blue-800">{fmtEur(sumCA)}</b></div>
-                  <div className="flex justify-between text-[11px] border-b border-slate-50 pb-1"><span className="text-slate-500">Charges d'exploitation sur 20 ans :</span><b className="text-red-700">{fmtEur(sumOpex)}</b></div>
-                  <div className="flex justify-between text-[11px] border-b border-slate-100 pb-1 mb-2"><span className="text-slate-500 text-blue-900 font-bold">Gains sur 20 ans :</span><b className="text-green-700">{fmtEur(gains)}</b></div>
-                  
-                  <div className="flex justify-between"><span className="text-slate-500">TRI FP 20 ans :</span><b className={triFP >= 0.05 ? "text-green-600" : "text-slate-800"}>{triFP ? fmtPct(triFP) : 'N/A'}</b></div>
-                  <div className="flex justify-between"><span className="text-slate-500">TRI Projet 20 ans :</span><b className={triProjet >= 0.05 ? "text-green-600" : "text-slate-800"}>{fmtPct(triProjet)}</b></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Temps de Retour :</span><b>{fmt(tempsRetour, 2)} ans</b></div>
-                </div>
-                
-                <div className="flex justify-between border-t border-slate-100 pt-1 mt-1 font-semibold text-blue-800">
-                  <span>Prix au Wc global :</span>
-                  <span>{params.kwc > 0 ? fmt((params.coutCentrale + params.coutCharpente) / (params.kwc * 1000), 2) : '0,00'} €/Wc</span>
-                </div>
-              </div>
+                 <div className="space-y-1.5 pt-4 border-t border-amber-100">
+                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">TRI Projet :</span><span className="font-bold text-green-600">{fmtPct(bp.triProjet)}</span></div>
+                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">TRI FP :</span><span className="font-bold text-green-600">{fmtPct(bp.triFP)}</span></div>
+                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Payback :</span><span className="font-bold">{fmt(bp.tempsRetour, 1)} ans</span></div>
+                 </div>
+               </div>
             </SectionCard>
           </div>
         </div>
 
-        {/* Charts Moved Here (Under Bank/Profitability) */}
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <SectionCard title="Évolution Trésorerie & Cash Flow">
-            <div className="h-64 mt-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis dataKey="year" tick={{fontSize: 10, fill: '#64748B'}} tickLine={false} axisLine={false} />
-                  <YAxis yAxisId="left" tick={{fontSize: 10, fill: '#64748B'}} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tickLine={false} axisLine={false} />
-                  <YAxis yAxisId="right" orientation="right" tick={{fontSize: 10, fill: '#64748B'}} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tickLine={false} axisLine={false} />
-                  <RechartsTooltip formatter={(val) => fmtEur(val)} labelStyle={{color:'#0f172a', fontWeight:'bold'}} contentStyle={{borderRadius:'8px', border:'none', boxShadow:'0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                  <Legend wrapperStyle={{fontSize: '10px'}} />
-                  <Bar yAxisId="left" dataKey="tresorerie" name="Trésorerie Annuelle" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                  <Line yAxisId="right" type="monotone" dataKey="cfCumule" name="Cash Flow Cumulé" stroke="#10B981" strokeWidth={3} dot={false} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Performance Économique">
-            <div className="h-64 mt-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis dataKey="year" tick={{fontSize: 10, fill: '#64748B'}} tickLine={false} axisLine={false} />
-                  <YAxis tick={{fontSize: 10, fill: '#64748B'}} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tickLine={false} axisLine={false} />
-                  <RechartsTooltip formatter={(val) => fmtEur(val)} labelStyle={{color:'#0f172a', fontWeight:'bold'}} contentStyle={{borderRadius:'8px', border:'none', boxShadow:'0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                  <Legend wrapperStyle={{fontSize: '10px'}} />
-                  <Bar dataKey="ca" name="Chiffre d'Affaires" fill="#0EA5E9" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="ebitda" name="EBITDA" fill="#F59E0B" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="opex" name="OPEX" fill="#EF4444" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </SectionCard>
+        <div className="grid grid-cols-2 gap-6 bg-white rounded-lg border border-slate-200 p-4">
+          <div id="pdf-chart-tresorerie" className="h-[300px]">
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Trésorerie & Cash Flow</h4>
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={rows}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fontSize: 9 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9 }} tickFormatter={fmtEurK} />
+                <Bar dataKey="tresorerie" fill="#1e40af" radius={[2, 2, 0, 0]} />
+                <Line type="monotone" dataKey="ca" stroke="#10b981" strokeWidth={2} dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+          <div id="pdf-chart-performance" className="h-[300px]">
+             <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Performance</h4>
+             <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={rows}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fontSize: 9 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9 }} tickFormatter={fmtEurK} />
+                <Bar dataKey="ebitda" fill="#fbbf24" radius={[2, 2, 0, 0]} />
+                <Line type="monotone" dataKey="serviceDette" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
-      {/* PAGE 2: Table */}
-      <div id="pdf-section-2">
-        <PDFHeader />
-        <div className="mt-4">
-          <TableauPrevisionnel params={params} rows={rows} />
-        </div>
+      <div id="pdf-section-2" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
+        <TableauPrevisionnel params={collapsedParams} rows={rows} />
       </div>
     </div>
   );
@@ -1759,55 +1915,69 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab }) {
         <p className="text-[10px] text-slate-500 italic">Derniers enregistrements en haut</p>
       </div>
 
-      <div className="flex-1 overflow-auto border border-slate-200 rounded-xl bg-white shadow-sm">
-        <table className="w-full text-[12px] border-collapse">
-          <thead className="sticky top-0 z-10 bg-slate-800 text-white">
+      <div className="flex-1 overflow-auto border border-slate-200 rounded-xl bg-white shadow-sm no-scrollbar">
+        <table className="w-full text-[11px] border-collapse">
+          <thead className="sticky top-0 z-10 bg-[#002060] text-white">
             <tr>
-              <th className="px-4 py-2.5 text-left font-semibold">Projet</th>
-              <th className="px-4 py-2.5 text-left font-semibold">Client</th>
-              <th className="px-4 py-2.5 text-left font-semibold">Ville</th>
-              <th className="px-4 py-2.5 text-left font-semibold">Dernière modification</th>
-              <th className="px-4 py-2.5 text-right font-semibold">Actions</th>
+              <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Projet</th>
+              <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Client</th>
+              <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Commune</th>
+              <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700 w-32">Dernière Modif.</th>
+              <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700 w-24">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {savedProjects.map((p) => (
-              <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-4 py-3 font-bold text-slate-900 uppercase">{p.name}</td>
-                <td className="px-4 py-3 text-slate-600">{p.client_name || '—'} {p.client_firstname || ''}</td>
-                <td className="px-4 py-3 text-slate-500">{p.city || '—'}</td>
-                <td className="px-4 py-3 text-slate-500">{p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button 
-                      size="xs" 
-                      variant="outline" 
+              <tr key={p.id} className="hover:bg-blue-50/30 transition-colors group">
+                <td className="px-3 py-1 font-bold text-slate-800 uppercase">{p.name}</td>
+                <td className="px-3 py-1 text-slate-600 font-medium">{p.client_name || '—'} {p.client_firstname || ''}</td>
+                <td className="px-3 py-1 text-slate-500">{p.city || '—'}</td>
+                <td className="px-3 py-1 text-slate-400 text-[10px]">{p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                <td className="px-3 py-1 text-right">
+                  <div className="flex items-center justify-center gap-1">
+                    <button 
+                      title="Générer PDF"
                       onClick={() => {
                         onSelect(p);
                         setActiveTab('bp_projets');
-                        // Small delay to allow state update before trigger
                         setTimeout(() => {
                           generateBpAcamaPDF({ 
                             elementId: 'bp-acama-content', 
                             sections: ['pdf-section-1', 'pdf-section-2'],
                             fileName: `BP_Acama_${p.name}_${new Date().toISOString().split('T')[0]}.pdf` 
                           });
-                        }, 100);
+                        }, 200);
                       }}
-                      className="h-7 text-[10px] border-slate-300"
+                      className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-md transition-colors"
                     >
-                      <FileText className="w-3 h-3 mr-1" /> PDF
-                    </Button>
-                    <Button 
-                      size="xs" 
-                      className="h-7 text-[10px] bg-blue-600 hover:bg-blue-700" 
+                      <FileDown className="w-4 h-4" />
+                    </button>
+                    <button 
+                      title="Modifier"
                       onClick={() => {
                         onSelect(p);
                         setActiveTab('bp_projets');
                       }}
+                      className="p-1.5 text-amber-600 hover:bg-amber-100 rounded-md transition-colors"
                     >
-                      Modifier
-                    </Button>
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+                    <button 
+                      title="Supprimer la sauvegarde"
+                      onClick={async () => {
+                        if (confirm('Voulez-vous supprimer les données BP de ce projet ?')) {
+                          try {
+                            await apiService.updateProject(p.id, { bpAcamaState: null });
+                            toast({ title: 'Supprimé', description: `Les données BP de ${p.name} ont été effacées.` });
+                          } catch (e) {
+                             toast({ title: 'Erreur', variant: 'destructive', description: e.message });
+                          }
+                        }
+                      }}
+                      className="p-1.5 text-red-600 hover:bg-red-100 rounded-md transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -2010,12 +2180,11 @@ export default function BpAcama() {
   }, []);
 
   const [params, setParams] = useState({
-    nbModules: 528,
+    projectType: 'BAC',
+    buildings: [
+      { id: 1, typeBat: '', kwc: 242.88, productible: 1123.08, coutCentrale: 169951.60, coutCharpente: 171381.00, raccordement: 18300.00, frais: 3413.33, soulte: -9048.54 }
+    ],
     puissanceUnitaire: 460,
-    surfaceTotale: 1150,
-    onduleurs: 10200.96,
-    kwc: 242.88,
-    productible: 1123.08,
     tarifBas: 0.0846,
     tarifHaut: 0.04,
     seuilKwhKwc: 1100,
@@ -2024,11 +2193,6 @@ export default function BpAcama() {
     assurance: 867.10,
     taxesLocales: 0,
     gestionAdmin: 0,
-    coutCentrale: 169951.60,
-    coutCharpente: 171381.00,
-    raccordement: 18300.00,
-    frais: 3413.33,
-    soulte: -9048.54,
     dureeEmprunt: 20,
     tauxCredit: 4,
     indexationTarif: 0.006,
@@ -2041,160 +2205,71 @@ export default function BpAcama() {
     partACC: 0,
   });
 
-  // Persistence: Load saved state or calculate defaults when project changes
   useEffect(() => {
     if (!selectedProject) return;
 
     // 1. Try to load saved state
     if (selectedProject.bpAcamaState) {
-      const state = selectedProject.bpAcamaState;
-      
-      const kwc1 = parseFloat(selectedProject.puissance) || 0;
-      const kwc2 = parseFloat(selectedProject.puissance2) || 0;
-      const kwc3 = parseFloat(selectedProject.puissance3) || 0;
-      const kwc4 = parseFloat(selectedProject.puissance4) || 0;
-      const projectKwc = kwc1 + kwc2 + kwc3 + kwc4;
-      const surfaceTotale = (parseFloat(selectedProject.surface) || 0) + (parseFloat(selectedProject.surface2) || 0) + (parseFloat(selectedProject.surface3) || 0) + (parseFloat(selectedProject.surface4) || 0) || 1150;
-      const puissanceUnitaire = state.puissanceUnitaire || 490;
-      
-      const prevKwc = parseFloat(state.kwc) || 0;
-      const kwc = prevKwc > 0 ? prevKwc : (projectKwc > 0 ? projectKwc : 346.84);
-      const nbModules = state.nbModules || Math.round((kwc * 1000) / puissanceUnitaire);
-
-      setParams({
-        ...state,
-        kwc,
-        nbModules,
-        puissanceUnitaire,
-        surfaceTotale: state.surfaceTotale || surfaceTotale,
-        productible: state.productible || parseFloat(selectedProject.productible) || 1123.08,
-        tarifACC: state.tarifACC ?? 0.12,
-        partACC: state.partACC ?? 0,
-      });
+      setParams(selectedProject.bpAcamaState);
       return;
     }
 
-    // 2. Otherwise calculate defaults
-    // Sum all building powers and surfaces
-    const kwc1 = parseFloat(selectedProject.puissance) || 0;
-    const kwc2 = parseFloat(selectedProject.puissance2) || 0;
-    const kwc3 = parseFloat(selectedProject.puissance3) || 0;
-    const kwc4 = parseFloat(selectedProject.puissance4) || 0;
-    const totalKwc = kwc1 + kwc2 + kwc3 + kwc4 || 346.84;
-
-    const surf1 = parseFloat(selectedProject.surface) || 0;
-    const surf2 = parseFloat(selectedProject.surface2) || 0;
-    const surf3 = parseFloat(selectedProject.surface3) || 0;
-    const surf4 = parseFloat(selectedProject.surface4) || 0;
-    const totalSurface = surf1 + surf2 + surf3 + surf4 || 1150;
-
+    // 2. Otherwise calculate defaults from project fields
+    const b1 = parseFloat(selectedProject.puissance) || 0;
+    const b2 = parseFloat(selectedProject.puissance2) || 0;
+    const b3 = parseFloat(selectedProject.puissance3) || 0;
+    const b4 = parseFloat(selectedProject.puissance4) || 0;
+    
+    const initialBuildings = [];
     const prod = parseFloat(selectedProject.productible) || 1123.08;
-    const distHta = parseFloat(selectedProject.dist_hta) || 0;
-    const puissanceUnitaire = 490; // Default Acama module
-    const nbModules = Math.round((totalKwc * 1000) / puissanceUnitaire);
 
-    // Dynamic Raccordement logic based on 17+ Excel snippets
-    const calculateRaccordement = (cap, dist) => {
-      if (cap <= 0) return 0;
-      
-      if (cap < 100) {
-        if (dist < 50) return 8000;
-        if (dist < 100) return 10000;
-        if (dist < 150) return 12000;
-        if (dist < 200) return 14000;
-        if (dist < 250) return 16000;
-        return 16000 + (dist - 250) * 20; 
-      } else if (cap < 200) {
-        if (dist < 100) return 16100;
-        if (dist < 150) return 17900;
-        if (dist < 200) return 19600;
-        if (dist < 250) return 21300;
-        if (dist < 300) return 23000;
-        if (dist < 350) return 24800;
-        if (dist < 400) return 26500;
-        return 26500 + (dist - 400) * 35;
-      } else if (cap < 300) {
-        if (dist < 50) return 18300;
-        if (dist < 100) return 20100;
-        if (dist < 150) return 21800;
-        if (dist < 200) return 23500;
-        if (dist < 250) return 25300;
-        if (dist < 300) return 27000;
-        if (dist < 350) return 28700;
-        if (dist < 400) return 30500;
-        if (dist < 450) return 31900;
-        return 31900 + (dist - 450) * 40;
-      } else if (cap < 400) {
-        if (dist < 50) return 24300; // Heuristic
-        if (dist < 100) return 26100;
-        if (dist < 200) return 30500;
-        if (dist < 300) return 34500;
-        if (dist < 400) return 38500;
-        if (dist < 450) return 41900;
-        return 41900 + (dist - 450) * 50;
-      } else if (cap < 600) {
-        if (dist < 50) return 32600;
-        if (dist < 100) return 35100;
-        if (dist < 150) return 37100;
-        if (dist < 200) return 38700;
-        if (dist < 250) return 39100;
-        if (dist < 300) return 40400;
-        if (dist < 350) return 42200;
-        if (dist < 400) return 43900;
-        if (dist < 450) return 45300;
-        return 45300 + (dist - 450) * 60;
-      }
-      // Heuristic for > 600
-      return 45300 + (cap - 600) * 80 + (dist * 30);
-    };
-
-    const raccordement = calculateRaccordement(totalKwc, distHta);
-
-    // Centrale logic: 490€/kWc
-    const coutCentrale = totalKwc * 490;
-
-    // Charpente lookup
-    const batType = SUIVI_BAT_DATA.find(b => b.type === selectedProject.type_bat) || SUIVI_BAT_DATA[SUIVI_BAT_DATA.length - 1];
-    const coutCharpente = batType.cout_bat || 171381;
-
-    // OPEX
-    const maintenance = totalKwc * 5;
-    const assurance = totalKwc * 2.5;
-    const taxesLocales = totalKwc * 2.5;
-
-    // Frais (roughly 1% of subtotal)
-    const subtotal = coutCentrale + coutCharpente + raccordement;
-    const frais = subtotal * 0.01;
+    if (b1 > 0 || (!b2 && !b3 && !b4)) {
+      initialBuildings.push({ id: 1, typeBat: selectedProject.type_bat || '', kwc: b1 || 346.84, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
+    }
+    if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', kwc: b2, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
+    if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', kwc: b3, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
+    if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', kwc: b4, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
 
     setParams(prev => ({
       ...prev,
-      kwc: totalKwc,
-      surfaceTotale: totalSurface,
-      nbModules,
-      puissanceUnitaire,
-      productible: prod,
-      coutCentrale,
-      coutCharpente,
-      raccordement,
-      maintenance,
-      assurance,
-      taxesLocales,
-      gestionAdmin: totalKwc * 1.1,
-      frais,
-      soulte: parseFloat(selectedProject.soulte) || 0
+      buildings: initialBuildings,
+      projectType: 'BAC'
     }));
   }, [selectedProject]);
 
-  const bpResults = useMemo(() => computeBusinessPlan(params), [
-    params.kwc, params.productible, params.tarifBas, params.tarifHaut, params.coutCentrale, params.coutCharpente,
-    params.raccordement, params.frais, params.soulte, params.loyerCoeff, params.soulteCoeff,
-    params.tauxCredit, params.dureeEmprunt, params.maintenance, params.assurance, params.taxesLocales, params.gestionAdmin, params.locationCompteur,
-    params.partACC, params.tarifACC, params.indexationTarif, params.indexationOpex, params.degradation, params.apport, params.targetDSCR
-  ]);
-
-  const { totalConstruction, totalInvestissement, apport10, soulte: calcSoulte } = bpResults;
+  const bp = useMemo(() => computeBusinessPlan({ ...collapsedParams, apport: resteACharge }), [collapsedParams, resteACharge]);
+  const { rows, annuite, emprunt, totalConstruction, totalInvestissement, apport10, soulte: calcSoulte } = bp;
   const tva = totalConstruction * 0.20;
   const apportSoulte = apport10 + calcSoulte;
+
+  const handleGoalSeek = (type) => {
+    if (!selectedProject) {
+      toast({ title: 'Erreur', variant: 'destructive', description: "Veuillez d'abord sélectionner un projet." });
+      return;
+    }
+    try {
+      const target = params.targetDSCR || 1.17;
+      const resultCoeff = calculateGoalSeekDSCR({ ...collapsedParams, apport: resteACharge }, type, target);
+      setParams(p => ({ 
+        ...p, 
+        [type === 'loyer' ? 'loyerCoeff' : 'soulteCoeff']: resultCoeff, 
+        [type === 'loyer' ? 'soulteCoeff' : 'loyerCoeff']: 0 
+      }));
+      toast({ title: 'Calcul terminé', description: `Valeur cible atteinte pour un DSCR moyen de ${fmtPct(target)}` });
+    } catch (e) {
+      toast({ title: 'Erreur de calcul', variant: 'destructive', description: e.message });
+    }
+  };
+
+  const applyCalculatedResteACharge = async () => {
+    if (!selectedProject) return;
+    try {
+      await apiService.updateProject(selectedProject.id, { resteACharge });
+      toast({ title: 'Reste à charge appliqué', description: `${fmtEur(resteACharge)} mis à jour dans le projet ${selectedProject.name}` });
+    } catch (e) {
+      toast({ title: 'Erreur', variant: 'destructive', description: e.message });
+    }
+  };
 
 
   const isAdmin = user?.role === 'admin';
