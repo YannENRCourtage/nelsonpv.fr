@@ -1194,7 +1194,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-500">Prix au Wc global :</span>
-                  <span className="font-bold text-slate-700">{fmtEur(totalInvest / (bp.rows[0]?.kwcDeg || 1))} /Wc</span>
+                  <span className="font-bold text-slate-700">{fmtEur(totalInvestissement / (bp.rows[0]?.kwcDeg || 1))} /Wc</span>
                 </div>
               </div>
                    </div>
