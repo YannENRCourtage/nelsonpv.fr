@@ -39,7 +39,7 @@ export function PortalFrame({
 
     // --- HEIGHT & ANGLE LOGIC (Hoisted) ---
     const isMonopente = buildingType === 'monopente';
-    const isAsymetrique = buildingType === 'asymetrique';
+    const isAsymetrique = buildingType === 'asymetrique_1';
     const isAsymetrique2 = buildingType === 'asymetrique_2';
 
     const isSymetrique = buildingType === 'symetrique';

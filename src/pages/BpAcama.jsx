@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import {
   BarChart3, FileText, Calculator, TrendingUp, Users, Building,
   FileDown, Save, ChevronDown, Search, X, CheckCircle, AlertCircle,
-  AlertTriangle, RefreshCw, Plus, Trash2
+  AlertTriangle, RefreshCw, Plus, Trash2, MapPin, ChevronUp, ChevronDown
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ComposedChart } from 'recharts';
 
@@ -18,10 +18,11 @@ import { generateBpAcamaPDF } from '../components/bp-acama/BpAcamaPDFGenerator';
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const TABS = [
+  { id: 'bp_projets', label: 'BUSINESS PLAN PROJETS', icon: TrendingUp },
+  { id: 'bp_saved', label: 'BP SAUVEGARDÉS', icon: Save },
   { id: 'suivi', label: 'SUIVI', icon: Users },
   { id: 'suivi_bat', label: 'SUIVI BAT TYPE', icon: Building },
   { id: 'calcul', label: 'CALCUL', icon: Calculator },
-  { id: 'bp_projets', label: 'BUSINESS PLAN PROJETS', icon: TrendingUp },
   { id: 'prop_bac', label: 'PROPOSITION CLIENT BAC', icon: FileText },
   { id: 'prop_be', label: 'PROPOSITION CLIENT BE', icon: FileText },
   { id: 'devis', label: 'DEVIS', icon: FileDown },
@@ -475,7 +476,7 @@ function ProjectSelect({ projects, selectedProject, onSelect, className }) {
   );
 }
 
-function Field({ label, value, onChange, type = 'text', suffix, className, step, disabled }) {
+function Field({ label, value, onChange, type = 'text', suffix, className, step, disabled, precision = 2 }) {
   return (
     <div className={cn('flex items-center gap-2', className)}>
       <label className="text-xs text-slate-600 w-48 shrink-0">{label}</label>
@@ -487,7 +488,7 @@ function Field({ label, value, onChange, type = 'text', suffix, className, step,
             "border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none transition-colors focus:ring-1 focus:ring-blue-500",
             disabled ? "bg-slate-50 text-slate-400 cursor-not-allowed" : "text-slate-900 bg-white"
           )}
-          value={type === 'number' && typeof value === 'number' ? (Math.round(value * 100) / 100).toString() : (value ?? '')}
+          value={type === 'number' && typeof value === 'number' ? (Math.round(value * Math.pow(10, precision)) / Math.pow(10, precision)).toString() : (value ?? '')}
           onChange={e => onChange?.(type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value)}
           step={step ?? (type === 'number' ? 'any' : undefined)}
         />
@@ -497,9 +498,9 @@ function Field({ label, value, onChange, type = 'text', suffix, className, step,
   );
 }
 
-function SectionCard({ title, children, className }) {
+function SectionCard({ title, children, className, id }) {
   return (
-    <div className={cn('bg-white rounded-lg border border-slate-200 p-4 space-y-2', className)}>
+    <div id={id} className={cn('bg-white rounded-lg border border-slate-200 p-4 space-y-2', className)}>
       <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider border-b border-slate-100 pb-2">{title}</h3>
       {children}
     </div>
@@ -515,10 +516,10 @@ function TableauPrevisionnel({ params, rows }) {
 
   const DataRow = ({ label, propName, isPercent, isCurrency, format }) => (
     <tr className="border-b border-slate-200 bg-white hover:bg-slate-50">
-      <td className="px-2 py-1 font-medium bg-slate-50 w-64">{label}</td>
-      <td className="px-2 py-1 text-slate-400 w-8">-</td>
+      <td className="px-2 py-1 font-medium bg-slate-50 w-64 align-top">{label}</td>
+      <td className="px-2 py-1 text-slate-400 w-8 align-top">-</td>
       {rows.map((r, i) => (
-        <td key={i} className="px-2 py-1 text-right border-l border-slate-100 min-w-24 font-medium">
+        <td key={i} className="px-2 py-1 text-right border-l border-slate-100 min-w-24 font-medium align-top">
           {format ? format(r[propName]) : (isCurrency ? fmtEur(r[propName]) : (isPercent ? fmtPct(r[propName]) : fmt(r[propName], 2)))}
         </td>
       ))}
@@ -601,6 +602,16 @@ function TableauPrevisionnel({ params, rows }) {
 // ─── Tab: BUSINESS PLAN PROJETS ──────────────────────────────────────────────
 
 function TabBpProjets({ projects, selectedProject, setSelectedProject, params, setParams, computeBusinessPlan, computeResteACharge, calculateGoalSeekDSCR, bpResults, totalInvestissement, apport10, totalConstruction, tva, apportSoulte }) {
+  const PDFHeader = () => (
+    <div className="pdf-header hidden flex-row justify-between items-center w-full mb-6 border-b-2 border-slate-900 pb-4">
+      <img src="/logo-nelson.png" alt="Logo" className="h-12" />
+      <div className="text-right">
+        <h1 className="text-xl font-black text-slate-900 uppercase">NELSON - Business Plan</h1>
+        <p className="text-sm font-bold text-blue-600">{selectedProject?.name}</p>
+        <p className="text-[10px] text-slate-500">{new Date().toLocaleDateString('fr-FR')}</p>
+      </div>
+    </div>
+  );
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const dropdownRef = useRef(null);
@@ -704,8 +715,8 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                   const roundedP = Math.round(totalP * 100) / 100;
                   return (
                     <button key={p.id} onClick={() => applyProject(p)} className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 border-b border-slate-50">
-                      <div className="font-medium">{p.name}</div>
-                      <div className="text-slate-500">{p.city} • {roundedP > 0 ? roundedP.toFixed(2) : (parseFloat(p.puissance) || 0).toFixed(2)} kWc</div>
+                      <div className="font-medium uppercase">{p.name || 'Projet sans nom'}</div>
+                      <div className="text-slate-500 font-medium opacity-70">{p.city || p.address || '—'}</div>
                     </button>
                   );
                 })}
@@ -715,7 +726,11 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
         </div>
         {selectedProject && (
           <div className="flex items-center gap-2">
-            <Button size="sm" onClick={() => generateBpAcamaPDF({ elementId: 'bp-acama-content', fileName: `BP_Acama_${selectedProject.name}_${new Date().toISOString().split('T')[0]}.pdf` })} className="bg-slate-800 hover:bg-slate-900 text-white text-xs h-8 mr-2">
+            <Button size="sm" onClick={() => generateBpAcamaPDF({ 
+                elementId: 'bp-acama-content', 
+                sections: ['pdf-section-1', 'pdf-section-2'],
+                fileName: `BP_Acama_${selectedProject.name}_${new Date().toISOString().split('T')[0]}.pdf` 
+              })} className="bg-slate-800 hover:bg-slate-900 text-white text-xs h-8 mr-2">
               <FileText className="w-3 h-3 mr-1" /> Générer PDF
             </Button>
             <Button size="sm" onClick={saveBp} className="bg-green-600 hover:bg-green-700 text-white text-xs h-8">
@@ -726,231 +741,237 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        {/* LEFT: Inputs */}
-        <div className="col-span-2 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <SectionCard title="Données du projet">
-              <Field label="Nombre de modules" value={params.nbModules} onChange={v => set('nbModules', v)} type="number" suffix="modules" />
-              <Field label="Puissance unitaire" value={params.puissanceUnitaire} onChange={v => set('puissanceUnitaire', v)} type="number" suffix="Wc" />
-              <Field label="Puissance installée" value={params.kwc} onChange={v => set('kwc', v)} type="number" suffix="kWc" />
-              <Field label="Surface totale installée" value={params.surfaceTotale} onChange={v => set('surfaceTotale', v)} type="number" suffix="m²" />
-              <div className="h-2" />
-              <Field label="Productible (KWh/KWc)" value={params.productible} onChange={v => set('productible', v)} type="number" />
-              <div className="text-xs text-slate-500 pt-1">Production totale : <b>{fmt(prodTotale)} KWh/an</b></div>
-            </SectionCard>
-            <SectionCard title="Tarifs d'achat">
-              <Field label="Tarif ≤ 1 100 KWh/KWc" value={params.tarifBas} onChange={v => set('tarifBas', v)} type="number" step={0.0001} suffix="€/kWh" />
-              <Field label="Tarif > 1 100 KWh/KWc" value={params.tarifHaut} onChange={v => set('tarifHaut', v)} type="number" step={0.0001} suffix="€/kWh" />
-              <Field label="Seuil (KWh/KWc)" value={params.seuilKwhKwc} onChange={v => set('seuilKwhKwc', v)} type="number" />
-              <div className="h-2 border-t border-slate-100 my-2" />
-              <Field label="Tarif ACC" value={params.tarifACC} onChange={v => set('tarifACC', v)} type="number" step={0.01} suffix="€/kWh" />
-              <Field label="Part ACC" value={params.partACC * 100} onChange={v => set('partACC', Math.min(100, Math.max(0, v)) / 100)} type="number" step={1} suffix="%" />
-            </SectionCard>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <SectionCard title="Investissement">
-              <div className="flex items-center gap-2 mb-2">
-                <label className="text-xs text-slate-600 w-48 shrink-0">Type de bâtiment</label>
-                <select 
-                  className="border border-slate-200 rounded px-2 py-1 text-xs w-full focus:ring-1 focus:ring-blue-500 outline-none bg-white"
-                  value={params.typeBat || ''}
-                  onChange={e => {
-                    const selectedType = e.target.value;
-                    const bat = SUIVI_BAT_DATA.find(b => b.type === selectedType);
-                    
-                    if (selectedType === selectedProject?.bpAcamaState?.typeBat) {
-                      setParams(p => ({ ...p, ...selectedProject.bpAcamaState }));
-                      return;
-                    }
-
-                    if (bat) {
-                      setParams(p => ({
-                        ...p,
-                        typeBat: bat.type,
-                        coutCharpente: bat.cout_bat,
-                        kwc: bat.kwc,
-                        surfaceTotale: bat.surfTot,
-                        spv: bat.spv,
-                        productible: bat.prodMoyen || p.productible
-                      }));
-                    }
-                  }}
-                >
-                  <option value="">Sélectionner un bâtiment...</option>
-                  {SUIVI_BAT_DATA.map(b => <option key={b.type} value={b.type}>{b.type}</option>)}
-                </select>
-              </div>
-              <Field label="Centrale solaire" value={params.coutCentrale} onChange={v => set('coutCentrale', v)} type="number" suffix="€" />
-              <Field label="Charpente / Bâtiment" value={params.coutCharpente} onChange={v => set('coutCharpente', v)} type="number" suffix="€" />
-              <Field label="Raccordement" value={params.raccordement} onChange={v => set('raccordement', v)} type="number" suffix="€" />
-              <Field label="Frais" value={params.frais} onChange={v => set('frais', v)} type="number" suffix="€" />
-              <Field 
-                label="Soulte / Rente sur 20 ans" 
-                value={params.loyerCoeff !== 0 ? (loyer * 20) : (params.soulteCoeff !== 0 ? calcSoulte : params.soulte)} 
-                onChange={v => set('soulte', v)} 
-                type="number" 
-                suffix="€" 
-                disabled={params.loyerCoeff !== 0 || params.soulteCoeff !== 0}
-              />
-              <div className="border-t border-slate-100 pt-1 space-y-1 text-xs">
-                <div className="flex justify-between"><span className="text-slate-500">Total construction :</span><b>{fmtEur(totalConstruction)}</b></div>
-                <div className="flex justify-between"><span className="text-slate-500">TVA 20% :</span><b>{fmtEur(tva)}</b></div>
-                <div className="flex justify-between text-blue-700"><span className="font-semibold">Total investissement :</span><b>{fmtEur(totalInvestissement)}</b></div>
-              </div>
-            </SectionCard>
-            <SectionCard title="OPEX annuels">
-              <Field label="Maintenance" value={params.maintenance} onChange={v => set('maintenance', v)} type="number" suffix="€/an" />
-              <Field label="Location compteur" value={params.locationCompteur} onChange={v => set('locationCompteur', v)} type="number" suffix="€/an" />
-              <Field label="Assurance" value={params.assurance} onChange={v => set('assurance', v)} type="number" suffix="€/an" />
-              <Field label="Taxes locales" value={params.taxesLocales} onChange={v => set('taxesLocales', v)} type="number" suffix="€/an" />
-              <Field label="Gestion administrative" value={params.gestionAdmin} onChange={v => set('gestionAdmin', v)} type="number" suffix="€/an" />
-            </SectionCard>
-          </div>
-          <SectionCard title="Banque">
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="Durée de l'emprunt" value={params.dureeEmprunt} onChange={v => set('dureeEmprunt', v)} type="number" suffix="ans" />
-              <Field label="Taux de crédit" value={params.tauxCredit} onChange={v => set('tauxCredit', v)} type="number" step={0.1} suffix="%" />
-              <Field label="Indexation tarif" value={params.indexationTarif * 100} onChange={v => set('indexationTarif', v / 100)} type="number" step={0.1} suffix="%" />
-              <Field label="Indexation OPEX" value={params.indexationOpex * 100} onChange={v => set('indexationOpex', v / 100)} type="number" step={0.1} suffix="%" />
-              <Field label="Dégradation modules" value={params.degradation * 100} onChange={v => set('degradation', v / 100)} type="number" step={0.1} suffix="%" />
+      {/* PAGE 1: Inputs, Results, and Charts */}
+      <div id="pdf-section-1" className="flex flex-col gap-4">
+        <PDFHeader />
+        <div className="grid grid-cols-3 gap-4">
+          {/* LEFT: Inputs */}
+          <div className="col-span-2 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <SectionCard title="Données du projet">
+                <Field label="Nombre de modules" value={params.nbModules} onChange={v => set('nbModules', v)} type="number" suffix="modules" />
+                <Field label="Puissance unitaire" value={params.puissanceUnitaire} onChange={v => set('puissanceUnitaire', v)} type="number" suffix="Wc" />
+                <Field label="Puissance installée" value={params.kwc} onChange={v => set('kwc', v)} type="number" suffix="kWc" />
+                <Field label="Surface totale installée" value={params.surfaceTotale} onChange={v => set('surfaceTotale', v)} type="number" suffix="m²" />
+                <div className="h-2" />
+                <Field label="Productible (KWh/KWc)" value={params.productible} onChange={v => set('productible', v)} type="number" />
+                <div className="text-xs text-slate-500 pt-1">Production totale : <b>{fmt(prodTotale)} KWh/an</b></div>
+              </SectionCard>
+              <SectionCard title="Tarifs d'achat">
+                <Field label="Tarif ≤ 1 100 KWh/KWc" value={params.tarifBas} onChange={v => set('tarifBas', Math.max(0, v))} type="number" step={0.001} precision={4} suffix="€/kWh" />
+                <Field label="Tarif > 1 100 KWh/KWc" value={params.tarifHaut} onChange={v => set('tarifHaut', Math.max(0, v))} type="number" step={0.001} precision={4} suffix="€/kWh" />
+                <Field label="Seuil (KWh/KWc)" value={params.seuilKwhKwc} onChange={v => set('seuilKwhKwc', Math.max(0, v))} type="number" />
+                <div className="h-2 border-t border-slate-100 my-2" />
+                <Field label="Tarif ACC" value={params.tarifACC} onChange={v => set('tarifACC', Math.max(0, v))} type="number" step={0.001} precision={4} suffix="€/kWh" />
+                <Field label="Part ACC" value={params.partACC * 100} onChange={v => set('partACC', Math.min(100, Math.max(0, v)) / 100)} type="number" step={1} suffix="%" />
+              </SectionCard>
             </div>
-            <div className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-2 text-xs">
-              <div className="flex justify-between"><span className="text-slate-500">Apport (10%) :</span><b>{fmtEur(apport10)}</b></div>
-              <div className="flex justify-between"><span className="text-slate-500">Emprunt :</span><b>{fmtEur(emprunt)}</b></div>
-              <div className="flex justify-between"><span className="text-slate-500">Annuité :</span><b>{fmtEur(annuite)}</b></div>
-            </div>
-          </SectionCard>
-        </div>
+            <div className="grid grid-cols-2 gap-4">
+              <SectionCard title="Investissement">
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="text-xs text-slate-600 w-48 shrink-0">Type de bâtiment</label>
+                  <select 
+                    className="border border-slate-200 rounded px-2 py-1 text-xs w-full focus:ring-1 focus:ring-blue-500 outline-none bg-white font-medium"
+                    value={params.typeBat || ''}
+                    onChange={e => {
+                      const selectedType = e.target.value;
+                      const bat = SUIVI_BAT_DATA.find(b => b.type === selectedType);
+                      
+                      if (selectedType === selectedProject?.bpAcamaState?.typeBat) {
+                        setParams(p => ({ ...p, ...selectedProject.bpAcamaState }));
+                        return;
+                      }
 
-        {/* RIGHT: Results */}
-        <div className="space-y-4">
-          {/* DSCR box */}
-          <div className={cn('rounded-xl border-2 p-4 text-center', displayDscrMoyen >= limitDSCR ? 'border-green-300 bg-green-50' : displayDscrMoyen >= (limitDSCR - 0.06) ? 'border-orange-300 bg-orange-50' : 'border-red-300 bg-red-50')}>
-            <DscrIcon className={cn('w-8 h-8 mx-auto mb-1', dscrColor.split(' ')[0])} />
-            <div className="text-2xl font-black text-slate-900">{fmtPct(displayDscrMoyen)}</div>
-            <div className={cn('text-xs font-semibold mt-1 px-2 py-0.5 rounded-full inline-block', dscrColor)}>DSCR MOYEN 20 ANS</div>
-            <div className="text-[10px] text-slate-500 mt-1">Seuil bancaire : {fmtPct(params.targetDSCR || 1.16)}</div>
+                      if (bat) {
+                        setParams(p => ({
+                          ...p,
+                          typeBat: bat.type,
+                          coutCharpente: bat.cout_bat,
+                          kwc: bat.kwc,
+                          surfaceTotale: bat.surfTot,
+                          spv: bat.spv,
+                          productible: bat.prodMoyen || p.productible
+                        }));
+                      }
+                    }}
+                  >
+                    <option value="">Sélectionner un bâtiment...</option>
+                    {SUIVI_BAT_DATA.map(b => <option key={b.type} value={b.type}>{b.type}</option>)}
+                  </select>
+                </div>
+                <Field label="Centrale solaire" value={params.coutCentrale} onChange={v => set('coutCentrale', v)} type="number" suffix="€" />
+                <Field label="Charpente / Bâtiment" value={params.coutCharpente} onChange={v => set('coutCharpente', v)} type="number" suffix="€" />
+                <Field label="Raccordement" value={params.raccordement} onChange={v => set('raccordement', v)} type="number" suffix="€" />
+                <Field label="Frais" value={params.frais} onChange={v => set('frais', v)} type="number" suffix="€" />
+                <Field 
+                  label="Soulte / Rente sur 20 ans" 
+                  value={params.loyerCoeff !== 0 ? (loyer * 20) : (params.soulteCoeff !== 0 ? calcSoulte : params.soulte)} 
+                  onChange={v => set('soulte', v)} 
+                  type="number" 
+                  suffix="€" 
+                  disabled={params.loyerCoeff !== 0 || params.soulteCoeff !== 0}
+                />
+                <div className="border-t border-slate-100 pt-1 space-y-1 text-xs">
+                  <div className="flex justify-between"><span className="text-slate-500">Total construction :</span><b>{fmtEur(totalConstruction)}</b></div>
+                  <div className="flex justify-between"><span className="text-slate-500">TVA 20% :</span><b>{fmtEur(tva)}</b></div>
+                  <div className="flex justify-between text-blue-700 font-bold"><span className="font-semibold text-slate-700">Total investissement :</span><b>{fmtEur(totalInvestissement)}</b></div>
+                </div>
+              </SectionCard>
+              <SectionCard title="OPEX annuels">
+                <Field label="Maintenance" value={params.maintenance} onChange={v => set('maintenance', v)} type="number" suffix="€/an" />
+                <Field label="Location compteur" value={params.locationCompteur} onChange={v => set('locationCompteur', v)} type="number" suffix="€/an" />
+                <Field label="Assurance" value={params.assurance} onChange={v => set('assurance', v)} type="number" suffix="€/an" />
+                <Field label="Taxes locales" value={params.taxesLocales} onChange={v => set('taxesLocales', v)} type="number" suffix="€/an" />
+                <Field label="Gestion administrative" value={params.gestionAdmin} onChange={v => set('gestionAdmin', v)} type="number" suffix="€/an" />
+              </SectionCard>
+            </div>
+            <SectionCard title="Banque">
+              <div className="grid grid-cols-3 gap-3">
+                <Field label="Durée de l'emprunt" value={params.dureeEmprunt} onChange={v => set('dureeEmprunt', v)} type="number" suffix="ans" />
+                <Field label="Taux de crédit" value={params.tauxCredit} onChange={v => set('tauxCredit', v)} type="number" step={0.1} suffix="%" />
+                <Field label="Indexation tarif" value={params.indexationTarif * 100} onChange={v => set('indexationTarif', v / 100)} type="number" step={0.1} suffix="%" />
+                <Field label="Indexation OPEX" value={params.indexationOpex * 100} onChange={v => set('indexationOpex', v / 100)} type="number" step={0.1} suffix="%" />
+                <Field label="Dégradation modules" value={params.degradation * 100} onChange={v => set('degradation', v / 100)} type="number" step={0.1} suffix="%" />
+              </div>
+              <div className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-2 text-xs">
+                <div className="flex justify-between"><span className="text-slate-500">Apport (10%) :</span><b>{fmtEur(apport10)}</b></div>
+                <div className="flex justify-between"><span className="text-slate-500">Emprunt :</span><b>{fmtEur(emprunt)}</b></div>
+                <div className="flex justify-between"><span className="text-slate-500">Annuité :</span><b>{fmtEur(annuite)}</b></div>
+              </div>
+            </SectionCard>
           </div>
 
-          {/* Reste à charge */}
-          <div className="bg-slate-900 rounded-xl p-4 text-center">
-            <div className="text-xs text-slate-400 uppercase tracking-wider">Reste à charge calculé</div>
-            <div className="text-2xl font-black text-white mt-1">{fmtEur(resteACharge)}</div>
-            <div className="text-[10px] text-slate-400 mt-1">Pour atteindre DSCR ≥ {fmtPct(params.targetDSCR || 1.16)}</div>
-            {selectedProject && (
-              <Button onClick={applyToProject} size="sm" className="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white text-xs">
-                <Save className="w-3 h-3 mr-1" /> Appliquer au projet
-              </Button>
-            )}
-          </div>
-
-          <SectionCard title="Indicateurs">
-            <div className="space-y-1 text-xs">
-              <div className="flex justify-between"><span className="text-slate-500">Apport avec soulte :</span><b>{fmtEur(apportSoulte)}</b></div>
-              <div className="flex justify-between"><span className="text-slate-500">Emprunt net :</span><b>{fmtEur(emprunt)}</b></div>
-              <div className="flex justify-between"><span className="text-slate-500">CA an 1 :</span><b>{fmtEur(rows[0]?.ca)}</b></div>
-              <div className="flex justify-between"><span className="text-slate-500">Total charges an 1 :</span><b>{fmtEur(rows[0]?.opex + rows[0]?.serviceDette)}</b></div>
+          {/* RIGHT: Results */}
+          <div className="space-y-4">
+            {/* DSCR box */}
+            <div className={cn('rounded-xl border-2 p-4 text-center', displayDscrMoyen >= limitDSCR ? 'border-green-300 bg-green-50' : displayDscrMoyen >= (limitDSCR - 0.06) ? 'border-orange-300 bg-orange-50' : 'border-red-300 bg-red-50')}>
+              <DscrIcon className={cn('w-8 h-8 mx-auto mb-1', dscrColor.split(' ')[0])} />
+              <div className="text-2xl font-black text-slate-900">{fmtPct(displayDscrMoyen)}</div>
+              <div className={cn('text-xs font-semibold mt-1 px-2 py-0.5 rounded-full inline-block', dscrColor)}>DSCR MOYEN 20 ANS</div>
+              <div className="text-[10px] text-slate-500 mt-1">Seuil bancaire : {fmtPct(params.targetDSCR || 1.16)}</div>
             </div>
-          </SectionCard>
 
-          <SectionCard title="Rentabilité">
-            <div className="space-y-1 text-xs">
-              <div className="flex justify-between items-center bg-amber-50 p-1 rounded border border-amber-100 mb-2">
-                <span className="font-bold text-amber-800 uppercase">Cible DSCR :</span>
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    className="w-16 border border-amber-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-amber-500 text-right"
-                    value={params.targetDSCR}
-                    onChange={e => set('targetDSCR', parseFloat(e.target.value))}
-                  />
-                </div>
+            {/* Reste à charge */}
+            <div className="bg-slate-900 rounded-xl p-4 text-center">
+              <div className="text-xs text-slate-400 uppercase tracking-wider">Reste à charge calculé</div>
+              <div className="text-2xl font-black text-white mt-1">{fmtEur(resteACharge)}</div>
+              <div className="text-[10px] text-slate-400 mt-1">Pour atteindre DSCR ≥ {fmtPct(params.targetDSCR || 1.16)}</div>
+              {selectedProject && (
+                <Button onClick={applyToProject} size="sm" data-html2canvas-ignore="true" className="mt-3 w-full bg-blue-500 hover:bg-blue-600 text-white text-xs">
+                  <Save className="w-3 h-3 mr-1" /> Appliquer au projet
+                </Button>
+              )}
+            </div>
+
+            <SectionCard title="Indicateurs">
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between"><span className="text-slate-500">Apport avec soulte :</span><b>{fmtEur(apportSoulte)}</b></div>
+                <div className="flex justify-between"><span className="text-slate-500">Emprunt net :</span><b>{fmtEur(emprunt)}</b></div>
+                <div className="flex justify-between"><span className="text-slate-500">CA an 1 :</span><b>{fmtEur(rows[0]?.ca)}</b></div>
+                <div className="flex justify-between"><span className="text-slate-500">Total charges an 1 :</span><b>{fmtEur(rows[0]?.opex + rows[0]?.serviceDette)}</b></div>
               </div>
+            </SectionCard>
 
-              <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                <div className="flex flex-col">
-                   <span className="text-slate-500">Location annuelle :</span>
-                   <span className="text-[10px] text-slate-400 font-mono">Coeff: {fmt(params.loyerCoeff, 4)}</span>
+            <SectionCard title="Rentabilité">
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between items-center bg-amber-50 p-1 rounded border border-amber-100 mb-2">
+                  <span className="font-bold text-amber-800 uppercase">Cible DSCR :</span>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="number" 
+                      step="0.1" 
+                      className="w-16 border border-amber-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-amber-500 text-right font-medium"
+                      value={params.targetDSCR}
+                      onChange={e => set('targetDSCR', parseFloat(e.target.value))}
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <b className="text-blue-700">{fmtEur(resteACharge > 0 ? 0 : loyer)}</b>
-                  <Button onClick={() => handleGoalSeek('loyer')} size="xs" variant="destructive" className="h-6 px-1 text-[9px] font-black uppercase tracking-tighter shadow-sm hover:scale-105 transition-transform bg-gradient-to-r from-red-600 to-red-500 border-none">EXECUTION</Button>
-                </div>
-              </div>
 
-              <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                <div className="flex flex-col">
-                   <span className="text-slate-500">Soulte 20 ans :</span>
-                   <span className="text-[10px] text-slate-400 font-mono">Coeff: {fmt(params.soulteCoeff, 4)}</span>
+                <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                  <div className="flex flex-col">
+                    <span className="text-slate-500">Location annuelle :</span>
+                    <span className="text-[10px] text-slate-400 font-mono">Coeff: {fmt(params.loyerCoeff, 4)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <b className="text-blue-700">{fmtEur(resteACharge > 0 ? 0 : loyer)}</b>
+                    <Button data-html2canvas-ignore="true" onClick={() => handleGoalSeek('loyer')} size="xs" variant="destructive" className="h-6 px-1 text-[9px] font-black uppercase tracking-tighter shadow-sm hover:scale-105 transition-transform bg-gradient-to-r from-red-600 to-red-500 border-none">EXECUTION</Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <b className="text-blue-700">{fmtEur(resteACharge > 0 ? 0 : calcSoulte)}</b>
-                  <Button onClick={() => handleGoalSeek('soulte')} size="xs" variant="destructive" className="h-6 px-1 text-[9px] font-black uppercase tracking-tighter shadow-sm hover:scale-105 transition-transform bg-gradient-to-r from-red-600 to-red-500 border-none">EXECUTION</Button>
-                </div>
-              </div>
 
-              <div className="pt-2 space-y-1">
-                <div className="flex justify-between text-[11px] border-b border-slate-50 pb-1"><span className="text-slate-500">Chiffre d'affaires sur 20 ans :</span><b className="text-blue-800">{fmtEur(sumCA)}</b></div>
-                <div className="flex justify-between text-[11px] border-b border-slate-50 pb-1"><span className="text-slate-500">Charges d'exploitation sur 20 ans :</span><b className="text-red-700">{fmtEur(sumOpex)}</b></div>
-                <div className="flex justify-between text-[11px] border-b border-slate-100 pb-1 mb-2"><span className="text-slate-500 text-blue-900 font-bold">Gains sur 20 ans :</span><b className="text-green-700">{fmtEur(gains)}</b></div>
+                <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                  <div className="flex flex-col">
+                    <span className="text-slate-500">Soulte 20 ans :</span>
+                    <span className="text-[10px] text-slate-400 font-mono">Coeff: {fmt(params.soulteCoeff, 4)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <b className="text-blue-700">{fmtEur(resteACharge > 0 ? 0 : calcSoulte)}</b>
+                    <Button data-html2canvas-ignore="true" onClick={() => handleGoalSeek('soulte')} size="xs" variant="destructive" className="h-6 px-1 text-[9px] font-black uppercase tracking-tighter shadow-sm hover:scale-105 transition-transform bg-gradient-to-r from-red-600 to-red-500 border-none">EXECUTION</Button>
+                  </div>
+                </div>
+
+                <div className="pt-2 space-y-1">
+                  <div className="flex justify-between text-[11px] border-b border-slate-50 pb-1"><span className="text-slate-500">Chiffre d'affaires sur 20 ans :</span><b className="text-blue-800">{fmtEur(sumCA)}</b></div>
+                  <div className="flex justify-between text-[11px] border-b border-slate-50 pb-1"><span className="text-slate-500">Charges d'exploitation sur 20 ans :</span><b className="text-red-700">{fmtEur(sumOpex)}</b></div>
+                  <div className="flex justify-between text-[11px] border-b border-slate-100 pb-1 mb-2"><span className="text-slate-500 text-blue-900 font-bold">Gains sur 20 ans :</span><b className="text-green-700">{fmtEur(gains)}</b></div>
+                  
+                  <div className="flex justify-between"><span className="text-slate-500">TRI FP 20 ans :</span><b className={triFP >= 0.05 ? "text-green-600" : "text-slate-800"}>{triFP ? fmtPct(triFP) : 'N/A'}</b></div>
+                  <div className="flex justify-between"><span className="text-slate-500">TRI Projet 20 ans :</span><b className={triProjet >= 0.05 ? "text-green-600" : "text-slate-800"}>{fmtPct(triProjet)}</b></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Temps de Retour :</span><b>{fmt(tempsRetour, 2)} ans</b></div>
+                </div>
                 
-                <div className="flex justify-between"><span className="text-slate-500">TRI FP 20 ans :</span><b className={triFP >= 0.05 ? "text-green-600" : "text-slate-800"}>{triFP ? fmtPct(triFP) : 'N/A'}</b></div>
-                <div className="flex justify-between"><span className="text-slate-500">TRI Projet 20 ans :</span><b className={triProjet >= 0.05 ? "text-green-600" : "text-slate-800"}>{fmtPct(triProjet)}</b></div>
-                <div className="flex justify-between"><span className="text-slate-500">Temps de Retour :</span><b>{fmt(tempsRetour, 2)} ans</b></div>
+                <div className="flex justify-between border-t border-slate-100 pt-1 mt-1 font-semibold text-blue-800">
+                  <span>Prix au Wc global :</span>
+                  <span>{params.kwc > 0 ? fmt((params.coutCentrale + params.coutCharpente) / (params.kwc * 1000), 2) : '0,00'} €/Wc</span>
+                </div>
               </div>
-              
-              <div className="flex justify-between border-t border-slate-100 pt-1 mt-1 font-semibold text-blue-800">
-                <span>Prix au Wc global :</span>
-                <span>{params.kwc > 0 ? fmt((params.coutCentrale + params.coutCharpente) / (params.kwc * 1000), 2) : '0,00'} €/Wc</span>
-              </div>
+            </SectionCard>
+          </div>
+        </div>
+
+        {/* Charts Moved Here (Under Bank/Profitability) */}
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <SectionCard title="Évolution Trésorerie & Cash Flow">
+            <div className="h-64 mt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis dataKey="year" tick={{fontSize: 10, fill: '#64748B'}} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="left" tick={{fontSize: 10, fill: '#64748B'}} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="right" orientation="right" tick={{fontSize: 10, fill: '#64748B'}} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tickLine={false} axisLine={false} />
+                  <RechartsTooltip formatter={(val) => fmtEur(val)} labelStyle={{color:'#0f172a', fontWeight:'bold'}} contentStyle={{borderRadius:'8px', border:'none', boxShadow:'0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                  <Legend wrapperStyle={{fontSize: '10px'}} />
+                  <Bar yAxisId="left" dataKey="tresorerie" name="Trésorerie Annuelle" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                  <Line yAxisId="right" type="monotone" dataKey="cfCumule" name="Cash Flow Cumulé" stroke="#10B981" strokeWidth={3} dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Performance Économique">
+            <div className="h-64 mt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis dataKey="year" tick={{fontSize: 10, fill: '#64748B'}} tickLine={false} axisLine={false} />
+                  <YAxis tick={{fontSize: 10, fill: '#64748B'}} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tickLine={false} axisLine={false} />
+                  <RechartsTooltip formatter={(val) => fmtEur(val)} labelStyle={{color:'#0f172a', fontWeight:'bold'}} contentStyle={{borderRadius:'8px', border:'none', boxShadow:'0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                  <Legend wrapperStyle={{fontSize: '10px'}} />
+                  <Bar dataKey="ca" name="Chiffre d'Affaires" fill="#0EA5E9" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="ebitda" name="EBITDA" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="opex" name="OPEX" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </SectionCard>
         </div>
       </div>
 
-
-
-      <div className="mt-4">
-        <TableauPrevisionnel params={params} rows={rows} />
-      </div>
-
-      {/* Render Charts */}
-      <div className="grid grid-cols-2 gap-4 mt-4">
-        <SectionCard title="Évolution Trésorerie & Cash Flow">
-          <div className="h-64 mt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="year" tick={{fontSize: 10, fill: '#64748B'}} tickLine={false} axisLine={false} />
-                <YAxis yAxisId="left" tick={{fontSize: 10, fill: '#64748B'}} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tickLine={false} axisLine={false} />
-                <YAxis yAxisId="right" orientation="right" tick={{fontSize: 10, fill: '#64748B'}} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tickLine={false} axisLine={false} />
-                <RechartsTooltip formatter={(val) => fmtEur(val)} labelStyle={{color:'#0f172a', fontWeight:'bold'}} contentStyle={{borderRadius:'8px', border:'none', boxShadow:'0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                <Legend wrapperStyle={{fontSize: '10px'}} />
-                <Bar yAxisId="left" dataKey="tresorerie" name="Trésorerie Annuelle" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="cfCumule" name="Cash Flow Cumulé" stroke="#10B981" strokeWidth={3} dot={false} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Performance Économique">
-          <div className="h-64 mt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="year" tick={{fontSize: 10, fill: '#64748B'}} tickLine={false} axisLine={false} />
-                <YAxis tick={{fontSize: 10, fill: '#64748B'}} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tickLine={false} axisLine={false} />
-                <RechartsTooltip formatter={(val) => fmtEur(val)} labelStyle={{color:'#0f172a', fontWeight:'bold'}} contentStyle={{borderRadius:'8px', border:'none', boxShadow:'0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
-                <Legend wrapperStyle={{fontSize: '10px'}} />
-                <Bar dataKey="ca" name="Chiffre d'Affaires" fill="#0EA5E9" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="ebitda" name="EBITDA" fill="#F59E0B" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="opex" name="OPEX" fill="#EF4444" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </SectionCard>
+      {/* PAGE 2: Table */}
+      <div id="pdf-section-2">
+        <PDFHeader />
+        <div className="mt-4">
+          <TableauPrevisionnel params={params} rows={rows} />
+        </div>
       </div>
     </div>
   );
@@ -1008,6 +1029,14 @@ function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
   const [localRows, setLocalRows] = useState([]);
   const addRow = () => setLocalRows(r => [{ id: `local-${Date.now()}`, dev: 'ACAMA', nom: '', spv: 'CH-TTPAGE', kwc: 0, adresse: '', commune: '', cp: '', gps: '', tel: '', zone_sism: '', zone_vent: '', zone_neige: '', altitude: '', type_trav: 'BAC', type_bat: '', nb_hang: 1, categorie: 'Agricole', productible: '', production: '', dist_hta: '', dist_priv: '' }, ...r]);
 
+  const moveRow = (index, direction) => {
+    const newRows = [...localRows];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= newRows.length) return;
+    [newRows[index], newRows[targetIndex]] = [newRows[targetIndex], newRows[index]];
+    setLocalRows(newRows);
+  };
+
   const updateAnyRow = (id, k, v) => {
     if (typeof id === 'string' && id.startsWith('local-')) {
       setLocalRows(r => r.map(row => row.id === id ? { ...row, [k]: v } : row));
@@ -1040,27 +1069,39 @@ function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
         <table className="text-[12px] border-collapse min-w-max">
           <thead className="sticky top-0 z-10">
             <tr className="bg-slate-800 text-white">
+              <th className="border border-slate-600 px-2 py-1.5 w-8">↑↓</th>
               {defaultCols.map(c => <th key={c.key} style={{ width: c.width || 80 }} className="border border-slate-600 px-2 py-1.5 font-semibold whitespace-nowrap">{c.label}</th>)}
               <th className="border border-slate-600 px-2 py-1.5 w-8">✕</th>
             </tr>
           </thead>
           <tbody>
-            {allRows.map((row, i) => (
-              <tr key={row.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                {defaultCols.map(c => (
-                  <td key={c.key} className="border border-slate-200 p-0">
-                    <input
-                      className="w-full px-2 py-1 bg-transparent outline-none focus:bg-white focus:ring-1 focus:ring-blue-400"
-                      value={getRowValue(row, c.key) ?? ''}
-                      onChange={e => updateAnyRow(row.id, c.key, e.target.value)}
-                    />
+            {allRows.map((row, i) => {
+              const localIndex = localRows.findIndex(r => r.id === row.id);
+              return (
+                <tr key={row.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                  <td className="border border-slate-200 p-0 text-center">
+                    {localIndex !== -1 && (
+                      <div className="flex flex-col items-center">
+                        <button onClick={() => moveRow(localIndex, -1)} disabled={localIndex === 0} className="text-slate-400 hover:text-blue-500 disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
+                        <button onClick={() => moveRow(localIndex, 1)} disabled={localIndex === localRows.length - 1} className="text-slate-400 hover:text-blue-500 disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
+                      </div>
+                    )}
                   </td>
-                ))}
-                <td className="border border-slate-200 text-center">
-                  <button onClick={() => delAnyRow(row.id)} className="text-red-400 hover:text-red-600 p-0.5"><X className="w-3 h-3" /></button>
-                </td>
-              </tr>
-            ))}
+                  {defaultCols.map(c => (
+                    <td key={c.key} className="border border-slate-200 p-0">
+                      <input
+                        className="w-full px-2 py-1 bg-transparent outline-none focus:bg-white focus:ring-1 focus:ring-blue-400"
+                        value={getRowValue(row, c.key) ?? ''}
+                        onChange={e => updateAnyRow(row.id, c.key, e.target.value)}
+                      />
+                    </td>
+                  ))}
+                  <td className="border border-slate-200 text-center">
+                    <button onClick={() => delAnyRow(row.id)} className="text-red-400 hover:text-red-600 p-0.5"><X className="w-3 h-3" /></button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -1088,10 +1129,18 @@ function TabSuiviBatType({ batEdits, updateBatEdit }) {
     return row[k];
   };
 
+  const moveRow = (index, direction) => {
+    const newRows = [...localRows];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= newRows.length) return;
+    [newRows[index], newRows[targetIndex]] = [newRows[targetIndex], newRows[index]];
+    setLocalRows(newRows);
+  };
+
   return (
     <div className="p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Button size="sm" onClick={() => setLocalRows(r => [...r, { id: `local-${Date.now()}`, type:'', spv:'', kwc:0, cout_bat:0, massifs:0, longueur:0, largeur:0, travees:0, hSud:0, hNord:0, faitage:0, surfSud:0, surfNord:0, surfTot:0, penteSud:0, penteNord:0, modH:0, modL:0, totalMod:0, puissMax:0, prodMoyen:0 }])} className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7">
+        <Button size="sm" onClick={() => setLocalRows(r => [{ id: `local-${Date.now()}`, type:'', spv:'', kwc:0, cout_bat:0, massifs:0, longueur:0, largeur:0, travees:0, hSud:0, hNord:0, faitage:0, surfSud:0, surfNord:0, surfTot:0, penteSud:0, penteNord:0, modH:0, modL:0, totalMod:0, puissMax:0, prodMoyen:0 }, ...r])} className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7">
           <Plus className="w-3 h-3 mr-1" /> Nouvelle ligne
         </Button>
       </div>
@@ -1099,38 +1148,50 @@ function TabSuiviBatType({ batEdits, updateBatEdit }) {
         <table className="text-[12px] border-collapse min-w-max">
           <thead className="sticky top-0 z-10">
             <tr className="bg-slate-800 text-white">
+              <th className="border border-slate-600 px-2 py-1.5 w-8">↑↓</th>
               {cols.map(c => <th key={c} className="border border-slate-600 px-2 py-1.5 font-semibold text-center whitespace-nowrap">{c}</th>)}
               <th className="border border-slate-600 px-2 py-1.5 w-8">✕</th>
             </tr>
           </thead>
           <tbody>
-            {allRows.map((row, i) => (
-              <tr key={i} className={cn(i % 2 === 0 ? 'bg-white' : 'bg-slate-50', "hover:bg-blue-50/30")}>
-                {keys.map(k => (
-                  <td key={k} className="border border-slate-200 p-0 relative">
-                    <input 
-                      className="w-full px-2 py-1 bg-transparent outline-none focus:bg-white focus:ring-1 focus:ring-blue-400 text-center transition-all"
-                      value={getVal(row, k)}
-                      onChange={e => {
-                        const val = e.target.value;
-                        if (row.id.startsWith('local-')) {
-                          setLocalRows(prev => prev.map(r => r.id === row.id ? { ...r, [k]: val } : r));
-                        } else {
-                          updateBatEdit(row.id, k, val);
-                        }
-                      }}
-                    />
+            {allRows.map((row, i) => {
+              const localIndex = localRows.findIndex(r => r.id === row.id);
+              return (
+                <tr key={i} className={cn(i % 2 === 0 ? 'bg-white' : 'bg-slate-50', "hover:bg-blue-50/30")}>
+                  <td className="border border-slate-200 p-0 text-center">
+                    {localIndex !== -1 && (
+                      <div className="flex flex-col items-center">
+                        <button onClick={() => moveRow(localIndex, -1)} disabled={localIndex === 0} className="text-slate-400 hover:text-blue-500 disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
+                        <button onClick={() => moveRow(localIndex, 1)} disabled={localIndex === localRows.length - 1} className="text-slate-400 hover:text-blue-500 disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
+                      </div>
+                    )}
                   </td>
-                ))}
-                <td className="border border-slate-200 text-center">
-                   {i >= SUIVI_BAT_DATA.length && (
-                     <button onClick={() => setLocalRows(prev => prev.filter(r => r.id !== row.id))} className="text-red-400 hover:text-red-600 p-0.5">
-                       <X className="w-3 h-3" />
-                     </button>
-                   )}
-                </td>
-              </tr>
-            ))}
+                  {keys.map(k => (
+                    <td key={k} className="border border-slate-200 p-0 relative">
+                      <input 
+                        className="w-full px-2 py-1 bg-transparent outline-none focus:bg-white focus:ring-1 focus:ring-blue-400 text-center transition-all"
+                        value={getVal(row, k)}
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (row.id.startsWith('local-')) {
+                            setLocalRows(prev => prev.map(r => r.id === row.id ? { ...r, [k]: val } : r));
+                          } else {
+                            updateBatEdit(row.id, k, val);
+                          }
+                        }}
+                      />
+                    </td>
+                  ))}
+                  <td className="border border-slate-200 text-center">
+                    {i >= SUIVI_BAT_DATA.length && (
+                      <button onClick={() => setLocalRows(prev => prev.filter(r => r.id !== row.id))} className="text-red-400 hover:text-red-600 p-0.5">
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -1209,10 +1270,18 @@ function TabData() {
 
   const update = (id, k, v) => setRows(r => r.map(row => row.id === id ? { ...row, [k]: v } : row));
 
+  const moveRow = (index, direction) => {
+    const newRows = [...rows];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= newRows.length) return;
+    [newRows[index], newRows[targetIndex]] = [newRows[targetIndex], newRows[index]];
+    setRows(newRows);
+  };
+
   return (
     <div className="p-4 overflow-hidden h-full flex flex-col">
       <div className="flex items-center gap-2 mb-3 shrink-0">
-        <Button size="sm" onClick={() => setRows(r => [...r, { id: Date.now(), type:'' }])} className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7">
+        <Button size="sm" onClick={() => setRows(r => [{ id: Date.now(), type:'' }, ...r])} className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7">
           <Plus className="w-3 h-3 mr-1" /> Nouvelle ligne
         </Button>
       </div>
@@ -1220,6 +1289,7 @@ function TabData() {
         <table className="text-[12px] border-collapse min-w-max">
           <thead className="sticky top-0 z-20">
             <tr className="bg-slate-800 text-white">
+              <th className="border border-slate-600 px-2 py-2 w-8">↑↓</th>
               {cols.map(c => (
                 <th key={c.key} style={{ width: c.width }} className="border border-slate-600 px-2 py-2 font-semibold text-center whitespace-nowrap">
                   {c.label}
@@ -1231,6 +1301,12 @@ function TabData() {
           <tbody>
             {rows.map((row, i) => (
               <tr key={row.id} className={cn('group', i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50 hover:bg-blue-50/30 font-medium')}>
+                <td className="border border-slate-200 p-0 text-center">
+                  <div className="flex flex-col items-center">
+                    <button onClick={() => moveRow(i, -1)} disabled={i === 0} className="text-slate-400 hover:text-blue-500 disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
+                    <button onClick={() => moveRow(i, 1)} disabled={i === rows.length - 1} className="text-slate-400 hover:text-blue-500 disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
+                  </div>
+                </td>
                 {cols.map(c => (
                   <td key={c.key} className="border border-slate-200 p-0 relative">
                     <input
@@ -1558,7 +1634,7 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
           <div className="flex items-center gap-3"><FileDown className="w-5 h-5 text-blue-600" /><h3 className="font-bold text-slate-800">DEVIS TECHNIQUE</h3></div>
           <div className="flex items-center gap-4">
              <div className="w-64"><ProjectSelect projects={projects} selectedProject={selectedProject} onSelect={setSelectedProject} /></div>
-             <Button size="sm" className="gap-2 shadow-sm" onClick={() => generateBpAcamaPDF({ elementId: 'tab-devis-content', fileName: `Devis_Technique_${selectedProject?.name || 'Projet'}.pdf` })}><FileDown className="w-4 h-4" /> Générer</Button>
+             <Button size="sm" className="gap-2 shadow-sm" onClick={() => generateBpAcamaPDF({ elementId: 'tab-devis-content', fileName: `Devis_Technique_${selectedProject?.name || 'Projet'}.pdf` })}><FileDown className="w-4 h-4" /> Générer Devis</Button>
           </div>
         </div>
         <div className="p-6 space-y-6">
@@ -1667,6 +1743,87 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
   );
 }
 
+// ─── Tab: BP Sauvegardés ───────────────────────────────────────────────────
+
+function TabBpSaved({ projects, onSelect, activeTab, setActiveTab }) {
+  const savedProjects = useMemo(() => {
+    return projects
+      .filter(p => p.bpAcamaState)
+      .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+  }, [projects]);
+
+  return (
+    <div className="p-4 flex flex-col h-full overflow-hidden bg-slate-50">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-bold text-slate-800">BP Sauvegardés ({savedProjects.length})</h3>
+        <p className="text-[10px] text-slate-500 italic">Derniers enregistrements en haut</p>
+      </div>
+
+      <div className="flex-1 overflow-auto border border-slate-200 rounded-xl bg-white shadow-sm">
+        <table className="w-full text-[12px] border-collapse">
+          <thead className="sticky top-0 z-10 bg-slate-800 text-white">
+            <tr>
+              <th className="px-4 py-2.5 text-left font-semibold">Projet</th>
+              <th className="px-4 py-2.5 text-left font-semibold">Client</th>
+              <th className="px-4 py-2.5 text-left font-semibold">Ville</th>
+              <th className="px-4 py-2.5 text-left font-semibold">Dernière modification</th>
+              <th className="px-4 py-2.5 text-right font-semibold">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {savedProjects.map((p) => (
+              <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                <td className="px-4 py-3 font-bold text-slate-900 uppercase">{p.name}</td>
+                <td className="px-4 py-3 text-slate-600">{p.client_name || '—'} {p.client_firstname || ''}</td>
+                <td className="px-4 py-3 text-slate-500">{p.city || '—'}</td>
+                <td className="px-4 py-3 text-slate-500">{p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <Button 
+                      size="xs" 
+                      variant="outline" 
+                      onClick={() => {
+                        onSelect(p);
+                        setActiveTab('bp_projets');
+                        // Small delay to allow state update before trigger
+                        setTimeout(() => {
+                          generateBpAcamaPDF({ 
+                            elementId: 'bp-acama-content', 
+                            sections: ['pdf-section-1', 'pdf-section-2'],
+                            fileName: `BP_Acama_${p.name}_${new Date().toISOString().split('T')[0]}.pdf` 
+                          });
+                        }, 100);
+                      }}
+                      className="h-7 text-[10px] border-slate-300"
+                    >
+                      <FileText className="w-3 h-3 mr-1" /> PDF
+                    </Button>
+                    <Button 
+                      size="xs" 
+                      className="h-7 text-[10px] bg-blue-600 hover:bg-blue-700" 
+                      onClick={() => {
+                        onSelect(p);
+                        setActiveTab('bp_projets');
+                      }}
+                    >
+                      Modifier
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {savedProjects.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-12 text-center text-slate-400 italic">Aucun business plan sauvegardé pour le moment.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // ─── Tab: CALCUL ──────────────────────────────────────────────────────────────
 
 function TabCalcul({ projects }) {
@@ -1722,7 +1879,15 @@ function TabCalcul({ projects }) {
 
   const [localRows, setLocalRows] = useState([]);
 
-  const addRow = () => setLocalRows(r => [{ id: `calc-${r.length}`, dev: 'ACAMA', nom: '', spv: 'CH-TTPAGE', capacite: '' }, ...r]);
+  const addRow = () => setLocalRows(r => [{ id: `calc-${Date.now()}`, dev: 'ACAMA', nom: '', spv: 'CH-TTPAGE', capacite: '' }, ...r]);
+
+  const moveRow = (index, direction) => {
+    const newRows = [...localRows];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= newRows.length) return;
+    [newRows[index], newRows[targetIndex]] = [newRows[targetIndex], newRows[index]];
+    setLocalRows(newRows);
+  };
   const updateLocal = (id, k, v) => setLocalRows(r => r.map(row => row.id === id ? { ...row, [k]: v } : row));
   const delLocal = (id) => setLocalRows(r => r.filter(row => row.id !== id));
 
@@ -1758,6 +1923,7 @@ function TabCalcul({ projects }) {
         <table className="text-[12px] border-collapse min-w-max w-full">
           <thead className="sticky top-0 z-10">
             <tr className="bg-slate-800 text-white">
+              <th className="border border-slate-600 px-2 py-1.5 w-8">↑↓</th>
               <th className="border border-slate-600 px-2 py-1.5 w-8">N°</th>
               {defaultCols.map(c => (
                 <th key={c.key} style={{ width: c.width || 80 }} className={cn("border border-slate-600 px-2 py-1.5 font-semibold whitespace-nowrap", c.readOnly && "bg-cyan-800")}>
@@ -1770,8 +1936,17 @@ function TabCalcul({ projects }) {
           <tbody>
             {allRows.map((row, i) => {
               const isLocal = typeof row.id === 'string' && row.id.startsWith('calc-');
+              const localIndex = localRows.findIndex(r => r.id === row.id);
               return (
                 <tr key={row.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                  <td className="border border-slate-200 p-0 text-center">
+                    {localIndex !== -1 && (
+                      <div className="flex flex-col items-center">
+                        <button onClick={() => moveRow(localIndex, -1)} disabled={localIndex === 0} className="text-slate-400 hover:text-blue-500 disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
+                        <button onClick={() => moveRow(localIndex, 1)} disabled={localIndex === localRows.length - 1} className="text-slate-400 hover:text-blue-500 disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
+                      </div>
+                    )}
+                  </td>
                   <td className="border border-slate-200 px-2 py-1.5 text-center text-slate-500">{i+1}</td>
                   {defaultCols.map(c => (
                     <td key={c.key} className={cn("border border-slate-200 p-0", c.readOnly && "bg-slate-100/50")}>
@@ -2041,6 +2216,7 @@ export default function BpAcama() {
   const renderContent = () => {
     switch (activeTab) {
       case 'calcul': return <TabCalcul projects={projects || []} />;
+      case 'bp_saved': return <TabBpSaved projects={projects || []} onSelect={setSelectedProject} activeTab={activeTab} setActiveTab={setActiveTab} />;
       case 'bp_projets': return (
         <TabBpProjets 
           projects={projects || []} 
