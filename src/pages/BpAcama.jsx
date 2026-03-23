@@ -13,15 +13,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ComposedChart } from 'recharts';
 
-const PRINT_STYLES = `
-  @media print {
-    @page { size: portrait; margin: 15mm; }
-    .no-print { display: none !important; }
-    .print-p-0 { padding: 0 !important; }
-    .print-bg-white { background: white !important; }
-    .print-portrait { width: 210mm !important; margin: 0 auto !important; }
-  }
-`;
+import { generateBpAcamaPDF } from '../components/bp-acama/BpAcamaPDFGenerator';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -690,9 +682,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
   const prodTotale = params.kwc * params.productible;
 
   return (
-    <div className="flex flex-col gap-4 p-4 print:p-0 print:bg-white text-slate-900">
+    <div id="bp-acama-content" className="flex flex-col gap-4 p-4 text-slate-900">
       {/* Project selector & Actions */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-3 print:hidden">
+      <div data-html2canvas-ignore="true" className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-3">
         <span className="text-xs font-semibold text-blue-700">Projet CRM :</span>
         <div className="relative flex-1" ref={dropdownRef}>
           <button onClick={() => setShowSearch(!showSearch)} className="flex items-center gap-2 bg-white border border-blue-300 rounded px-3 py-1.5 text-xs w-full text-left hover:bg-blue-50">
@@ -723,8 +715,8 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
           )}
         </div>
         {selectedProject && (
-          <div className="flex items-center gap-2 print:hidden">
-            <Button size="sm" onClick={() => window.print()} className="bg-slate-800 hover:bg-slate-900 text-white text-xs h-8 mr-2">
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={() => generateBpAcamaPDF({ elementId: 'bp-acama-content', fileName: `BP_Acama_${selectedProject.name}_${new Date().toISOString().split('T')[0]}.pdf` })} className="bg-slate-800 hover:bg-slate-900 text-white text-xs h-8 mr-2">
               <FileText className="w-3 h-3 mr-1" /> Générer PDF
             </Button>
             <Button size="sm" onClick={saveBp} className="bg-green-600 hover:bg-green-700 text-white text-xs h-8">
@@ -1327,16 +1319,16 @@ function TabPropositionClientBAC({ projects, selectedProject, setSelectedProject
   );
 
   return (
-    <div className="p-4 bg-slate-100 min-h-full overflow-auto">
-      <div className="max-w-[1200px] mx-auto bg-white shadow-xl p-8 border border-slate-300 rounded-sm print:shadow-none print:border-0 print-portrait">
-        <div className="flex justify-between items-center mb-8 bg-white no-print">
+    <div id="prop-bac-content" className="p-4 bg-slate-100 min-h-full overflow-auto">
+      <div className="max-w-[1200px] mx-auto bg-white shadow-xl p-8 border border-slate-300 rounded-sm">
+        <div data-html2canvas-ignore="true" className="flex justify-between items-center mb-8 bg-white">
           <div className="flex items-center gap-4">
              <div className="px-3 py-2 bg-[#002060] rounded-sm flex items-center justify-center text-white font-black text-lg">BAC</div>
              <h2 className="text-2xl font-black text-[#002060] uppercase tracking-tighter">Proposition Client BAC</h2>
           </div>
           <div className="flex items-center gap-4">
             <div className="w-64"><ProjectSelect projects={projects} selectedProject={selectedProject} onSelect={setSelectedProject} /></div>
-            <Button size="sm" variant="outline" className="gap-2" onClick={() => window.print()}><FileDown className="w-4 h-4" /> PDF</Button>
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => generateBpAcamaPDF({ elementId: 'prop-bac-content', fileName: `Proposition_BAC_${selectedProject?.name || 'Client'}.pdf` })}><FileDown className="w-4 h-4" /> PDF</Button>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-8">
@@ -1449,16 +1441,16 @@ function TabPropositionBE({ projects, selectedProject, setSelectedProject, param
   );
 
   return (
-    <div className="p-4 bg-slate-100 min-h-full overflow-auto">
-      <div className="max-w-[1200px] mx-auto bg-white shadow-xl p-8 border border-slate-300 rounded-sm print:shadow-none print:border-0 print-portrait">
-        <div className="flex justify-between items-center mb-8 bg-white no-print">
+    <div id="prop-be-content" className="p-4 bg-slate-100 min-h-full overflow-auto">
+      <div className="max-w-[1200px] mx-auto bg-white shadow-xl p-8 border border-slate-300 rounded-sm">
+        <div data-html2canvas-ignore="true" className="flex justify-between items-center mb-8 bg-white">
           <div className="flex items-center gap-4">
              <div className="px-3 py-2 bg-[#002060] rounded-sm flex items-center justify-center text-white font-black text-lg">BE</div>
              <h2 className="text-2xl font-black text-[#002060] uppercase tracking-tighter">Proposition Client BE</h2>
           </div>
           <div className="flex items-center gap-4">
             <div className="w-64"><ProjectSelect projects={projects} selectedProject={selectedProject} onSelect={setSelectedProject} /></div>
-            <Button size="sm" variant="outline" className="gap-2" onClick={() => window.print()}><FileDown className="w-4 h-4" /> PDF</Button>
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => generateBpAcamaPDF({ elementId: 'prop-be-content', fileName: `Proposition_BE_${selectedProject?.name || 'Client'}.pdf` })}><FileDown className="w-4 h-4" /> PDF</Button>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-8">
@@ -1554,13 +1546,13 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
   );
 
   return (
-    <div className="p-4 flex flex-col h-full overflow-hidden bg-slate-50">
-      <div className="max-w-[1200px] mx-auto w-full bg-white rounded-xl border border-slate-200 shadow-lg overflow-auto flex flex-col no-scrollbar print:shadow-none print:border-0 print:rounded-none print-portrait">
-        <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-white sticky top-0 z-20">
+    <div id="tab-devis-content" className="p-4 flex flex-col h-full overflow-hidden bg-slate-50">
+      <div className="max-w-[1200px] mx-auto w-full bg-white rounded-xl border border-slate-200 shadow-lg overflow-auto flex flex-col no-scrollbar">
+        <div data-html2canvas-ignore="true" className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-white sticky top-0 z-20">
           <div className="flex items-center gap-3"><FileDown className="w-5 h-5 text-blue-600" /><h3 className="font-bold text-slate-800">DEVIS TECHNIQUE</h3></div>
           <div className="flex items-center gap-4">
              <div className="w-64"><ProjectSelect projects={projects} selectedProject={selectedProject} onSelect={setSelectedProject} /></div>
-             <Button size="sm" className="gap-2 shadow-sm" onClick={() => window.print()}><FileDown className="w-4 h-4" /> Générer</Button>
+             <Button size="sm" className="gap-2 shadow-sm" onClick={() => generateBpAcamaPDF({ elementId: 'tab-devis-content', fileName: `Devis_Technique_${selectedProject?.name || 'Projet'}.pdf` })}><FileDown className="w-4 h-4" /> Générer</Button>
           </div>
         </div>
         <div className="p-6 space-y-6">
