@@ -1,4 +1,4 @@
-﻿// Re-trigger Vercel deployment 2
+// Re-trigger Vercel deployment 2
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { useProjects } from '@/contexts/ProjectContext.jsx';
@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import {
   BarChart3, FileText, Calculator, TrendingUp, Users, Building,
   FileDown, Save, ChevronDown, Search, X, CheckCircle, AlertCircle,
-  AlertTriangle, RefreshCw, Plus, Trash2, MapPin, ChevronUp
+  AlertTriangle, RefreshCw, Plus, Trash2, MapPin, ChevronUp, Download, ArrowRight
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ComposedChart } from 'recharts';
 
@@ -570,7 +570,7 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="Remplacement des onduleurs" propName="mra" isCurrency />
             <tr className="border border-slate-200 bg-slate-50 font-bold">
               <td className="px-2 py-1">Total des charges</td>
-              <td className="px-2 py-1 text-right text-red-700 border-l border-slate-200">{fmtEur(bp.totalConstruction / 20)}</td>
+              <td className="px-2 py-1 text-right text-red-700 border-l border-slate-200">{fmtEur(params.totalConstruction / 20)}</td>
               {rows.map((r, i) => (
                 <td key={i} className="px-1 py-1 text-right border-l border-slate-200 text-red-700">{fmtEur(r.opex + r.serviceDette + r.mra)}</td>
               ))}
@@ -601,7 +601,7 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="DSCR" propName="dscr" isPercent />
             <tr className="border border-slate-300 bg-amber-400 font-black">
               <td className="px-2 py-1 uppercase">Trésorerie nette annuelle</td>
-              <td className="px-2 py-1 text-right border-l border-slate-300">{fmtEur(-apport10)}</td>
+              <td className="px-2 py-1 text-right border-l border-slate-300">{fmtEur(-params.apport10)}</td>
               {rows.map((r, i) => (
                 <td key={i} className="px-1 py-1 text-right border-l border-slate-300">{fmtEur(r.tresorerie)}</td>
               ))}
