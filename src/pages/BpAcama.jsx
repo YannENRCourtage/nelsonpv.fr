@@ -835,9 +835,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
       <div id="pdf-section-1" className="flex flex-col gap-4">
         <PDFHeader selectedProject={selectedProject} />
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-          {/* Column 1: Projects and Investment */}
-          <div className="space-y-8 flex flex-col h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          {/* Column 1: Projects and Investment (Widened) */}
+          <div className="lg:col-span-12 xl:col-span-5 space-y-8 flex flex-col h-full">
             <SectionCard 
               title="DONNÉES DU PROJET" 
               id="pdf-section-data"
@@ -1103,8 +1103,8 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
             </SectionCard>
           </div>
 
-          {/* Column 2: Parameters */}
-          <div className="space-y-6 flex flex-col h-full">
+          {/* Column 2: Parameters (Reduced) */}
+          <div className="lg:col-span-6 xl:col-span-3 space-y-6 flex flex-col h-full">
             <SectionCard title="TARIFS D'ACHAT" id="pdf-section-tarifs" className="grid grid-cols-1 gap-y-2 grow">
               <Field label="Seuil" value={params.seuilKwhKwc} onChange={v => setParams(p => ({ ...p, seuilKwhKwc: v }))} type="number" suffix="kWh/kWc" />
               <Field label="Tarif ≤ 1 100" value={params.tarifBas} onChange={v => setParams(p => ({ ...p, tarifBas: v }))} type="number" suffix="€" precision={4} step="0.001" />
@@ -1128,8 +1128,8 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
             </SectionCard>
           </div>
 
-          {/* Column 3: Results and Banking */}
-          <div className="space-y-6 flex flex-col h-full">
+          {/* Column 3: Results and Banking (Reduced) */}
+          <div className="lg:col-span-6 xl:col-span-4 space-y-6 flex flex-col h-full">
             <div className="bg-white rounded-lg border border-slate-200 p-6 flex flex-col items-center justify-center text-center space-y-2 shadow-sm border-t-4 border-t-green-500">
               <div className="p-2 bg-green-50 rounded-full mb-1"><CheckCircle className="w-6 h-6 text-green-500" /></div>
               <div className="text-4xl font-black text-green-600">{fmtPct(bp.dscrMoyen)}</div>
@@ -2322,17 +2322,23 @@ export default function BpAcama() {
 
   useEffect(() => {
     if (!selectedProject) return;
-
-    // 1. Try to load saved state
+    
+    const features = selectedProject.features || selectedProject.map_state?.features || selectedProject.map_state?.projects || [];
+    const buildingFeatures = features.filter(f => f.type === 'rectangle' || (f.type === 'polygon' && f.isPredefinedBuilding));
+    
+    // 1. If saved state exists, we use it but check if building count matches map
     if (selectedProject.bpAcamaState) {
-      setParams(selectedProject.bpAcamaState);
-      return;
+      const saved = selectedProject.bpAcamaState;
+      // If map has more buildings than saved state, we might want to prioritize map
+      if (buildingFeatures.length > (saved.buildings?.length || 0)) {
+         // Continue to detection logic below to "refresh" from map
+      } else {
+         setParams(saved);
+         return;
+      }
     }
 
-    // 2. Otherwise calculate from project features (rectangles)
-    const features = selectedProject.features || [];
-    const buildingFeatures = features.filter(f => f.type === 'rectangle');
-    
+    // 2. Otherwise calculate from project features
     const prod = parseFloat(selectedProject.productible) || 1123.08;
     const initialBuildings = [];
 
@@ -2340,13 +2346,13 @@ export default function BpAcama() {
       buildingFeatures.forEach((f, idx) => {
         initialBuildings.push({
           id: idx + 1,
-          typeBat: f.buildingName || '',
+          typeBat: f.buildingName || f.name || '',
           projectType: f.projectType || 'BAC',
           surfaceToiture: f.surface || 0,
           kwc: f.power || 100,
           productible: prod,
           coutCentrale: (f.power || 100) * 490,
-          coutCharpente: f.projectType === 'BE' ? 10000 : 0,
+          coutCharpente: (f.projectType === 'BE' || f.name === 'BE') ? 10000 : 0,
           numPanneaux: Math.round((f.power || 100) * 1000 / (params.puissanceUnitaire || 460))
         });
       });
