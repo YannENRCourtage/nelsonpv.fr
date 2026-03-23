@@ -655,6 +655,14 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               updated.coutCharpente = batData.cout_bat || updated.coutCharpente;
             }
           }
+          if (k === 'surfaceToiture' || (k === 'projectType' && v === 'BE')) {
+            const surf = k === 'surfaceToiture' ? parseFloat(v) || 0 : b.surfaceToiture || 0;
+            if (updated.projectType === 'BE' && surf > 0) {
+              // Panel: 1.762 * 1.134 = 1.998 m2
+              const panels = Math.floor(surf / (1.762 * 1.134));
+              updated.kwc = (panels * (prev.puissanceUnitaire || 460)) / 1000;
+            }
+          }
           return updated;
         }
         return b;
@@ -795,23 +803,10 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-blue-700 whitespace-nowrap">Type de projet :</span>
-          <select 
-            value={params.projectType || 'BAC'} 
-            onChange={e => setParams(p => ({ ...p, projectType: e.target.value }))}
-            className="bg-white border border-blue-300 rounded px-2 py-1.5 text-[11px] outline-none focus:ring-1 focus:ring-blue-400"
-          >
-            <option value="BAC">BAC</option>
-            <option value="BE">BE</option>
-            <option value="BAC + BE">BAC + BE</option>
-          </select>
-        </div>
-
-        <div className="flex-1" />
+        <div className="flex-1 min-w-[20px]" />
 
         {selectedProject && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button size="sm" onClick={() => generateBpAcamaPDF({ 
                 elementId: 'bp-acama-content', 
                 sections: ['pdf-section-1', 'pdf-section-2'],
@@ -865,21 +860,56 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                   <tbody>
                     <tr className="h-2"></tr>
                     <tr>
-                      <td className="text-[11px] text-slate-500 font-medium pt-2">Type de bâtiment</td>
+                      <td className="text-[11px] text-blue-700 font-bold pt-2">Type de projet</td>
                       {(params.buildings || []).map(b => (
                         <td key={b.id} className="pt-2">
                           <select 
-                            className="bg-white border border-slate-200 rounded px-1 py-1 text-[10px] w-full outline-none focus:ring-1 focus:ring-blue-400"
-                            value={b.typeBat || ''} 
-                            onChange={e => updateBuildingParam(b.id, 'typeBat', e.target.value)}
+                            className="bg-white border border-blue-300 rounded px-1 py-1 text-[10px] w-full font-bold text-blue-900"
+                            value={b.projectType || 'BAC'} 
+                            onChange={e => updateBuildingParam(b.id, 'projectType', e.target.value)}
                           >
-                            <option value="">— Choisir —</option>
-                            {SUIVI_BAT_DATA.map(d => (
-                              <option key={d.type} value={d.type}>{d.type}</option>
-                            ))}
+                            <option value="BAC">BAC</option>
+                            <option value="BE">BE</option>
+                            <option value="BAC + BE">BAC + BE</option>
                           </select>
                         </td>
                       ))}
+                    </tr>
+                    <tr>
+                      <td className="text-[11px] text-slate-500 font-medium pt-2">Type de bâtiment</td>
+                      {(params.buildings || []).map(b => (
+                        <td key={b.id} className="pt-2">
+                          {b.projectType === 'BE' ? (
+                            <div className="flex items-center gap-1">
+                              <input 
+                                type="number"
+                                className="bg-white border border-slate-200 rounded px-1 py-1 text-[10px] w-full outline-none focus:ring-1 focus:ring-blue-400 text-center"
+                                value={b.surfaceToiture || ''} 
+                                onChange={e => updateBuildingParam(b.id, 'surfaceToiture', parseFloat(e.target.value) || 0)}
+                                placeholder="m²"
+                              />
+                            </div>
+                          ) : (
+                            <select 
+                              className="bg-white border border-slate-200 rounded px-1 py-1 text-[10px] w-full outline-none focus:ring-1 focus:ring-blue-400"
+                              value={b.typeBat || ''} 
+                              onChange={e => updateBuildingParam(b.id, 'typeBat', e.target.value)}
+                            >
+                              <option value="">— Choisir —</option>
+                              {SUIVI_BAT_DATA.map(d => (
+                                <option key={d.type} value={d.type}>{d.type}</option>
+                              ))}
+                            </select>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="text-[11px] text-slate-500 font-medium">Nombre de panneaux</td>
+                      {(params.buildings || []).map(b => {
+                        const nb = Math.ceil((parseFloat(b.kwc) || 0) * 1000 / (parseFloat(params.puissanceUnitaire) || 460));
+                        return <td key={b.id} className="text-center text-[11px] font-bold text-slate-700">{nb} un.</td>;
+                      })}
                     </tr>
                     <tr>
                       <td className="text-[11px] text-slate-500 font-medium">Puissance installée</td>
@@ -914,13 +944,6 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                       ))}
                     </tr>
                     <tr className="h-4"></tr>
-                    <tr>
-                      <td className="text-[11px] text-slate-500 font-medium">Nombre de modules</td>
-                      {(params.buildings || []).map(b => {
-                        const nb = Math.ceil((parseFloat(b.kwc) || 0) * 1000 / (parseFloat(params.puissanceUnitaire) || 460));
-                        return <td key={b.id} className="text-center text-xs font-bold text-slate-700">{nb} modules</td>;
-                      })}
-                    </tr>
                     <tr>
                       <td className="text-[11px] text-slate-500 font-medium">Surface installée</td>
                       {(params.buildings || []).map(b => {
@@ -1079,6 +1102,12 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                 <Field label="Tarif ACC" value={params.tarifACC} onChange={v => setParams(p => ({ ...p, tarifACC: v }))} type="number" suffix="€" precision={4} step="0.001" />
                 <Field label="Part ACC" value={params.partACC * 100} onChange={v => setParams(p => ({ ...p, partACC: v/100 }))} type="number" suffix="%" />
               </SectionCard>
+              <SectionCard title="INDICES & DÉGRADATION" id="pdf-section-indices" className="grid grid-cols-1 gap-y-2">
+                <Field label="P. Unitaire" value={params.puissanceUnitaire} onChange={v => setParams(p => ({ ...p, puissanceUnitaire: v }))} type="number" suffix="Wc" />
+                <Field label="Indice Tarifs" value={params.indexationTarif * 100} onChange={v => setParams(p => ({ ...p, indexationTarif: v / 100 }))} type="number" suffix="%" step="0.1" />
+                <Field label="Indice OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" />
+                <Field label="Dégradation" value={params.degradation * 100} onChange={v => setParams(p => ({ ...p, degradation: v / 100 }))} type="number" suffix="%" step="0.1" />
+              </SectionCard>
               <SectionCard title="OPEX ANNUELS" id="pdf-section-opex" className="grid grid-cols-1 gap-y-2">
                 <Field label="Maintenance" value={params.maintenance} onChange={v => setParams(p => ({ ...p, maintenance: v }))} type="number" suffix="€" />
                 <Field label="Assurance" value={params.assurance} onChange={v => setParams(p => ({ ...p, assurance: v }))} type="number" suffix="€" />
@@ -1139,14 +1168,27 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               <div className="space-y-2">
                 <Field label="Durée Emprunt" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" />
                 <Field label="Taux Crédit" value={params.tauxCredit} onChange={v => setParams(p => ({ ...p, tauxCredit: v }))} type="number" suffix="%" />
-                <div className="pt-2 border-t border-slate-100 mt-2">
+                
+                <div className="pt-2 border-t border-slate-200 mt-2 space-y-1">
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-500 italic">Emprunt total :</span>
-                    <span className="font-bold text-slate-700">{fmtEur(bp.emprunt)}</span>
+                    <span className="text-slate-500 italic">Apport :</span>
+                    <span className="font-bold text-slate-700">{fmtEur(apport10)}</span>
                   </div>
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-slate-500 italic">Annuité :</span>
-                    <span className="font-bold text-slate-700">{fmtEur(bp.annuite)}</span>
+                    <span className="text-slate-500 italic">Emprunt :</span>
+                    <span className="font-bold text-slate-700">{fmtEur(emprunt)}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] pt-1 border-t border-slate-100">
+                    <span className="text-slate-500 italic">Apport avec soulte :</span>
+                    <span className="font-bold text-blue-800">{fmtEur(apport10 + (calcSoulte > 0 ? calcSoulte : 0))}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-slate-500 italic">Emprunt avec soulte :</span>
+                    <span className="font-bold text-blue-800">{fmtEur(emprunt + (calcSoulte < 0 ? Math.abs(calcSoulte) : 0))}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] mt-2 pt-1 border-t border-slate-200 font-bold">
+                    <span className="text-slate-700 font-bold">Annuité :</span>
+                    <span className="text-slate-900">{fmtEur(bp.annuite)}</span>
                   </div>
                 </div>
               </div>
@@ -2236,9 +2278,8 @@ export default function BpAcama() {
   }, []);
 
   const [params, setParams] = useState({
-    projectType: 'BAC',
     buildings: [
-      { id: 1, typeBat: '', kwc: 242.88, productible: 1123.08, coutCentrale: 169951.60, coutCharpente: 171381.00, raccordement: 18300.00, frais: 3413.33, soulte: -9048.54 }
+      { id: 1, typeBat: '', projectType: 'BAC', surfaceToiture: 0, kwc: 242.88, productible: 1123.08, coutCentrale: 169951.60, coutCharpente: 171381.00, raccordement: 18300.00, frais: 3413.33, soulte: -9048.54 }
     ],
     puissanceUnitaire: 460,
     tarifBas: 0.0846,
@@ -2279,27 +2320,28 @@ export default function BpAcama() {
     const initialBuildings = [];
     const prod = parseFloat(selectedProject.productible) || 1123.08;
 
-    // Always ensure at least one building row, loading b1 if available
-    initialBuildings.push({ 
-      id: 1, 
-      typeBat: selectedProject.type_bat || '', 
-      kwc: b1 || 346.84, 
-      productible: prod, 
-      coutCentrale: 0, 
-      coutCharpente: 0, 
-      raccordement: 0, 
-      frais: 0, 
-      soulte: 0 
-    });
-
-    if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', kwc: b2, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
-    if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', kwc: b3, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
-    if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', kwc: b4, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
+    if (b1 > 0 || (!b2 && !b3 && !b4)) {
+      initialBuildings.push({ 
+        id: 1, 
+        typeBat: selectedProject.type_bat || '', 
+        projectType: 'BAC',
+        surfaceToiture: 0,
+        kwc: b1 || 346.84, 
+        productible: prod, 
+        coutCentrale: 0, 
+        coutCharpente: 0, 
+        raccordement: 0, 
+        frais: 0, 
+        soulte: 0 
+      });
+    }
+    if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b2, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
+    if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b3, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
+    if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b4, productible: prod, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 });
 
     setParams(prev => ({
       ...prev,
-      buildings: initialBuildings,
-      projectType: 'BAC'
+      buildings: initialBuildings
     }));
   }, [selectedProject]);
 
