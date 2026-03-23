@@ -161,8 +161,11 @@ function computeBusinessPlan(params) {
   const calculatedLoyer = (margin * loyerCoeff) / 20;
   const calculatedSoulte = (margin * soulteCoeff) / 2;
 
-  const finalSoulte = soulteCoeff !== 0 ? calculatedSoulte : soulte;
-  const finalLoyer = loyerCoeff !== 0 ? calculatedLoyer : 0;
+  const finalSoulte = soulteCoeff !== 0 ? calculatedSoulte : (loyerCoeff !== 0 ? calculatedLoyer * 20 : soulte);
+  const finalLoyer = (loyerCoeff !== 0 && soulteCoeff === 0) ? calculatedLoyer : 0;
+  
+  // If capitalized into soulte (Investissement), then we don't pay it as a yearly rent (OPEX)
+  const actualLoyerOpex = (loyerCoeff !== 0 && finalSoulte === (calculatedLoyer * 20)) ? 0 : finalLoyer;
 
   const totalConstruction = coutCentrale + coutCharpente + raccordement + frais + finalSoulte;
   const apport10 = totalConstruction * 0.1;
@@ -177,7 +180,7 @@ function computeBusinessPlan(params) {
   let sumCA = 0;
   let sumOpex = 0;
   
-  const opexBase = maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin + finalLoyer;
+  const opexBase = maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin + actualLoyerOpex;
 
   // For IRR we need array of cash flows: Year 0 = -Apport (Wait, in Excel D61 = -K19)
   const cashFlowFP = [-apport10];
@@ -268,7 +271,7 @@ function computeBusinessPlan(params) {
       ass,
       taxes,
       admin,
-      loyer: finalLoyer * idxOpex,
+      loyer: actualLoyerOpex * idxOpex,
       opex, // Total indexed OPEX
       ebitda,
       amortissement,
@@ -741,8 +744,8 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               <Field label="Tarif > 1 100 KWh/KWc" value={params.tarifHaut} onChange={v => set('tarifHaut', v)} type="number" step={0.0001} suffix="€/kWh" />
               <Field label="Seuil (KWh/KWc)" value={params.seuilKwhKwc} onChange={v => set('seuilKwhKwc', v)} type="number" />
               <div className="h-2 border-t border-slate-100 my-2" />
-              <Field label="Tarif ACC" value={params.tarifACC} onChange={v => set('tarifACC', v)} type="number" step={0.005} suffix="€/kWh" />
-              <Field label="Part ACC" value={params.partACC * 100} onChange={v => set('partACC', v / 100)} type="number" step={1} suffix="%" />
+              <Field label="Tarif ACC" value={params.tarifACC} onChange={v => set('tarifACC', v)} type="number" step={0.01} suffix="€/kWh" />
+              <Field label="Part ACC" value={params.partACC * 100} onChange={v => set('partACC', Math.min(100, Math.max(0, v)) / 100)} type="number" step={1} suffix="%" />
             </SectionCard>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -782,7 +785,14 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               <Field label="Charpente / Bâtiment" value={params.coutCharpente} onChange={v => set('coutCharpente', v)} type="number" suffix="€" />
               <Field label="Raccordement" value={params.raccordement} onChange={v => set('raccordement', v)} type="number" suffix="€" />
               <Field label="Frais" value={params.frais} onChange={v => set('frais', v)} type="number" suffix="€" />
-              <Field label="Soulte" value={params.soulte} onChange={v => set('soulte', v)} type="number" suffix="€" />
+              <Field 
+                label="Soulte / Rente sur 20 ans" 
+                value={params.loyerCoeff !== 0 ? (loyer * 20) : (params.soulteCoeff !== 0 ? calcSoulte : params.soulte)} 
+                onChange={v => set('soulte', v)} 
+                type="number" 
+                suffix="€" 
+                disabled={params.loyerCoeff !== 0 || params.soulteCoeff !== 0}
+              />
               <div className="border-t border-slate-100 pt-1 space-y-1 text-xs">
                 <div className="flex justify-between"><span className="text-slate-500">Total construction :</span><b>{fmtEur(totalConstruction)}</b></div>
                 <div className="flex justify-between"><span className="text-slate-500">TVA 20% :</span><b>{fmtEur(tva)}</b></div>
@@ -865,7 +875,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                    <span className="text-[10px] text-slate-400 font-mono">Coeff: {fmt(params.loyerCoeff, 4)}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <b className="text-blue-700">{fmtEur(loyer)}</b>
+                  <b className="text-blue-700">{fmtEur(resteACharge > 0 ? 0 : loyer)}</b>
                   <Button onClick={() => handleGoalSeek('loyer')} size="xs" variant="destructive" className="h-6 px-1 text-[9px] font-black uppercase tracking-tighter shadow-sm hover:scale-105 transition-transform bg-gradient-to-r from-red-600 to-red-500 border-none">EXECUTION</Button>
                 </div>
               </div>
@@ -876,7 +886,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                    <span className="text-[10px] text-slate-400 font-mono">Coeff: {fmt(params.soulteCoeff, 4)}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <b className="text-blue-700">{fmtEur(calcSoulte)}</b>
+                  <b className="text-blue-700">{fmtEur(resteACharge > 0 ? 0 : calcSoulte)}</b>
                   <Button onClick={() => handleGoalSeek('soulte')} size="xs" variant="destructive" className="h-6 px-1 text-[9px] font-black uppercase tracking-tighter shadow-sm hover:scale-105 transition-transform bg-gradient-to-r from-red-600 to-red-500 border-none">EXECUTION</Button>
                 </div>
               </div>
