@@ -722,8 +722,8 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
   };
 
   const limitDSCR = params.targetDSCR || 1.16;
-  const dscrColor = displayDscrMoyen >= limitDSCR ? 'text-green-600 bg-green-50' : displayDscrMoyen >= (limitDSCR - 0.06) ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50';
-  const DscrIcon = displayDscrMoyen >= limitDSCR ? CheckCircle : displayDscrMoyen >= (limitDSCR - 0.06) ? AlertTriangle : AlertCircle;
+  const dscrColor = bp.dscrMoyen >= limitDSCR ? 'text-green-600 bg-green-50' : bp.dscrMoyen >= (limitDSCR - 0.06) ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50';
+  const DscrIcon = bp.dscrMoyen >= limitDSCR ? CheckCircle : bp.dscrMoyen >= (limitDSCR - 0.06) ? AlertTriangle : AlertCircle;
 
   const filteredProjects = projects.filter(p =>
     p.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -2256,8 +2256,8 @@ export default function BpAcama() {
 
   const resteACharge = useMemo(() => computeResteACharge(collapsedParams), [collapsedParams]);
 
-  const bpResults = useMemo(() => computeBusinessPlan({ ...collapsedParams, apport: resteACharge }), [collapsedParams, resteACharge]);
-  const { rows, annuite, emprunt, totalConstruction, totalInvestissement, apport10, soulte: calcSoulte } = bpResults;
+  const bp = useMemo(() => computeBusinessPlan({ ...collapsedParams, apport: resteACharge }), [collapsedParams, resteACharge]);
+  const { rows, annuite, emprunt, totalConstruction, totalInvestissement, apport10, soulte: calcSoulte } = bp;
   const tva = totalConstruction * 0.20;
   const apportSoulte = apport10 + calcSoulte;
 
@@ -2337,7 +2337,7 @@ export default function BpAcama() {
           computeBusinessPlan={computeBusinessPlan}
           computeResteACharge={computeResteACharge}
           calculateGoalSeekDSCR={calculateGoalSeekDSCR}
-          bpResults={bpResults}
+          bpResults={bp}
           totalInvestissement={totalInvestissement}
           apport10={apport10}
           totalConstruction={totalConstruction}
