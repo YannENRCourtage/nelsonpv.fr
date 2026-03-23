@@ -1712,7 +1712,6 @@ export default function ProjectEditor() {
                     { key: 'abf', label: 'ABF' },
                     { key: 'sdis', label: 'SDIS' },
                     { key: 'postesSourcesRTE', label: 'Postes Sources RTE' },
-                    { key: 'demographic', label: 'Démographie' },
                   ].map(layer => (
                     <button
                       key={layer.key}
@@ -1770,7 +1769,6 @@ export default function ProjectEditor() {
                         { key: 'abf', label: 'ABF' },
                         { key: 'sdis', label: 'SDIS' },
                         { key: 'postesSourcesRTE', label: 'P. Sources RTE' },
-                        { key: 'demographic', label: 'Démographie' },
                       ].map(layer => (
                         <button
                           key={layer.key}

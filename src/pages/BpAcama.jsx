@@ -2083,7 +2083,6 @@ export default function BpAcama() {
 
   return (
     <div className="flex h-[calc(100vh-64px)] bg-slate-100 overflow-hidden print:h-auto print:overflow-visible">
-      <style>{PRINT_STYLES}</style>
       {/* Sidebar */}
       <aside className="w-64 bg-slate-900 text-white flex flex-col shrink-0">
         <div className="px-4 py-3 border-b border-slate-700">

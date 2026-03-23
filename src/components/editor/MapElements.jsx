@@ -2364,13 +2364,6 @@ const LAYERS = {
     zIndex: 108,
     minZoom: 16
   },
-  demographic: {
-    name: "Démographie",
-    type: 'custom',
-    attribution: 'INSEE / Melodi',
-    isOverlay: true,
-    zIndex: 109
-  },
   altimetry: {
     name: "Altimétrie",
     url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",
