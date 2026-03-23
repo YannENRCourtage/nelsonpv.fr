@@ -376,6 +376,7 @@ function computeResteACharge(params) {
 const fmt = (n, dec = 0) => (n ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const fmtEur = (n) => `${fmt(n, 2)} €`;
 const fmtPct = (n) => `${fmt(n * 100, 1)}%`;
+const fmtEurK = (v) => `${(v / 1000).toFixed(0)}k€`;
 
 // Lateral drag-scroll hook
 const useDragScroll = () => {
@@ -700,7 +701,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
 
   const resteACharge = useMemo(() => computeResteACharge(collapsedParams), [collapsedParams]);
   const bp = useMemo(() => computeBusinessPlan({ ...collapsedParams, apport: resteACharge }), [collapsedParams, resteACharge]);
-  const { rows, annuite, emprunt } = bp;
+  const { rows, annuite, emprunt, soulte: calcSoulte } = bp;
 
   const handleGoalSeek = (type) => {
     if (!selectedProject) {
