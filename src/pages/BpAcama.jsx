@@ -718,16 +718,18 @@ function TableauPrevisionnel({ params, rows }) {
 
 function TabBpProjets({ projects, selectedProject, setSelectedProject, params, setParams, computeBusinessPlan, computeResteACharge, calculateGoalSeekDSCR, bpResults, totalInvestissement, apport10, totalConstruction, tva, apportSoulte }) {
   const PDFHeader = () => (
-    <div className="pdf-header hidden flex flex-row justify-between items-start w-full mb-4 border-b-2 border-slate-800 pb-3">
-      <div className="flex flex-col">
-        <img src="/logo-nelson.png" alt="Logo" className="h-10 w-auto object-contain mb-1" />
-        <span className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">Business Plan Acama</span>
+    <div className="pdf-header hidden flex flex-row items-center w-full mb-6 border-b-2 border-slate-800 pb-4">
+      <div className="flex-1 flex justify-start">
+        <img src="/logo-nelson.png" alt="Logo" className="h-16 w-auto object-contain" />
       </div>
-      <div className="text-right flex flex-col items-end">
-        <h1 className="text-lg font-black text-slate-900 uppercase leading-tight">{selectedProject?.name || 'Projet Sans Nom'}</h1>
+      <div className="flex-1 text-center">
+        <span className="text-[18px] font-black text-slate-800 uppercase tracking-widest">Business Plan Acama</span>
+      </div>
+      <div className="flex-1 text-right flex flex-col items-end">
+        <h1 className="text-sm font-black text-slate-900 uppercase leading-tight">{selectedProject?.name || 'Projet Sans Nom'}</h1>
         <div className="flex items-center gap-2 mt-1">
-          <span className="bg-blue-600 text-white text-[11px] font-bold px-2 py-0.5 rounded uppercase">{params.projectType || 'BAC'}</span>
-          <p className="text-[12px] font-bold text-slate-500">{new Date().toLocaleDateString('fr-FR')}</p>
+          <span className="bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">{params.projectType || 'BAC'}</span>
+          <p className="text-[10px] font-bold text-slate-500">{new Date().toLocaleDateString('fr-FR')}</p>
         </div>
       </div>
     </div>
@@ -974,7 +976,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
           <div className="flex items-center gap-2 shrink-0">
             <Button size="sm" onClick={() => generateBpAcamaPDF({ 
                 elementId: 'bp-acama-content', 
-                sections: ['pdf-section-1', 'pdf-section-2'],
+                sections: ['pdf-section-1', 'pdf-section-charts', 'pdf-section-2'],
                 fileName: `BP_Acama_${selectedProject.name}_${new Date().toISOString().split('T')[0]}.pdf` 
               })} className="bg-slate-800 hover:bg-slate-900 text-white text-[13px] h-8 px-3">
               <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF
@@ -987,10 +989,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
         )}
       </div>
 
-      <div id="pdf-section-1" className="flex flex-col gap-4">
+      <div id="pdf-section-1" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
         <PDFHeader selectedProject={selectedProject} />
-        
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4 items-stretch">
           {/* Column 1: Projects and Investment (Widened) */}
           <div className="lg:col-span-12 xl:col-span-5 space-y-8 flex flex-col h-full">
             <SectionCard 
@@ -1410,8 +1411,12 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               </div>
             </div>
         </div>
+      </div>
+    </div>
 
-        <div className="col-span-12 grid grid-cols-2 gap-6 bg-white rounded-lg border border-slate-200 p-4">
+      <div id="pdf-section-charts" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
+        <PDFHeader selectedProject={selectedProject} />
+        <div className="grid grid-cols-2 gap-6 mt-4 bg-white rounded-lg border border-slate-200 p-4">
           <div id="pdf-chart-tresorerie" className="h-[300px]">
             <h4 className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mb-4">Trésorerie & Cash Flow</h4>
             <ResponsiveContainer width="100%" height="100%">
@@ -1438,7 +1443,6 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
           </div>
         </div>
       </div>
-    </div>
 
     <div id="pdf-section-2" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
         <PDFHeader selectedProject={selectedProject} />
