@@ -256,16 +256,18 @@ function computeBusinessPlan(params) {
   }
 
   const margin = totalCA - totalOpexBaseSum;
-  const calculatedLoyer = (margin * loyerCoeff) / 20;
-  const calculatedSoulte = (margin * soulteCoeff) / 2;
+  const calculatedLoyer = (margin * (loyerCoeff || 0)) / 20;
+  const calculatedSoulte = (margin * (soulteCoeff || 0)) / 2;
 
-  const finalSoulte = soulteCoeff !== 0 ? calculatedSoulte : (loyerCoeff !== 0 ? calculatedLoyer * 20 : soulte);
-  const finalLoyer = (loyerCoeff !== 0 && soulteCoeff === 0) ? calculatedLoyer : 0;
+  const finalLoyer = params.renteType === 'loyer' ? calculatedLoyer : 0;
+  const finalSoulte = params.renteType === 'soulte' ? calculatedSoulte : (loyerCoeff === 0 && soulteCoeff === 0 ? soulte : 0);
   
-  // If capitalized into soulte (Investissement), then we don't pay it as a yearly rent (OPEX)
-  const actualLoyerOpex = (loyerCoeff !== 0 && finalSoulte === (calculatedLoyer * 20)) ? 0 : finalLoyer;
+  // If it's a rent (loyer), it can be capitalized into soulte (Investissement) 
+  // OR paid as a yearly rent (OPEX). The user dropdown decides.
+  const actualLoyerOpex = params.renteType === 'loyer' ? finalLoyer : 0;
+  const actualSoulteCapitalized = params.renteType === 'soulte' ? finalSoulte : (params.renteType === 'loyer' ? finalLoyer * 20 : soulte);
 
-  const totalConstruction = coutCentrale + coutCharpente + raccordement + frais + finalSoulte;
+  const totalConstruction = coutCentrale + coutCharpente + raccordement + frais + actualSoulteCapitalized;
   const apport10 = totalConstruction * 0.1;
   const emprunt = Math.max(0, totalConstruction - apport10 - (params.apport || 0));
   const serviceDette = emprunt > 0 ? -PMT(tauxCredit / 100, dureeEmprunt, emprunt) : 0;
@@ -415,7 +417,7 @@ function computeBusinessPlan(params) {
     triFP,
     tempsRetour,
     loyer: finalLoyer,
-    soulte: finalSoulte,
+    soulte: actualSoulteCapitalized,
     totalConstruction,
     totalInvestissement,
     apport10,
@@ -612,17 +614,22 @@ function SectionCard({ title, children, className, id, actions }) {
 // ─── Shared Component: Tableau Previsionnel ───────────────────────────────
 
 function TableauPrevisionnel({ params, rows }) {
-  const DataRow = ({ label, propName, isPercent, isCurrency, format }) => (
-    <tr className="border-b border-slate-200 bg-white hover:bg-slate-50">
-      <td className="px-2 py-1 font-medium bg-slate-50 align-top text-[11px] border border-slate-200">{label}</td>
-      <td className="px-2 py-1 text-slate-400 w-8 align-top text-center border border-slate-200 text-[11px]">-</td>
-      {rows.map((r, i) => (
-        <td key={i} className="px-1 py-1 text-right border border-slate-200 font-medium align-top text-[11px]">
-          {format ? format(r[propName]) : (isCurrency ? fmtEur(r[propName]) : (isPercent ? fmtPct(r[propName]) : fmt(r[propName], 2)))}
+  const DataRow = ({ label, propName, isPercent, isCurrency, format, showSum }) => {
+    const totalSum = showSum ? rows.reduce((acc, r) => acc + (r[propName] || 0), 0) : null;
+    return (
+      <tr className="border-b border-slate-200 bg-white hover:bg-slate-50">
+        <td className="px-2 py-1 font-medium bg-slate-50 align-top text-[11px] border border-slate-200">{label}</td>
+        <td className="px-2 py-1 text-slate-400 w-12 align-top text-right border border-slate-200 text-[11px]">
+          {showSum ? (isCurrency ? fmtEur(totalSum) : fmt(totalSum, 2)) : "-"}
         </td>
-      ))}
-    </tr>
-  );
+        {rows.map((r, i) => (
+          <td key={i} className="px-1 py-1 text-right border border-slate-200 font-medium align-top text-[11px]">
+            {format ? format(r[propName]) : (isCurrency ? fmtEur(r[propName]) : (isPercent ? fmtPct(r[propName]) : fmt(r[propName], 2)))}
+          </td>
+        ))}
+      </tr>
+    );
+  };
 
   return (
     <SectionCard title="PLAN D'AFFAIRES PREVISIONNEL" className="p-0 border-none shadow-none">
@@ -631,7 +638,7 @@ function TableauPrevisionnel({ params, rows }) {
           <thead>
             <tr className="bg-slate-100">
               <td className="w-[180px] p-2 border border-slate-200"></td>
-              <td className="w-8 p-1 border border-slate-200"></td>
+              <td className="w-12 p-1 border border-slate-200"></td>
               {rows.map((r, i) => (
                 <td key={i} className="p-1 border border-slate-200 text-center font-bold bg-slate-50">{r.year}</td>
               ))}
@@ -649,7 +656,7 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="Vente ACC" propName="prodACC" format={v => fmt(v, 0)} />
             <DataRow label="Jusque 1 100KWh/KWc" propName="tBas" isCurrency />
             <DataRow label="Au-delà de 1 100KWh/KWc" propName="tHaut" isCurrency />
-            <DataRow label="CA" propName="ca" isCurrency />
+            <DataRow label="CA" propName="ca" isCurrency showSum />
 
             <tr className="bg-amber-400 text-slate-900 font-bold uppercase">
                 <td className="px-2 py-1 border border-slate-300" colSpan={2}>CHARGE D'EXPLOITATION</td>
@@ -665,7 +672,7 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="Remplacement des onduleurs" propName="mra" isCurrency />
             <tr className="border border-slate-200 bg-slate-50">
               <td className="px-2 py-1 font-bold">Total des charges</td>
-              <td className="px-2 py-1 text-right text-red-700 border-l border-slate-200">{fmtEur(params.totalConstruction / 20)}</td>
+              <td className="px-2 py-1 text-right border-l border-slate-200">-</td>
               {rows.map((r, i) => (
                 <td key={i} className="px-1 py-1 text-right border-l border-slate-200 font-bold text-red-700">{fmtEur(r.opex + r.serviceDette + r.mra)}</td>
               ))}
@@ -852,11 +859,12 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
     }
     try {
       const target = params.targetDSCR || 1.17;
-      const resultCoeff = calculateGoalSeekDSCR({ ...params, totalInvestissement, apport: apport10 }, type, target);
+      const loyerCoeff = calculateGoalSeekDSCR({ ...params, renteType: 'loyer', totalInvestissement, apport: apport10 }, 'loyer', target);
+      const soulteCoeff = calculateGoalSeekDSCR({ ...params, renteType: 'soulte', totalInvestissement, apport: apport10 }, 'soulte', target);
       setParams(p => ({ 
         ...p, 
-        [type === 'loyer' ? 'loyerCoeff' : 'soulteCoeff']: resultCoeff, 
-        [type === 'loyer' ? 'soulteCoeff' : 'loyerCoeff']: 0 
+        loyerCoeff, 
+        soulteCoeff 
       }));
       toast({ title: 'Calcul terminé', description: `Valeur cible atteinte pour un DSCR moyen de ${fmtPct(target)}` });
     } catch (e) {
