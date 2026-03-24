@@ -1306,7 +1306,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               <Field label="Gestion" value={params.gestionAdmin} onChange={v => setParams(p => ({ ...p, gestionAdmin: v }))} type="number" suffix="€" className="h-7" />
             </SectionCard>
 
-            <SectionCard title="BANQUE" id="pdf-section-banque" className="bg-slate-50 border-slate-200">
+            <SectionCard title="BANQUE" id="pdf-section-banque" className="bg-white border-slate-200">
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-y-1">
                   <Field label="Durée" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" className="h-7" />
@@ -1330,7 +1330,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               </div>
             </SectionCard>
 
-            <SectionCard title="INDICES & DÉGRADATION" id="pdf-section-indices" className="grid grid-cols-1 gap-y-1 py-1">
+            <SectionCard title="INDICES & DÉGRADATION" id="pdf-section-indices" className="grid grid-cols-1 gap-y-1 py-1 grow">
               <Field label="P. Unitaire" value={params.puissanceUnitaire} onChange={v => setParams(p => ({ ...p, puissanceUnitaire: v }))} type="number" suffix="Wc" className="h-7" />
               <Field label="Indice Tarifs" value={params.indexationTarif * 100} onChange={v => setParams(p => ({ ...p, indexationTarif: v / 100 }))} type="number" suffix="%" step="0.1" className="h-7" />
               <Field label="Indice OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" className="h-7" />
@@ -1366,11 +1366,11 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                </div>
             </SectionCard>
 
-            <SectionCard title="RENTABILITÉ" id="pdf-section-renta" className="bg-amber-50/10 border-amber-100 grow py-1">
+            <SectionCard title="RENTABILITÉ" id="pdf-section-renta" className="bg-white border-slate-200 grow py-1">
                <div className="space-y-2">
-                 <Field label="CIBLE DSCR :" value={params.targetDSCR * 100} onChange={v => setParams(p => ({ ...p, targetDSCR: v / 100 }))} type="number" suffix="%" step="1" className="bg-amber-100/30 p-1.5 rounded" />
+                 <Field label="CIBLE DSCR :" value={params.targetDSCR * 100} onChange={v => setParams(p => ({ ...p, targetDSCR: v / 100 }))} type="number" suffix="%" step="1" className="bg-slate-50 p-1.5 rounded" />
                  
-                 <div className="pt-2 border-t border-amber-50 flex flex-col items-center gap-2">
+                 <div className="pt-2 border-t border-slate-100 flex flex-col items-center gap-2">
                     <Button 
                       size="sm" 
                       onClick={handleGoalSeek} 
@@ -1391,7 +1391,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                     </div>
                  </div>
 
-                 <div className="space-y-0.5 pt-1 border-t border-amber-50">
+                 <div className="space-y-0.5 pt-1 border-t border-slate-100">
                    <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">CA 20 ans :</span><span className="font-bold text-blue-800">{fmtEur(bp.sumCA)}</span></div>
                    <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">Gains 20 ans :</span><span className="font-bold text-green-700">{fmtEur(bp.gains)}</span></div>
                    <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">TRI FP :</span><span className="font-bold text-green-600">{fmtPct(bp.triFP)}</span></div>
@@ -1411,7 +1411,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
             </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-6 bg-white rounded-lg border border-slate-200 p-4">
+        <div className="col-span-12 grid grid-cols-2 gap-6 bg-white rounded-lg border border-slate-200 p-4">
           <div id="pdf-chart-tresorerie" className="h-[300px]">
             <h4 className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mb-4">Trésorerie & Cash Flow</h4>
             <ResponsiveContainer width="100%" height="100%">
