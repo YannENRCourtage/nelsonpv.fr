@@ -530,7 +530,7 @@ function ProjectSelect({ projects, selectedProject, onSelect, className }) {
     <div className={cn("relative", className)}>
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between border border-slate-200 rounded px-2 py-1.5 text-xs bg-white hover:bg-slate-50 transition-colors"
+        className="w-full flex items-center justify-between border border-slate-200 rounded px-2 py-1.5 text-sm bg-white hover:bg-slate-50 transition-colors"
       >
         <span className="truncate">{selectedProject?.name || 'Sélectionner un projet CRM...'}</span>
         <ChevronDown className={cn("w-3 h-3 transition-transform", isOpen && "rotate-180")} />
@@ -545,7 +545,7 @@ function ProjectSelect({ projects, selectedProject, onSelect, className }) {
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
                 <input 
                   autoFocus
-                  className="w-full pl-7 pr-2 py-1.5 text-xs border border-slate-100 rounded outline-none focus:ring-1 focus:ring-blue-400"
+                  className="w-full pl-7 pr-2 py-1.5 text-sm border border-slate-100 rounded outline-none focus:ring-1 focus:ring-blue-400"
                   placeholder="Rechercher..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
@@ -555,18 +555,18 @@ function ProjectSelect({ projects, selectedProject, onSelect, className }) {
             {filtered.map(p => (
               <button
                 key={p.id}
-                className="w-full px-3 py-2 text-left text-xs hover:bg-blue-50 transition-colors border-b border-slate-50 last:border-0"
+                className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 transition-colors border-b border-slate-50 last:border-0"
                 onClick={() => {
                   onSelect(p);
                   setIsOpen(false);
                 }}
               >
                 <div className="font-bold">{p.name}</div>
-                <div className="text-[10px] text-slate-500">{p.client_name} • {p.city}</div>
+                <div className="text-[12px] text-slate-500">{p.client_name} • {p.city}</div>
               </button>
             ))}
             {filtered.length === 0 && (
-              <div className="p-4 text-center text-xs text-slate-400">Aucun projet trouvé</div>
+              <div className="p-4 text-center text-sm text-slate-400">Aucun projet trouvé</div>
             )}
           </div>
         </>
@@ -578,20 +578,20 @@ function ProjectSelect({ projects, selectedProject, onSelect, className }) {
 function Field({ label, value, onChange, type = 'text', suffix, className, step, disabled, precision = 2, hideLabel = false }) {
   return (
     <div className={cn('flex items-center gap-2', className)}>
-      {!hideLabel && <label className="text-[11px] text-slate-500 w-32 shrink-0">{label}</label>}
+      {!hideLabel && <label className="text-[13px] text-slate-500 w-32 shrink-0">{label}</label>}
       <div className="flex items-center gap-1 flex-1 relative">
         <input
           type={type}
           disabled={disabled}
           className={cn(
-            "border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none transition-colors focus:ring-1 focus:ring-blue-500",
+            "border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none transition-colors focus:ring-1 focus:ring-blue-500",
             disabled ? "bg-slate-50 text-slate-400 cursor-not-allowed" : "text-slate-900 bg-white"
           )}
           value={type === 'number' && typeof value === 'number' ? (Math.round(value * Math.pow(10, precision)) / Math.pow(10, precision)).toString() : (value ?? '')}
           onChange={e => onChange?.(type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value)}
           step={step ?? (type === 'number' ? 'any' : undefined)}
         />
-        {suffix && <span className="text-xs text-slate-500 shrink-0">{suffix}</span>}
+        {suffix && <span className="text-sm text-slate-500 shrink-0">{suffix}</span>}
       </div>
     </div>
   );
@@ -601,7 +601,7 @@ function SectionCard({ title, children, className, id, actions }) {
   return (
     <div id={id} className={cn('bg-white rounded-lg border border-slate-200 p-4 space-y-3', className)}>
       <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-1">
-        <h3 className="text-[11px] font-bold text-slate-800 uppercase tracking-wider">{title}</h3>
+        <h3 className="text-[13px] font-bold text-slate-800 uppercase tracking-wider">{title}</h3>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
       {children}
@@ -614,10 +614,10 @@ function SectionCard({ title, children, className, id, actions }) {
 function TableauPrevisionnel({ params, rows }) {
   const DataRow = ({ label, propName, isPercent, isCurrency, format }) => (
     <tr className="border-b border-slate-200 bg-white hover:bg-slate-50">
-      <td className="px-2 py-1 font-medium bg-slate-50 align-top text-[9px] border border-slate-200">{label}</td>
-      <td className="px-2 py-1 text-slate-400 w-8 align-top text-center border border-slate-200 text-[9px]">-</td>
+      <td className="px-2 py-1 font-medium bg-slate-50 align-top text-[11px] border border-slate-200">{label}</td>
+      <td className="px-2 py-1 text-slate-400 w-8 align-top text-center border border-slate-200 text-[11px]">-</td>
       {rows.map((r, i) => (
-        <td key={i} className="px-1 py-1 text-right border border-slate-200 font-medium align-top text-[9px]">
+        <td key={i} className="px-1 py-1 text-right border border-slate-200 font-medium align-top text-[11px]">
           {format ? format(r[propName]) : (isCurrency ? fmtEur(r[propName]) : (isPercent ? fmtPct(r[propName]) : fmt(r[propName], 2)))}
         </td>
       ))}
@@ -627,7 +627,7 @@ function TableauPrevisionnel({ params, rows }) {
   return (
     <SectionCard title="PLAN D'AFFAIRES PREVISIONNEL" className="p-0 border-none shadow-none">
       <div className="overflow-x-auto w-full">
-        <table className="text-[9px] w-full border-collapse table-fixed">
+        <table className="text-[11px] w-full border-collapse table-fixed">
           <thead>
             <tr className="bg-slate-100">
               <td className="w-[180px] p-2 border border-slate-200"></td>
@@ -714,13 +714,13 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
     <div className="pdf-header hidden flex flex-row justify-between items-start w-full mb-4 border-b-2 border-slate-800 pb-3">
       <div className="flex flex-col">
         <img src="/logo-nelson.png" alt="Logo" className="h-10 w-auto object-contain mb-1" />
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Business Plan Acama</span>
+        <span className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">Business Plan Acama</span>
       </div>
       <div className="text-right flex flex-col items-end">
         <h1 className="text-lg font-black text-slate-900 uppercase leading-tight">{selectedProject?.name || 'Projet Sans Nom'}</h1>
         <div className="flex items-center gap-2 mt-1">
-          <span className="bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase">{params.projectType || 'BAC'}</span>
-          <p className="text-[10px] font-bold text-slate-500">{new Date().toLocaleDateString('fr-FR')}</p>
+          <span className="bg-blue-600 text-white text-[11px] font-bold px-2 py-0.5 rounded uppercase">{params.projectType || 'BAC'}</span>
+          <p className="text-[12px] font-bold text-slate-500">{new Date().toLocaleDateString('fr-FR')}</p>
         </div>
       </div>
     </div>
@@ -930,9 +930,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
       {/* Project selector & Actions */}
       <div data-html2canvas-ignore="true" className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-blue-700">Projet CRM :</span>
+          <span className="text-sm font-semibold text-blue-700">Projet CRM :</span>
           <div className="relative w-48" ref={dropdownRef}>
-            <button onClick={() => setShowSearch(!showSearch)} className="flex items-center gap-2 bg-white border border-blue-300 rounded px-2 py-1.5 text-[11px] w-full text-left hover:bg-blue-50">
+            <button onClick={() => setShowSearch(!showSearch)} className="flex items-center gap-2 bg-white border border-blue-300 rounded px-2 py-1.5 text-[13px] w-full text-left hover:bg-blue-50">
               <span className="truncate">{selectedProject ? selectedProject.name : 'Choisir...'}</span>
               <ChevronDown className="w-3 h-3 ml-auto shrink-0" />
             </button>
@@ -941,12 +941,12 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                 <div className="p-2 border-b border-slate-100">
                   <div className="flex items-center gap-2 bg-slate-50 rounded px-2 py-1">
                     <Search className="w-3 h-3 text-slate-400" />
-                    <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." className="bg-transparent text-xs outline-none flex-1" />
+                    <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." className="bg-transparent text-sm outline-none flex-1" />
                   </div>
                 </div>
                 <div className="max-h-64 overflow-y-auto">
                   {filteredProjects.map(p => (
-                    <button key={p.id} onClick={() => applyProject(p)} className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 border-b border-slate-50">
+                    <button key={p.id} onClick={() => applyProject(p)} className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 border-b border-slate-50">
                       <div className="font-medium uppercase">{p.name || 'Projet sans nom'}</div>
                       <div className="text-slate-500 font-medium opacity-70">{p.city || p.address || '—'}</div>
                     </button>
@@ -965,10 +965,10 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                 elementId: 'bp-acama-content', 
                 sections: ['pdf-section-1', 'pdf-section-2'],
                 fileName: `BP_Acama_${selectedProject.name}_${new Date().toISOString().split('T')[0]}.pdf` 
-              })} className="bg-slate-800 hover:bg-slate-900 text-white text-[11px] h-8 px-3">
+              })} className="bg-slate-800 hover:bg-slate-900 text-white text-[13px] h-8 px-3">
               <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF
             </Button>
-            <Button size="sm" onClick={saveBp} className="bg-green-600 hover:bg-green-700 text-white text-[11px] h-8 px-3">
+            <Button size="sm" onClick={saveBp} className="bg-green-600 hover:bg-green-700 text-white text-[13px] h-8 px-3">
               <Save className="w-3.5 h-3.5 mr-1.5" /> Sauvegarder
             </Button>
             <button onClick={() => { setSelectedProject(null); setSearch(''); }} className="text-slate-400 hover:text-red-500 p-1 transition-colors"><X className="w-4 h-4" /></button>
@@ -1002,7 +1002,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                     <tr>
                       <th className="w-32"></th>
                       {(params.buildings || []).map((b, i) => (
-                        <th key={b.id} className="text-center text-[10px] uppercase text-slate-400 font-bold">Bâtiment {i+1}</th>
+                        <th key={b.id} className="text-center text-[12px] uppercase text-slate-400 font-bold">Bâtiment {i+1}</th>
                       ))}
                     </tr>
                   </thead>
@@ -1013,7 +1013,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                       {(params.buildings || []).map(b => (
                         <td key={b.id} className="pt-2">
                           <select 
-                            className="bg-white border border-blue-300 rounded px-1 py-1 text-[11px] w-full font-bold text-blue-900"
+                            className="bg-white border border-blue-300 rounded px-1 py-1 text-[13px] w-full font-bold text-blue-900"
                             value={b.projectType || 'BAC'} 
                             onChange={e => updateBuildingParam(b.id, 'projectType', e.target.value)}
                           >
@@ -1031,7 +1031,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                             <div className="flex items-center gap-1">
                               <input 
                                 type="number"
-                                className="bg-white border border-slate-200 rounded px-1 py-1 text-[11px] w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
+                                className="bg-white border border-slate-200 rounded px-1 py-1 text-[13px] w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
                                 value={b.surfaceToiture || ''} 
                                 onChange={e => updateBuildingParam(b.id, 'surfaceToiture', parseFloat(e.target.value) || 0)}
                                 placeholder="m²"
@@ -1039,7 +1039,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                             </div>
                           ) : (
                             <select 
-                              className="bg-white border border-slate-200 rounded px-1 py-1 text-[11px] w-full outline-none focus:ring-1 focus:ring-blue-400 font-bold"
+                              className="bg-white border border-slate-200 rounded px-1 py-1 text-[13px] w-full outline-none focus:ring-1 focus:ring-blue-400 font-bold"
                               value={b.typeBat || ''} 
                               onChange={e => updateBuildingParam(b.id, 'typeBat', e.target.value)}
                             >
@@ -1056,7 +1056,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                       <td className="text-[12px] text-slate-500 font-medium">Nombre de panneaux</td>
                       {(params.buildings || []).map(b => {
                         const nb = Math.ceil((parseFloat(b.kwc) || 0) * 1000 / (parseFloat(params.puissanceUnitaire) || 460));
-                        return <td key={b.id} className="text-center text-[11px] font-bold text-slate-700">{nb} un.</td>;
+                        return <td key={b.id} className="text-center text-[13px] font-bold text-slate-700">{nb} un.</td>;
                       })}
                     </tr>
                     <tr>
@@ -1066,11 +1066,11 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                           <div className="flex items-center gap-1">
                             <input 
                               type="number"
-                              className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
+                              className="bg-white border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
                               value={b.kwc || ''} 
                               onChange={e => updateBuildingParam(b.id, 'kwc', parseFloat(e.target.value) || 0)}
                             />
-                            <span className="text-[10px] text-slate-400 w-6">kWc</span>
+                            <span className="text-[12px] text-slate-400 w-6">kWc</span>
                           </div>
                         </td>
                       ))}
@@ -1082,11 +1082,11 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                           <div className="flex items-center gap-1">
                             <input 
                               type="number"
-                              className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
+                              className="bg-white border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
                               value={b.productible || ''} 
                               onChange={e => updateBuildingParam(b.id, 'productible', parseFloat(e.target.value) || 0)}
                             />
-                            <span className="text-[10px] text-slate-400 w-[45px] whitespace-nowrap">kWh/kWc</span>
+                            <span className="text-[12px] text-slate-400 w-[45px] whitespace-nowrap">kWh/kWc</span>
                           </div>
                         </td>
                       ))}
@@ -1097,7 +1097,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                       {(params.buildings || []).map(b => {
                         const nb = Math.ceil((parseFloat(b.kwc) || 0) * 1000 / (parseFloat(params.puissanceUnitaire) || 460));
                         const surf = nb * (1.762 * 1.134);
-                        return <td key={b.id} className="text-center text-xs font-bold text-slate-700">{fmt(surf, 0)} m²</td>;
+                        return <td key={b.id} className="text-center text-sm font-bold text-slate-700">{fmt(surf, 0)} m²</td>;
                       })}
                     </tr>
                     <tr>
@@ -1112,13 +1112,13 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               </div>
               <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-1 items-end bg-blue-50/30 rounded px-3 py-2">
                 <div className="flex items-center gap-2">
-                   <span className="text-[11px] text-slate-400 font-bold uppercase">Production totale cumulée</span>
+                   <span className="text-[13px] text-slate-400 font-bold uppercase">Production totale cumulée</span>
                    <span className="text-sm font-black text-blue-900">{fmt(collapsedParams.kwc * collapsedParams.productible, 0)} kWh/an</span>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="flex flex-col items-end">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">Puissance Totale</span>
-                    <span className="text-xs font-bold text-slate-700">{fmt(collapsedParams.kwc, 2)} kWc</span>
+                    <span className="text-[12px] text-slate-400 font-bold uppercase">Puissance Totale</span>
+                    <span className="text-sm font-bold text-slate-700">{fmt(collapsedParams.kwc, 2)} kWc</span>
                   </div>
                 </div>
               </div>
@@ -1135,7 +1135,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                     <tr>
                       <th className="w-1/3"></th>
                       {(params.buildings || []).map((b, i) => (
-                        <th key={b.id} className="text-center text-[10px] uppercase text-slate-400 font-bold">Bâtiment {i+1}</th>
+                        <th key={b.id} className="text-center text-[12px] uppercase text-slate-400 font-bold">Bâtiment {i+1}</th>
                       ))}
                     </tr>
                   </thead>
@@ -1146,7 +1146,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                         {(params.buildings || []).map(b => (
                           <td key={b.id} className="py-2">
                             {b.projectType !== 'BE' && (
-                              <div className="bg-slate-100 border border-slate-300 rounded px-2 py-1 text-[11px] w-full font-bold text-slate-500 text-center flex items-center justify-center gap-1 shadow-inner">
+                              <div className="bg-slate-100 border border-slate-300 rounded px-2 py-1 text-[13px] w-full font-bold text-slate-500 text-center flex items-center justify-center gap-1 shadow-inner">
                                 <Building className="w-3 h-3 opacity-40" />
                                 {b.typeBat || '—'}
                               </div>
@@ -1162,11 +1162,11 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                           <div className="flex items-center gap-1">
                             <input 
                               type="number"
-                              className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
+                              className="bg-white border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
                               value={b.distHta || ''} 
                               onChange={e => updateBuildingParam(b.id, 'distHta', parseFloat(e.target.value) || 0)}
                             />
-                            <span className="text-[10px] text-slate-400 w-4">m</span>
+                            <span className="text-[12px] text-slate-400 w-4">m</span>
                           </div>
                         </td>
                       ))}
@@ -1178,11 +1178,11 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                           <div className="flex items-center gap-1">
                             <input 
                               type="number"
-                              className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
+                              className="bg-white border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
                               value={b.distPriv || ''} 
                               onChange={e => updateBuildingParam(b.id, 'distPriv', parseFloat(e.target.value) || 0)}
                             />
-                            <span className="text-[10px] text-slate-400 w-4">m</span>
+                            <span className="text-[12px] text-slate-400 w-4">m</span>
                           </div>
                         </td>
                       ))}
@@ -1191,7 +1191,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                     <tr>
                       <td className="text-[12px] text-slate-500 font-medium pt-1">Centrale solaire</td>
                       {(params.buildings || []).map(b => (
-                        <td key={b.id} className="pt-1 text-right text-xs font-bold text-slate-700 pr-2">
+                        <td key={b.id} className="pt-1 text-right text-sm font-bold text-slate-700 pr-2">
                            {fmtEur(b.coutCentrale)}
                         </td>
                       ))}
@@ -1202,7 +1202,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                         <td key={b.id}>
                           <input 
                             type="number"
-                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-right font-bold"
+                            className="bg-white border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none focus:ring-1 focus:ring-blue-400 text-right font-bold"
                             value={b.coutCharpente || ''} 
                             onChange={e => updateBuildingParam(b.id, 'coutCharpente', parseFloat(e.target.value) || 0)}
                           />
@@ -1210,9 +1210,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                       ))}
                     </tr>
                     <tr className="bg-slate-50 font-bold italic">
-                      <td className="text-[11px] text-slate-400 py-1">Sous-total technique</td>
+                      <td className="text-[13px] text-slate-400 py-1">Sous-total technique</td>
                       {(params.buildings || []).map(b => (
-                        <td key={b.id} className="text-right text-[11px] pr-2">
+                        <td key={b.id} className="text-right text-[13px] pr-2">
                           {fmtEur((parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0))}
                         </td>
                       ))}
@@ -1220,13 +1220,13 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
 
                     <tr className="h-4"></tr>
                     <tr className="border-t border-slate-200">
-                      <td className="text-[11px] text-slate-600 font-bold pt-3" colSpan={(params.buildings || []).length + 1}>FRAIS COMMUNS :</td>
+                      <td className="text-[13px] text-slate-600 font-bold pt-3" colSpan={(params.buildings || []).length + 1}>FRAIS COMMUNS :</td>
                     </tr>
                     <tr>
                       <td className="text-[12px] text-slate-500 font-medium pl-2">Raccordement</td>
                       <td colSpan={(params.buildings || []).length} className="pt-1 text-center">
-                        <div className="inline-flex items-center gap-2 bg-slate-100 border border-slate-200 rounded px-3 py-1 text-xs w-48 justify-between shadow-inner">
-                          <span className="text-slate-500 font-bold uppercase text-[9px]">Auto</span>
+                        <div className="inline-flex items-center gap-2 bg-slate-100 border border-slate-200 rounded px-3 py-1 text-sm w-48 justify-between shadow-inner">
+                          <span className="text-slate-500 font-bold uppercase text-[11px]">Auto</span>
                           <span className="font-bold text-slate-700">{fmtEur(params.raccordement)}</span>
                         </div>
                       </td>
@@ -1234,22 +1234,29 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                     <tr>
                       <td className="text-[12px] text-slate-500 font-medium pl-2">Frais</td>
                       <td colSpan={(params.buildings || []).length} className="pt-1 text-center">
-                        <div className="inline-flex items-center gap-2 bg-slate-100 border border-slate-200 rounded px-3 py-1 text-xs w-48 justify-between shadow-inner">
-                          <span className="text-slate-500 font-bold uppercase text-[9px]">Auto (1%)</span>
+                        <div className="inline-flex items-center gap-2 bg-slate-100 border border-slate-200 rounded px-3 py-1 text-sm w-48 justify-between shadow-inner">
+                          <span className="text-slate-500 font-bold uppercase text-[11px]">Auto (1%)</span>
                           <span className="font-bold text-slate-700">{fmtEur(params.frais)}</span>
                         </div>
                       </td>
                     </tr>
                     <tr>
-                      <td className="text-[12px] text-slate-500 font-medium pl-2">Soulte / Rente</td>
+                      <td className="text-[13px] text-slate-600 font-bold pl-2">
+                        <select 
+                          className="bg-transparent border-none outline-none font-bold uppercase text-slate-600 cursor-pointer"
+                          value={params.renteType || 'soulte'}
+                          onChange={e => setParams(p => ({ ...p, renteType: e.target.value }))}
+                        >
+                          <option value="soulte">Soulte</option>
+                          <option value="loyer">Loyer annuel</option>
+                        </select>
+                      </td>
                       <td colSpan={(params.buildings || []).length} className="pt-1 text-center">
-                        <div className="inline-flex items-center gap-2">
-                          <input 
-                            type="number"
-                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-48 outline-none focus:ring-1 focus:ring-blue-400 text-right font-bold"
-                            value={params.soulte || ''} 
-                            onChange={e => setParams(p => ({ ...p, soulte: parseFloat(e.target.value) || 0 }))}
-                          />
+                        <div className="inline-flex items-center gap-2 bg-slate-100 border border-slate-200 rounded px-3 py-1 text-sm w-48 justify-between shadow-inner">
+                          <span className="text-slate-500 font-bold uppercase text-[13px]">Auto</span>
+                          <span className="font-bold text-slate-900">
+                            {fmtEur(params.renteType === 'loyer' ? bp.loyer * 20 : bp.soulte)}
+                          </span>
                         </div>
                       </td>
                     </tr>
@@ -1258,11 +1265,11 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               </div>
               <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-1 items-end bg-blue-50/30 rounded px-3 py-2">
                 <div className="flex items-center gap-2">
-                   <span className="text-[11px] text-slate-400 font-bold uppercase">Total Construction :</span>
+                   <span className="text-[13px] text-slate-400 font-bold uppercase">Total Construction :</span>
                    <span className="text-[13px] font-bold text-slate-800">{fmtEur(totalConstruction)}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                   <span className="text-[11px] text-slate-400 font-bold uppercase">Total avec TVA (20%) :</span>
+                   <span className="text-[13px] text-slate-400 font-bold uppercase">Total avec TVA (20%) :</span>
                    <span className="text-md font-black text-blue-900">{fmtEur(totalInvestissement)}</span>
                 </div>
               </div>
@@ -1301,15 +1308,15 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                 </div>
                 
                 <div className="pt-2 border-t border-slate-200 mt-2 space-y-1">
-                  <div className="flex justify-between text-[11px]">
+                  <div className="flex justify-between text-[13px]">
                     <span className="text-slate-500 italic">Apport (10%) :</span>
                     <span className="font-bold text-slate-700">{fmtEur(apport10)}</span>
                   </div>
-                  <div className="flex justify-between text-[11px]">
+                  <div className="flex justify-between text-[13px]">
                     <span className="text-slate-500 italic">Emprunt :</span>
                     <span className="font-bold text-slate-700">{fmtEur(emprunt)}</span>
                   </div>
-                  <div className="flex justify-between text-[11px] mt-2 pt-1 border-t border-slate-200 font-bold">
+                  <div className="flex justify-between text-[13px] mt-2 pt-1 border-t border-slate-200 font-bold">
                     <span className="text-slate-700 font-bold">Annuité :</span>
                     <span className="text-slate-900">{fmtEur(bp.annuite)}</span>
                   </div>
@@ -1323,26 +1330,26 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
             <div className="bg-white rounded-lg border border-slate-200 p-6 flex flex-col items-center justify-center text-center space-y-2 shadow-sm border-t-4 border-t-green-500 grow">
               <div className="p-2 bg-green-50 rounded-full mb-1"><CheckCircle className="w-6 h-6 text-green-500" /></div>
               <div className="text-4xl font-black text-green-600">{fmtPct(bp.dscrMoyen)}</div>
-              <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">DSCR MOYEN 20 ANS</div>
-              <div className="text-[10px] text-slate-400">Seuil bancaire : {fmt(params.targetDSCR * 100, 0)}%</div>
+              <div className="text-[13px] font-bold text-slate-500 uppercase tracking-widest">DSCR MOYEN 20 ANS</div>
+              <div className="text-[12px] text-slate-400">Seuil bancaire : {fmt(params.targetDSCR * 100, 0)}%</div>
             </div>
 
             <div className="bg-blue-600 rounded-lg p-6 text-white shadow-xl shadow-blue-100 space-y-4 grow">
               <div className="space-y-1">
-                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">RESTE À CHARGE</div>
+                <div className="text-[12px] font-bold uppercase tracking-widest opacity-60">RESTE À CHARGE</div>
                 <div className="text-3xl font-black">{fmtEur(resteACharge)}</div>
               </div>
-              <Button onClick={applyToProject} className="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs py-5">
+              <Button onClick={applyToProject} className="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 text-sm py-5">
                 <RefreshCw className="w-3.5 h-3.5 mr-2" /> Appliquer
               </Button>
             </div>
 
             <SectionCard title="INDICATEURS" id="pdf-section-indic" className="grow">
                <div className="space-y-2">
-                 <div className="flex justify-between text-xs"><span className="text-slate-500">Apport avec soulte :</span><span className="font-bold text-blue-800">{fmtEur(apport10 + (calcSoulte > 0 ? calcSoulte : 0))}</span></div>
-                 <div className="flex justify-between text-xs"><span className="text-slate-500">Emprunt net :</span><span className="font-bold text-blue-800">{fmtEur(emprunt)}</span></div>
-                 <div className="flex justify-between text-xs"><span className="text-slate-500">CA an 1 :</span><span className="font-bold text-blue-600">{fmtEur(bp.rows[0]?.ca)}</span></div>
-                 <div className="flex justify-between text-xs"><span className="text-slate-500">Total charges an 1 :</span><span className="font-bold text-red-600">{fmtEur((bp.rows[0]?.opex || 0) + (bp.rows[0]?.serviceDette || 0))}</span></div>
+                 <div className="flex justify-between text-sm"><span className="text-slate-500">Apport avec soulte :</span><span className="font-bold text-blue-800">{fmtEur(apport10 + (calcSoulte > 0 ? calcSoulte : 0))}</span></div>
+                 <div className="flex justify-between text-sm"><span className="text-slate-500">Emprunt net :</span><span className="font-bold text-blue-800">{fmtEur(emprunt)}</span></div>
+                 <div className="flex justify-between text-sm"><span className="text-slate-500">CA an 1 :</span><span className="font-bold text-blue-600">{fmtEur(bp.rows[0]?.ca)}</span></div>
+                 <div className="flex justify-between text-sm"><span className="text-slate-500">Total charges an 1 :</span><span className="font-bold text-red-600">{fmtEur((bp.rows[0]?.opex || 0) + (bp.rows[0]?.serviceDette || 0))}</span></div>
                </div>
             </SectionCard>
 
@@ -1351,34 +1358,35 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                  <Field label="CIBLE DSCR :" value={params.targetDSCR * 100} onChange={v => setParams(p => ({ ...p, targetDSCR: v / 100 }))} type="number" suffix="%" step="1" className="bg-amber-100/50 p-2 rounded" />
                  
                  <div className="space-y-3 pt-4 border-t border-amber-100">
-                    <div className="flex flex-col gap-2 p-2 bg-white/50 rounded border border-amber-100">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] text-slate-500 font-bold uppercase">Location annuelle 20 ans</span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[11px] font-bold text-blue-800">{fmtEur(bp.loyer)}</span>
-                          <Button size="xs" onClick={() => handleGoalSeek('loyer')} className="h-6 px-2 text-[9px] bg-blue-600">Execution</Button>
-                        </div>
+                    <div className="flex flex-col gap-2 p-3 bg-white/50 rounded border border-amber-100 relative">
+                      <div className="flex items-center justify-between gap-2 pr-20">
+                        <span className="text-[12px] text-slate-500 font-bold uppercase">Location annuelle 20 ans</span>
+                        <span className="text-[13px] font-bold text-blue-800">{fmtEur(bp.loyer)}</span>
                       </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] text-slate-500 font-bold uppercase">Soulte sur 20 ans</span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[11px] font-bold text-blue-800">{fmtEur(bp.soulte)}</span>
-                          <Button size="xs" onClick={() => handleGoalSeek('soulte')} className="h-6 px-2 text-[9px] bg-blue-600">Execution</Button>
-                        </div>
+                      <div className="flex items-center justify-between gap-2 pr-20">
+                        <span className="text-[12px] text-slate-500 font-bold uppercase">Soulte sur 20 ans</span>
+                        <span className="text-[13px] font-bold text-blue-800">{fmtEur(bp.soulte)}</span>
                       </div>
+                      <Button 
+                        size="sm" 
+                        onClick={handleGoalSeek} 
+                        className="absolute right-2 top-1/2 -translate-y-1/2 h-10 px-3 text-[13px] bg-blue-600 font-bold uppercase"
+                      >
+                        Execution
+                      </Button>
                     </div>
 
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">CA 20 ans :</span><span className="font-bold text-blue-800">{fmtEur(bp.sumCA)}</span></div>
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-500">Gains 20 ans :</span><span className="font-bold text-green-700">{fmtEur(bp.gains)}</span></div>
+                   <div className="flex justify-between text-[13px]"><span className="text-slate-500">CA 20 ans :</span><span className="font-bold text-blue-800">{fmtEur(bp.sumCA)}</span></div>
+                   <div className="flex justify-between text-[13px]"><span className="text-slate-500">Gains 20 ans :</span><span className="font-bold text-green-700">{fmtEur(bp.gains)}</span></div>
                    <div className="space-y-1 pt-2 border-t border-amber-50 mt-1">
-                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">TRI Projet :</span><span className="font-bold text-green-600">{fmtPct(bp.triProjet)}</span></div>
-                     <div className="flex justify-between text-[11px]"><span className="text-slate-500">TRI FP :</span><span className="font-bold text-green-600">{fmtPct(bp.triFP)}</span></div>
+                     <div className="flex justify-between text-[13px]"><span className="text-slate-500">TRI Projet :</span><span className="font-bold text-green-600">{fmtPct(bp.triProjet)}</span></div>
+                     <div className="flex justify-between text-[13px]"><span className="text-slate-500">TRI FP :</span><span className="font-bold text-green-600">{fmtPct(bp.triFP)}</span></div>
                      <div className="pt-2 border-t border-slate-200 mt-2 space-y-2">
-                <div className="flex justify-between text-xs">
+                <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Temps de retour :</span>
                   <span className="font-bold text-blue-600">{fmt(bp.payback, 1)} ans</span>
                 </div>
-                <div className="flex justify-between text-xs">
+                <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Prix au Wc global :</span>
                   <span className="font-bold text-slate-700">{fmtEur(totalInvestissement / (bp.rows[0]?.kwcDeg || 1))} /Wc</span>
                 </div>
@@ -1392,7 +1400,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
 
         <div className="grid grid-cols-2 gap-6 bg-white rounded-lg border border-slate-200 p-4">
           <div id="pdf-chart-tresorerie" className="h-[300px]">
-            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Trésorerie & Cash Flow</h4>
+            <h4 className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mb-4">Trésorerie & Cash Flow</h4>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={rows}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -1404,7 +1412,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
             </ResponsiveContainer>
           </div>
           <div id="pdf-chart-performance" className="h-[300px]">
-             <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Performance</h4>
+             <h4 className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mb-4">Performance</h4>
              <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={rows}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -1583,10 +1591,10 @@ function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
   return (
     <div className="p-4 h-full flex flex-col overflow-hidden">
       <div className="flex items-center gap-2 mb-3 shrink-0">
-        <Button size="sm" onClick={addRow} className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7">
+        <Button size="sm" onClick={addRow} className="bg-blue-600 hover:bg-blue-700 text-white text-sm h-7">
           <Plus className="w-3 h-3 mr-1" /> Nouvelle ligne
         </Button>
-        <span className="text-xs text-slate-500">{allRows.length} projets</span>
+        <span className="text-sm text-slate-500">{allRows.length} projets</span>
       </div>
       <div className="flex-1 overflow-auto border border-slate-200 rounded-lg shadow-sm bg-white" {...useDragScroll()}>
         <table className="text-[12px] border-collapse min-w-max">
@@ -1672,7 +1680,7 @@ function TabSuiviBatType({ batEdits, updateBatEdit }) {
   return (
     <div className="p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Button size="sm" onClick={() => setLocalRows(r => [{ id: `local-${Date.now()}`, type:'', spv:'', kwc:0, cout_bat:0, massifs:0, longueur:0, largeur:0, travees:0, hSud:0, hNord:0, faitage:0, surfSud:0, surfNord:0, surfTot:0, penteSud:0, penteNord:0, modH:0, modL:0, totalMod:0, puissMax:0, prodMoyen:0 }, ...r])} className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7">
+        <Button size="sm" onClick={() => setLocalRows(r => [{ id: `local-${Date.now()}`, type:'', spv:'', kwc:0, cout_bat:0, massifs:0, longueur:0, largeur:0, travees:0, hSud:0, hNord:0, faitage:0, surfSud:0, surfNord:0, surfTot:0, penteSud:0, penteNord:0, modH:0, modL:0, totalMod:0, puissMax:0, prodMoyen:0 }, ...r])} className="bg-blue-600 hover:bg-blue-700 text-white text-sm h-7">
           <Plus className="w-3 h-3 mr-1" /> Nouvelle ligne
         </Button>
       </div>
@@ -1784,7 +1792,7 @@ function TabData() {
   return (
     <div className="p-4 overflow-hidden h-full flex flex-col">
       <div className="flex items-center gap-2 mb-3 shrink-0">
-        <Button size="sm" onClick={() => setRows(r => [{ id: Date.now(), type:'' }, ...r])} className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7">
+        <Button size="sm" onClick={() => setRows(r => [{ id: Date.now(), type:'' }, ...r])} className="bg-blue-600 hover:bg-blue-700 text-white text-sm h-7">
           <Plus className="w-3 h-3 mr-1" /> Nouvelle ligne
         </Button>
       </div>
@@ -2113,19 +2121,19 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
     <div className={cn("flex border-b border-slate-100 py-1.5 px-3 items-center hover:bg-slate-50 transition-colors",
       isHeader && "bg-slate-800 text-white font-bold hover:bg-slate-800", isSubtotal && "bg-slate-100 font-bold border-t-2 border-slate-200"
     )}>
-      <div className={cn("text-[11px] flex-1", isHeader && "uppercase tracking-wider text-xs")}>{label}</div>
+      <div className={cn("text-[13px] flex-1", isHeader && "uppercase tracking-wider text-sm")}>{label}</div>
       <div className="flex items-center gap-2 w-32">
         {onChange ? (
           <input
             type="text"
-            className="w-full bg-transparent text-right outline-none text-[11px] px-1 font-medium border-b border-transparent focus:border-blue-400 focus:bg-blue-50 focus:rounded"
+            className="w-full bg-transparent text-right outline-none text-[13px] px-1 font-medium border-b border-transparent focus:border-blue-400 focus:bg-blue-50 focus:rounded"
             value={value ?? ''}
             onChange={e => onChange(e.target.value)}
           />
         ) : (
-          <div className="w-full text-right text-[11px] font-bold">{typeof value === 'number' ? fmt(value, 0) : (value ?? '—')}</div>
+          <div className="w-full text-right text-[13px] font-bold">{typeof value === 'number' ? fmt(value, 0) : (value ?? '—')}</div>
         )}
-        <div className="w-8 text-[9px] text-slate-400 text-right uppercase font-bold">{unit}</div>
+        <div className="w-8 text-[11px] text-slate-400 text-right uppercase font-bold">{unit}</div>
       </div>
     </div>
   );
@@ -2148,7 +2156,7 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
                <div className="flex items-center gap-3 mt-4">
                   <span className="text-slate-500 font-medium w-40">Type de bâtiment :</span>
                   <select
-                    className="bg-white border border-slate-200 rounded px-2 py-1 outline-none w-48 shadow-sm text-xs"
+                    className="bg-white border border-slate-200 rounded px-2 py-1 outline-none w-48 shadow-sm text-sm"
                     value={params.typeBat || ''}
                     onChange={e => {
                       const selectedType = e.target.value;
@@ -2180,8 +2188,8 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
              <div className="text-right flex flex-col items-end">
                 <div className="font-black text-slate-800 uppercase text-lg mb-1">PROJET : {selectedProject?.name || 'Non sélectionné'}</div>
                  <div className="bg-[#002060] text-white p-4 rounded-md shadow-md text-left min-w-[300px] border-l-4 border-blue-400">
-                  <div className="font-bold border-b border-blue-800/50 pb-1 mb-2 uppercase text-[10px] tracking-widest text-blue-200">Informations Client</div>
-                  <div className="space-y-1 text-xs">
+                  <div className="font-bold border-b border-blue-800/50 pb-1 mb-2 uppercase text-[12px] tracking-widest text-blue-200">Informations Client</div>
+                  <div className="space-y-1 text-sm">
                     <p><span className="text-blue-300 font-medium mr-2">Nom / Prénom :</span> <span className="font-bold uppercase">{selectedProject?.name || selectedProject?.client_name || '—'} {selectedProject?.firstName || selectedProject?.client_firstname || ''}</span></p>
                     <p><span className="text-blue-300 font-medium mr-2">Adresse :</span> <span className="font-bold">{selectedProject?.address || '—'}</span></p>
                     <p><span className="text-blue-300 font-medium mr-2">CP / Ville :</span> <span className="font-bold">{selectedProject?.zip || '—'} {selectedProject?.city || '—'}</span></p>
@@ -2194,35 +2202,35 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
           <div className="grid grid-cols-2 gap-x-8 gap-y-0 border border-slate-100 rounded-lg overflow-hidden">
             <div className="border-r border-slate-100">
               <Row label="LOT BÂTIMENT (Charpente & Couverture)" isHeader />
-              <div className="bg-blue-50/30 px-3 py-1 text-[10px] font-bold text-blue-700 uppercase tracking-tighter">Études techniques</div>
+              <div className="bg-blue-50/30 px-3 py-1 text-[12px] font-bold text-blue-700 uppercase tracking-tighter">Études techniques</div>
               <Row label="  • Étude de renforcement" value={data.etudeRenfort} unit="€ HT" onChange={v => update('etudeRenfort', v)} />
               <Row label="  • Plan d'implantation & descente de charge" value={data.etudeImplant} unit="€ HT" onChange={v => update('etudeImplant', v)} />
               <Row label="  • Plan d'ensemble & note de calcul" value={data.etudeNoteCalcul} unit="€ HT" onChange={v => update('etudeNoteCalcul', v)} />
               <Row label="  • Plan de calepinage couverture" value={data.etudeCalepinage} unit="€ HT" onChange={v => update('etudeCalepinage', v)} />
-              <div className="bg-blue-50/30 px-3 py-1 text-[10px] font-bold text-blue-700 uppercase tracking-tighter">Ossature & Charpente</div>
+              <div className="bg-blue-50/30 px-3 py-1 text-[12px] font-bold text-blue-700 uppercase tracking-tighter">Ossature & Charpente</div>
               <Row label="  • Coût matériel Charpente (BP)" value={params?.coutCharpente} unit="€ HT" />
               <Row label="  • Largeur totale extérieur poteaux" value={fmt(largBat, 2)} unit="ml" />
               <Row label="  • Longueur totale" value={fmt(longBat, 2)} unit="ml" />
               <Row label="  • Nbre de travées / Largeur travée" value={`${nbTravees} u / ${fmt(largTravee, 2)} ml`} />
               <Row label="  • Transport et déchargement charpente" value={data.transportCharpente} unit="€ HT" onChange={v => update('transportCharpente', v)} />
-              <div className="bg-blue-50/30 px-3 py-1 text-[10px] font-bold text-blue-700 uppercase tracking-tighter">Couverture & Finitions</div>
+              <div className="bg-blue-50/30 px-3 py-1 text-[12px] font-bold text-blue-700 uppercase tracking-tighter">Couverture & Finitions</div>
               <Row label="  • Fourniture Bac Acier (BAC ACIER)" value={data.fournitureBac} unit="€ HT" onChange={v => update('fournitureBac', v)} />
               <Row label="  • Surface couverture totale" value={fmt(surface, 0)} unit="m²" />
               <Row label="  • Film anti-condensation / Épaisseur 75/100" value={data.anticondensation} unit="€ HT" onChange={v => update('anticondensation', v)} />
               <Row label="  • Transport et déchargement couverture" value={data.transportCouverture} unit="€ HT" onChange={v => update('transportCouverture', v)} />
             </div>
             <div>
-              <div className="bg-blue-50/30 px-3 py-1 text-[10px] font-bold text-blue-700 uppercase tracking-tighter">Pose & Logistique</div>
+              <div className="bg-blue-50/30 px-3 py-1 text-[12px] font-bold text-blue-700 uppercase tracking-tighter">Pose & Logistique</div>
               <Row label="  • Location engins de levage & montage" value={data.levage} unit="€ HT" onChange={v => update('levage', v)} />
               <Row label="  • Sécurité chantier (EPI / EPC)" value={data.securite} unit="€ HT" onChange={v => update('securite', v)} />
               <Row label="  • Montage charpente & pose couverture" value={data.montage} unit="€ HT" onChange={v => update('montage', v)} />
               <Row label="SOUS-TOTAL LOT BÂTIMENT" value={subtotalBat} unit="€ HT" isSubtotal />
               <div className="h-4 bg-white" />
               <Row label="LOT ÉLECTRICITÉ (Photovoltaïque)" isHeader />
-              <div className="bg-blue-50/30 px-3 py-1 text-[10px] font-bold text-blue-700 uppercase tracking-tighter">Ingénierie & Sécurité</div>
+              <div className="bg-blue-50/30 px-3 py-1 text-[12px] font-bold text-blue-700 uppercase tracking-tighter">Ingénierie & Sécurité</div>
               <Row label="  • Développement, Raccordement & Études PV" value={data.etudeElec} unit="€ HT" onChange={v => update('etudeElec', v)} />
               <Row label="  • Sécurité électrique & Travaux" value={data.securiteElec} unit="€ HT" onChange={v => update('securiteElec', v)} />
-              <div className="bg-blue-50/30 px-3 py-1 text-[10px] font-bold text-blue-700 uppercase tracking-tighter">Matériel & Pose</div>
+              <div className="bg-blue-50/30 px-3 py-1 text-[12px] font-bold text-blue-700 uppercase tracking-tighter">Matériel & Pose</div>
               <Row label="  • Coût matériel Centrale PV (BP)" value={params?.coutCentrale} unit="€ HT" />
               <Row label="  • Puissance totale installée" value={fmt(kwc, 2)} unit="kWc" />
               <Row label="  • Fourniture des Onduleurs (BP)" value={params?.onduleurs} unit="€ HT" />
@@ -2236,8 +2244,8 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
           <div className="bg-slate-900 text-white rounded-xl p-6 shadow-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full -mr-16 -mt-16 blur-3xl" />
             <div className="flex justify-between items-end relative z-10">
-              <div className="space-y-1"><span className="text-xs text-slate-400 font-bold uppercase tracking-tighter">Montant Total du Devis</span><p className="text-[10px] text-slate-500 max-w-sm italic leading-tight">Ce devis est une estimation basée sur les paramètres techniques du projet. Une étude de sol et un levé topographique sont nécessaires pour validation finale.</p></div>
-              <div className="text-right"><span className="text-xs text-blue-400 font-bold block mb-1">TOTAL HT</span><span className="text-3xl font-black tabular-nums">{fmtEur(totalHT)}</span></div>
+              <div className="space-y-1"><span className="text-sm text-slate-400 font-bold uppercase tracking-tighter">Montant Total du Devis</span><p className="text-[12px] text-slate-500 max-w-sm italic leading-tight">Ce devis est une estimation basée sur les paramètres techniques du projet. Une étude de sol et un levé topographique sont nécessaires pour validation finale.</p></div>
+              <div className="text-right"><span className="text-sm text-blue-400 font-bold block mb-1">TOTAL HT</span><span className="text-3xl font-black tabular-nums">{fmtEur(totalHT)}</span></div>
             </div>
           </div>
         </div>
@@ -2259,11 +2267,11 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab }) {
     <div className="p-4 flex flex-col h-full overflow-hidden bg-slate-50">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-bold text-slate-800">BP Sauvegardés ({savedProjects.length})</h3>
-        <p className="text-[10px] text-slate-500 italic">Derniers enregistrements en haut</p>
+        <p className="text-[12px] text-slate-500 italic">Derniers enregistrements en haut</p>
       </div>
 
       <div className="flex-1 overflow-auto border border-slate-200 rounded-xl bg-white shadow-sm no-scrollbar">
-        <table className="w-full text-[11px] border-collapse">
+        <table className="w-full text-[13px] border-collapse">
           <thead className="sticky top-0 z-10 bg-[#002060] text-white">
             <tr>
               <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Projet</th>
@@ -2279,7 +2287,7 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab }) {
                 <td className="px-3 py-1 font-bold text-slate-800 uppercase">{p.name}</td>
                 <td className="px-3 py-1 text-slate-600 font-medium">{p.client_name || '—'} {p.client_firstname || ''}</td>
                 <td className="px-3 py-1 text-slate-500">{p.city || '—'}</td>
-                <td className="px-3 py-1 text-slate-400 text-[10px]">{p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                <td className="px-3 py-1 text-slate-400 text-[12px]">{p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
                 <td className="px-3 py-1 text-right">
                   <div className="flex items-center justify-center gap-1">
                     <button 
@@ -2430,11 +2438,11 @@ function TabCalcul({ projects }) {
   return (
     <div className="p-4 flex flex-col h-full overflow-hidden bg-slate-50">
       <div className="flex items-center gap-2 mb-3">
-        <Button size="sm" onClick={addRow} className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7">
+        <Button size="sm" onClick={addRow} className="bg-blue-600 hover:bg-blue-700 text-white text-sm h-7">
           <Plus className="w-3 h-3 mr-1" /> Nouvelle ligne
         </Button>
-        <span className="text-xs text-slate-500">{allRows.length} projets calculés</span>
-        <div className="ml-auto text-xs text-slate-400 italic">Formules du fichier BP DPGF--TYPE APP G02 appliquées automatiquement</div>
+        <span className="text-sm text-slate-500">{allRows.length} projets calculés</span>
+        <div className="ml-auto text-sm text-slate-400 italic">Formules du fichier BP DPGF--TYPE APP G02 appliquées automatiquement</div>
       </div>
       <div {...useDragScroll()} className="flex-1">
         <table className="text-[12px] border-collapse min-w-max w-full">
@@ -2503,7 +2511,7 @@ function TabPlaceholder({ label }) {
     <div className="flex flex-col items-center justify-center p-16 text-slate-400">
       <FileText className="w-12 h-12 mb-3 opacity-30" />
       <p className="text-sm font-medium">{label}</p>
-      <p className="text-xs mt-1 opacity-60">Disponible prochainement</p>
+      <p className="text-sm mt-1 opacity-60">Disponible prochainement</p>
     </div>
   );
 }
@@ -2554,6 +2562,7 @@ export default function BpAcama() {
     partACC: 0,
     vent: '',
     neige: '',
+    renteType: 'soulte',
   });
 
   useEffect(() => {
@@ -2656,20 +2665,21 @@ export default function BpAcama() {
   const tva = totalConstruction * 0.20;
   const apportSoulte = apport10 + calcSoulte;
 
-  const handleGoalSeek = (type) => {
+  const handleGoalSeek = () => {
     if (!selectedProject) {
       toast({ title: 'Erreur', variant: 'destructive', description: "Veuillez d'abord sélectionner un projet." });
       return;
     }
     try {
       const target = params.targetDSCR || 1.17;
-      const resultCoeff = calculateGoalSeekDSCR({ ...collapsedParams, apport: resteACharge }, type, target);
+      const soulteCoeff = calculateGoalSeekDSCR({ ...collapsedParams, apport: resteACharge }, 'soulte', target);
+      const loyerCoeff = calculateGoalSeekDSCR({ ...collapsedParams, apport: resteACharge }, 'loyer', target);
       setParams(p => ({ 
         ...p, 
-        [type === 'loyer' ? 'loyerCoeff' : 'soulteCoeff']: resultCoeff, 
-        [type === 'loyer' ? 'soulteCoeff' : 'loyerCoeff']: 0 
+        loyerCoeff,
+        soulteCoeff
       }));
-      toast({ title: 'Calcul terminé', description: `Valeur cible atteinte pour un DSCR moyen de ${fmtPct(target)}` });
+      toast({ title: 'Calcul terminé', description: `Loyer et Soulte recalculés pour un DSCR moyen de ${fmtPct(target)}` });
     } catch (e) {
       toast({ title: 'Erreur de calcul', variant: 'destructive', description: e.message });
     }
@@ -2759,7 +2769,7 @@ export default function BpAcama() {
       <aside className="w-64 bg-slate-900 text-white flex flex-col shrink-0">
         <div className="px-4 py-3 border-b border-slate-700">
           <h1 className="text-sm font-bold text-white">BP ACAMA</h1>
-          <p className="text-[10px] text-slate-400">Business Plan ACAMA</p>
+          <p className="text-[12px] text-slate-400">Business Plan ACAMA</p>
         </div>
         <nav className="flex-1 overflow-y-auto py-2">
           {TABS.map(tab => {
@@ -2769,7 +2779,7 @@ export default function BpAcama() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  'w-full flex items-center gap-2 px-4 py-2 text-left text-xs transition-colors',
+                  'w-full flex items-center gap-2 px-4 py-2 text-left text-sm transition-colors',
                   activeTab === tab.id
                     ? 'bg-blue-600 text-white font-semibold'
                     : 'text-slate-300 hover:bg-slate-800 hover:text-white'
@@ -2781,7 +2791,7 @@ export default function BpAcama() {
             );
           })}
         </nav>
-        <div className="px-4 py-3 border-t border-slate-700 text-[10px] text-slate-400">
+        <div className="px-4 py-3 border-t border-slate-700 text-[12px] text-slate-400">
           Interface ACAMA • {new Date().getFullYear()}
         </div>
       </aside>
