@@ -1358,22 +1358,25 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                  <Field label="CIBLE DSCR :" value={params.targetDSCR * 100} onChange={v => setParams(p => ({ ...p, targetDSCR: v / 100 }))} type="number" suffix="%" step="1" className="bg-amber-100/50 p-2 rounded" />
                  
                  <div className="space-y-3 pt-4 border-t border-amber-100">
-                    <div className="flex flex-col gap-2 p-3 bg-white/50 rounded border border-amber-100 relative">
-                      <div className="flex items-center justify-between gap-2 pr-20">
-                        <span className="text-[12px] text-slate-500 font-bold uppercase">Location annuelle 20 ans</span>
-                        <span className="text-[13px] font-bold text-blue-800">{fmtEur(bp.loyer)}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-2 pr-20">
-                        <span className="text-[12px] text-slate-500 font-bold uppercase">Soulte sur 20 ans</span>
-                        <span className="text-[13px] font-bold text-blue-800">{fmtEur(bp.soulte)}</span>
-                      </div>
+                    <div className="flex flex-col gap-3 p-3 bg-white/50 rounded border border-amber-100 items-center">
                       <Button 
                         size="sm" 
                         onClick={handleGoalSeek} 
-                        className="absolute right-2 top-1/2 -translate-y-1/2 h-10 px-3 text-[13px] bg-blue-600 font-bold uppercase"
+                        className="w-48 h-10 px-3 text-[13px] bg-blue-600 font-bold uppercase shadow-md hover:bg-blue-700 transition-all border border-blue-500"
                       >
                         Execution
                       </Button>
+                      
+                      <div className="w-full space-y-2 pt-2 border-t border-amber-50">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[12px] text-slate-500 font-bold uppercase">Location annuelle 20 ans</span>
+                          <span className="text-[13px] font-bold text-blue-800">{fmtEur(bp.loyer)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[12px] text-slate-500 font-bold uppercase">Soulte sur 20 ans</span>
+                          <span className="text-[13px] font-bold text-blue-800">{fmtEur(bp.soulte)}</span>
+                        </div>
+                      </div>
                     </div>
 
                    <div className="flex justify-between text-[13px]"><span className="text-slate-500">CA 20 ans :</span><span className="font-bold text-blue-800">{fmtEur(bp.sumCA)}</span></div>
