@@ -1133,11 +1133,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-y-2">
                   <Field label="Durée de l'emprunt" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" size="sm" />
-                  <Field label="Indexation tarif" value={params.indexationTarif * 100} onChange={v => setParams(p => ({ ...p, indexationTarif: v / 100 }))} type="number" suffix="%" step="0.1" size="sm" />
                   <Field label="Taux de crédit" value={params.tauxCredit} onChange={v => setParams(p => ({ ...p, tauxCredit: v }))} type="number" suffix="%" size="sm" />
-                  <Field label="P. Unitaire" value={params.puissanceUnitaire} onChange={v => setParams(p => ({ ...p, puissanceUnitaire: v }))} type="number" suffix="Wc" size="sm" />
-                  <Field label="Dégradation modules" value={params.degradation * 100} onChange={v => setParams(p => ({ ...p, degradation: v / 100 }))} type="number" suffix="%" step="0.1" size="sm" />
-                  <Field label="Indexation OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" size="sm" />
                 </div>
                 
                 <div className="pt-2 border-t border-slate-200 mt-2 space-y-1">
@@ -1164,7 +1160,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               <div className="p-2 bg-green-50 rounded-full mb-1"><CheckCircle className="w-6 h-6 text-green-500" /></div>
               <div className="text-4xl font-black text-green-600">{fmtPct(bp.dscrMoyen)}</div>
               <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">DSCR MOYEN 20 ANS</div>
-              <div className="text-[10px] text-slate-400">Seuil bancaire : 110%</div>
+              <div className="text-[10px] text-slate-400">Seuil bancaire : {fmt(params.targetDSCR * 100, 0)}%</div>
             </div>
 
             <div className="bg-blue-600 rounded-lg p-6 text-white shadow-xl shadow-blue-100 space-y-4 grow">
