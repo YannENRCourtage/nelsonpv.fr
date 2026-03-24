@@ -1286,17 +1286,12 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               </div>
             </SectionCard>
 
-            <SectionCard title="INDICES & DÉGRADATION" id="pdf-section-indices" className="grid grid-cols-1 gap-y-1 py-2">
-              <Field label="P. Unitaire" value={params.puissanceUnitaire} onChange={v => setParams(p => ({ ...p, puissanceUnitaire: v }))} type="number" suffix="Wc" className="h-7" />
-              <Field label="Indice Tarifs" value={params.indexationTarif * 100} onChange={v => setParams(p => ({ ...p, indexationTarif: v / 100 }))} type="number" suffix="%" step="0.1" className="h-7" />
-              <Field label="Indice OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" className="h-7" />
-              <Field label="Dégradation" value={params.degradation * 100} onChange={v => setParams(p => ({ ...p, degradation: v / 100 }))} type="number" suffix="%" step="0.1" className="h-7" />
-            </SectionCard>
+            {/* INDICES moved to Column 2 */}
           </div>
 
           {/* Column 2: Parameters (Reduced) */}
           <div className="lg:col-span-6 xl:col-span-3 space-y-6 flex flex-col h-full">
-            <SectionCard title="TARIFS D'ACHAT" id="pdf-section-tarifs" className="grid grid-cols-1 gap-y-1 py-2 grow border-t-4 border-t-orange-500">
+            <SectionCard title="TARIFS D'ACHAT" id="pdf-section-tarifs" className="grid grid-cols-1 gap-y-1 py-2 border-t-4 border-t-orange-500">
               <Field label="Seuil" value={params.seuilKwhKwc} onChange={v => setParams(p => ({ ...p, seuilKwhKwc: v }))} type="number" suffix="kWh/kWc" className="h-7" />
               <Field label="Tarif ≤ 1 100" value={params.tarifBas} onChange={v => setParams(p => ({ ...p, tarifBas: v }))} type="number" suffix="€" precision={4} step="0.001" className="h-7" />
               <Field label="Tarif > 1 100" value={params.tarifHaut} onChange={v => setParams(p => ({ ...p, tarifHaut: v }))} type="number" suffix="€" precision={4} step="0.001" className="h-7" />
@@ -1311,105 +1306,109 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               <Field label="Gestion" value={params.gestionAdmin} onChange={v => setParams(p => ({ ...p, gestionAdmin: v }))} type="number" suffix="€" className="h-7" />
             </SectionCard>
 
-            <SectionCard title="BANQUE" id="pdf-section-banque" className="bg-slate-50 border-slate-200 grow">
+            <SectionCard title="BANQUE" id="pdf-section-banque" className="bg-slate-50 border-slate-200">
               <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-y-2">
-                  <Field label="Durée de l'emprunt" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" size="sm" />
-                  <Field label="Taux de crédit" value={params.tauxCredit} onChange={v => setParams(p => ({ ...p, tauxCredit: v }))} type="number" suffix="%" step="0.1" size="sm" />
+                <div className="grid grid-cols-1 gap-y-1">
+                  <Field label="Durée" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" className="h-7" />
+                  <Field label="Taux" value={params.tauxCredit} onChange={v => setParams(p => ({ ...p, tauxCredit: v }))} type="number" suffix="%" step="0.1" className="h-7" />
                 </div>
                 
                 <div className="pt-2 border-t border-slate-200 mt-2 space-y-1">
-                  <div className="flex justify-between text-[13px]">
-                    <span className="text-slate-500 italic">Apport (10%) :</span>
+                  <div className="flex justify-between text-[12px]">
+                    <span className="text-slate-500 italic">Apport :</span>
                     <span className="font-bold text-slate-700">{fmtEur(apport10)}</span>
                   </div>
-                  <div className="flex justify-between text-[13px]">
+                  <div className="flex justify-between text-[12px]">
                     <span className="text-slate-500 italic">Emprunt :</span>
                     <span className="font-bold text-slate-700">{fmtEur(emprunt)}</span>
                   </div>
-                  <div className="flex justify-between text-[13px] mt-2 pt-1 border-t border-slate-200 font-bold">
-                    <span className="text-slate-700 font-bold">Annuité :</span>
+                  <div className="flex justify-between text-[13px] mt-1 pt-1 border-t border-slate-200 font-bold">
+                    <span className="text-slate-700 font-bold uppercase text-[11px]">Annuité :</span>
                     <span className="text-slate-900">{fmtEur(bp.annuite)}</span>
                   </div>
                 </div>
               </div>
             </SectionCard>
+
+            <SectionCard title="INDICES & DÉGRADATION" id="pdf-section-indices" className="grid grid-cols-1 gap-y-1 py-1">
+              <Field label="P. Unitaire" value={params.puissanceUnitaire} onChange={v => setParams(p => ({ ...p, puissanceUnitaire: v }))} type="number" suffix="Wc" className="h-7" />
+              <Field label="Indice Tarifs" value={params.indexationTarif * 100} onChange={v => setParams(p => ({ ...p, indexationTarif: v / 100 }))} type="number" suffix="%" step="0.1" className="h-7" />
+              <Field label="Indice OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" className="h-7" />
+              <Field label="Dégradation" value={params.degradation * 100} onChange={v => setParams(p => ({ ...p, degradation: v / 100 }))} type="number" suffix="%" step="0.1" className="h-7" />
+            </SectionCard>
           </div>
 
           {/* Column 3: Results and Banking (Reduced) */}
           <div className="lg:col-span-6 xl:col-span-4 space-y-6 flex flex-col h-full">
-            <div className="bg-white rounded-lg border border-slate-200 p-6 flex flex-col items-center justify-center text-center space-y-2 shadow-sm border-t-4 border-t-green-500 grow">
-              <div className="p-2 bg-green-50 rounded-full mb-1"><CheckCircle className="w-6 h-6 text-green-500" /></div>
-              <div className="text-4xl font-black text-green-600">{fmtPct(bp.dscrMoyen)}</div>
-              <div className="text-[13px] font-bold text-slate-500 uppercase tracking-widest">DSCR MOYEN 20 ANS</div>
-              <div className="text-[12px] text-slate-400">Seuil bancaire : {fmt(params.targetDSCR * 100, 0)}%</div>
+            <div className="bg-white rounded-lg border border-slate-200 p-4 flex flex-col items-center justify-center text-center space-y-1 shadow-sm border-t-4 border-t-green-500 grow">
+              <div className="p-1.5 bg-green-50 rounded-full mb-0.5"><CheckCircle className="w-5 h-5 text-green-500" /></div>
+              <div className="text-3xl font-black text-green-600">{fmtPct(bp.dscrMoyen)}</div>
+              <div className="text-[12px] font-bold text-slate-500 uppercase tracking-widest">DSCR MOYEN 20 ANS</div>
+              <div className="text-[11px] text-slate-400">Seuil bancaire : {fmt(params.targetDSCR * 100, 0)}%</div>
             </div>
 
-            <div className="bg-blue-600 rounded-lg p-6 text-white shadow-xl shadow-blue-100 space-y-4 grow">
+            <div className="bg-blue-600 rounded-lg p-5 text-white shadow-xl shadow-blue-100 space-y-3 grow">
               <div className="space-y-1">
-                <div className="text-[12px] font-bold uppercase tracking-widest opacity-60">RESTE À CHARGE</div>
-                <div className="text-3xl font-black">{fmtEur(resteACharge)}</div>
+                <div className="text-[11px] font-bold uppercase tracking-widest opacity-60">RESTE À CHARGE</div>
+                <div className="text-2xl font-black">{fmtEur(resteACharge)}</div>
               </div>
-              <Button onClick={applyToProject} className="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 text-sm py-5">
+              <Button onClick={applyToProject} className="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 text-sm py-4 h-10">
                 <RefreshCw className="w-3.5 h-3.5 mr-2" /> Appliquer
               </Button>
             </div>
 
-            <SectionCard title="INDICATEURS" id="pdf-section-indic" className="grow">
-               <div className="space-y-2">
-                 <div className="flex justify-between text-sm"><span className="text-slate-500">Apport avec soulte :</span><span className="font-bold text-blue-800">{fmtEur(apport10 + (calcSoulte > 0 ? calcSoulte : 0))}</span></div>
-                 <div className="flex justify-between text-sm"><span className="text-slate-500">Emprunt net :</span><span className="font-bold text-blue-800">{fmtEur(emprunt)}</span></div>
-                 <div className="flex justify-between text-sm"><span className="text-slate-500">CA an 1 :</span><span className="font-bold text-blue-600">{fmtEur(bp.rows[0]?.ca)}</span></div>
-                 <div className="flex justify-between text-sm"><span className="text-slate-500">Total charges an 1 :</span><span className="font-bold text-red-600">{fmtEur((bp.rows[0]?.opex || 0) + (bp.rows[0]?.serviceDette || 0))}</span></div>
+            <SectionCard title="INDICATEURS" id="pdf-section-indic" className="grow py-1">
+               <div className="space-y-1">
+                 <div className="flex justify-between text-sm"><span className="text-slate-500 text-[12px]">Apport avec soulte :</span><span className="font-bold text-blue-800 text-[13px]">{fmtEur(apport10 + (calcSoulte > 0 ? calcSoulte : 0))}</span></div>
+                 <div className="flex justify-between text-sm"><span className="text-slate-500 text-[12px]">Emprunt net :</span><span className="font-bold text-blue-800 text-[13px]">{fmtEur(emprunt)}</span></div>
+                 <div className="flex justify-between text-sm"><span className="text-slate-500 text-[12px]">CA an 1 :</span><span className="font-bold text-blue-600 text-[13px]">{fmtEur(bp.rows[0]?.ca)}</span></div>
+                 <div className="flex justify-between text-sm"><span className="text-slate-500 text-[12px]">Charges an 1 :</span><span className="font-bold text-red-600 text-[13px]">{fmtEur((bp.rows[0]?.opex || 0) + (bp.rows[0]?.serviceDette || 0))}</span></div>
                </div>
             </SectionCard>
 
-            <SectionCard title="RENTABILITÉ" id="pdf-section-renta" className="bg-amber-50/30 border-amber-100 grow">
-               <div className="space-y-4">
-                 <Field label="CIBLE DSCR :" value={params.targetDSCR * 100} onChange={v => setParams(p => ({ ...p, targetDSCR: v / 100 }))} type="number" suffix="%" step="1" className="bg-amber-100/50 p-2 rounded" />
+            <SectionCard title="RENTABILITÉ" id="pdf-section-renta" className="bg-amber-50/10 border-amber-100 grow py-1">
+               <div className="space-y-2">
+                 <Field label="CIBLE DSCR :" value={params.targetDSCR * 100} onChange={v => setParams(p => ({ ...p, targetDSCR: v / 100 }))} type="number" suffix="%" step="1" className="bg-amber-100/30 p-1.5 rounded" />
                  
-                 <div className="space-y-3 pt-4 border-t border-amber-100">
-                    <div className="flex flex-col gap-3 p-3 bg-white/50 rounded border border-amber-100 items-center">
-                      <Button 
-                        size="sm" 
-                        onClick={handleGoalSeek} 
-                        className="w-48 h-10 px-3 text-[13px] bg-blue-600 font-bold uppercase shadow-md hover:bg-blue-700 transition-all border border-blue-500"
-                      >
-                        Execution
-                      </Button>
-                      
-                      <div className="w-full space-y-2 pt-2 border-t border-amber-50">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[12px] text-slate-500 font-bold uppercase">Location annuelle 20 ans</span>
-                          <span className="text-[13px] font-bold text-blue-800">{fmtEur(bp.loyer)}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[12px] text-slate-500 font-bold uppercase">Soulte sur 20 ans</span>
-                          <span className="text-[13px] font-bold text-blue-800">{fmtEur(bp.soulte)}</span>
-                        </div>
+                 <div className="pt-2 border-t border-amber-50 flex flex-col items-center gap-2">
+                    <Button 
+                      size="sm" 
+                      onClick={handleGoalSeek} 
+                      className="w-40 h-8 px-3 text-[12px] bg-blue-600 font-bold uppercase shadow-sm hover:bg-blue-700 transition-all border border-blue-500"
+                    >
+                      Execution
+                    </Button>
+                    
+                    <div className="w-full grid grid-cols-2 gap-2 pt-1">
+                      <div className="flex flex-col items-center p-1 bg-white/40 rounded border border-amber-50">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">Loyer annuel</span>
+                        <span className="text-[12px] font-bold text-blue-800">{fmtEur(bp.loyer)}</span>
+                      </div>
+                      <div className="flex flex-col items-center p-1 bg-white/40 rounded border border-amber-50">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">Soulte</span>
+                        <span className="text-[12px] font-bold text-blue-800">{fmtEur(bp.soulte)}</span>
                       </div>
                     </div>
+                 </div>
 
-                   <div className="flex justify-between text-[13px]"><span className="text-slate-500">CA 20 ans :</span><span className="font-bold text-blue-800">{fmtEur(bp.sumCA)}</span></div>
-                   <div className="flex justify-between text-[13px]"><span className="text-slate-500">Gains 20 ans :</span><span className="font-bold text-green-700">{fmtEur(bp.gains)}</span></div>
-                   <div className="space-y-1 pt-2 border-t border-amber-50 mt-1">
-                     <div className="flex justify-between text-[13px]"><span className="text-slate-500">TRI Projet :</span><span className="font-bold text-green-600">{fmtPct(bp.triProjet)}</span></div>
-                     <div className="flex justify-between text-[13px]"><span className="text-slate-500">TRI FP :</span><span className="font-bold text-green-600">{fmtPct(bp.triFP)}</span></div>
-                     <div className="pt-2 border-t border-slate-200 mt-2 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Temps de retour :</span>
-                  <span className="font-bold text-blue-600">{fmt(bp.payback, 1)} ans</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Prix au Wc global :</span>
-                  <span className="font-bold text-slate-700">{fmtEur(totalInvestissement / (bp.rows[0]?.kwcDeg || 1))} /Wc</span>
-                </div>
-              </div>
-                   </div>
+                 <div className="space-y-0.5 pt-1 border-t border-amber-50">
+                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">CA 20 ans :</span><span className="font-bold text-blue-800">{fmtEur(bp.sumCA)}</span></div>
+                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">Gains 20 ans :</span><span className="font-bold text-green-700">{fmtEur(bp.gains)}</span></div>
+                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">TRI FP :</span><span className="font-bold text-green-600">{fmtPct(bp.triFP)}</span></div>
+                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">Retour :</span><span className="font-bold text-blue-600">{fmt(bp.payback, 1)} ans</span></div>
                  </div>
                </div>
             </SectionCard>
-          </div>
+            <div className="pt-1 border-t border-slate-200 mt-1 space-y-1">
+              <div className="flex justify-between text-[12px]">
+                <span className="text-slate-500 italic">Temps de retour :</span>
+                <span className="font-bold text-blue-600">{fmt(bp.payback, 1)} ans</span>
+              </div>
+              <div className="flex justify-between text-[12px]">
+                <span className="text-slate-500 italic">Prix au Wc global :</span>
+                <span className="font-bold text-slate-700">{fmtEur(totalInvestissement / (bp.rows[0]?.kwcDeg || 1))} /Wc</span>
+              </div>
+            </div>
         </div>
 
         <div className="grid grid-cols-2 gap-6 bg-white rounded-lg border border-slate-200 p-4">
@@ -1439,8 +1438,9 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
           </div>
         </div>
       </div>
+    </div>
 
-      <div id="pdf-section-2" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
+    <div id="pdf-section-2" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
         <PDFHeader selectedProject={selectedProject} />
         <div className="mt-4">
            <TableauPrevisionnel params={collapsedParams} rows={rows} />
