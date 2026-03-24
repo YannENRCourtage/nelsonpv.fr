@@ -1288,7 +1288,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
 
           {/* Column 2: Parameters (Reduced) */}
           <div className="lg:col-span-6 xl:col-span-3 space-y-6 flex flex-col h-full">
-            <SectionCard title="TARIFS D'ACHAT" id="pdf-section-tarifs" className="grid grid-cols-1 gap-y-1 py-2 grow">
+            <SectionCard title="TARIFS D'ACHAT" id="pdf-section-tarifs" className="grid grid-cols-1 gap-y-1 py-2 grow border-t-4 border-t-orange-500">
               <Field label="Seuil" value={params.seuilKwhKwc} onChange={v => setParams(p => ({ ...p, seuilKwhKwc: v }))} type="number" suffix="kWh/kWc" className="h-7" />
               <Field label="Tarif ≤ 1 100" value={params.tarifBas} onChange={v => setParams(p => ({ ...p, tarifBas: v }))} type="number" suffix="€" precision={4} step="0.001" className="h-7" />
               <Field label="Tarif > 1 100" value={params.tarifHaut} onChange={v => setParams(p => ({ ...p, tarifHaut: v }))} type="number" suffix="€" precision={4} step="0.001" className="h-7" />
