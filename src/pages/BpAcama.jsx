@@ -66,6 +66,41 @@ const SUIVI_BAT_DATA = [
   { type:'OMB TYPE PL', spv:'ACAMA SPV1', kwc:27.60, cout_bat:15207, massifs:6, longueur:7.5, largeur:17.8, travees:1, hSud:0, hNord:0, faitage:17.8, surfSud:127, surfNord:0, surfTot:127, penteSud:0, penteNord:0, modH:6, modL:10, totalMod:60, puissMax:27.6, prodMoyen:0 },
 ];
 
+const DETAILED_SUIVI_DATA = [
+  { id:1, type:'TYPE 1 MINI', spv:'ACAMA SPV1', cap:270, massifs:22, long:53.72, larg:23.47, travees:7, lTravee:7.5, hSud:4, hNord:4, hFait:6.9, lRemS:11.97, lRemN:11.97, sSud:643.0, sNord:643.0, sTot:1286.1, axeS:11.82, axeN:11.82, pS:14.01, pN:14.01, bPO_d:115.54, bPO_e:8088, bPE_d:115.54, bPE_e:8088, bLN_d:231.69, bLN_e:12743, bLS_d:231.69, bLS_e:12743, chS:6017, chN:6017, faitage:1612, anticond:2572 },
+  { id:2, type:'TYPE 1 MID', spv:'ACAMA SPV1', cap:306, massifs:24, long:60.67, larg:23.47, travees:8, lTravee:7.5, hSud:4, hNord:4, hFait:6.9, lRemS:11.97, lRemN:11.97, sSud:725.6, sNord:725.6, sTot:1451.2, axeS:11.82, axeN:11.82, pS:14.01, pN:14.01, bPO_d:115.54, bPO_e:8088, bPE_d:115.54, bPE_e:8088, bLN_d:264.75, bLN_e:14561, bLS_d:264.75, bLS_e:14561, chS:6789, chN:6789, faitage:1819, anticond:2902 },
+  { id:3, type:'TYPE 1 MAXI', spv:'ACAMA SPV1', cap:342, massifs:26, long:68.05, larg:23.47, travees:9, lTravee:7.5, hSud:4, hNord:4, hFait:6.9, lRemS:11.97, lRemN:11.97, sSud:814.6, sNord:814.6, sTot:1629.1, axeS:11.82, axeN:11.82, pS:14.01, pN:14.01, bPO_d:115.54, bPO_e:8088, bPE_d:115.54, bPE_e:8088, bLN_d:297.84, bLN_e:16381, bLS_d:231.69, bLS_e:16381, chS:7622, chN:7622, faitage:2042, anticond:3258 },
+  { id:4, type:'TYPE 2 MINI', spv:'ACAMA SPV1', cap:189, massifs:21, long:37.55, larg:24.26, travees:6, lTravee:6.2, hSud:4.35, hNord:9.67, hFait:0, lRemS:23.26, lRemN:0, sSud:873.6, sNord:0, sTot:873.6, axeS:22.44, axeN:0, pS:11, pN:0, bPO_d:157.15, bPO_e:11001, bPE_d:157.15, bPE_e:11001, bLN_d:375.75, bLN_e:20666, bLS_d:231.69, bLS_e:12743, chS:4428, chN:4428, faitage:1127, anticond:1747 },
+  { id:5, type:'TYPE 2 MID', spv:'ACAMA SPV1', cap:315, massifs:30, long:62.36, larg:24.26, travees:10, lTravee:6.2, hSud:4.35, hNord:9.67, hFait:0, lRemS:23.26, lRemN:0, sSud:1450.5, sNord:0, sTot:1450.5, axeS:22.44, axeN:0, pS:11, pN:0, bPO_d:157.15, bPO_e:11001, bPE_d:157.15, bPE_e:11001, bLN_d:623.79, bLN_e:34308, bLS_d:231.69, bLS_e:12743, chS:7312, chN:7312, faitage:1871, anticond:2901 },
+  { id:6, type:'TYPE 2 MAXI', spv:'ACAMA SPV1', cap:342, massifs:33, long:68.55, larg:24.26, travees:11, lTravee:6.2, hSud:4.35, hNord:9.67, hFait:0, lRemS:23.26, lRemN:0, sSud:1590.1, sNord:0, sTot:1590.1, axeS:22.44, axeN:0, pS:11, pN:0, bPO_d:157.15, bPO_e:11001, bPE_d:157.15, bPE_e:11001, bLN_d:686.03, bLN_e:37732, bLS_d:231.69, bLS_e:12743, chS:8043, chN:8043, faitage:2051, anticond:3180 },
+  { id:7, type:'TYPE 3 MINI', spv:'ACAMA SPV1', cap:234.9, massifs:20, long:52.64, larg:21.13, travees:7, lTravee:7.5, hSud:2.56, hNord:2.56, hFait:4.7, lRemS:10.7, lRemN:10.7, sSud:563.2, sNord:563.2, sTot:1126.5, axeS:10.29, axeN:10.29, pS:11.75, pN:11.75, bPO_d:73.2, bPO_e:5124, bPE_d:73.2, bPE_e:5124, bLN_d:150.22, bLN_e:8262, bLS_d:231.69, bLS_e:12743, chS:5274, chN:5274, faitage:1579, anticond:2253 },
+  { id:8, type:'TYPE 3 MID', spv:'ACAMA SPV1', cap:307.8, massifs:24, long:68, larg:21.13, travees:9, lTravee:7.5, hSud:2.56, hNord:2.56, hFait:4.7, lRemS:10.7, lRemN:10.7, sSud:727.6, sNord:727.6, sTot:1455.2, axeS:10.29, axeN:10.29, pS:11.75, pN:11.75, bPO_d:73.2, bPO_e:5124, bPE_d:73.2, bPE_e:5124, bLN_d:190.2, bLN_e:10461, bLS_d:231.69, bLS_e:12743, chS:6809, chN:6809, faitage:2040, anticond:2910 },
+  { id:9, type:'TYPE 3 MAXI', spv:'ACAMA SPV1', cap:405, massifs:30, long:90.14, larg:21.13, travees:12, lTravee:7.5, hSud:2.56, hNord:2.56, hFait:4.7, lRemS:10.7, lRemN:10.7, sSud:964.5, sNord:964.5, sTot:1929.0, axeS:10.29, axeN:10.29, pS:11.75, pN:11.75, bPO_d:73.2, bPO_e:5124, bPE_d:73.2, bPE_e:5124, bLN_d:257.25, bLN_e:14149, bLS_d:231.69, bLS_e:12743, chS:10096, chN:10096, faitage:2704, anticond:3858 },
+  { id:10, type:'TYPE 4 MINI', spv:'ACAMA SPV1', cap:302.4, massifs:24, long:37.65, larg:37.49, travees:5, lTravee:7.5, hSud:4.18, hNord:4.18, hFait:6.05, lRemS:18.79, lRemN:18.79, sSud:707.4, sNord:707.4, sTot:1414.9, axeS:18.5, axeN:18.5, pS:5.77, pN:5.77, bPO_d:204.8, bPO_e:14336, bPE_d:204.8, bPE_e:14336, bLN_d:170.97, bLN_e:9403, bLS_d:231.69, bLS_e:12743, chS:4207, chN:4207, faitage:1130, anticond:2830 },
+  { id:11, type:'TYPE 4 MID', spv:'ACAMA SPV1', cap:360, massifs:28, long:45.15, larg:37.49, travees:6, lTravee:7.5, hSud:4.18, hNord:4.18, hFait:6.05, lRemS:18.79, lRemN:18.79, sSud:848.4, sNord:848.4, sTot:1696.7, axeS:18.5, axeN:18.5, pS:5.77, pN:5.77, bPO_d:204.8, bPO_e:14336, bPE_d:204.8, bPE_e:14336, bLN_d:205.04, bLN_e:11277, bLS_d:231.69, bLS_e:12743, chS:5057, chN:5057, faitage:1355, anticond:3393 },
+  { id:12, type:'TYPE 4 MAXI', spv:'ACAMA SPV1', cap:499.05, massifs:36, long:63.35, larg:37.49, travees:8, lTravee:7.9, hSud:4.18, hNord:4.18, hFait:6.05, lRemS:18.79, lRemN:18.79, sSud:1190.3, sNord:1190.3, sTot:2380.7, axeS:18.5, axeN:18.5, pS:5.77, pN:5.77, bPO_d:204.8, bPO_e:14336, bPE_d:204.8, bPE_e:14336, bLN_d:287.72, bLN_e:15825, bLS_d:231.69, bLS_e:12743, chS:7095, chN:7095, faitage:1901, anticond:4761 },
+  { id:13, type:'TYPE 5 MINI', spv:'ACAMA SPV1', cap:175.95, massifs:18, long:31.18, larg:27.59, travees:5, lTravee:6.2, hSud:4, hNord:8.26, hFait:7.54, lRemS:23.69, lRemN:4.19, sSud:738.2, sNord:130.6, sTot:868.7, axeS:23.1, axeN:3.93, pS:8.71, pN:-10.38, bPO_d:185.15, bPO_e:12961, bPE_d:185.15, bPE_e:12961, bLN_d:245.36, bLN_e:13495, bLS_d:231.69, bLS_e:12743, chS:3490, chN:3490, faitage:935, anticond:1737 },
+  { id:14, type:'TYPE 5 MID', spv:'ACAMA SPV1', cap:289.8, massifs:27, long:50.18, larg:27.59, travees:8, lTravee:6.2, hSud:4, hNord:8.26, hFait:7.54, lRemS:23.69, lRemN:4.19, sSud:1188.3, sNord:210.2, sTot:1398.5, axeS:23.1, axeN:3.93, pS:8.71, pN:-10.38, bPO_d:185.15, bPO_e:12961, bPE_d:185.15, bPE_e:12961, bLN_d:394.94, bLN_e:21557, bLS_d:231.69, bLS_e:12743, chS:5618, chN:5618, faitage:1505, anticond:2797 },
+  { id:15, type:'TYPE 5 MAXI', spv:'ACAMA SPV1', cap:362.25, massifs:33, long:62.58, larg:27.59, travees:10, lTravee:6.2, hSud:4, hNord:8.26, hFait:7.54, lRemS:23.69, lRemN:4.19, sSud:1482, sNord:262.1, sTot:1744.2, axeS:23.1, axeN:3.93, pS:8.71, pN:-10.38, bPO_d:185.15, bPO_e:12961, bPE_d:185.15, bPE_e:12961, bLN_d:489.65, bLN_e:26931, bLS_d:231.69, bLS_e:12743, chS:7007, chN:7007, faitage:1877, anticond:3488 },
+  { id:16, type:'TYPE 6 MINI', spv:'ACAMA SPV1', kwc:158.4, massifs:14, long:38.4, larg:19.87, travees:6, lTravee:6.4, hSud:4.04, hNord:5.7, hFait:7, lRemS:15.21, lRemN:4.14, sSud:599.3, sNord:163.1, sTot:762.4, axeS:14.67, axeN:3.78, pS:11.41, pN:18.98, bPO_d:100.28, bPO_e:7020, bPE_d:100.28, bPE_e:7020, bLN_d:232.65, bLN_e:12796, bLS_d:231.69, bLS_e:12743, chS:4413, chN:4413, faitage:1182, anticond:1525 },
+  { id:17, type:'TYPE 6 MID', spv:'ACAMA SPV1', kwc:259.2, massifs:22, long:64.17, larg:19.87, travees:10, lTravee:6.4, hSud:4.04, hNord:5.7, hFait:7, lRemS:15.21, lRemN:4.14, sSud:976, sNord:265.7, sTot:1241.7, axeS:14.67, axeN:3.78, pS:11.41, pN:18.98, bPO_d:100.28, bPO_e:7020, bPE_d:100.28, bPE_e:7020, bLN_d:387.07, bLN_e:21289, bLS_d:231.69, bLS_e:12743, chS:7387, chN:7387, faitage:1925, anticond:2485 },
+  { id:18, type:'TYPE 6 MAXI', spv:'ACAMA SPV1', kwc:338.4, massifs:28, long:83.77, larg:19.87, travees:13, lTravee:6.4, hSud:4.04, hNord:5.7, hFait:7, lRemS:15.21, lRemN:4.14, sSud:1274.1, sNord:346.8, sTot:1620.9, axeS:14.67, axeN:3.78, pS:11.41, pN:18.98, bPO_d:100.28, bPO_e:7020, bPE_d:100.28, bPE_e:7020, bLN_d:508.38, bLN_e:27930, bLS_d:231.69, bLS_e:12743, chS:9382, chN:9382, faitage:2513, anticond:3242 },
+  { id:19, type:'TYPE 7 MINI', kwc:153, massifs:14, long:36.17, larg:20.19, travees:6, lTravee:6, hSud:4, hNord:7.24, hFait:0, lRemS:20.45, lRemN:0, sSud:739.7, sNord:0, sTot:739.7, axeS:19.94, axeN:0, pS:-11.34, pN:0, bPO_d:111.99, bPO_e:7839, bPE_d:111.99, bPE_e:7839, bLN_d:276.91, bLN_e:15230, bLS_d:231.69, bLS_e:12743, chS:4051, chN:4051, faitage:1085, anticond:1479 },
+  { id:20, type:'TYPE 7 MID', kwc:260.1, massifs:22, long:60.17, larg:20.19, travees:10, lTravee:6, hSud:4, hNord:7.24, hFait:0, lRemS:20.45, lRemN:0, sSud:1230.7, sNord:0, sTot:1230.7, axeS:19.94, axeN:0, pS:-11.34, pN:0, bPO_d:111.99, bPO_e:7839, bPE_d:111.99, bPE_e:7839, bLN_d:460.75, bLN_e:25341, bLS_d:231.69, bLS_e:12743, chS:6784, chN:6784, faitage:1817, anticond:2477 },
+  { id:21, type:'TYPE 7 MAXI', kwc:336.1, massifs:28, long:78.57, larg:20.19, travees:13, lTravee:6, hSud:4, hNord:7.24, hFait:0, lRemS:20.45, lRemN:0, sSud:1606.8, sNord:0, sTot:1606.8, axeS:19.94, axeN:0, pS:-11.34, pN:0, bPO_d:111.99, bPO_e:7839, bPE_d:111.99, bPE_e:7839, bLN_d:598.79, bLN_e:32933, bLS_d:231.69, bLS_e:12743, chS:8800, chN:8800, faitage:2357, anticond:3214 },
+  { id:22, type:'TYPE 8 MINI', kwc:237.6, massifs:21, long:43.65, larg:26.26, travees:6, lTravee:7.25, hSud:4, hNord:5.65, hFait:7, lRemS:18.08, lRemN:8.4, sSud:789.2, sNord:366.7, sTot:1155.9, axeS:17.75, axeN:8.09, pS:9.59, pN:9.47, bPO_d:146.71, bPO_e:10270, bPE_d:146.71, bPE_e:10270, bLN_d:260.28, bLN_e:14315, bLS_d:231.69, bLS_e:12743, chS:4889, chN:4889, faitage:1310, anticond:2312 },
+  { id:23, type:'TYPE 8 MID', kwc:316.8, massifs:27, long:58.15, larg:26.26, travees:8, lTravee:7.25, hSud:4, hNord:5.65, hFait:7, lRemS:18.08, lRemN:8.4, sSud:1051.4, sNord:488.5, sTot:1539.8, axeS:17.75, axeN:8.09, pS:9.59, pN:9.47, bPO_d:146.71, bPO_e:10270, bPE_d:146.71, bPE_e:10270, bLN_d:346.67, bLN_e:19067, bLS_d:231.69, bLS_e:12743, chS:6515, chN:6515, faitage:1745, anticond:3080 },
+  { id:24, type:'TYPE 8 MAXI', kwc:485.1, massifs:39, long:87.15, larg:26.26, travees:12, lTravee:7.25, hSud:4, hNord:5.65, hFait:7, lRemS:18.08, lRemN:8.4, sSud:1582.9, sNord:735.4, sTot:2318.3, axeS:17.75, axeN:8.09, pS:9.59, pN:9.47, bPO_d:146.71, bPO_e:10270, bPE_d:146.71, bPE_e:10270, bLN_d:519.6, bLN_e:28578, bLS_d:231.69, bLS_e:12743, chS:9806, chN:9806, faitage:2627, anticond:4637 },
+  { id:25, type:'TYPE 9 MINI', kwc:255.15, massifs:18, long:37.67, larg:31.13, travees:5, lTravee:7.5, hSud:3.79, hNord:7.59, hFait:9.72, lRemS:23.48, lRemN:8.48, sSud:884.5, sNord:319.4, sTot:1203.9, axeS:22.51, axeN:8, pS:14.76, pN:14.91, bPO_d:221.67, bPO_e:15517, bPE_d:221.67, bPE_e:15517, bLN_d:298.25, bLN_e:16404, bLS_d:231.69, bLS_e:12743, chS:4207, chN:4207, faitage:1130, anticond:2408 },
+  { id:26, type:'TYPE 9 MID', kwc:355.35, massifs:24, long:52.67, larg:31.13, travees:7, lTravee:7.5, hSud:3.79, hNord:7.59, hFait:9.72, lRemS:23.48, lRemN:8.48, sSud:1236.7, sNord:446.6, sTot:1683.3, axeS:22.51, axeN:8, pS:14.76, pN:14.91, bPO_d:221.67, bPO_e:15517, bPE_d:221.67, bPE_e:15517, bLN_d:416.98, bLN_e:22934, bLS_d:231.69, bLS_e:12743, chS:5906, chN:5906, faitage:1580, anticond:3367 },
+  { id:27, type:'TYPE 9 MAXI', kwc:499.95, massifs:34, long:75, larg:31.13, travees:10, lTravee:7.5, hSud:3.79, hNord:7.59, hFait:9.72, lRemS:23.48, lRemN:8.48, sSud:1765, sNord:637.4, sTot:2402.4, axeS:22.51, axeN:8, pS:14.76, pN:14.91, bPO_d:221.67, bPO_e:15517, bPE_d:221.67, bPE_e:15517, bLN_d:593.43, bLN_e:32639, bLS_d:231.69, bLS_e:12743, chS:8419, chN:8419, faitage:2255, anticond:4805 },
+  { id:28, type:'EQUESTRE 65m', kwc:502.2, massifs:30, long:65, larg:35.25, travees:9, lTravee:7.1, hSud:3.06, hNord:4.67, hFait:9.1, lRemS:21.11, lRemN:15.43, sSud:1372.2, sNord:1003.0, sTot:2375.1, axeS:20.14, axeN:14.78, pS:16.69, pN:16.69, bPO_d:224.31, bPO_e:15702, bPE_d:224.31, bPE_e:15702, bLN_d:321.73, bLN_e:17695, bLS_d:231.69, bLS_e:12743, chS:7280, chN:7280, faitage:1950, anticond:4750 },
+  { id:29, type:'EQUESTRE 45m', kwc:348.75, long:45, larg:35.25, travees:6, lTravee:7.5, hSud:3.06, hNord:4.67, hFait:9.1, lRemS:21.11, lRemN:15.43, sSud:950.0, sNord:694.4, sTot:1644.3, axeS:20.14, axeN:14.78, pS:16.69, pN:16.69, bPO_d:224.31, bPO_e:15702, bPE_d:224.31, bPE_e:15702, bLN_d:220.83, bLN_e:12146, bLS_d:231.69, bLS_e:12743, chS:5040, chN:5040, faitage:1350, anticond:3289 },
+  { id:30, type:'AMA 1 MINI', kwc:99.36, massifs:10, long:32.3, larg:14.85, travees:4, hSud:4, lRemS:13, lRemN:2, sSud:419.9, sNord:64.6, sTot:484.5, bPO_d:63.16, bPO_e:4421, bPE_d:63.16, bPE_e:4421, bLN_d:163.52, bLN_e:8994, bLS_d:119.54, bLS_e:6575, chS:3618, chN:3618, faitage:969, anticond:969 },
+  { id:31, type:'AMA 2 MINI', kwc:99.36, massifs:10, long:32.3, larg:14.5, travees:4, hSud:4, lRemS:7.3, lRemN:7.3, sSud:235.8, sNord:235.8, sTot:471.6, bPO_d:71.89, bPO_e:5032, bPE_d:71.89, bPE_e:5032, bLN_d:127.35, bLN_e:7114, bLS_d:129.35, bLS_e:7114, chS:3618, chN:3618, faitage:969, anticond:909 },
+  { id:32, type:'SOL MINI', kwc:101.2, massifs:10, long:55, travees:8.5, sSud:306.0, sNord:280.0, sTot:586.0, bPO_d:52.21, bPO_e:3655, bPE_d:52.21, bPE_e:3655, bLN_d:154.5, bLN_e:8498, bLS_d:124.33, bLS_e:6838, chS:4032, chN:4032, faitage:1080, anticond:972 },
+];
+
 const BE_TABLES = {
   presence_bac: [
     { capacite:'100-150 KWc', p1000:{loyer:931,soulte:8342}, p1050:{loyer:1447,soulte:18645}, p1100:{loyer:1947,soulte:null}, p1150:{loyer:2447,soulte:25428}, p1200:{loyer:3010,soulte:30103}, p1250:{loyer:null,soulte:null}, p1300:{loyer:null,soulte:null} },
@@ -769,6 +804,15 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
   const applyProject = (p) => {
     setSelectedProject(p);
     setShowSearch(false);
+    if (p.bpAcamaState) {
+      setParams(p.bpAcamaState);
+    } else {
+      setParams(prev => ({
+        ...prev,
+        vent: p.urbanData?.vents || '',
+        neige: p.urbanData?.neige || '',
+      }));
+    }
   };
 
   const applyToProject = async () => {
@@ -980,6 +1024,10 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                   </div>
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-slate-100">
+                <Field label="Zone de vent" value={params.vent} onChange={v => setParams(p => ({ ...p, vent: v }))} className="h-7" />
+                <Field label="Zone de neige" value={params.neige} onChange={v => setParams(p => ({ ...p, neige: v }))} className="h-7" />
+              </div>
             </SectionCard>
 
             <SectionCard title="INVESTISSEMENT" id="pdf-section-invest" className="grow pb-2">
@@ -1000,21 +1048,47 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                         {(params.buildings || []).map(b => (
                           <td key={b.id} className="py-2">
                             {b.projectType !== 'BE' && (
-                              <select 
-                                className="bg-white border border-blue-200 rounded px-1 py-1 text-[11px] w-full font-bold text-blue-900"
-                                value={b.typeBat || ''} 
-                                onChange={e => updateBuildingParam(b.id, 'typeBat', e.target.value)}
-                              >
-                                <option value="">— Sélectionner —</option>
-                                 {SUIVI_BAT_DATA.filter(m => m.id !== 'BAC+BE').map(d => (
-                                   <option key={d.id} value={d.id}>{d.id}</option>
-                                 ))}
-                              </select>
+                              <div className="bg-slate-100 border border-slate-300 rounded px-2 py-1 text-[11px] w-full font-bold text-slate-500 text-center flex items-center justify-center gap-1 shadow-inner">
+                                <Building className="w-3 h-3 opacity-40" />
+                                {b.typeBat || '—'}
+                              </div>
                             )}
                           </td>
                         ))}
                       </tr>
                     )}
+                    <tr>
+                      <td className="text-[12px] text-slate-500 font-medium pt-2">Dist. Raccordement HT</td>
+                      {(params.buildings || []).map(b => (
+                        <td key={b.id} className="pt-2">
+                          <div className="flex items-center gap-1">
+                            <input 
+                              type="number"
+                              className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
+                              value={b.distHta || ''} 
+                              onChange={e => updateBuildingParam(b.id, 'distHta', parseFloat(e.target.value) || 0)}
+                            />
+                            <span className="text-[10px] text-slate-400 w-4">m</span>
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="text-[12px] text-slate-500 font-medium">Dist. partie privée</td>
+                      {(params.buildings || []).map(b => (
+                        <td key={b.id}>
+                          <div className="flex items-center gap-1">
+                            <input 
+                              type="number"
+                              className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-full outline-none focus:ring-1 focus:ring-blue-400 text-center font-bold"
+                              value={b.distPriv || ''} 
+                              onChange={e => updateBuildingParam(b.id, 'distPriv', parseFloat(e.target.value) || 0)}
+                            />
+                            <span className="text-[10px] text-slate-400 w-4">m</span>
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
                     <tr className="h-2"></tr>
                     <tr>
                       <td className="text-[12px] text-slate-500 font-medium pt-1">Centrale solaire</td>
@@ -1267,15 +1341,61 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
 // ─── Tab: SUIVI ───────────────────────────────────────────────────────────────
 
 function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
-  const defaultCols = [
-    { key: 'nom', label: 'Nom projet', width: 140 }, { key: 'dev', label: 'Dev.' }, 
-    { key: 'spv', label: 'SPV' }, { key: 'kwc', label: 'KWc' }, { key: 'adresse', label: 'Adresse' },
-    { key: 'commune', label: 'Commune' }, { key: 'cp', label: 'CP' }, { key: 'gps', label: 'GPS' },
-    { key: 'tel', label: 'Tél.' }, { key: 'zone_sism', label: 'Z. Sism.' }, { key: 'zone_vent', label: 'Z. Vent' },
-    { key: 'zone_neige', label: 'Z. Neige' }, { key: 'altitude', label: 'Alt. (m)' }, { key: 'type_trav', label: 'Type trav.' },
-    { key: 'type_bat', label: 'Type bat.' }, { key: 'nb_hang', label: 'Nb hang.' }, { key: 'categorie', label: 'Catégorie' },
-    { key: 'productible', label: 'Productible (KWh/KWc)' }, { key: 'production', label: 'Prod. an. (KWh)' },
-    { key: 'dist_hta', label: 'Dist. HTA (m)' }, { key: 'dist_priv', label: 'Dist. privée (m)' },
+  const SUIVI_COLS = [
+    { key: 'nom', label: 'Nom projet', width: 160 }, // C
+    { key: 'dev', label: 'Dev.', width: 60 }, // B
+    { key: 'spv', label: 'SPV', width: 100 }, // D
+    { key: 'kwc', label: 'Capacité', width: 80 }, // E
+    { key: 'adresse', label: 'Adresse', width: 220 }, // F
+    { key: 'commune', label: 'Commune', width: 140 }, // G
+    { key: 'cp', label: 'CP', width: 70 }, // H
+    { key: 'gps', label: 'GPS', width: 140 }, // I
+    { key: 'tel', label: 'Tél.', width: 110 }, // J
+    { key: 'zone_sism', label: 'Z. Sism.', width: 70 }, // K
+    { key: 'zone_vent', label: 'Z. Vent (Q)', width: 90, editable: true }, // Q
+    { key: 'zone_neige', label: 'Z. Neige (R)', width: 90, editable: true }, // R
+    { key: 'altitude', label: 'Alt. (m) (S)', width: 90, editable: true }, // S
+    { key: 'type_trav', label: 'Type trav. (T)', width: 110, editable: true }, // T
+    { key: 'type_bat', label: 'Type bat. (U)', width: 140, editable: true }, // U
+    { key: 'nb_trav_omb', label: 'Tr. OMB (V)', width: 90, editable: true }, // V
+    // Colonnes calculées (lookup)
+    { key: 'larg_trav', label: 'L. Travée (AC)', width: 90 },
+    { key: 'hSud', label: 'H. Sud (AD)', width: 80 },
+    { key: 'hNord', label: 'H. Nord (AE)', width: 80 },
+    { key: 'faitage', label: 'Faitage (AF)', width: 80 },
+    { key: 'long_remp_s', label: 'L. Remp S (AG)', width: 90 },
+    { key: 'long_remp_n', label: 'L. Remp N (AH)', width: 90 },
+    { key: 'surf_s', label: 'Surf S (AI)', width: 80 },
+    { key: 'surf_n', label: 'Surf N (AJ)', width: 80 },
+    { key: 'surf_tot', label: 'Surf Tot (AK)', width: 80 },
+    { key: 'axe_s', label: 'Axe S (AL)', width: 80 },
+    // Colonnes éditables demandées
+    { key: 'ax', label: 'AX', width: 70, editable: true },
+    { key: 'ay', label: 'AY', width: 70, editable: true },
+    { key: 'az', label: 'AZ', width: 70, editable: true },
+    { key: 'ba', label: 'BA', width: 70, editable: true },
+    { key: 'bv', label: 'BV (H.Bas 1)', width: 90, editable: true },
+    { key: 'bw', label: 'BW (H.Bas 2)', width: 90, editable: true },
+    { key: 'bx', label: 'BX (H.Bas 3)', width: 90, editable: true },
+    { key: 'by', label: 'BY (H.Bas 4)', width: 90, editable: true },
+    { key: 'bz', label: 'BZ (H.N 1)', width: 80, editable: true },
+    { key: 'ca', label: 'CA (H.N 2)', width: 80, editable: true },
+    { key: 'cb', label: 'CB (H.N 3)', width: 80, editable: true },
+    { key: 'cc', label: 'CC (H.N 4)', width: 80, editable: true },
+    { key: 'cd', label: 'CD (H.F 1)', width: 80, editable: true },
+    { key: 'ce', label: 'CE (H.F 2)', width: 80, editable: true },
+    { key: 'cf', label: 'CF (H.F 3)', width: 80, editable: true },
+    { key: 'cg', label: 'CG (H.F 4)', width: 80, editable: true },
+    { key: 'ch', label: 'CH (L.Bat 1)', width: 80, editable: true },
+    { key: 'ci', label: 'CI (L.Bat 2)', width: 80, editable: true },
+    { key: 'cj', label: 'CJ (L.Bat 3)', width: 80, editable: true },
+    { key: 'ck', label: 'CK (L.Bat 4)', width: 80, editable: true },
+    { key: 'cl', label: 'CL (Long 1)', width: 80, editable: true },
+    { key: 'cm', label: 'CM (Long 2)', width: 80, editable: true },
+    { key: 'cn', label: 'CN (Long 3)', width: 80, editable: true },
+    { key: 'co', label: 'CO (Long 4)', width: 80, editable: true },
+    { key: 'hl', label: 'Dist. HT (HL)', width: 90, editable: true },
+    { key: 'hm', label: 'Dist. Priv (HM)', width: 90, editable: true },
   ];
 
   const getRowValue = (row, k) => {
@@ -1283,7 +1403,7 @@ function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
     return row[k];
   };
 
-  const dbRowsLocal = useMemo(() => {
+  const dbRowsRaw = useMemo(() => {
     return projects 
       .filter(p => p.bpAcamaState)
       .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))
@@ -1293,36 +1413,67 @@ function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
         dev: 'ACAMA',
         spv: p.bpAcamaState?.spv || 'CH-TTPAGE',
         kwc: p.bpAcamaState?.kwc || p.puissance || '',
-        adresse: p.address || '',
-        commune: p.city || '',
-        cp: '',
+        adresse: p.address || p.urbanData?.address || '',
+        commune: p.city || p.urbanData?.city || '',
+        cp: p.zip_code || p.urbanData?.zip_code || '',
         gps: (p.lat && p.lng) ? `${fmt(p.lat,4)} / ${fmt(p.lng,4)}` : '',
         tel: p.phone || '',
         zone_sism: p.urbanData?.seismes || '',
-        zone_vent: p.urbanData?.vents || '',
-        zone_neige: p.urbanData?.neige || '',
-        altitude: p.urbanData?.alti || '',
-        type_trav: 'BAC',
-        type_bat: p.type_bat || '',
-        nb_hang: p.bpAcamaState?.nbHang || 1,
+        zone_vent: p.urbanData?.vents || '', // Q par défaut
+        zone_neige: p.urbanData?.neige || '', // R par défaut
+        altitude: p.urbanData?.alti || p.urbanData?.altitude || p.altitude || '', 
+        type_trav: p.bpAcamaState?.buildings?.[0]?.projectType || 'BAC',
+        type_bat: p.bpAcamaState?.buildings?.[0]?.typeBat || '',
+        nb_hang: p.bpAcamaState?.buildings?.length || 1,
         categorie: p.category || 'Agricole',
-        productible: p.bpAcamaState?.productible || p.productible || '',
-        production: (p.bpAcamaState?.kwc || p.puissance || 0) * (p.bpAcamaState?.productible || p.productible || 0),
-        dist_hta: p.dist_hta || '',
-        dist_priv: ''
+        // Auto-fill distance from first building if exists
+        hl: p.bpAcamaState?.buildings?.[0]?.distHta || '',
+        hm: p.bpAcamaState?.buildings?.[0]?.distPriv || '',
+        // Map multiple building heights/lengths for BV-CO range
+        bv: p.bpAcamaState?.buildings?.[0]?.hBas || '',
+        bw: p.bpAcamaState?.buildings?.[1]?.hBas || '',
+        bx: p.bpAcamaState?.buildings?.[2]?.hBas || '',
+        by: p.bpAcamaState?.buildings?.[3]?.hBas || '',
+        bz: p.bpAcamaState?.buildings?.[0]?.hNord || '',
+        ca: p.bpAcamaState?.buildings?.[1]?.hNord || '',
+        cb: p.bpAcamaState?.buildings?.[2]?.hNord || '',
+        cc: p.bpAcamaState?.buildings?.[3]?.hNord || '',
+        cd: p.bpAcamaState?.buildings?.[0]?.hFait || '',
+        ce: p.bpAcamaState?.buildings?.[1]?.hFait || '',
+        cf: p.bpAcamaState?.buildings?.[2]?.hFait || '',
+        cg: p.bpAcamaState?.buildings?.[3]?.hFait || '',
       }));
   }, [projects]);
 
   const [localRows, setLocalRows] = useState([]);
-  const addRow = () => setLocalRows(r => [{ id: `local-${Date.now()}`, dev: 'ACAMA', nom: '', spv: 'CH-TTPAGE', kwc: 0, adresse: '', commune: '', cp: '', gps: '', tel: '', zone_sism: '', zone_vent: '', zone_neige: '', altitude: '', type_trav: 'BAC', type_bat: '', nb_hang: 1, categorie: 'Agricole', productible: '', production: '', dist_hta: '', dist_priv: '' }, ...r]);
+  const addRow = () => setLocalRows(r => [{ id: `local-${Date.now()}`, dev: 'ACAMA', nom: '', spv: 'CH-TTPAGE' }, ...r]);
 
-  const moveRow = (index, direction) => {
-    const newRows = [...localRows];
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= newRows.length) return;
-    [newRows[index], newRows[targetIndex]] = [newRows[targetIndex], newRows[index]];
-    setLocalRows(newRows);
-  };
+  const allRows = useMemo(() => {
+    return [...dbRowsRaw, ...localRows].map(row => {
+      const edit = projectEdits[row.id] || {};
+      const fullRow = { ...row, ...edit };
+      
+      const typeBat = fullRow.type_bat;
+      const batData = DETAILED_SUIVI_DATA.find(d => d.type === typeBat);
+      
+      if (batData) {
+        return {
+          ...fullRow,
+          larg_trav: batData.lTravee,
+          hSud: batData.hSud,
+          hNord: batData.hNord,
+          faitage: batData.hFait,
+          long_remp_s: batData.lRemS,
+          long_remp_n: batData.lRemN,
+          surf_s: batData.sSud,
+          surf_n: batData.sNord,
+          surf_tot: batData.sTot,
+          axe_s: batData.axeS
+        };
+      }
+      return fullRow;
+    });
+  }, [dbRowsRaw, localRows, projectEdits]);
 
   const updateAnyRow = (id, k, v) => {
     if (typeof id === 'string' && id.startsWith('local-')) {
@@ -1336,59 +1487,64 @@ function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
     if (confirm('Supprimer cette ligne ?')) {
       if (typeof id === 'string' && id.startsWith('local-')) {
         setLocalRows(r => r.filter(row => row.id !== id));
-      } else {
-        // We can't delete DB rows from the UI usually, but we can hide them or just ignore
       }
     }
   };
 
-  const allRows = [...dbRowsLocal, ...localRows];
-
   return (
-    <div className="p-4">
-      <div className="flex items-center gap-2 mb-3">
+    <div className="p-4 h-full flex flex-col overflow-hidden">
+      <div className="flex items-center gap-2 mb-3 shrink-0">
         <Button size="sm" onClick={addRow} className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7">
           <Plus className="w-3 h-3 mr-1" /> Nouvelle ligne
         </Button>
         <span className="text-xs text-slate-500">{allRows.length} projets</span>
       </div>
-      <div {...useDragScroll()}>
+      <div className="flex-1 overflow-auto border border-slate-200 rounded-lg shadow-sm bg-white" {...useDragScroll()}>
         <table className="text-[12px] border-collapse min-w-max">
-          <thead className="sticky top-0 z-10">
+          <thead className="sticky top-0 z-20">
             <tr className="bg-slate-800 text-white">
-              <th className="border border-slate-600 px-2 py-1.5 w-8">↑↓</th>
-              {defaultCols.map(c => <th key={c.key} style={{ width: c.width || 80 }} className="border border-slate-600 px-2 py-1.5 font-semibold whitespace-nowrap">{c.label}</th>)}
-              <th className="border border-slate-600 px-2 py-1.5 w-8">✕</th>
+              <th className="border border-slate-600 px-2 py-2 w-8">↑↓</th>
+              {SUIVI_COLS.map(c => (
+                <th key={c.key} style={{ width: c.width }} className="border border-slate-600 px-2 py-2 font-semibold text-center whitespace-nowrap">
+                  {c.label}
+                </th>
+              ))}
+              <th className="border border-slate-600 px-2 py-2 w-8">✕</th>
             </tr>
           </thead>
           <tbody>
-            {allRows.map((row, i) => {
-              const localIndex = localRows.findIndex(r => r.id === row.id);
-              return (
-                <tr key={row.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                  <td className="border border-slate-200 p-0 text-center">
-                    {localIndex !== -1 && (
-                      <div className="flex flex-col items-center">
-                        <button onClick={() => moveRow(localIndex, -1)} disabled={localIndex === 0} className="text-slate-400 hover:text-blue-500 disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
-                        <button onClick={() => moveRow(localIndex, 1)} disabled={localIndex === localRows.length - 1} className="text-slate-400 hover:text-blue-500 disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
-                      </div>
-                    )}
-                  </td>
-                  {defaultCols.map(c => (
-                    <td key={c.key} className="border border-slate-200 p-0">
-                      <input
-                        className="w-full px-2 py-1 bg-transparent outline-none focus:bg-white focus:ring-1 focus:ring-blue-400"
-                        value={getRowValue(row, c.key) ?? ''}
-                        onChange={e => updateAnyRow(row.id, c.key, e.target.value)}
-                      />
+            {allRows.map((row, i) => (
+              <tr key={row.id} className={cn('hover:bg-blue-50/30 transition-colors', i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50')}>
+                <td className="border border-slate-200 p-0 text-center">
+                  <div className="flex flex-col items-center opacity-30 select-none">
+                    <ChevronUp className="w-3 h-3" />
+                    <ChevronDown className="w-3 h-3" />
+                  </div>
+                </td>
+                {SUIVI_COLS.map(c => {
+                  const val = row[c.key] ?? '';
+                  const isCalculated = !c.editable && ['larg_trav','hSud','hNord','faitage','long_remp_s','long_remp_n','surf_s','surf_n','surf_tot','axe_s'].includes(c.key);
+                  return (
+                    <td key={c.key} className={cn("border border-slate-200 p-0 relative", isCalculated && "bg-slate-100/50")}>
+                      {c.editable ? (
+                        <input
+                          className="w-full px-2 py-1.5 bg-transparent outline-none focus:bg-blue-50 focus:ring-1 focus:ring-blue-400 text-center transition-all bg-blue-50/20"
+                          value={val}
+                          onChange={e => updateAnyRow(row.id, c.key, e.target.value)}
+                        />
+                      ) : (
+                        <div className="w-full px-2 py-1.5 text-center truncate select-all">{val}</div>
+                      )}
                     </td>
-                  ))}
-                  <td className="border border-slate-200 text-center">
-                    <button onClick={() => delAnyRow(row.id)} className="text-red-400 hover:text-red-600 p-0.5"><X className="w-3 h-3" /></button>
-                  </td>
-                </tr>
-              );
-            })}
+                  );
+                })}
+                <td className="border border-slate-200 text-center">
+                  <button onClick={() => delAnyRow(row.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -1455,7 +1611,7 @@ function TabSuiviBatType({ batEdits, updateBatEdit }) {
                   </td>
                   {keys.map(k => (
                     <td key={k} className="border border-slate-200 p-0 relative">
-                      <input 
+                      <input
                         className="w-full px-2 py-1 bg-transparent outline-none focus:bg-white focus:ring-1 focus:ring-blue-400 text-center transition-all"
                         value={getVal(row, k)}
                         onChange={e => {
@@ -1469,12 +1625,14 @@ function TabSuiviBatType({ batEdits, updateBatEdit }) {
                       />
                     </td>
                   ))}
-                  <td className="border border-slate-200 text-center">
-                    {i >= SUIVI_BAT_DATA.length && (
-                      <button onClick={() => setLocalRows(prev => prev.filter(r => r.id !== row.id))} className="text-red-400 hover:text-red-600 p-0.5">
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
+                  <td className="border border-slate-200 text-center group-hover:bg-red-50">
+                    <button onClick={() => {
+                        if (row.id.toString().startsWith('local-')) {
+                            setLocalRows(prev => prev.filter(r => r.id !== row.id));
+                        }
+                    }} className="text-slate-300 hover:text-red-500 transition-colors p-1">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </td>
                 </tr>
               );
@@ -1486,44 +1644,8 @@ function TabSuiviBatType({ batEdits, updateBatEdit }) {
   );
 }
 
-// ─── Tab: BE Tables ──────────────────────────────────────────────────────────
-
-
 function TabData() {
-  const [rows, setRows] = useState([
-    { id:1, type:'TYPE 1 MINI', spv:'ACAMA SPV1', cap:270, massifs:22, long:53.72, larg:23.47, travees:7, lTravee:7.5, hSud:4, hNord:4, hFait:6.9, lRemS:11.97, lRemN:11.97, sSud:643.0, sNord:643.0, sTot:1286.1, axeS:11.82, axeN:11.82, pS:14.01, pN:14.01, bPO_d:115.54, bPO_e:8088, bPE_d:115.54, bPE_e:8088, bLN_d:231.69, bLN_e:12743, bLS_d:231.69, bLS_e:12743, chS:6017, chN:6017, faitage:1612, anticond:2572 },
-    { id:2, type:'TYPE 1 MID', spv:'ACAMA SPV1', cap:306, massifs:24, long:60.67, larg:23.47, travees:8, lTravee:7.5, hSud:4, hNord:4, hFait:6.9, lRemS:11.97, lRemN:11.97, sSud:725.6, sNord:725.6, sTot:1451.2, axeS:11.82, axeN:11.82, pS:14.01, pN:14.01, bPO_d:115.54, bPO_e:8088, bPE_d:115.54, bPE_e:8088, bLN_d:264.75, bLN_e:14561, bLS_d:264.75, bLS_e:14561, chS:6789, chN:6789, faitage:1819, anticond:2902 },
-    { id:3, type:'TYPE 1 MAXI', spv:'ACAMA SPV1', cap:342, massifs:26, long:68.05, larg:23.47, travees:9, lTravee:7.5, hSud:4, hNord:4, hFait:6.9, lRemS:11.97, lRemN:11.97, sSud:814.6, sNord:814.6, sTot:1629.1, axeS:11.82, axeN:11.82, pS:14.01, pN:14.01, bPO_d:115.54, bPO_e:8088, bPE_d:115.54, bPE_e:8088, bLN_d:297.84, bLN_e:16381, bLS_d:231.69, bLS_e:16381, chS:7622, chN:7622, faitage:2042, anticond:3258 },
-    { id:4, type:'TYPE 2 MINI', spv:'ACAMA SPV1', cap:189, massifs:21, long:37.55, larg:24.26, travees:6, lTravee:6.2, hSud:4.35, hNord:9.67, hFait:0, lRemS:23.26, lRemN:0, sSud:873.6, sNord:0, sTot:873.6, axeS:22.44, axeN:0, pS:11, pN:0, bPO_d:157.15, bPO_e:11001, bPE_d:157.15, bPE_e:11001, bLN_d:375.75, bLN_e:20666, bLS_d:231.69, bLS_e:12743, chS:4428, chN:4428, faitage:1127, anticond:1747 },
-    { id:5, type:'TYPE 2 MID', spv:'ACAMA SPV1', cap:315, massifs:30, long:62.36, larg:24.26, travees:10, lTravee:6.2, hSud:4.35, hNord:9.67, hFait:0, lRemS:23.26, lRemN:0, sSud:1450.5, sNord:0, sTot:1450.5, axeS:22.44, axeN:0, pS:11, pN:0, bPO_d:157.15, bPO_e:11001, bPE_d:157.15, bPE_e:11001, bLN_d:623.79, bLN_e:34308, bLS_d:231.69, bLS_e:12743, chS:7312, chN:7312, faitage:1871, anticond:2901 },
-    { id:6, type:'TYPE 2 MAXI', spv:'ACAMA SPV1', cap:342, massifs:33, long:68.55, larg:24.26, travees:11, lTravee:6.2, hSud:4.35, hNord:9.67, hFait:0, lRemS:23.26, lRemN:0, sSud:1590.1, sNord:0, sTot:1590.1, axeS:22.44, axeN:0, pS:11, pN:0, bPO_d:157.15, bPO_e:11001, bPE_d:157.15, bPE_e:11001, bLN_d:686.03, bLN_e:37732, bLS_d:231.69, bLS_e:12743, chS:8043, chN:8043, faitage:2051, anticond:3180 },
-    { id:7, type:'TYPE 3 MINI', spv:'ACAMA SPV1', cap:234.9, massifs:20, long:52.64, larg:21.13, travees:7, lTravee:7.5, hSud:2.56, hNord:2.56, hFait:4.7, lRemS:10.7, lRemN:10.7, sSud:563.2, sNord:563.2, sTot:1126.5, axeS:10.29, axeN:10.29, pS:11.75, pN:11.75, bPO_d:73.2, bPO_e:5124, bPE_d:73.2, bPE_e:5124, bLN_d:150.22, bLN_e:8262, bLS_d:231.69, bLS_e:12743, chS:5274, chN:5274, faitage:1579, anticond:2253 },
-    { id:8, type:'TYPE 3 MID', spv:'ACAMA SPV1', cap:307.8, massifs:24, long:68, larg:21.13, travees:9, lTravee:7.5, hSud:2.56, hNord:2.56, hFait:4.7, lRemS:10.7, lRemN:10.7, sSud:727.6, sNord:727.6, sTot:1455.2, axeS:10.29, axeN:10.29, pS:11.75, pN:11.75, bPO_d:73.2, bPO_e:5124, bPE_d:73.2, bPE_e:5124, bLN_d:190.2, bLN_e:10461, bLS_d:231.69, bLS_e:12743, chS:6809, chN:6809, faitage:2040, anticond:2910 },
-    { id:9, type:'TYPE 3 MAXI', spv:'ACAMA SPV1', cap:405, massifs:30, long:90.14, larg:21.13, travees:12, lTravee:7.5, hSud:2.56, hNord:2.56, hFait:4.7, lRemS:10.7, lRemN:10.7, sSud:964.5, sNord:964.5, sTot:1929.0, axeS:10.29, axeN:10.29, pS:11.75, pN:11.75, bPO_d:73.2, bPO_e:5124, bPE_d:73.2, bPE_e:5124, bLN_d:257.25, bLN_e:14149, bLS_d:231.69, bLS_e:12743, chS:10096, chN:10096, faitage:2704, anticond:3858 },
-    { id:10, type:'TYPE 4 MINI', spv:'ACAMA SPV1', cap:302.4, massifs:24, long:37.65, larg:37.49, travees:5, lTravee:7.5, hSud:4.18, hNord:4.18, hFait:6.05, lRemS:18.79, lRemN:18.79, sSud:707.4, sNord:707.4, sTot:1414.9, axeS:18.5, axeN:18.5, pS:5.77, pN:5.77, bPO_d:204.8, bPO_e:14336, bPE_d:204.8, bPE_e:14336, bLN_d:170.97, bLN_e:9403, bLS_d:231.69, bLS_e:12743, chS:4207, chN:4207, faitage:1130, anticond:2830 },
-    { id:11, type:'TYPE 4 MID', spv:'ACAMA SPV1', cap:360, massifs:28, long:45.15, larg:37.49, travees:6, lTravee:7.5, hSud:4.18, hNord:4.18, hFait:6.05, lRemS:18.79, lRemN:18.79, sSud:848.4, sNord:848.4, sTot:1696.7, axeS:18.5, axeN:18.5, pS:5.77, pN:5.77, bPO_d:204.8, bPO_e:14336, bPE_d:204.8, bPE_e:14336, bLN_d:205.04, bLN_e:11277, bLS_d:231.69, bLS_e:12743, chS:5057, chN:5057, faitage:1355, anticond:3393 },
-    { id:12, type:'TYPE 4 MAXI', spv:'ACAMA SPV1', cap:499.05, massifs:36, long:63.35, larg:37.49, travees:8, lTravee:7.9, hSud:4.18, hNord:4.18, hFait:6.05, lRemS:18.79, lRemN:18.79, sSud:1190.3, sNord:1190.3, sTot:2380.7, axeS:18.5, axeN:18.5, pS:5.77, pN:5.77, bPO_d:204.8, bPO_e:14336, bPE_d:204.8, bPE_e:14336, bLN_d:287.72, bLN_e:15825, bLS_d:231.69, bLS_e:12743, chS:7095, chN:7095, faitage:1901, anticond:4761 },
-    { id:13, type:'TYPE 5 MINI', spv:'ACAMA SPV1', cap:175.95, massifs:18, long:31.18, larg:27.59, travees:5, lTravee:6.2, hSud:4, hNord:8.26, hFait:7.54, lRemS:23.69, lRemN:4.19, sSud:738.2, sNord:130.6, sTot:868.7, axeS:23.1, axeN:3.93, pS:8.71, pN:-10.38, bPO_d:185.15, bPO_e:12961, bPE_d:185.15, bPE_e:12961, bLN_d:245.36, bLN_e:13495, bLS_d:231.69, bLS_e:12743, chS:3490, chN:3490, faitage:935, anticond:1737 },
-    { id:14, type:'TYPE 5 MID', spv:'ACAMA SPV1', cap:289.8, massifs:27, long:50.18, larg:27.59, travees:8, lTravee:6.2, hSud:4, hNord:8.26, hFait:7.54, lRemS:23.69, lRemN:4.19, sSud:1188.3, sNord:210.2, sTot:1398.5, axeS:23.1, axeN:3.93, pS:8.71, pN:-10.38, bPO_d:185.15, bPO_e:12961, bPE_d:185.15, bPE_e:12961, bLN_d:394.94, bLN_e:21557, bLS_d:231.69, bLS_e:12743, chS:5618, chN:5618, faitage:1505, anticond:2797 },
-    { id:15, type:'TYPE 5 MAXI', spv:'ACAMA SPV1', cap:362.25, massifs:33, long:62.58, larg:27.59, travees:10, lTravee:6.2, hSud:4, hNord:8.26, hFait:7.54, lRemS:23.69, lRemN:4.19, sSud:1482, sNord:262.1, sTot:1744.2, axeS:23.1, axeN:3.93, pS:8.71, pN:-10.38, bPO_d:185.15, bPO_e:12961, bPE_d:185.15, bPE_e:12961, bLN_d:489.65, bLN_e:26931, bLS_d:231.69, bLS_e:12743, chS:7007, chN:7007, faitage:1877, anticond:3488 },
-    { id:16, type:'TYPE 6 MINI', spv:'ACAMA SPV1', kwc:158.4, massifs:14, long:38.4, larg:19.87, travees:6, lTravee:6.4, hSud:4.04, hNord:5.7, hFait:7, lRemS:15.21, lRemN:4.14, sSud:599.3, sNord:163.1, sTot:762.4, axeS:14.67, axeN:3.78, pS:11.41, pN:18.98, bPO_d:100.28, bPO_e:7020, bPE_d:100.28, bPE_e:7020, bLN_d:232.65, bLN_e:12796, bLS_d:231.69, bLS_e:12743, chS:4413, chN:4413, faitage:1182, anticond:1525 },
-    { id:17, type:'TYPE 6 MID', spv:'ACAMA SPV1', kwc:259.2, massifs:22, long:64.17, larg:19.87, travees:10, lTravee:6.4, hSud:4.04, hNord:5.7, hFait:7, lRemS:15.21, lRemN:4.14, sSud:976, sNord:265.7, sTot:1241.7, axeS:14.67, axeN:3.78, pS:11.41, pN:18.98, bPO_d:100.28, bPO_e:7020, bPE_d:100.28, bPE_e:7020, bLN_d:387.07, bLN_e:21289, bLS_d:231.69, bLS_e:12743, chS:7387, chN:7387, faitage:1925, anticond:2485 },
-    { id:18, type:'TYPE 6 MAXI', spv:'ACAMA SPV1', kwc:338.4, massifs:28, long:83.77, larg:19.87, travees:13, lTravee:6.4, hSud:4.04, hNord:5.7, hFait:7, lRemS:15.21, lRemN:4.14, sSud:1274.1, sNord:346.8, sTot:1620.9, axeS:14.67, axeN:3.78, pS:11.41, pN:18.98, bPO_d:100.28, bPO_e:7020, bPE_d:100.28, bPE_e:7020, bLN_d:508.38, bLN_e:27930, bLS_d:231.69, bLS_e:12743, chS:9382, chN:9382, faitage:2513, anticond:3242 },
-    { id:19, type:'TYPE 7 MINI', spv:'ACAMA SPV1', kwc:153, massifs:14, long:36.17, larg:20.19, travees:6, lTravee:6, hSud:4, hNord:7.24, hFait:0, lRemS:20.45, lRemN:0, sSud:739.7, sNord:0, sTot:739.7, axeS:19.94, axeN:0, pS:-11.34, pN:0, bPO_d:111.99, bPO_e:7839, bPE_d:111.99, bPE_e:7839, bLN_d:276.91, bLN_e:15230, bLS_d:231.69, bLS_e:12743, chS:4051, chN:4051, faitage:1085, anticond:1479 },
-    { id:20, type:'TYPE 7 MID', spv:'ACAMA SPV1', kwc:260.1, massifs:22, long:60.17, larg:20.19, travees:10, lTravee:6, hSud:4, hNord:7.24, hFait:0, lRemS:20.45, lRemN:0, sSud:1230.7, sNord:0, sTot:1230.7, axeS:19.94, axeN:0, pS:-11.34, pN:0, bPO_d:111.99, bPO_e:7839, bPE_d:111.99, bPE_e:7839, bLN_d:460.75, bLN_e:25341, bLS_d:231.69, bLS_e:12743, chS:6784, chN:6784, faitage:1817, anticond:2477 },
-    { id:21, type:'TYPE 7 MAXI', spv:'ACAMA SPV1', kwc:336.1, massifs:28, long:78.57, larg:20.19, travees:13, lTravee:6, hSud:4, hNord:7.24, hFait:0, lRemS:20.45, lRemN:0, sSud:1606.8, sNord:0, sTot:1606.8, axeS:19.94, axeN:0, pS:-11.34, pN:0, bPO_d:111.99, bPO_e:7839, bPE_d:111.99, bPE_e:7839, bLN_d:598.79, bLN_e:32933, bLS_d:231.69, bLS_e:12743, chS:8800, chN:8800, faitage:2357, anticond:3214 },
-    { id:22, type:'TYPE 8 MINI', spv:'ACAMA SPV1', kwc:237.6, massifs:21, long:43.65, larg:26.26, travees:6, lTravee:7.25, hSud:4, hNord:5.65, hFait:7, lRemS:18.08, lRemN:8.4, sSud:789.2, sNord:366.7, sTot:1155.9, axeS:17.75, axeN:8.09, pS:9.59, pN:9.47, bPO_d:146.71, bPO_e:10270, bPE_d:146.71, bPE_e:10270, bLN_d:260.28, bLN_e:14315, bLS_d:231.69, bLS_e:12743, chS:4889, chN:4889, faitage:1310, anticond:2312 },
-    { id:23, type:'TYPE 8 MID', spv:'ACAMA SPV1', kwc:316.8, massifs:27, long:58.15, larg:26.26, travees:8, lTravee:7.25, hSud:4, hNord:5.65, hFait:7, lRemS:18.08, lRemN:8.4, sSud:1051.4, sNord:488.5, sTot:1539.8, axeS:17.75, axeN:8.09, pS:9.59, pN:9.47, bPO_d:146.71, bPO_e:10270, bPE_d:146.71, bPE_e:10270, bLN_d:346.67, bLN_e:19067, bLS_d:231.69, bLS_e:12743, chS:6515, chN:6515, faitage:1745, anticond:3080 },
-    { id:24, type:'TYPE 8 MAXI', kwc:485.1, massifs:39, long:87.15, larg:26.26, travees:12, lTravee:7.25, hSud:4, hNord:5.65, hFait:7, lRemS:18.08, lRemN:8.4, sSud:1582.9, sNord:735.4, sTot:2318.3, axeS:17.75, axeN:8.09, pS:9.59, pN:9.47, bPO_d:146.71, bPO_e:10270, bPE_d:146.71, bPE_e:10270, bLN_d:519.6, bLN_e:28578, bLS_d:231.69, bLS_e:12743, chS:9806, chN:9806, faitage:2627, anticond:4637 },
-    { id:25, type:'TYPE 9 MINI', kwc:255.15, massifs:18, long:37.67, larg:31.13, travees:5, lTravee:7.5, hSud:3.79, hNord:7.59, hFait:9.72, lRemS:23.48, lRemN:8.48, sSud:884.5, sNord:319.4, sTot:1203.9, axeS:22.51, axeN:8, pS:14.76, pN:14.91, bPO_d:221.67, bPO_e:15517, bPE_d:221.67, bPE_e:15517, bLN_d:298.25, bLN_e:16404, bLS_d:231.69, bLS_e:12743, chS:4207, chN:4207, faitage:1130, anticond:2408 },
-    { id:26, type:'TYPE 9 MID', kwc:355.35, massifs:24, long:52.67, larg:31.13, travees:7, lTravee:7.5, hSud:3.79, hNord:7.59, hFait:9.72, lRemS:23.48, lRemN:8.48, sSud:1236.7, sNord:446.6, sTot:1683.3, axeS:22.51, axeN:8, pS:14.76, pN:14.91, bPO_d:221.67, bPO_e:15517, bPE_d:221.67, bPE_e:15517, bLN_d:416.98, bLN_e:22934, bLS_d:231.69, bLS_e:12743, chS:5906, chN:5906, faitage:1580, anticond:3367 },
-    { id:27, type:'TYPE 9 MAXI', kwc:499.95, massifs:34, long:75, larg:31.13, travees:10, lTravee:7.5, hSud:3.79, hNord:7.59, hFait:9.72, lRemS:23.48, lRemN:8.48, sSud:1765, sNord:637.4, sTot:2402.4, axeS:22.51, axeN:8, pS:14.76, pN:14.91, bPO_d:221.67, bPO_e:15517, bPE_d:221.67, bPE_e:15517, bLN_d:593.43, bLN_e:32639, bLS_d:231.69, bLS_e:12743, chS:8419, chN:8419, faitage:2255, anticond:4805 },
-    { id:28, type:'EQUESTRE 65m', kwc:502.2, massifs:30, long:65, larg:35.25, travees:9, lTravee:7.1, hSud:3.06, hNord:4.67, hFait:9.1, lRemS:21.11, lRemN:15.43, sSud:1372.2, sNord:1003.0, sTot:2375.1, axeS:20.14, axeN:14.78, pS:16.69, pN:16.69, bPO_d:224.31, bPO_e:15702, bPE_d:224.31, bPE_e:15702, bLN_d:321.73, bLN_e:17695, bLS_d:231.69, bLS_e:12743, chS:7280, chN:7280, faitage:1950, anticond:4750 },
-    { id:29, type:'EQUESTRE 45m', kwc:348.75, long:45, larg:35.25, travees:6, lTravee:7.5, hSud:3.06, hNord:4.67, hFait:9.1, lRemS:21.11, lRemN:15.43, sSud:950.0, sNord:694.4, sTot:1644.3, axeS:20.14, axeN:14.78, pS:16.69, pN:16.69, bPO_d:224.31, bPO_e:15702, bPE_d:224.31, bPE_e:15702, bLN_d:220.83, bLN_e:12146, bLS_d:231.69, bLS_e:12743, chS:5040, chN:5040, faitage:1350, anticond:3289 },
-    { id:30, type:'AMA 1 MINI', kwc:99.36, massifs:10, long:32.3, larg:14.85, travees:4, hSud:4, lRemS:13, lRemN:2, sSud:419.9, sNord:64.6, sTot:484.5, bPO_d:63.16, bPO_e:4421, bPE_d:63.16, bPE_e:4421, bLN_d:163.52, bLN_e:8994, bLS_d:119.54, bLS_e:6575, chS:3618, chN:3618, faitage:969, anticond:969 },
-    { id:31, type:'AMA 2 MINI', kwc:99.36, massifs:10, long:32.3, larg:14.5, travees:4, hSud:4, lRemS:7.3, lRemN:7.3, sSud:235.8, sNord:235.8, sTot:471.6, bPO_d:71.89, bPO_e:5032, bPE_d:71.89, bPE_e:5032, bLN_d:127.35, bLN_e:7114, bLS_d:129.35, bLS_e:7114, chS:3618, chN:3618, faitage:969, anticond:909 },
-    { id:32, type:'SOL MINI', kwc:101.2, massifs:10, long:55, travees:8.5, sSud:306.0, sNord:280.0, sTot:586.0, bPO_d:52.21, bPO_e:3655, bPE_d:52.21, bPE_e:3655, bLN_d:154.5, bLN_e:8498, bLS_d:124.33, bLS_e:6838, chS:4032, chN:4032, faitage:1080, anticond:972 },
-  ]);
+  const [rows, setRows] = useState([...DETAILED_SUIVI_DATA]);
 
   const cols = [
     { key: 'type', label: 'Projet Type', width: 120 },
@@ -1546,6 +1668,11 @@ function TabData() {
     { key: 'axeN', label: 'Axe N-F', width: 70 },
     { key: 'pS', label: 'Pente S', width: 60 },
     { key: 'pN', label: 'Pente N', width: 60 },
+    { key: 'bPO_d', label: 'BP PO (Dim)', width: 80 },
+    { key: 'bPO_e', label: 'BP PO (€)', width: 80 },
+    { key: 'bPE_d', label: 'BP PE (Dim)', width: 80 },
+    { key: 'bPE_e', label: 'BP PE (€)', width: 80 },
+    { key: 'bLN_d', label: 'BP LP N (Dim)', width: 80 },
     { key: 'bLN_e', label: 'BP LP N (€)', width: 80 },
     { key: 'bLS_d', label: 'BP LP S (Dim)', width: 80 },
     { key: 'bLS_e', label: 'BP LP S (€)', width: 80 },
@@ -2336,6 +2463,8 @@ export default function BpAcama() {
     targetDSCR: 1.17,
     tarifACC: 0.12,
     partACC: 0,
+    vent: '',
+    neige: '',
   });
 
   useEffect(() => {
@@ -2371,6 +2500,8 @@ export default function BpAcama() {
           productible: prod,
           coutCentrale: (f.power || 100) * 490,
           coutCharpente: (f.projectType === 'BE' || f.name === 'BE') ? 10000 : 0,
+          distHta: 0,
+          distPriv: 0,
           numPanneaux: Math.round((f.power || 100) * 1000 / (params.puissanceUnitaire || 460))
         });
       });
@@ -2391,12 +2522,14 @@ export default function BpAcama() {
           productible: prod, 
           coutCentrale: (b1 || 346.84) * 490, 
           coutCharpente: 0,
+          distHta: 0,
+          distPriv: 0,
           numPanneaux: Math.round((b1 || 346.84) * 1000 / (params.puissanceUnitaire || 460))
         });
       }
-      if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b2, productible: prod, coutCentrale: b2 * 490, coutCharpente: 0, numPanneaux: Math.round(b2 * 1000 / (params.puissanceUnitaire || 460)) });
-      if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b3, productible: prod, coutCentrale: b3 * 490, coutCharpente: 0, numPanneaux: Math.round(b3 * 1000 / (params.puissanceUnitaire || 460)) });
-      if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b4, productible: prod, coutCentrale: b4 * 490, coutCharpente: 0, numPanneaux: Math.round(b4 * 1000 / (params.puissanceUnitaire || 460)) });
+      if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b2, productible: prod, coutCentrale: b2 * 490, coutCharpente: 0, distHta: 0, distPriv: 0, numPanneaux: Math.round(b2 * 1000 / (params.puissanceUnitaire || 460)) });
+      if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b3, productible: prod, coutCentrale: b3 * 490, coutCharpente: 0, distHta: 0, distPriv: 0, numPanneaux: Math.round(b3 * 1000 / (params.puissanceUnitaire || 460)) });
+      if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b4, productible: prod, coutCentrale: b4 * 490, coutCharpente: 0, distHta: 0, distPriv: 0, numPanneaux: Math.round(b4 * 1000 / (params.puissanceUnitaire || 460)) });
     }
 
     setParams(prev => ({
@@ -2404,7 +2537,9 @@ export default function BpAcama() {
       buildings: initialBuildings,
       raccordement: parseFloat(selectedProject.raccordement) || 0,
       frais: parseFloat(selectedProject.frais) || 0,
-      soulte: parseFloat(selectedProject.soulte) || 0
+      soulte: parseFloat(selectedProject.soulte) || 0,
+      vent: selectedProject.urbanData?.vents || selectedProject.vent || '',
+      neige: selectedProject.urbanData?.neige || selectedProject.neige || '',
     }));
   }, [selectedProject]);
 
