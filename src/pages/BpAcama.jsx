@@ -790,7 +790,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
     const newId = (params.buildings || []).length + 1;
     setParams(prev => ({
       ...prev,
-      buildings: [...(prev.buildings || []), { id: newId, typeBat: '', kwc: 100, productible: 1123.08, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0 }]
+      buildings: [...(prev.buildings || []), { id: newId, typeBat: '', kwc: 100, productible: 1123.08, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0, distHta: 100, distPriv: 100 }]
     }));
   };
 
@@ -891,8 +891,8 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
           productible: prod, 
           coutCentrale: b1 * 490, 
           coutCharpente: 0,
-          distHta: 0,
-          distPriv: 0,
+          distHta: 100,
+          distPriv: 100,
           numPanneaux: Math.ceil(b1 * 1000 / (params.puissanceUnitaire || 460))
         });
       }
@@ -904,8 +904,8 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
       setParams(prev => ({
         ...prev,
         buildings: initialBuildings,
-        vent: p.vent || p.urbanData?.vents || '',
-        neige: p.neige || p.urbanData?.neige || '',
+        vent: p.windZone || p.vent || p.urbanData?.vents || '',
+        neige: p.snowZone || p.neige || p.urbanData?.neige || '',
         raccordement: totalRaccordement,
         frais: totalFrais,
         soulte: 0
@@ -1297,7 +1297,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-y-2">
                   <Field label="Durée de l'emprunt" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" size="sm" />
-                  <Field label="Taux de crédit" value={params.tauxCredit} onChange={v => setParams(p => ({ ...p, tauxCredit: v }))} type="number" suffix="%" size="sm" />
+                  <Field label="Taux de crédit" value={params.tauxCredit} onChange={v => setParams(p => ({ ...p, tauxCredit: v }))} type="number" suffix="%" step="0.1" size="sm" />
                 </div>
                 
                 <div className="pt-2 border-t border-slate-200 mt-2 space-y-1">
@@ -1513,8 +1513,8 @@ function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
         type_bat: p.bpAcamaState?.buildings?.[0]?.typeBat || '',
         nb_hang: p.bpAcamaState?.buildings?.length || 1,
         categorie: p.category || 'Agricole',
-        zone_vent: p.vent || p.urbanData?.vents || '',
-        zone_neige: p.neige || p.urbanData?.neige || '',
+        zone_vent: p.windZone || p.vent || p.urbanData?.vents || '',
+        zone_neige: p.snowZone || p.neige || p.urbanData?.neige || '',
         // Auto-fill distance from first building if exists
         hl: p.bpAcamaState?.buildings?.[0]?.distHta || '',
         hm: p.bpAcamaState?.buildings?.[0]?.distPriv || '',
@@ -2528,7 +2528,7 @@ export default function BpAcama() {
 
   const [params, setParams] = useState({
     buildings: [
-      { id: 1, typeBat: '', projectType: 'BAC', surfaceToiture: 0, kwc: 242.88, productible: 1123.08, coutCentrale: 169951.60, coutCharpente: 171381.00, raccordement: 18300.00, frais: 3413.33, soulte: -9048.54 }
+      { id: 1, typeBat: '', projectType: 'BAC', surfaceToiture: 0, kwc: 242.88, productible: 1123.08, coutCentrale: 169951.60, coutCharpente: 171381.00, raccordement: 18300.00, frais: 3413.33, soulte: -9048.54, distHta: 100, distPriv: 100 }
     ],
     puissanceUnitaire: 460,
     tarifBas: 0.0846,
@@ -2550,7 +2550,7 @@ export default function BpAcama() {
     frais: 3413.33,
     soulte: -9048.54,
     targetDSCR: 1.17,
-    tarifACC: 0.12,
+    tarifACC: 0.14,
     partACC: 0,
     vent: '',
     neige: '',
@@ -2589,8 +2589,8 @@ export default function BpAcama() {
           productible: prod,
           coutCentrale: (f.power || 100) * 490,
           coutCharpente: (f.projectType === 'BE' || f.name === 'BE') ? 10000 : 0,
-          distHta: 0,
-          distPriv: 0,
+          distHta: 100,
+          distPriv: 100,
           numPanneaux: Math.round((f.power || 100) * 1000 / (params.puissanceUnitaire || 460))
         });
       });
@@ -2611,14 +2611,14 @@ export default function BpAcama() {
           productible: prod, 
           coutCentrale: (b1 || 346.84) * 490, 
           coutCharpente: 0,
-          distHta: 0,
-          distPriv: 0,
+          distHta: 100,
+          distPriv: 100,
           numPanneaux: Math.round((b1 || 346.84) * 1000 / (params.puissanceUnitaire || 460))
         });
       }
-      if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b2, productible: prod, coutCentrale: b2 * 490, coutCharpente: 0, distHta: 0, distPriv: 0, numPanneaux: Math.round(b2 * 1000 / (params.puissanceUnitaire || 460)) });
-      if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b3, productible: prod, coutCentrale: b3 * 490, coutCharpente: 0, distHta: 0, distPriv: 0, numPanneaux: Math.round(b3 * 1000 / (params.puissanceUnitaire || 460)) });
-      if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b4, productible: prod, coutCentrale: b4 * 490, coutCharpente: 0, distHta: 0, distPriv: 0, numPanneaux: Math.round(b4 * 1000 / (params.puissanceUnitaire || 460)) });
+      if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b2, productible: prod, coutCentrale: b2 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b2 * 1000 / (params.puissanceUnitaire || 460)) });
+      if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b3, productible: prod, coutCentrale: b3 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b3 * 1000 / (params.puissanceUnitaire || 460)) });
+      if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b4, productible: prod, coutCentrale: b4 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b4 * 1000 / (params.puissanceUnitaire || 460)) });
     }
 
     setParams(prev => ({
@@ -2627,8 +2627,8 @@ export default function BpAcama() {
       raccordement: parseFloat(selectedProject.raccordement) || 0,
       frais: parseFloat(selectedProject.frais) || 0,
       soulte: parseFloat(selectedProject.soulte) || 0,
-      vent: selectedProject.urbanData?.vents || selectedProject.vent || '',
-      neige: selectedProject.urbanData?.neige || selectedProject.neige || '',
+      vent: selectedProject.windZone || selectedProject.urbanData?.vents || selectedProject.vent || '',
+      neige: selectedProject.snowZone || selectedProject.urbanData?.neige || selectedProject.neige || '',
     }));
   }, [selectedProject]);
 
