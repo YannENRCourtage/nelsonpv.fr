@@ -908,7 +908,10 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
         neige: p.snowZone || p.neige || p.urbanData?.neige || '',
         raccordement: totalRaccordement,
         frais: totalFrais,
-        soulte: 0
+        soulte: 0,
+        targetDSCR: prev.targetDSCR || 1.17,
+        tarifACC: prev.tarifACC || 0.14,
+        partACC: prev.partACC !== undefined ? prev.partACC : 0
       }));
     }
   };
@@ -2641,6 +2644,9 @@ export default function BpAcama() {
       soulte: parseFloat(selectedProject.soulte) || 0,
       vent: selectedProject.windZone || selectedProject.urbanData?.vents || selectedProject.vent || '',
       neige: selectedProject.snowZone || selectedProject.urbanData?.neige || selectedProject.neige || '',
+      targetDSCR: prev.targetDSCR || 1.17,
+      tarifACC: prev.tarifACC || 0.14,
+      partACC: prev.partACC !== undefined ? prev.partACC : 0
     }));
   }, [selectedProject]);
 
