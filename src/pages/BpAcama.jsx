@@ -114,6 +114,68 @@ const BE_TABLES = {
   ]
 };
 
+// ─── Automated Calculation Helpers ───────────────────────────────────────────
+
+const getHtaCost = (kwc, hl) => {
+  if (!kwc || kwc <= 0) return 0;
+  if (kwc < 100) {
+    if (hl < 10) return 5000;
+    if (hl < 50) return 8000;
+    if (hl < 100) return 10000;
+    if (hl < 150) return 12000;
+    if (hl < 200) return 14000;
+    if (hl < 250) return 16000;
+    return 16000;
+  }
+  if (kwc < 200) {
+    if (hl < 50) return 14400;
+    if (hl < 100) return 16100;
+    if (hl < 150) return 17900;
+    if (hl < 200) return 19600;
+    if (hl < 250) return 21300;
+    if (hl < 300) return 23000;
+    if (hl < 350) return 24800;
+    if (hl < 400) return 26500;
+    if (hl < 450) return 27900;
+    return 27900;
+  }
+  if (kwc < 300) {
+    if (hl < 50) return 18300;
+    if (hl < 100) return 20100;
+    if (hl < 150) return 21800;
+    if (hl < 200) return 23500;
+    if (hl < 250) return 25300;
+    if (hl < 300) return 27000;
+    if (hl < 350) return 28700;
+    if (hl < 400) return 30500;
+    if (hl < 450) return 31900;
+    return 31900;
+  }
+  if (kwc < 400) {
+    if (hl < 350) return 28700;
+    if (hl < 400) return 30500;
+    if (hl < 450) return 31900;
+    return 31900;
+  }
+  if (kwc < 600) {
+    if (hl < 50) return 32600;
+    if (hl < 100) return 35300;
+    if (hl < 150) return 37100;
+    if (hl < 200) return 38700;
+    if (hl < 250) return 39100;
+    if (hl < 300) return 40400;
+    if (hl < 350) return 42200;
+    if (hl < 400) return 43900;
+    if (hl < 450) return 45300;
+    return 45300;
+  }
+  if (kwc < 1200) {
+    if (hl < 650) return 45300;
+    return 45300;
+  }
+  return 0;
+};
+
 // Helper for PMT
 function PMT(ir, np, pv) {
   if (ir === 0) return -(pv / np);
@@ -709,7 +771,17 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
         }
         return b;
       });
-      return { ...prev, buildings: newBuildings };
+      // Re-calculate automated fields
+      const totalRaccordement = newBuildings.reduce((sum, b) => sum + getHtaCost(b.kwc, b.distHta) + (parseFloat(b.distPriv) || 0) * 20, 0);
+      const totalCoutTechnique = newBuildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0), 0);
+      const totalFrais = totalCoutTechnique * 0.01;
+
+      return { 
+        ...prev, 
+        buildings: newBuildings,
+        raccordement: totalRaccordement,
+        frais: totalFrais
+      };
     });
   };
 
@@ -807,10 +879,36 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
     if (p.bpAcamaState) {
       setParams(p.bpAcamaState);
     } else {
+      const initialBuildings = [];
+      const prod = parseFloat(p.productible) || 1123.08;
+      const b1 = parseFloat(p.puissance) || 0;
+      if (b1 > 0) {
+        initialBuildings.push({ 
+          id: 1, 
+          typeBat: p.type_bat || '', 
+          projectType: 'BAC',
+          kwc: b1, 
+          productible: prod, 
+          coutCentrale: b1 * 490, 
+          coutCharpente: 0,
+          distHta: 0,
+          distPriv: 0,
+          numPanneaux: Math.ceil(b1 * 1000 / (params.puissanceUnitaire || 460))
+        });
+      }
+      
+      const totalRaccordement = initialBuildings.reduce((sum, b) => sum + getHtaCost(b.kwc, b.distHta) + (parseFloat(b.distPriv) || 0) * 20, 0);
+      const totalCoutTechnique = initialBuildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0), 0);
+      const totalFrais = totalCoutTechnique * 0.01;
+
       setParams(prev => ({
         ...prev,
-        vent: p.urbanData?.vents || '',
-        neige: p.urbanData?.neige || '',
+        buildings: initialBuildings,
+        vent: p.vent || p.urbanData?.vents || '',
+        neige: p.neige || p.urbanData?.neige || '',
+        raccordement: totalRaccordement,
+        frais: totalFrais,
+        soulte: 0
       }));
     }
   };
@@ -1127,26 +1225,18 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                     <tr>
                       <td className="text-[12px] text-slate-500 font-medium pl-2">Raccordement</td>
                       <td colSpan={(params.buildings || []).length} className="pt-1 text-center">
-                        <div className="inline-flex items-center gap-2">
-                          <input 
-                            type="number"
-                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-48 outline-none focus:ring-1 focus:ring-blue-400 text-right font-bold"
-                            value={params.raccordement || ''} 
-                            onChange={e => setParams(p => ({ ...p, raccordement: parseFloat(e.target.value) || 0 }))}
-                          />
+                        <div className="inline-flex items-center gap-2 bg-slate-100 border border-slate-200 rounded px-3 py-1 text-xs w-48 justify-between shadow-inner">
+                          <span className="text-slate-500 font-bold uppercase text-[9px]">Auto</span>
+                          <span className="font-bold text-slate-700">{fmtEur(params.raccordement)}</span>
                         </div>
                       </td>
                     </tr>
                     <tr>
                       <td className="text-[12px] text-slate-500 font-medium pl-2">Frais</td>
                       <td colSpan={(params.buildings || []).length} className="pt-1 text-center">
-                        <div className="inline-flex items-center gap-2">
-                          <input 
-                            type="number"
-                            className="bg-white border border-slate-200 rounded px-2 py-1 text-xs w-48 outline-none focus:ring-1 focus:ring-blue-400 text-right font-bold"
-                            value={params.frais || ''} 
-                            onChange={e => setParams(p => ({ ...p, frais: parseFloat(e.target.value) || 0 }))}
-                          />
+                        <div className="inline-flex items-center gap-2 bg-slate-100 border border-slate-200 rounded px-3 py-1 text-xs w-48 justify-between shadow-inner">
+                          <span className="text-slate-500 font-bold uppercase text-[9px]">Auto (1%)</span>
+                          <span className="font-bold text-slate-700">{fmtEur(params.frais)}</span>
                         </div>
                       </td>
                     </tr>
@@ -1418,14 +1508,13 @@ function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
         cp: p.zip_code || p.urbanData?.zip_code || '',
         gps: (p.lat && p.lng) ? `${fmt(p.lat,4)} / ${fmt(p.lng,4)}` : '',
         tel: p.phone || '',
-        zone_sism: p.urbanData?.seismes || '',
-        zone_vent: p.urbanData?.vents || '', // Q par défaut
-        zone_neige: p.urbanData?.neige || '', // R par défaut
         altitude: p.urbanData?.alti || p.urbanData?.altitude || p.altitude || '', 
         type_trav: p.bpAcamaState?.buildings?.[0]?.projectType || 'BAC',
         type_bat: p.bpAcamaState?.buildings?.[0]?.typeBat || '',
         nb_hang: p.bpAcamaState?.buildings?.length || 1,
         categorie: p.category || 'Agricole',
+        zone_vent: p.vent || p.urbanData?.vents || '',
+        zone_neige: p.neige || p.urbanData?.neige || '',
         // Auto-fill distance from first building if exists
         hl: p.bpAcamaState?.buildings?.[0]?.distHta || '',
         hm: p.bpAcamaState?.buildings?.[0]?.distPriv || '',
