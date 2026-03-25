@@ -75,30 +75,29 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
                     clonedDoc.querySelectorAll('.recharts-responsive-container, .recharts-wrapper, table').forEach(el => {
                         el.style.setProperty('width', '100%', 'important');
                         if (id === 'pdf-section-2' && el.tagName === 'TABLE') {
-                            el.style.setProperty('font-size', '10pt', 'important'); // Reduced font size for multi-column table to fit
+                            el.style.setProperty('font-size', '9pt', 'important'); // Balanced font size
                         }
                     });
                     
-                    clonedDoc.querySelectorAll('.bg-white').forEach(el => {
+                    // Only ensure the main background is white, but preserve internal shades
+                    clonedDoc.querySelectorAll('.pdf-header-container, #pdf-section-2').forEach(el => {
                         el.style.backgroundColor = '#ffffff';
                     });
 
                     const s = clonedDoc.getElementById(id);
                     if (s) {
-                        // Use a fixed wide width for capture to ensure grids and tables expand
-                        // Increase to 1600px for the 20-year table to avoid truncation
-                        // For Page 1, use 1000px to better match A4 landscape aspect ratio and avoid excessive height scaling
-                        s.style.width = id === 'pdf-section-2' ? '1600px' : '1000px'; 
+                        // Increase to 2200px for the 20-year table to ensure no truncation of 2045
+                        // For Page 1, use 1600px to fill the full landscape width
+                        s.style.width = id === 'pdf-section-2' ? '2200px' : '1600px'; 
                         s.style.display = 'block';
                         s.style.margin = '0';
                         s.style.padding = '0';
                         s.style.overflow = 'visible';
                         
-                        // Force grid columns to be side-by-side on Page 1 even at 1000px
+                        // Force grid columns for Page 1
                         if (id === 'pdf-section-1') {
                             const grid = s.querySelector('.grid');
                             if (grid) {
-                                grid.classList.remove('lg:grid-cols-12');
                                 grid.style.display = 'grid';
                                 grid.style.gridTemplateColumns = 'repeat(12, minmax(0, 1fr))';
                                 const leftVal = s.querySelector('.xl\\:col-span-5');
@@ -116,15 +115,8 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
             const imgProps = pdf.getImageProperties(imgData);
             const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
 
-            // Fit to content area
-            if (imgHeight > contentHeight) {
-                const ratio = contentHeight / imgHeight;
-                const scaledWidth = contentWidth * ratio;
-                const xOffset = margin + (contentWidth - scaledWidth) / 2;
-                pdf.addImage(imgData, 'PNG', xOffset, margin, scaledWidth, contentHeight);
-            } else {
-                pdf.addImage(imgData, 'PNG', margin, margin, contentWidth, imgHeight);
-            }
+            // Fit to content area - Always fill the width as requested
+            pdf.addImage(imgData, 'PNG', margin, margin, contentWidth, imgHeight);
         };
 
         if (sections && sections.length > 0) {
