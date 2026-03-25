@@ -106,7 +106,7 @@ export default function ProjectEditor() {
         const { apiService } = await import('@/services/api');
         const data = await apiService.getUsers();
         if (data) {
-          setProjectUsers(data.filter(u => u.role !== 'admin'));
+          setProjectUsers(data);
         }
       } catch (error) {
         console.error("Failed to fetch users", error);
@@ -114,6 +114,16 @@ export default function ProjectEditor() {
     };
     fetchUsers();
   }, []);
+
+  const filteredUsers = React.useMemo(() => {
+    return projectUsers.filter(u => {
+      // Admins are visible everywhere
+      const isAdmin = u.role === 'admin';
+      const isSameTenant = u.tenantId === activeTenantId;
+      const isAurélien = (u.firstName === 'Aurélien' || u.displayName === 'Aurélien' || u.lastName === 'Aurélien');
+      return (isAdmin || isSameTenant) && !isAurélien;
+    });
+  }, [projectUsers, activeTenantId]);
 
   const [captures, setCaptures] = useState([null, null, null, null]);
 
@@ -671,14 +681,11 @@ export default function ProjectEditor() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Yann">Yann</SelectItem>
-                    <SelectItem value="Jack">Jack</SelectItem>
-                    <SelectItem value="Nicolas">Nicolas</SelectItem>
-                    <SelectItem value="NicolasNMD">NicolasNMD</SelectItem>
-                    <SelectItem value="Laurent">Laurent</SelectItem>
-                    <SelectItem value="Elodie">Elodie</SelectItem>
-                    <SelectItem value="Véronique">Véronique</SelectItem>
-                    <SelectItem value="Aurélien">Aurélien</SelectItem>
+                    {filteredUsers.map(u => {
+                      const name = u.firstName || u.displayName || u.email;
+                      return <SelectItem key={u.id || u.email} value={name}>{name}</SelectItem>;
+                    })}
+                    {/* Specialized options preserved if needed manually or if they don't exist as users */}
                     <SelectItem value="Contact">Contact</SelectItem>
                   </SelectContent>
                 </Select>
@@ -699,14 +706,10 @@ export default function ProjectEditor() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Yann">Yann</SelectItem>
-                    <SelectItem value="Jack">Jack</SelectItem>
-                    <SelectItem value="Nicolas">Nicolas</SelectItem>
-                    <SelectItem value="NicolasNMD">NicolasNMD</SelectItem>
-                    <SelectItem value="Laurent">Laurent</SelectItem>
-                    <SelectItem value="Elodie">Elodie</SelectItem>
-                    <SelectItem value="Véronique">Véronique</SelectItem>
-                    <SelectItem value="Aurélien">Aurélien</SelectItem>
+                    {filteredUsers.map(u => {
+                      const name = u.firstName || u.displayName || u.email;
+                      return <SelectItem key={u.id || u.email} value={name}>{name}</SelectItem>;
+                    })}
                     <SelectItem value="Contact">Contact</SelectItem>
                   </SelectContent>
                 </Select>

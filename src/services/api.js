@@ -142,6 +142,24 @@ class ApiService {
         return result;
     }
 
+    async duplicateProject(projectId, targetTenantId, options = { transferLinkedData: true }) {
+        const user = await this._getCurrentUser();
+        const newProjectId = await firestoreService.duplicateProject(projectId, targetTenantId, options.transferLinkedData);
+
+        await this.logActivity({
+            type: 'project',
+            action: 'duplicate',
+            description: `${user.firstName || user.displayName || 'Un utilisateur'} a dupliqué le projet vers un tiers`,
+            userId: user.uid,
+            userName: user.firstName || user.displayName,
+            userPhotoURL: user.photoURL,
+            itemId: newProjectId,
+            tenantId: targetTenantId
+        });
+
+        return newProjectId;
+    }
+
     async deleteProject(id, skipLog = false) {
         const user = await this._getCurrentUser();
         // Get name before delete

@@ -29,7 +29,7 @@ const TABS = [
   { id: 'data', label: 'DATA', icon: BarChart3 },
 ];
 
-const SUIVI_BAT_DATA = [
+const SUIVI_BAT_DATA_ACAMA = [
   { type:'TYPE 1 MINI', spv:'ACAMA SPV1', kwc:266.80, cout_bat:137939.59, massifs:16, longueur:42.7, largeur:24.44, travees:7, hSud:4, hNord:4, faitage:6.89, surfSud:643, surfNord:644, surfTot:1288, penteSud:11.19, penteNord:14.48, modH:10, modL:20, totalMod:300, puissMax:266.8, prodMoyen:1100 },
   { type:'TYPE 1 MID', spv:'ACAMA SPV1', kwc:303.60, cout_bat:157435.34, massifs:18, longueur:50.2, largeur:24.44, travees:7, hSud:4, hNord:4, faitage:6.89, surfSud:736, surfNord:736, surfTot:1471, penteSud:11.19, penteNord:14.48, modH:10, modL:23, totalMod:342, puissMax:303.6, prodMoyen:1100 },
   { type:'TYPE 1 MAXI', spv:'ACAMA SPV1', kwc:340.40, cout_bat:177710.51, massifs:20, longueur:57.5, largeur:24.44, travees:9, hSud:4, hNord:4, faitage:6.89, surfSud:824.85, surfNord:824.85, surfTot:1650, penteSud:11.19, penteNord:14.48, modH:10, modL:26, totalMod:384, puissMax:340.4, prodMoyen:1100 },
@@ -64,6 +64,247 @@ const SUIVI_BAT_DATA = [
   { type:'OMB TYPE 2', spv:'ACAMA SPV1', kwc:20.24, cout_bat:9996, massifs:2, longueur:7.5, largeur:12.65, travees:1, hSud:0, hNord:0, faitage:11, surfSud:98, surfNord:0, surfTot:98, penteSud:0, penteNord:0, modH:2, modL:22, totalMod:44, puissMax:20.2, prodMoyen:0 },
   { type:'OMB TYPE 3', spv:'ACAMA SPV1', kwc:18.40, cout_bat:10444, massifs:2, longueur:11.5, largeur:11.5, travees:1, hSud:0, hNord:0, faitage:6.1, surfSud:46, surfNord:0, surfTot:46, penteSud:0, penteNord:0, modH:2, modL:20, totalMod:40, puissMax:11.5, prodMoyen:0 },
   { type:'OMB TYPE PL', spv:'ACAMA SPV1', kwc:27.60, cout_bat:15207, massifs:6, longueur:7.5, largeur:17.8, travees:1, hSud:0, hNord:0, faitage:17.8, surfSud:127, surfNord:0, surfTot:127, penteSud:0, penteNord:0, modH:6, modL:10, totalMod:60, puissMax:27.6, prodMoyen:0 },
+];
+
+const SUIVI_BAT_DATA_GREEN_INVEST = [
+  // ─── ORION 16 ─────────────────────────────────────────────────────────────
+  { type:'ORION 16 01', spv:'GREEN INVEST', kwc:96, cout_bat:57288, longueur:30.0, largeur:16.4, travees:4, hSud:4, hNord:4, faitage:7.42, surfTot:482 },
+  { type:'ORION 16 02', spv:'GREEN INVEST', kwc:126, cout_bat:68777, longueur:37.5, largeur:16.4, travees:5, hSud:4, hNord:4, faitage:7.42, surfTot:615 },
+  { type:'ORION 16 03', spv:'GREEN INVEST', kwc:151, cout_bat:80432, longueur:45.0, largeur:16.4, travees:6, hSud:4, hNord:4, faitage:7.42, surfTot:738 },
+  { type:'ORION 16 04', spv:'GREEN INVEST', kwc:175, cout_bat:92127, longueur:52.5, largeur:16.4, travees:7, hSud:4, hNord:4, faitage:7.42, surfTot:861 },
+  { type:'ORION 16 05', spv:'GREEN INVEST', kwc:199, cout_bat:103630, longueur:60.0, largeur:16.4, travees:8, hSud:4, hNord:4, faitage:7.42, surfTot:984 },
+  { type:'ORION 16 06', spv:'GREEN INVEST', kwc:229, cout_bat:115305, longueur:67.5, largeur:16.4, travees:9, hSud:4, hNord:4, faitage:7.42, surfTot:1107 },
+  { type:'ORION 16 07', spv:'GREEN INVEST', kwc:253, cout_bat:127820, longueur:75.0, largeur:16.4, travees:10, hSud:4, hNord:4, faitage:7.42, surfTot:1230 },
+  { type:'ORION 16 08', spv:'GREEN INVEST', kwc:278, cout_bat:139495, longueur:82.5, largeur:16.4, travees:11, hSud:4, hNord:4, faitage:7.42, surfTot:1353 },
+  { type:'ORION 16 09', spv:'GREEN INVEST', kwc:302, cout_bat:150985, longueur:90.0, largeur:16.4, travees:12, hSud:4, hNord:4, faitage:7.42, surfTot:1476 },
+  { type:'ORION 16 010', spv:'GREEN INVEST', kwc:328, cout_bat:162488, longueur:97.5, largeur:16.4, travees:13, hSud:4, hNord:4, faitage:7.42, surfTot:1599 },
+  { type:'ORION 16 011', spv:'GREEN INVEST', kwc:355, cout_bat:173705, longueur:105.0, largeur:16.4, travees:14, hSud:4, hNord:4, faitage:7.42, surfTot:1722 },
+  { type:'ORION 16 012', spv:'GREEN INVEST', kwc:380, cout_bat:188380, longueur:112.5, largeur:16.4, travees:15, hSud:4, hNord:4, faitage:7.42, surfTot:1845 },
+  { type:'ORION 16 013', spv:'GREEN INVEST', kwc:405, cout_bat:200035, longueur:120.0, largeur:16.4, travees:16, hSud:4, hNord:4, faitage:7.42, surfTot:1968 },
+
+  // ─── ORION 20 ─────────────────────────────────────────────────────────────
+  { type:'ORION 20 014', spv:'GREEN INVEST', kwc:120, cout_bat:69948, longueur:30.0, largeur:20.0, travees:4, hSud:4, hNord:4, faitage:8.4, surfTot:600 },
+  { type:'ORION 20 015', spv:'GREEN INVEST', kwc:156, cout_bat:83948, longueur:37.5, largeur:20.0, travees:5, hSud:4, hNord:4, faitage:8.4, surfTot:750 },
+  { type:'ORION 20 016', spv:'GREEN INVEST', kwc:185, cout_bat:98459, longueur:45.0, largeur:20.0, travees:6, hSud:4, hNord:4, faitage:8.4, surfTot:900 },
+  { type:'ORION 20 017', spv:'GREEN INVEST', kwc:215, cout_bat:113659, longueur:52.5, largeur:20.0, travees:7, hSud:4, hNord:4, faitage:8.4, surfTot:1050 },
+  { type:'ORION 20 018', spv:'GREEN INVEST', kwc:245, cout_bat:128355, longueur:60.0, largeur:20.0, travees:8, hSud:4, hNord:4, faitage:8.4, surfTot:1200 },
+  { type:'ORION 20 019', spv:'GREEN INVEST', kwc:282, cout_bat:142888, longueur:67.5, largeur:20.0, travees:9, hSud:4, hNord:4, faitage:8.4, surfTot:1350 },
+  { type:'ORION 20 020', spv:'GREEN INVEST', kwc:312, cout_bat:157235, longueur:75.0, largeur:20.0, travees:10, hSud:4, hNord:4, faitage:8.4, surfTot:1500 },
+  { type:'ORION 20 021', spv:'GREEN INVEST', kwc:342, cout_bat:171759, longueur:82.5, largeur:20.0, travees:11, hSud:4, hNord:4, faitage:8.4, surfTot:1650 },
+  { type:'ORION 20 022', spv:'GREEN INVEST', kwc:372, cout_bat:186109, longueur:90.0, largeur:20.0, travees:12, hSud:4, hNord:4, faitage:8.4, surfTot:1800 },
+  { type:'ORION 20 023', spv:'GREEN INVEST', kwc:405, cout_bat:200816, longueur:97.5, largeur:20.0, travees:13, hSud:4, hNord:4, faitage:8.4, surfTot:1950 },
+  { type:'ORION 20 024', spv:'GREEN INVEST', kwc:435, cout_bat:217969, longueur:105.0, largeur:20.0, travees:14, hSud:4, hNord:4, faitage:8.4, surfTot:2100 },
+  { type:'ORION 20 025', spv:'GREEN INVEST', kwc:468, cout_bat:233139, longueur:112.5, largeur:20.0, travees:15, hSud:4, hNord:4, faitage:8.4, surfTot:2250 },
+  { type:'ORION 20 026', spv:'GREEN INVEST', kwc:498, cout_bat:247680, longueur:120.0, largeur:20.0, travees:16, hSud:4, hNord:4, faitage:8.4, surfTot:2400 },
+
+  // ─── CYRUS 25 ─────────────────────────────────────────────────────────────
+  { type:'CYRUS 25 C1', spv:'GREEN INVEST', kwc:169, cout_bat:80756, longueur:30.0, largeur:25.5, travees:4, hSud:4, hNord:4, faitage:8.9, surfTot:765 },
+  { type:'CYRUS 25 C2', spv:'GREEN INVEST', kwc:214, cout_bat:97152, longueur:37.5, largeur:25.5, travees:5, hSud:4, hNord:4, faitage:8.9, surfTot:956 },
+  { type:'CYRUS 25 C3', spv:'GREEN INVEST', kwc:255, cout_bat:113905, longueur:45.0, largeur:25.5, travees:6, hSud:4, hNord:4, faitage:8.9, surfTot:1147 },
+  { type:'CYRUS 25 C4', spv:'GREEN INVEST', kwc:296, cout_bat:131837, longueur:52.5, largeur:25.5, travees:7, hSud:4, hNord:4, faitage:8.9, surfTot:1339 },
+  { type:'CYRUS 25 C5', spv:'GREEN INVEST', kwc:338, cout_bat:148250, longueur:60.0, largeur:25.5, travees:8, hSud:4, hNord:4, faitage:8.9, surfTot:1530 },
+  { type:'CYRUS 25 C6', spv:'GREEN INVEST', kwc:388, cout_bat:165032, longueur:67.5, largeur:25.5, travees:9, hSud:4, hNord:4, faitage:8.9, surfTot:1721 },
+  { type:'CYRUS 25 C7', spv:'GREEN INVEST', kwc:429, cout_bat:181583, longueur:75.0, largeur:25.5, travees:10, hSud:4, hNord:4, faitage:8.9, surfTot:1912 },
+  { type:'CYRUS 25 C8', spv:'GREEN INVEST', kwc:470, cout_bat:198336, longueur:82.5, largeur:25.5, travees:11, hSud:4, hNord:4, faitage:8.9, surfTot:2104 },
+  { type:'CYRUS 25 C9', spv:'GREEN INVEST', kwc:511, cout_bat:215088, longueur:90.0, largeur:25.5, travees:12, hSud:4, hNord:4, faitage:8.9, surfTot:2295 },
+
+  // ─── CYRUS 29 ─────────────────────────────────────────────────────────────
+  { type:'CYRUS 29 C10', spv:'GREEN INVEST', kwc:193, cout_bat:92159, longueur:30.0, largeur:29.0, travees:4, hSud:4.6, hNord:4.6, faitage:9.6, surfTot:870 },
+  { type:'CYRUS 29 C11', spv:'GREEN INVEST', kwc:244, cout_bat:111617, longueur:37.5, largeur:29.0, travees:5, hSud:4.6, hNord:4.6, faitage:9.6, surfTot:1087 },
+  { type:'CYRUS 29 C12', spv:'GREEN INVEST', kwc:290, cout_bat:132035, longueur:45.0, largeur:29.0, travees:6, hSud:4.6, hNord:4.6, faitage:9.6, surfTot:1305 },
+  { type:'CYRUS 29 C13', spv:'GREEN INVEST', kwc:337, cout_bat:151901, longueur:52.5, largeur:29.0, travees:7, hSud:4.6, hNord:4.6, faitage:9.6, surfTot:1522 },
+  { type:'CYRUS 29 C14', spv:'GREEN INVEST', kwc:386, cout_bat:171359, longueur:60.0, largeur:29.0, travees:8, hSud:4.6, hNord:4.6, faitage:9.6, surfTot:1740 },
+  { type:'CYRUS 29 C15', spv:'GREEN INVEST', kwc:441, cout_bat:191388, longueur:67.5, largeur:29.0, travees:9, hSud:4.6, hNord:4.6, faitage:9.6, surfTot:1957 },
+  { type:'CYRUS 29 C16', spv:'GREEN INVEST', kwc:483, cout_bat:210358, longueur:75.0, largeur:29.0, travees:10, hSud:4.6, hNord:4.6, faitage:9.6, surfTot:2175 },
+
+  // ─── KEREN 24 ─────────────────────────────────────────────────────────────
+  { type:'KEREN 24 K1', spv:'GREEN INVEST', kwc:157, cout_bat:79955, longueur:30.0, largeur:24.3, travees:4, hSud:3.9, hNord:3.9, faitage:6.8, surfTot:729 },
+  { type:'KEREN 24 K2', spv:'GREEN INVEST', kwc:195, cout_bat:95159, longueur:37.5, largeur:24.3, travees:5, hSud:3.9, hNord:3.9, faitage:6.8, surfTot:911 },
+  { type:'KEREN 24 K3', spv:'GREEN INVEST', kwc:235, cout_bat:112826, longueur:45.0, largeur:24.3, travees:6, hSud:3.9, hNord:3.9, faitage:6.8, surfTot:1094 },
+  { type:'KEREN 24 K4', spv:'GREEN INVEST', kwc:272, cout_bat:129289, longueur:52.5, largeur:24.3, travees:7, hSud:3.9, hNord:3.9, faitage:6.8, surfTot:1276 },
+  { type:'KEREN 24 K5', spv:'GREEN INVEST', kwc:314, cout_bat:146366, longueur:60.0, largeur:24.3, travees:8, hSud:3.9, hNord:3.9, faitage:6.8, surfTot:1458 },
+  { type:'KEREN 24 K6', spv:'GREEN INVEST', kwc:353, cout_bat:162980, longueur:67.5, largeur:24.3, travees:9, hSud:3.9, hNord:3.9, faitage:6.8, surfTot:1640 },
+  { type:'KEREN 24 K7', spv:'GREEN INVEST', kwc:392, cout_bat:179237, longueur:75.0, largeur:24.3, travees:10, hSud:3.9, hNord:3.9, faitage:6.8, surfTot:1823 },
+  { type:'KEREN 24 K8', spv:'GREEN INVEST', kwc:433, cout_bat:195851, longueur:82.5, largeur:24.3, travees:11, hSud:3.9, hNord:3.9, faitage:6.8, surfTot:2005 },
+  { type:'KEREN 24 K9', spv:'GREEN INVEST', kwc:471, cout_bat:212106, longueur:90.0, largeur:24.3, travees:12, hSud:3.9, hNord:3.9, faitage:6.8, surfTot:2187 },
+
+  // ─── KEREN 28 ─────────────────────────────────────────────────────────────
+  { type:'KEREN 28 K10', spv:'GREEN INVEST', kwc:181, cout_bat:89264, longueur:30.0, largeur:28.0, travees:4, hSud:3.9, hNord:3.9, faitage:7.1, surfTot:840 },
+  { type:'KEREN 28 K11', spv:'GREEN INVEST', kwc:224, cout_bat:108539, longueur:37.5, largeur:28.0, travees:5, hSud:3.9, hNord:3.9, faitage:7.1, surfTot:1050 },
+  { type:'KEREN 32 K12', spv:'GREEN INVEST', kwc:272, cout_bat:128657, longueur:45.0, largeur:28.0, travees:6, hSud:3.9, hNord:3.9, faitage:7.1, surfTot:1260 },
+  { type:'KEREN 32 K13', spv:'GREEN INVEST', kwc:313, cout_bat:148107, longueur:52.5, largeur:28.0, travees:7, hSud:3.9, hNord:3.9, faitage:7.1, surfTot:1470 },
+  { type:'KEREN 32 K14', spv:'GREEN INVEST', kwc:362, cout_bat:167385, longueur:60.0, largeur:28.0, travees:8, hSud:3.9, hNord:3.9, faitage:7.1, surfTot:1680 },
+  { type:'KEREN 32 K15', spv:'GREEN INVEST', kwc:411, cout_bat:186633, longueur:67.5, largeur:28.0, travees:9, hSud:3.9, hNord:3.9, faitage:7.1, surfTot:1890 },
+  { type:'KEREN 32 K16', spv:'GREEN INVEST', kwc:453, cout_bat:205942, longueur:75.0, largeur:28.0, travees:10, hSud:3.9, hNord:3.9, faitage:7.1, surfTot:2100 },
+  { type:'KEREN 32 K17', spv:'GREEN INVEST', kwc:502, cout_bat:225391, longueur:82.5, largeur:28.0, travees:11, hSud:3.9, hNord:3.9, faitage:7.1, surfTot:2310 },
+  { type:'KEREN 32 K18', spv:'GREEN INVEST', kwc:542, cout_bat:245236, longueur:90.0, largeur:28.0, travees:12, hSud:3.9, hNord:3.9, faitage:7.1, surfTot:2520 },
+
+  // ─── KEREN 32 ─────────────────────────────────────────────────────────────
+  { type:'KEREN 32 K19', spv:'GREEN INVEST', kwc:201, cout_bat:100914, longueur:30.0, largeur:32.0, travees:4, hSud:3.9, hNord:3.9, faitage:7.5, surfTot:960 },
+  { type:'KEREN 32 K20', spv:'GREEN INVEST', kwc:253, cout_bat:119511, longueur:37.5, largeur:32.0, travees:5, hSud:3.9, hNord:3.9, faitage:7.5, surfTot:1200 },
+  { type:'KEREN 32 K21', spv:'GREEN INVEST', kwc:303, cout_bat:141201, longueur:45.0, largeur:32.0, travees:6, hSud:3.9, hNord:3.9, faitage:7.5, surfTot:1440 },
+  { type:'KEREN 32 K22', spv:'GREEN INVEST', kwc:360, cout_bat:161858, longueur:52.5, largeur:32.0, travees:7, hSud:3.9, hNord:3.9, faitage:7.5, surfTot:1680 },
+  { type:'KEREN 32 K23', spv:'GREEN INVEST', kwc:411, cout_bat:182096, longueur:60.0, largeur:32.0, travees:8, hSud:3.9, hNord:3.9, faitage:7.5, surfTot:1920 },
+  { type:'KEREN 32 K24', spv:'GREEN INVEST', kwc:466, cout_bat:203708, longueur:67.5, largeur:32.0, travees:9, hSud:3.9, hNord:3.9, faitage:7.5, surfTot:2160 },
+
+  // ─── KEREN 35 ─────────────────────────────────────────────────────────────
+  { type:'KEREN 35 K25', spv:'GREEN INVEST', kwc:217, cout_bat:112191, longueur:30.0, largeur:35.0, travees:4, hSud:3.9, hNord:3.9, faitage:7.8, surfTot:1050 },
+  { type:'KEREN 35 K26', spv:'GREEN INVEST', kwc:292, cout_bat:137009, longueur:37.5, largeur:35.0, travees:5, hSud:3.9, hNord:3.9, faitage:7.8, surfTot:1312 },
+  { type:'KEREN 35 K27', spv:'GREEN INVEST', kwc:348, cout_bat:160944, longueur:45.0, largeur:35.0, travees:6, hSud:3.9, hNord:3.9, faitage:7.8, surfTot:1575 },
+  { type:'KEREN 35 K28', spv:'GREEN INVEST', kwc:404, cout_bat:184879, longueur:52.5, largeur:35.0, travees:7, hSud:3.9, hNord:3.9, faitage:7.8, surfTot:1837 },
+  { type:'KEREN 35 K29', spv:'GREEN INVEST', kwc:460, cout_bat:208814, longueur:60.0, largeur:35.0, travees:8, hSud:3.9, hNord:3.9, faitage:7.8, surfTot:2100 },
+  { type:'KEREN 39 K30', spv:'GREEN INVEST', kwc:253, cout_bat:125852, longueur:30.0, largeur:39.0, travees:4, hSud:5.1, hNord:5.1, faitage:8.1, surfTot:1170 },
+
+  // ─── KEREN 39 ─────────────────────────────────────────────────────────────
+  { type:'KEREN 39 K31', spv:'GREEN INVEST', kwc:322, cout_bat:156388, longueur:37.5, largeur:39.0, travees:5, hSud:5.1, hNord:5.1, faitage:8.1, surfTot:1462 },
+  { type:'KEREN 39 K32', spv:'GREEN INVEST', kwc:387, cout_bat:185618, longueur:45.0, largeur:39.0, travees:6, hSud:5.1, hNord:5.1, faitage:8.1, surfTot:1755 },
+  { type:'KEREN 39 K33', spv:'GREEN INVEST', kwc:445, cout_bat:210956, longueur:52.5, largeur:39.0, travees:7, hSud:5.1, hNord:5.1, faitage:8.1, surfTot:2047 },
+  { type:'KEREN 39 K34', spv:'GREEN INVEST', kwc:507, cout_bat:236351, longueur:60.0, largeur:39.0, travees:8, hSud:5.1, hNord:5.1, faitage:8.1, surfTot:2340 },
+
+  // ─── KEREN 43 ─────────────────────────────────────────────────────────────
+  { type:'KEREN 43 K35', spv:'GREEN INVEST', kwc:278, cout_bat:145224, longueur:30.0, largeur:43.0, travees:4, hSud:5.1, hNord:5.1, faitage:8.5, surfTot:1290 },
+  { type:'KEREN 43 K36', spv:'GREEN INVEST', kwc:351, cout_bat:178101, longueur:37.5, largeur:43.0, travees:5, hSud:5.1, hNord:5.1, faitage:8.5, surfTot:1612 },
+  { type:'KEREN 43 K37', spv:'GREEN INVEST', kwc:418, cout_bat:210040, longueur:45.0, largeur:43.0, travees:6, hSud:5.1, hNord:5.1, faitage:8.5, surfTot:1935 },
+  { type:'KEREN 43 K38', spv:'GREEN INVEST', kwc:483, cout_bat:243175, longueur:52.5, largeur:43.0, travees:7, hSud:5.1, hNord:5.1, faitage:8.5, surfTot:2257 },
+
+  // ─── ATLAS 12 ─────────────────────────────────────────────────────────────
+  { type:'ATLAS 12 A1N', spv:'GREEN INVEST', kwc:95, cout_bat:57482, longueur:30.0, largeur:12.7, travees:4, hSud:4, hNord:4, faitage:7.41, surfTot:381 },
+  { type:'ATLAS 12 A19N', spv:'GREEN INVEST', kwc:120, cout_bat:68651, longueur:37.5, largeur:12.7, travees:5, hSud:4, hNord:4, faitage:7.41, surfTot:476 },
+  { type:'ATLAS 12 A2N', spv:'GREEN INVEST', kwc:126, cout_bat:69282, longueur:45.0, largeur:12.7, travees:6, hSud:4, hNord:4, faitage:7.41, surfTot:571 },
+
+  // ─── HELIOS 18 ────────────────────────────────────────────────────────────
+  { type:'HELIOS 18 H19', spv:'GREEN INVEST', kwc:274, cout_bat:134188, longueur:67.5, largeur:18.6, travees:9, hSud:4, hNord:4, faitage:7.14, surfTot:1255 },
+  { type:'HELIOS 18 H20', spv:'GREEN INVEST', kwc:302, cout_bat:147857, longueur:75.0, largeur:18.6, travees:10, hSud:4, hNord:4, faitage:7.14, surfTot:1395 },
+  { type:'HELIOS 18 H21', spv:'GREEN INVEST', kwc:334, cout_bat:161730, longueur:82.5, largeur:18.6, travees:11, hSud:4, hNord:4, faitage:7.14, surfTot:1534 },
+  { type:'HELIOS 18 H22', spv:'GREEN INVEST', kwc:362, cout_bat:175785, longueur:90.0, largeur:18.6, travees:12, hSud:4, hNord:4, faitage:7.14, surfTot:1674 },
+  { type:'HELIOS 18 H23', spv:'GREEN INVEST', kwc:395, cout_bat:189444, longueur:97.5, largeur:18.6, travees:13, hSud:4, hNord:4, faitage:7.14, surfTot:1813 },
+  { type:'HELIOS 18 H24', spv:'GREEN INVEST', kwc:425, cout_bat:203799, longueur:105.0, largeur:18.6, travees:14, hSud:4, hNord:4, faitage:7.14, surfTot:1953 },
+  { type:'HELIOS 18 H25', spv:'GREEN INVEST', kwc:455, cout_bat:219478, longueur:112.5, largeur:18.6, travees:15, hSud:4, hNord:4, faitage:7.14, surfTot:2092 },
+  { type:'HELIOS 18 H26', spv:'GREEN INVEST', kwc:483, cout_bat:234355, longueur:120.0, largeur:18.6, travees:16, hSud:4, hNord:4, faitage:7.14, surfTot:2232 },
+
+  // ─── HELIOS 22 ────────────────────────────────────────────────────────────
+  { type:'HELIOS 22 H27', spv:'GREEN INVEST', kwc:145, cout_bat:73849, longueur:30.0, largeur:22.35, travees:4, hSud:5.5, hNord:5.5, faitage:7.47, surfTot:670 },
+  { type:'HELIOS 22 H28', spv:'GREEN INVEST', kwc:178, cout_bat:88839, longueur:37.5, largeur:22.35, travees:5, hSud:5.5, hNord:5.5, faitage:7.47, surfTot:838 },
+  { type:'HELIOS 22 H29', spv:'GREEN INVEST', kwc:217, cout_bat:104130, longueur:45.0, largeur:22.35, travees:6, hSud:5.5, hNord:5.5, faitage:7.47, surfTot:1006 },
+  { type:'HELIOS 22 H30', spv:'GREEN INVEST', kwc:251, cout_bat:120395, longueur:52.5, largeur:22.35, travees:7, hSud:5.5, hNord:5.5, faitage:7.47, surfTot:1173 },
+  { type:'HELIOS 22 H31', spv:'GREEN INVEST', kwc:290, cout_bat:135634, longueur:60.0, largeur:22.35, travees:8, hSud:5.5, hNord:5.5, faitage:7.47, surfTot:1341 },
+  { type:'HELIOS 22 H32', spv:'GREEN INVEST', kwc:329, cout_bat:150876, longueur:67.5, largeur:22.35, travees:9, hSud:5.5, hNord:5.5, faitage:7.47, surfTot:1509 },
+
+  // ─── HELIOS 25 ────────────────────────────────────────────────────────────
+  { type:'HELIOS 25 H33', spv:'GREEN INVEST', kwc:362, cout_bat:166302, longueur:75.0, largeur:22.35, travees:10, hSud:5.5, hNord:5.5, faitage:7.47, surfTot:1667 },
+  { type:'HELIOS 25 H34', spv:'GREEN INVEST', kwc:401, cout_bat:181542, longueur:82.5, largeur:22.35, travees:11, hSud:5.5, hNord:5.5, faitage:7.47, surfTot:1844 },
+  { type:'HELIOS 25 H35', spv:'GREEN INVEST', kwc:435, cout_bat:196782, longueur:90.0, largeur:22.35, travees:12, hSud:5.5, hNord:5.5, faitage:7.47, surfTot:2011 },
+  { type:'HELIOS 25 H36', spv:'GREEN INVEST', kwc:474, cout_bat:212022, longueur:97.5, largeur:22.35, travees:13, hSud:5.5, hNord:5.5, faitage:7.47, surfTot:2179 },
+  { type:'HELIOS 25 H37', spv:'GREEN INVEST', kwc:507, cout_bat:231049, longueur:105.0, largeur:22.35, travees:14, hSud:5.5, hNord:5.5, faitage:7.47, surfTot:2346 },
+
+  // ─── HELIOS 29 ────────────────────────────────────────────────────────────
+  { type:'HELIOS 29 H38', spv:'GREEN INVEST', kwc:169, cout_bat:85671, longueur:30.0, largeur:26.05, travees:4, hSud:5.5, hNord:5.5, faitage:7.8, surfTot:781 },
+  { type:'HELIOS 29 H39', spv:'GREEN INVEST', kwc:214, cout_bat:104833, longueur:37.5, largeur:26.05, travees:5, hSud:5.5, hNord:5.5, faitage:7.8, surfTot:977 },
+  { type:'HELIOS 29 H40', spv:'GREEN INVEST', kwc:255, cout_bat:123918, longueur:45.0, largeur:26.05, travees:6, hSud:5.5, hNord:5.5, faitage:7.8, surfTot:1172 },
+  { type:'HELIOS 29 H41', spv:'GREEN INVEST', kwc:296, cout_bat:142115, longueur:52.5, largeur:26.05, travees:7, hSud:5.5, hNord:5.5, faitage:7.8, surfTot:1368 },
+  { type:'HELIOS 29 H42', spv:'GREEN INVEST', kwc:338, cout_bat:160494, longueur:60.0, largeur:26.05, travees:8, hSud:5.5, hNord:5.5, faitage:7.8, surfTot:1563 },
+  { type:'HELIOS 29 H43', spv:'GREEN INVEST', kwc:386, cout_bat:179639, longueur:67.5, largeur:26.05, travees:9, hSud:5.5, hNord:5.5, faitage:7.8, surfTot:1759 },
+  { type:'HELIOS 29 H44', spv:'GREEN INVEST', kwc:429, cout_bat:197069, longueur:75.0, largeur:26.05, travees:10, hSud:5.5, hNord:5.5, faitage:7.8, surfTot:1954 },
+  { type:'HELIOS 29 H45', spv:'GREEN INVEST', kwc:470, cout_bat:215093, longueur:82.5, largeur:26.05, travees:11, hSud:5.5, hNord:5.5, faitage:7.8, surfTot:2149 },
+  { type:'HELIOS 29 H46', spv:'GREEN INVEST', kwc:511, cout_bat:234314, longueur:90.0, largeur:26.05, travees:12, hSud:5.5, hNord:5.5, faitage:7.8, surfTot:2345 },
+  { type:'HELIOS 29 H47', spv:'GREEN INVEST', kwc:193, cout_bat:101561, longueur:30.0, largeur:29.75, travees:4, hSud:5.5, hNord:5.5, faitage:8.12, surfTot:892 },
+
+  // ─── HELIOS 33 ────────────────────────────────────────────────────────────
+  { type:'HELIOS 33 H50', spv:'GREEN INVEST', kwc:244, cout_bat:124076, longueur:37.5, largeur:29.75, travees:5, hSud:5.5, hNord:5.5, faitage:8.12, surfTot:1116 },
+  { type:'HELIOS 33 H51', spv:'GREEN INVEST', kwc:290, cout_bat:145580, longueur:45.0, largeur:29.75, travees:6, hSud:5.5, hNord:5.5, faitage:8.12, surfTot:1339 },
+  { type:'HELIOS 33 H52', spv:'GREEN INVEST', kwc:337, cout_bat:167735, longueur:52.5, largeur:29.75, travees:7, hSud:5.5, hNord:5.5, faitage:8.12, surfTot:1562 },
+  { type:'HELIOS 33 H53', spv:'GREEN INVEST', kwc:386, cout_bat:188730, longueur:60.0, largeur:29.75, travees:8, hSud:5.5, hNord:5.5, faitage:8.12, surfTot:1785 },
+  { type:'HELIOS 33 H54', spv:'GREEN INVEST', kwc:435, cout_bat:209434, longueur:67.5, largeur:29.75, travees:9, hSud:5.5, hNord:5.5, faitage:8.12, surfTot:2008 },
+  { type:'HELIOS 33 H55', spv:'GREEN INVEST', kwc:483, cout_bat:234434, longueur:75.0, largeur:29.75, travees:10, hSud:5.5, hNord:5.5, faitage:8.12, surfTot:2231 },
+  { type:'HELIOS 33 H56', spv:'GREEN INVEST', kwc:511, cout_bat:248434, longueur:82.5, largeur:29.75, travees:11, hSud:5.5, hNord:5.5, faitage:8.12, surfTot:2454 },
+  { type:'HELIOS 33 H57', spv:'GREEN INVEST', kwc:217, cout_bat:118675, longueur:30.0, largeur:33.46, travees:4, hSud:5.5, hNord:5.5, faitage:8.45, surfTot:1004 },
+  { type:'HELIOS 33 H58', spv:'GREEN INVEST', kwc:273, cout_bat:144950, longueur:37.5, largeur:33.46, travees:5, hSud:5.5, hNord:5.5, faitage:8.45, surfTot:1255 },
+  { type:'HELIOS 33 H59', spv:'GREEN INVEST', kwc:377, cout_bat:197320, longueur:52.5, largeur:33.46, travees:7, hSud:5.5, hNord:5.5, faitage:8.45, surfTot:1757 },
+  { type:'HELIOS 33 H60', spv:'GREEN INVEST', kwc:435, cout_bat:224273, longueur:60.0, largeur:33.46, travees:8, hSud:5.5, hNord:5.5, faitage:8.45, surfTot:2008 },
+  { type:'HELIOS 33 H61', spv:'GREEN INVEST', kwc:494, cout_bat:250375, longueur:67.5, largeur:33.46, travees:9, hSud:5.5, hNord:5.5, faitage:8.45, surfTot:2259 },
+
+  // ─── YOKO 33 ──────────────────────────────────────────────────────────────
+  { type:'YOKO 33 Y1', spv:'GREEN INVEST', kwc:217, cout_bat:105010, longueur:30.0, largeur:33.6, travees:4, hSud:3.9, hNord:3.9, faitage:6.82, surfTot:1008 },
+  { type:'YOKO 33 Y2', spv:'GREEN INVEST', kwc:273, cout_bat:126833, longueur:37.5, largeur:33.6, travees:5, hSud:3.9, hNord:3.9, faitage:6.82, surfTot:1260 },
+  { type:'YOKO 33 Y3', spv:'GREEN INVEST', kwc:326, cout_bat:148413, longueur:45.0, largeur:33.6, travees:6, hSud:3.9, hNord:3.9, faitage:6.82, surfTot:1512 },
+  { type:'YOKO 33 Y4', spv:'GREEN INVEST', kwc:377, cout_bat:171307, longueur:52.5, largeur:33.6, travees:7, hSud:3.9, hNord:3.9, faitage:6.82, surfTot:1764 },
+  { type:'YOKO 33 Y5', spv:'GREEN INVEST', kwc:435, cout_bat:193130, longueur:60.0, largeur:33.6, travees:8, hSud:3.9, hNord:3.9, faitage:6.82, surfTot:2016 },
+  { type:'YOKO 37 Y6', spv:'GREEN INVEST', kwc:494, cout_bat:215125, longueur:67.5, largeur:33.6, travees:9, hSud:3.9, hNord:3.9, faitage:6.82, surfTot:2268 },
+
+  // ─── YOKO 37 ──────────────────────────────────────────────────────────────
+  { type:'YOKO 37 Y7', spv:'GREEN INVEST', kwc:241, cout_bat:114478, longueur:30.0, largeur:37.2, travees:4, hSud:3.9, hNord:3.9, faitage:7.1, surfTot:1116 },
+  { type:'YOKO 37 Y8', spv:'GREEN INVEST', kwc:312, cout_bat:140011, longueur:37.5, largeur:37.2, travees:5, hSud:3.9, hNord:3.9, faitage:7.1, surfTot:1395 },
+  { type:'YOKO 37 Y9', spv:'GREEN INVEST', kwc:372, cout_bat:165060, longueur:45.0, largeur:37.2, travees:6, hSud:3.9, hNord:3.9, faitage:7.1, surfTot:1674 },
+  { type:'YOKO 37 Y10', spv:'GREEN INVEST', kwc:431, cout_bat:189753, longueur:52.5, largeur:37.2, travees:7, hSud:3.9, hNord:3.9, faitage:7.1, surfTot:1953 },
+  { type:'YOKO 41 Y11', spv:'GREEN INVEST', kwc:493, cout_bat:214446, longueur:60.0, largeur:37.2, travees:8, hSud:3.9, hNord:3.9, faitage:7.1, surfTot:2232 },
+
+  // ─── YOKO 41 ──────────────────────────────────────────────────────────────
+  { type:'YOKO 41 Y12', spv:'GREEN INVEST', kwc:265, cout_bat:128893, longueur:30.0, largeur:41.0, travees:4, hSud:3.9, hNord:3.9, faitage:7.5, surfTot:1230 },
+  { type:'YOKO 41 Y13', spv:'GREEN INVEST', kwc:332, cout_bat:155925, longueur:37.5, largeur:41.0, travees:5, hSud:3.9, hNord:3.9, faitage:7.5, surfTot:1537 },
+  { type:'YOKO 45 Y14', spv:'GREEN INVEST', kwc:398, cout_bat:177243, longueur:45.0, largeur:41.0, travees:6, hSud:3.9, hNord:3.9, faitage:7.5, surfTot:1845 },
+
+  // ─── YOKO 45 ──────────────────────────────────────────────────────────────
+  { type:'YOKO 45 Y15', spv:'GREEN INVEST', kwc:460, cout_bat:203673, longueur:52.5, largeur:41.0, travees:7, hSud:3.9, hNord:3.9, faitage:7.5, surfTot:2152 },
+  { type:'YOKO 45 Y16', spv:'GREEN INVEST', kwc:290, cout_bat:139163, longueur:30.0, largeur:45.0, travees:4, hSud:3.9, hNord:3.9, faitage:7.8, surfTot:1350 },
+  { type:'YOKO 49 Y17', spv:'GREEN INVEST', kwc:371, cout_bat:168632, longueur:37.5, largeur:45.0, travees:5, hSud:3.9, hNord:3.9, faitage:7.8, surfTot:1687 },
+
+  // ─── YOKO 49 ──────────────────────────────────────────────────────────────
+  { type:'YOKO 49 Y18', spv:'GREEN INVEST', kwc:441, cout_bat:197270, longueur:45.0, largeur:45.0, travees:6, hSud:3.9, hNord:3.9, faitage:7.8, surfTot:2025 },
+  { type:'YOKO 49 Y19', spv:'GREEN INVEST', kwc:314, cout_bat:155449, longueur:30.0, largeur:48.0, travees:4, hSud:3.9, hNord:4, faitage:8.1, surfTot:1440 },
+  { type:'YOKO 49 Y20', spv:'GREEN INVEST', kwc:410, cout_bat:188818, longueur:37.5, largeur:48.0, travees:5, hSud:3.9, hNord:4, faitage:8.1, surfTot:1800 },
+  { type:'YOKO 49 Y21', spv:'GREEN INVEST', kwc:483, cout_bat:221592, longueur:45.0, largeur:48.0, travees:6, hSud:3.9, hNord:4, faitage:8.1, surfTot:2160 },
+
+  // ─── SOLEA 21 ─────────────────────────────────────────────────────────────
+  { type:'SOLEA 21 S1', spv:'GREEN INVEST', kwc:145, cout_bat:67327, longueur:30.0, largeur:23.0, travees:4, hSud:4.6, hNord:4.6, faitage:6.82, surfTot:690 },
+  { type:'SOLEA 21 S2', spv:'GREEN INVEST', kwc:178, cout_bat:81415, longueur:37.5, largeur:23.0, travees:5, hSud:4.6, hNord:4.6, faitage:6.82, surfTot:862.5 },
+  { type:'SOLEA 21 S3', spv:'GREEN INVEST', kwc:217, cout_bat:95503, longueur:45.0, largeur:23.0, travees:6, hSud:4.6, hNord:4.6, faitage:6.82, surfTot:1035 },
+  { type:'SOLEA 21 S4', spv:'GREEN INVEST', kwc:251, cout_bat:109591, longueur:52.5, largeur:23.0, travees:7, hSud:4.6, hNord:4.6, faitage:6.82, surfTot:1207 },
+  { type:'SOLEA 21 S5', spv:'GREEN INVEST', kwc:290, cout_bat:123494, longueur:60.0, largeur:23.0, travees:8, hSud:4.6, hNord:4.6, faitage:6.82, surfTot:1380 },
+  { type:'SOLEA 21 S6', spv:'GREEN INVEST', kwc:329, cout_bat:138427, longueur:67.5, largeur:23.0, travees:9, hSud:4.6, hNord:4.6, faitage:6.82, surfTot:1552.5 },
+  { type:'SOLEA 21 S7', spv:'GREEN INVEST', kwc:362, cout_bat:152510, longueur:75.0, largeur:23.0, travees:10, hSud:4.6, hNord:4.6, faitage:6.82, surfTot:1725 },
+  { type:'SOLEA 21 S8', spv:'GREEN INVEST', kwc:401, cout_bat:166593, longueur:82.5, largeur:23.0, travees:11, hSud:4.6, hNord:4.6, faitage:6.82, surfTot:1897.5 },
+  { type:'SOLEA 21 S9', spv:'GREEN INVEST', kwc:435, cout_bat:180500, longueur:90.0, largeur:23.0, travees:12, hSud:4.6, hNord:4.6, faitage:6.82, surfTot:2070 },
+
+  // ─── SOLEA 25 ─────────────────────────────────────────────────────────────
+  { type:'SOLEA 25 S10', spv:'GREEN INVEST', kwc:474, cout_bat:194583, longueur:97.5, largeur:23.0, travees:13, hSud:4.6, hNord:4.6, faitage:6.82, surfTot:2242.5 },
+  { type:'SOLEA 25 S11', spv:'GREEN INVEST', kwc:169, cout_bat:78752, longueur:30.0, largeur:26.6, travees:4, hSud:4.6, hNord:4.6, faitage:7.1, surfTot:798 },
+  { type:'SOLEA 25 S12', spv:'GREEN INVEST', kwc:214, cout_bat:93663, longueur:37.5, largeur:26.6, travees:5, hSud:4.6, hNord:4.6, faitage:7.1, surfTot:997.5 },
+  { type:'SOLEA 25 S13', spv:'GREEN INVEST', kwc:255, cout_bat:110579, longueur:45.0, largeur:26.6, travees:6, hSud:4.6, hNord:4.6, faitage:7.1, surfTot:1197 },
+  { type:'SOLEA 25 S14', spv:'GREEN INVEST', kwc:296, cout_bat:125532, longueur:52.5, largeur:26.6, travees:7, hSud:4.6, hNord:4.6, faitage:7.1, surfTot:1396.5 },
+  { type:'SOLEA 25 S15', spv:'GREEN INVEST', kwc:338, cout_bat:145245, longueur:60.0, largeur:26.6, travees:8, hSud:4.6, hNord:4.6, faitage:7.1, surfTot:1596 },
+  { type:'SOLEA 25 S16', spv:'GREEN INVEST', kwc:386, cout_bat:162345, longueur:67.5, largeur:26.6, travees:9, hSud:4.6, hNord:4.6, faitage:7.1, surfTot:1795.5 },
+  { type:'SOLEA 25 S17', spv:'GREEN INVEST', kwc:429, cout_bat:179087, longueur:75.0, largeur:26.6, travees:10, hSud:4.6, hNord:4.6, faitage:7.1, surfTot:1995 },
+
+  // ─── SOLEA 30 ─────────────────────────────────────────────────────────────
+  { type:'SOLEA 30 S18', spv:'GREEN INVEST', kwc:470, cout_bat:198001, longueur:82.5, largeur:26.6, travees:11, hSud:4.6, hNord:4.6, faitage:7.1, surfTot:2194.5 },
+  { type:'SOLEA 30 S19', spv:'GREEN INVEST', kwc:193, cout_bat:86153, longueur:30.0, largeur:30.3, travees:4, hSud:4.6, hNord:4.6, faitage:7.5, surfTot:909 },
+  { type:'SOLEA 30 S20', spv:'GREEN INVEST', kwc:238, cout_bat:104462, longueur:37.5, largeur:30.3, travees:5, hSud:4.6, hNord:4.6, faitage:7.5, surfTot:1136 },
+  { type:'SOLEA 30 S21', spv:'GREEN INVEST', kwc:290, cout_bat:125727, longueur:45.0, largeur:30.3, travees:6, hSud:4.6, hNord:4.6, faitage:7.5, surfTot:1363.5 },
+  { type:'SOLEA 30 S22', spv:'GREEN INVEST', kwc:334, cout_bat:142233, longueur:52.5, largeur:30.3, travees:7, hSud:4.6, hNord:4.6, faitage:7.5, surfTot:1590.75 },
+  { type:'SOLEA 30 S23', spv:'GREEN INVEST', kwc:386, cout_bat:160557, longueur:60.0, largeur:30.3, travees:8, hSud:4.6, hNord:4.6, faitage:7.5, surfTot:1818 },
+  { type:'SOLEA 30 S24', spv:'GREEN INVEST', kwc:435, cout_bat:179032, longueur:67.5, largeur:30.3, travees:9, hSud:4.6, hNord:4.6, faitage:7.5, surfTot:2045 },
+
+  // ─── SOLEA 34 ─────────────────────────────────────────────────────────────
+  { type:'SOLEA 34 S25', spv:'GREEN INVEST', kwc:483, cout_bat:197508, longueur:75.0, largeur:30.3, travees:10, hSud:4.6, hNord:4.6, faitage:7.5, surfTot:2272.5 },
+  { type:'SOLEA 34 S26', spv:'GREEN INVEST', kwc:217, cout_bat:99195, longueur:30.0, largeur:34.0, travees:4, hSud:4.6, hNord:4.6, faitage:7.8, surfTot:1020 },
+  { type:'SOLEA 34 S27', spv:'GREEN INVEST', kwc:273, cout_bat:121293, longueur:37.5, largeur:34.0, travees:5, hSud:4.6, hNord:4.6, faitage:7.8, surfTot:1275 },
+  { type:'SOLEA 34 S28', spv:'GREEN INVEST', kwc:326, cout_bat:142725, longueur:45.0, largeur:34.0, travees:6, hSud:4.6, hNord:4.6, faitage:7.8, surfTot:1530 },
+  { type:'SOLEA 34 S29', spv:'GREEN INVEST', kwc:377, cout_bat:163985, longueur:52.5, largeur:34.0, travees:7, hSud:4.6, hNord:4.6, faitage:7.8, surfTot:1785 },
+  { type:'SOLEA 34 S30', spv:'GREEN INVEST', kwc:435, cout_bat:185413, longueur:60.0, largeur:34.0, travees:8, hSud:4.6, hNord:4.6, faitage:7.8, surfTot:2040 },
+
+  // ─── SOLEA 37 ─────────────────────────────────────────────────────────────
+  { type:'SOLEA 37 S31', spv:'GREEN INVEST', kwc:494, cout_bat:206674, longueur:67.5, largeur:34.0, travees:9, hSud:4.6, hNord:4.6, faitage:7.8, surfTot:2295 },
+  { type:'SOLEA 37 S32', spv:'GREEN INVEST', kwc:241, cout_bat:114738, longueur:30.0, largeur:37.8, travees:4, hSud:4.6, hNord:4.6, faitage:8.1, surfTot:1134 },
+  { type:'SOLEA 37 S33', spv:'GREEN INVEST', kwc:312, cout_bat:139648, longueur:37.5, largeur:37.8, travees:5, hSud:4.6, hNord:4.6, faitage:8.1, surfTot:1417 },
+  { type:'SOLEA 37 S34', spv:'GREEN INVEST', kwc:372, cout_bat:164383, longueur:45.0, largeur:37.8, travees:6, hSud:4.6, hNord:4.6, faitage:8.1, surfTot:1687 },
+  { type:'SOLEA 37 S35', spv:'GREEN INVEST', kwc:431, cout_bat:188941, longueur:52.5, largeur:37.8, travees:7, hSud:4.6, hNord:4.6, faitage:8.1, surfTot:1984 },
+  { type:'SOLEA 37 S36', spv:'GREEN INVEST', kwc:493, cout_bat:214521, longueur:60.0, largeur:37.8, travees:8, hSud:4.6, hNord:4.6, faitage:8.1, surfTot:2268 },
+
+  // ─── SOLEA 41 ─────────────────────────────────────────────────────────────
+  { type:'SOLEA 41 S37', spv:'GREEN INVEST', kwc:265, cout_bat:121368, longueur:30.0, largeur:41.5, travees:4, hSud:4.6, hNord:4.6, faitage:8.5, surfTot:1245 },
+  { type:'SOLEA 41 S38', spv:'GREEN INVEST', kwc:332, cout_bat:160522, longueur:37.5, largeur:41.5, travees:5, hSud:4.6, hNord:4.6, faitage:8.5, surfTot:1556 },
+  { type:'SOLEA 41 S39', spv:'GREEN INVEST', kwc:398, cout_bat:189861, longueur:45.0, largeur:41.5, travees:6, hSud:4.6, hNord:4.6, faitage:8.5, surfTot:1867 },
+  { type:'SOLEA 41 S40', spv:'GREEN INVEST', kwc:460, cout_bat:220040, longueur:52.5, largeur:41.5, travees:7, hSud:4.6, hNord:4.6, faitage:8.5, surfTot:2178 },
 ];
 
 const DETAILED_SUIVI_DATA = [
@@ -113,6 +354,20 @@ const BE_TABLES = {
     { capacite:'450-500 KWc', p1000:{loyer:null,soulte:null}, p1050:{loyer:null,soulte:null}, p1100:{loyer:null,soulte:null}, p1150:{loyer:5831,soulte:69972}, p1200:{loyer:7995,soulte:95940}, p1250:{loyer:9225,soulte:110700}, p1300:{loyer:10074,soulte:120888} },
   ]
 };
+
+const MODULE_TYPES = [
+  { power: 460, length: 1.762, width: 1.134 },
+  { power: 550, length: 2.278, width: 1.134 },
+  { power: 450, length: 1.762, width: 1.134 },
+  { power: 435, length: 1.722, width: 1.134 },
+  { power: 430, length: 1.722, width: 1.134 },
+];
+
+const getModuleDims = (power) => {
+  const m = MODULE_TYPES.find(m => m.power === Number(power)) || MODULE_TYPES[0];
+  return { length: m.length, width: m.width };
+};
+
 
 // ─── Automated Calculation Helpers ───────────────────────────────────────────
 
@@ -256,18 +511,16 @@ function computeBusinessPlan(params) {
   }
 
   const margin = totalCA - totalOpexBaseSum;
+  
+  // Potential values (if applied)
   const calculatedLoyer = (margin * (loyerCoeff || 0)) / 20;
   const calculatedSoulte = (margin * (soulteCoeff || 0)) / 2;
 
-  const finalLoyer = params.renteType === 'loyer' ? calculatedLoyer : 0;
-  const finalSoulte = params.renteType === 'soulte' ? calculatedSoulte : (loyerCoeff === 0 && soulteCoeff === 0 ? soulte : 0);
-  
-  // If it's a rent (loyer), it can be capitalized into soulte (Investissement) 
-  // OR paid as a yearly rent (OPEX). The user dropdown decides.
-  const actualLoyerOpex = params.renteType === 'loyer' ? finalLoyer : 0;
-  const actualSoulteCapitalized = params.renteType === 'soulte' ? finalSoulte : (params.renteType === 'loyer' ? finalLoyer * 20 : soulte);
+  // Actual values applied based on renteType selecion in UI
+  const actualLoyerOpex = params.renteType === 'loyer' ? calculatedLoyer : 0;
+  const actualSoulteCapitalized = params.renteType === 'soulte' ? calculatedSoulte : (params.renteType === 'none' ? 0 : (params.soulte || 0));
 
-  const totalConstruction = coutCentrale + coutCharpente + raccordement + frais + actualSoulteCapitalized;
+  const totalConstruction = (coutCentrale || 0) + (coutCharpente || 0) + (raccordement || 0) + (frais || 0) + actualSoulteCapitalized;
   const apport10 = totalConstruction * 0.1;
   const emprunt = Math.max(0, totalConstruction - apport10 - (params.apport || 0));
   const serviceDette = emprunt > 0 ? -PMT(tauxCredit / 100, dureeEmprunt, emprunt) : 0;
@@ -348,7 +601,8 @@ function computeBusinessPlan(params) {
     
     const sd = i <= dureeEmprunt ? serviceDette : 0;
     const rembPrincipal = sd > 0 ? sd - interets : 0;
-    const dscr = sd > 0 ? (cafds / sd) : 0;
+    // Fix: If no debt, DSCR is technically infinite/very high.
+    const dscr = sd > 1 ? (cafds / sd) : (sd > 0 ? (cafds / sd) : 9.99);
 
     const tresorerie = ebitda - resFin - is - rembPrincipal;
     cfCumule += tresorerie;
@@ -416,10 +670,10 @@ function computeBusinessPlan(params) {
     triProjet,
     triFP,
     tempsRetour,
-    loyer: finalLoyer,
-    soulte: actualSoulteCapitalized,
+    loyer: calculatedLoyer,
+    soulte: calculatedSoulte,
     totalConstruction,
-    totalInvestissement,
+    totalInvestissement: totalConstruction,
     apport10,
     sumCA,
     sumOpex,
@@ -468,7 +722,11 @@ function computeResteACharge(params) {
     const { dscrMoyen } = computeBusinessPlan({ ...params, apport: mid });
     if (isNaN(dscrMoyen) || dscrMoyen >= targetDscr) { hi = mid; } else { lo = mid; }
   }
-  return Math.max(0, Math.ceil(hi));
+  // Return early if target reached with 0 additional apport
+  const { dscrMoyen: dscrInit } = computeBusinessPlan({ ...params, apport: 0 });
+  if (dscrInit >= targetDscr) return 0;
+
+  return hi < 0.01 ? 0 : Math.min(Math.ceil(hi), (params.totalInvestissement || 0) * 1.2);
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -634,7 +892,7 @@ function TableauPrevisionnel({ params, rows }) {
   return (
     <SectionCard title="PLAN D'AFFAIRES PREVISIONNEL" className="p-0 border-none shadow-none">
       <div className="overflow-x-auto w-full">
-        <table className="text-[11px] w-full border-collapse table-fixed">
+        <table className="text-[11px] w-full border-collapse">
           <thead>
             <tr className="bg-slate-100">
               <td className="w-[180px] p-2 border border-slate-200"></td>
@@ -716,7 +974,24 @@ function TableauPrevisionnel({ params, rows }) {
 
 // ─── Tab: BUSINESS PLAN PROJETS ──────────────────────────────────────────────
 
-function TabBpProjets({ projects, selectedProject, setSelectedProject, params, setParams, computeBusinessPlan, computeResteACharge, calculateGoalSeekDSCR, bpResults, totalInvestissement, apport10, totalConstruction, tva, apportSoulte }) {
+function TabBpProjets({ 
+  projects, 
+  selectedProject, 
+  setSelectedProject, 
+  params, 
+  setParams, 
+  computeBusinessPlan, 
+  computeResteACharge, 
+  calculateGoalSeekDSCR, 
+  bpResults, 
+  totalInvestissement, 
+  apport10, 
+  totalConstruction, 
+  tva, 
+  apportSoulte,
+  activeSuiviBatData,
+  isGreenInvest 
+}) {
   const PDFHeader = () => (
     <div className="pdf-header hidden flex flex-row items-center w-full mb-6 border-b-2 border-slate-800 pb-4">
       <div className="flex-1 flex justify-start">
@@ -754,7 +1029,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
         if (b.id === id) {
           const updated = { ...b, [k]: v };
           if (k === 'typeBat' && v) {
-            const batData = SUIVI_BAT_DATA.find(d => d.type === v);
+            const batData = (activeSuiviBatData || []).find(d => d.type === v);
             if (batData) {
               updated.kwc = batData.kwc || updated.kwc;
               updated.productible = batData.prodMoyen || updated.productible || 1100;
@@ -768,7 +1043,8 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
           if (k === 'surfaceToiture' || (k === 'projectType' && v === 'BE')) {
             const surf = k === 'surfaceToiture' ? parseFloat(v) || 0 : b.surfaceToiture || 0;
             if (updated.projectType === 'BE' && surf > 0) {
-              const panels = Math.floor(surf / (1.762 * 1.134));
+              const dims = getModuleDims(prev.puissanceUnitaire || 460);
+              const panels = Math.floor(surf / (dims.length * dims.width));
               updated.kwc = (panels * (prev.puissanceUnitaire || 460)) / 1000;
               updated.coutCentrale = updated.kwc * 490;
             }
@@ -851,28 +1127,40 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
   };
 
   const resteACharge = useMemo(() => computeResteACharge(collapsedParams), [collapsedParams]);
-  const bp = useMemo(() => computeBusinessPlan({ ...collapsedParams, apport: resteACharge }), [collapsedParams, resteACharge]);
-  const { rows, annuite, emprunt, soulte: calcSoulte } = bp;
 
-  const handleGoalSeek = (type) => {
-    if (!selectedProject) {
-      toast({ title: 'Erreur', variant: 'destructive', description: "Veuillez d'abord sélectionner un projet." });
-      return;
-    }
+  // AUTOMATION: Calculate potential coefficients for rent/soulte to reach target DSCR
+  const target = params.targetDSCR || 1.17;
+  const autoCoeffs = useMemo(() => {
     try {
-      const target = params.targetDSCR || 1.17;
-      const loyerCoeff = calculateGoalSeekDSCR({ ...params, renteType: 'loyer', totalInvestissement, apport: apport10 }, 'loyer', target);
-      const soulteCoeff = calculateGoalSeekDSCR({ ...params, renteType: 'soulte', totalInvestissement, apport: apport10 }, 'soulte', target);
-      setParams(p => ({ 
-        ...p, 
-        loyerCoeff, 
-        soulteCoeff 
-      }));
-      toast({ title: 'Calcul terminé', description: `Valeur cible atteinte pour un DSCR moyen de ${fmtPct(target)}` });
+      const lCoeff = calculateGoalSeekDSCR({ ...collapsedParams, renteType: 'loyer', apport: resteACharge }, 'loyer', target);
+      const sCoeff = calculateGoalSeekDSCR({ ...collapsedParams, renteType: 'soulte', apport: resteACharge }, 'soulte', target);
+      return { loyer: lCoeff, soulte: sCoeff };
     } catch (e) {
-      toast({ title: 'Erreur de calcul', variant: 'destructive', description: e.message });
+      console.error("Goal Seek failed", e);
+      return { loyer: 0, soulte: 0 };
     }
-  };
+  }, [collapsedParams, resteACharge, target]);
+
+  // Compute BP with the selected renteType and its automatically found coefficient
+  const bp = useMemo(() => {
+    // If ACAMA, we use manual coefficients from params (RESTORE MANUAL CONTROL)
+    // If GREEN INVEST, we keep automation if desired.
+    
+    const bpParams = { 
+      ...collapsedParams, 
+      apport: resteACharge,
+      loyerCoeff: isGreenInvest ? autoCoeffs.loyer : (params.loyerCoeff || 0),
+      soulteCoeff: isGreenInvest ? autoCoeffs.soulte : (params.soulteCoeff || 0)
+    };
+    return computeBusinessPlan(bpParams);
+  }, [collapsedParams, resteACharge, autoCoeffs, params.loyerCoeff, params.soulteCoeff, isGreenInvest]);
+
+  const { rows, annuite, emprunt, soulte: calcSoulte, sumCA, sumOpex } = bp;
+  const marginForCoeffs = sumCA - sumOpex;
+  const targetLoyerTotal = marginForCoeffs * autoCoeffs.loyer;
+  const targetSoulte = (marginForCoeffs * autoCoeffs.soulte) / 2;
+
+  // handleGoalSeek removed as it is now automated
 
   const limitDSCR = params.targetDSCR || 1.16;
   const dscrColor = bp.dscrMoyen >= limitDSCR ? 'text-green-600 bg-green-50' : bp.dscrMoyen >= (limitDSCR - 0.06) ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50';
@@ -919,6 +1207,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
         raccordement: totalRaccordement,
         frais: totalFrais,
         soulte: 0,
+        renteType: 'none',
         targetDSCR: prev.targetDSCR || 1.17,
         tarifACC: prev.tarifACC || 0.14,
         partACC: prev.partACC !== undefined ? prev.partACC : 0
@@ -974,17 +1263,16 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
 
         {selectedProject && (
           <div className="flex items-center gap-2 shrink-0">
-            <Button size="sm" onClick={() => generateBpAcamaPDF({ 
-                elementId: 'bp-acama-content', 
-                sections: ['pdf-section-1', 'pdf-section-charts', 'pdf-section-2'],
-                fileName: `BP_Acama_${selectedProject.name}_${new Date().toISOString().split('T')[0]}.pdf` 
-              })} className="bg-slate-800 hover:bg-slate-900 text-white text-[13px] h-8 px-3">
+            <Button size="sm" variant="outline" className="gap-2 h-8 border-slate-300" onClick={() => generateBpAcamaPDF({ 
+              elementId: 'bp-acama-content', 
+              sections: ['pdf-section-1', 'pdf-section-2'],
+              fileName: `BP_Acama_${selectedProject?.name || 'Projet'}.pdf` 
+            })}>
               <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF
             </Button>
             <Button size="sm" onClick={saveBp} className="bg-green-600 hover:bg-green-700 text-white text-[13px] h-8 px-3">
               <Save className="w-3.5 h-3.5 mr-1.5" /> Sauvegarder
             </Button>
-            <button onClick={() => { setSelectedProject(null); setSearch(''); }} className="text-slate-400 hover:text-red-500 p-1 transition-colors"><X className="w-4 h-4" /></button>
           </div>
         )}
       </div>
@@ -1056,7 +1344,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                               onChange={e => updateBuildingParam(b.id, 'typeBat', e.target.value)}
                             >
                               <option value="">— Choisir —</option>
-                              {SUIVI_BAT_DATA.map(d => (
+                              {(activeSuiviBatData || []).map(d => (
                                 <option key={d.type} value={d.type}>{d.type}</option>
                               ))}
                             </select>
@@ -1108,7 +1396,8 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                       <td className="text-[12px] text-slate-500 font-medium">Surface installée</td>
                       {(params.buildings || []).map(b => {
                         const nb = Math.ceil((parseFloat(b.kwc) || 0) * 1000 / (parseFloat(params.puissanceUnitaire) || 460));
-                        const surf = nb * (1.762 * 1.134);
+                        const dims = getModuleDims(params.puissanceUnitaire || 460);
+                        const surf = nb * (dims.length * dims.width);
                         return <td key={b.id} className="text-center text-sm font-bold text-slate-700">{fmt(surf, 0)} m²</td>;
                       })}
                     </tr>
@@ -1140,7 +1429,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               </div>
             </SectionCard>
 
-            <SectionCard title="INVESTISSEMENT" id="pdf-section-invest" className="grow pb-2">
+            <SectionCard title="INVESTISSEMENT" id="pdf-section-invest" className="grow pb-2 border-t-4 border-t-blue-500">
               <div className="overflow-x-auto pb-1">
                 <table className="w-full text-left border-separate border-spacing-x-4">
                   <thead>
@@ -1238,7 +1527,6 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                       <td className="text-[12px] text-slate-500 font-medium pl-2">Raccordement</td>
                       <td colSpan={(params.buildings || []).length} className="pt-1 text-center">
                         <div className="inline-flex items-center gap-2 bg-slate-100 border border-slate-200 rounded px-3 py-1 text-sm w-48 justify-between shadow-inner">
-                          <span className="text-slate-500 font-bold uppercase text-[11px]">Auto</span>
                           <span className="font-bold text-slate-700">{fmtEur(params.raccordement)}</span>
                         </div>
                       </td>
@@ -1247,7 +1535,6 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                       <td className="text-[12px] text-slate-500 font-medium pl-2">Frais</td>
                       <td colSpan={(params.buildings || []).length} className="pt-1 text-center">
                         <div className="inline-flex items-center gap-2 bg-slate-100 border border-slate-200 rounded px-3 py-1 text-sm w-48 justify-between shadow-inner">
-                          <span className="text-slate-500 font-bold uppercase text-[11px]">Auto (1%)</span>
                           <span className="font-bold text-slate-700">{fmtEur(params.frais)}</span>
                         </div>
                       </td>
@@ -1256,18 +1543,19 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                       <td className="text-[13px] text-slate-600 font-bold pl-2">
                         <select 
                           className="bg-transparent border-none outline-none font-bold uppercase text-slate-600 cursor-pointer"
-                          value={params.renteType || 'soulte'}
+                          value={params.renteType || 'none'}
                           onChange={e => setParams(p => ({ ...p, renteType: e.target.value }))}
                         >
+                          <option value="none">—</option>
                           <option value="soulte">Soulte</option>
                           <option value="loyer">Loyer annuel</option>
                         </select>
                       </td>
-                      <td colSpan={(params.buildings || []).length} className="pt-1 text-center">
+                      <td colSpan={(params.buildings || []).map(b => b.id).length} className="pt-1 text-center">
                         <div className="inline-flex items-center gap-2 bg-slate-100 border border-slate-200 rounded px-3 py-1 text-sm w-48 justify-between shadow-inner">
-                          <span className="text-slate-500 font-bold uppercase text-[13px]">Auto</span>
                           <span className="font-bold text-slate-900">
-                            {fmtEur(params.renteType === 'loyer' ? bp.loyer * 20 : bp.soulte)}
+                            {(!params.renteType || params.renteType === 'none') ? '0,00 €' : (params.renteType === 'loyer' ? fmtEur(targetLoyerTotal) : fmtEur(targetSoulte))}
+                            {params.renteType === 'loyer' && <span className="ml-1 text-[10px] text-slate-400 font-normal normal-case">(sur 20 ans)</span>}
                           </span>
                         </div>
                       </td>
@@ -1300,14 +1588,14 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               <Field label="Part ACC" value={params.partACC * 100} onChange={v => setParams(p => ({ ...p, partACC: v/100 }))} type="number" suffix="%" className="h-7" />
             </SectionCard>
 
-            <SectionCard title="OPEX ANNUELS" id="pdf-section-opex" className="grid grid-cols-1 gap-y-1 py-2">
+            <SectionCard title="OPEX ANNUELS" id="pdf-section-opex" className="grid grid-cols-1 gap-y-1 py-2 border-t-4 border-t-purple-500">
               <Field label="Maintenance" value={params.maintenance} onChange={v => setParams(p => ({ ...p, maintenance: v }))} type="number" suffix="€" className="h-7" />
               <Field label="Assurance" value={params.assurance} onChange={v => setParams(p => ({ ...p, assurance: v }))} type="number" suffix="€" className="h-7" />
               <Field label="Taxes locales" value={params.taxesLocales} onChange={v => setParams(p => ({ ...p, taxesLocales: v }))} type="number" suffix="€" className="h-7" />
               <Field label="Gestion" value={params.gestionAdmin} onChange={v => setParams(p => ({ ...p, gestionAdmin: v }))} type="number" suffix="€" className="h-7" />
             </SectionCard>
 
-            <SectionCard title="BANQUE" id="pdf-section-banque" className="bg-white border-slate-200">
+            <SectionCard title="BANQUE" id="pdf-section-banque" className="bg-white border-slate-200 border-t-4 border-t-amber-500">
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-y-1">
                   <Field label="Durée" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" className="h-7" />
@@ -1331,8 +1619,36 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               </div>
             </SectionCard>
 
-            <SectionCard title="INDICES & DÉGRADATION" id="pdf-section-indices" className="grid grid-cols-1 gap-y-1 py-1 grow">
-              <Field label="P. Unitaire" value={params.puissanceUnitaire} onChange={v => setParams(p => ({ ...p, puissanceUnitaire: v }))} type="number" suffix="Wc" className="h-7" />
+            <SectionCard title="INDICES & DÉGRADATION" id="pdf-section-indices" className="grid grid-cols-1 gap-y-1 py-1 grow border-t-4 border-t-indigo-500">
+              <div className="flex items-center gap-2 h-7 group">
+                <label className="text-[13px] text-slate-500 w-32 shrink-0">P. Unitaire</label>
+                <div className="flex items-center gap-1 flex-1 relative">
+                  <select 
+                    className="border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none transition-colors focus:ring-1 focus:ring-blue-500 bg-white"
+                    value={params.puissanceUnitaire || 460}
+                    onChange={e => {
+                      const newP = parseFloat(e.target.value);
+                      const dims = getModuleDims(newP);
+                      setParams(p => ({ 
+                        ...p, 
+                        puissanceUnitaire: newP,
+                        buildings: (p.buildings || []).map(b => {
+                          if (b.projectType === 'BE' && b.surfaceToiture > 0) {
+                            const nbPanels = Math.floor(b.surfaceToiture / (dims.length * dims.width));
+                            const newKwc = (nbPanels * newP) / 1000;
+                            return { ...b, kwc: newKwc, coutCentrale: newKwc * 490 };
+                          }
+                          return b;
+                        })
+                      }));
+                    }}
+                  >
+                    {MODULE_TYPES.map(m => (
+                      <option key={m.power} value={m.power}>{m.power} Wc</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <Field label="Indice Tarifs" value={params.indexationTarif * 100} onChange={v => setParams(p => ({ ...p, indexationTarif: v / 100 }))} type="number" suffix="%" step="0.1" className="h-7" />
               <Field label="Indice OPEX" value={params.indexationOpex * 100} onChange={v => setParams(p => ({ ...p, indexationOpex: v / 100 }))} type="number" suffix="%" step="0.1" className="h-7" />
               <Field label="Dégradation" value={params.degradation * 100} onChange={v => setParams(p => ({ ...p, degradation: v / 100 }))} type="number" suffix="%" step="0.1" className="h-7" />
@@ -1358,7 +1674,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
               </Button>
             </div>
 
-            <SectionCard title="INDICATEURS" id="pdf-section-indic" className="grow py-1">
+            <SectionCard title="INDICATEURS" id="pdf-section-indic" className="grow py-1 border-t-4 border-t-rose-500">
                <div className="space-y-1">
                  <div className="flex justify-between text-sm"><span className="text-slate-500 text-[12px]">Apport avec soulte :</span><span className="font-bold text-blue-800 text-[13px]">{fmtEur(apport10 + (calcSoulte > 0 ? calcSoulte : 0))}</span></div>
                  <div className="flex justify-between text-sm"><span className="text-slate-500 text-[12px]">Emprunt net :</span><span className="font-bold text-blue-800 text-[13px]">{fmtEur(emprunt)}</span></div>
@@ -1367,28 +1683,38 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
                </div>
             </SectionCard>
 
-            <SectionCard title="RENTABILITÉ" id="pdf-section-renta" className="bg-white border-slate-200 grow py-1">
+            <SectionCard title="RENTABILITÉ" id="pdf-section-renta" className="bg-white border-slate-200 grow py-1 border-t-4 border-t-emerald-500">
                <div className="space-y-2">
                  <Field label="CIBLE DSCR :" value={params.targetDSCR * 100} onChange={v => setParams(p => ({ ...p, targetDSCR: v / 100 }))} type="number" suffix="%" step="1" className="bg-slate-50 p-1.5 rounded" />
                  
                  <div className="pt-2 border-t border-slate-100 flex flex-col items-center gap-2">
-                    <Button 
-                      size="sm" 
-                      onClick={handleGoalSeek} 
-                      className="w-40 h-8 px-3 text-[12px] bg-blue-600 font-bold uppercase shadow-sm hover:bg-blue-700 transition-all border border-blue-500"
+                    <button 
+                      onClick={() => {
+                        const target = params.targetDSCR || 1.17;
+                        const lCoeff = calculateGoalSeekDSCR({ ...collapsedParams, renteType: 'loyer', apport: resteACharge }, 'loyer', target);
+                        const sCoeff = calculateGoalSeekDSCR({ ...collapsedParams, renteType: 'soulte', apport: resteACharge }, 'soulte', target);
+                        setParams(p => ({ ...p, loyerCoeff: lCoeff, soulteCoeff: sCoeff }));
+                        toast({ title: 'Cible atteinte', description: `Coefficients ajustés pour DSCR ${fmtPct(target)}` });
+                      }}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded text-sm transition-colors shadow-sm uppercase tracking-wide"
                     >
-                      Execution
-                    </Button>
+                      Optimiser Loyer / Soulte
+                    </button>
                     
-                    <div className="w-full grid grid-cols-2 gap-2 pt-1">
-                      <div className="flex flex-col items-center p-1 bg-white/40 rounded border border-amber-50">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase">Loyer annuel</span>
-                        <span className="text-[12px] font-bold text-blue-800">{fmtEur(bp.loyer)}</span>
+                    <div className="w-full grid grid-cols-2 gap-2 pt-1 border-t border-slate-50 mt-1">
+                      <div className="flex flex-col items-center p-1 bg-blue-50/50 rounded border border-blue-100">
+                        <span className="text-[10px] text-blue-400 font-bold uppercase">Loyer possible</span>
+                        <span className="text-[12px] font-bold text-blue-800">{fmtEur(autoCoeffs.loyer * (bp.sumCA - bp.sumOpex) / 20)}</span>
                       </div>
-                      <div className="flex flex-col items-center p-1 bg-white/40 rounded border border-amber-50">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase">Soulte</span>
-                        <span className="text-[12px] font-bold text-blue-800">{fmtEur(bp.soulte)}</span>
+                      <div className="flex flex-col items-center p-1 bg-amber-50/50 rounded border border-amber-100">
+                        <span className="text-[10px] text-amber-500 font-bold uppercase">Soulte possible</span>
+                        <span className="text-[12px] font-bold text-amber-700">{fmtEur(autoCoeffs.soulte * (bp.sumCA - bp.sumOpex) / 2)}</span>
                       </div>
+                    </div>
+                    
+                    <div className="w-full bg-slate-50 rounded p-2 border border-slate-100 flex justify-between items-center mt-1">
+                       <span className="text-[10px] text-slate-400 font-bold uppercase">Loyer annuel actuel :</span>
+                       <span className="text-sm font-black text-slate-800">{fmtEur(bp.loyer)}</span>
                     </div>
                  </div>
 
@@ -1414,38 +1740,7 @@ function TabBpProjets({ projects, selectedProject, setSelectedProject, params, s
       </div>
     </div>
 
-      <div id="pdf-section-charts" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
-        <PDFHeader selectedProject={selectedProject} />
-        <div className="grid grid-cols-2 gap-6 mt-4 bg-white rounded-lg border border-slate-200 p-4">
-          <div id="pdf-chart-tresorerie" className="h-[300px]">
-            <h4 className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mb-4">Trésorerie & Cash Flow</h4>
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={rows}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fontSize: 9 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9 }} tickFormatter={fmtEurK} />
-                <Bar dataKey="tresorerie" fill="#1e40af" radius={[2, 2, 0, 0]} />
-                <Line type="monotone" dataKey="ca" stroke="#10b981" strokeWidth={2} dot={false} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-          <div id="pdf-chart-performance" className="h-[300px]">
-             <h4 className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mb-4">Performance</h4>
-             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={rows}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fontSize: 9 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9 }} tickFormatter={fmtEurK} />
-                <Bar dataKey="ebitda" fill="#fbbf24" radius={[2, 2, 0, 0]} />
-                <Line type="monotone" dataKey="serviceDette" stroke="#ef4444" strokeWidth={2} strokeDasharray="4 4" dot={false} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
     <div id="pdf-section-2" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
-        <PDFHeader selectedProject={selectedProject} />
         <div className="mt-4">
            <TableauPrevisionnel params={collapsedParams} rows={rows} />
         </div>
@@ -1512,6 +1807,27 @@ function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
     { key: 'co', label: 'CO (Long 4)', width: 80, editable: true },
     { key: 'hl', label: 'Dist. HT (HL)', width: 90, editable: true },
     { key: 'hm', label: 'Dist. Priv (HM)', width: 90, editable: true },
+    { key: 'dv', label: 'Puissance Modules (DV)', width: 120, editable: true, type: 'select' },
+    { key: 'dw', label: 'Long. Modules (DW)', width: 100 },
+    { key: 'dx', label: 'Larg. Modules (DX)', width: 100 },
+    { key: 'dy', label: 'Ratio Wc/m² (DY)', width: 100 },
+    { key: 'dz', label: 'Espace Faitage (DZ)', width: 100, editable: true },
+    { key: 'ea', label: 'Espace Petit (EA)', width: 100, editable: true },
+    { key: 'eb', label: 'Espace Grand (EB)', width: 100, editable: true },
+    { key: 'ds', label: 'Surf. Tot. (DS)', width: 100 },
+    { key: 'dt', label: 'Poids Acier (DT)', width: 100, editable: true },
+    { key: 'du', label: 'Nb Jours (DU)', width: 80, editable: true },
+    { key: 'hn', label: 'Coût Centrale (HN)', width: 100 },
+    { key: 'ho', label: 'Coût Charpente (HO)', width: 100 },
+    { key: 'hp', label: 'Investissement HT (HP)', width: 120 },
+    { key: 'hq', label: 'Investissement TTC (HQ)', width: 120 },
+    { key: 'hr', label: 'Apport (HR)', width: 100 },
+    { key: 'hs', label: 'Emprunt (HS)', width: 100 },
+    { key: 'ht', label: 'DSCR Moyen (HT)', width: 100 },
+    { key: 'hu', label: 'Tri Projet (HU)', width: 100 },
+    { key: 'hv', label: 'Tri FP (HV)', width: 100 },
+    { key: 'hw', label: 'Temps de retour (HW)', width: 120 },
+    { key: 'hx', label: 'Loyer / Soulte (HX)', width: 100 },
   ];
 
   const getRowValue = (row, k) => {
@@ -1557,6 +1873,21 @@ function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
         ce: p.bpAcamaState?.buildings?.[1]?.hFait || '',
         cf: p.bpAcamaState?.buildings?.[2]?.hFait || '',
         cg: p.bpAcamaState?.buildings?.[3]?.hFait || '',
+        ch: p.bpAcamaState?.buildings?.[0]?.largeur || '',
+        ci: p.bpAcamaState?.buildings?.[1]?.largeur || '',
+        cj: p.bpAcamaState?.buildings?.[2]?.largeur || '',
+        ck: p.bpAcamaState?.buildings?.[3]?.largeur || '',
+        cl: p.bpAcamaState?.buildings?.[0]?.longueur || '',
+        cm: p.bpAcamaState?.buildings?.[1]?.longueur || '',
+        cn: p.bpAcamaState?.buildings?.[2]?.longueur || '',
+        co: p.bpAcamaState?.buildings?.[3]?.longueur || '',
+        dv: p.bpAcamaState?.puissanceUnitaire || 460,
+        dz: 0.2,
+        ea: 0.02,
+        eb: 0.02,
+        dt: '',
+        du: '',
+        bpState: p.bpAcamaState,
       }));
   }, [projects]);
 
@@ -1571,22 +1902,44 @@ function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
       const typeBat = fullRow.type_bat;
       const batData = DETAILED_SUIVI_DATA.find(d => d.type === typeBat);
       
-      if (batData) {
-        return {
-          ...fullRow,
-          larg_trav: batData.lTravee,
-          hSud: batData.hSud,
-          hNord: batData.hNord,
-          faitage: batData.hFait,
-          long_remp_s: batData.lRemS,
-          long_remp_n: batData.lRemN,
-          surf_s: batData.sSud,
-          surf_n: batData.sNord,
-          surf_tot: batData.sTot,
-          axe_s: batData.axeS
-        };
+      // Module Dims & Ratio
+      const dims = getModuleDims(fullRow.dv || 460);
+      fullRow.dw = dims.length;
+      fullRow.dx = dims.width;
+      fullRow.dy = (fullRow.dw && fullRow.dx) ? (Number(fullRow.dv) / (fullRow.dw * fullRow.dx)).toFixed(2) : '';
+
+      // Financials
+      if (fullRow.bpState) {
+        const bp = computeBusinessPlan({ ...fullRow.bpState, puissanceUnitaire: Number(fullRow.dv) });
+        fullRow.hn = fmtEur(bp.coutCentrale);
+        fullRow.ho = fmtEur(bp.coutCharpente);
+        fullRow.hp = fmtEur(bp.totalInvestissement);
+        fullRow.hq = fmtEur(bp.totalInvestissement * 1.2);
+        fullRow.hr = fmtEur(bp.totalInvestissement * 0.1);
+        fullRow.hs = fmtEur(bp.emprunt);
+        fullRow.ht = fmt(bp.dscrMoyen, 2);
+        fullRow.hu = fmtPct(bp.triP);
+        fullRow.hv = fmtPct(bp.triFp);
+        fullRow.hw = fmt(bp.payback, 1) + " ans";
+        fullRow.hx = bp.soulte > 0 ? fmtEur(bp.soulte) : fmtEur(bp.loyerAnnuel);
+        fullRow.ds = fmt(bp.surfaceTotale || 0, 0);
       }
-      return fullRow;
+
+      const getVal = (k, def) => (fullRow[k] !== undefined && fullRow[k] !== '') ? fullRow[k] : (batData?.[k] || def);
+
+      return {
+        ...fullRow,
+        larg_trav: getVal('larg_trav', batData?.lTravee),
+        hSud: getVal('hSud', batData?.hSud),
+        hNord: getVal('hNord', batData?.hNord),
+        faitage: getVal('faitage', batData?.hFait),
+        long_remp_s: getVal('long_remp_s', batData?.lRemS),
+        long_remp_n: getVal('long_remp_n', batData?.lRemN),
+        surf_s: getVal('surf_s', batData?.sSud),
+        surf_n: getVal('surf_n', batData?.sNord),
+        surf_tot: getVal('surf_tot', batData?.sTot),
+        axe_s: getVal('axe_s', batData?.axeS),
+      };
     });
   }, [dbRowsRaw, localRows, projectEdits]);
 
@@ -1642,11 +1995,22 @@ function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
                   return (
                     <td key={c.key} className={cn("border border-slate-200 p-0 relative", isCalculated && "bg-slate-100/50")}>
                       {c.editable ? (
-                        <input
-                          className="w-full px-2 py-1.5 bg-transparent outline-none focus:bg-blue-50 focus:ring-1 focus:ring-blue-400 text-center transition-all bg-blue-50/20"
-                          value={val}
-                          onChange={e => updateAnyRow(row.id, c.key, e.target.value)}
-                        />
+                        c.type === 'select' ? (
+                          <select 
+                            className="w-full px-2 py-1.5 bg-blue-50/20 outline-none focus:bg-blue-50 focus:ring-1 focus:ring-blue-400 text-center appearance-none"
+                            value={val}
+                            onChange={e => updateAnyRow(row.id, c.key, e.target.value)}
+                          >
+                            <option value="">Sélectionner...</option>
+                            {c.key === 'dv' && MODULE_TYPES.map(m => <option key={m.power} value={m.power}>{m.power}</option>)}
+                          </select>
+                        ) : (
+                          <input
+                            className="w-full px-2 py-1.5 bg-transparent outline-none focus:bg-blue-50 focus:ring-1 focus:ring-blue-400 text-center transition-all bg-blue-50/20"
+                            value={val}
+                            onChange={e => updateAnyRow(row.id, c.key, e.target.value)}
+                          />
+                        )
                       ) : (
                         <div className="w-full px-2 py-1.5 text-center truncate select-all">{val}</div>
                       )}
@@ -1669,7 +2033,7 @@ function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
 
 // ─── Tab: SUIVI BAT TYPE ─────────────────────────────────────────────────────
 
-function TabSuiviBatType({ batEdits, updateBatEdit }) {
+function TabSuiviBatType({ batEdits, updateBatEdit, activeSuiviBatData }) {
   const [localRows, setLocalRows] = useState([]);
   const keys = ['type','spv','kwc','cout_bat','massifs','longueur','largeur','travees','hSud','hNord','faitage','surfSud','surfNord','surfTot','penteSud','penteNord','modH','modL','totalMod','puissMax','prodMoyen'];
   const cols = [
@@ -1678,7 +2042,7 @@ function TabSuiviBatType({ batEdits, updateBatEdit }) {
     'Pente Sud (°)','Pente Nord (°)','Mod H','Mod L','Total Mod','Puiss Max (KWc)','Prod Moyen'
   ];
 
-  const baseRows = useMemo(() => SUIVI_BAT_DATA.map((r, i) => ({ ...r, id: `base-${i}` })), []);
+  const baseRows = useMemo(() => (activeSuiviBatData || []).map((r, i) => ({ ...r, id: `base-${i}` })), [activeSuiviBatData]);
   const allRows = [...baseRows, ...localRows];
 
   const getVal = (row, k) => {
@@ -2580,7 +2944,7 @@ export default function BpAcama() {
     partACC: 0,
     vent: '',
     neige: '',
-    renteType: 'soulte',
+    renteType: 'none',
   });
 
   useEffect(() => {
@@ -2658,7 +3022,8 @@ export default function BpAcama() {
       neige: selectedProject.snowZone || selectedProject.urbanData?.neige || selectedProject.neige || '',
       targetDSCR: prev.targetDSCR || 1.17,
       tarifACC: prev.tarifACC || 0.14,
-      partACC: prev.partACC !== undefined ? prev.partACC : 0
+      partACC: prev.partACC !== undefined ? prev.partACC : 0,
+      renteType: prev.renteType || 'none'
     }));
   }, [selectedProject]);
 
@@ -2719,9 +3084,14 @@ export default function BpAcama() {
 
   const isAdmin = user?.role === 'admin';
   const isAlexandru = user?.email === 'a.mihailov@acama-energies.fr';
+  const isGreenInvest = user?.tenantId === 'green-invest';
 
-  // Access Control: Admins + Alexandru
-  if (!isAdmin && !isAlexandru) {
+  // Access Control: 
+  // GREEN INVEST: Admins only
+  // ACAMA: Admins + Alexandru
+  const hasAccess = isGreenInvest ? isAdmin : (isAdmin || isAlexandru);
+
+  if (!hasAccess) {
     return (
       <div className="flex items-center justify-center h-screen bg-slate-50">
         <div className="text-center">
@@ -2732,6 +3102,8 @@ export default function BpAcama() {
       </div>
     );
   }
+
+  const activeSuiviBatData = useMemo(() => isGreenInvest ? SUIVI_BAT_DATA_GREEN_INVEST : SUIVI_BAT_DATA_ACAMA, [isGreenInvest]);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -2769,10 +3141,12 @@ export default function BpAcama() {
           totalConstruction={totalConstruction}
           tva={tva}
           apportSoulte={apportSoulte}
+          activeSuiviBatData={activeSuiviBatData}
+          isGreenInvest={isGreenInvest}
         />
       );
       case 'suivi': return <TabSuivi projects={projects || []} projectEdits={projectEdits} updateProjectEdit={updateProjectEdit} />;
-      case 'suivi_bat': return <TabSuiviBatType batEdits={batEdits} updateBatEdit={updateBatEdit} />;
+      case 'suivi_bat': return <TabSuiviBatType batEdits={batEdits} updateBatEdit={updateBatEdit} activeSuiviBatData={activeSuiviBatData} />;
       case 'prop_bac': {
         const resteACharge = computeResteACharge({ ...params, totalInvestissement }, 1.16);
         return <TabPropositionClientBAC projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} resteACharge={resteACharge} />;
@@ -2789,8 +3163,8 @@ export default function BpAcama() {
       {/* Sidebar */}
       <aside className="w-64 bg-slate-900 text-white flex flex-col shrink-0">
         <div className="px-4 py-3 border-b border-slate-700">
-          <h1 className="text-sm font-bold text-white">BP ACAMA</h1>
-          <p className="text-[12px] text-slate-400">Business Plan ACAMA</p>
+          <h1 className="text-sm font-bold text-white uppercase">{isGreenInvest ? 'BUSINESS PLAN' : 'BP ACAMA'}</h1>
+          <p className="text-[12px] text-slate-400">{isGreenInvest ? 'Business Plan Green Invest' : 'Business Plan ACAMA'}</p>
         </div>
         <nav className="flex-1 overflow-y-auto py-2">
           {TABS.map(tab => {
@@ -2813,14 +3187,16 @@ export default function BpAcama() {
           })}
         </nav>
         <div className="px-4 py-3 border-t border-slate-700 text-[12px] text-slate-400">
-          Interface ACAMA • {new Date().getFullYear()}
+          {isGreenInvest ? 'Interface GREEN INVEST' : 'Interface ACAMA'} • {new Date().getFullYear()}
         </div>
       </aside>
 
       {/* Content */}
       <main className="flex-1 overflow-auto">
         <div className="border-b border-slate-200 bg-white px-4 py-2 flex items-center justify-between sticky top-0 z-10">
-          <h2 className="text-sm font-bold text-slate-800">{TABS.find(t => t.id === activeTab)?.label}</h2>
+          <h2 className="text-sm font-bold text-slate-800">
+            {activeTab === 'bp_projets' && isGreenInvest ? 'BUSINESS PLAN PROJETS' : TABS.find(t => t.id === activeTab)?.label}
+          </h2>
         </div>
         {renderContent()}
       </main>

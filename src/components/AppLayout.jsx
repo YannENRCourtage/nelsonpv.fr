@@ -236,7 +236,7 @@ export const generatePdfForProject = async (projectData) => {
   });
 };
 
-function Header({ isMobileMenuOpen, setIsMobileMenuOpen }) {
+function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized }) {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const isProjectPage = useMatch("/project/:projectId/edit");
@@ -253,24 +253,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen }) {
     return false;
   };
 
-  const isTrackingAuthorized = () => {
-    if (!user) return false;
-    const { activeTenantId } = useAuth();
-    if (activeTenantId !== 'green-invest') return false;
 
-    const email = user.email?.toLowerCase();
-    const firstName = (user.firstName || user.displayName || '').toLowerCase();
-    const lastName = (user.lastName || '').toLowerCase();
-
-    // Admins (Véro, Yann sont admins)
-    if (user.role === 'admin' || user.role === 'Administrator') return true;
-
-    // Laurent GUYON
-    if (firstName.includes('laurent') && lastName.includes('guyon')) return true;
-    if (email?.includes('guyon')) return true;
-
-    return false;
-  };
 
   const handleTransferProject = async (projectId, targetTenantId, options) => {
     try {
@@ -590,12 +573,34 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen }) {
 }
 
 export default function AppLayout() {
-  const { user } = useAuth();
+  const { user, activeTenantId } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const isTrackingAuthorized = () => {
+    if (!user) return false;
+    if (activeTenantId !== 'green-invest') return false;
+
+    const email = user.email?.toLowerCase();
+    const firstName = (user.firstName || user.displayName || '').toLowerCase();
+    const lastName = (user.lastName || '').toLowerCase();
+
+    // Admins (Véro, Yann sont admins)
+    if (user.role === 'admin' || user.role === 'Administrator') return true;
+
+    // Laurent GUYON
+    if (firstName.includes('laurent') && lastName.includes('guyon')) return true;
+    if (email?.includes('guyon')) return true;
+
+    return false;
+  };
 
   return (
     <div className="app-layout">
-      <Header isMobileMenuOpen={isMobileMenuOpen} setIsMobileMenuOpen={setIsMobileMenuOpen} />
+      <Header 
+        isMobileMenuOpen={isMobileMenuOpen} 
+        setIsMobileMenuOpen={setIsMobileMenuOpen} 
+        isTrackingAuthorized={isTrackingAuthorized}
+      />
       <main className="app-layout__content">
         <Outlet />
       </main>

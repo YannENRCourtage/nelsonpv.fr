@@ -392,6 +392,72 @@ export const transferProject = async (projectId, targetTenantId, transferLinkedD
 };
 
 /**
+ * Duplique un projet vers un autre tenant
+ */
+export const duplicateProject = async (projectId, targetTenantId, transferLinkedData = true) => {
+    const projectRef = doc(db, 'projects', projectId);
+    const projectSnap = await getDoc(projectRef);
+
+    if (!projectSnap.exists()) throw new Error("Projet introuvable");
+    const projectData = projectSnap.data();
+
+    const batch = writeBatch(db);
+    const newProjectRef = doc(collection(db, 'projects'));
+    
+    // 1. Créer la copie du projet
+    const newProjectData = {
+        ...projectData,
+        tenantId: targetTenantId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+    };
+    batch.set(newProjectRef, newProjectData);
+
+    if (transferLinkedData) {
+        // 2. Dupliquer le contact lié si présent
+        if (projectData.email) {
+            const contactsQ = query(
+                collection(db, 'contacts'),
+                where('email', '==', projectData.email),
+                where('tenantId', '==', projectData.tenantId)
+            );
+            const contactsSnap = await getDocs(contactsQ);
+            contactsSnap.docs.forEach(d => {
+                const newContactRef = doc(collection(db, 'contacts'));
+                const newContactData = {
+                    ...d.data(),
+                    tenantId: targetTenantId,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+                batch.set(newContactRef, newContactData);
+            });
+        }
+
+        // 3. Dupliquer les tâches liées
+        const tasksQ = query(
+            collection(db, 'tasks'),
+            where('contact', '==', projectData.name),
+            where('tenantId', '==', projectData.tenantId)
+        );
+        const tasksSnap = await getDocs(tasksQ);
+        tasksSnap.docs.forEach(d => {
+            const newTaskRef = doc(collection(db, 'tasks'));
+            const newTaskData = {
+                ...d.data(),
+                tenantId: targetTenantId,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            };
+            batch.set(newTaskRef, newTaskData);
+        });
+    }
+
+    await batch.commit();
+    return newProjectRef.id;
+};
+
+/**
  * Nettoie les activités d'un projet spécifique en les déplaçant vers un autre tenant
  */
 export const cleanupProjectActivities = async (projectId, targetTenantId) => {

@@ -10,7 +10,7 @@ import {
   Plus, Search, Euro, Settings, LogOut, X, Edit, Trash2, Save, Phone,
   Mail, Building, MapPin, Tag, Clock, CheckCircle2, AlertCircle,
   ChevronLeft, ChevronRight, BarChart3, PieChart, Activity, FolderHeart, MapPin as MapIcon, FileDown, ExternalLink,
-  List, LayoutGrid, UserCircle, User, Briefcase, Calendar as CalendarIcon, Filter, MoreVertical, Shuffle, Menu
+  List, LayoutGrid, UserCircle, User, Briefcase, Calendar as CalendarIcon, Filter, MoreVertical, Shuffle, Menu, Copy
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button.jsx';
@@ -112,6 +112,7 @@ const TaskModal = ({ show, onClose, editingTask, setEditingTask, onSave, contact
 };
 
 import TransferProjectModal from '@/components/TransferProjectModal.jsx';
+import DuplicateProjectModal from '@/components/DuplicateProjectModal.jsx';
 
 
 export default function Crm() {
@@ -139,7 +140,9 @@ export default function Crm() {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [transferProjectData, setTransferProjectData] = useState(null);
+  const [duplicateProjectData, setDuplicateProjectData] = useState(null);
   const [editingContact, setEditingContact] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -524,6 +527,27 @@ export default function Crm() {
       toast({ title: "Transfert réussi", description: "Le projet a été déplacé avec succès." });
     } catch (error) {
       console.error("Transfer error:", error);
+      throw error;
+    }
+  };
+  
+  const handleOpenDuplicateModal = (project) => {
+    setDuplicateProjectData(project);
+    setShowDuplicateModal(true);
+  };
+
+  const handleDuplicateProject = async (projectId, targetTenantId, options) => {
+    try {
+      await apiService.duplicateProject(projectId, targetTenantId, options);
+      toast({ title: "Duplication réussie", description: "Le projet a été dupliqué avec succès." });
+      
+      // Optionnellement rafraîchir la liste si on est sur le tenant de destination
+      if (activeTenantId === targetTenantId) {
+        const freshProjects = await apiService.getProjects(activeTenantId);
+        setProjects(freshProjects);
+      }
+    } catch (error) {
+      console.error("Duplication error:", error);
       throw error;
     }
   };
@@ -1489,15 +1513,26 @@ export default function Crm() {
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
                         {isTransferAuthorized() && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenTransferModal(project)}
-                            className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                            title="Transférer entreprise"
-                          >
-                            <Shuffle className="w-4 h-4" />
-                          </Button>
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenTransferModal(project)}
+                              className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                              title="Transférer entreprise"
+                            >
+                              <Shuffle className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenDuplicateModal(project)}
+                              className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                              title="Dupliquer le projet"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                          </>
                         )}
                         <Button
                           variant="ghost"
@@ -1557,15 +1592,26 @@ export default function Crm() {
                 <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
                   <Button size="sm" className="flex-1 bg-blue-600" onClick={() => navigate(`/project/${project.id}/edit`)}>Ouvrir</Button>
                   {isTransferAuthorized() && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-amber-600 hover:bg-amber-50"
-                      onClick={() => handleOpenTransferModal(project)}
-                      title="Transférer entreprise"
-                    >
-                      <Shuffle size={16} />
-                    </Button>
+                    <div className="flex gap-2">
+                       <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-amber-600 hover:bg-amber-50"
+                        onClick={() => handleOpenTransferModal(project)}
+                        title="Transférer entreprise"
+                      >
+                        <Shuffle size={16} />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-blue-500 hover:bg-blue-50"
+                        onClick={() => handleOpenDuplicateModal(project)}
+                        title="Dupliquer le projet"
+                      >
+                        <Copy size={16} />
+                      </Button>
+                    </div>
                   )}
                   <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteProject(project.id)}><Trash2 size={16} /></Button>
                 </div>
@@ -1930,9 +1976,22 @@ export default function Crm() {
 
       <TransferProjectModal
         show={showTransferModal}
-        onClose={() => setShowTransferModal(false)}
+        onClose={() => {
+          setShowTransferModal(false);
+          setTransferProjectData(null);
+        }}
         project={transferProjectData}
         onTransfer={handleTransferProject}
+      />
+
+      <DuplicateProjectModal
+        show={showDuplicateModal}
+        onClose={() => {
+          setShowDuplicateModal(false);
+          setDuplicateProjectData(null);
+        }}
+        project={duplicateProjectData}
+        onDuplicate={handleDuplicateProject}
       />
 
       <UserSettingsModal

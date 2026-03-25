@@ -71,19 +71,36 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
                         parent.appendChild(textEl);
                     });
 
-                    // Add narrow margins by slightly reducing section width and centering it
-                    const section = clonedDoc.getElementById(id);
-                    if (section) {
-                        section.style.width = '290mm'; // A4 Landscape is 297mm - narrower margins (3.5mm each side)
-                        section.style.margin = '0 auto';
-                        section.style.padding = '2mm'; // Reduced padding
-                        section.style.boxSizing = 'border-box';
-                    }
+                    // Compacter la mise en page pour que tout rentre
+                    clonedDoc.querySelectorAll('.pdf-header-container').forEach(el => {
+                        el.style.setProperty('padding', '2mm', 'important');
+                        el.style.setProperty('padding-top', '5mm', 'important');
+                        el.style.setProperty('height', 'auto', 'important');
+                        el.style.setProperty('min-height', 'auto', 'important');
+                        el.style.setProperty('max-height', 'none', 'important');
+                        el.style.setProperty('overflow', 'visible', 'important');
+                    });
                     
-                    // Make charts and tables full width
+                    // Remove height constraints that could cause truncation
+                    clonedDoc.querySelectorAll('.h-full, .grow, .flex-1, .h-\\[300px\\], .h-\\[250px\\]').forEach(el => {
+                        el.style.setProperty('height', 'auto', 'important');
+                        el.style.setProperty('min-height', '0', 'important');
+                        el.style.setProperty('flex', 'none', 'important');
+                    });
+
+                    clonedDoc.querySelectorAll('.space-y-8, .space-y-6, .gap-6, .gap-y-6').forEach(el => {
+                        el.style.setProperty('gap', '2mm', 'important');
+                        el.style.setProperty('margin-top', '0', 'important');
+                        el.style.setProperty('margin-bottom', '0', 'important');
+                    });
+                    
+                    // Make charts and tables full width and larger font for Page 2
                     clonedDoc.querySelectorAll('.recharts-responsive-container, .recharts-wrapper, table').forEach(el => {
-                        el.style.width = '100% !important';
-                        el.style.maxWidth = 'none !important';
+                        el.style.setProperty('width', '100%', 'important');
+                        el.style.setProperty('max-width', 'none', 'important');
+                        if (id === 'pdf-section-2' && el.tagName === 'TABLE') {
+                            el.style.setProperty('font-size', '12pt', 'important');
+                        }
                     });
                     
                     // Force white background and adjust any table/grid spacing if needed
@@ -91,6 +108,17 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
                         el.style.backgroundColor = '#ffffff';
                         el.style.backgroundImage = 'none';
                     });
+
+                    // Ensure the main section is full width with very thin margins
+                    const s = clonedDoc.getElementById(id);
+                    if (s) {
+                        s.style.width = pdfWidth + 'mm';
+                        s.style.margin = '0';
+                        s.style.padding = '0';
+                        s.style.border = 'none';
+                        s.style.borderRadius = '0';
+                        s.style.boxSizing = 'border-box';
+                    }
                 },
                 ignoreElements: (el) => el.hasAttribute('data-html2canvas-ignore')
             });
@@ -99,14 +127,14 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
             const imgProps = pdf.getImageProperties(imgData);
             const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-            // Fit to page if too tall
-            if (imgHeight > pdfHeight - 10) {
-                const ratio = (pdfHeight - 10) / imgHeight;
+            // Fit to page
+            if (imgHeight > pdfHeight) {
+                const ratio = pdfHeight / imgHeight;
                 const scaledWidth = pdfWidth * ratio;
                 const xOffset = (pdfWidth - scaledWidth) / 2;
-                pdf.addImage(imgData, 'PNG', xOffset, 5, scaledWidth, pdfHeight - 10);
+                pdf.addImage(imgData, 'PNG', xOffset, 0, scaledWidth, pdfHeight);
             } else {
-                pdf.addImage(imgData, 'PNG', 0, 5, pdfWidth, imgHeight);
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight);
             }
         };
 
