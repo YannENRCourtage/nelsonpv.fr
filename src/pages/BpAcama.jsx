@@ -654,9 +654,8 @@ function computeBusinessPlan(params) {
   // Gains sur 20 ans: turnover vs costs & investment
   const gainsVrai = sumCA - sumOpex - totalConstruction;
 
-  // Average annual cash flow (Trésorerie)
-  const sumTresorerie = rows.reduce((acc, r) => acc + r.tresorerie, 0);
-  const payback = totalConstruction / (Math.max(1, sumTresorerie) / 20);
+  // Average annual turnover (CA) payback
+  const payback = totalConstruction / (Math.max(1, sumCA) / 20);
 
   // Rentabilité
   const triProjet = IRR(cashFlowProjet, 0.05); // W8

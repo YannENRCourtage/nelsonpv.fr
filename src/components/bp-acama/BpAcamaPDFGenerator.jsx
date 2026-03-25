@@ -79,7 +79,7 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
                         }
                     });
                     
-                    clonedDoc.querySelectorAll('.bg-white, .bg-slate-50, .bg-slate-100').forEach(el => {
+                    clonedDoc.querySelectorAll('.bg-white').forEach(el => {
                         el.style.backgroundColor = '#ffffff';
                     });
 
@@ -87,11 +87,26 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
                     if (s) {
                         // Use a fixed wide width for capture to ensure grids and tables expand
                         // Increase to 1600px for the 20-year table to avoid truncation
-                        s.style.width = id === 'pdf-section-2' ? '1600px' : '1400px'; 
+                        // For Page 1, use 1000px to better match A4 landscape aspect ratio and avoid excessive height scaling
+                        s.style.width = id === 'pdf-section-2' ? '1600px' : '1000px'; 
                         s.style.display = 'block';
                         s.style.margin = '0';
                         s.style.padding = '0';
-                        s.style.overflow = 'visible'; // Ensure nothing is clipped
+                        s.style.overflow = 'visible';
+                        
+                        // Force grid columns to be side-by-side on Page 1 even at 1000px
+                        if (id === 'pdf-section-1') {
+                            const grid = s.querySelector('.grid');
+                            if (grid) {
+                                grid.classList.remove('lg:grid-cols-12');
+                                grid.style.display = 'grid';
+                                grid.style.gridTemplateColumns = 'repeat(12, minmax(0, 1fr))';
+                                const leftVal = s.querySelector('.xl\\:col-span-5');
+                                const rightVal = s.querySelector('.xl\\:col-span-7');
+                                if (leftVal) leftVal.style.gridColumn = 'span 5 / span 5';
+                                if (rightVal) rightVal.style.gridColumn = 'span 7 / span 7';
+                            }
+                        }
                     }
                 },
                 ignoreElements: (el) => el.hasAttribute('data-html2canvas-ignore')
