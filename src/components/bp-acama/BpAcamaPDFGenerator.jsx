@@ -58,7 +58,7 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
                     });
 
                     clonedDoc.querySelectorAll('.pdf-header-container').forEach(el => {
-                        el.style.setProperty('padding', '2mm', 'important');
+                        el.style.setProperty('padding', '0', 'important'); // Remove internal padding to eliminate white bands
                         el.style.setProperty('padding-top', '5mm', 'important');
                         el.style.setProperty('height', 'auto', 'important');
                     });
@@ -86,11 +86,12 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
                     const s = clonedDoc.getElementById(id);
                     if (s) {
                         // Use a fixed wide width for capture to ensure grids and tables expand
-                        // 1200px is roughly 317mm at 96dpi, which ensures plenty of room for landscape
-                        s.style.width = '1200px'; 
+                        // Increase to 1600px for the 20-year table to avoid truncation
+                        s.style.width = id === 'pdf-section-2' ? '1600px' : '1400px'; 
                         s.style.display = 'block';
                         s.style.margin = '0';
                         s.style.padding = '0';
+                        s.style.overflow = 'visible'; // Ensure nothing is clipped
                     }
                 },
                 ignoreElements: (el) => el.hasAttribute('data-html2canvas-ignore')
