@@ -1426,7 +1426,7 @@ function TabBpProjets({
               </div>
             </SectionCard>
 
-            <SectionCard title="INVESTISSEMENT" id="pdf-section-invest" className="grow pb-2 border-t-4 border-t-blue-500">
+            <SectionCard title="INVESTISSEMENT" id="pdf-section-invest" className="grow pb-2 border-t-4 border-t-amber-400">
               <div className="overflow-x-auto pb-1">
                 <table className="w-full text-left border-separate border-spacing-x-4">
                   <thead>

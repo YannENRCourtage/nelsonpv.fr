@@ -85,9 +85,10 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
 
                     const s = clonedDoc.getElementById(id);
                     if (s) {
-                        s.style.width = 'max-content'; // Allow natural width expansion
-                        s.style.minWidth = '1000px'; // Ensure some minimum width for small tables
-                        s.style.display = 'inline-block';
+                        // Use a fixed wide width for capture to ensure grids and tables expand
+                        // 1200px is roughly 317mm at 96dpi, which ensures plenty of room for landscape
+                        s.style.width = '1200px'; 
+                        s.style.display = 'block';
                         s.style.margin = '0';
                         s.style.padding = '0';
                     }
