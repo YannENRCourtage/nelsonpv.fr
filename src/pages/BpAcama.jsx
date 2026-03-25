@@ -957,7 +957,7 @@ function TabBpProjets({
       </div>
     </div>
   );
-  const [search, setSearch] = useState(false);
+  const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -1114,10 +1114,14 @@ function TabBpProjets({
   const dscrColor = bp.dscrMoyen >= limitDSCR ? 'text-green-600 bg-green-50' : bp.dscrMoyen >= (limitDSCR - 0.06) ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50';
   const DscrIcon = bp.dscrMoyen >= limitDSCR ? CheckCircle : bp.dscrMoyen >= (limitDSCR - 0.06) ? AlertTriangle : AlertCircle;
 
-  const filteredProjects = projects.filter(p =>
-    p.name?.toLowerCase().includes(search.toLowerCase()) ||
-    p.city?.toLowerCase().includes(search.toLowerCase())
-  ).slice(0, 30);
+  const filteredProjects = useMemo(() => {
+    if (!search || typeof search !== 'string') return (projects || []).slice(0, 30);
+    const q = search.toLowerCase();
+    return (projects || []).filter(p =>
+      p.name?.toLowerCase().includes(q) ||
+      p.city?.toLowerCase().includes(q)
+    ).slice(0, 30);
+  }, [projects, search]);
 
   const applyProject = (p) => {
     setSelectedProject(p);
