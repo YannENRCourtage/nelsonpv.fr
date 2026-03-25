@@ -646,7 +646,6 @@ function computeBusinessPlan(params) {
       tresorerie,
       cfCumule
     });
-    
     detteDebut = Math.max(0, detteDebut - rembPrincipal);
   }
 
@@ -655,12 +654,16 @@ function computeBusinessPlan(params) {
   // Gains sur 20 ans: turnover vs costs & investment
   const gainsVrai = sumCA - sumOpex - totalConstruction;
 
+  // Average annual cash flow (Trésorerie)
+  const sumTresorerie = rows.reduce((acc, r) => acc + r.tresorerie, 0);
+  const payback = totalConstruction / (Math.max(1, sumTresorerie) / 20);
+
   // Rentabilité
   const triProjet = IRR(cashFlowProjet, 0.05); // W8
   let triFP = IRR(cashFlowFP, 0.05); // W7
   if (triFP < -0.99 || triFP > 10) triFP = null; 
   
-  const tempsRetour = totalConstruction / (Math.max(1, (sumCA - sumOpex)) / 20); // W9: investment / average margin
+  const tempsRetour = payback; // Sync both names for safety
 
   return { 
     rows, 
@@ -669,6 +672,7 @@ function computeBusinessPlan(params) {
     emprunt,
     triProjet,
     triFP,
+    payback,
     tempsRetour,
     loyer: calculatedLoyer,
     soulte: calculatedSoulte,
@@ -777,64 +781,6 @@ const useDragScroll = () => {
   };
 };
 
-function ProjectSelect({ projects, selectedProject, onSelect, className }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState('');
-
-  const filtered = (projects || []).filter(p => 
-    p.name?.toLowerCase().includes(search.toLowerCase()) || 
-    p.client_name?.toLowerCase().includes(search.toLowerCase())
-  ).slice(0, 10);
-
-  return (
-    <div className={cn("relative", className)}>
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between border border-slate-200 rounded px-2 py-1.5 text-sm bg-white hover:bg-slate-50 transition-colors"
-      >
-        <span className="truncate">{selectedProject?.name || 'Sélectionner un projet CRM...'}</span>
-        <ChevronDown className={cn("w-3 h-3 transition-transform", isOpen && "rotate-180")} />
-      </button>
-      
-      {isOpen && (
-        <>
-          <div className="fixed inset-0 z-30" onClick={() => setIsOpen(false)} />
-          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-xl z-40 max-h-60 overflow-y-auto">
-            <div className="p-2 border-b border-slate-100 sticky top-0 bg-white">
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
-                <input 
-                  autoFocus
-                  className="w-full pl-7 pr-2 py-1.5 text-sm border border-slate-100 rounded outline-none focus:ring-1 focus:ring-blue-400"
-                  placeholder="Rechercher..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
-              </div>
-            </div>
-            {filtered.map(p => (
-              <button
-                key={p.id}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 transition-colors border-b border-slate-50 last:border-0"
-                onClick={() => {
-                  onSelect(p);
-                  setIsOpen(false);
-                }}
-              >
-                <div className="font-bold">{p.name}</div>
-                <div className="text-[12px] text-slate-500">{p.client_name} • {p.city}</div>
-              </button>
-            ))}
-            {filtered.length === 0 && (
-              <div className="p-4 text-center text-sm text-slate-400">Aucun projet trouvé</div>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
 function Field({ label, value, onChange, type = 'text', suffix, className, step, disabled, precision = 2, hideLabel = false }) {
   return (
     <div className={cn('flex items-center gap-2', className)}>
@@ -843,12 +789,17 @@ function Field({ label, value, onChange, type = 'text', suffix, className, step,
         <input
           type={type}
           disabled={disabled}
+          min={type === 'number' ? 0 : undefined}
           className={cn(
             "border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none transition-colors focus:ring-1 focus:ring-blue-500",
             disabled ? "bg-slate-50 text-slate-400 cursor-not-allowed" : "text-slate-900 bg-white"
           )}
           value={type === 'number' && typeof value === 'number' ? (Math.round(value * Math.pow(10, precision)) / Math.pow(10, precision)).toString() : (value ?? '')}
-          onChange={e => onChange?.(type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value)}
+          onChange={e => {
+            let val = type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value;
+            if (type === 'number' && val < 0) val = 0;
+            onChange?.(val);
+          }}
           step={step ?? (type === 'number' ? 'any' : undefined)}
         />
         {suffix && <span className="text-sm text-slate-500 shrink-0">{suffix}</span>}
@@ -1006,7 +957,7 @@ function TabBpProjets({
       </div>
     </div>
   );
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -1719,30 +1670,25 @@ function TabBpProjets({
                    <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">CA 20 ans :</span><span className="font-bold text-blue-800">{fmtEur(bp.sumCA)}</span></div>
                    <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">Gains 20 ans :</span><span className="font-bold text-green-700">{fmtEur(bp.gains)}</span></div>
                    <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">TRI FP :</span><span className="font-bold text-green-600">{fmtPct(bp.triFP)}</span></div>
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">Retour :</span><span className="font-bold text-blue-600">{fmt(bp.payback, 1)} ans</span></div>
+                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">RETOUR :</span><span className="font-bold text-blue-600">{fmt(bp.payback, 1)} ans</span></div>
+                   <div className="flex justify-between text-[11px] pt-1 mt-1 border-t border-slate-50">
+                      <span className="text-slate-400 font-bold uppercase">Prix au Wc global :</span>
+                      <span className="font-bold text-slate-700">{fmtEur(totalInvestissement / (bp.rows[0]?.kwcDeg || 1))} /Wc</span>
+                   </div>
                  </div>
                </div>
             </SectionCard>
-            <div className="pt-1 border-t border-slate-200 mt-1 space-y-1">
-              <div className="flex justify-between text-[12px]">
-                <span className="text-slate-500 italic">Temps de retour :</span>
-                <span className="font-bold text-blue-600">{fmt(bp.payback, 1)} ans</span>
-              </div>
-              <div className="flex justify-between text-[12px]">
-                <span className="text-slate-500 italic">Prix au Wc global :</span>
-                <span className="font-bold text-slate-700">{fmtEur(totalInvestissement / (bp.rows[0]?.kwcDeg || 1))} /Wc</span>
-              </div>
-            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div id="pdf-section-2" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
-        <div className="mt-4">
-           <TableauPrevisionnel params={collapsedParams} rows={rows} />
+        {/* Page 2 */}
+        <div id="pdf-section-2" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
+          <div className="mt-4">
+            <TableauPrevisionnel params={collapsedParams} rows={rows} />
+          </div>
         </div>
       </div>
-    </div>
   );
 }
 
