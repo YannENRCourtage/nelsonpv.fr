@@ -85,7 +85,9 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
 
                     const s = clonedDoc.getElementById(id);
                     if (s) {
-                        s.style.width = '277mm'; // Content width (297 - 20)
+                        s.style.width = 'max-content'; // Allow natural width expansion
+                        s.style.minWidth = '1000px'; // Ensure some minimum width for small tables
+                        s.style.display = 'inline-block';
                         s.style.margin = '0';
                         s.style.padding = '0';
                     }
