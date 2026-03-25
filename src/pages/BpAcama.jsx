@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import {
   BarChart3, FileText, Calculator, TrendingUp, Users, Building,
   FileDown, Save, ChevronDown, Search, X, CheckCircle, AlertCircle,
-  AlertTriangle, RefreshCw, Plus, Trash2, MapPin, ChevronUp, Download, ArrowRight
+  AlertTriangle, RefreshCw, Plus, Trash2, MapPin, ChevronUp, Download, ArrowRight, Menu
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ComposedChart } from 'recharts';
 
@@ -2907,6 +2907,7 @@ export default function BpAcama() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [projectEdits, setProjectEdits] = useState({});
   const [batEdits, setBatEdits] = useState({});
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const updateProjectEdit = useCallback((id, k, v) => {
     setProjectEdits(p => ({ ...p, [id]: { ...(p[id] || {}), [k]: v } }));
@@ -3160,11 +3161,33 @@ export default function BpAcama() {
 
   return (
     <div className="flex h-[calc(100vh-64px)] bg-slate-100 overflow-hidden print:h-auto print:overflow-visible">
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-20 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-white flex flex-col shrink-0">
-        <div className="px-4 py-3 border-b border-slate-700">
-          <h1 className="text-sm font-bold text-white uppercase">{isGreenInvest ? 'BUSINESS PLAN' : 'BP ACAMA'}</h1>
-          <p className="text-[12px] text-slate-400">{isGreenInvest ? 'Business Plan Green Invest' : 'Business Plan ACAMA'}</p>
+      <aside className={cn(
+        "bg-slate-900 text-white flex flex-col shrink-0 transition-all duration-300 ease-in-out",
+        "fixed inset-y-0 left-0 z-30 w-64 md:relative md:translate-x-0 md:flex",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+          <div>
+            <h1 className="text-sm font-bold text-white uppercase">{isGreenInvest ? 'BUSINESS PLAN' : 'BP ACAMA'}</h1>
+            <p className="text-[12px] text-slate-400">{isGreenInvest ? 'Business Plan Green Invest' : 'Business Plan ACAMA'}</p>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="md:hidden text-white hover:bg-slate-800 h-8 w-8"
+            onClick={() => setIsSidebarOpen(false)}
+          >
+            <X className="w-4 h-4" />
+          </Button>
         </div>
         <nav className="flex-1 overflow-y-auto py-2">
           {TABS.map(tab => {
@@ -3172,7 +3195,10 @@ export default function BpAcama() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setIsSidebarOpen(false); // Close sidebar on mobile after selection
+                }}
                 className={cn(
                   'w-full flex items-center gap-2 px-4 py-2 text-left text-sm transition-colors',
                   activeTab === tab.id
@@ -3193,7 +3219,15 @@ export default function BpAcama() {
 
       {/* Content */}
       <main className="flex-1 overflow-auto">
-        <div className="border-b border-slate-200 bg-white px-4 py-2 flex items-center justify-between sticky top-0 z-10">
+        <div className="border-b border-slate-200 bg-white px-4 py-2 flex items-center gap-3 sticky top-0 z-10 min-h-[44px]">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden h-8 w-8 text-slate-600"
+            onClick={() => setIsSidebarOpen(true)}
+          >
+            <Menu className="w-5 h-5" />
+          </Button>
           <h2 className="text-sm font-bold text-slate-800">
             {activeTab === 'bp_projets' && isGreenInvest ? 'BUSINESS PLAN PROJETS' : TABS.find(t => t.id === activeTab)?.label}
           </h2>
