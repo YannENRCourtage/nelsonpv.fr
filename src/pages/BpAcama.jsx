@@ -2442,7 +2442,7 @@ function TabPropositionBE({ projects, selectedProject, setSelectedProject, param
   );
 }
 
-function TabDevis({ projects, selectedProject, setSelectedProject, params, setParams }) {
+function TabDevis({ projects, selectedProject, setSelectedProject, params, setParams, activeSuiviBatData }) {
   const [data, setData] = useState({
     dateDevis: new Date().toLocaleDateString('fr-FR'), dateValidite: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR'),
     etudeRenfort: 0, etudeImplant: 0, etudeNoteCalcul: 0, etudeCalepinage: 0, transportCharpente: 0, fournitureBac: 0, anticondensation: 0,
@@ -2511,7 +2511,7 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
                     value={params.typeBat || ''}
                     onChange={e => {
                       const selectedType = e.target.value;
-                      const bat = SUIVI_BAT_DATA.find(b => b.type === selectedType);
+                      const bat = (activeSuiviBatData || []).find(b => b.type === selectedType);
                       
                       if (selectedType === selectedProject?.bpAcamaState?.typeBat) {
                         setParams(p => ({ ...p, ...selectedProject.bpAcamaState }));
@@ -3123,7 +3123,7 @@ export default function BpAcama() {
       }
       case 'prop_be': return <TabPropositionBE projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} bpResults={bp} />;
       case 'data': return <TabData />;
-      case 'devis': return <TabDevis projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} setParams={setParams} />;
+      case 'devis': return <TabDevis projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} setParams={setParams} activeSuiviBatData={activeSuiviBatData} />;
       default: return <TabPlaceholder label={TABS.find(t => t.id === activeTab)?.label || ''} />;
     }
   };
@@ -3146,8 +3146,14 @@ export default function BpAcama() {
       )}>
         <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
           <div>
-            <h1 className="text-sm font-bold text-white uppercase">{isGreenInvest ? 'BUSINESS PLAN' : 'BP ACAMA'}</h1>
-            <p className="text-[12px] text-slate-400">{isGreenInvest ? 'Business Plan Green Invest' : 'Business Plan ACAMA'}</p>
+            {isGreenInvest ? (
+              <h1 className="text-sm font-bold text-white uppercase">Business Plan</h1>
+            ) : (
+              <>
+                <h1 className="text-sm font-bold text-white uppercase">BP ACAMA</h1>
+                <p className="text-[12px] text-slate-400">Business Plan ACAMA</p>
+              </>
+            )}
           </div>
           <Button 
             variant="ghost" 
@@ -3197,8 +3203,11 @@ export default function BpAcama() {
           >
             <Menu className="w-5 h-5" />
           </Button>
-          <h2 className="text-sm font-bold text-slate-800">
-            {activeTab === 'bp_projets' && isGreenInvest ? 'BUSINESS PLAN PROJETS' : TABS.find(t => t.id === activeTab)?.label}
+          <h2 className={cn(
+            "text-sm font-bold rounded px-2 py-0.5",
+            isGreenInvest ? "bg-blue-100 text-blue-800" : "text-slate-800"
+          )}>
+            {isGreenInvest ? 'BP' : (activeTab === 'bp_projets' ? 'BUSINESS PLAN PROJETS' : TABS.find(t => t.id === activeTab)?.label)}
           </h2>
         </div>
         {renderContent()}

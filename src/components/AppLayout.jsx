@@ -465,9 +465,19 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
             {(user?.activeTenantId === 'acama' || user?.tenantId === 'acama' ||
               user?.role === 'admin' || user?.role === 'Administrator' ||
               user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr') && (
-              <NavLink to="/bp-acama" className={({ isActive }) => isActive ? 'nav-link active bp-acama' : 'nav-link bp-acama'}>
+              <NavLink 
+                to="/bp-acama" 
+                className={({ isActive }) => {
+                  const baseClass = isActive ? 'nav-link active bp-acama' : 'nav-link bp-acama';
+                  const isGreenInvest = user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest';
+                  if (isActive && isGreenInvest) {
+                    return `${baseClass} bg-blue-600 text-white px-3 py-1 rounded-md`;
+                  }
+                  return baseClass;
+                }}
+              >
                 <TrendingUp className="w-4 h-4 mr-1 inline-block" />
-                BP ACAMA
+                {(user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest') ? 'BP' : 'BP ACAMA'}
               </NavLink>
             )}
 
@@ -690,11 +700,18 @@ export default function AppLayout() {
               user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr') && (
               <NavLink
                 to="/bp-acama"
-                className={({ isActive }) => isActive ? 'mobile-nav-link active bp-acama' : 'mobile-nav-link bp-acama'}
+                className={({ isActive }) => {
+                  const baseClass = isActive ? 'mobile-nav-link active bp-acama' : 'mobile-nav-link bp-acama';
+                  const isGreenInvest = user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest';
+                  if (isActive && isGreenInvest) {
+                    return `${baseClass} bg-blue-600 text-white px-3 py-1 rounded-md mx-2`;
+                  }
+                  return baseClass;
+                }}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <TrendingUp className="w-4 h-4 mr-2 inline-block" />
-                BP ACAMA
+                {(user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest') ? 'BP' : 'BP ACAMA'}
               </NavLink>
             )}
 
