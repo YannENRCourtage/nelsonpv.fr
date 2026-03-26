@@ -819,6 +819,71 @@ function SectionCard({ title, children, className, id, actions }) {
   );
 }
 
+function ProjectSelect({ projects, selectedProject, onSelect }) {
+  const [search, setSearch] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowSearch(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredProjects = useMemo(() => {
+    if (!search || typeof search !== 'string') return (projects || []).slice(0, 30);
+    const q = search.toLowerCase();
+    return (projects || []).filter(p =>
+      p.name?.toLowerCase().includes(q) ||
+      p.city?.toLowerCase().includes(q)
+    ).slice(0, 30);
+  }, [projects, search]);
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      <button onClick={() => setShowSearch(!showSearch)} className="flex items-center gap-2 bg-white border border-blue-300 rounded px-2 py-1.5 text-[13px] w-full text-left hover:bg-blue-50 transition-colors shadow-sm">
+        <span className="truncate flex-1">{selectedProject ? selectedProject.name : 'Choisir un projet...'}</span>
+        <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+      </button>
+      {showSearch && (
+        <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-xl w-80 overflow-hidden">
+          <div className="p-2 border-b border-slate-100 bg-slate-50">
+            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded px-2 py-1 focus-within:ring-1 focus-within:ring-blue-400 transition-all">
+              <Search className="w-3.5 h-3.5 text-slate-400" />
+              <input 
+                autoFocus 
+                value={search} 
+                onChange={e => setSearch(e.target.value)} 
+                placeholder="Rechercher un projet..." 
+                className="bg-transparent text-[13px] outline-none flex-1" 
+              />
+            </div>
+          </div>
+          <div className="max-h-64 overflow-y-auto no-scrollbar">
+            {(filteredProjects || []).map(p => (
+              <button 
+                key={p.id} 
+                onClick={() => { onSelect(p); setShowSearch(false); }} 
+                className="w-full text-left px-3 py-2 text-[13px] hover:bg-blue-50 border-b border-slate-50 transition-colors last:border-0"
+              >
+                <div className="font-bold text-slate-800 uppercase truncate">{p.name || 'Projet sans nom'}</div>
+                <div className="text-slate-500 text-[11px] truncate">{p.city || p.address || '—'}</div>
+              </button>
+            ))}
+            {(!filteredProjects || filteredProjects.length === 0) && (
+              <div className="px-3 py-4 text-center text-slate-400 italic text-[13px]">Aucun projet trouvé</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Shared Component: Tableau Previsionnel ───────────────────────────────
 
 function TableauPrevisionnel({ params, rows }) {
@@ -956,19 +1021,6 @@ function TabBpProjets({
       </div>
     </div>
   );
-  const [search, setSearch] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
-  const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setShowSearch(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const updateBuildingParam = (id, k, v) => {
     setParams(prev => {
@@ -1113,14 +1165,6 @@ function TabBpProjets({
   const dscrColor = bp.dscrMoyen >= limitDSCR ? 'text-green-600 bg-green-50' : bp.dscrMoyen >= (limitDSCR - 0.06) ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50';
   const DscrIcon = bp.dscrMoyen >= limitDSCR ? CheckCircle : bp.dscrMoyen >= (limitDSCR - 0.06) ? AlertTriangle : AlertCircle;
 
-  const filteredProjects = useMemo(() => {
-    if (!search || typeof search !== 'string') return (projects || []).slice(0, 30);
-    const q = search.toLowerCase();
-    return (projects || []).filter(p =>
-      p.name?.toLowerCase().includes(q) ||
-      p.city?.toLowerCase().includes(q)
-    ).slice(0, 30);
-  }, [projects, search]);
 
   const applyProject = (p) => {
     setSelectedProject(p);
@@ -1184,29 +1228,8 @@ function TabBpProjets({
       <div data-html2canvas-ignore="true" className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-blue-700">Projet CRM :</span>
-          <div className="relative w-48" ref={dropdownRef}>
-            <button onClick={() => setShowSearch(!showSearch)} className="flex items-center gap-2 bg-white border border-blue-300 rounded px-2 py-1.5 text-[13px] w-full text-left hover:bg-blue-50">
-              <span className="truncate">{selectedProject ? selectedProject.name : 'Choisir...'}</span>
-              <ChevronDown className="w-3 h-3 ml-auto shrink-0" />
-            </button>
-            {showSearch && (
-              <div className="absolute top-8 left-0 z-50 bg-white border border-slate-200 rounded-lg shadow-xl w-80">
-                <div className="p-2 border-b border-slate-100">
-                  <div className="flex items-center gap-2 bg-slate-50 rounded px-2 py-1">
-                    <Search className="w-3 h-3 text-slate-400" />
-                    <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..." className="bg-transparent text-sm outline-none flex-1" />
-                  </div>
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  {filteredProjects.map(p => (
-                    <button key={p.id} onClick={() => applyProject(p)} className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 border-b border-slate-50">
-                      <div className="font-medium uppercase">{p.name || 'Projet sans nom'}</div>
-                      <div className="text-slate-500 font-medium opacity-70">{p.city || p.address || '—'}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+          <div className="w-64">
+            <ProjectSelect projects={projects} selectedProject={selectedProject} onSelect={applyProject} />
           </div>
         </div>
 
@@ -3098,7 +3121,7 @@ export default function BpAcama() {
         const resteACharge = computeResteACharge({ ...params, totalInvestissement }, 1.16);
         return <TabPropositionClientBAC projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} resteACharge={resteACharge} />;
       }
-      case 'prop_be': return <TabPropositionBE projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} bpResults={bpResults} />;
+      case 'prop_be': return <TabPropositionBE projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} bpResults={bp} />;
       case 'data': return <TabData />;
       case 'devis': return <TabDevis projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} setParams={setParams} />;
       default: return <TabPlaceholder label={TABS.find(t => t.id === activeTab)?.label || ''} />;
