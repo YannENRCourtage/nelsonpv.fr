@@ -2454,7 +2454,7 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
                     }}
                   >
                     <option value="">Sélectionner...</option>
-                    {SUIVI_BAT_DATA.map(b => <option key={b.type} value={b.type}>{b.type}</option>)}
+                    {activeSuiviBatData.map(b => <option key={b.type} value={b.type}>{b.type}</option>)}
                   </select>
                </div>
              </div>
@@ -2976,7 +2976,8 @@ export default function BpAcama() {
 
   const isAdmin = user?.role === 'admin';
   const isAlexandru = user?.email === 'a.mihailov@acama-energies.fr';
-  const isGreenInvest = user?.tenantId === 'green-invest';
+  const isGreenInvest = user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
+
 
   // Access Control: 
   // GREEN INVEST: Admins only
