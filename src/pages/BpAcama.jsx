@@ -938,7 +938,9 @@ function TabBpProjets({
         <span className="text-[20px] font-black text-slate-800 uppercase tracking-widest">{isGreenInvest ? 'BP' : 'Business Plan'}</span>
       </div>
       <div className="flex-1 text-right flex flex-col items-end">
-        <h1 className="text-sm font-black text-slate-900 uppercase leading-tight">{selectedProject?.name || 'Projet Sans Nom'}</h1>
+        <h1 className="text-sm font-black text-slate-900 uppercase leading-tight">
+          {selectedProject?.name || selectedProject?.client_name || selectedProject?.client_firstname || 'Projet Sans Nom'}
+        </h1>
         <p className="text-[10px] font-bold text-slate-500 mt-1">{new Date().toLocaleDateString('fr-FR')}</p>
       </div>
     </div>
@@ -1088,7 +1090,9 @@ function TabBpProjets({
   const DscrIcon = bp.dscrMoyen >= limitDSCR ? CheckCircle : bp.dscrMoyen >= (limitDSCR - 0.06) ? AlertTriangle : AlertCircle;
 
 
-  const applyProject = (p) => {
+  const applyProject = (id) => {
+    const p = typeof id === 'string' ? (projects || []).find(proj => proj.id === id) : id;
+    if (!p) return;
     setSelectedProject(p);
     setShowSearch(false);
     if (p.bpAcamaState) {
@@ -1151,7 +1155,11 @@ function TabBpProjets({
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-blue-700">Projet CRM :</span>
           <div className="w-64">
-            <ProjectSelect projects={projects} selectedProject={selectedProject} onSelect={applyProject} />
+            <ProjectSelect 
+              projects={projects || []} 
+              activeProjectId={selectedProject?.id} 
+              onSelect={applyProject} 
+            />
           </div>
         </div>
 
@@ -2193,7 +2201,13 @@ function TabPropositionClientBAC({ projects, selectedProject, setSelectedProject
              <h2 className="text-2xl font-black text-[#002060] uppercase tracking-tighter">Proposition Client BAC</h2>
           </div>
           <div className="flex items-center gap-4">
-            <div className="w-64"><ProjectSelect projects={projects} selectedProject={selectedProject} onSelect={setSelectedProject} /></div>
+            <div className="w-64">
+              <ProjectSelect 
+                projects={projects || []} 
+                activeProjectId={selectedProject?.id} 
+                onSelect={(id) => setSelectedProject((projects || []).find(p => p.id === id))} 
+              />
+            </div>
             <Button size="sm" variant="outline" className="gap-2" onClick={() => generateBpAcamaPDF({ elementId: 'prop-bac-content', fileName: `Proposition_BAC_${selectedProject?.name || 'Client'}.pdf` })}><FileDown className="w-4 h-4" /> PDF</Button>
           </div>
         </div>
@@ -2315,7 +2329,13 @@ function TabPropositionBE({ projects, selectedProject, setSelectedProject, param
              <h2 className="text-2xl font-black text-[#002060] uppercase tracking-tighter">Proposition Client BE</h2>
           </div>
           <div className="flex items-center gap-4">
-            <div className="w-64"><ProjectSelect projects={projects} selectedProject={selectedProject} onSelect={setSelectedProject} /></div>
+            <div className="w-64">
+              <ProjectSelect 
+                projects={projects || []} 
+                activeProjectId={selectedProject?.id} 
+                onSelect={(id) => setSelectedProject((projects || []).find(p => p.id === id))} 
+              />
+            </div>
             <Button size="sm" variant="outline" className="gap-2" onClick={() => generateBpAcamaPDF({ elementId: 'prop-be-content', fileName: `Proposition_BE_${selectedProject?.name || 'Client'}.pdf` })}><FileDown className="w-4 h-4" /> PDF</Button>
           </div>
         </div>
@@ -2417,7 +2437,13 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
         <div data-html2canvas-ignore="true" className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-white sticky top-0 z-20">
           <div className="flex items-center gap-3"><FileDown className="w-5 h-5 text-blue-600" /><h3 className="font-bold text-slate-800">DEVIS TECHNIQUE</h3></div>
           <div className="flex items-center gap-4">
-             <div className="w-64"><ProjectSelect projects={projects} selectedProject={selectedProject} onSelect={setSelectedProject} /></div>
+             <div className="w-64">
+               <ProjectSelect 
+                 projects={projects || []} 
+                 activeProjectId={selectedProject?.id} 
+                 onSelect={(id) => setSelectedProject((projects || []).find(p => p.id === id))} 
+               />
+             </div>
              <Button size="sm" className="gap-2 shadow-sm" onClick={() => generateBpAcamaPDF({ elementId: 'tab-devis-content', fileName: `Devis_Technique_${selectedProject?.name || 'Projet'}.pdf` })}><FileDown className="w-4 h-4" /> Générer Devis</Button>
           </div>
         </div>
@@ -2459,7 +2485,9 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
                </div>
              </div>
              <div className="text-right flex flex-col items-end">
-                <div className="font-black text-slate-800 uppercase text-lg mb-1">PROJET : {selectedProject?.name || 'Non sélectionné'}</div>
+                <div className="font-black text-slate-800 uppercase text-lg mb-1">
+                  PROJET : {selectedProject?.name || selectedProject?.client_name || selectedProject?.client_firstname || 'Non sélectionné'}
+                </div>
                  <div className="bg-[#002060] text-white p-4 rounded-md shadow-md text-left min-w-[300px] border-l-4 border-blue-400">
                   <div className="font-bold border-b border-blue-800/50 pb-1 mb-2 uppercase text-[12px] tracking-widest text-blue-200">Informations Client</div>
                   <div className="space-y-1 text-sm">
@@ -2858,7 +2886,7 @@ export default function BpAcama() {
     }
 
     // 2. Otherwise calculate from project features
-    const prod = parseFloat(selectedProject.productible) || 1123.08;
+    const prod = parseFloat(selectedProject.solarYieldRoof1 || selectedProject.productible) || 1123.08;
     const initialBuildings = [];
 
     if (buildingFeatures.length > 0) {
@@ -3006,7 +3034,10 @@ export default function BpAcama() {
         <TabBpProjets 
           projects={projects || []} 
           selectedProject={selectedProject} 
-          setSelectedProject={setSelectedProject}
+          setSelectedProject={(val) => {
+            const p = typeof val === 'string' ? projects.find(proj => proj.id === val) : val;
+            setSelectedProject(p);
+          }}
           params={params}
           setParams={(next) => {
             if (typeof next === 'function') {
@@ -3128,7 +3159,7 @@ export default function BpAcama() {
           </Button>
           <h2 className={cn(
             "text-sm font-bold rounded px-2 py-0.5",
-            isGreenInvest ? "bg-green-100 text-green-800" : "text-slate-800"
+            isGreenInvest ? "bg-green-50 text-green-800" : "text-slate-800"
           )}>
             {isGreenInvest ? 'BP' : (activeTab === 'bp_projets' ? 'BUSINESS PLAN PROJETS' : TABS.find(t => t.id === activeTab)?.label)}
           </h2>
