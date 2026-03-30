@@ -1212,7 +1212,7 @@ function TabBpProjets({
             <Button size="sm" variant="outline" className="gap-2 h-8 border-slate-300" onClick={() => generateBpAcamaPDF({ 
               elementId: 'bp-acama-content', 
               sections: ['pdf-section-1', 'pdf-section-2'],
-              fileName: `BP_Acama_${selectedProject?.name || 'Projet'}.pdf` 
+              fileName: `BP_${selectedProject?.name || 'Projet'}.pdf` 
             })}>
               <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF
             </Button>
