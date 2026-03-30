@@ -1430,16 +1430,24 @@ function TabBpProjets({
                     <tr>
                       <td className="text-[12px] text-slate-500 font-medium pl-2">Raccordement</td>
                       <td colSpan={(params.buildings || []).length} className="pt-1 text-center">
-                        <div className="inline-flex items-center gap-2 bg-slate-100 border border-slate-200 rounded px-3 py-1 text-sm w-48 justify-between shadow-inner">
-                          <span className="font-bold text-slate-700">{fmtEur(params.raccordement)}</span>
+                        <div className="flex items-center justify-center">
+                          <input 
+                            readOnly 
+                            className="bg-slate-100 border border-slate-200 rounded px-3 py-1 text-sm w-48 text-center font-bold text-slate-700 shadow-sm"
+                            value={fmtEur(params.raccordement)}
+                          />
                         </div>
                       </td>
                     </tr>
                     <tr>
                       <td className="text-[12px] text-slate-500 font-medium pl-2">Frais</td>
                       <td colSpan={(params.buildings || []).length} className="pt-1 text-center">
-                        <div className="inline-flex items-center gap-2 bg-slate-100 border border-slate-200 rounded px-3 py-1 text-sm w-48 justify-between shadow-inner">
-                          <span className="font-bold text-slate-700">{fmtEur(params.frais)}</span>
+                        <div className="flex items-center justify-center">
+                          <input 
+                            readOnly 
+                            className="bg-slate-100 border border-slate-200 rounded px-3 py-1 text-sm w-48 text-center font-bold text-slate-700 shadow-sm"
+                            value={fmtEur(params.frais)}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -1455,12 +1463,13 @@ function TabBpProjets({
                           <option value="loyer">Loyer annuel</option>
                         </select>
                       </td>
-                      <td colSpan={(params.buildings || []).map(b => b.id).length} className="pt-1 text-center">
-                        <div className="inline-flex items-center gap-2 bg-slate-100 border border-slate-200 rounded px-3 py-1 text-sm w-48 justify-between shadow-inner">
-                          <span className="font-bold text-slate-900">
-                            {(!params.renteType || params.renteType === 'none') ? '0,00 €' : (params.renteType === 'loyer' ? fmtEur(targetLoyerTotal) : fmtEur(targetSoulte))}
-                            {params.renteType === 'loyer' && <span className="ml-1 text-[10px] text-slate-400 font-normal normal-case">(sur 20 ans)</span>}
-                          </span>
+                      <td colSpan={(params.buildings || []).length} className="pt-1 text-center">
+                        <div className="flex items-center justify-center">
+                          <input 
+                            readOnly 
+                            className="bg-slate-100 border border-slate-200 rounded px-3 py-1 text-sm w-48 text-center font-bold text-slate-900 shadow-sm"
+                            value={(!params.renteType || params.renteType === 'none') ? '0,00 €' : (params.renteType === 'loyer' ? `${fmtEur(targetLoyerTotal)} (sur 20 ans)` : fmtEur(targetSoulte))}
+                          />
                         </div>
                       </td>
                     </tr>

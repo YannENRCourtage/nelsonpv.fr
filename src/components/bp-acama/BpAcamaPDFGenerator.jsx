@@ -45,8 +45,15 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
                         const parent = el.parentNode;
                         if (!parent) return;
                         let valueText = el.tagName === 'SELECT' ? (el.options[el.selectedIndex]?.text || '') : (el.value || '');
+                        
                         const textEl = clonedDoc.createElement('div');
+                        // Ensure centering if parent is flex
                         textEl.className = 'text-xs font-bold text-blue-900 border-b border-slate-200 pb-0.5 min-h-[24px] flex items-center px-1';
+                        if (parent.classList.contains('justify-center') || parent.parentNode?.classList.contains('justify-center')) {
+                            textEl.style.justifyContent = 'center';
+                            textEl.style.width = '100%';
+                        }
+                        
                         textEl.textContent = valueText;
                         el.style.display = 'none';
                         const suffixEl = parent.querySelector('span.text-slate-500') || parent.querySelector('span.text-slate-400');
