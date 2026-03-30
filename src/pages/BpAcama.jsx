@@ -1095,25 +1095,67 @@ function TabBpProjets({
     if (!p) return;
     setSelectedProject(p);
     setShowSearch(false);
+    
+    // Extract map features for immediate use
+    const features = p.features || p.map_state?.features || p.map_state?.projects || [];
+    const buildingFeatures = features.filter(f => f.type === 'rectangle' || (f.type === 'polygon' && f.isPredefinedBuilding));
+    const prod = parseFloat(p.solarYieldRoof1 || p.productible) || 1123.08;
+
     if (p.bpAcamaState) {
-      setParams(p.bpAcamaState);
+      const saved = { ...p.bpAcamaState };
+      // Enrich saved state with building types from map if missing
+      if (saved.buildings && buildingFeatures.length > 0) {
+        saved.buildings = saved.buildings.map((b, idx) => {
+          if (!b.typeBat || b.typeBat === '') {
+            const feat = buildingFeatures[idx];
+            return { ...b, typeBat: feat?.buildingName || feat?.name || b.typeBat };
+          }
+          return b;
+        });
+      }
+      setParams(saved);
     } else {
       const initialBuildings = [];
-      const prod = parseFloat(p.productible) || 1123.08;
-      const b1 = parseFloat(p.puissance) || 0;
-      if (b1 > 0) {
-        initialBuildings.push({ 
-          id: 1, 
-          typeBat: p.type_bat || '', 
-          projectType: 'BAC',
-          kwc: b1, 
-          productible: prod, 
-          coutCentrale: b1 * 490, 
-          coutCharpente: 0,
-          distHta: 100,
-          distPriv: 100,
-          numPanneaux: Math.ceil(b1 * 1000 / (params.puissanceUnitaire || 460))
+      
+      if (buildingFeatures.length > 0) {
+        buildingFeatures.forEach((f, idx) => {
+          initialBuildings.push({
+            id: idx + 1,
+            typeBat: f.buildingName || f.name || '',
+            projectType: f.projectType || 'BAC',
+            surfaceToiture: f.surface || 0,
+            kwc: f.power || 100,
+            productible: prod,
+            coutCentrale: (f.power || 100) * 490,
+            coutCharpente: (f.projectType === 'BE' || f.name === 'BE') ? 10000 : 0,
+            distHta: 100,
+            distPriv: 100,
+            numPanneaux: Math.round((f.power || 100) * 1000 / (params.puissanceUnitaire || 460))
+          });
         });
+      } else {
+        const b1 = parseFloat(p.puissance) || 0;
+        const b2 = parseFloat(p.puissance2) || 0;
+        const b3 = parseFloat(p.puissance3) || 0;
+        const b4 = parseFloat(p.puissance4) || 0;
+        
+        if (b1 > 0 || (!b2 && !b3 && !b4)) {
+          initialBuildings.push({ 
+            id: 1, 
+            typeBat: p.type_bat || '', 
+            projectType: 'BAC',
+            kwc: b1 || 346.84, 
+            productible: prod, 
+            coutCentrale: (b1 || 346.84) * 490, 
+            coutCharpente: 0,
+            distHta: 100,
+            distPriv: 100,
+            numPanneaux: Math.round((b1 || 346.84) * 1000 / (params.puissanceUnitaire || 460))
+          });
+        }
+        if (b2 > 0) initialBuildings.push({ id: 2, typeBat: p.type_bat2 || '', projectType: 'BAC', kwc: b2, productible: prod, coutCentrale: b2 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b2 * 1000 / (params.puissanceUnitaire || 460)) });
+        if (b3 > 0) initialBuildings.push({ id: 3, typeBat: p.type_bat3 || '', projectType: 'BAC', kwc: b3, productible: prod, coutCentrale: b3 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b3 * 1000 / (params.puissanceUnitaire || 460)) });
+        if (b4 > 0) initialBuildings.push({ id: 4, typeBat: p.type_bat4 || '', projectType: 'BAC', kwc: b4, productible: prod, coutCentrale: b4 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b4 * 1000 / (params.puissanceUnitaire || 460)) });
       }
       
       const totalRaccordement = initialBuildings.reduce((sum, b) => sum + getHtaCost(b.kwc, b.distHta) + (parseFloat(b.distPriv) || 0) * 20, 0);
@@ -1248,6 +1290,10 @@ function TabBpProjets({
                               onChange={e => updateBuildingParam(b.id, 'typeBat', e.target.value)}
                             >
                               <option value="">— Choisir —</option>
+                              {/* Option dynamique si la valeur actuelle n'est pas dans la liste standard */}
+                              {b.typeBat && !(activeSuiviBatData || []).some(d => d.type === b.typeBat) && (
+                                <option value={b.typeBat}>{b.typeBat}</option>
+                              )}
                               {(activeSuiviBatData || []).map(d => (
                                 <option key={d.type} value={d.type}>{d.type}</option>
                               ))}
@@ -2884,7 +2930,19 @@ export default function BpAcama() {
     
     // 1. If saved state exists, we use it but check if building count matches map
     if (selectedProject.bpAcamaState) {
-      const saved = selectedProject.bpAcamaState;
+      const saved = { ...selectedProject.bpAcamaState };
+      
+      // Enrich saved state with missing building types from map
+      if (saved.buildings && buildingFeatures.length > 0) {
+        saved.buildings = saved.buildings.map((b, idx) => {
+          if (!b.typeBat || b.typeBat === '') {
+            const feat = buildingFeatures[idx];
+            return { ...b, typeBat: feat?.buildingName || feat?.name || b.typeBat };
+          }
+          return b;
+        });
+      }
+
       // If map has more buildings than saved state, we might want to prioritize map
       if (buildingFeatures.length > (saved.buildings?.length || 0)) {
          // Continue to detection logic below to "refresh" from map
