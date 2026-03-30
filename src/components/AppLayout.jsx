@@ -237,7 +237,7 @@ export const generatePdfForProject = async (projectData) => {
 };
 
 function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized }) {
-  const { logout, user } = useAuth();
+  const { logout, user, activeTenantId } = useAuth();
   const navigate = useNavigate();
   const isProjectPage = useMatch("/project/:projectId/edit");
   const { project, saveProject, setProject } = useProject();
@@ -469,7 +469,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
                 to="/bp-acama" 
                 className={({ isActive }) => {
                   const baseClass = isActive ? 'nav-link active bp-acama' : 'nav-link bp-acama';
-                  const isGreenInvest = user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest';
+                  const isGreenInvest = activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
                   if (isActive && isGreenInvest) {
                     return `${baseClass} bg-blue-600 text-white px-3 py-1 rounded-md`;
                   }
@@ -477,7 +477,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
                 }}
               >
                 <TrendingUp className="w-4 h-4 mr-1 inline-block" />
-                {(user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest') ? 'BP' : 'BP ACAMA'}
+                { (activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest') ? 'BP' : 'BP ACAMA' }
               </NavLink>
             )}
 
@@ -702,7 +702,7 @@ export default function AppLayout() {
                 to="/bp-acama"
                 className={({ isActive }) => {
                   const baseClass = isActive ? 'mobile-nav-link active bp-acama' : 'mobile-nav-link bp-acama';
-                  const isGreenInvest = user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest';
+                  const isGreenInvest = activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
                   if (isActive && isGreenInvest) {
                     return `${baseClass} bg-blue-600 text-white px-3 py-1 rounded-md mx-2`;
                   }
@@ -711,7 +711,7 @@ export default function AppLayout() {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <TrendingUp className="w-4 h-4 mr-2 inline-block" />
-                {(user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest') ? 'BP' : 'BP ACAMA'}
+                {(activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest') ? 'BP' : 'BP ACAMA'}
               </NavLink>
             )}
 

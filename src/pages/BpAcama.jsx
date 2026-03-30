@@ -2792,7 +2792,7 @@ function TabPlaceholder({ label }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function BpAcama() {
-  const { user } = useAuth();
+  const { user, activeTenantId } = useAuth();
   const { projects } = useProjects();
   const [activeTab, setActiveTab] = useState('bp_projets');
   const [selectedProject, setSelectedProject] = useState(null);
@@ -2976,7 +2976,7 @@ export default function BpAcama() {
 
   const isAdmin = user?.role === 'admin';
   const isAlexandru = user?.email === 'a.mihailov@acama-energies.fr';
-  const isGreenInvest = user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
+  const isGreenInvest = activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
 
 
   // Access Control: 
