@@ -1103,15 +1103,24 @@ function TabBpProjets({
 
     if (p.bpAcamaState) {
       const saved = { ...p.bpAcamaState };
-      // Enrich saved state with building types & productibles from map if missing or looks default
+      // Enrich saved state with building types, productibles & power from map if missing or looks default
       if (saved.buildings && buildingFeatures.length > 0) {
         saved.buildings = saved.buildings.map((b, idx) => {
           const feat = buildingFeatures[idx];
           const newTypeBat = (!b.typeBat || b.typeBat === '') ? (feat?.buildingName || feat?.name || b.typeBat) : b.typeBat;
-          // If productible is missing or was unified by error, refresh it from specific roof field
+          
+          const defaultProd = parseFloat(p.solarYieldRoof1 || p.productible) || 1123.08;
           const specificProd = parseFloat(p[`solarYieldRoof${idx+1}`]) || defaultProd;
           const newProd = (!b.productible || b.productible === defaultProd) ? specificProd : b.productible;
-          return { ...b, typeBat: newTypeBat, productible: newProd };
+
+          // If power is 100 (default) but map has a specific power, update it
+          const featPower = parseFloat(feat?.power || feat?.kwc || feat?.puissance) || 0;
+          const newKwc = (b.kwc === 100 && featPower > 0 && featPower !== 100) ? featPower : b.kwc;
+          
+          // Recompute costs if power changed
+          const newCoutCentrale = (newKwc !== b.kwc) ? (newKwc * 490) : b.coutCentrale;
+
+          return { ...b, typeBat: newTypeBat, productible: newProd, kwc: newKwc, coutCentrale: newCoutCentrale };
         });
       }
       setParams(saved);
@@ -1121,18 +1130,19 @@ function TabBpProjets({
       if (buildingFeatures.length > 0) {
         buildingFeatures.forEach((f, idx) => {
           const specificProd = parseFloat(p[`solarYieldRoof${idx+1}`]) || defaultProd;
+          const featPower = parseFloat(f.power || f.kwc || f.puissance) || 100;
           initialBuildings.push({
             id: idx + 1,
             typeBat: f.buildingName || f.name || '',
             projectType: f.projectType || 'BAC',
             surfaceToiture: f.surface || 0,
-            kwc: f.power || 100,
+            kwc: featPower,
             productible: specificProd,
-            coutCentrale: (f.power || 100) * 490,
+            coutCentrale: featPower * 490,
             coutCharpente: (f.projectType === 'BE' || f.name === 'BE') ? 10000 : 0,
             distHta: 100,
             distPriv: 100,
-            numPanneaux: Math.round((f.power || 100) * 1000 / (params.puissanceUnitaire || 460))
+            numPanneaux: Math.round(featPower * 1000 / (params.puissanceUnitaire || 460))
           });
         });
       } else {
@@ -2934,18 +2944,24 @@ export default function BpAcama() {
     if (selectedProject.bpAcamaState) {
       const saved = { ...selectedProject.bpAcamaState };
       
-      // Enrich saved state with missing building types & products from map
+      // Enrich saved state with missing building types, products & power from map
       if (saved.buildings && buildingFeatures.length > 0) {
         saved.buildings = saved.buildings.map((b, idx) => {
           const feat = buildingFeatures[idx];
           const newTypeBat = (!b.typeBat || b.typeBat === '') ? (feat?.buildingName || feat?.name || b.typeBat) : b.typeBat;
           
-          // Refresh productible from map roof fields if it was unified or missing
           const defaultProd = parseFloat(selectedProject.solarYieldRoof1 || selectedProject.productible) || 1123.08;
           const specificProd = parseFloat(selectedProject[`solarYieldRoof${idx+1}`]) || defaultProd;
           const newProd = (!b.productible || b.productible === defaultProd) ? specificProd : b.productible;
           
-          return { ...b, typeBat: newTypeBat, productible: newProd };
+          // If power is 100 (default) but map has a specific power, update it
+          const featPower = parseFloat(feat?.power || feat?.kwc || feat?.puissance) || 0;
+          const newKwc = (b.kwc === 100 && featPower > 0 && featPower !== 100) ? featPower : b.kwc;
+          
+          // Recompute costs if power changed
+          const newCoutCentrale = (newKwc !== b.kwc) ? (newKwc * 490) : b.coutCentrale;
+          
+          return { ...b, typeBat: newTypeBat, productible: newProd, kwc: newKwc, coutCentrale: newCoutCentrale };
         });
       }
 
@@ -2965,18 +2981,19 @@ export default function BpAcama() {
     if (buildingFeatures.length > 0) {
       buildingFeatures.forEach((f, idx) => {
         const specificProd = parseFloat(selectedProject[`solarYieldRoof${idx+1}`]) || defaultProd;
+        const featPower = parseFloat(f.power || f.kwc || f.puissance) || 100;
         initialBuildings.push({
           id: idx + 1,
           typeBat: f.buildingName || f.name || '',
           projectType: f.projectType || 'BAC',
           surfaceToiture: f.surface || 0,
-          kwc: f.power || 100,
+          kwc: featPower,
           productible: specificProd,
-          coutCentrale: (f.power || 100) * 490,
+          coutCentrale: featPower * 490,
           coutCharpente: (f.projectType === 'BE' || f.name === 'BE') ? 10000 : 0,
           distHta: 100,
           distPriv: 100,
-          numPanneaux: Math.round((f.power || 100) * 1000 / (params.puissanceUnitaire || 460))
+          numPanneaux: Math.round(featPower * 1000 / (params.puissanceUnitaire || 460))
         });
       });
     } else {
