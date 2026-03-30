@@ -1099,18 +1099,19 @@ function TabBpProjets({
     // Extract map features for immediate use
     const features = p.features || p.map_state?.features || p.map_state?.projects || [];
     const buildingFeatures = features.filter(f => f.type === 'rectangle' || (f.type === 'polygon' && f.isPredefinedBuilding));
-    const prod = parseFloat(p.solarYieldRoof1 || p.productible) || 1123.08;
+    const defaultProd = parseFloat(p.solarYieldRoof1 || p.productible) || 1123.08;
 
     if (p.bpAcamaState) {
       const saved = { ...p.bpAcamaState };
-      // Enrich saved state with building types from map if missing
+      // Enrich saved state with building types & productibles from map if missing or looks default
       if (saved.buildings && buildingFeatures.length > 0) {
         saved.buildings = saved.buildings.map((b, idx) => {
-          if (!b.typeBat || b.typeBat === '') {
-            const feat = buildingFeatures[idx];
-            return { ...b, typeBat: feat?.buildingName || feat?.name || b.typeBat };
-          }
-          return b;
+          const feat = buildingFeatures[idx];
+          const newTypeBat = (!b.typeBat || b.typeBat === '') ? (feat?.buildingName || feat?.name || b.typeBat) : b.typeBat;
+          // If productible is missing or was unified by error, refresh it from specific roof field
+          const specificProd = parseFloat(p[`solarYieldRoof${idx+1}`]) || defaultProd;
+          const newProd = (!b.productible || b.productible === defaultProd) ? specificProd : b.productible;
+          return { ...b, typeBat: newTypeBat, productible: newProd };
         });
       }
       setParams(saved);
@@ -1119,13 +1120,14 @@ function TabBpProjets({
       
       if (buildingFeatures.length > 0) {
         buildingFeatures.forEach((f, idx) => {
+          const specificProd = parseFloat(p[`solarYieldRoof${idx+1}`]) || defaultProd;
           initialBuildings.push({
             id: idx + 1,
             typeBat: f.buildingName || f.name || '',
             projectType: f.projectType || 'BAC',
             surfaceToiture: f.surface || 0,
             kwc: f.power || 100,
-            productible: prod,
+            productible: specificProd,
             coutCentrale: (f.power || 100) * 490,
             coutCharpente: (f.projectType === 'BE' || f.name === 'BE') ? 10000 : 0,
             distHta: 100,
@@ -1145,7 +1147,7 @@ function TabBpProjets({
             typeBat: p.type_bat || '', 
             projectType: 'BAC',
             kwc: b1 || 346.84, 
-            productible: prod, 
+            productible: parseFloat(p.solarYieldRoof1 || p.productible) || defaultProd, 
             coutCentrale: (b1 || 346.84) * 490, 
             coutCharpente: 0,
             distHta: 100,
@@ -1153,9 +1155,9 @@ function TabBpProjets({
             numPanneaux: Math.round((b1 || 346.84) * 1000 / (params.puissanceUnitaire || 460))
           });
         }
-        if (b2 > 0) initialBuildings.push({ id: 2, typeBat: p.type_bat2 || '', projectType: 'BAC', kwc: b2, productible: prod, coutCentrale: b2 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b2 * 1000 / (params.puissanceUnitaire || 460)) });
-        if (b3 > 0) initialBuildings.push({ id: 3, typeBat: p.type_bat3 || '', projectType: 'BAC', kwc: b3, productible: prod, coutCentrale: b3 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b3 * 1000 / (params.puissanceUnitaire || 460)) });
-        if (b4 > 0) initialBuildings.push({ id: 4, typeBat: p.type_bat4 || '', projectType: 'BAC', kwc: b4, productible: prod, coutCentrale: b4 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b4 * 1000 / (params.puissanceUnitaire || 460)) });
+        if (b2 > 0) initialBuildings.push({ id: 2, typeBat: p.type_bat2 || '', projectType: 'BAC', kwc: b2, productible: parseFloat(p.solarYieldRoof2 || p.productible) || defaultProd, coutCentrale: b2 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b2 * 1000 / (params.puissanceUnitaire || 460)) });
+        if (b3 > 0) initialBuildings.push({ id: 3, typeBat: p.type_bat3 || '', projectType: 'BAC', kwc: b3, productible: parseFloat(p.solarYieldRoof3 || p.productible) || defaultProd, coutCentrale: b3 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b3 * 1000 / (params.puissanceUnitaire || 460)) });
+        if (b4 > 0) initialBuildings.push({ id: 4, typeBat: p.type_bat4 || '', projectType: 'BAC', kwc: b4, productible: parseFloat(p.solarYieldRoof4 || p.productible) || defaultProd, coutCentrale: b4 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b4 * 1000 / (params.puissanceUnitaire || 460)) });
       }
       
       const totalRaccordement = initialBuildings.reduce((sum, b) => sum + getHtaCost(b.kwc, b.distHta) + (parseFloat(b.distPriv) || 0) * 20, 0);
@@ -2932,14 +2934,18 @@ export default function BpAcama() {
     if (selectedProject.bpAcamaState) {
       const saved = { ...selectedProject.bpAcamaState };
       
-      // Enrich saved state with missing building types from map
+      // Enrich saved state with missing building types & products from map
       if (saved.buildings && buildingFeatures.length > 0) {
         saved.buildings = saved.buildings.map((b, idx) => {
-          if (!b.typeBat || b.typeBat === '') {
-            const feat = buildingFeatures[idx];
-            return { ...b, typeBat: feat?.buildingName || feat?.name || b.typeBat };
-          }
-          return b;
+          const feat = buildingFeatures[idx];
+          const newTypeBat = (!b.typeBat || b.typeBat === '') ? (feat?.buildingName || feat?.name || b.typeBat) : b.typeBat;
+          
+          // Refresh productible from map roof fields if it was unified or missing
+          const defaultProd = parseFloat(selectedProject.solarYieldRoof1 || selectedProject.productible) || 1123.08;
+          const specificProd = parseFloat(selectedProject[`solarYieldRoof${idx+1}`]) || defaultProd;
+          const newProd = (!b.productible || b.productible === defaultProd) ? specificProd : b.productible;
+          
+          return { ...b, typeBat: newTypeBat, productible: newProd };
         });
       }
 
@@ -2953,18 +2959,19 @@ export default function BpAcama() {
     }
 
     // 2. Otherwise calculate from project features
-    const prod = parseFloat(selectedProject.solarYieldRoof1 || selectedProject.productible) || 1123.08;
+    const defaultProd = parseFloat(selectedProject.solarYieldRoof1 || selectedProject.productible) || 1123.08;
     const initialBuildings = [];
 
     if (buildingFeatures.length > 0) {
       buildingFeatures.forEach((f, idx) => {
+        const specificProd = parseFloat(selectedProject[`solarYieldRoof${idx+1}`]) || defaultProd;
         initialBuildings.push({
           id: idx + 1,
           typeBat: f.buildingName || f.name || '',
           projectType: f.projectType || 'BAC',
           surfaceToiture: f.surface || 0,
           kwc: f.power || 100,
-          productible: prod,
+          productible: specificProd,
           coutCentrale: (f.power || 100) * 490,
           coutCharpente: (f.projectType === 'BE' || f.name === 'BE') ? 10000 : 0,
           distHta: 100,
@@ -2986,7 +2993,7 @@ export default function BpAcama() {
           projectType: 'BAC',
           surfaceToiture: 0,
           kwc: b1 || 346.84, 
-          productible: prod, 
+          productible: parseFloat(selectedProject.solarYieldRoof1 || selectedProject.productible) || defaultProd, 
           coutCentrale: (b1 || 346.84) * 490, 
           coutCharpente: 0,
           distHta: 100,
@@ -2994,9 +3001,9 @@ export default function BpAcama() {
           numPanneaux: Math.round((b1 || 346.84) * 1000 / (params.puissanceUnitaire || 460))
         });
       }
-      if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b2, productible: prod, coutCentrale: b2 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b2 * 1000 / (params.puissanceUnitaire || 460)) });
-      if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b3, productible: prod, coutCentrale: b3 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b3 * 1000 / (params.puissanceUnitaire || 460)) });
-      if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b4, productible: prod, coutCentrale: b4 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b4 * 1000 / (params.puissanceUnitaire || 460)) });
+      if (b2 > 0) initialBuildings.push({ id: 2, typeBat: selectedProject.type_bat2 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b2, productible: parseFloat(selectedProject.solarYieldRoof2 || selectedProject.productible) || defaultProd, coutCentrale: b2 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b2 * 1000 / (params.puissanceUnitaire || 460)) });
+      if (b3 > 0) initialBuildings.push({ id: 3, typeBat: selectedProject.type_bat3 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b3, productible: parseFloat(selectedProject.solarYieldRoof3 || selectedProject.productible) || defaultProd, coutCentrale: b3 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b3 * 1000 / (params.puissanceUnitaire || 460)) });
+      if (b4 > 0) initialBuildings.push({ id: 4, typeBat: selectedProject.type_bat4 || '', projectType: 'BAC', surfaceToiture: 0, kwc: b4, productible: parseFloat(selectedProject.solarYieldRoof4 || selectedProject.productible) || defaultProd, coutCentrale: b4 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b4 * 1000 / (params.puissanceUnitaire || 460)) });
     }
 
     setParams(prev => ({
