@@ -935,7 +935,7 @@ function TabBpProjets({
         <img src="/logo-nelson.png" alt="Logo" className="h-14 w-auto object-contain" />
       </div>
       <div className="flex-1 text-center self-center">
-        <span className="text-[20px] font-black text-slate-800 uppercase tracking-widest">Business Plan</span>
+        <span className="text-[20px] font-black text-slate-800 uppercase tracking-widest">{isGreenInvest ? 'BP' : 'Business Plan'}</span>
       </div>
       <div className="flex-1 text-right flex flex-col items-end">
         <h1 className="text-sm font-black text-slate-900 uppercase leading-tight">{selectedProject?.name || 'Projet Sans Nom'}</h1>
@@ -3070,7 +3070,7 @@ export default function BpAcama() {
         <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
           <div>
             {isGreenInvest ? (
-              <h1 className="text-sm font-bold text-white uppercase">Business Plan</h1>
+              <h1 className="text-sm font-bold text-white uppercase">BP</h1>
             ) : (
               <>
                 <h1 className="text-sm font-bold text-white uppercase">BP ACAMA</h1>

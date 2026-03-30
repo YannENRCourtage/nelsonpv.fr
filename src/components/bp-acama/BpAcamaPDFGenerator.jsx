@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 /**
- * Génère un PDF pour la page BP ACAMA
+ * Génère un PDF pour la page BP (ou BP ACAMA selon le tenant)
  * Format Paysage
  */
 export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
