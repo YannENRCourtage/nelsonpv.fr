@@ -3128,7 +3128,7 @@ export default function BpAcama() {
           </Button>
           <h2 className={cn(
             "text-sm font-bold rounded px-2 py-0.5",
-            isGreenInvest ? "bg-blue-100 text-blue-800" : "text-slate-800"
+            isGreenInvest ? "bg-green-100 text-green-800" : "text-slate-800"
           )}>
             {isGreenInvest ? 'BP' : (activeTab === 'bp_projets' ? 'BUSINESS PLAN PROJETS' : TABS.find(t => t.id === activeTab)?.label)}
           </h2>

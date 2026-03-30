@@ -471,7 +471,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
                   const baseClass = isActive ? 'nav-link active bp-acama' : 'nav-link bp-acama';
                   const isGreenInvest = activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
                   if (isActive && isGreenInvest) {
-                    return `${baseClass} bg-blue-600 text-white px-3 py-1 rounded-md`;
+                    return `${baseClass} bg-green-500 text-white px-3 py-1 rounded-md`;
                   }
                   return baseClass;
                 }}
@@ -704,7 +704,7 @@ export default function AppLayout() {
                   const baseClass = isActive ? 'mobile-nav-link active bp-acama' : 'mobile-nav-link bp-acama';
                   const isGreenInvest = activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
                   if (isActive && isGreenInvest) {
-                    return `${baseClass} bg-blue-600 text-white px-3 py-1 rounded-md mx-2`;
+                    return `${baseClass} bg-green-500 text-white px-3 py-1 rounded-md mx-2`;
                   }
                   return baseClass;
                 }}
