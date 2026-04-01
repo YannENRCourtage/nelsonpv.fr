@@ -67,6 +67,36 @@ const SUIVI_BAT_DATA_ACAMA = [
   { type:'OMB TYPE PL', spv:'ACAMA SPV1', kwc:27.60, cout_bat:15207, massifs:6, longueur:7.5, largeur:17.8, travees:1, hSud:0, hNord:0, faitage:17.8, surfSud:127, surfNord:0, surfTot:127, penteSud:0, penteNord:0, modH:6, modL:10, totalMod:60, puissMax:27.6, prodMoyen:0 },
 ];
 
+const normalizeBatType = (t) => {
+  if (!t) return t;
+  const s = t.trim().toUpperCase();
+  
+  // Dictionnaire explicite basé sur le tableau utilisateur
+  const map = {
+    'T1 MINI': 'TYPE 1 MINI', 'T1 MID': 'TYPE 1 MID', 'T1 MAXI': 'TYPE 1 MAXI',
+    'T2 MINI': 'TYPE 2 MINI', 'T2 MID': 'TYPE 2 MID', 'T2 MAXI': 'TYPE 2 MAXI',
+    'T3 MINI': 'TYPE 3 MINI', 'T3 MID': 'TYPE 3 MID', 'T3 MAXI': 'TYPE 3 MAXI',
+    'T4 MINI': 'TYPE 4 MINI', 'T4 MID': 'TYPE 4 MID', 'T4 MAXI': 'TYPE 4 MAXI',
+    'T5 MINI': 'TYPE 5 MINI', 'T5 MID': 'TYPE 5 MID', 'T5 MAXI': 'TYPE 5 MAXI',
+    'T6 MINI': 'TYPE 6 MINI', 'T6 MID': 'TYPE 6 MID', 'T6 MAXI': 'TYPE 6 MAXI',
+    'T7 MINI': 'TYPE 7 MINI', 'T7 MID': 'TYPE 7 MID', 'T7 MAXI': 'TYPE 7 MAXI',
+    'T8 MINI': 'TYPE 8 MINI', 'T8 MID': 'TYPE 8 MID', 'T8 MAXI': 'TYPE 8 MAXI',
+    'T9 MINI': 'TYPE 9 MINI', 'T9 MID': 'TYPE 9 MID', 'T9 MAXI': 'TYPE 9 MAXI',
+    'EQUESTRE 64M': 'EQUESTRE 60m',
+    'EQUESTRE 44M': 'EQUESTRE 44m'
+  };
+
+  if (map[s]) return map[s];
+
+  const m = s.match(/^T(\d+)\s*(.*)$/);
+  if (m) {
+    const num = m[1];
+    const suffix = m[2].trim();
+    return `TYPE ${num}${suffix ? ' ' + suffix : ''}`;
+  }
+  return t;
+};
+
 const SUIVI_BAT_DATA_GREEN_INVEST = [
   {type:"ORION 16 O1",spv:"GREEN INVEST",kwc:96,cout_bat:57288,longueur:30,largeur:16.4,travees:"4 x 7.5m",hSud:"4m",hNord:"4m",faitage:"7.42m",surfTot:492},
   {type:"ORION 16 O2",spv:"GREEN INVEST",kwc:126,cout_bat:68777,longueur:37.5,largeur:16.4,travees:"5 x 7.5m",hSud:"4m",hNord:"4m",faitage:"7.42m",surfTot:615},
@@ -442,6 +472,93 @@ function IRR(values, guess = 0.1) {
   return guessVal;
 }
 
+function computeBatteryProfitability(config) {
+  if (!config.enabled) return null;
+  
+  const {
+    inflationAnnuelle = 2,
+    degradationAnnuelle = 2,
+    batterieBms = 67250,
+    onduleurPcs = 0,
+    genieCivil = 16300,
+    raccordement = 9000,
+    developpement = 2000,
+    fraisCommerciaux = 3000,
+    arbitrageEnergie = 7500,
+    reserveFCR = 37500,
+    mecanismeCapacite = 5000,
+    effacement = 5000,
+    disponibilite = 98,
+    rendementRoundTrip = 88,
+    maintenanceAn = 2000,
+    assuranceAn = 390,
+    commissionAgregateur = 20,
+    turpeAn = 5000,
+    iferAn = 1250,
+    tauxEmprunt = 3.9,
+    dureeEmprunt = 12,
+    apport = 0,
+    tauxIS = 25
+  } = config;
+
+  const capexTotal = batterieBms + onduleurPcs + genieCivil + raccordement + developpement + fraisCommerciaux;
+  const revenusBrutsAn1 = arbitrageEnergie + reserveFCR + mecanismeCapacite + effacement;
+  
+  const emprunt = Math.max(0, capexTotal - apport);
+  const annuite = emprunt > 0 ? -PMT(tauxEmprunt / 100, dureeEmprunt, emprunt) : 0;
+
+  const cashFlows = [-capexTotal];
+  let remainingDebt = emprunt;
+  let totalNetGain = 0;
+  let paybackMonth = null;
+  let runningCashFlow = -capexTotal;
+  let resY1 = {};
+
+  for (let y = 1; y <= 20; y++) {
+    const infl = Math.pow(1 + inflationAnnuelle / 100, y - 1);
+    const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
+
+    const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100);
+    const chargesFixes = (maintenanceAn + assuranceAn + turpeAn + iferAn) * infl;
+    const chargesCom = revNet * (commissionAgregateur / 100);
+    const ebe = revNet - (chargesFixes + chargesCom);
+
+    const interest = y <= dureeEmprunt ? remainingDebt * (tauxEmprunt / 100) : 0;
+    const principal = y <= dureeEmprunt ? annuite - interest : 0;
+    
+    const amortissement = capexTotal / 20;
+    const ebit = ebe - amortissement - interest;
+    const is = ebit > 0 ? ebit * (tauxIS / 100) : 0;
+    
+    const cashFlow = ebe - interest - principal - is;
+    
+    if (paybackMonth === null) {
+        if (runningCashFlow + cashFlow >= 0) {
+            paybackMonth = (y - 1) + (Math.abs(runningCashFlow) / cashFlow);
+        }
+    }
+    runningCashFlow += cashFlow;
+
+    cashFlows.push(ebe - is);
+    remainingDebt = Math.max(0, remainingDebt - principal);
+    totalNetGain += cashFlow;
+
+    if (y === 1) {
+      resY1 = { revNet, ebe, dscr: annuite > 0 ? ebe / annuite : 9.99 };
+    }
+  }
+
+  return {
+    capexTotal,
+    revenuAn1: resY1.revNet,
+    ebeAn1: resY1.ebe,
+    triProjet: IRR(cashFlows, 0.1),
+    payback: paybackMonth || 20,
+    dscrAn1: resY1.dscr,
+    gainNet20A: totalNetGain
+  };
+}
+
 function computeBusinessPlan(params) {
   const {
     kwc = 346.84,
@@ -806,6 +923,93 @@ function SectionCard({ title, children, className, id, actions }) {
   );
 }
 
+function BatterySection({ config, setParams }) {
+  if (!config.enabled) return null;
+
+  const results = computeBatteryProfitability(config);
+
+  const update = (k, v) => {
+    setParams(prev => ({
+      ...prev,
+      batteryConfig: { ...(prev.batteryConfig || {}), [k]: v }
+    }));
+  };
+
+  const GroupTitle = ({ title }) => <h4 className="text-[11px] font-black text-blue-600 uppercase mb-2 border-b border-blue-100 pb-1">{title}</h4>;
+
+  return (
+    <SectionCard title="RENTABILITÉ BATTERIE STAND-ALONE" id="pdf-section-battery" className="bg-white border-t-4 border-t-blue-600 shadow-lg">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        <div className="space-y-4">
+          <GroupTitle title="Investissement Initial" />
+          <div className="grid grid-cols-1 gap-2">
+            <Field label="Batterie + BMS" value={config.batterieBms} onChange={v => update('batterieBms', v)} type="number" suffix="€" />
+            <Field label="Onduleur / PCS" value={config.onduleurPcs} onChange={v => update('onduleurPcs', v)} type="number" suffix="€" />
+            <Field label="Génie civil" value={config.genieCivil} onChange={v => update('genieCivil', v)} type="number" suffix="€" />
+            <Field label="Raccordement" value={config.raccordement} onChange={v => update('raccordement', v)} type="number" suffix="€" />
+            <Field label="Développement" value={config.developpement} onChange={v => update('developpement', v)} type="number" suffix="€" />
+            <Field label="Frais comm." value={config.fraisCommerciaux} onChange={v => update('fraisCommerciaux', v)} type="number" suffix="€" />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <GroupTitle title="Revenus Annuels (An 1)" />
+          <div className="grid grid-cols-1 gap-2">
+            <Field label="Arbitrage énergie" value={config.arbitrageEnergie} onChange={v => update('arbitrageEnergie', v)} type="number" suffix="€" />
+            <Field label="Réserve (FCR/aFRR)" value={config.reserveFCR} onChange={v => update('reserveFCR', v)} type="number" suffix="€" />
+            <Field label="Méc. capacité" value={config.mecanismeCapacite} onChange={v => update('mecanismeCapacite', v)} type="number" suffix="€" />
+            <Field label="Effacement" value={config.effacement} onChange={v => update('effacement', v)} type="number" suffix="€" />
+            <div className="pt-2 border-t border-slate-100 mt-2">
+               <Field label="Disponibilité" value={config.disponibilite} onChange={v => update('disponibilite', v)} type="number" suffix="%" />
+               <Field label="Rendement R-T" value={config.rendementRoundTrip} onChange={v => update('rendementRoundTrip', v)} type="number" suffix="%" />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <GroupTitle title="Charges & Hypothèses" />
+          <div className="grid grid-cols-1 gap-2">
+            <Field label="Maintenance /an" value={config.maintenanceAn} onChange={v => update('maintenanceAn', v)} type="number" suffix="€" />
+            <Field label="Assurance /an" value={config.assuranceAn} onChange={v => update('assuranceAn', v)} type="number" suffix="€" />
+            <Field label="Comm. Agrégateur" value={config.commissionAgregateur} onChange={v => update('commissionAgregateur', v)} type="number" suffix="%" />
+            <Field label="TURPE /an" value={config.turpeAn} onChange={v => update('turpeAn', v)} type="number" suffix="€" />
+            <Field label="IFER /an" value={config.iferAn} onChange={v => update('iferAn', v)} type="number" suffix="€" />
+            <div className="pt-2 border-t border-slate-100 mt-2">
+               <Field label="Inflation ann." value={config.inflationAnnuelle} onChange={v => update('inflationAnnuelle', v)} type="number" suffix="%" />
+               <Field label="Dégradation ann." value={config.degradationAnnuelle} onChange={v => update('degradationAnnuelle', v)} type="number" suffix="%" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-slate-900 rounded-lg p-4 text-white flex flex-col justify-between shadow-inner h-full">
+           <div className="space-y-3">
+              <h4 className="text-[12px] font-black text-blue-400 uppercase tracking-widest border-b border-white/10 pb-2">Indicateurs de Rentabilité</h4>
+              <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">CAPEX TOTAL</span><span className="font-bold text-lg">{fmtEur(results.capexTotal)}</span></div>
+              <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">REVENUS AN 1</span><span className="font-bold text-green-400">{fmtEur(results.revenuAn1)}</span></div>
+              <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">EBE AN 1</span><span className="font-bold text-blue-400">{fmtEur(results.ebeAn1)}</span></div>
+              <div className="flex justify-between items-center pt-2 border-t border-white/10"><span className="text-[11px] opacity-60 uppercase">GAIN NET 20A</span><span className="font-bold text-green-400">{fmtEur(results.gainNet20A)}</span></div>
+           </div>
+           
+           <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/20">
+              <div className="text-center">
+                 <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">TRI Projet</div>
+                 <div className="text-lg font-black text-blue-400">{fmtPct(results.triProjet)}</div>
+              </div>
+              <div className="text-center border-x border-white/10 px-1">
+                 <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">Payback</div>
+                 <div className="text-lg font-black text-amber-400">{fmt(results.payback, 1)} ans</div>
+              </div>
+              <div className="text-center">
+                 <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">DSCR Prêt</div>
+                 <div className="text-lg font-black text-green-400">{fmt(results.dscrAn1, 2)}</div>
+              </div>
+           </div>
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
 // ─── Shared Component: Tableau Previsionnel ───────────────────────────────
 
 function TableauPrevisionnel({ params, rows }) {
@@ -950,14 +1154,16 @@ function TabBpProjets({
     setParams(prev => {
       const newBuildings = (prev.buildings || []).map(b => {
         if (b.id === id) {
-          const updated = { ...b, [k]: v };
+          let updated = { ...b, [k]: v };
           if (k === 'typeBat' && v) {
-            const batData = (activeSuiviBatData || []).find(d => d.type === v);
+            const normalized = normalizeBatType(v);
+            updated.typeBat = normalized;
+            const batData = (activeSuiviBatData || []).find(d => d.type === normalized);
             if (batData) {
               updated.kwc = batData.kwc || updated.kwc;
               updated.productible = batData.prodMoyen || updated.productible || 1100;
               updated.coutCharpente = batData.cout_bat || updated.coutCharpente;
-              updated.coutCentrale = updated.kwc * 490;
+              updated.coutCentrale = (updated.kwc || 0) * 490;
             }
           }
           if (k === 'projectType' && v === 'BE') {
@@ -969,11 +1175,16 @@ function TabBpProjets({
               const dims = getModuleDims(prev.puissanceUnitaire || 460);
               const panels = Math.floor(surf / (dims.length * dims.width));
               updated.kwc = (panels * (prev.puissanceUnitaire || 460)) / 1000;
-              updated.coutCentrale = updated.kwc * 490;
+              updated.coutCentrale = (updated.kwc || 0) * 490;
             }
           }
-          if (k === 'kwc') {
-            updated.coutCentrale = (parseFloat(v) || 0) * 490;
+          if (k === 'kwc' || k === 'coutCharpente' || k === 'coutCentrale' || k === 'distHta' || k === 'distPriv') {
+            const num = parseFloat(v) || 0;
+            updated[k] = num;
+            if (k === 'kwc') {
+              updated.coutCentrale = num * 490;
+              updated.numPanneaux = Math.round(num * 1000 / (params.puissanceUnitaire || 460));
+            }
           }
           return updated;
         }
@@ -1039,6 +1250,21 @@ function TabBpProjets({
     };
   }, [params]);
 
+  useEffect(() => {
+    if (params.buildings?.length > 0) {
+      const someNeedFix = params.buildings.some(b => b.typeBat && b.typeBat !== normalizeBatType(b.typeBat));
+      if (someNeedFix) {
+        setParams(prev => ({
+          ...prev,
+          buildings: prev.buildings.map(b => ({
+            ...b,
+            typeBat: normalizeBatType(b.typeBat)
+          }))
+        }));
+      }
+    }
+  }, [params.buildings]);
+
   const saveBp = async () => {
     if (!selectedProject) return;
     try {
@@ -1101,48 +1327,69 @@ function TabBpProjets({
     const buildingFeatures = features.filter(f => f.type === 'rectangle' || (f.type === 'polygon' && f.isPredefinedBuilding));
     const defaultProd = parseFloat(p.solarYieldRoof1 || p.productible) || 1123.08;
 
+    // Derive building data locally to avoid stale state issues during enrichment
+    const projectTenant = p.tenant || p.bpAcamaState?.tenant || params.tenant;
+    const localBatData = projectTenant === 'GREEN INVEST' ? SUIVI_BAT_DATA_GREEN_INVEST : SUIVI_BAT_DATA_ACAMA;
+
     if (p.bpAcamaState) {
       const saved = { ...p.bpAcamaState };
-      // Enrich saved state with building types, productibles & power from map if missing or looks default
-      if (saved.buildings && buildingFeatures.length > 0) {
+      // Enrich saved state with building types, productibles & power
+      if (saved.buildings) {
         saved.buildings = saved.buildings.map((b, idx) => {
-          const feat = buildingFeatures[idx];
-          const newTypeBat = (!b.typeBat || b.typeBat === '') ? (feat?.buildingName || feat?.name || b.typeBat) : b.typeBat;
-          
-          const defaultProd = parseFloat(p.solarYieldRoof1 || p.productible) || 1123.08;
+          const feat = (buildingFeatures || [])[idx];
+          const rawTypeBat = (!b.typeBat || b.typeBat === '') ? (feat?.buildingName || feat?.name || b.typeBat) : b.typeBat;
+          const newTypeBat = normalizeBatType(rawTypeBat);
+
           const specificProd = parseFloat(p[`solarYieldRoof${idx+1}`]) || defaultProd;
           const newProd = (!b.productible || b.productible === defaultProd) ? specificProd : b.productible;
 
-          // If power is 100 (default) but map has a specific power, update it
-          const featPower = parseFloat(feat?.power || feat?.kwc || feat?.puissance) || 0;
-          const newKwc = (b.kwc === 100 && featPower > 0 && featPower !== 100) ? featPower : b.kwc;
-          
+          // If power is 100 (default) or missing, but map or project root has a power, update it
+          const featPower = parseFloat(feat?.power || feat?.kwc || feat?.puissance) || (idx === 0 ? parseFloat(p.puissance) : 0) || 0;
+          const newKwc = (b.kwc === 100 && featPower > 0) ? featPower : b.kwc;
+
+          // Automate coutCharpente if missing or current type matches a batData
+          let newCoutCharpente = b.coutCharpente || 0;
+          const batData = (localBatData || []).find(d => {
+            return d.type.toUpperCase() === newTypeBat.toUpperCase();
+          });
+          if (batData && (!newCoutCharpente || newCoutCharpente === 0)) {
+            newCoutCharpente = batData.cout_bat || 0;
+          }
+
           // Recompute costs if power changed
           const newCoutCentrale = (newKwc !== b.kwc) ? (newKwc * 490) : b.coutCentrale;
 
-          return { ...b, typeBat: newTypeBat, productible: newProd, kwc: newKwc, coutCentrale: newCoutCentrale };
+          return { ...b, typeBat: newTypeBat, productible: newProd, kwc: newKwc, coutCentrale: newCoutCentrale, coutCharpente: newCoutCharpente };
         });
       }
       setParams(saved);
     } else {
       const initialBuildings = [];
-      
+
       if (buildingFeatures.length > 0) {
         buildingFeatures.forEach((f, idx) => {
           const specificProd = parseFloat(p[`solarYieldRoof${idx+1}`]) || defaultProd;
-          const featPower = parseFloat(f.power || f.kwc || f.puissance) || 100;
+          // Fallback logic: feature power > project root power (for first building) > default 100
+          const featPower = parseFloat(f.power || f.kwc || f.puissance) || (idx === 0 ? parseFloat(p.puissance) : 0) || 100;
+          const rawTypeBat = f.buildingName || f.name || '';
+          const normalizedType = normalizeBatType(rawTypeBat);
+
+          const batData = (localBatData || []).find(d => d.type.toUpperCase() === normalizedType.toUpperCase());
+          const autoCoutCharpente = batData ? batData.cout_bat : ((f.projectType === 'BE' || f.name === 'BE') ? 10000 : 0);
+          const autoKwc = (batData && (!featPower || featPower === 100)) ? batData.kwc : featPower;
+
           initialBuildings.push({
             id: idx + 1,
-            typeBat: f.buildingName || f.name || '',
+            typeBat: normalizedType,
             projectType: f.projectType || 'BAC',
             surfaceToiture: f.surface || 0,
-            kwc: featPower,
-            productible: specificProd,
-            coutCentrale: featPower * 490,
-            coutCharpente: (f.projectType === 'BE' || f.name === 'BE') ? 10000 : 0,
+            kwc: autoKwc,
+            productible: batData?.prodMoyen || specificProd,
+            coutCentrale: autoKwc * 490,
+            coutCharpente: autoCoutCharpente,
             distHta: 100,
             distPriv: 100,
-            numPanneaux: Math.round(featPower * 1000 / (params.puissanceUnitaire || 460))
+            numPanneaux: Math.round(autoKwc * 1000 / (params.puissanceUnitaire || 460))
           });
         });
       } else {
@@ -1150,24 +1397,45 @@ function TabBpProjets({
         const b2 = parseFloat(p.puissance2) || 0;
         const b3 = parseFloat(p.puissance3) || 0;
         const b4 = parseFloat(p.puissance4) || 0;
-        
+
         if (b1 > 0 || (!b2 && !b3 && !b4)) {
-          initialBuildings.push({ 
-            id: 1, 
-            typeBat: p.type_bat || '', 
+          const rawTypeBat = p.type_bat || '';
+          const normalizedType = normalizeBatType(rawTypeBat);
+          const batData = (localBatData || []).find(d => d.type.toUpperCase() === normalizedType.toUpperCase());
+          const initialKwc = (batData && (!b1 || b1 === 100)) ? batData.kwc : (b1 || 100);
+          const initialCoutCharpente = batData ? batData.cout_bat : 0;
+
+          initialBuildings.push({
+            id: 1,
+            typeBat: normalizedType,
             projectType: 'BAC',
-            kwc: b1 || 346.84, 
-            productible: parseFloat(p.solarYieldRoof1 || p.productible) || defaultProd, 
-            coutCentrale: (b1 || 346.84) * 490, 
-            coutCharpente: 0,
+            kwc: initialKwc,
+            productible: batData?.prodMoyen || parseFloat(p.solarYieldRoof1 || p.productible) || defaultProd,
+            coutCentrale: initialKwc * 490,
+            coutCharpente: initialCoutCharpente,
             distHta: 100,
             distPriv: 100,
-            numPanneaux: Math.round((b1 || 346.84) * 1000 / (params.puissanceUnitaire || 460))
+            numPanneaux: Math.round(initialKwc * 1000 / (params.puissanceUnitaire || 460))
           });
         }
-        if (b2 > 0) initialBuildings.push({ id: 2, typeBat: p.type_bat2 || '', projectType: 'BAC', kwc: b2, productible: parseFloat(p.solarYieldRoof2 || p.productible) || defaultProd, coutCentrale: b2 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b2 * 1000 / (params.puissanceUnitaire || 460)) });
-        if (b3 > 0) initialBuildings.push({ id: 3, typeBat: p.type_bat3 || '', projectType: 'BAC', kwc: b3, productible: parseFloat(p.solarYieldRoof3 || p.productible) || defaultProd, coutCentrale: b3 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b3 * 1000 / (params.puissanceUnitaire || 460)) });
-        if (b4 > 0) initialBuildings.push({ id: 4, typeBat: p.type_bat4 || '', projectType: 'BAC', kwc: b4, productible: parseFloat(p.solarYieldRoof4 || p.productible) || defaultProd, coutCentrale: b4 * 490, coutCharpente: 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(b4 * 1000 / (params.puissanceUnitaire || 460)) });
+        if (b2 > 0) {
+          const norm2 = normalizeBatType(p.type_bat2 || '');
+          const data2 = (localBatData || []).find(d => d.type.toUpperCase() === norm2.toUpperCase());
+          const kwc2 = (data2 && (!b2 || b2 === 100)) ? data2.kwc : b2;
+          initialBuildings.push({ id: 2, typeBat: norm2, projectType: 'BAC', kwc: kwc2, productible: data2?.prodMoyen || parseFloat(p.solarYieldRoof2 || p.productible) || defaultProd, coutCentrale: kwc2 * 490, coutCharpente: data2?.cout_bat || 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc2 * 1000 / (params.puissanceUnitaire || 460)) });
+        }
+        if (b3 > 0) {
+          const norm3 = normalizeBatType(p.type_bat3 || '');
+          const data3 = (localBatData || []).find(d => d.type.toUpperCase() === norm3.toUpperCase());
+          const kwc3 = (data3 && (!b3 || b3 === 100)) ? data3.kwc : b3;
+          initialBuildings.push({ id: 3, typeBat: norm3, projectType: 'BAC', kwc: kwc3, productible: data3?.prodMoyen || parseFloat(p.solarYieldRoof3 || p.productible) || defaultProd, coutCentrale: kwc3 * 490, coutCharpente: data3?.cout_bat || 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc3 * 1000 / (params.puissanceUnitaire || 460)) });
+        }
+        if (b4 > 0) {
+          const norm4 = normalizeBatType(p.type_bat4 || '');
+          const data4 = (localBatData || []).find(d => d.type.toUpperCase() === norm4.toUpperCase());
+          const kwc4 = (data4 && (!b4 || b4 === 100)) ? data4.kwc : b4;
+          initialBuildings.push({ id: 4, typeBat: norm4, projectType: 'BAC', kwc: kwc4, productible: data4?.prodMoyen || parseFloat(p.solarYieldRoof4 || p.productible) || defaultProd, coutCentrale: kwc4 * 490, coutCharpente: data4?.cout_bat || 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc4 * 1000 / (params.puissanceUnitaire || 460)) });
+        }
       }
       
       const totalRaccordement = initialBuildings.reduce((sum, b) => sum + getHtaCost(b.kwc, b.distHta) + (parseFloat(b.distPriv) || 0) * 20, 0);
@@ -1221,11 +1489,17 @@ function TabBpProjets({
 
         {selectedProject && (
           <div className="flex items-center gap-2 shrink-0">
-            <Button size="sm" variant="outline" className="gap-2 h-8 border-slate-300" onClick={() => generateBpAcamaPDF({ 
-              elementId: 'bp-acama-content', 
-              sections: ['pdf-section-1', 'pdf-section-2'],
-              fileName: `BP_${selectedProject?.name || 'Projet'}.pdf` 
-            })}>
+            <Button size="sm" variant="outline" className="gap-2 h-8 border-slate-300" onClick={() => {
+              const sections = ['pdf-section-1'];
+              if (params.batteryConfig?.enabled) sections.push('pdf-section-battery');
+              sections.push('pdf-section-2');
+              
+              generateBpAcamaPDF({ 
+                elementId: 'bp-acama-content', 
+                sections,
+                fileName: `BP_${selectedProject?.name || 'Projet'}.pdf` 
+              });
+            }}>
               <FileDown className="w-3.5 h-3.5 mr-1.5" /> PDF
             </Button>
             <Button size="sm" onClick={saveBp} className="bg-green-600 hover:bg-green-700 text-white text-[13px] h-8 px-3">
@@ -1302,10 +1576,6 @@ function TabBpProjets({
                               onChange={e => updateBuildingParam(b.id, 'typeBat', e.target.value)}
                             >
                               <option value="">— Choisir —</option>
-                              {/* Option dynamique si la valeur actuelle n'est pas dans la liste standard */}
-                              {b.typeBat && !(activeSuiviBatData || []).some(d => d.type === b.typeBat) && (
-                                <option value={b.typeBat}>{b.typeBat}</option>
-                              )}
                               {(activeSuiviBatData || []).map(d => (
                                 <option key={d.type} value={d.type}>{d.type}</option>
                               ))}
@@ -1388,6 +1658,26 @@ function TabBpProjets({
               <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-slate-100">
                 <Field label="Zone de vent" value={params.vent} onChange={v => setParams(p => ({ ...p, vent: v }))} className="h-7" />
                 <Field label="Zone de neige" value={params.neige} onChange={v => setParams(p => ({ ...p, neige: v }))} className="h-7" />
+              </div>
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                 <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                       <span className="text-[13px] font-bold text-slate-700 uppercase tracking-tighter">Option Batterie Stand-Alone</span>
+                       <span className="text-[10px] text-slate-400 font-medium">Ajouter un simulateur de stockage au projet</span>
+                    </div>
+                    <button 
+                      onClick={() => setParams(p => ({ ...p, batteryConfig: { ...(p.batteryConfig || {}), enabled: !p.batteryConfig?.enabled } }))}
+                      className={cn(
+                        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
+                        params.batteryConfig?.enabled ? "bg-blue-600" : "bg-slate-200"
+                      )}
+                    >
+                      <span className={cn(
+                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                        params.batteryConfig?.enabled ? "translate-x-6" : "translate-x-1"
+                      )} />
+                    </button>
+                 </div>
               </div>
             </SectionCard>
 
@@ -1705,7 +1995,14 @@ function TabBpProjets({
         </div>
       </div>
 
-        {/* Page 2 */}
+        {/* Battery Section (Full Width) */}
+        {params.batteryConfig?.enabled && (
+          <div className="w-full">
+             <BatterySection config={params.batteryConfig} setParams={setParams} />
+          </div>
+        )}
+
+        {/* Page 2 (or 3 if battery) */}
         <div id="pdf-section-2" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
           <div className="mt-4">
             <TableauPrevisionnel params={collapsedParams} rows={rows} />
@@ -2664,9 +2961,13 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab }) {
                         onSelect(p);
                         setActiveTab('bp_projets');
                         setTimeout(() => {
+                          const sections = ['pdf-section-1'];
+                          if (p.bpAcamaState?.batteryConfig?.enabled) sections.push('pdf-section-battery');
+                          sections.push('pdf-section-2');
+
                           generateBpAcamaPDF({ 
                             elementId: 'bp-acama-content', 
-                            sections: ['pdf-section-1', 'pdf-section-2'],
+                            sections,
                             fileName: `BP_Acama_${p.name}_${new Date().toISOString().split('T')[0]}.pdf` 
                           });
                         }, 200);
@@ -3034,7 +3335,33 @@ export default function BpAcama() {
       targetDSCR: prev.targetDSCR || 1.17,
       tarifACC: prev.tarifACC || 0.14,
       partACC: prev.partACC !== undefined ? prev.partACC : 0,
-      renteType: prev.renteType || 'none'
+      renteType: prev.renteType || 'none',
+      batteryConfig: prev.batteryConfig || {
+        enabled: false,
+        inflationAnnuelle: 2,
+        degradationAnnuelle: 2,
+        batterieBms: 67250,
+        onduleurPcs: 0,
+        genieCivil: 16300,
+        raccordement: 9000,
+        developpement: 2000,
+        fraisCommerciaux: 3000,
+        arbitrageEnergie: 7500,
+        reserveFCR: 37500,
+        mecanismeCapacite: 5000,
+        effacement: 5000,
+        disponibilite: 98,
+        rendementRoundTrip: 88,
+        maintenanceAn: 2000,
+        assuranceAn: 390,
+        commissionAgregateur: 20,
+        turpeAn: 5000,
+        iferAn: 1250,
+        tauxEmprunt: 3.9,
+        dureeEmprunt: 12,
+        apport: 0,
+        tauxIS: 25
+      }
     }));
   }, [selectedProject]);
 
@@ -3096,6 +3423,21 @@ export default function BpAcama() {
   const isAdmin = user?.role === 'admin';
   const isAlexandru = user?.email === 'a.mihailov@acama-energies.fr';
   const isGreenInvest = activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
+
+  const visibleTabs = useMemo(() => {
+    return TABS.filter(tab => {
+      if (!isAdmin && ['data', 'calcul', 'suivi'].includes(tab.id)) {
+        return false;
+      }
+      return true;
+    });
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin && ['data', 'calcul', 'suivi'].includes(activeTab)) {
+      setActiveTab('bp_projets');
+    }
+  }, [isAdmin, activeTab]);
 
 
   // Access Control: 
@@ -3210,7 +3552,7 @@ export default function BpAcama() {
           </Button>
         </div>
         <nav className="flex-1 overflow-y-auto py-2">
-          {TABS.map(tab => {
+          {visibleTabs.map(tab => {
             const Icon = tab.icon;
             return (
               <button

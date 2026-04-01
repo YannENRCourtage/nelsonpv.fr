@@ -11,10 +11,12 @@ export default function ChatBox() {
   const { project, updateProject } = useProject(); // Utilise le contexte du projet
   const [input, setInput] = useState("");
 
-  // CORRIGÉ : Lit les messages depuis 'project.chatLines'
+  // Filtre: Suppression des messages spécifiques demandés par l'utilisateur
   const allLines = project?.chatLines || [];
-  // Filtre: Suppression du message spécifique demandé par l'utilisateur
-  const lines = allLines.filter(l => l.text !== "C'est quoi ce projet vide ???");
+  const lines = allLines.filter(l => 
+    l.text !== "C'est quoi ce projet vide ???" && 
+    !(l.who === "Alexandru" && l.text === "test")
+  );
 
   const messagesEndRef = useRef(null);
 
