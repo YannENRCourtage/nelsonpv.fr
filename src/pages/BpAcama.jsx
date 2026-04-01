@@ -3233,6 +3233,32 @@ export default function BpAcama() {
     vent: '',
     neige: '',
     renteType: 'none',
+    batteryConfig: {
+      enabled: false,
+      inflationAnnuelle: 2,
+      degradationAnnuelle: 2,
+      batterieBms: 67250,
+      onduleurPcs: 0,
+      genieCivil: 16300,
+      raccordement: 9000,
+      developpement: 2000,
+      fraisCommerciaux: 3000,
+      arbitrageEnergie: 7500,
+      reserveFCR: 37500,
+      mecanismeCapacite: 5000,
+      effacement: 5000,
+      disponibilite: 98,
+      rendementRoundTrip: 88,
+      maintenanceAn: 2000,
+      assuranceAn: 390,
+      commissionAgregateur: 20,
+      turpeAn: 5000,
+      iferAn: 1250,
+      tauxEmprunt: 3.9,
+      dureeEmprunt: 12,
+      apport: 0,
+      tauxIS: 25
+    }
   });
 
   useEffect(() => {
@@ -3241,25 +3267,57 @@ export default function BpAcama() {
     const features = selectedProject.features || selectedProject.map_state?.features || selectedProject.map_state?.projects || [];
     const buildingFeatures = features.filter(f => f.type === 'rectangle' || (f.type === 'polygon' && f.isPredefinedBuilding));
     
+    const defaultBatteryConfig = {
+      enabled: false,
+      inflationAnnuelle: 2,
+      degradationAnnuelle: 2,
+      batterieBms: 67250,
+      onduleurPcs: 0,
+      genieCivil: 16300,
+      raccordement: 9000,
+      developpement: 2000,
+      fraisCommerciaux: 3000,
+      arbitrageEnergie: 7500,
+      reserveFCR: 37500,
+      mecanismeCapacite: 5000,
+      effacement: 5000,
+      disponibilite: 98,
+      rendementRoundTrip: 88,
+      maintenanceAn: 2000,
+      assuranceAn: 390,
+      commissionAgregateur: 20,
+      turpeAn: 5000,
+      iferAn: 1250,
+      tauxEmprunt: 3.9,
+      dureeEmprunt: 12,
+      apport: 0,
+      tauxIS: 25
+    };
+
     // 1. If saved state exists, we use it but check if building count matches map
     if (selectedProject.bpAcamaState) {
       const saved = { ...selectedProject.bpAcamaState };
       
+      // Ensure batteryConfig is initialized if missing in saved state
+      if (!saved.batteryConfig) {
+        saved.batteryConfig = defaultBatteryConfig;
+      } else {
+        // Also merge any missing properties just in case
+        saved.batteryConfig = { ...defaultBatteryConfig, ...saved.batteryConfig };
+      }
+
       // Enrich saved state with missing building types, products & power from map
       if (saved.buildings && buildingFeatures.length > 0) {
         saved.buildings = saved.buildings.map((b, idx) => {
           const feat = buildingFeatures[idx];
           const newTypeBat = (!b.typeBat || b.typeBat === '') ? (feat?.buildingName || feat?.name || b.typeBat) : b.typeBat;
           
-          const defaultProd = parseFloat(selectedProject.solarYieldRoof1 || selectedProject.productible) || 1123.08;
-          const specificProd = parseFloat(selectedProject[`solarYieldRoof${idx+1}`]) || defaultProd;
-          const newProd = (!b.productible || b.productible === defaultProd) ? specificProd : b.productible;
+          const defaultProdLocal = parseFloat(selectedProject.solarYieldRoof1 || selectedProject.productible) || 1123.08;
+          const specificProd = parseFloat(selectedProject[`solarYieldRoof${idx+1}`]) || defaultProdLocal;
+          const newProd = (!b.productible || b.productible === defaultProdLocal) ? specificProd : b.productible;
           
-          // If power is 100 (default) but map has a specific power, update it
           const featPower = parseFloat(feat?.power || feat?.kwc || feat?.puissance) || 0;
           const newKwc = (b.kwc === 100 && featPower > 0 && featPower !== 100) ? featPower : b.kwc;
-          
-          // Recompute costs if power changed
           const newCoutCentrale = (newKwc !== b.kwc) ? (newKwc * 490) : b.coutCentrale;
           
           return { ...b, typeBat: newTypeBat, productible: newProd, kwc: newKwc, coutCentrale: newCoutCentrale };
@@ -3336,32 +3394,7 @@ export default function BpAcama() {
       tarifACC: prev.tarifACC || 0.14,
       partACC: prev.partACC !== undefined ? prev.partACC : 0,
       renteType: prev.renteType || 'none',
-      batteryConfig: prev.batteryConfig || {
-        enabled: false,
-        inflationAnnuelle: 2,
-        degradationAnnuelle: 2,
-        batterieBms: 67250,
-        onduleurPcs: 0,
-        genieCivil: 16300,
-        raccordement: 9000,
-        developpement: 2000,
-        fraisCommerciaux: 3000,
-        arbitrageEnergie: 7500,
-        reserveFCR: 37500,
-        mecanismeCapacite: 5000,
-        effacement: 5000,
-        disponibilite: 98,
-        rendementRoundTrip: 88,
-        maintenanceAn: 2000,
-        assuranceAn: 390,
-        commissionAgregateur: 20,
-        turpeAn: 5000,
-        iferAn: 1250,
-        tauxEmprunt: 3.9,
-        dureeEmprunt: 12,
-        apport: 0,
-        tauxIS: 25
-      }
+      batteryConfig: prev.batteryConfig || defaultBatteryConfig
     }));
   }, [selectedProject]);
 
