@@ -3537,6 +3537,7 @@ export default function BpAcama() {
 
   const isAdmin = user?.role === 'admin';
   const isAlexandru = user?.email === 'a.mihailov@acama-energies.fr';
+  const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
   const isGreenInvest = activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
 
   const visibleTabs = useMemo(() => {
@@ -3556,9 +3557,9 @@ export default function BpAcama() {
 
 
   // Access Control: 
-  // GREEN INVEST: Admins only
+  // GREEN INVEST: Admins + Laurent Guyon
   // ACAMA: Admins + Alexandru
-  const hasAccess = isGreenInvest ? isAdmin : (isAdmin || isAlexandru);
+  const hasAccess = isGreenInvest ? (isAdmin || isLaurentGuyon) : (isAdmin || isAlexandru);
 
   if (!hasAccess) {
     return (
