@@ -925,6 +925,39 @@ function SectionCard({ title, children, className, id, actions }) {
   );
 }
 
+function SignatureArea({ data, update }) {
+  return (
+    <div className="mt-12 pt-8 border-t border-slate-200 grid grid-cols-2 gap-12">
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] font-bold text-slate-700 uppercase">Fait à :</span>
+          <input 
+            className="flex-1 border-b border-slate-300 outline-none text-[13px] px-1 focus:border-blue-500 bg-transparent"
+            value={data.faitA || ''} 
+            onChange={e => update('faitA', e.target.value)}
+            placeholder=".........................................."
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] font-bold text-slate-700 uppercase">Le :</span>
+          <input 
+            className="flex-1 border-b border-slate-300 outline-none text-[13px] px-1 focus:border-blue-500 bg-transparent"
+            value={data.faitLe || ''} 
+            onChange={e => update('faitLe', e.target.value)}
+            placeholder=".........................................."
+          />
+        </div>
+      </div>
+      <div className="flex flex-col items-center justify-start pt-2">
+        <span className="text-[12px] font-bold text-slate-700 uppercase mb-12">Signature du client</span>
+        <div className="w-full h-24 border border-dashed border-slate-300 rounded flex items-center justify-center text-slate-300 text-[10px] uppercase tracking-widest">
+          Cadre réservé à la signature
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BatterySection({ config, setParams }) {
   if (!config.enabled) return null;
 
@@ -2569,6 +2602,7 @@ function TabPropositionClientBAC({ projects, selectedProject, setSelectedProject
     pcComplete: new Date(Date.now() + 56 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
     depotDepose: new Date(Date.now() + 70 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
     realiseBy: 'M.T', valideBy: 'A.M', remarques: '',
+    faitA: '', faitLe: new Date().toLocaleDateString('fr-FR'),
   });
 
   useEffect(() => {
@@ -2646,7 +2680,14 @@ function TabPropositionClientBAC({ projects, selectedProject, setSelectedProject
                 onSelect={(id) => setSelectedProject((projects || []).find(p => p.id === id))} 
               />
             </div>
-            <Button size="sm" variant="outline" className="gap-2" onClick={() => generateBpAcamaPDF({ elementId: 'prop-bac-content', fileName: `Proposition_BAC_${selectedProject?.name || 'Client'}.pdf` })}><FileDown className="w-4 h-4" /> PDF</Button>
+                        <Button size="sm" variant="outline" className="gap-2" onClick={() => generateBpAcamaPDF({ 
+              elementId: 'prop-bac-content', 
+              fileName: `Proposition_BAC_${selectedProject?.name || 'Client'}.pdf`,
+              orientation: 'portrait',
+              clean: true
+            })}>
+              <FileDown className="w-4 h-4" /> PDF
+            </Button>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-8">
@@ -2681,12 +2722,13 @@ function TabPropositionClientBAC({ projects, selectedProject, setSelectedProject
               <Row label="Réalisé par" value={data.realiseBy} onChange={v => update('realiseBy', v)} />
               <Row label="Validé par" value={data.valideBy} onChange={v => update('valideBy', v)} isLast />
             </Section>
-            <div className="mt-4 border border-slate-300 p-4 min-h-[140px] bg-white text-[12px]">
+            <div className="mt-4 border border-slate-300 p-4 bg-white text-[12px]">
               <div className="font-bold text-[#002060] mb-2 uppercase border-b border-slate-200 pb-1">Remarques :</div>
-              <textarea className="w-full bg-transparent outline-none text-slate-800 resize-y h-24" value={data.remarques} onChange={e => update('remarques', e.target.value)} />
+              <textarea className="w-full bg-transparent outline-none text-slate-800 resize-none min-h-[220px]" value={data.remarques} onChange={e => update('remarques', e.target.value)} />
             </div>
           </div>
         </div>
+        <SignatureArea data={data} update={update} />
       </div>
     </div>
   );
@@ -2701,6 +2743,7 @@ function TabPropositionBE({ projects, selectedProject, setSelectedProject, param
     pcComplete: new Date(Date.now() + 56 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
     depotDepose: new Date(Date.now() + 77 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
     realiseBy: 'S.B', valideBy: 'A.M', remarques: '',
+    faitA: '', faitLe: new Date().toLocaleDateString('fr-FR'),
   });
 
   useEffect(() => {
@@ -2774,7 +2817,14 @@ function TabPropositionBE({ projects, selectedProject, setSelectedProject, param
                 onSelect={(id) => setSelectedProject((projects || []).find(p => p.id === id))} 
               />
             </div>
-            <Button size="sm" variant="outline" className="gap-2" onClick={() => generateBpAcamaPDF({ elementId: 'prop-be-content', fileName: `Proposition_BE_${selectedProject?.name || 'Client'}.pdf` })}><FileDown className="w-4 h-4" /> PDF</Button>
+                        <Button size="sm" variant="outline" className="gap-2" onClick={() => generateBpAcamaPDF({ 
+              elementId: 'prop-be-content', 
+              fileName: `Proposition_BE_${selectedProject?.name || 'Client'}.pdf`,
+              orientation: 'portrait',
+              clean: true
+            })}>
+              <FileDown className="w-4 h-4" /> PDF
+            </Button>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-8">
@@ -2812,11 +2862,12 @@ function TabPropositionBE({ projects, selectedProject, setSelectedProject, param
               <Row label="Validé par :" value={data.valideBy} onChange={v => update('valideBy', v)} isLast />
               <div className="p-3 border-t border-slate-200 bg-white text-[12px]">
                 <div className="font-bold text-[#002060] mb-1 uppercase pb-1">Remarques :</div>
-                <textarea className="w-full bg-transparent outline-none text-slate-800 resize-y h-16" value={data.remarques} onChange={e => update('remarques', e.target.value)} />
+                <textarea className="w-full bg-transparent outline-none text-slate-800 resize-none min-h-[180px]" value={data.remarques} onChange={e => update('remarques', e.target.value)} />
               </div>
             </Section>
           </div>
         </div>
+        <SignatureArea data={data} update={update} />
       </div>
     </div>
   );
@@ -2827,6 +2878,7 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
     dateDevis: new Date().toLocaleDateString('fr-FR'), dateValidite: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR'),
     etudeRenfort: 0, etudeImplant: 0, etudeNoteCalcul: 0, etudeCalepinage: 0, transportCharpente: 0, fournitureBac: 0, anticondensation: 0,
     transportCouverture: 0, levage: 0, securite: 0, montage: 0, etudeElec: 0, securiteElec: 0, poseModules: 0,
+    faitA: '', faitLe: new Date().toLocaleDateString('fr-FR'),
   });
 
   const kwc = params?.kwc || 0;
@@ -2882,7 +2934,14 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
                  onSelect={(id) => setSelectedProject((projects || []).find(p => p.id === id))} 
                />
              </div>
-             <Button size="sm" className="gap-2 shadow-sm" onClick={() => generateBpAcamaPDF({ elementId: 'tab-devis-content', fileName: `Devis_Technique_${selectedProject?.name || 'Projet'}.pdf` })}><FileDown className="w-4 h-4" /> Générer Devis</Button>
+                          <Button size="sm" className="gap-2 shadow-sm" onClick={() => generateBpAcamaPDF({ 
+               elementId: 'tab-devis-content', 
+               fileName: `Devis_Technique_${selectedProject?.name || 'Projet'}.pdf` ,
+               orientation: 'portrait',
+               clean: true
+             })}>
+               <FileDown className="w-4 h-4" /> PDF
+             </Button>
           </div>
         </div>
         <div className="p-6 space-y-6">
@@ -2987,6 +3046,7 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
               <div className="text-right"><span className="text-sm text-blue-400 font-bold block mb-1">TOTAL HT</span><span className="text-3xl font-black tabular-nums">{fmtEur(totalHT)}</span></div>
             </div>
           </div>
+          <SignatureArea data={data} update={update} />
         </div>
       </div>
     </div>

@@ -3,12 +3,17 @@ import html2canvas from 'html2canvas';
 
 /**
  * Génère un PDF pour la page BP (ou BP ACAMA selon le tenant)
- * Format Paysage
+ * @param {string} elementId - ID de l'élément à capturer
+ * @param {string[]} sections - Liste des IDs de sections à ajouter au PDF
+ * @param {string} fileName - Nom du fichier de sortie
+ * @param {string} orientation - 'landscape' ou 'portrait'
+ * @param {boolean} clean - Si true, retire les fonds de couleur pour un rendu plus sobre
  */
-export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
+export async function generateBpAcamaPDF({ elementId, sections, fileName, orientation = 'landscape', clean = false }) {
     try {
+        const isPortrait = orientation === 'portrait';
         const pdf = new jsPDF({
-            orientation: 'landscape',
+            orientation: orientation,
             unit: 'mm',
             format: 'a4'
         });
@@ -34,8 +39,11 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
                 logging: false,
                 backgroundColor: '#ffffff',
                 onclone: (clonedDoc) => {
-                    // ... (rest of the onclone logic remains identical)
-                    // ... existing headers visible property ...
+                    // Masquer explicitement les éléments à ignorer
+                    clonedDoc.querySelectorAll('[data-html2canvas-ignore="true"]').forEach(el => {
+                        el.style.display = 'none';
+                    });
+
                     const headers = clonedDoc.querySelectorAll('.pdf-header');
                     headers.forEach(header => {
                         header.style.setProperty('display', 'flex', 'important');
@@ -47,8 +55,8 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
                         let valueText = el.tagName === 'SELECT' ? (el.options[el.selectedIndex]?.text || '') : (el.value || '');
                         
                         const textEl = clonedDoc.createElement('div');
-                        // Ensure centering if parent is flex
                         textEl.className = 'text-xs font-bold text-blue-900 border-b border-slate-200 pb-0.5 min-h-[24px] flex items-center px-1';
+                        
                         if (parent.classList.contains('justify-center') || parent.parentNode?.classList.contains('justify-center')) {
                             textEl.style.justifyContent = 'center';
                             textEl.style.width = '100%';
@@ -64,53 +72,76 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
                         parent.appendChild(textEl);
                     });
 
+                    // Mode CLEAN : Supprimer les fonds de couleur pour les devis/propositions
+                    if (clean) {
+                        clonedDoc.querySelectorAll('.bg-slate-50, .bg-blue-50, .bg-\\[\\#002060\\], .bg-slate-100, .bg-amber-400, .bg-slate-800, .bg-blue-50\\/30, .bg-white').forEach(el => {
+                            el.style.backgroundColor = 'transparent';
+                            el.style.backgroundImage = 'none';
+                            el.style.boxShadow = 'none';
+                            if (el.classList.contains('text-white')) {
+                                el.style.color = '#000000';
+                            }
+                        });
+                        clonedDoc.querySelectorAll('.text-white, .text-blue-400, .text-blue-300, .text-blue-200, .text-blue-700, .text-blue-900, .text-slate-500, .text-slate-400').forEach(el => {
+                            el.style.setProperty('color', '#000000', 'important');
+                        });
+                        clonedDoc.querySelectorAll('.border-white\\/10, .border-blue-800\\/50, .border-slate-200, .border-slate-300, .border-blue-300, .border-slate-100').forEach(el => {
+                            el.style.borderColor = '#000000';
+                            el.style.borderWidth = '0.5pt';
+                        });
+                        // Garder les textes importants en noir
+                        clonedDoc.querySelectorAll('.font-black, .font-bold, font-medium').forEach(el => {
+                            el.style.color = '#000000';
+                        });
+                        // Cacher les ombres portées
+                        clonedDoc.querySelectorAll('.shadow-xl, .shadow-lg, .shadow-md, .shadow-sm, .shadow-inner').forEach(el => {
+                            el.style.boxShadow = 'none';
+                        });
+                    }
+
                     clonedDoc.querySelectorAll('.pdf-header-container').forEach(el => {
-                        el.style.setProperty('padding', '0', 'important'); // Remove internal padding to eliminate white bands
-                        el.style.setProperty('padding-top', id === 'pdf-section-1' ? '2mm' : '5mm', 'important');
+                        el.style.setProperty('padding', '0', 'important');
+                        el.style.setProperty('padding-top', '2mm', 'important');
                         el.style.setProperty('height', 'auto', 'important');
                     });
                     
-                    clonedDoc.querySelectorAll('.h-full, .grow, .flex-1, .h-\\[300px\\], .h-\\[250px\\]').forEach(el => {
+                    clonedDoc.querySelectorAll('.h-full, .grow, .flex-1, .h-\\[300px\\], .h-\\[250px\\], .min-h-\\[140px\\], .min-h-full').forEach(el => {
                         el.style.setProperty('height', 'auto', 'important');
                         el.style.setProperty('min-height', '0', 'important');
                     });
 
-                    clonedDoc.querySelectorAll('.space-y-8, .space-y-6, .gap-6, .gap-y-6').forEach(el => {
-                        el.style.setProperty('gap', id === 'pdf-section-1' ? '1mm' : '2mm', 'important');
+                    clonedDoc.querySelectorAll('.space-y-8, .space-y-6, .gap-6, .gap-y-6, .gap-8, .space-y-4').forEach(el => {
+                        el.style.setProperty('gap', '2mm', 'important');
                     });
                     
                     clonedDoc.querySelectorAll('.recharts-responsive-container, .recharts-wrapper, table').forEach(el => {
                         el.style.setProperty('width', '100%', 'important');
-                        if (id === 'pdf-section-2' && el.tagName === 'TABLE') {
-                            el.style.setProperty('font-size', '9pt', 'important'); // Balanced font size
-                        }
-                    });
-                    
-                    // Only ensure the main background is white, but preserve internal shades
-                    clonedDoc.querySelectorAll('.pdf-header-container, #pdf-section-2').forEach(el => {
-                        el.style.backgroundColor = '#ffffff';
                     });
 
                     const s = clonedDoc.getElementById(id);
                     if (s) {
-                        // Increase to 2200px for the 20-year table to ensure no truncation of 2045
-                        // For Page 1, use 1600px to fill the full landscape width
-                        s.style.width = id === 'pdf-section-2' ? '2200px' : '1600px'; 
                         s.style.display = 'block';
                         s.style.margin = '0';
                         s.style.padding = '0';
                         s.style.overflow = 'visible';
                         
-                        // Force grid columns for Page 1
-                        if (id === 'pdf-section-1') {
-                            const grid = s.querySelector('.grid');
-                            if (grid) {
-                                grid.style.display = 'grid';
+                        if (isPortrait) {
+                            s.style.width = '1000px'; 
+                        } else {
+                            s.style.width = id === 'pdf-section-2' ? '2200px' : '1600px'; 
+                        }
+
+                        const grid = s.querySelector('.grid');
+                        if (grid) {
+                            grid.style.display = 'grid';
+                            if (isPortrait) {
+                                if (grid.classList.contains('grid-cols-2')) {
+                                    grid.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+                                } else if (grid.classList.contains('lg:grid-cols-12')) {
+                                    grid.style.gridTemplateColumns = 'repeat(12, minmax(0, 1fr))';
+                                }
+                            } else if (id === 'pdf-section-1') {
                                 grid.style.gridTemplateColumns = 'repeat(12, minmax(0, 1fr))';
-                                const leftVal = s.querySelector('.xl\\:col-span-5');
-                                const rightVal = s.querySelector('.xl\\:col-span-7');
-                                if (leftVal) leftVal.style.gridColumn = 'span 5 / span 5';
-                                if (rightVal) rightVal.style.gridColumn = 'span 7 / span 7';
                             }
                         }
                     }
@@ -122,7 +153,6 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
             const imgProps = pdf.getImageProperties(imgData);
             const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
 
-            // Fit to content area - Always fill the width as requested
             pdf.addImage(imgData, 'PNG', margin, margin, contentWidth, imgHeight);
         };
 
@@ -131,7 +161,6 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
                 await addToPdf(sections[i], i > 0);
             }
         } else {
-            // Fallback to original behavior
             await addToPdf(elementId, false);
         }
 
@@ -142,3 +171,4 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
         alert('Une erreur est survenue lors de la génération du PDF.');
     }
 }
+
