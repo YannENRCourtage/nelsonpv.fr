@@ -493,6 +493,7 @@ function computeBatteryProfitability(config) {
     maintenanceAn = 1500,
     revenuBailleurAn = 2000,
     assuranceAn = 390,
+    retributionCommAn = 0,
     commissionAgregateur = 20,
     turpeAn = 5000,
     iferAn = 1250,
@@ -520,7 +521,7 @@ function computeBatteryProfitability(config) {
     const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
 
     const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100);
-    const chargesFixes = (maintenanceAn + assuranceAn + turpeAn + iferAn + revenuBailleurAn) * infl;
+    const chargesFixes = (maintenanceAn + assuranceAn + turpeAn + iferAn + revenuBailleurAn + retributionCommAn) * infl;
     const chargesCom = revNet * (commissionAgregateur / 100);
     const ebe = revNet - (chargesFixes + chargesCom);
 
@@ -966,12 +967,30 @@ function BatterySection({ config, setParams }) {
                value={config.puissanceDemandee || 125}
                onChange={e => {
                  const p = parseInt(e.target.value);
+                 const nbB = p / 125;
+                 const revBruts = (30 * p) + (150 * p) + (20 * p) + (20 * p);
+                 const rettComm = Math.round(revBruts * 0.02);
+                 const batteryBms = 33625 * nbB;
+                 const fraisComm = 50 * p;
+                 const capexTot = batteryBms + 0 + 6000 + 9000 + 5000 + fraisComm;
+                 
                  setParams(prev => ({
                    ...prev,
                    batteryConfig: { 
                      ...prev.batteryConfig, 
                      puissanceDemandee: p,
-                     revenuBailleurAn: 2000 * (p / 125) 
+                     batterieBms: batteryBms,
+                     fraisCommerciaux: fraisComm,
+                     arbitrageEnergie: 30 * p,
+                     reserveFCR: 150 * p,
+                     mecanismeCapacite: 20 * p,
+                     effacement: 20 * p,
+                     maintenanceAn: 6 * p,
+                     revenuBailleurAn: 2000 * nbB,
+                     retributionCommAn: rettComm,
+                     turpeAn: 20 * p,
+                     iferAn: 5 * p,
+                     assuranceAn: Math.round(capexTot * 0.004)
                    }
                  }));
                }}
@@ -1024,6 +1043,7 @@ function BatterySection({ config, setParams }) {
           <div className="grid grid-cols-1 gap-2">
             <Field label="Maintenance /an" value={config.maintenanceAn} onChange={v => update('maintenanceAn', v)} type="number" suffix="€" />
             <Field label="Revenu bailleur" value={config.revenuBailleurAn || (2000 * ((config.puissanceDemandee || 125) / 125))} onChange={v => update('revenuBailleurAn', v)} type="number" suffix="€" />
+            <Field label="Rétribution comm." value={config.retributionCommAn || 0} onChange={v => update('retributionCommAn', v)} type="number" suffix="€" />
             <Field label="Assurance /an" value={config.assuranceAn} onChange={v => update('assuranceAn', v)} type="number" suffix="€" />
             <Field label="Comm. Agrégateur" value={config.commissionAgregateur} onChange={v => update('commissionAgregateur', v)} type="number" suffix="%" />
             <Field label="TURPE /an" value={config.turpeAn} onChange={v => update('turpeAn', v)} type="number" suffix="€" />
@@ -3291,23 +3311,24 @@ export default function BpAcama() {
       enabled: false,
       inflationAnnuelle: 2,
       degradationAnnuelle: 2,
-      batterieBms: 67250,
+      batterieBms: 33625,
       onduleurPcs: 0,
       genieCivil: 6000,
       puissanceDemandee: 125,
       dureeDecharge: 2,
       raccordement: 9000,
       developpement: 5000,
-      fraisCommerciaux: 10000,
-      arbitrageEnergie: 7500,
-      reserveFCR: 37500,
-      mecanismeCapacite: 5000,
-      effacement: 5000,
+      fraisCommerciaux: 6250,
+      arbitrageEnergie: 3750,
+      reserveFCR: 18750,
+      mecanismeCapacite: 2500,
+      effacement: 2500,
       disponibilite: 98,
       rendementRoundTrip: 88,
-      maintenanceAn: 1500,
+      maintenanceAn: 750,
       revenuBailleurAn: 2000,
-      assuranceAn: 390,
+      retributionCommAn: 550,
+      assuranceAn: 240,
       commissionAgregateur: 20,
       turpeAn: 5000,
       iferAn: 1250,
@@ -3328,23 +3349,24 @@ export default function BpAcama() {
       enabled: false,
       inflationAnnuelle: 2,
       degradationAnnuelle: 2,
-      batterieBms: 67250,
+      batterieBms: 33625,
       onduleurPcs: 0,
       genieCivil: 6000,
       puissanceDemandee: 125,
       dureeDecharge: 2,
       raccordement: 9000,
       developpement: 5000,
-      fraisCommerciaux: 10000,
-      arbitrageEnergie: 7500,
-      reserveFCR: 37500,
-      mecanismeCapacite: 5000,
-      effacement: 5000,
+      fraisCommerciaux: 6250,
+      arbitrageEnergie: 3750,
+      reserveFCR: 18750,
+      mecanismeCapacite: 2500,
+      effacement: 2500,
       disponibilite: 98,
       rendementRoundTrip: 88,
-      maintenanceAn: 1500,
+      maintenanceAn: 750,
       revenuBailleurAn: 2000,
-      assuranceAn: 390,
+      retributionCommAn: 550,
+      assuranceAn: 240,
       commissionAgregateur: 20,
       turpeAn: 5000,
       iferAn: 1250,
