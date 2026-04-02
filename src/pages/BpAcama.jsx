@@ -480,7 +480,7 @@ function computeBatteryProfitability(config) {
     degradationAnnuelle = 2,
     batterieBms = 67250,
     onduleurPcs = 0,
-    genieCivil = 16300,
+    genieCivil = 6000,
     raccordement = 9000,
     developpement = 2000,
     fraisCommerciaux = 3000,
@@ -927,6 +927,20 @@ function BatterySection({ config, setParams }) {
   if (!config.enabled) return null;
 
   const results = computeBatteryProfitability(config);
+  
+  // Logique Dimensionnement (Briques)
+  const powerReq = config.puissanceDemandee || 250;
+  const durationReq = config.dureeDecharge || 2;
+  const brickPower = 50; 
+  const brickEnergy = 100;
+  
+  const nbBricksPower = powerReq / brickPower;
+  const nbBricksEnergy = (powerReq * durationReq) / brickEnergy;
+  const nbBricks = Math.ceil(Math.max(nbBricksPower, nbBricksEnergy));
+  
+  const realPower = nbBricks * brickPower;
+  const realEnergy = nbBricks * brickEnergy;
+  const cRate = realEnergy > 0 ? (realPower / realEnergy).toFixed(1) : 0;
 
   const update = (k, v) => {
     setParams(prev => ({
@@ -939,9 +953,38 @@ function BatterySection({ config, setParams }) {
 
   return (
     <SectionCard title="RENTABILITÉ BATTERIE STAND-ALONE" id="pdf-section-battery" className="bg-white border-t-4 border-t-blue-600 shadow-lg">
+      
+      {/* Sizing Section */}
+      <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+        <GroupTitle title="Dimensionnement batterie" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+           <Field label="Puissance demandée" value={config.puissanceDemandee || 250} onChange={v => update('puissanceDemandee', v)} type="number" suffix="kW" />
+           <Field label="Durée de décharge" value={config.dureeDecharge || 2} onChange={v => update('dureeDecharge', v)} type="number" suffix="heures" />
+           <div className="space-y-1">
+             <label className="text-[11px] text-slate-500 uppercase">Capacité réelle (kWh)</label>
+             <div className="text-lg font-bold text-slate-900">{fmt(realEnergy, 0)} kWh</div>
+           </div>
+           <div className="space-y-1">
+             <label className="text-[11px] text-slate-500 uppercase">Puissance réelle (kW)</label>
+             <div className="text-lg font-bold text-slate-900">{fmt(realPower, 0)} kW</div>
+           </div>
+        </div>
+        <div className="mt-4 p-3 bg-blue-600 text-white rounded flex items-center justify-between text-sm shadow-sm">
+           <div className="flex items-center gap-2">
+             <div className="bg-white/20 p-1.5 rounded"><Plus className="w-4 h-4" /></div>
+             <span className="font-bold underline decoration-blue-300 underline-offset-4">{nbBricks} briques</span>
+             <span className="opacity-80">× 50 kW = {realPower} kW</span>
+           </div>
+           <div className="flex items-center gap-4">
+             <span className="font-medium bg-white/10 px-2 py-0.5 rounded border border-white/20">{realEnergy} kWh</span>
+             <span className="font-black opacity-90">C/{ (1/cRate).toFixed(0) }</span>
+           </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         <div className="space-y-4">
-          <GroupTitle title="Investissement Initial" />
+          <GroupTitle title="Investissement Initial - CAPEX" />
           <div className="grid grid-cols-1 gap-2">
             <Field label="Batterie + BMS" value={config.batterieBms} onChange={v => update('batterieBms', v)} type="number" suffix="€" />
             <Field label="Onduleur / PCS" value={config.onduleurPcs} onChange={v => update('onduleurPcs', v)} type="number" suffix="€" />
@@ -967,7 +1010,7 @@ function BatterySection({ config, setParams }) {
         </div>
 
         <div className="space-y-4">
-          <GroupTitle title="Charges & Hypothèses" />
+          <GroupTitle title="Charges & Hypothèses - OPEX" />
           <div className="grid grid-cols-1 gap-2">
             <Field label="Maintenance /an" value={config.maintenanceAn} onChange={v => update('maintenanceAn', v)} type="number" suffix="€" />
             <Field label="Assurance /an" value={config.assuranceAn} onChange={v => update('assuranceAn', v)} type="number" suffix="€" />
@@ -996,7 +1039,7 @@ function BatterySection({ config, setParams }) {
                  <div className="text-lg font-black text-blue-400">{fmtPct(results.triProjet)}</div>
               </div>
               <div className="text-center border-x border-white/10 px-1">
-                 <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">Payback</div>
+                 <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">Retour</div>
                  <div className="text-lg font-black text-amber-400">{fmt(results.payback, 1)} ans</div>
               </div>
               <div className="text-center">
@@ -3239,7 +3282,9 @@ export default function BpAcama() {
       degradationAnnuelle: 2,
       batterieBms: 67250,
       onduleurPcs: 0,
-      genieCivil: 16300,
+      genieCivil: 6000,
+      puissanceDemandee: 250,
+      dureeDecharge: 2,
       raccordement: 9000,
       developpement: 2000,
       fraisCommerciaux: 3000,
@@ -3273,7 +3318,9 @@ export default function BpAcama() {
       degradationAnnuelle: 2,
       batterieBms: 67250,
       onduleurPcs: 0,
-      genieCivil: 16300,
+      genieCivil: 6000,
+      puissanceDemandee: 250,
+      dureeDecharge: 2,
       raccordement: 9000,
       developpement: 2000,
       fraisCommerciaux: 3000,
