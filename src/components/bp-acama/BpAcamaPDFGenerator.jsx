@@ -75,13 +75,13 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                         }
                         
                         textEl.textContent = valueText;
+                        el.parentNode.insertBefore(textEl, el);
                         el.style.display = 'none';
                         const suffixEl = parent.querySelector('span.text-slate-500') || parent.querySelector('span.text-slate-400');
                         if (suffixEl) {
                             suffixEl.style.display = 'none';
                             if (suffixEl.textContent) textEl.textContent += ' ' + suffixEl.textContent.trim();
                         }
-                        parent.appendChild(textEl);
                     });
 
                     // Mode CLEAN : Supprimer les fonds de couleur pour les devis/propositions
@@ -95,8 +95,8 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                             }
                         });
                         clonedDoc.querySelectorAll('.text-white, .text-blue-400, .text-blue-300, .text-blue-200, .text-blue-700, .text-blue-900, .text-slate-500, .text-slate-400').forEach(el => {
-                            // Ne pas forcer le noir si on est dans le cadre total HT qui doit rester bleu foncé
-                            if (!el.closest('.bg-slate-900')) {
+                            // Ne pas forcer le noir si on est dans le cadre total HT ou info client qui doivent rester foncés
+                            if (!el.closest('.bg-slate-900, .bg-\\[\\#002060\\]')) {
                                 el.style.setProperty('color', '#000000', 'important');
                             } else {
                                 el.style.setProperty('color', '#ffffff', 'important');
@@ -108,7 +108,7 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                         });
                         // Garder les textes importants en noir (sauf fond sombre)
                         clonedDoc.querySelectorAll('.font-black, .font-bold, .font-medium').forEach(el => {
-                            if (!el.closest('.bg-slate-900')) {
+                            if (!el.closest('.bg-slate-900, .bg-\\[\\#002060\\]')) {
                                 el.style.color = '#000000';
                             } else {
                                 el.style.color = '#ffffff';

@@ -2947,7 +2947,6 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
         <div className="p-6 space-y-6">
           <div className="grid grid-cols-2 gap-8 p-4 bg-slate-50 rounded-lg border border-slate-100 text-[12px]">
              <div className="space-y-2">
-               <div className="flex items-center gap-3"><span className="text-slate-500 font-medium w-40">Date de réalisation :</span><input className="bg-white border border-slate-200 rounded px-2 py-1 outline-none w-32 shadow-sm" value={data.dateDevis} onChange={e => update('dateDevis', e.target.value)} /></div>
                <div className="flex items-center gap-3"><span className="text-slate-500 font-medium w-40">Date de validité :</span><input className="bg-white border border-slate-200 rounded px-2 py-1 outline-none w-32 shadow-sm" value={data.dateValidite} onChange={e => update('dateValidite', e.target.value)} /></div>
                <div className="flex items-center gap-3 mt-4">
                   <span className="text-slate-500 font-medium w-40">Type de bâtiment :</span>
@@ -2982,9 +2981,6 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
                </div>
              </div>
              <div className="text-right flex flex-col items-end">
-                <div className="font-black text-slate-800 uppercase text-lg mb-1">
-                  PROJET : {selectedProject?.name || selectedProject?.client_name || selectedProject?.client_firstname || 'Non sélectionné'}
-                </div>
                  <div className="bg-[#002060] text-white p-4 rounded-md shadow-md text-left min-w-[300px] border-l-4 border-blue-400">
                   <div className="font-bold border-b border-blue-800/50 pb-1 mb-2 uppercase text-[12px] tracking-widest text-blue-200">Informations Client</div>
                   <div className="space-y-1 text-sm">
