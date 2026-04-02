@@ -55,8 +55,20 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                         let valueText = el.tagName === 'SELECT' ? (el.options[el.selectedIndex]?.text || '') : (el.value || '');
                         
                         const textEl = clonedDoc.createElement('div');
-                        textEl.className = 'text-xs font-bold text-blue-900 border-b border-slate-200 pb-0.5 min-h-[24px] flex items-center px-1';
+                        textEl.className = 'text-xs font-bold pb-0.5 min-h-[24px] flex items-center px-1';
                         
+                        // Hériter la couleur du parent pour le mode clean et les fonds sombres/clairs
+                        const isInsideDark = el.closest('.bg-slate-900, .bg-\\[\\#002060\\], .bg-slate-800');
+                        if (isInsideDark && !clean) {
+                            textEl.style.color = '#ffffff';
+                        } else if (clean && !isInsideDark) {
+                            textEl.style.color = '#000000';
+                        } else if (clean && isInsideDark) {
+                            textEl.style.color = '#ffffff';
+                        } else {
+                            textEl.style.color = '#1e3a8a'; // text-blue-900 par défaut
+                        }
+
                         if (parent.classList.contains('justify-center') || parent.parentNode?.classList.contains('justify-center')) {
                             textEl.style.justifyContent = 'center';
                             textEl.style.width = '100%';
@@ -74,7 +86,7 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
 
                     // Mode CLEAN : Supprimer les fonds de couleur pour les devis/propositions
                     if (clean) {
-                        clonedDoc.querySelectorAll('.bg-slate-50, .bg-blue-50, .bg-\\[\\#002060\\], .bg-slate-100, .bg-amber-400, .bg-slate-800, .bg-blue-50\\/30, .bg-white').forEach(el => {
+                        clonedDoc.querySelectorAll('.bg-slate-50, .bg-blue-50, .bg-slate-100, .bg-amber-400, .bg-slate-800, .bg-blue-50\\/30, .bg-white').forEach(el => {
                             el.style.backgroundColor = 'transparent';
                             el.style.backgroundImage = 'none';
                             el.style.boxShadow = 'none';
@@ -83,15 +95,24 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                             }
                         });
                         clonedDoc.querySelectorAll('.text-white, .text-blue-400, .text-blue-300, .text-blue-200, .text-blue-700, .text-blue-900, .text-slate-500, .text-slate-400').forEach(el => {
-                            el.style.setProperty('color', '#000000', 'important');
+                            // Ne pas forcer le noir si on est dans le cadre total HT qui doit rester bleu foncé
+                            if (!el.closest('.bg-slate-900')) {
+                                el.style.setProperty('color', '#000000', 'important');
+                            } else {
+                                el.style.setProperty('color', '#ffffff', 'important');
+                            }
                         });
-                        clonedDoc.querySelectorAll('.border-white\\/10, .border-blue-800\\/50, .border-slate-200, .border-slate-300, .border-blue-300, .border-slate-100').forEach(el => {
+                        clonedDoc.querySelectorAll('.border-white\\/10, .border-blue-800\\/50, .border-slate-200, .border-slate-300, .border-blue-300, .border-slate-100, .border-slate-100').forEach(el => {
                             el.style.borderColor = '#000000';
                             el.style.borderWidth = '0.5pt';
                         });
-                        // Garder les textes importants en noir
-                        clonedDoc.querySelectorAll('.font-black, .font-bold, font-medium').forEach(el => {
-                            el.style.color = '#000000';
+                        // Garder les textes importants en noir (sauf fond sombre)
+                        clonedDoc.querySelectorAll('.font-black, .font-bold, .font-medium').forEach(el => {
+                            if (!el.closest('.bg-slate-900')) {
+                                el.style.color = '#000000';
+                            } else {
+                                el.style.color = '#ffffff';
+                            }
                         });
                         // Cacher les ombres portées
                         clonedDoc.querySelectorAll('.shadow-xl, .shadow-lg, .shadow-md, .shadow-sm, .shadow-inner').forEach(el => {

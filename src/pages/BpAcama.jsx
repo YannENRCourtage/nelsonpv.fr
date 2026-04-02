@@ -932,7 +932,7 @@ function SignatureArea({ data, update }) {
         <div className="flex items-center gap-2">
           <span className="text-[12px] font-bold text-slate-700 uppercase">Fait à :</span>
           <input 
-            className="flex-1 border-b border-slate-300 outline-none text-[13px] px-1 focus:border-blue-500 bg-transparent"
+            className="flex-1 outline-none text-[13px] px-1 focus:bg-blue-50/50 bg-transparent"
             value={data.faitA || ''} 
             onChange={e => update('faitA', e.target.value)}
             placeholder=".........................................."
@@ -941,7 +941,7 @@ function SignatureArea({ data, update }) {
         <div className="flex items-center gap-2">
           <span className="text-[12px] font-bold text-slate-700 uppercase">Le :</span>
           <input 
-            className="flex-1 border-b border-slate-300 outline-none text-[13px] px-1 focus:border-blue-500 bg-transparent"
+            className="flex-1 outline-none text-[13px] px-1 focus:bg-blue-50/50 bg-transparent"
             value={data.faitLe || ''} 
             onChange={e => update('faitLe', e.target.value)}
             placeholder=".........................................."
@@ -2934,7 +2934,7 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
                  onSelect={(id) => setSelectedProject((projects || []).find(p => p.id === id))} 
                />
              </div>
-                          <Button size="sm" className="gap-2 shadow-sm" onClick={() => generateBpAcamaPDF({ 
+                          <Button size="sm" variant="outline" className="gap-2 shadow-sm border-slate-300 text-slate-900 font-bold" onClick={() => generateBpAcamaPDF({ 
                elementId: 'tab-devis-content', 
                fileName: `Devis_Technique_${selectedProject?.name || 'Projet'}.pdf` ,
                orientation: 'portrait',
