@@ -482,8 +482,8 @@ function computeBatteryProfitability(config) {
     onduleurPcs = 0,
     genieCivil = 6000,
     raccordement = 9000,
-    developpement = 2000,
-    fraisCommerciaux = 3000,
+    developpement = 5000,
+    fraisCommerciaux = 10000,
     arbitrageEnergie = 7500,
     reserveFCR = 37500,
     mecanismeCapacite = 5000,
@@ -929,10 +929,10 @@ function BatterySection({ config, setParams }) {
   const results = computeBatteryProfitability(config);
   
   // Logique Dimensionnement (Briques)
-  const powerReq = config.puissanceDemandee || 250;
+  const powerReq = config.puissanceDemandee || 125;
   const durationReq = config.dureeDecharge || 2;
-  const brickPower = 50; 
-  const brickEnergy = 100;
+  const brickPower = 125; 
+  const brickEnergy = 261;
   
   const nbBricksPower = powerReq / brickPower;
   const nbBricksEnergy = (powerReq * durationReq) / brickEnergy;
@@ -958,7 +958,17 @@ function BatterySection({ config, setParams }) {
       <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-lg">
         <GroupTitle title="Dimensionnement batterie" />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-           <Field label="Puissance demandée" value={config.puissanceDemandee || 250} onChange={v => update('puissanceDemandee', v)} type="number" suffix="kW" />
+           <div className="flex flex-col gap-1.5">
+             <label className="text-[13px] text-slate-500">Puissance demandée</label>
+             <select 
+               className="border border-slate-200 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-500 h-[30px]"
+               value={config.puissanceDemandee || 125}
+               onChange={e => update('puissanceDemandee', parseInt(e.target.value))}
+             >
+               <option value={125}>125 kW (SOLAX)</option>
+               <option value={250}>250 kW (SOLAX)</option>
+             </select>
+           </div>
            <Field label="Durée de décharge" value={config.dureeDecharge || 2} onChange={v => update('dureeDecharge', v)} type="number" suffix="heures" />
            <div className="space-y-1">
              <label className="text-[11px] text-slate-500 uppercase">Capacité réelle (kWh)</label>
@@ -973,7 +983,7 @@ function BatterySection({ config, setParams }) {
            <div className="flex items-center gap-2">
              <div className="bg-white/20 p-1.5 rounded"><Plus className="w-4 h-4" /></div>
              <span className="font-bold underline decoration-blue-300 underline-offset-4">{nbBricks} briques</span>
-             <span className="opacity-80">× 50 kW = {realPower} kW</span>
+             <span className="opacity-80">× 125 kW = {realPower} kW</span>
            </div>
            <div className="flex items-center gap-4">
              <span className="font-medium bg-white/10 px-2 py-0.5 rounded border border-white/20">{realEnergy} kWh</span>
@@ -3283,11 +3293,11 @@ export default function BpAcama() {
       batterieBms: 67250,
       onduleurPcs: 0,
       genieCivil: 6000,
-      puissanceDemandee: 250,
+      puissanceDemandee: 125,
       dureeDecharge: 2,
       raccordement: 9000,
-      developpement: 2000,
-      fraisCommerciaux: 3000,
+      developpement: 5000,
+      fraisCommerciaux: 10000,
       arbitrageEnergie: 7500,
       reserveFCR: 37500,
       mecanismeCapacite: 5000,
@@ -3319,11 +3329,11 @@ export default function BpAcama() {
       batterieBms: 67250,
       onduleurPcs: 0,
       genieCivil: 6000,
-      puissanceDemandee: 250,
+      puissanceDemandee: 125,
       dureeDecharge: 2,
       raccordement: 9000,
-      developpement: 2000,
-      fraisCommerciaux: 3000,
+      developpement: 5000,
+      fraisCommerciaux: 10000,
       arbitrageEnergie: 7500,
       reserveFCR: 37500,
       mecanismeCapacite: 5000,
