@@ -235,7 +235,7 @@ export default function Crm() {
 
   const currentUser = {
     name: user?.firstName ? `${user.firstName} ${user.lastName || ''}` : (user?.displayName || 'Utilisateur'),
-    role: user?.title || (user?.role === 'admin' ? 'Administrateur' : 'Conseiller'),
+    role: user?.title || (user?.role === 'admin' ? 'Administrateur' : ((user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) ? 'Président' : 'Conseiller')),
     avatar: user?.photoURL ? user.photoURL : (user?.firstName?.[0] || user?.displayName?.[0] || 'U').toUpperCase(),
     photoURL: user?.photoURL,
     color: user?.role === 'admin' ? 'bg-indigo-600' : 'bg-blue-600'

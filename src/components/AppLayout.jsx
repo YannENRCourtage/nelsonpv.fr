@@ -238,6 +238,7 @@ export const generatePdfForProject = async (projectData) => {
 
 function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized }) {
   const { logout, user, activeTenantId } = useAuth();
+  const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
   const navigate = useNavigate();
   const isProjectPage = useMatch("/project/:projectId/edit");
   const { project, saveProject, setProject } = useProject();
@@ -464,7 +465,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
 
             {(user?.activeTenantId === 'acama' || user?.tenantId === 'acama' ||
               user?.role === 'admin' || user?.role === 'Administrator' ||
-              user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr') && (
+              user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr' || isLaurentGuyon) && (
               <NavLink 
                 to="/bp-acama" 
                 className={({ isActive }) => {
@@ -584,6 +585,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
 
 export default function AppLayout() {
   const { user, activeTenantId } = useAuth();
+  const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isTrackingAuthorized = () => {
@@ -697,7 +699,7 @@ export default function AppLayout() {
 
             {(user?.activeTenantId === 'acama' || user?.tenantId === 'acama' ||
               user?.role === 'admin' || user?.role === 'Administrator' ||
-              user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr') && (
+              user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr' || isLaurentGuyon) && (
               <NavLink
                 to="/bp-acama"
                 className={({ isActive }) => {
