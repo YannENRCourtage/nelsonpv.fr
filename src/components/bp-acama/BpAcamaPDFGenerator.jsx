@@ -66,7 +66,7 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
 
                     clonedDoc.querySelectorAll('.pdf-header-container').forEach(el => {
                         el.style.setProperty('padding', '0', 'important'); // Remove internal padding to eliminate white bands
-                        el.style.setProperty('padding-top', '5mm', 'important');
+                        el.style.setProperty('padding-top', id === 'pdf-section-1' ? '2mm' : '5mm', 'important');
                         el.style.setProperty('height', 'auto', 'important');
                     });
                     
@@ -76,7 +76,7 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName }) {
                     });
 
                     clonedDoc.querySelectorAll('.space-y-8, .space-y-6, .gap-6, .gap-y-6').forEach(el => {
-                        el.style.setProperty('gap', '2mm', 'important');
+                        el.style.setProperty('gap', id === 'pdf-section-1' ? '1mm' : '2mm', 'important');
                     });
                     
                     clonedDoc.querySelectorAll('.recharts-responsive-container, .recharts-wrapper, table').forEach(el => {

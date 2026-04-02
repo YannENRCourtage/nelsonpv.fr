@@ -1208,7 +1208,7 @@ function TabBpProjets({
   isGreenInvest 
 }) {
   const PDFHeader = () => (
-    <div className="pdf-header hidden flex flex-row items-start w-full mb-6 border-b-2 border-slate-800 pb-4">
+    <div className="pdf-header hidden flex flex-row items-start w-full mb-2 pb-1">
       <div className="flex-1">
         <img src="/logo-nelson.png" alt="Logo" className="h-14 w-auto object-contain" />
       </div>
@@ -1583,9 +1583,9 @@ function TabBpProjets({
         )}
       </div>
 
-      <div id="pdf-section-1" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
+      <div id="pdf-section-1" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-4 pt-6 relative overflow-hidden">
         <PDFHeader selectedProject={selectedProject} />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2 items-stretch">
           {/* Column 1: Projects and Investment (Widened) */}
           <div className="lg:col-span-12 xl:col-span-5 space-y-8 flex flex-col h-full">
             <SectionCard 
