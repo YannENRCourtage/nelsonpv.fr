@@ -75,13 +75,11 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                         }
                         
                         textEl.textContent = valueText;
-                        el.parentNode.insertBefore(textEl, el);
-                        el.style.display = 'none';
-                        const suffixEl = parent.querySelector('span.text-slate-500') || parent.querySelector('span.text-slate-400');
-                        if (suffixEl) {
-                            suffixEl.style.display = 'none';
-                            if (suffixEl.textContent) textEl.textContent += ' ' + suffixEl.textContent.trim();
-                        }
+                        el.parentNode.style.display = 'flex';
+                        el.parentNode.style.flexDirection = 'row';
+                        el.parentNode.style.alignItems = 'center';
+                        el.parentNode.style.gap = '4px';
+                        el.replaceWith(textEl);
                     });
 
                     // Mode CLEAN : Supprimer les fonds de couleur pour les devis/propositions

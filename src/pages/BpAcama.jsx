@@ -948,12 +948,6 @@ function SignatureArea({ data, update }) {
           />
         </div>
       </div>
-      <div className="flex flex-col items-center justify-start pt-2">
-        <span className="text-[12px] font-bold text-slate-700 uppercase mb-12">Signature du client</span>
-        <div className="w-full h-24 border border-dashed border-slate-300 rounded flex items-center justify-center text-slate-300 text-[10px] uppercase tracking-widest">
-          Cadre réservé à la signature
-        </div>
-      </div>
     </div>
   );
 }
@@ -2981,8 +2975,8 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
                </div>
              </div>
              <div className="text-right flex flex-col items-end">
-                 <div className="bg-[#002060] text-white p-4 rounded-md shadow-md text-left min-w-[300px] border-l-4 border-blue-400">
-                  <div className="font-bold border-b border-blue-800/50 pb-1 mb-2 uppercase text-[12px] tracking-widest text-blue-200">Informations Client</div>
+                 <div className="bg-[#002060] text-white p-4 rounded-md shadow-md text-left min-w-[300px]">
+                  <div className="font-bold uppercase text-[12px] tracking-widest text-blue-200">Informations Client</div>
                   <div className="space-y-1 text-sm">
                     <p><span className="text-blue-300 font-medium mr-2">Nom / Prénom :</span> <span className="font-bold uppercase">{selectedProject?.name || selectedProject?.client_name || '—'} {selectedProject?.firstName || selectedProject?.client_firstname || ''}</span></p>
                     <p><span className="text-blue-300 font-medium mr-2">Adresse :</span> <span className="font-bold">{selectedProject?.address || '—'}</span></p>
