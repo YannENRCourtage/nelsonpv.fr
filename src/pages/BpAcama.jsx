@@ -490,7 +490,8 @@ function computeBatteryProfitability(config) {
     effacement = 5000,
     disponibilite = 98,
     rendementRoundTrip = 88,
-    maintenanceAn = 2000,
+    maintenanceAn = 1500,
+    revenuBailleurAn = 2000,
     assuranceAn = 390,
     commissionAgregateur = 20,
     turpeAn = 5000,
@@ -519,7 +520,7 @@ function computeBatteryProfitability(config) {
     const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
 
     const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100);
-    const chargesFixes = (maintenanceAn + assuranceAn + turpeAn + iferAn) * infl;
+    const chargesFixes = (maintenanceAn + assuranceAn + turpeAn + iferAn + revenuBailleurAn) * infl;
     const chargesCom = revNet * (commissionAgregateur / 100);
     const ebe = revNet - (chargesFixes + chargesCom);
 
@@ -963,7 +964,17 @@ function BatterySection({ config, setParams }) {
              <select 
                className="border border-slate-200 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-500 h-[30px]"
                value={config.puissanceDemandee || 125}
-               onChange={e => update('puissanceDemandee', parseInt(e.target.value))}
+               onChange={e => {
+                 const p = parseInt(e.target.value);
+                 setParams(prev => ({
+                   ...prev,
+                   batteryConfig: { 
+                     ...prev.batteryConfig, 
+                     puissanceDemandee: p,
+                     revenuBailleurAn: 2000 * (p / 125) 
+                   }
+                 }));
+               }}
              >
                <option value={125}>125 kW (SOLAX)</option>
                <option value={250}>250 kW (SOLAX)</option>
@@ -977,17 +988,6 @@ function BatterySection({ config, setParams }) {
            <div className="space-y-1">
              <label className="text-[11px] text-slate-500 uppercase">Puissance réelle (kW)</label>
              <div className="text-lg font-bold text-slate-900">{fmt(realPower, 0)} kW</div>
-           </div>
-        </div>
-        <div className="mt-4 p-3 bg-blue-600 text-white rounded flex items-center justify-between text-sm shadow-sm">
-           <div className="flex items-center gap-2">
-             <div className="bg-white/20 p-1.5 rounded"><Plus className="w-4 h-4" /></div>
-             <span className="font-bold underline decoration-blue-300 underline-offset-4">{nbBricks} briques</span>
-             <span className="opacity-80">× 125 kW = {realPower} kW</span>
-           </div>
-           <div className="flex items-center gap-4">
-             <span className="font-medium bg-white/10 px-2 py-0.5 rounded border border-white/20">{realEnergy} kWh</span>
-             <span className="font-black opacity-90">C/{ (1/cRate).toFixed(0) }</span>
            </div>
         </div>
       </div>
@@ -1023,6 +1023,7 @@ function BatterySection({ config, setParams }) {
           <GroupTitle title="Charges & Hypothèses - OPEX" />
           <div className="grid grid-cols-1 gap-2">
             <Field label="Maintenance /an" value={config.maintenanceAn} onChange={v => update('maintenanceAn', v)} type="number" suffix="€" />
+            <Field label="Revenu bailleur" value={config.revenuBailleurAn || (2000 * ((config.puissanceDemandee || 125) / 125))} onChange={v => update('revenuBailleurAn', v)} type="number" suffix="€" />
             <Field label="Assurance /an" value={config.assuranceAn} onChange={v => update('assuranceAn', v)} type="number" suffix="€" />
             <Field label="Comm. Agrégateur" value={config.commissionAgregateur} onChange={v => update('commissionAgregateur', v)} type="number" suffix="%" />
             <Field label="TURPE /an" value={config.turpeAn} onChange={v => update('turpeAn', v)} type="number" suffix="€" />
@@ -3304,7 +3305,8 @@ export default function BpAcama() {
       effacement: 5000,
       disponibilite: 98,
       rendementRoundTrip: 88,
-      maintenanceAn: 2000,
+      maintenanceAn: 1500,
+      revenuBailleurAn: 2000,
       assuranceAn: 390,
       commissionAgregateur: 20,
       turpeAn: 5000,
@@ -3340,7 +3342,8 @@ export default function BpAcama() {
       effacement: 5000,
       disponibilite: 98,
       rendementRoundTrip: 88,
-      maintenanceAn: 2000,
+      maintenanceAn: 1500,
+      revenuBailleurAn: 2000,
       assuranceAn: 390,
       commissionAgregateur: 20,
       turpeAn: 5000,
