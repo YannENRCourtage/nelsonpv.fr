@@ -3594,6 +3594,14 @@ export default function BpAcama() {
       } else {
         // Also merge any missing properties just in case
         saved.batteryConfig = { ...defaultBatteryConfig, ...saved.batteryConfig };
+        
+        // AUTO-MIGRATION: If project has old defaults, update to new standards
+        if (saved.batteryConfig.batterieBms === 33625) saved.batteryConfig.batterieBms = 50209;
+        if (saved.batteryConfig.raccordement === 9000) saved.batteryConfig.raccordement = 19900;
+        if (saved.batteryConfig.developpement === 5000) saved.batteryConfig.developpement = 6000;
+        if (saved.batteryConfig.assuranceAn === 240 || saved.batteryConfig.assuranceAn === 390) saved.batteryConfig.assuranceAn = 353;
+        if (saved.batteryConfig.turpeAn === 5000) saved.batteryConfig.turpeAn = 2500;
+        if (saved.batteryConfig.iferAn === 1250) saved.batteryConfig.iferAn = 625;
       }
 
       // Enrich saved state with missing building types, products & power from map
