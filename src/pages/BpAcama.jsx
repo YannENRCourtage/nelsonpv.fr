@@ -481,7 +481,7 @@ function computeBatteryProfitability(config) {
     batterieBms = 50209,
     genieCivil = 6000,
     raccordement = 19900,
-    developpement = 5000,
+    developpement = 6000,
     fraisCommerciaux = 10000,
     arbitrageEnergie = 7500,
     reserveFCR = 37500,
@@ -1099,7 +1099,10 @@ function BatterySection({ config, setParams }) {
                  // Nouveau Génie Civil : 6000€ base + 1300€ par tranche de 125kW suppl
                  const newGenieCivil = 6000 + (nbB - 1) * 1300;
                  
-                 const capexPlusRacc = batteryBms + newGenieCivil + newRaccordement + 5000 + fraisComm;
+                 // Nouveau Développement : 6000€ base + 500€ par tranche de 125kW suppl
+                 const newDeveloppement = 6000 + (nbB - 1) * 500;
+                 
+                 const capexPlusRacc = batteryBms + newGenieCivil + newRaccordement + newDeveloppement + fraisComm;
                  
                  setParams(prev => ({
                    ...prev,
@@ -1172,7 +1175,14 @@ function BatterySection({ config, setParams }) {
                 suffix="€" 
                 readOnly
               />
-              <Field label="Développement" value={config.developpement} onChange={v => update('developpement', v)} type="number" suffix="€" />
+              <Field 
+                label="Développement" 
+                value={config.developpement || (6000 + ((config.puissanceDemandee || 125) / 125 - 1) * 500)} 
+                onChange={v => update('developpement', v)} 
+                type="number" 
+                suffix="€" 
+                readOnly
+              />
               <Field label="Frais comm." value={config.fraisCommerciaux} onChange={v => update('fraisCommerciaux', v)} type="number" suffix="€" />
             </div>
           </div>
