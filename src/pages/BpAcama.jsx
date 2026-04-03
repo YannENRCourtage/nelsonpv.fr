@@ -479,9 +479,8 @@ function computeBatteryProfitability(config) {
     inflationAnnuelle = 2,
     degradationAnnuelle = 2,
     batterieBms = 67250,
-    onduleurPcs = 0,
     genieCivil = 6000,
-    raccordement = 9000,
+    raccordement = 0,
     developpement = 5000,
     fraisCommerciaux = 10000,
     arbitrageEnergie = 7500,
@@ -503,7 +502,7 @@ function computeBatteryProfitability(config) {
     tauxIS = 25
   } = config;
 
-  const capexTotal = batterieBms + onduleurPcs + genieCivil + raccordement + developpement + fraisCommerciaux;
+  const capexTotal = batterieBms + genieCivil + raccordement + developpement + fraisCommerciaux;
   const revenusBrutsAn1 = arbitrageEnergie + reserveFCR + mecanismeCapacite + effacement;
   
   const emprunt = Math.max(0, capexTotal - apport);
@@ -550,12 +549,14 @@ function computeBatteryProfitability(config) {
     }
   }
 
+  const simplePayback = resY1.ebe > 0 ? (capexTotal / resY1.ebe) : 20;
+
   return {
     capexTotal,
     revenuAn1: resY1.revNet,
     ebeAn1: resY1.ebe,
     triProjet: IRR(cashFlows, 0.1),
-    payback: paybackMonth || 20,
+    payback: simplePayback,
     dscrAn1: resY1.dscr,
     gainNet20A: totalNetGain
   };
@@ -1041,6 +1042,7 @@ function BatterySection({ config, setParams }) {
                      retributionCommAn: rettComm,
                      turpeAn: 20 * p,
                      iferAn: 5 * p,
+                     onduleurPcs: 0,
                      assuranceAn: Math.round(capexPlusRacc * 0.004)
                    }
                  }));
@@ -1077,20 +1079,16 @@ function BatterySection({ config, setParams }) {
             <GroupTitle title="Investissement Initial - CAPEX" />
             <div className="grid grid-cols-1 gap-2">
               <Field label="Batterie + BMS" value={config.batterieBms} onChange={v => update('batterieBms', v)} type="number" suffix="€" />
-              <Field label="Onduleur / PCS" value={config.onduleurPcs} onChange={v => update('onduleurPcs', v)} type="number" suffix="€" />
               <Field label="Génie civil" value={config.genieCivil} onChange={v => update('genieCivil', v)} type="number" suffix="€" />
-              <div className="relative group">
-                <Field 
-                  label="Raccordement" 
-                  value={config.raccordement || calculatedRaccordement} 
-                  onChange={v => update('raccordement', v)} 
-                  type="number" 
-                  suffix="€" 
-                  readOnly
-                  className="bg-slate-50 opacity-80"
-                />
-                <div className="hidden group-hover:block absolute -top-8 left-0 right-0 bg-slate-800 text-white text-[10px] p-1 rounded text-center z-10">Calculé via données du projet</div>
-              </div>
+              <Field 
+                label="Raccordement" 
+                value={config.raccordement || calculatedRaccordement} 
+                onChange={v => update('raccordement', v)} 
+                type="number" 
+                suffix="€" 
+                readOnly
+                className="bg-slate-50 opacity-80"
+              />
               <Field label="Développement" value={config.developpement} onChange={v => update('developpement', v)} type="number" suffix="€" />
               <Field label="Frais comm." value={config.fraisCommerciaux} onChange={v => update('fraisCommerciaux', v)} type="number" suffix="€" />
             </div>
