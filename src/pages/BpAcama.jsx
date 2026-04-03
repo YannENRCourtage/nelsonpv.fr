@@ -478,9 +478,9 @@ function computeBatteryProfitability(config) {
   const {
     inflationAnnuelle = 2,
     degradationAnnuelle = 2,
-    batterieBms = 67250,
+    batterieBms = 50209,
     genieCivil = 6000,
-    raccordement = 0,
+    raccordement = 19900,
     developpement = 5000,
     fraisCommerciaux = 10000,
     arbitrageEnergie = 7500,
@@ -1088,7 +1088,7 @@ function BatterySection({ config, setParams }) {
                  const nbB = p / 125;
                  const revBruts = (30 * p) + (150 * p) + (20 * p) + (20 * p);
                  const rettComm = Math.round(revBruts * 0.02);
-                 const batteryBms = 33625 * nbB;
+                 const batteryBms = 50209 * nbB;
                  const fraisComm = 50 * p;
                  
                  // Nouveau raccordement basé sur les champs DONNEES DU PROJET
