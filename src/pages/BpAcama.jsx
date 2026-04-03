@@ -496,8 +496,8 @@ function computeBatteryProfitability(config) {
     commissionAgregateur = 20,
     turpeAn = 5000,
     iferAn = 1250,
-    tauxEmprunt = 3.9,
-    dureeEmprunt = 12,
+    tauxEmprunt = 4,
+    dureeEmprunt = 20,
     apport = 0,
     tauxIS = 25,
     dureeEtude = 20
@@ -973,9 +973,9 @@ function SignatureArea({ data, update }) {
 function TableauPrevisionnelBatterie({ rows }) {
   const DataRow = ({ label, propName, isCurrency, format, bold, className }) => (
     <tr className={`border-b border-slate-200 bg-white hover:bg-slate-50 ${className}`}>
-      <td className={`px-2 py-1 font-medium bg-slate-50 text-[10px] border-r border-slate-200 w-[160px] ${bold ? 'font-bold' : ''}`}>{label}</td>
+      <td className={`px-2 py-1 font-medium bg-slate-50 text-[11px] border-r border-slate-200 w-[180px] ${bold ? 'font-bold' : ''}`}>{label}</td>
       {rows.map((r, i) => (
-        <td key={i} className={`px-1 py-1 text-right border-r border-slate-200 text-[10px] min-w-[50px] ${bold ? 'font-bold' : ''}`}>
+        <td key={i} className={`px-1 py-1 text-right border-r border-slate-200 text-[11px] min-w-[50px] ${bold ? 'font-bold' : ''}`}>
           {format ? format(r[propName]) : (isCurrency ? fmtEur(r[propName]) : fmt(r[propName], 0))}
         </td>
       ))}
@@ -989,14 +989,14 @@ function TableauPrevisionnelBatterie({ rows }) {
         <table className="w-full border-collapse border border-slate-200">
           <thead>
             <tr className="bg-slate-100">
-              <td className="p-2 border-r border-b border-slate-200 text-[10px] font-bold w-[160px]">Indicateurs</td>
+              <td className="p-2 border-r border-b border-slate-200 text-[11px] font-bold w-[180px]">Indicateurs</td>
               {rows.map((r, i) => (
-                <td key={i} className="p-1 border-r border-b border-slate-200 text-center font-bold bg-slate-50 text-[10px]">{r.year}</td>
+                <td key={i} className="p-1 border-r border-b border-slate-200 text-center font-bold bg-slate-50 text-[11px]">{r.year}</td>
               ))}
             </tr>
           </thead>
           <tbody>
-            <tr className="bg-amber-400 text-slate-900 font-bold uppercase text-[10px]">
+            <tr className="bg-amber-400 text-slate-900 font-bold uppercase text-[11px]">
               <td className="px-2 py-1 border-r border-b border-slate-300">Chiffre d'Affaires (HT)</td>
               {rows.map((_, i) => <td key={i} className="border-r border-b border-slate-300"></td>)}
             </tr>
@@ -1006,14 +1006,14 @@ function TableauPrevisionnelBatterie({ rows }) {
             <DataRow label="Effacement" propName="effacement" isCurrency />
             <DataRow label="TOTAL REVENUS" propName="caTotal" isCurrency bold className="bg-slate-50" />
 
-            <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
+            <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[11px]">
               <td className="px-2 py-1 border-r border-b border-slate-200">Charges & Résultats</td>
               {rows.map((_, i) => <td key={i} className="border-r border-b border-slate-200"></td>)}
             </tr>
             <DataRow label="Charges d'Exploitation (OPEX)" propName="opex" isCurrency />
             <DataRow label="Service de la Dette" propName="serviceDette" isCurrency />
             <DataRow label="EBITDA (EBE)" propName="ebe" isCurrency bold className="bg-blue-50 text-blue-800" />
-            <tr className="bg-amber-400 font-black text-slate-900 text-[10px]">
+            <tr className="bg-amber-400 font-black text-slate-900 text-[11px]">
               <td className="px-2 py-1 uppercase border-r border-slate-300">Trésorerie nette annuelle</td>
               {rows.map((r, i) => (
                 <td key={i} className="px-1 py-1 text-right border-r border-slate-300">{fmtEur(r.tresorerie)}</td>
@@ -1190,6 +1190,14 @@ function BatterySection({ config, setParams }) {
                <Field label="Rendement R-T" value={config.rendementRoundTrip} onChange={v => update('rendementRoundTrip', v)} type="number" suffix="%" />
             </div>
           </div>
+
+          <div className="pt-2">
+            <GroupTitle title="Financement" />
+            <div className="grid grid-cols-1 gap-2">
+              <Field label="Durée" value={config.dureeEmprunt || 20} onChange={v => update('dureeEmprunt', v)} type="number" suffix="ans" />
+              <Field label="Taux" value={config.tauxEmprunt || 4} onChange={v => update('tauxEmprunt', v)} type="number" suffix="%" />
+            </div>
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -1271,7 +1279,7 @@ function TableauPrevisionnel({ params, rows }) {
   };
 
   return (
-    <SectionCard title="PLAN D'AFFAIRES PREVISIONNEL" className="p-0 border-none shadow-none">
+    <SectionCard title="PLAN D'AFFAIRES PREVISIONNEL BATIMENT" className="p-0 border-none shadow-none">
       <div className="overflow-x-auto w-full">
         <table className="text-[11px] w-full border-collapse">
           <thead>
