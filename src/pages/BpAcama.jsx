@@ -499,7 +499,8 @@ function computeBatteryProfitability(config) {
     tauxEmprunt = 3.9,
     dureeEmprunt = 12,
     apport = 0,
-    tauxIS = 25
+    tauxIS = 25,
+    dureeEtude = 20
   } = config;
 
   const capexTotal = batterieBms + genieCivil + raccordement + developpement + fraisCommerciaux;
@@ -515,7 +516,8 @@ function computeBatteryProfitability(config) {
   let runningCashFlow = -capexTotal;
   let resY1 = {};
 
-  for (let y = 1; y <= 20; y++) {
+  const rows = [];
+  for (let y = 1; y <= dureeEtude; y++) {
     const infl = Math.pow(1 + inflationAnnuelle / 100, y - 1);
     const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
 
@@ -527,7 +529,7 @@ function computeBatteryProfitability(config) {
     const interest = y <= dureeEmprunt ? remainingDebt * (tauxEmprunt / 100) : 0;
     const principal = y <= dureeEmprunt ? annuite - interest : 0;
     
-    const amortissement = capexTotal / 20;
+    const amortissement = capexTotal / dureeEtude;
     const ebit = ebe - amortissement - interest;
     const is = ebit > 0 ? ebit * (tauxIS / 100) : 0;
     
@@ -544,6 +546,20 @@ function computeBatteryProfitability(config) {
     remainingDebt = Math.max(0, remainingDebt - principal);
     totalNetGain += cashFlow;
 
+    const yearLabel = 2026 + y - 1;
+    rows.push({
+      year: yearLabel,
+      arbitrage: arbitrageEnergie * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
+      reserve: reserveFCR * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
+      capacite: mecanismeCapacite * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
+      effacement: effacement * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
+      caTotal: revNet,
+      opex: chargesFixes + chargesCom,
+      serviceDette: interest + principal,
+      ebe,
+      tresorerie: cashFlow
+    });
+
     if (y === 1) {
       resY1 = { revNet, ebe, dscr: annuite > 0 ? ebe / annuite : 9.99 };
     }
@@ -558,7 +574,8 @@ function computeBatteryProfitability(config) {
     triProjet: IRR(cashFlows, 0.1),
     payback: simplePayback,
     dscrAn1: resY1.dscr,
-    gainNet20A: totalNetGain
+    gainNet20A: totalNetGain,
+    rows
   };
 }
 
@@ -953,6 +970,62 @@ function SignatureArea({ data, update }) {
   );
 }
 
+function TableauPrevisionnelBatterie({ rows }) {
+  const DataRow = ({ label, propName, isCurrency, format, bold, className }) => (
+    <tr className={`border-b border-slate-200 bg-white hover:bg-slate-50 ${className}`}>
+      <td className={`px-2 py-1 font-medium bg-slate-50 text-[10px] border-r border-slate-200 w-[160px] ${bold ? 'font-bold' : ''}`}>{label}</td>
+      {rows.map((r, i) => (
+        <td key={i} className={`px-1 py-1 text-right border-r border-slate-200 text-[10px] min-w-[50px] ${bold ? 'font-bold' : ''}`}>
+          {format ? format(r[propName]) : (isCurrency ? fmtEur(r[propName]) : fmt(r[propName], 0))}
+        </td>
+      ))}
+    </tr>
+  );
+
+  return (
+    <div className="mt-6 border-t pt-4">
+      <h4 className="text-[12px] font-black text-blue-600 uppercase mb-3 px-1">Plan d'Affaires Prévisionnel Batterie Stand-Alone</h4>
+      <div className="overflow-x-auto w-full custom-scrollbar">
+        <table className="w-full border-collapse border border-slate-200">
+          <thead>
+            <tr className="bg-slate-100">
+              <td className="p-2 border-r border-b border-slate-200 text-[10px] font-bold w-[160px]">Indicateurs</td>
+              {rows.map((r, i) => (
+                <td key={i} className="p-1 border-r border-b border-slate-200 text-center font-bold bg-slate-50 text-[10px]">{r.year}</td>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="bg-amber-400 text-slate-900 font-bold uppercase text-[10px]">
+              <td className="px-2 py-1 border-r border-b border-slate-300">Chiffre d'Affaires (HT)</td>
+              {rows.map((_, i) => <td key={i} className="border-r border-b border-slate-300"></td>)}
+            </tr>
+            <DataRow label="Arbitrage énergie" propName="arbitrage" isCurrency />
+            <DataRow label="Réserve (FCR/aFRR)" propName="reserve" isCurrency />
+            <DataRow label="Mécanisme capacité" propName="capacite" isCurrency />
+            <DataRow label="Effacement" propName="effacement" isCurrency />
+            <DataRow label="TOTAL REVENUS" propName="caTotal" isCurrency bold className="bg-slate-50" />
+
+            <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
+              <td className="px-2 py-1 border-r border-b border-slate-200">Charges & Résultats</td>
+              {rows.map((_, i) => <td key={i} className="border-r border-b border-slate-200"></td>)}
+            </tr>
+            <DataRow label="Charges d'Exploitation (OPEX)" propName="opex" isCurrency />
+            <DataRow label="Service de la Dette" propName="serviceDette" isCurrency />
+            <DataRow label="EBITDA (EBE)" propName="ebe" isCurrency bold className="bg-blue-50 text-blue-800" />
+            <tr className="bg-amber-400 font-black text-slate-900 text-[10px]">
+              <td className="px-2 py-1 uppercase border-r border-slate-300">Trésorerie nette annuelle</td>
+              {rows.map((r, i) => (
+                <td key={i} className="px-1 py-1 text-right border-r border-slate-300">{fmtEur(r.tresorerie)}</td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function BatterySection({ config, setParams }) {
   if (!config.enabled) return null;
 
@@ -1090,7 +1163,6 @@ function BatterySection({ config, setParams }) {
                 type="number" 
                 suffix="€" 
                 readOnly
-                className="bg-slate-50 opacity-80"
               />
               <Field 
                 label="Raccordement" 
@@ -1099,7 +1171,6 @@ function BatterySection({ config, setParams }) {
                 type="number" 
                 suffix="€" 
                 readOnly
-                className="bg-slate-50 opacity-80"
               />
               <Field label="Développement" value={config.developpement} onChange={v => update('developpement', v)} type="number" suffix="€" />
               <Field label="Frais comm." value={config.fraisCommerciaux} onChange={v => update('fraisCommerciaux', v)} type="number" suffix="€" />
@@ -1132,6 +1203,16 @@ function BatterySection({ config, setParams }) {
             <Field label="TURPE /an" value={config.turpeAn} onChange={v => update('turpeAn', v)} type="number" suffix="€" />
             <Field label="IFER /an" value={config.iferAn} onChange={v => update('iferAn', v)} type="number" suffix="€" />
             <div className="pt-2 border-t border-slate-100 mt-2">
+               <div className="flex flex-col gap-1.5 mb-2">
+                 <label className="text-[13px] text-slate-500">Durée d'étude</label>
+                 <select 
+                   className="border border-slate-200 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-500 h-[30px]"
+                   value={config.dureeEtude || 20}
+                   onChange={e => update('dureeEtude', parseInt(e.target.value))}
+                 >
+                   {[10, 15, 20, 25, 30].map(v => <option key={v} value={v}>{v} ans</option>)}
+                 </select>
+               </div>
                <Field label="Inflation ann." value={config.inflationAnnuelle} onChange={v => update('inflationAnnuelle', v)} type="number" suffix="%" />
                <Field label="Dégradation ann." value={config.degradationAnnuelle} onChange={v => update('degradationAnnuelle', v)} type="number" suffix="%" />
             </div>
@@ -1163,6 +1244,8 @@ function BatterySection({ config, setParams }) {
            </div>
         </div>
       </div>
+
+      <TableauPrevisionnelBatterie rows={results.rows} />
     </SectionCard>
   );
 }
