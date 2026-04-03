@@ -1022,8 +1022,11 @@ function BatterySection({ config, setParams }) {
                  const rHT = config.raccordementHT || 100;
                  const dPriv = config.distancePriv || 100;
                  const newRaccordement = getHtaCost(p, rHT) + (dPriv * 20);
+
+                 // Nouveau Génie Civil : 6000€ base + 1300€ par tranche de 125kW suppl
+                 const newGenieCivil = 6000 + (nbB - 1) * 1300;
                  
-                 const capexPlusRacc = batteryBms + 0 + 6000 + newRaccordement + 5000 + fraisComm;
+                 const capexPlusRacc = batteryBms + newGenieCivil + newRaccordement + 5000 + fraisComm;
                  
                  setParams(prev => ({
                    ...prev,
@@ -1031,6 +1034,7 @@ function BatterySection({ config, setParams }) {
                      ...prev.batteryConfig, 
                      puissanceDemandee: p,
                      batterieBms: batteryBms,
+                     genieCivil: newGenieCivil,
                      fraisCommerciaux: fraisComm,
                      raccordement: newRaccordement,
                      arbitrageEnergie: 30 * p,
@@ -1079,7 +1083,15 @@ function BatterySection({ config, setParams }) {
             <GroupTitle title="Investissement Initial - CAPEX" />
             <div className="grid grid-cols-1 gap-2">
               <Field label="Batterie + BMS" value={config.batterieBms} onChange={v => update('batterieBms', v)} type="number" suffix="€" />
-              <Field label="Génie civil" value={config.genieCivil} onChange={v => update('genieCivil', v)} type="number" suffix="€" />
+              <Field 
+                label="Génie civil" 
+                value={config.genieCivil || (6000 + ((config.puissanceDemandee || 125) / 125 - 1) * 1300)} 
+                onChange={v => update('genieCivil', v)} 
+                type="number" 
+                suffix="€" 
+                readOnly
+                className="bg-slate-50 opacity-80"
+              />
               <Field 
                 label="Raccordement" 
                 value={config.raccordement || calculatedRaccordement} 
