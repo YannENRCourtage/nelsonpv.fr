@@ -1195,7 +1195,7 @@ function BatterySection({ config, setParams }) {
             <GroupTitle title="Financement" />
             <div className="grid grid-cols-1 gap-2">
               <Field label="Durée" value={config.dureeEmprunt || 20} onChange={v => update('dureeEmprunt', v)} type="number" suffix="ans" />
-              <Field label="Taux" value={config.tauxEmprunt || 4} onChange={v => update('tauxEmprunt', v)} type="number" suffix="%" />
+              <Field label="Taux" value={config.tauxEmprunt || 4} onChange={v => update('tauxEmprunt', v)} type="number" suffix="%" step={0.1} />
             </div>
           </div>
         </div>
