@@ -962,7 +962,9 @@ function BatterySection({ config, setParams }) {
   const durationReq = config.dureeDecharge || 2;
   const brickPower = 125; 
   const brickEnergy = 261;
-  
+  const raccordementHT = config.raccordementHT || 100;
+  const distancePriv = config.distancePriv || 100;
+
   const nbBricksPower = powerReq / brickPower;
   const nbBricksEnergy = (powerReq * durationReq) / brickEnergy;
   const nbBricks = Math.ceil(Math.max(nbBricksPower, nbBricksEnergy));
@@ -971,11 +973,26 @@ function BatterySection({ config, setParams }) {
   const realEnergy = nbBricks * brickEnergy;
   const cRate = realEnergy > 0 ? (realPower / realEnergy).toFixed(1) : 0;
 
+  // Calcul du raccordement automatisé
+  const calculatedRaccordement = getHtaCost(powerReq, raccordementHT) + (distancePriv * 20);
+
   const update = (k, v) => {
-    setParams(prev => ({
-      ...prev,
-      batteryConfig: { ...(prev.batteryConfig || {}), [k]: v }
-    }));
+    setParams(prev => {
+      const newConfig = { ...(prev.batteryConfig || {}), [k]: v };
+      
+      // Si modification liée au raccordement, on recalcule le champ raccordement du CAPEX
+      if (k === 'raccordementHT' || k === 'distancePriv') {
+        const pReq = newConfig.puissanceDemandee || 125;
+        const rHT = newConfig.raccordementHT || 100;
+        const dPriv = newConfig.distancePriv || 100;
+        newConfig.raccordement = getHtaCost(pReq, rHT) + (dPriv * 20);
+      }
+      
+      return {
+        ...prev,
+        batteryConfig: newConfig
+      };
+    });
   };
 
   const GroupTitle = ({ title }) => <h4 className="text-[11px] font-black text-blue-600 uppercase mb-2 border-b border-blue-100 pb-1">{title}</h4>;
@@ -984,11 +1001,11 @@ function BatterySection({ config, setParams }) {
     <SectionCard title="RENTABILITÉ BATTERIE STAND-ALONE" id="pdf-section-battery" className="bg-white border-t-4 border-t-blue-600 shadow-lg">
       
       {/* Sizing Section */}
-      <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+      <div className="mb-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
         <GroupTitle title="Dimensionnement batterie" />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
            <div className="flex flex-col gap-1.5">
-             <label className="text-[13px] text-slate-500">Puissance demandée</label>
+             <label className="text-[13px] text-slate-500">Puissance installée</label>
              <select 
                className="border border-slate-200 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-500 h-[30px]"
                value={config.puissanceDemandee || 125}
@@ -999,7 +1016,13 @@ function BatterySection({ config, setParams }) {
                  const rettComm = Math.round(revBruts * 0.02);
                  const batteryBms = 33625 * nbB;
                  const fraisComm = 50 * p;
-                 const capexTot = batteryBms + 0 + 6000 + 9000 + 5000 + fraisComm;
+                 
+                 // Nouveau raccordement basé sur les champs DONNEES DU PROJET
+                 const rHT = config.raccordementHT || 100;
+                 const dPriv = config.distancePriv || 100;
+                 const newRaccordement = getHtaCost(p, rHT) + (dPriv * 20);
+                 
+                 const capexPlusRacc = batteryBms + 0 + 6000 + newRaccordement + 5000 + fraisComm;
                  
                  setParams(prev => ({
                    ...prev,
@@ -1008,6 +1031,7 @@ function BatterySection({ config, setParams }) {
                      puissanceDemandee: p,
                      batterieBms: batteryBms,
                      fraisCommerciaux: fraisComm,
+                     raccordement: newRaccordement,
                      arbitrageEnergie: 30 * p,
                      reserveFCR: 150 * p,
                      mecanismeCapacite: 20 * p,
@@ -1017,13 +1041,14 @@ function BatterySection({ config, setParams }) {
                      retributionCommAn: rettComm,
                      turpeAn: 20 * p,
                      iferAn: 5 * p,
-                     assuranceAn: Math.round(capexTot * 0.004)
+                     assuranceAn: Math.round(capexPlusRacc * 0.004)
                    }
                  }));
                }}
              >
-               <option value={125}>125 kW (SOLAX)</option>
-               <option value={250}>250 kW (SOLAX)</option>
+               {[125, 250, 375, 500, 625, 750, 875, 1000, 1125, 1250].map(val => (
+                 <option key={val} value={val}>{val} kW (SOLAX)</option>
+               ))}
              </select>
            </div>
            <Field label="Durée de décharge" value={config.dureeDecharge || 2} onChange={v => update('dureeDecharge', v)} type="number" suffix="heures" />
@@ -1040,14 +1065,35 @@ function BatterySection({ config, setParams }) {
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         <div className="space-y-4">
-          <GroupTitle title="Investissement Initial - CAPEX" />
-          <div className="grid grid-cols-1 gap-2">
-            <Field label="Batterie + BMS" value={config.batterieBms} onChange={v => update('batterieBms', v)} type="number" suffix="€" />
-            <Field label="Onduleur / PCS" value={config.onduleurPcs} onChange={v => update('onduleurPcs', v)} type="number" suffix="€" />
-            <Field label="Génie civil" value={config.genieCivil} onChange={v => update('genieCivil', v)} type="number" suffix="€" />
-            <Field label="Raccordement" value={config.raccordement} onChange={v => update('raccordement', v)} type="number" suffix="€" />
-            <Field label="Développement" value={config.developpement} onChange={v => update('developpement', v)} type="number" suffix="€" />
-            <Field label="Frais comm." value={config.fraisCommerciaux} onChange={v => update('fraisCommerciaux', v)} type="number" suffix="€" />
+          <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+            <GroupTitle title="DONNEES DU PROJET" />
+            <div className="grid grid-cols-1 gap-2">
+              <Field label="Raccordement HT" value={config.raccordementHT || 100} onChange={v => update('raccordementHT', v)} type="number" suffix="m" />
+              <Field label="Distance privée" value={config.distancePriv || 100} onChange={v => update('distancePriv', v)} type="number" suffix="m" />
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <GroupTitle title="Investissement Initial - CAPEX" />
+            <div className="grid grid-cols-1 gap-2">
+              <Field label="Batterie + BMS" value={config.batterieBms} onChange={v => update('batterieBms', v)} type="number" suffix="€" />
+              <Field label="Onduleur / PCS" value={config.onduleurPcs} onChange={v => update('onduleurPcs', v)} type="number" suffix="€" />
+              <Field label="Génie civil" value={config.genieCivil} onChange={v => update('genieCivil', v)} type="number" suffix="€" />
+              <div className="relative group">
+                <Field 
+                  label="Raccordement" 
+                  value={config.raccordement || calculatedRaccordement} 
+                  onChange={v => update('raccordement', v)} 
+                  type="number" 
+                  suffix="€" 
+                  readOnly
+                  className="bg-slate-50 opacity-80"
+                />
+                <div className="hidden group-hover:block absolute -top-8 left-0 right-0 bg-slate-800 text-white text-[10px] p-1 rounded text-center z-10">Calculé via données du projet</div>
+              </div>
+              <Field label="Développement" value={config.developpement} onChange={v => update('developpement', v)} type="number" suffix="€" />
+              <Field label="Frais comm." value={config.fraisCommerciaux} onChange={v => update('fraisCommerciaux', v)} type="number" suffix="€" />
+            </div>
           </div>
         </div>
 
