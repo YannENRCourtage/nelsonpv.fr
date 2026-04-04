@@ -4,6 +4,7 @@ import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Bui
 import html2canvas from 'html2canvas';
 import MapEditor from "../components/MapEditor";
 import StreetViewTab from "../components/StreetViewTab";
+import SubstationProximityCards from "../components/editor/SubstationProximityCards.jsx";
 
 import ShadowMapTab from "../components/ShadowMapTab.jsx";
 import ChatBox from "../components/editor/ChatBox.jsx";
@@ -1800,6 +1801,12 @@ export default function ProjectEditor() {
                 </div>
               </div>
             )}
+
+            {/* Substation Proximity Cards (RTE) */}
+            <SubstationProximityCards 
+              gps={p.gps} 
+              isVisible={activeLayers.has('postesSourcesRTE')} 
+            />
 
 
             {/* Onglet Street View */}
