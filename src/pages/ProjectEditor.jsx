@@ -1557,17 +1557,7 @@ export default function ProjectEditor() {
               Urbanisme
             </button>
 
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('societes'); }}
-              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'societes'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              Sociétés
-            </button>
+
 
             <button
               type="button"
@@ -1816,16 +1806,7 @@ export default function ProjectEditor() {
               </div>
             )}
 
-            {/* Onglet Sociétés */}
-            <div className={activeTab === 'societes' ? 'w-full h-full overflow-hidden' : 'hidden'}>
-              <iframe
-                src="https://carte-entreprises.fr/"
-                className="w-full border-0"
-                style={{ marginTop: '-65px', height: 'calc(100% + 65px)' }}
-                title="Sociétés"
-                allow="geolocation"
-              />
-            </div>
+
 
             {/* Onglet Propriétaires */}
             <div className={activeTab === 'owners' ? 'w-full h-full' : 'hidden'}>
