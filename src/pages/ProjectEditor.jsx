@@ -1802,12 +1802,6 @@ export default function ProjectEditor() {
               </div>
             )}
 
-            {/* Substation Proximity Cards (RTE) */}
-            <SubstationProximityCards 
-              gps={p.gps} 
-              isVisible={activeLayers.has('postesSourcesRTE')} 
-            />
-
 
             {/* Onglet Street View */}
             {activeTab === 'streetview' && (
@@ -1816,19 +1810,11 @@ export default function ProjectEditor() {
               </div>
             )}
 
-
-
-
-
             {activeTab === 'shadowmap' && (
               <div className='w-full h-full'>
                 <ShadowMapTab project={project} />
               </div>
             )}
-
-
-
-
 
             {/* Onglet Sociétés */}
             <div className={activeTab === 'societes' ? 'w-full h-full overflow-hidden' : 'hidden'}>
@@ -1850,7 +1836,6 @@ export default function ProjectEditor() {
                 allow="geolocation"
               />
             </div>
-
 
             {/* Onglet Caparéseau */}
             <div className={activeTab === 'capareseau' ? 'w-full h-full' : 'hidden'}>
@@ -1882,10 +1867,13 @@ export default function ProjectEditor() {
               />
             </div>
 
-
-
-
           </div>
+          
+          {/* Substation Proximity Cards (RTE) - Moved outside fixed height container to push footer */}
+          <SubstationProximityCards 
+            gps={p.gps} 
+            isVisible={activeLayers.has('postesSourcesRTE') && (activeTab === 'map' || activeTab === 'urbanisme')} 
+          />
         </div>
 
         {/* Desktop Aside Panel */}
