@@ -239,6 +239,8 @@ export const generatePdfForProject = async (projectData) => {
 function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized }) {
   const { logout, user, activeTenantId } = useAuth();
   const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
+  const isAlexandruMihailov = (user?.firstName?.toLowerCase().includes('alexandru') && user?.lastName?.toLowerCase().includes('mihailov')) || user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr';
+  const isRestrictedUser = isLaurentGuyon || isAlexandruMihailov;
   const navigate = useNavigate();
   const isProjectPage = useMatch("/project/:projectId/edit");
   const { project, saveProject, setProject } = useProject();
@@ -439,11 +441,11 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
             )}
 
             {/* Show Simulator if explicit permission is granted OR if admin (unless admin explicitly restricted) */}
-            {((user?.role === 'admin' || user?.role === 'Administrator') && user?.permissions?.canAccessSimulator !== false || user?.permissions?.canAccessSimulator) && (
+            {!isRestrictedUser && ((user?.role === 'admin' || user?.role === 'Administrator') && user?.permissions?.canAccessSimulator !== false || user?.permissions?.canAccessSimulator) && (
               <NavLink to="/simulator" className={({ isActive }) => isActive ? 'nav-link active simulateur' : 'nav-link simulateur'}>Simulateur</NavLink>
             )}
 
-            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessFinance) && (
+            {!isRestrictedUser && (user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessFinance) && (
               <NavLink to="/finance" className={({ isActive }) => isActive ? 'nav-link active finance' : 'nav-link finance'}>
                 <TrendingUp className="w-4 h-4 mr-1 inline-block" />
                 Finance
@@ -586,6 +588,8 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
 export default function AppLayout() {
   const { user, activeTenantId } = useAuth();
   const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
+  const isAlexandruMihailov = (user?.firstName?.toLowerCase().includes('alexandru') && user?.lastName?.toLowerCase().includes('mihailov')) || user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr';
+  const isRestrictedUser = isLaurentGuyon || isAlexandruMihailov;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isTrackingAuthorized = () => {
@@ -656,7 +660,7 @@ export default function AppLayout() {
               </NavLink>
             )}
 
-            {((user?.role === 'admin' || user?.role === 'Administrator') && user?.permissions?.canAccessSimulator !== false || user?.permissions?.canAccessSimulator) && (
+            {!isRestrictedUser && ((user?.role === 'admin' || user?.role === 'Administrator') && user?.permissions?.canAccessSimulator !== false || user?.permissions?.canAccessSimulator) && (
               <NavLink
                 to="/simulator"
                 className={({ isActive }) => isActive ? 'mobile-nav-link active simulateur' : 'mobile-nav-link simulateur'}
@@ -666,7 +670,7 @@ export default function AppLayout() {
               </NavLink>
             )}
 
-            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessFinance) && (
+            {!isRestrictedUser && (user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessFinance) && (
               <NavLink
                 to="/finance"
                 className={({ isActive }) => isActive ? 'mobile-nav-link active finance' : 'mobile-nav-link finance'}
