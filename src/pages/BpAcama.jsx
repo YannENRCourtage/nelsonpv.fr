@@ -97,6 +97,17 @@ const normalizeBatType = (t) => {
   return t;
 };
 
+const parseFirestoreDate = (dateVal) => {
+  if (!dateVal) return null;
+  // Firestore Timestamp class instance
+  if (typeof dateVal.toDate === 'function') return dateVal.toDate();
+  // Serialized Firestore Timestamp object { seconds, nanoseconds }
+  if (dateVal.seconds !== undefined) return new Date(dateVal.seconds * 1000);
+  // ISO string, Date object, or timestamp number
+  const d = new Date(dateVal);
+  return (d instanceof Date && !isNaN(d.getTime())) ? d : null;
+};
+
 const BATTERY_MODELS = [
   { id: 'solax', brand: 'Solax', model: 'TRENE-P125B261L', power: 125, capacity: 261, price: 57583 },
   { id: 'huawei', brand: 'Huawei', model: 'LUNA2000-200KWH', power: 100, capacity: 200, price: 45000 },
@@ -3184,12 +3195,35 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
 
 // ─── Tab: BP Sauvegardés ───────────────────────────────────────────────────
 
-function TabBpSaved({ projects, onSelect, activeTab, setActiveTab }) {
+function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest }) {
   const savedProjects = useMemo(() => {
     return projects
-      .filter(p => p.bpAcamaState)
-      .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
-  }, [projects]);
+      .filter(p => {
+        if (!p.bpAcamaState) return false;
+        const pTenant = p.tenantId || p.tenant || p.bpAcamaState?.tenantId || p.bpAcamaState?.tenant;
+        const normalizedTenant = (pTenant === 'greeninvest' || pTenant === 'green-invest') ? 'green-invest' : pTenant;
+        const pName = (p.name || '').toUpperCase();
+        const isKnownAcama = pName.includes('PAPA') || pName.includes('BATIOT') || pName.includes('POUDERAU');
+        
+        if (isGreenInvest) {
+          if (isKnownAcama) return false;
+          return normalizedTenant === 'green-invest' || !normalizedTenant;
+        } else {
+          if (isKnownAcama) return true;
+          return normalizedTenant === 'acama';
+        }
+      })
+      .map(p => {
+        // Calculer les résultats financiers pour l'affichage dans le tableau
+        const bp = computeBusinessPlan(p.bpAcamaState);
+        return { ...p, bpResults: bp };
+      })
+      .sort((a, b) => {
+        const dateA = parseFirestoreDate(a.updatedAt || a.createdAt) || new Date(0);
+        const dateB = parseFirestoreDate(b.updatedAt || b.createdAt) || new Date(0);
+        return dateB - dateA;
+      });
+  }, [projects, isGreenInvest]);
 
   return (
     <div className="p-4 flex flex-col h-full overflow-hidden bg-slate-50">
@@ -3199,46 +3233,76 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab }) {
       </div>
 
       <div className="flex-1 overflow-auto border border-slate-200 rounded-xl bg-white shadow-sm no-scrollbar">
-        <table className="w-full text-[13px] border-collapse">
+        <table className="w-full text-[13px] border-collapse min-w-[1400px]">
           <thead className="sticky top-0 z-10 bg-[#002060] text-white">
             <tr>
               <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Projet</th>
-              <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Client</th>
+              <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Adresse</th>
               <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Commune</th>
+              <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Type Bat.</th>
+              <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Puissance</th>
+              <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Prod.</th>
+              <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Tarifs TB / ACC</th>
+              <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Part ACC</th>
+              <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">DSCR 20a</th>
+              <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">TRI FP</th>
+              <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Retour</th>
               <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700 w-32">Dernière Modif.</th>
               <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700 w-24">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {savedProjects.map((p) => (
-              <tr key={p.id} className="hover:bg-blue-50/30 transition-colors group">
-                <td className="px-3 py-1 font-bold text-slate-800 uppercase">{p.name}</td>
-                <td className="px-3 py-1 text-slate-600 font-medium">{p.client_name || '—'} {p.client_firstname || ''}</td>
-                <td className="px-3 py-1 text-slate-500">{p.city || '—'}</td>
-                <td className="px-3 py-1 text-slate-400 text-[12px]">{p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                <td className="px-3 py-1 text-right">
-                  <div className="flex items-center justify-center gap-1">
-                    <button 
-                      title="Générer PDF"
-                      onClick={() => {
-                        onSelect(p);
-                        setActiveTab('bp_projets');
-                        setTimeout(() => {
-                          const sections = ['pdf-section-1'];
-                          if (p.bpAcamaState?.batteryConfig?.enabled) sections.push('pdf-section-battery');
-                          sections.push('pdf-section-2');
+            {savedProjects.map((p) => {
+              const state = p.bpAcamaState || {};
+              const bp = p.bpResults || {};
+              const batTypes = (state.buildings || []).map(b => b.typeBat).filter(Boolean).join(', ');
+              
+              return (
+                <tr key={p.id} className="hover:bg-blue-50/30 transition-colors group">
+                  <td className="px-3 py-1 font-bold text-slate-800 uppercase line-clamp-1" title={p.name}>{p.name}</td>
+                  <td className="px-3 py-1 text-slate-600 font-medium text-[12px] max-w-[150px] truncate" title={p.address}>{p.address || '—'}</td>
+                  <td className="px-3 py-1 text-slate-500 truncate" title={`${p.zip || ''} ${p.city || ''}`}>{p.city || '—'}</td>
+                  <td className="px-3 py-1 text-slate-500 text-[11px] font-medium italic max-w-[120px] truncate" title={batTypes}>{batTypes || '—'}</td>
+                  <td className="px-3 py-1 text-center font-bold text-blue-700">{fmt(state.kwc || 0, 1)} kWc</td>
+                  <td className="px-3 py-1 text-center text-slate-600">{fmt(state.productible || 0, 0)}</td>
+                  <td className="px-3 py-1 text-center text-slate-500 whitespace-nowrap">
+                    {fmt(state.tarifBas, 4)} / {fmt(state.tarifACC, 2)}
+                  </td>
+                  <td className="px-3 py-1 text-center text-slate-600">{fmtPct(state.partACC / 100)}</td>
+                  <td className="px-3 py-1 text-center font-black text-green-600">{fmt(bp.dscrMoyen, 2)}</td>
+                  <td className="px-3 py-1 text-center font-bold text-blue-600">{bp.triFP ? fmtPct(bp.triFP) : '—'}</td>
+                  <td className="px-3 py-1 text-center font-medium text-amber-600">{fmt(bp.payback, 1)} ans</td>
+                  <td className="px-3 py-1 text-slate-400 text-[12px]">
+                    {(() => {
+                      const d = parseFirestoreDate(p.updatedAt || p.createdAt);
+                      return d
+                        ? d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
+                        : '—';
+                    })()}
+                  </td>
+                  <td className="px-3 py-1 text-right">
+                    <div className="flex items-center justify-center gap-1">
+                      <button 
+                        title="Générer PDF"
+                        onClick={() => {
+                          onSelect(p);
+                          setActiveTab('bp_projets');
+                          setTimeout(() => {
+                            const sections = ['pdf-section-1'];
+                            if (p.bpAcamaState?.batteryConfig?.enabled) sections.push('pdf-section-battery');
+                            sections.push('pdf-section-2');
 
-                          generateBpAcamaPDF({ 
-                            elementId: 'bp-acama-content', 
-                            sections,
-                            fileName: `BP_Acama_${p.name}_${new Date().toISOString().split('T')[0]}.pdf` 
-                          });
-                        }, 200);
-                      }}
-                      className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-md transition-colors"
-                    >
-                      <FileDown className="w-4 h-4" />
-                    </button>
+                            generateBpAcamaPDF({ 
+                              elementId: 'bp-acama-content', 
+                              sections,
+                              fileName: `BP_Acama_${p.name}_${new Date().toISOString().split('T')[0]}.pdf` 
+                            });
+                          }, 200);
+                        }}
+                        className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-md transition-colors"
+                      >
+                        <FileDown className="w-4 h-4" />
+                      </button>
                     <button 
                       title="Modifier"
                       onClick={() => {
@@ -3268,10 +3332,11 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab }) {
                   </div>
                 </td>
               </tr>
-            ))}
+            );
+          })}
             {savedProjects.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-slate-400 italic">Aucun business plan sauvegardé pour le moment.</td>
+                <td colSpan={13} className="px-4 py-12 text-center text-slate-400 italic">Aucun business plan sauvegardé pour le moment.</td>
               </tr>
             )}
           </tbody>
@@ -3283,7 +3348,7 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab }) {
 
 // ─── Tab: CALCUL ──────────────────────────────────────────────────────────────
 
-function TabCalcul({ projects }) {
+function TabCalcul({ projects, isGreenInvest }) {
   const defaultCols = [
     { key: 'dev', label: 'Dev.' }, { key: 'nom', label: 'Nom du projet', width: 140 },
     { key: 'spv', label: 'SPV' }, { key: 'capacite', label: 'Capacité' },
@@ -3307,8 +3372,25 @@ function TabCalcul({ projects }) {
 
   const initialRows = useMemo(() => {
     return (projects || [])
-      .filter(p => p.bpAcamaState)
-      .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))
+      .filter(p => {
+        if (!p.bpAcamaState) return false;
+        const pTenant = p.tenantId || p.tenant || p.bpAcamaState?.tenantId || p.bpAcamaState?.tenant;
+        const normalizedTenant = (pTenant === 'greeninvest' || pTenant === 'green-invest') ? 'green-invest' : pTenant;
+        
+        const pName = (p.name || '').toUpperCase();
+        const isKnownAcama = pName.includes('PAPA') || pName.includes('BATIOT') || pName.includes('POUDERAU');
+        
+        if (isGreenInvest) {
+          if (isKnownAcama) return false;
+          return normalizedTenant === 'green-invest' || !normalizedTenant;
+        }
+        return normalizedTenant === 'acama' || isKnownAcama;
+      })
+      .sort((a, b) => {
+        const dateA = a.updatedAt?.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt || 0);
+        const dateB = b.updatedAt?.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt || 0);
+        return dateB - dateA;
+      })
       .map((p) => {
         const bp = p.bpAcamaState || {};
         return {
@@ -3452,7 +3534,7 @@ function TabPlaceholder({ label }) {
 
 export default function BpAcama() {
   const { user, activeTenantId } = useAuth();
-  const { projects } = useProjects();
+  const { projects, loading, refreshProjects } = useProjects();
   const [activeTab, setActiveTab] = useState('bp_projets');
   const [selectedProject, setSelectedProject] = useState(null);
   const [projectEdits, setProjectEdits] = useState({});
@@ -3697,6 +3779,14 @@ export default function BpAcama() {
   }, [params]);
 
   const resteACharge = useMemo(() => computeResteACharge(collapsedParams), [collapsedParams]);
+  const isAdmin = user?.role === 'admin';
+
+  // Rafraîchir les projets quand on arrive sur l'onglet des sauvegardes
+  useEffect(() => {
+    if (activeTab === 'bp_saved') {
+      refreshProjects();
+    }
+  }, [activeTab, refreshProjects]);
 
   const bp = useMemo(() => computeBusinessPlan({ ...collapsedParams, apport: resteACharge }), [collapsedParams, resteACharge]);
   const { rows, annuite, emprunt, totalConstruction, totalInvestissement, apport10, soulte: calcSoulte } = bp;
@@ -3734,25 +3824,30 @@ export default function BpAcama() {
   };
 
 
-  const isAdmin = user?.role === 'admin';
   const isAlexandru = user?.email === 'a.mihailov@acama-energies.fr';
   const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
   const isGreenInvest = activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
 
   const visibleTabs = useMemo(() => {
     return TABS.filter(tab => {
+      // Masquage spécifique pour l'interface Green Invest (DATA, CALCUL, SUIVI)
+      if (isGreenInvest && ['data', 'calcul', 'suivi'].includes(tab.id)) {
+        return false;
+      }
+      
       if (!isAdmin && ['data', 'calcul', 'suivi'].includes(tab.id)) {
         return false;
       }
       return true;
     });
-  }, [isAdmin]);
+  }, [isAdmin, isGreenInvest]);
 
   useEffect(() => {
-    if (!isAdmin && ['data', 'calcul', 'suivi'].includes(activeTab)) {
+    const isRestrictedTab = ['data', 'calcul', 'suivi'].includes(activeTab);
+    if ((isGreenInvest || !isAdmin) && isRestrictedTab) {
       setActiveTab('bp_projets');
     }
-  }, [isAdmin, activeTab]);
+  }, [isAdmin, activeTab, isGreenInvest]);
 
 
   // Access Control: 
@@ -3776,8 +3871,8 @@ export default function BpAcama() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'calcul': return <TabCalcul projects={projects || []} />;
-      case 'bp_saved': return <TabBpSaved projects={projects || []} onSelect={setSelectedProject} activeTab={activeTab} setActiveTab={setActiveTab} />;
+      case 'calcul': return <TabCalcul projects={projects || []} isGreenInvest={isGreenInvest} />;
+      case 'bp_saved': return <TabBpSaved projects={projects || []} onSelect={setSelectedProject} activeTab={activeTab} setActiveTab={setActiveTab} isGreenInvest={isGreenInvest} />;
       case 'bp_projets': return (
         <TabBpProjets 
           projects={projects || []} 

@@ -87,8 +87,10 @@ const ProjectSelect = ({ projects, activeProjectId, onSelect, className }) => {
                       }}
                     >
                       <span className="font-medium text-slate-900 truncate">{project.name}</span>
-                      {project.address && (
-                        <span className="text-xs text-slate-500 truncate">{project.address}</span>
+                      {(project.address || project.zip || project.city) && (
+                        <span className="text-xs text-slate-500 truncate">
+                          {[project.address, project.zip, project.city].filter(Boolean).join(' ')}
+                        </span>
                       )}
                     </button>
                   ))

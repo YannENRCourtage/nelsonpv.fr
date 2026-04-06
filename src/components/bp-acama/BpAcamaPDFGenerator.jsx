@@ -69,16 +69,22 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                             textEl.style.color = '#1e3a8a'; // text-blue-900 par défaut
                         }
 
-                        if (parent.classList.contains('justify-center') || parent.parentNode?.classList.contains('justify-center')) {
+                        if (parent.tagName !== 'TD') {
+                            parent.style.display = 'flex';
+                            parent.style.flexDirection = 'row';
+                            parent.style.alignItems = 'center';
+                            parent.style.gap = '4px';
+                        }
+
+                        if (parent.classList.contains('justify-center') || 
+                            parent.parentNode?.classList.contains('justify-center') || 
+                            parent.classList.contains('text-center') || 
+                            parent.style.textAlign === 'center') {
                             textEl.style.justifyContent = 'center';
                             textEl.style.width = '100%';
                         }
                         
                         textEl.textContent = valueText;
-                        el.parentNode.style.display = 'flex';
-                        el.parentNode.style.flexDirection = 'row';
-                        el.parentNode.style.alignItems = 'center';
-                        el.parentNode.style.gap = '4px';
                         el.replaceWith(textEl);
                     });
 

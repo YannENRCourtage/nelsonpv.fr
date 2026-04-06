@@ -38,6 +38,7 @@ const ProjectContext = createContext({
   updateProject: () => { },
   saveProject: () => { },
   loadAllProjects: loadAllProjectsFromLS,
+  refreshProjects: async () => { },
   loading: false,
   error: null
 });
@@ -101,6 +102,19 @@ export function ProjectProvider({ children }) {
       unsubscribe();
     };
   }, [setProjects, activeTenantId]);
+
+  const refreshProjects = useCallback(async () => {
+    setLoading(true);
+    try {
+      const updated = await apiService.getProjects(activeTenantIdRef.current);
+      setProjects(updated);
+    } catch (err) {
+      console.error("Manual refresh failed:", err);
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [setProjects]);
 
   // Écouter les changements du localStorage (sync entre onglets)
   useEffect(() => {
@@ -331,11 +345,12 @@ export function ProjectProvider({ children }) {
       updateProject,
       saveProject, // Nouvelle méthode unifiée
       saveProjectToLS: saveProject, // Alias pour compatibilité
+      refreshProjects,
       loadAllProjects: loadAllProjectsFromLS,
       loading,
       error
     }),
-    [projects, project, setProject, updateProject, saveProject, loading, error]
+    [projects, project, setProject, updateProject, saveProject, refreshProjects, loading, error]
   );
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
