@@ -176,9 +176,21 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
 
             const imgData = canvas.toDataURL('image/png');
             const imgProps = pdf.getImageProperties(imgData);
-            const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
+            let imgHeight = (imgProps.height * contentWidth) / imgProps.width;
+            let xPos = margin;
+            let yPos = margin;
+            let finalWidth = contentWidth;
 
-            pdf.addImage(imgData, 'PNG', margin, margin, contentWidth, imgHeight);
+            // Si l'image dépasse la hauteur disponible, on réduit l'échelle pour tout faire tenir
+            if (imgHeight > contentHeight) {
+                const ratio = contentHeight / imgHeight;
+                finalWidth = contentWidth * ratio;
+                imgHeight = contentHeight;
+                // Centrer horizontalement si on a réduit la largeur
+                xPos = margin + (contentWidth - finalWidth) / 2;
+            }
+
+            pdf.addImage(imgData, 'PNG', xPos, yPos, finalWidth, imgHeight);
         };
 
         if (sections && sections.length > 0) {

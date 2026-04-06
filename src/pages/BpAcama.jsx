@@ -1790,6 +1790,7 @@ function TabBpProjets({
                             {i > 0 && (
                               <button 
                                 onClick={() => removeBuilding(b.id)}
+                                data-html2canvas-ignore="true"
                                 className="opacity-0 group-hover:opacity-100 transition-opacity bg-red-50 text-red-500 p-1 rounded-full hover:bg-red-100 mb-1"
                                 title="Supprimer ce bâtiment"
                               >
@@ -1957,6 +1958,7 @@ function TabBpProjets({
                             {i > 0 && (
                               <button 
                                 onClick={() => removeBuilding(b.id)}
+                                data-html2canvas-ignore="true"
                                 className="opacity-0 group-hover:opacity-100 transition-opacity bg-red-50 text-red-500 p-1 rounded-full hover:bg-red-100 mb-1"
                                 title="Supprimer ce bâtiment"
                               >
