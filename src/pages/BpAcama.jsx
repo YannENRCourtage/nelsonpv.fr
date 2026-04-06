@@ -3319,17 +3319,17 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
               
               return (
                 <tr key={p.id} className="hover:bg-blue-50/30 transition-colors group">
-                  <td className="px-3 py-1 font-bold text-slate-800 uppercase line-clamp-1 align-middle" title={p.name}>{p.name}</td>
-                  <td className="px-3 py-1 text-slate-600 font-medium text-[12px] max-w-[150px] truncate align-middle" title={p.address}>{p.address || '—'}</td>
-                  <td className="px-3 py-1 text-slate-500 truncate align-middle" title={`${p.zip || ''} ${p.city || ''}`}>{p.city || '—'}</td>
-                  <td className="px-3 py-1 text-slate-500 text-[11px] font-medium italic max-w-[120px] truncate align-middle" title={batTypes}>{batTypes || '—'}</td>
-                  <td className="px-3 py-1 text-center font-bold text-blue-700 align-middle">{fmt(p.totalKwc || 0, 1)} kWc</td>
-                  <td className="px-3 py-1 text-center text-slate-600 align-middle">
+                  <td className="px-3 py-3 font-bold text-slate-800 uppercase truncate align-middle" title={p.name}>{p.name}</td>
+                  <td className="px-3 py-3 text-slate-600 font-medium text-[12px] max-w-[150px] truncate align-middle" title={p.address}>{p.address || '—'}</td>
+                  <td className="px-3 py-3 text-slate-500 truncate align-middle" title={`${p.zip || ''} ${p.city || ''}`}>{p.city || '—'}</td>
+                  <td className="px-3 py-3 text-slate-500 text-[11px] font-medium italic max-w-[120px] truncate align-middle" title={batTypes}>{batTypes || '—'}</td>
+                  <td className="px-3 py-3 text-center font-bold text-blue-700 align-middle">{fmt(p.totalKwc || 0, 1)} kWc</td>
+                  <td className="px-3 py-3 text-center text-slate-600 align-middle">
                     <div className="font-bold">{fmt(state.tarifBas, 4)} €</div>
                     <div className="text-[10px] opacity-60">{fmtEur(state.tarifACC)} (ACC)</div>
                   </td>
-                  <td className="px-3 py-1 text-center font-bold text-slate-700 align-middle">{fmt(state.partACC * 100, 0)}%</td>
-                  <td className="px-3 py-1 text-center align-middle">
+                  <td className="px-3 py-3 text-center font-bold text-slate-700 align-middle">{fmt(state.partACC * 100, 0)}%</td>
+                  <td className="px-3 py-3 text-center align-middle">
                     <div className={cn(
                       "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-black",
                       (p.bpResults.dscrMoyen || 0) >= (state.targetDSCR || 1.17) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
@@ -3337,9 +3337,9 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
                       {fmtPct(p.bpResults.dscrMoyen)}
                     </div>
                   </td>
-                  <td className="px-3 py-1 text-center font-bold text-green-600 align-middle">{fmtPct(p.bpResults.triFP)}</td>
-                  <td className="px-3 py-1 text-center font-bold text-blue-600 align-middle">{fmt(p.bpResults.payback, 1)} ans</td>
-                  <td className="px-3 py-1 text-slate-400 text-[12px] align-middle">
+                  <td className="px-3 py-3 text-center font-bold text-green-600 align-middle">{fmtPct(p.bpResults.triFP)}</td>
+                  <td className="px-3 py-3 text-center font-bold text-blue-600 align-middle">{fmt(p.bpResults.payback, 1)} ans</td>
+                  <td className="px-3 py-3 text-slate-400 text-[12px] align-middle">
                     {(() => {
                       const d = parseFirestoreDate(p.updatedAt || p.createdAt);
                       return d
