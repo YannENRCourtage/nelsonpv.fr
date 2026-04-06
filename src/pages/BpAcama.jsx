@@ -3244,21 +3244,34 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
         const state = p.bpAcamaState || {};
         const buildings = state.buildings || [];
         
-        // Sum building powers to get correct total power
+        // Sum building powers 
         const kwcTotal = buildings.reduce((acc, b) => acc + (parseFloat(b.kwc) || 0), 0);
         
-        // Calculate total investment to derive correct reste à charge (same as collapsedParams logic)
-        const totalConst = buildings.reduce((sum, b) => sum + 
-          (parseFloat(b.coutCentrale) || 0) + 
-          (parseFloat(b.coutCharpente) || 0) + 
-          (parseFloat(b.raccordement) || 0) + 
-          (parseFloat(b.frais) || 0) + 
-          (parseFloat(b.soulte) || 0), 0);
+        // Sum building costs
+        const totalCentrale = buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0), 0);
+        const totalCharpente = buildings.reduce((sum, b) => sum + (parseFloat(b.coutCharpente) || 0), 0);
+        
+        // Global fields from ROOT of state (important: these were missing in previous calc)
+        const totalRaccordement = parseFloat(state.raccordement) || 0;
+        const totalFrais = parseFloat(state.frais) || 0;
+        const totalSoulte = parseFloat(state.soulte) || 0;
+        
+        // Productible weighted average
+        const totalProdKwh = buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0) * (parseFloat(b.productible) || 0), 0);
+        const averageProd = kwcTotal > 0 ? totalProdKwh / kwcTotal : 0;
+        
+        // Total technical construction cost
+        const totalConst = totalCentrale + totalCharpente + totalRaccordement + totalFrais;
           
         const collapsedForSaved = {
           ...state,
           kwc: kwcTotal,
-          productible: buildings.length > 0 ? (buildings.reduce((sum, b) => sum + (parseFloat(b.productible) || 0) * (parseFloat(b.kwc) || 0), 0) / buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0), 0) || 1123.08) : 1123.08,
+          productible: averageProd || 1123.08,
+          coutCentrale: totalCentrale,
+          coutCharpente: totalCharpente,
+          raccordement: totalRaccordement,
+          frais: totalFrais,
+          soulte: totalSoulte,
           totalInvestissement: totalConst * 1.2
         };
 
@@ -3306,17 +3319,17 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
               
               return (
                 <tr key={p.id} className="hover:bg-blue-50/30 transition-colors group">
-                  <td className="px-3 py-1 font-bold text-slate-800 uppercase line-clamp-1" title={p.name}>{p.name}</td>
-                  <td className="px-3 py-1 text-slate-600 font-medium text-[12px] max-w-[150px] truncate" title={p.address}>{p.address || '—'}</td>
-                  <td className="px-3 py-1 text-slate-500 truncate" title={`${p.zip || ''} ${p.city || ''}`}>{p.city || '—'}</td>
-                  <td className="px-3 py-1 text-slate-500 text-[11px] font-medium italic max-w-[120px] truncate" title={batTypes}>{batTypes || '—'}</td>
-                  <td className="px-3 py-1 text-center font-bold text-blue-700">{fmt(p.totalKwc || 0, 1)} kWc</td>
-                  <td className="px-3 py-1 text-center text-slate-600">
-                    <div className="font-bold">{fmtEur(state.tarifBas)}</div>
+                  <td className="px-3 py-1 font-bold text-slate-800 uppercase line-clamp-1 align-middle" title={p.name}>{p.name}</td>
+                  <td className="px-3 py-1 text-slate-600 font-medium text-[12px] max-w-[150px] truncate align-middle" title={p.address}>{p.address || '—'}</td>
+                  <td className="px-3 py-1 text-slate-500 truncate align-middle" title={`${p.zip || ''} ${p.city || ''}`}>{p.city || '—'}</td>
+                  <td className="px-3 py-1 text-slate-500 text-[11px] font-medium italic max-w-[120px] truncate align-middle" title={batTypes}>{batTypes || '—'}</td>
+                  <td className="px-3 py-1 text-center font-bold text-blue-700 align-middle">{fmt(p.totalKwc || 0, 1)} kWc</td>
+                  <td className="px-3 py-1 text-center text-slate-600 align-middle">
+                    <div className="font-bold">{fmt(state.tarifBas, 4)} €</div>
                     <div className="text-[10px] opacity-60">{fmtEur(state.tarifACC)} (ACC)</div>
                   </td>
-                  <td className="px-3 py-1 text-center font-bold text-slate-700">{fmt(state.partACC * 100, 0)}%</td>
-                  <td className="px-3 py-1 text-center">
+                  <td className="px-3 py-1 text-center font-bold text-slate-700 align-middle">{fmt(state.partACC * 100, 0)}%</td>
+                  <td className="px-3 py-1 text-center align-middle">
                     <div className={cn(
                       "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-black",
                       (p.bpResults.dscrMoyen || 0) >= (state.targetDSCR || 1.17) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
@@ -3324,9 +3337,9 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
                       {fmtPct(p.bpResults.dscrMoyen)}
                     </div>
                   </td>
-                  <td className="px-3 py-1 text-center font-bold text-green-600">{fmtPct(p.bpResults.triFP)}</td>
-                  <td className="px-3 py-1 text-center font-bold text-blue-600">{fmt(p.bpResults.payback, 1)} ans</td>
-                  <td className="px-3 py-1 text-slate-400 text-[12px]">
+                  <td className="px-3 py-1 text-center font-bold text-green-600 align-middle">{fmtPct(p.bpResults.triFP)}</td>
+                  <td className="px-3 py-1 text-center font-bold text-blue-600 align-middle">{fmt(p.bpResults.payback, 1)} ans</td>
+                  <td className="px-3 py-1 text-slate-400 text-[12px] align-middle">
                     {(() => {
                       const d = parseFirestoreDate(p.updatedAt || p.createdAt);
                       return d
