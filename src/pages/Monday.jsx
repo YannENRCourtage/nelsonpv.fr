@@ -769,14 +769,16 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
         if (!rows || rows.length === 0) {
             ordered = [];
         } else if (!rowOrder || rowOrder.length === 0) {
-            ordered = rows.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+            // Newest first by default
+            ordered = [...rows].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         } else {
             const rowMap = new Map(rows.map(r => [r.id, r]));
             ordered = rowOrder.map(id => rowMap.get(id)).filter(r => r !== undefined);
-            // Append missing
+            
+            // Any rows not in the explicit order (new ones from others) go to the TOP
             const inOrderIds = new Set(rowOrder);
-            const others = rows.filter(r => !inOrderIds.has(r.id));
-            ordered = [...ordered, ...others];
+            const others = rows.filter(r => !inOrderIds.has(r.id)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            ordered = [...others, ...ordered];
         }
 
         // 2. Search (Global)
