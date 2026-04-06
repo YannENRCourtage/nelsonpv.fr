@@ -3214,9 +3214,32 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
         }
       })
       .map(p => {
-        // Calculer les résultats financiers pour l'affichage dans le tableau
-        const bp = computeBusinessPlan(p.bpAcamaState);
-        return { ...p, bpResults: bp };
+        // Enrichment logic to ensure calculations match the Business Plan tab
+        const state = p.bpAcamaState || {};
+        const buildings = state.buildings || [];
+        
+        // Sum building powers to get correct total power
+        const kwcTotal = buildings.reduce((acc, b) => acc + (parseFloat(b.kwc) || 0), 0);
+        
+        // Calculate total investment to derive correct reste à charge (same as collapsedParams logic)
+        const totalConst = buildings.reduce((sum, b) => sum + 
+          (parseFloat(b.coutCentrale) || 0) + 
+          (parseFloat(b.coutCharpente) || 0) + 
+          (parseFloat(b.raccordement) || 0) + 
+          (parseFloat(b.frais) || 0) + 
+          (parseFloat(b.soulte) || 0), 0);
+          
+        const collapsedForSaved = {
+          ...state,
+          kwc: kwcTotal,
+          productible: buildings.length > 0 ? (buildings.reduce((sum, b) => sum + (parseFloat(b.productible) || 0) * (parseFloat(b.kwc) || 0), 0) / buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0), 0) || 1123.08) : 1123.08,
+          totalInvestissement: totalConst * 1.2
+        };
+
+        const rac = computeResteACharge(collapsedForSaved);
+        const bp = computeBusinessPlan({ ...collapsedForSaved, apport: rac });
+        
+        return { ...p, bpResults: bp, totalKwc: kwcTotal };
       })
       .sort((a, b) => {
         const dateA = parseFirestoreDate(a.updatedAt || a.createdAt) || new Date(0);
@@ -3241,7 +3264,6 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
               <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Commune</th>
               <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Type Bat.</th>
               <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Puissance</th>
-              <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Prod.</th>
               <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Tarifs TB / ACC</th>
               <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Part ACC</th>
               <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">DSCR 20a</th>
@@ -3254,7 +3276,6 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
           <tbody className="divide-y divide-slate-100">
             {savedProjects.map((p) => {
               const state = p.bpAcamaState || {};
-              const bp = p.bpResults || {};
               const batTypes = (state.buildings || []).map(b => b.typeBat).filter(Boolean).join(', ');
               
               return (
@@ -3263,15 +3284,22 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
                   <td className="px-3 py-1 text-slate-600 font-medium text-[12px] max-w-[150px] truncate" title={p.address}>{p.address || '—'}</td>
                   <td className="px-3 py-1 text-slate-500 truncate" title={`${p.zip || ''} ${p.city || ''}`}>{p.city || '—'}</td>
                   <td className="px-3 py-1 text-slate-500 text-[11px] font-medium italic max-w-[120px] truncate" title={batTypes}>{batTypes || '—'}</td>
-                  <td className="px-3 py-1 text-center font-bold text-blue-700">{fmt(state.kwc || 0, 1)} kWc</td>
-                  <td className="px-3 py-1 text-center text-slate-600">{fmt(state.productible || 0, 0)}</td>
-                  <td className="px-3 py-1 text-center text-slate-500 whitespace-nowrap">
-                    {fmt(state.tarifBas, 4)} / {fmt(state.tarifACC, 2)}
+                  <td className="px-3 py-1 text-center font-bold text-blue-700">{fmt(p.totalKwc || 0, 1)} kWc</td>
+                  <td className="px-3 py-1 text-center text-slate-600">
+                    <div className="font-bold">{fmtEur(state.tarifBas)}</div>
+                    <div className="text-[10px] opacity-60">{fmtEur(state.tarifACC)} (ACC)</div>
                   </td>
-                  <td className="px-3 py-1 text-center text-slate-600">{fmtPct(state.partACC / 100)}</td>
-                  <td className="px-3 py-1 text-center font-black text-green-600">{fmt(bp.dscrMoyen, 2)}</td>
-                  <td className="px-3 py-1 text-center font-bold text-blue-600">{bp.triFP ? fmtPct(bp.triFP) : '—'}</td>
-                  <td className="px-3 py-1 text-center font-medium text-amber-600">{fmt(bp.payback, 1)} ans</td>
+                  <td className="px-3 py-1 text-center font-bold text-slate-700">{fmt(state.partACC * 100, 0)}%</td>
+                  <td className="px-3 py-1 text-center">
+                    <div className={cn(
+                      "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-black",
+                      (p.bpResults.dscrMoyen || 0) >= (state.targetDSCR || 1.17) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                    )}>
+                      {fmtPct(p.bpResults.dscrMoyen)}
+                    </div>
+                  </td>
+                  <td className="px-3 py-1 text-center font-bold text-green-600">{fmtPct(p.bpResults.triFP)}</td>
+                  <td className="px-3 py-1 text-center font-bold text-blue-600">{fmt(p.bpResults.payback, 1)} ans</td>
                   <td className="px-3 py-1 text-slate-400 text-[12px]">
                     {(() => {
                       const d = parseFirestoreDate(p.updatedAt || p.createdAt);
