@@ -1144,22 +1144,23 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                    </div>
 
-                    <div className="flex gap-2 shrink-0">
-                        {/* Selection Actions */}
+                        {/* Selection Actions moved here, next to Search */}
                         {selectedRowIds.size > 0 && (
-                            <div className="flex items-center gap-2 mr-4 bg-blue-50 px-2 rounded border border-blue-100 animate-in fade-in">
-                                <span className="text-xs font-semibold text-blue-700">{selectedRowIds.size} sélectionné(s)</span>
-                                <Button size="sm" variant="ghost" onClick={handleExportSelected} title="Exporter la sélection">
-                                    <Download className="w-4 h-4 text-blue-700" />
+                            <div className="flex items-center gap-2 px-3 py-1 bg-blue-50/50 rounded-lg border border-blue-100/50 animate-in fade-in slide-in-from-left-2 duration-200">
+                                <span className="text-[12px] font-bold text-blue-700 whitespace-nowrap">{selectedRowIds.size} sélectionné(s)</span>
+                                <div className="h-4 w-px bg-blue-200 mx-1" />
+                                <Button size="sm" variant="ghost" onClick={handleExportSelected} title="Exporter la sélection" className="h-7 w-7 p-0 hover:bg-blue-100 text-blue-700">
+                                    <Download className="w-3.5 h-3.5" />
                                 </Button>
-                                <Button size="sm" variant="ghost" onClick={handleBulkDelete} title="Supprimer la sélection" className="hover:text-red-600">
-                                    <Trash2 className="w-4 h-4 text-red-500" />
+                                <Button size="sm" variant="ghost" onClick={handleBulkDelete} title="Supprimer la sélection" className="h-7 w-7 p-0 hover:bg-red-50 text-red-500">
+                                    <Trash2 className="w-3.5 h-3.5" />
                                 </Button>
                             </div>
                         )}
+                    </div>
 
+                    <div className="flex gap-2 shrink-0">
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls, .csv" className="hidden" />
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

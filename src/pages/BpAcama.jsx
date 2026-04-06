@@ -1785,7 +1785,20 @@ function TabBpProjets({
                     <tr>
                       <th className="w-32"></th>
                       {(params.buildings || []).map((b, i) => (
-                        <th key={b.id} className="text-center text-[12px] uppercase text-slate-400 font-bold">Bâtiment {i+1}</th>
+                        <th key={b.id} className="group relative text-center text-[12px] uppercase text-slate-400 font-bold pb-2">
+                          <div className="flex flex-col items-center gap-1">
+                            {i > 0 && (
+                              <button 
+                                onClick={() => removeBuilding(b.id)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity bg-red-50 text-red-500 p-1 rounded-full hover:bg-red-100 mb-1"
+                                title="Supprimer ce bâtiment"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                            <span>Bâtiment {i+1}</span>
+                          </div>
+                        </th>
                       ))}
                     </tr>
                   </thead>
@@ -1939,7 +1952,20 @@ function TabBpProjets({
                     <tr>
                       <th className="w-1/3"></th>
                       {(params.buildings || []).map((b, i) => (
-                        <th key={b.id} className="text-center text-[12px] uppercase text-slate-400 font-bold">Bâtiment {i+1}</th>
+                        <th key={b.id} className="group relative text-center text-[12px] uppercase text-slate-400 font-bold pb-2">
+                           <div className="flex flex-col items-center gap-1">
+                            {i > 0 && (
+                              <button 
+                                onClick={() => removeBuilding(b.id)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity bg-red-50 text-red-500 p-1 rounded-full hover:bg-red-100 mb-1"
+                                title="Supprimer ce bâtiment"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                            <span>Bâtiment {i+1}</span>
+                          </div>
+                        </th>
                       ))}
                     </tr>
                   </thead>
