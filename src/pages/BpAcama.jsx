@@ -619,6 +619,7 @@ function computeBusinessPlan(params) {
     coutCharpente = 0,
     raccordement = 0,
     frais = 0,
+    developpement = 0,
     soulte = 0,
     loyerCoeff = 0,
     soulteCoeff = 0,
@@ -667,7 +668,7 @@ function computeBusinessPlan(params) {
   const actualLoyerOpex = params.renteType === 'loyer' ? calculatedLoyer : 0;
   const actualSoulteCapitalized = params.renteType === 'soulte' ? calculatedSoulte : (params.renteType === 'none' ? 0 : (params.soulte || 0));
 
-  const totalConstruction = (coutCentrale || 0) + (coutCharpente || 0) + (raccordement || 0) + (frais || 0) + actualSoulteCapitalized;
+  const totalConstruction = (coutCentrale || 0) + (coutCharpente || 0) + (raccordement || 0) + (frais || 0) + (developpement || 0) + actualSoulteCapitalized;
   const apport10 = totalConstruction * 0.1;
   const emprunt = Math.max(0, totalConstruction - apport10 - (params.apport || 0));
   const serviceDette = emprunt > 0 ? -PMT(tauxCredit / 100, dureeEmprunt, emprunt) : 0;
@@ -2103,6 +2104,20 @@ function TabBpProjets({
                         </div>
                       </td>
                     </tr>
+                    {!isGreenInvest && (
+                      <tr>
+                        <td className="text-[12px] text-slate-500 font-medium pl-2">Développement</td>
+                        <td colSpan={(params.buildings || []).length} className="pt-1 text-center">
+                          <div className="flex items-center justify-center">
+                            <input 
+                              readOnly 
+                              className="bg-slate-100 border border-slate-200 rounded px-3 py-1 text-sm w-48 text-center font-bold text-slate-700 shadow-sm"
+                              value={fmtEur(collapsedParams.developpement)}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                     <tr>
                       <td className="text-[12px] text-slate-500 font-medium pl-2">Frais</td>
                       <td colSpan={(params.buildings || []).length} className="pt-1 text-center">
@@ -3947,10 +3962,15 @@ export default function BpAcama() {
 
   const collapsedParams = useMemo(() => {
     const buildings = params.buildings || [];
-    const totalConst = buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0) + (parseFloat(b.raccordement) || 0) + (parseFloat(b.frais) || 0) + (parseFloat(b.soulte) || 0), 0);
+    const totalKwc = buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0), 0);
+    const developpement = isGreenInvest ? 0 : (totalKwc * 40);
+
+    const totalConst = buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0) + (parseFloat(b.raccordement) || 0) + (parseFloat(b.frais) || 0) + (parseFloat(b.soulte) || 0), 0) + developpement;
+
     return {
       ...params,
-      kwc: buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0), 0),
+      kwc: totalKwc,
+      developpement,
       // Average productible weight by kwc for better accuracy? For now simple average
       productible: buildings.length > 0 ? (buildings.reduce((sum, b) => sum + (parseFloat(b.productible) || 0) * (parseFloat(b.kwc) || 0), 0) / buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0), 0) || 1123.08) : 1123.08,
       coutCentrale: buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0), 0),
@@ -3960,7 +3980,7 @@ export default function BpAcama() {
       soulte: buildings.reduce((sum, b) => sum + (parseFloat(b.soulte) || 0), 0),
       totalInvestissement: totalConst * 1.2
     };
-  }, [params]);
+  }, [params, isGreenInvest]);
 
   const resteACharge = useMemo(() => computeResteACharge(collapsedParams), [collapsedParams]);
   const isAdmin = user?.role === 'admin';
