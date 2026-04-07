@@ -1516,6 +1516,42 @@ function TabBpProjets({
     }
   }, [params.buildings]);
 
+  // AUTOMATION: Update Maintenance and Assurance based on building count and types
+  useEffect(() => {
+    if (!params.buildings || params.buildings.length === 0) return;
+
+    const n = params.buildings.length;
+    
+    // 1. Maintenance Calculation: 1734.2 + (n-1) * (0.2 * 1734.2)
+    const baseMaint = 1734.2;
+    const incrementMaint = 0.2 * baseMaint;
+    const newMaint = baseMaint + (n - 1) * incrementMaint;
+
+    // 2. Assurance Calculation
+    const baseAssur = 867.1;
+    const buildings = params.buildings;
+    const nBAC = buildings.filter(b => b.projectType !== 'BE').length;
+    const nBE = buildings.filter(b => b.projectType === 'BE').length;
+    
+    let newAssur = baseAssur;
+    if (nBAC > 0) {
+      // Rule: Base is 867.1 (for 1st BAC). Extra BAC = +0.8. Extra BE = +0.1.
+      newAssur = baseAssur * (1 + 0.8 * (nBAC - 1) + 0.1 * nBE);
+    } else if (nBE > 0) {
+      // Rule: Base is 867.1 (for 1st BE). Extra BE = +0.3.
+      newAssur = baseAssur * (1 + 0.3 * (nBE - 1));
+    }
+
+    // Only update if values actually changed to avoid cycles or unnecessary updates
+    if (Math.abs((params.maintenance || 0) - newMaint) > 0.01 || Math.abs((params.assurance || 0) - newAssur) > 0.01) {
+      setParams(prev => ({
+        ...prev,
+        maintenance: Number(newMaint.toFixed(2)),
+        assurance: Number(newAssur.toFixed(2))
+      }));
+    }
+  }, [params.buildings]);
+
   const saveBp = async () => {
     if (!selectedProject) return;
     try {
