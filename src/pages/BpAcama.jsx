@@ -2629,8 +2629,7 @@ function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
 
 // ─── Tab: SUIVI BAT TYPE ─────────────────────────────────────────────────────
 
-function TabSuiviBatType({ batEdits, updateBatEdit, activeSuiviBatData }) {
-  const [localRows, setLocalRows] = useState([]);
+function TabSuiviBatType({ batEdits, updateBatEdit, activeSuiviBatData, localRows, setLocalRows, saveSuiviBatData, isSaving }) {
   const keys = ['type','spv','kwc','cout_bat','massifs','longueur','largeur','travees','hSud','hNord','faitage','surfSud','surfNord','surfTot','penteSud','penteNord','modH','modL','totalMod','puissMax','prodMoyen'];
   const cols = [
     'Type','SPV','KWc','Coût bat. (€)','Massifs','Long. (m)','Larg. (m)','Travées',
@@ -2638,76 +2637,101 @@ function TabSuiviBatType({ batEdits, updateBatEdit, activeSuiviBatData }) {
     'Pente Sud (°)','Pente Nord (°)','Mod H','Mod L','Total Mod','Puiss Max (KWc)','Prod Moyen'
   ];
 
-  const baseRows = useMemo(() => (activeSuiviBatData || []).map((r, i) => ({ ...r, id: `base-${i}` })), [activeSuiviBatData]);
-  const allRows = [...baseRows, ...localRows];
+  const allRows = activeSuiviBatData;
 
   const getVal = (row, k) => {
     if (batEdits[row.id] && batEdits[row.id][k] !== undefined) return batEdits[row.id][k];
-    if (row.id.startsWith('local-')) return row[k] ?? '';
     return row[k];
   };
 
   const moveRow = (index, direction) => {
     const newRows = [...localRows];
-    const targetIndex = index + direction;
+    // This logic only works for localRows if they are contiguous at the end or if we reorder the whole activeSuiviBatData
+    // For now, let's keep it simple: reordering is only for localRows
+    const baseCount = allRows.length - localRows.length;
+    const localIndex = index - baseCount;
+    if (localIndex < 0) return; // Cannot move base rows yet
+
+    const targetIndex = localIndex + direction;
     if (targetIndex < 0 || targetIndex >= newRows.length) return;
-    [newRows[index], newRows[targetIndex]] = [newRows[targetIndex], newRows[index]];
+    [newRows[localIndex], newRows[targetIndex]] = [newRows[targetIndex], newRows[localIndex]];
     setLocalRows(newRows);
   };
 
   return (
-    <div className="p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Button size="sm" onClick={() => setLocalRows(r => [{ id: `local-${Date.now()}`, type:'', spv:'', kwc:0, cout_bat:0, massifs:0, longueur:0, largeur:0, travees:0, hSud:0, hNord:0, faitage:0, surfSud:0, surfNord:0, surfTot:0, penteSud:0, penteNord:0, modH:0, modL:0, totalMod:0, puissMax:0, prodMoyen:0 }, ...r])} className="bg-blue-600 hover:bg-blue-700 text-white text-sm h-7">
-          <Plus className="w-3 h-3 mr-1" /> Nouvelle ligne
+    <div className="p-4 flex flex-col h-full overflow-hidden">
+      <div className="flex items-center justify-between mb-4 bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-2">
+          <Button 
+            size="sm" 
+            onClick={() => setLocalRows(r => [{ id: `local-${Date.now()}`, type:'', spv:'', kwc:0, cout_bat:0, massifs:0, longueur:0, largeur:0, travees:0, hSud:0, hNord:0, faitage:0, surfSud:0, surfNord:0, surfTot:0, penteSud:0, penteNord:0, modH:0, modL:0, totalMod:0, puissMax:0, prodMoyen:0 }, ...r])} 
+            className="bg-blue-600 hover:bg-blue-700 text-white text-sm h-9 px-4"
+          >
+            <Plus className="w-4 h-4 mr-2" /> Nouvelle ligne
+          </Button>
+          <p className="text-[11px] text-slate-400 italic ml-2">Les nouvelles lignes seront ajoutées au catalogue après enregistrement.</p>
+        </div>
+
+        <Button 
+          size="sm" 
+          onClick={saveSuiviBatData} 
+          disabled={isSaving}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm h-9 px-6 shadow-md transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+        >
+          {isSaving ? (
+            <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Enregistrement...</>
+          ) : (
+            <><Save className="w-4 h-4 mr-2" /> Enregistrer les modifications</>
+          )}
         </Button>
       </div>
-      <div {...useDragScroll()} className="flex-1 overflow-auto border border-slate-200 rounded-lg bg-white">
-        <table className="text-[12px] border-collapse min-w-max">
+
+      <div {...useDragScroll()} className="flex-1 overflow-auto border border-slate-200 rounded-lg bg-white shadow-inner">
+        <table className="text-[12px] border-collapse min-w-max w-full">
           <thead className="sticky top-0 z-10">
-            <tr className="bg-slate-800 text-white">
-              <th className="border border-slate-600 px-2 py-1.5 w-8">↑↓</th>
-              {cols.map(c => <th key={c} className="border border-slate-600 px-2 py-1.5 font-semibold text-center whitespace-nowrap">{c}</th>)}
-              <th className="border border-slate-600 px-2 py-1.5 w-8">✕</th>
+            <tr className="bg-slate-800 text-white shadow-md">
+              <th className="border border-slate-700 px-2 py-2 w-10">↑↓</th>
+              {cols.map(c => <th key={c} className="border border-slate-700 px-3 py-2 font-semibold text-center whitespace-nowrap">{c}</th>)}
+              <th className="border border-slate-700 px-2 py-2 w-10">✕</th>
             </tr>
           </thead>
           <tbody>
             {allRows.map((row, i) => {
-              const localIndex = localRows.findIndex(r => r.id === row.id);
+              const isLocal = row.id?.toString().startsWith('local-');
+              const hasEdit = !!batEdits[row.id];
+              
               return (
-                <tr key={i} className={cn(i % 2 === 0 ? 'bg-white' : 'bg-slate-50', "hover:bg-blue-50/30")}>
-                  <td className="border border-slate-200 p-0 text-center">
-                    {localIndex !== -1 && (
-                      <div className="flex flex-col items-center">
-                        <button onClick={() => moveRow(localIndex, -1)} disabled={localIndex === 0} className="text-slate-400 hover:text-blue-500 disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
-                        <button onClick={() => moveRow(localIndex, 1)} disabled={localIndex === localRows.length - 1} className="text-slate-400 hover:text-blue-500 disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
+                <tr key={row.id || i} className={cn(
+                  i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50', 
+                  "hover:bg-blue-50/40 transition-colors group",
+                  hasEdit && "bg-amber-50/30"
+                )}>
+                  <td className="border border-slate-100 p-0 text-center">
+                    {isLocal && (
+                      <div className="flex flex-col items-center opacity-40 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => moveRow(i, -1)} className="text-slate-400 hover:text-blue-500"><ChevronUp className="w-3 h-3" /></button>
+                        <button onClick={() => moveRow(i, 1)} className="text-slate-400 hover:text-blue-500"><ChevronDown className="w-3 h-3" /></button>
                       </div>
                     )}
                   </td>
                   {keys.map(k => (
-                    <td key={k} className="border border-slate-200 p-0 relative">
+                    <td key={k} className={cn(
+                      "border border-slate-100 p-0 relative",
+                      batEdits[row.id]?.[k] !== undefined && "bg-amber-100/40"
+                    )}>
                       <input
-                        className="w-full px-2 py-1 bg-transparent outline-none focus:bg-white focus:ring-1 focus:ring-blue-400 text-center transition-all"
+                        className="w-full px-3 py-2 bg-transparent outline-none focus:bg-white focus:ring-1 focus:ring-blue-400 text-center transition-all font-medium text-slate-700"
                         value={getVal(row, k)}
-                        onChange={e => {
-                          const val = e.target.value;
-                          if (row.id.startsWith('local-')) {
-                            setLocalRows(prev => prev.map(r => r.id === row.id ? { ...r, [k]: val } : r));
-                          } else {
-                            updateBatEdit(row.id, k, val);
-                          }
-                        }}
+                        onChange={e => updateBatEdit(row.id, k, e.target.value)}
                       />
                     </td>
                   ))}
-                  <td className="border border-slate-200 text-center group-hover:bg-red-50">
-                    <button onClick={() => {
-                        if (row.id.toString().startsWith('local-')) {
-                            setLocalRows(prev => prev.filter(r => r.id !== row.id));
-                        }
-                    }} className="text-slate-300 hover:text-red-500 transition-colors p-1">
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+                  <td className="border border-slate-100 text-center">
+                    {isLocal && (
+                      <button onClick={() => setLocalRows(prev => prev.filter(r => r.id !== row.id))} className="text-slate-300 hover:text-red-500 transition-colors p-2 opacity-0 group-hover:opacity-100">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               );
@@ -3740,6 +3764,9 @@ export default function BpAcama() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [projectEdits, setProjectEdits] = useState({});
   const [batEdits, setBatEdits] = useState({});
+  const [remoteBatData, setRemoteBatData] = useState(null);
+  const [localRows, setLocalRows] = useState([]);
+  const [isSavingBat, setIsSavingBat] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const updateProjectEdit = useCallback((id, k, v) => {
@@ -4073,7 +4100,54 @@ export default function BpAcama() {
     );
   }
 
-  const activeSuiviBatData = useMemo(() => isGreenInvest ? SUIVI_BAT_DATA_GREEN_INVEST : SUIVI_BAT_DATA_ACAMA, [isGreenInvest]);
+  useEffect(() => {
+    const tenant = isGreenInvest ? 'greeninvest' : 'acama';
+    let unsubscribe = () => {};
+    apiService.subscribeToSuiviBatData(tenant, (data) => {
+      setRemoteBatData(data);
+    }).then(unsub => { unsubscribe = unsub; });
+    return () => unsubscribe();
+  }, [isGreenInvest]);
+
+  const activeSuiviBatData = useMemo(() => {
+    const baseConstant = isGreenInvest ? SUIVI_BAT_DATA_GREEN_INVEST : SUIVI_BAT_DATA_ACAMA;
+    let data = (remoteBatData || baseConstant).map((r, i) => ({ ...r, id: r.id || `base-${i}` }));
+
+    // Apply local edits
+    data = data.map((row) => {
+      const edit = batEdits[row.id];
+      if (!edit) return row;
+      const updated = { ...row };
+      Object.keys(edit).forEach(k => {
+        let val = edit[k];
+        if (typeof row[k] === 'number' && typeof val === 'string') {
+          const parsed = parseFloat(val);
+          if (!isNaN(parsed)) val = parsed;
+        }
+        updated[k] = val;
+      });
+      return updated;
+    });
+
+    return [...data, ...localRows];
+  }, [isGreenInvest, remoteBatData, batEdits, localRows]);
+
+  const saveSuiviBatData = async () => {
+    setIsSavingBat(true);
+    try {
+      const tenant = isGreenInvest ? 'greeninvest' : 'acama';
+      // Map rows to remove IDs that are only for UI tracking
+      const dataToSave = activeSuiviBatData.map(({ id, ...rest }) => rest);
+      await apiService.updateSuiviBatData(tenant, dataToSave);
+      setBatEdits({});
+      setLocalRows([]);
+      toast({ title: "Sauvegardé", description: "Le catalogue des bâtiments a été mis à jour." });
+    } catch (e) {
+      toast({ title: "Erreur", description: "Échec de la sauvegarde.", variant: "destructive" });
+    } finally {
+      setIsSavingBat(false);
+    }
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -4119,7 +4193,17 @@ export default function BpAcama() {
         />
       );
       case 'suivi': return <TabSuivi projects={projects || []} projectEdits={projectEdits} updateProjectEdit={updateProjectEdit} />;
-      case 'suivi_bat': return <TabSuiviBatType batEdits={batEdits} updateBatEdit={updateBatEdit} activeSuiviBatData={activeSuiviBatData} />;
+      case 'suivi_bat': return (
+        <TabSuiviBatType 
+          batEdits={batEdits} 
+          updateBatEdit={updateBatEdit} 
+          activeSuiviBatData={activeSuiviBatData} 
+          localRows={localRows}
+          setLocalRows={setLocalRows}
+          saveSuiviBatData={saveSuiviBatData}
+          isSaving={isSavingBat}
+        />
+      );
       case 'prop_bac': {
         const resteACharge = computeResteACharge({ ...params, totalInvestissement }, 1.16);
         return <TabPropositionClientBAC projects={projects || []} selectedProject={selectedProject} setSelectedProject={setSelectedProject} params={params} resteACharge={resteACharge} />;

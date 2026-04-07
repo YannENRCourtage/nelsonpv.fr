@@ -698,6 +698,45 @@ class ApiService {
             throw error;
         }
     }
+
+    // ============================================================================
+    // BUILDING TYPES (Shared Configuration)
+    // ============================================================================
+
+    async subscribeToSuiviBatData(tenantId, callback) {
+        try {
+            const docId = `suiviBatData_${tenantId || 'acama'}`;
+            const ref = doc(db, 'config', docId);
+
+            return onSnapshot(ref, (snapshot) => {
+                if (snapshot.exists()) {
+                    callback(snapshot.data().data || []);
+                } else {
+                    callback(null);
+                }
+            }, (error) => {
+                console.error('Error subscribing to suiviBatData:', error);
+                callback(null);
+            });
+        } catch (error) {
+            console.error('Failed to subscribe to suiviBatData:', error);
+            return () => { };
+        }
+    }
+
+    async updateSuiviBatData(tenantId, data) {
+        try {
+            const docId = `suiviBatData_${tenantId || 'acama'}`;
+            const ref = doc(db, 'config', docId);
+            await setDoc(ref, {
+                data: data,
+                updatedAt: serverTimestamp()
+            });
+        } catch (error) {
+            console.error('Failed to update suiviBatData:', error);
+            throw error;
+        }
+    }
 }
 
 export const apiService = new ApiService();
