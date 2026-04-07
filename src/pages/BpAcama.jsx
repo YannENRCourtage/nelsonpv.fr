@@ -3959,6 +3959,10 @@ export default function BpAcama() {
       batteryConfig: prev.batteryConfig || defaultBatteryConfig
     }));
   }, [selectedProject]);
+  const isAdmin = user?.role === 'admin';
+  const isAlexandru = user?.email === 'a.mihailov@acama-energies.fr';
+  const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
+  const isGreenInvest = activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
 
   const collapsedParams = useMemo(() => {
     const buildings = params.buildings || [];
@@ -3983,7 +3987,6 @@ export default function BpAcama() {
   }, [params, isGreenInvest]);
 
   const resteACharge = useMemo(() => computeResteACharge(collapsedParams), [collapsedParams]);
-  const isAdmin = user?.role === 'admin';
 
   // Rafraîchir les projets quand on arrive sur l'onglet des sauvegardes
   useEffect(() => {
@@ -4028,9 +4031,6 @@ export default function BpAcama() {
   };
 
 
-  const isAlexandru = user?.email === 'a.mihailov@acama-energies.fr';
-  const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
-  const isGreenInvest = activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
 
   const visibleTabs = useMemo(() => {
     return TABS.filter(tab => {
