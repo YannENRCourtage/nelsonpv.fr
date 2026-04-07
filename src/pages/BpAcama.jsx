@@ -1964,21 +1964,21 @@ function TabBpProjets({
                 <Field label="Zone de vent" value={params.vent} onChange={v => setParams(p => ({ ...p, vent: v }))} className="h-7" />
                 <Field label="Zone de neige" value={params.neige} onChange={v => setParams(p => ({ ...p, neige: v }))} className="h-7" />
               </div>
-              <div className="mt-4 pt-4 border-t border-slate-200">
+              <div className="mt-6 p-4 bg-emerald-50/60 rounded-xl border border-emerald-200/50 shadow-sm transition-all duration-300 hover:bg-emerald-100/40 group">
                  <div className="flex items-center justify-between">
                     <div className="flex flex-col">
-                       <span className="text-[13px] font-bold text-slate-700 uppercase tracking-tighter">Option Batterie Stand-Alone</span>
-                       <span className="text-[10px] text-slate-400 font-medium">Ajouter un simulateur de stockage au projet</span>
+                       <span className="text-[13px] font-bold text-emerald-900 uppercase tracking-tight">Option Batterie Stand-Alone</span>
+                       <span className="text-[10px] text-emerald-700/70 font-medium">Ajouter un simulateur de stockage au projet</span>
                     </div>
                     <button 
                       onClick={() => setParams(p => ({ ...p, batteryConfig: { ...(p.batteryConfig || {}), enabled: !p.batteryConfig?.enabled } }))}
                       className={cn(
-                        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
-                        params.batteryConfig?.enabled ? "bg-blue-600" : "bg-slate-200"
+                        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 shadow-inner",
+                        params.batteryConfig?.enabled ? "bg-emerald-600" : "bg-slate-300"
                       )}
                     >
                       <span className={cn(
-                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm",
                         params.batteryConfig?.enabled ? "translate-x-6" : "translate-x-1"
                       )} />
                     </button>
