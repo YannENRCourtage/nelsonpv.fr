@@ -15,6 +15,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as
 
 import { generateBpAcamaPDF } from '../components/bp-acama/BpAcamaPDFGenerator';
 import ProjectSelect from '../components/bp-acama/ProjectSelect';
+import * as XLSX from 'xlsx';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -3260,6 +3261,8 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
 // ─── Tab: BP Sauvegardés ───────────────────────────────────────────────────
 
 function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest }) {
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
   const savedProjects = useMemo(() => {
     return projects
       .filter(p => {
@@ -3325,17 +3328,85 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
       });
   }, [projects, isGreenInvest]);
 
+  const toggleAll = () => {
+    if (selectedIds.size === savedProjects.length && savedProjects.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(savedProjects.map(p => p.id)));
+    }
+  };
+
+  const toggleOne = (id) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const exportToExcel = () => {
+    const selectedData = savedProjects
+      .filter(p => selectedIds.has(p.id))
+      .map(p => {
+        const state = p.bpAcamaState || {};
+        const batTypes = (state.buildings || []).map(b => b.typeBat).filter(Boolean).join(', ');
+        const d = parseFirestoreDate(p.updatedAt || p.createdAt);
+        
+        return {
+          'Projet': p.name,
+          'Adresse': p.address || '',
+          'Commune': p.city || '',
+          'Type Bat.': batTypes || '',
+          'Puissance (kWc)': (p.totalKwc || 0).toFixed(1),
+          'Tarif TB (€)': state.tarifBas || 0,
+          'Tarif ACC (€)': state.tarifACC || 0,
+          'Part ACC (%)': ((state.partACC || 0) * 100).toFixed(0),
+          'DSCR 20a (%)': ((p.bpResults?.dscrMoyen || 0) * 100).toFixed(1),
+          'TRI FP (%)': ((p.bpResults?.triFP || 0) * 100).toFixed(1),
+          'Retour (ans)': (p.bpResults?.payback || 0).toFixed(1),
+          'Dernière Modif': d ? d.toLocaleString('fr-FR') : ''
+        };
+      });
+
+    if (selectedData.length === 0) return;
+
+    const ws = XLSX.utils.json_to_sheet(selectedData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "BP Sauvegardés");
+    XLSX.writeFile(wb, `Export_BP_Sauvegardes_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   return (
     <div className="p-4 flex flex-col h-full overflow-hidden bg-slate-50">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-bold text-slate-800">BP Sauvegardés ({savedProjects.length})</h3>
+        <div className="flex items-center gap-4">
+          <h3 className="text-sm font-bold text-slate-800">BP Sauvegardés ({savedProjects.length})</h3>
+          {selectedIds.size > 0 && (
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="h-7 text-[11px] gap-2 border-green-600 text-green-600 hover:bg-green-50"
+              onClick={exportToExcel}
+            >
+              <Download className="w-3.5 h-3.5" />
+              Exporter Excel ({selectedIds.size})
+            </Button>
+          )}
+        </div>
         <p className="text-[12px] text-slate-500 italic">Derniers enregistrements en haut</p>
       </div>
 
       <div className="flex-1 overflow-auto border border-slate-200 rounded-xl bg-white shadow-sm no-scrollbar">
         <table className="w-full text-[13px] border-collapse min-w-[1400px]">
-          <thead className="sticky top-0 z-10 bg-[#002060] text-white">
+          <thead className="sticky top-0 z-10 bg-[#002060] text-white text-center">
             <tr>
+              <th className="px-3 py-2 w-10 border-b border-slate-700">
+                <input 
+                  type="checkbox" 
+                  className="w-4 h-4 rounded border-slate-400 focus:ring-blue-500"
+                  checked={savedProjects.length > 0 && selectedIds.size === savedProjects.length}
+                  onChange={toggleAll}
+                />
+              </th>
               <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Projet</th>
               <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Adresse</th>
               <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Commune</th>
@@ -3356,7 +3427,15 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
               const batTypes = (state.buildings || []).map(b => b.typeBat).filter(Boolean).join(', ');
               
               return (
-                <tr key={p.id} className="hover:bg-blue-50/30 transition-colors group">
+                <tr key={p.id} className={cn('hover:bg-blue-50/30 transition-colors group', selectedIds.has(p.id) && 'bg-blue-50/50')}>
+                  <td className="px-3 py-2 text-center align-middle border-b border-slate-100">
+                    <input 
+                      type="checkbox" 
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      checked={selectedIds.has(p.id)}
+                      onChange={() => toggleOne(p.id)}
+                    />
+                  </td>
                   <td className="px-3 py-2 font-bold text-slate-800 uppercase truncate align-middle" title={p.name}>{p.name}</td>
                   <td className="px-3 py-2 text-slate-600 font-medium text-[12px] max-w-[150px] truncate align-middle" title={p.address}>{p.address || '—'}</td>
                   <td className="px-3 py-2 text-slate-500 truncate align-middle" title={`${p.zip || ''} ${p.city || ''}`}>{p.city || '—'}</td>
@@ -3441,7 +3520,7 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
           })}
             {savedProjects.length === 0 && (
               <tr>
-                <td colSpan={13} className="px-4 py-12 text-center text-slate-400 italic">Aucun business plan sauvegardé pour le moment.</td>
+                <td colSpan={14} className="px-4 py-12 text-center text-slate-400 italic">Aucun business plan sauvegardé pour le moment.</td>
               </tr>
             )}
           </tbody>
