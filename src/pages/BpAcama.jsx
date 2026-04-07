@@ -1479,6 +1479,7 @@ function TabBpProjets({
     const totalKwc = buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0), 0);
     const totalCentrale = buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0), 0);
     const totalCharpente = buildings.reduce((sum, b) => sum + (parseFloat(b.coutCharpente) || 0), 0);
+    const developpement = isGreenInvest ? 0 : (totalKwc * 40);
     
     // Global fields from root params
     const totalRaccordement = parseFloat(params.raccordement) || 0;
@@ -1488,7 +1489,7 @@ function TabBpProjets({
     const totalProdKwh = buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0) * (parseFloat(b.productible) || 0), 0);
     const averageProd = totalKwc > 0 ? totalProdKwh / totalKwc : 0;
 
-    const totalConst = totalCentrale + totalCharpente + totalRaccordement + totalFrais;
+    const totalConst = totalCentrale + totalCharpente + totalRaccordement + totalFrais + developpement;
 
     return {
       ...params,
@@ -1498,10 +1499,11 @@ function TabBpProjets({
       coutCharpente: totalCharpente,
       raccordement: totalRaccordement,
       frais: totalFrais,
+      developpement: developpement,
       soulte: totalSoulte,
       totalInvestissement: totalConst * 1.2
     };
-  }, [params]);
+  }, [params, isGreenInvest]);
 
   useEffect(() => {
     if (params.buildings?.length > 0) {
