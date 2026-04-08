@@ -1263,7 +1263,7 @@ function BatterySection({ config, setParams }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+      <div className={`grid grid-cols-1 ${config.isGlobal ? 'xl:grid-cols-3' : 'xl:grid-cols-4'} gap-6`}>
         <div className="space-y-4">
           <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
             <GroupTitle title="DONNEES DU PROJET" />
@@ -1334,32 +1334,34 @@ function BatterySection({ config, setParams }) {
           </div>
         </div>
 
-        <div className="bg-slate-900 rounded-lg p-4 text-white flex flex-col justify-between shadow-inner h-full">
-           <div className="space-y-3">
-              <h4 className="text-[12px] font-black text-blue-400 uppercase tracking-widest border-b border-white/10 pb-2">Indicateurs de Rentabilité</h4>
-              <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">CAPEX TOTAL</span><span className="font-bold text-lg">{fmtEur(results.capexTotal)}</span></div>
-              <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">REVENUS AN 1</span><span className="font-bold text-green-400">{fmtEur(results.revenuAn1)}</span></div>
-              <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">EBE AN 1</span><span className="font-bold text-blue-400">{fmtEur(results.ebeAn1)}</span></div>
-              <div className="flex justify-between items-center pt-2 border-t border-white/10"><span className="text-[11px] opacity-60 uppercase">GAIN NET {config.dureeEtude || 20}A</span><span className="font-bold text-green-400">{fmtEur(results.gainNet20A)}</span></div>
-           </div>
-           <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/20">
-              <div className="text-center">
-                 <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">TRI Projet</div>
-                 <div className="text-lg font-black text-blue-400">{fmtPct(results.triProjet)}</div>
-              </div>
-              <div className="text-center border-x border-white/10 px-1">
-                 <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">Retour</div>
-                 <div className="text-lg font-black text-amber-400">{fmt(results.payback, 1)} ans</div>
-              </div>
-              <div className="text-center">
-                 <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">DSCR Prêt</div>
-                 <div className="text-lg font-black text-green-400">{fmt(results.dscrAn1, 2)}</div>
-              </div>
-           </div>
-        </div>
+        {!config.isGlobal && (
+          <div className="bg-slate-900 rounded-lg p-4 text-white flex flex-col justify-between shadow-inner h-full">
+             <div className="space-y-3">
+                <h4 className="text-[12px] font-black text-blue-400 uppercase tracking-widest border-b border-white/10 pb-2">Indicateurs de Rentabilité</h4>
+                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">CAPEX TOTAL</span><span className="font-bold text-lg">{fmtEur(results.capexTotal)}</span></div>
+                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">REVENUS AN 1</span><span className="font-bold text-green-400">{fmtEur(results.revenuAn1)}</span></div>
+                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">EBE AN 1</span><span className="font-bold text-blue-400">{fmtEur(results.ebeAn1)}</span></div>
+                <div className="flex justify-between items-center pt-2 border-t border-white/10"><span className="text-[11px] opacity-60 uppercase">GAIN NET {config.dureeEtude || 20}A</span><span className="font-bold text-green-400">{fmtEur(results.gainNet20A)}</span></div>
+             </div>
+             <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/20">
+                <div className="text-center">
+                   <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">TRI Projet</div>
+                   <div className="text-lg font-black text-blue-400">{fmtPct(results.triProjet)}</div>
+                </div>
+                <div className="text-center border-x border-white/10 px-1">
+                   <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">Retour</div>
+                   <div className="text-lg font-black text-amber-400">{fmt(results.payback, 1)} ans</div>
+                </div>
+                <div className="text-center">
+                   <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">DSCR Prêt</div>
+                   <div className="text-lg font-black text-green-400">{fmt(results.dscrAn1, 2)}</div>
+                </div>
+             </div>
+          </div>
+        )}
       </div>
 
-      <TableauPrevisionnelBatterie rows={results.rows} />
+      {!config.isGlobal && <TableauPrevisionnelBatterie rows={results.rows} />}
     </SectionCard>
   );
 }
