@@ -1514,7 +1514,8 @@ function TabBpProjets({
   tva, 
   apportSoulte,
   activeSuiviBatData,
-  isGreenInvest 
+  isGreenInvest,
+  resteACharge
 }) {
   const PDFHeader = () => (
     <div className="pdf-header hidden flex flex-row items-start w-full mb-2 pb-1">
@@ -4343,6 +4344,7 @@ export default function BpAcama() {
           calculateGoalSeekDSCR={calculateGoalSeekDSCR}
           bpResults={bp}
           autoCoeffs={autoCoeffs}
+          resteACharge={autoCoeffs.resteACharge}
           totalInvestissement={totalInvestissement}
           apport10={apport10}
           totalConstruction={totalConstruction}
