@@ -1437,20 +1437,19 @@ function TableauPrevisionnel({ params, rows, apport10 }) {
             </tr>
             <DataRow label="Maintenance" propName="maint" isCurrency />
             <DataRow label="Location du compteur" propName="loc" isCurrency />
-            <DataRow label="Revenu bailleur" propName="revenuBailleur" isCurrency />
             <DataRow label="Assurance" propName="ass" isCurrency />
             {rows[0]?.isGlobal ? (
               <>
                 <DataRow label="Annuité crédit (Bâtiment)" propName="serviceDetteBuilding" isCurrency />
                 <DataRow label="Annuité crédit (Batterie)" propName="serviceDetteBattery" isCurrency />
                 <DataRow label="Charges exploitation (Batterie)" propName="opexBattery" isCurrency className="bg-blue-50/20" />
+                <DataRow label="Taxes locales (TURPE+IFER)" propName="taxes" isCurrency />
+                <DataRow label="Rétribution commerciale" propName="admin" isCurrency />
+                <DataRow label="Revenu bailleur" propName="revenuBailleur" isCurrency />
               </>
             ) : (
               <DataRow label="Annuité du crédit bancaire" propName="serviceDette" isCurrency />
             )}
-            <DataRow label="Taxes locales (y compris TURPE)" propName="taxes" isCurrency />
-            <DataRow label="Gestion administrative" propName="admin" isCurrency />
-            <DataRow label="Location terrain" propName="loyer" isCurrency />
             <DataRow label="Remplacement des onduleurs" propName="mra" isCurrency />
             <tr className="border border-slate-200 bg-slate-50 font-bold">
               <td className="px-2 py-1">Total des charges</td>
