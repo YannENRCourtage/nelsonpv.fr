@@ -586,6 +586,7 @@ function computeBatteryProfitability(config) {
       turpe: turpeAn * infl,
       ifer: iferAn * infl,
       retribComm: retributionCommAn * infl,
+      fraisAgregateur: chargesCom,
       serviceDette: interest + principal,
       ebe,
       interest,
@@ -904,6 +905,7 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
       rembPrincipal: rembPrincipalGlobal,
       tresorerie: tresorerieGlobal,
       cafds: ebitdaGlobal - impotGlobal,
+      fraisAgregateur: rBat.fraisAgregateur || 0,
       isGlobal: true,
       isCombined: true
     });
@@ -1442,7 +1444,7 @@ function TableauPrevisionnel({ params, rows, apport10 }) {
               <>
                 <DataRow label="Annuité crédit (Bâtiment)" propName="serviceDetteBuilding" isCurrency />
                 <DataRow label="Annuité crédit (Batterie)" propName="serviceDetteBattery" isCurrency />
-                <DataRow label="Charges exploitation (Batterie)" propName="opexBattery" isCurrency className="bg-blue-50/20" />
+                <DataRow label="Frais agrégateur" propName="fraisAgregateur" isCurrency className="bg-blue-50/20" />
                 <DataRow label="Taxes locales (TURPE+IFER)" propName="taxes" isCurrency />
                 <DataRow label="Rétribution commerciale" propName="admin" isCurrency />
                 <DataRow label="Revenu bailleur" propName="revenuBailleur" isCurrency />
