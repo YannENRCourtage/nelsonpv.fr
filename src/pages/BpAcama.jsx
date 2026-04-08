@@ -580,6 +580,8 @@ function computeBatteryProfitability(config) {
       opex: chargesFixes + chargesCom,
       serviceDette: interest + principal,
       ebe,
+      interest,
+      principal,
       tresorerie: cashFlow
     });
 
@@ -829,6 +831,104 @@ function computeBusinessPlan(params) {
     sumCA,
     sumOpex,
     gains: gainsVrai
+  };
+}
+
+function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
+  const years = bpBuilding.rows.length;
+  const combinedRows = [];
+  const tauxIS = batteryConfig.tauxIS || 25;
+
+  for (let i = 0; i < years; i++) {
+    const rB = bpBuilding.rows[i];
+    // computeBatteryProfitability row has: year, arbitrage, reserve, capacite, effacement, caTotal, opex, serviceDette, ebe, interest, principal, tresorerie
+    const rBat = bpBattery.rows[i] || { year: rB.year, arbitrage: 0, reserve: 0, capacite: 0, effacement: 0, caTotal: 0, opex: 0, serviceDette: 0, ebe: 0, interest: 0, principal: 0, tresorerie: 0 };
+
+    const caGlobal = rB.ca + rBat.caTotal;
+    const opexGlobal = rB.opex + rBat.opex;
+    
+    const ebitdaGlobal = caGlobal - opexGlobal;
+    const amortissementGlobal = rB.amortissement + (bpBattery.capexTotal / (batteryConfig.dureeEtude || 20));
+    const ebitGlobal = ebitdaGlobal - amortissementGlobal;
+    
+    const interetsGlobal = rB.interets + rBat.interest;
+    const resFinGlobal = interetsGlobal + rB.fraisDSRF;
+    const resFiscalGlobal = ebitGlobal - resFinGlobal;
+    
+    let isGlobal = 0;
+    if (resFiscalGlobal > 0) {
+      if (resFiscalGlobal < 42500) {
+        isGlobal = resFiscalGlobal * 0.15;
+      } else {
+        isGlobal = (42500 * 0.15) + ((resFiscalGlobal - 42500) * (tauxIS/100));
+      }
+    }
+    
+    const resApresISGlobal = resFiscalGlobal - isGlobal;
+    const rembPrincipalGlobal = rB.rembPrincipal + rBat.principal;
+    const serviceDetteGlobal = rB.serviceDette + rBat.serviceDette;
+    const tresorerieGlobal = ebitdaGlobal - resFinGlobal - isGlobal - rembPrincipalGlobal;
+
+    combinedRows.push({
+      ...rB,
+      ...rBat,
+      year: rB.year,
+      caBuilding: rB.ca,
+      caBattery: rBat.caTotal,
+      ca: caGlobal,
+      opexBuilding: rB.opex,
+      opexBattery: rBat.opex,
+      opex: opexGlobal,
+      ebitda: ebitdaGlobal,
+      amortissement: amortissementGlobal,
+      ebit: ebitGlobal,
+      interets: interetsGlobal,
+      resFin: resFinGlobal,
+      resFiscal: resFiscalGlobal,
+      is: isGlobal,
+      resApresIS: resApresISGlobal,
+      serviceDetteBuilding: rB.serviceDette,
+      serviceDetteBattery: rBat.serviceDette,
+      serviceDette: serviceDetteGlobal,
+      dscr: serviceDetteGlobal > 0 ? (ebitdaGlobal - isGlobal) / serviceDetteGlobal : 9.99,
+      rembPrincipal: rembPrincipalGlobal,
+      tresorerie: tresorerieGlobal,
+      cafds: ebitdaGlobal - isGlobal,
+      isGlobal: true 
+    });
+  }
+
+  const totalConsGlobal = bpBuilding.totalConstruction + bpBattery.capexTotal;
+  const totalApportGlobal = bpBuilding.apport10 + (batteryConfig.apport || 0);
+
+  const cashFlowProjet = [-totalConsGlobal, ...combinedRows.map(r => r.cafds)];
+  const cashFlowFP = [-totalApportGlobal, ...combinedRows.map(r => r.tresorerie)];
+
+  const triProjet = IRR(cashFlowProjet, 0.05);
+  let triFP = IRR(cashFlowFP, 0.05);
+  if (triFP < -0.99 || triFP > 10) triFP = null;
+
+  const sumCA = combinedRows.reduce((acc, r) => acc + r.ca, 0);
+  const sumOpex = combinedRows.reduce((acc, r) => acc + r.opex, 0);
+  const gains = sumCA - sumOpex - totalConsGlobal;
+  const payback = totalConsGlobal / (sumCA / years);
+  const dscrs = combinedRows.filter(r => r.serviceDette > 0).map(r => r.dscr);
+  const dscrMoyen = dscrs.length > 0 ? dscrs.reduce((a, b) => a + b, 0) / dscrs.length : 0;
+
+  return {
+    ...bpBuilding,
+    rows: combinedRows,
+    dscrMoyen,
+    totalConstruction: totalConsGlobal,
+    totalInvestissement: totalConsGlobal,
+    apport10: bpBuilding.apport10 + (batteryConfig.apport || 0), // Global initial equity
+    triProjet,
+    triFP,
+    sumCA,
+    sumOpex,
+    gains,
+    payback,
+    tempsRetour: payback
   };
 }
 
@@ -1284,12 +1384,12 @@ function TableauPrevisionnel({ params, rows }) {
   };
 
   return (
-    <SectionCard title="PLAN D'AFFAIRES PREVISIONNEL BATIMENT" className="p-0 border-none shadow-none">
+    <SectionCard title={rows[0]?.isGlobal ? "PLAN D'AFFAIRES PREVISIONNEL GLOBAL" : "PLAN D'AFFAIRES PREVISIONNEL BÂTIMENT"} className="p-0 border-none shadow-none">
       <div className="overflow-x-auto w-full">
         <table className="text-[11px] w-full border-collapse">
           <thead>
             <tr className="bg-slate-100">
-              <td className="w-[180px] p-2 border border-slate-200"></td>
+              <td className="w-[180px] p-2 border border-slate-200 text-slate-400 font-bold italic">{rows[0]?.isGlobal ? "Étude Combinée" : ""}</td>
               <td className="w-12 p-1 border border-slate-200"></td>
               {rows.map((r, i) => (
                 <td key={i} className="p-1 border border-slate-200 text-center font-bold bg-slate-50">{r.year}</td>
@@ -1308,7 +1408,15 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="Vente ACC" propName="prodACC" format={v => fmt(v, 0)} />
             <DataRow label="Jusque 1 100KWh/KWc" propName="tBas" isCurrency />
             <DataRow label="Au-delà de 1 100KWh/KWc" propName="tHaut" isCurrency />
-            <DataRow label="CA" propName="ca" isCurrency showSum />
+            {rows[0]?.isGlobal && (
+              <>
+                <DataRow label="Arbitrage énergie (Batterie)" propName="arbitrage" isCurrency className="bg-blue-50/20" />
+                <DataRow label="Réserve FCR/aFRR (Batterie)" propName="reserve" isCurrency className="bg-blue-50/20" />
+                <DataRow label="Mécanisme capacité (Batterie)" propName="capacite" isCurrency className="bg-blue-50/20" />
+                <DataRow label="Effacement (Batterie)" propName="effacement" isCurrency className="bg-blue-50/20" />
+              </>
+            )}
+            <DataRow label="TOTAL REVENUS" propName="ca" isCurrency showSum bold />
 
             <tr className="bg-amber-400 text-slate-900 font-bold uppercase">
                 <td className="px-2 py-1 border border-slate-300" colSpan={2}>CHARGE D'EXPLOITATION</td>
@@ -1317,7 +1425,15 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="Maintenance" propName="maint" isCurrency />
             <DataRow label="Location du compteur" propName="loc" isCurrency />
             <DataRow label="Assurance" propName="ass" isCurrency />
-            <DataRow label="Annuité du crédit bancaire" propName="serviceDette" isCurrency />
+            {rows[0]?.isGlobal ? (
+              <>
+                <DataRow label="Annuité crédit (Bâtiment)" propName="serviceDetteBuilding" isCurrency />
+                <DataRow label="Annuité crédit (Batterie)" propName="serviceDetteBattery" isCurrency />
+                <DataRow label="Charges exploitation (Batterie)" propName="opexBattery" isCurrency className="bg-blue-50/20" />
+              </>
+            ) : (
+              <DataRow label="Annuité du crédit bancaire" propName="serviceDette" isCurrency />
+            )}
             <DataRow label="Taxes locales (y compris TURPE)" propName="taxes" isCurrency />
             <DataRow label="Gestion administrative" propName="admin" isCurrency />
             <DataRow label="Location terrain" propName="loyer" isCurrency />
@@ -1782,7 +1898,9 @@ function TabBpProjets({
           <div className="flex items-center gap-2 shrink-0">
             <Button size="sm" variant="outline" className="gap-2 h-8 border-slate-300" onClick={() => {
               const sections = ['pdf-section-1'];
-              if (params.batteryConfig?.enabled) sections.push('pdf-section-battery');
+              if (params.batteryConfig?.enabled && !params.batteryConfig?.isGlobal) {
+                sections.push('pdf-section-battery');
+              }
               sections.push('pdf-section-2');
               
               generateBpAcamaPDF({ 
@@ -1970,7 +2088,7 @@ function TabBpProjets({
                        <span className="text-[13px] font-bold text-emerald-900 uppercase tracking-tight">Option Batterie Stand-Alone</span>
                        <span className="text-[10px] text-emerald-700/70 font-medium">Ajouter un simulateur de stockage au projet</span>
                     </div>
-                    <button 
+                     <button 
                       onClick={() => setParams(p => ({ ...p, batteryConfig: { ...(p.batteryConfig || {}), enabled: !p.batteryConfig?.enabled } }))}
                       className={cn(
                         "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 shadow-inner",
@@ -1983,6 +2101,27 @@ function TabBpProjets({
                       )} />
                     </button>
                  </div>
+
+                 {params.batteryConfig?.enabled && (
+                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-emerald-200/30">
+                      <div className="flex flex-col">
+                        <span className="text-[12px] font-bold text-emerald-800 uppercase">Étude Globale</span>
+                        <span className="text-[10px] text-emerald-600 font-medium">Bâtiment + Batterie combinés</span>
+                      </div>
+                      <button 
+                        onClick={() => setParams(p => ({ ...p, batteryConfig: { ...(p.batteryConfig || {}), isGlobal: !p.batteryConfig?.isGlobal } }))}
+                        className={cn(
+                          "relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none shadow-inner",
+                          params.batteryConfig?.isGlobal ? "bg-blue-600" : "bg-slate-300"
+                        )}
+                      >
+                        <span className={cn(
+                          "inline-block h-3 w-3 transform rounded-full bg-white transition-transform shadow-sm",
+                          params.batteryConfig?.isGlobal ? "translate-x-5" : "translate-x-1"
+                        )} />
+                      </button>
+                   </div>
+                 )}
               </div>
             </SectionCard>
 
@@ -3808,6 +3947,7 @@ export default function BpAcama() {
     renteType: 'none',
     batteryConfig: {
       enabled: false,
+      isGlobal: false,
       inflationAnnuelle: 2,
       degradationAnnuelle: 2,
       batterieBms: 33625,
@@ -3846,6 +3986,7 @@ export default function BpAcama() {
     
     const defaultBatteryConfig = {
       enabled: false,
+      isGlobal: false,
       inflationAnnuelle: 2,
       degradationAnnuelle: 2,
       batteryModelKey: 'solax',
@@ -4024,7 +4165,20 @@ export default function BpAcama() {
     }
   }, [activeTab, refreshProjects]);
 
-  const bp = useMemo(() => computeBusinessPlan({ ...collapsedParams, apport: resteACharge }), [collapsedParams, resteACharge]);
+  const bpBuilding = useMemo(() => computeBusinessPlan({ ...collapsedParams, apport: resteACharge }), [collapsedParams, resteACharge]);
+  const bpBattery = useMemo(() => {
+    if (params.batteryConfig?.enabled) {
+      return computeBatteryProfitability(params.batteryConfig);
+    }
+    return null;
+  }, [params.batteryConfig]);
+
+  const bp = useMemo(() => {
+    if (params.batteryConfig?.enabled && params.batteryConfig?.isGlobal && bpBattery) {
+      return mergeGlobalBP(bpBuilding, bpBattery, params.batteryConfig);
+    }
+    return bpBuilding;
+  }, [bpBuilding, bpBattery, params.batteryConfig?.enabled, params.batteryConfig?.isGlobal]);
   const { rows, annuite, emprunt, totalConstruction, totalInvestissement, apport10, soulte: calcSoulte } = bp;
   const tva = totalConstruction * 0.20;
   const apportSoulte = apport10 + calcSoulte;
