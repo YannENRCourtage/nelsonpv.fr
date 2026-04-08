@@ -480,6 +480,8 @@ function PMT(ir, np, pv) {
 
 // Helper for IRR
 function IRR(values, guess = 0.1) {
+  if (!values || values.length < 2) return 0;
+  if (!values || values.length < 2) return 0;
   let min = -1.0;
   let max = 1.0;
   let guessVal = guess;
@@ -1694,20 +1696,7 @@ function TabBpProjets({
     }
   };
 
-  const resteACharge = useMemo(() => computeResteACharge(collapsedParams), [collapsedParams]);
-
-  // AUTOMATION: Calculate potential coefficients for rent/soulte to reach target DSCR
-  const target = params.targetDSCR || 1.17;
-  const autoCoeffs = useMemo(() => {
-    try {
-      const lCoeff = calculateGoalSeekDSCR({ ...collapsedParams, renteType: 'loyer', apport: resteACharge }, 'loyer', target);
-      const sCoeff = calculateGoalSeekDSCR({ ...collapsedParams, renteType: 'soulte', apport: resteACharge }, 'soulte', target);
-      return { loyer: lCoeff, soulte: sCoeff };
-    } catch (e) {
-      console.error("Goal Seek failed", e);
-      return { loyer: 0, soulte: 0 };
-    }
-  }, [collapsedParams, resteACharge, target]);
+  // autoCoeffs and bpResults are passed as props
 
   // Note: bpResults and autoCoeffs are now passed as props
   const { rows, annuite, emprunt, soulte: calcSoulte, sumCA, sumOpex } = bpResults;
@@ -4164,10 +4153,10 @@ export default function BpAcama() {
     try {
       const lCoeff = calculateGoalSeekDSCR({ ...collapsedParams, renteType: 'loyer', apport: resteACharge }, 'loyer', target);
       const sCoeff = calculateGoalSeekDSCR({ ...collapsedParams, renteType: 'soulte', apport: resteACharge }, 'soulte', target);
-      return { loyer: lCoeff, soulte: sCoeff };
+      return { loyer: lCoeff, soulte: sCoeff, resteACharge };
     } catch (e) {
       console.error("Goal Seek failed", e);
-      return { loyer: 0, soulte: 0 };
+      return { loyer: 0, soulte: 0, resteACharge: 0 };
     }
   }, [collapsedParams, resteACharge, target]);
 
