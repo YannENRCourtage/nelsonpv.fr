@@ -9,12 +9,12 @@ import { cn } from '@/lib/utils';
 import {
   BarChart3, FileText, Calculator, TrendingUp, Users, Building,
   FileDown, Save, ChevronDown, Search, X, CheckCircle, AlertCircle,
-  AlertTriangle, RefreshCw, Plus, Trash2, MapPin, ChevronUp, Download, ArrowRight, Menu
+  AlertTriangle, RefreshCw, Plus, Trash2, MapPin, ChevronUp, Download
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ComposedChart } from 'recharts';
 
-import { generateBpAcamaPDF } from '../components/bp-acama/BpAcamaPDFGenerator';
-import ProjectSelect from '../components/bp-acama/ProjectSelect';
+import { generateBpAcamaPDF } from '../components/bp-acama/BpAcamaPDFGenerator.jsx';
+import ProjectSelect from '../components/bp-acama/ProjectSelect.jsx';
 import * as XLSX from 'xlsx';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -855,19 +855,19 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
     const resFinGlobal = interetsGlobal + (rB.fraisDSRF || 0);
     const resFiscalGlobal = ebitGlobal - resFinGlobal;
     
-    let isGlobal = 0;
+    let impotGlobal = 0;
     if (resFiscalGlobal > 0) {
       if (resFiscalGlobal < 42500) {
-        isGlobal = resFiscalGlobal * 0.15;
+        impotGlobal = resFiscalGlobal * 0.15;
       } else {
-        isGlobal = (42500 * 0.15) + ((resFiscalGlobal - 42500) * (tauxIS/100));
+        impotGlobal = (42500 * 0.15) + ((resFiscalGlobal - 42500) * (tauxIS/100));
       }
     }
     
-    const resApresISGlobal = resFiscalGlobal - isGlobal;
+    const resApresISGlobal = resFiscalGlobal - impotGlobal;
     const rembPrincipalGlobal = (rB.rembPrincipal || 0) + (rBat.principal || 0);
     const serviceDetteGlobal = (rB.serviceDette || 0) + (rBat.serviceDette || 0);
-    const tresorerieGlobal = ebitdaGlobal - resFinGlobal - isGlobal - rembPrincipalGlobal;
+    const tresorerieGlobal = ebitdaGlobal - resFinGlobal - impotGlobal - rembPrincipalGlobal;
 
     combinedRows.push({
       ...rB,
@@ -885,15 +885,15 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
       interets: interetsGlobal,
       resFin: resFinGlobal,
       resFiscal: resFiscalGlobal,
-      is: isGlobal,
+      is: impotGlobal,
       resApresIS: resApresISGlobal,
       serviceDetteBuilding: rB.serviceDette || 0,
       serviceDetteBattery: rBat.serviceDette || 0,
       serviceDette: serviceDetteGlobal,
-      dscr: serviceDetteGlobal > 0.01 ? (ebitdaGlobal - isGlobal) / serviceDetteGlobal : 9.99,
+      dscr: serviceDetteGlobal > 0.01 ? (ebitdaGlobal - impotGlobal) / serviceDetteGlobal : 9.99,
       rembPrincipal: rembPrincipalGlobal,
       tresorerie: tresorerieGlobal,
-      cafds: ebitdaGlobal - isGlobal,
+      cafds: ebitdaGlobal - impotGlobal,
       isGlobal: true,
       isCombined: true // Extra flag for safety
     });
