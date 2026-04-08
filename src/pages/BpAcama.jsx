@@ -580,6 +580,12 @@ function computeBatteryProfitability(config) {
       effacement: effacement * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
       caTotal: revNet,
       opex: chargesFixes + chargesCom,
+      maint: maintenanceAn * infl,
+      revBailleur: revenuBailleurAn * infl,
+      assur: assuranceAn * infl,
+      turpe: turpeAn * infl,
+      ifer: iferAn * infl,
+      retribComm: retributionCommAn * infl,
       serviceDette: interest + principal,
       ebe,
       interest,
@@ -875,12 +881,14 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
       ...rB,
       ...rBat,
       year: rB.year,
-      caBuilding: rB.ca || 0,
-      caBattery: rBat.caTotal || 0,
       ca: caGlobal,
-      opexBuilding: rB.opex || 0,
-      opexBattery: rBat.opex || 0,
       opex: opexGlobal,
+      maint: (rB.maint || 0) + (rBat.maint || 0),
+      ass: (rB.ass || 0) + (rBat.assur || 0),
+      loc: (rB.loc || 0),
+      taxes: (rB.taxes || 0) + (rBat.turpe || 0) + (rBat.ifer || 0),
+      admin: (rB.admin || 0) + (rBat.retribComm || 0),
+      revenuBailleur: rBat.revBailleur || 0,
       ebitda: ebitdaGlobal,
       amortissement: amortissementGlobal,
       ebit: ebitGlobal,
@@ -897,7 +905,7 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
       tresorerie: tresorerieGlobal,
       cafds: ebitdaGlobal - impotGlobal,
       isGlobal: true,
-      isCombined: true // Extra flag for safety
+      isCombined: true
     });
   }
 
@@ -1429,6 +1437,7 @@ function TableauPrevisionnel({ params, rows, apport10 }) {
             </tr>
             <DataRow label="Maintenance" propName="maint" isCurrency />
             <DataRow label="Location du compteur" propName="loc" isCurrency />
+            <DataRow label="Revenu bailleur" propName="revenuBailleur" isCurrency />
             <DataRow label="Assurance" propName="ass" isCurrency />
             {rows[0]?.isGlobal ? (
               <>
