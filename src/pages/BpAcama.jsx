@@ -844,15 +844,15 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
     // computeBatteryProfitability row has: year, arbitrage, reserve, capacite, effacement, caTotal, opex, serviceDette, ebe, interest, principal, tresorerie
     const rBat = bpBattery.rows[i] || { year: rB.year, arbitrage: 0, reserve: 0, capacite: 0, effacement: 0, caTotal: 0, opex: 0, serviceDette: 0, ebe: 0, interest: 0, principal: 0, tresorerie: 0 };
 
-    const caGlobal = rB.ca + rBat.caTotal;
-    const opexGlobal = rB.opex + rBat.opex;
+    const caGlobal = (rB.ca || 0) + (rBat.caTotal || 0);
+    const opexGlobal = (rB.opex || 0) + (rBat.opex || 0);
     
     const ebitdaGlobal = caGlobal - opexGlobal;
-    const amortissementGlobal = rB.amortissement + (bpBattery.capexTotal / (batteryConfig.dureeEtude || 20));
+    const amortissementGlobal = (rB.amortissement || 0) + (bpBattery.capexTotal / (batteryConfig.dureeEtude || 20));
     const ebitGlobal = ebitdaGlobal - amortissementGlobal;
     
-    const interetsGlobal = rB.interets + rBat.interest;
-    const resFinGlobal = interetsGlobal + rB.fraisDSRF;
+    const interetsGlobal = (rB.interets || 0) + (rBat.interest || 0);
+    const resFinGlobal = interetsGlobal + (rB.fraisDSRF || 0);
     const resFiscalGlobal = ebitGlobal - resFinGlobal;
     
     let isGlobal = 0;
@@ -865,19 +865,19 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
     }
     
     const resApresISGlobal = resFiscalGlobal - isGlobal;
-    const rembPrincipalGlobal = rB.rembPrincipal + rBat.principal;
-    const serviceDetteGlobal = rB.serviceDette + rBat.serviceDette;
+    const rembPrincipalGlobal = (rB.rembPrincipal || 0) + (rBat.principal || 0);
+    const serviceDetteGlobal = (rB.serviceDette || 0) + (rBat.serviceDette || 0);
     const tresorerieGlobal = ebitdaGlobal - resFinGlobal - isGlobal - rembPrincipalGlobal;
 
     combinedRows.push({
       ...rB,
       ...rBat,
       year: rB.year,
-      caBuilding: rB.ca,
-      caBattery: rBat.caTotal,
+      caBuilding: rB.ca || 0,
+      caBattery: rBat.caTotal || 0,
       ca: caGlobal,
-      opexBuilding: rB.opex,
-      opexBattery: rBat.opex,
+      opexBuilding: rB.opex || 0,
+      opexBattery: rBat.opex || 0,
       opex: opexGlobal,
       ebitda: ebitdaGlobal,
       amortissement: amortissementGlobal,
@@ -887,19 +887,20 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
       resFiscal: resFiscalGlobal,
       is: isGlobal,
       resApresIS: resApresISGlobal,
-      serviceDetteBuilding: rB.serviceDette,
-      serviceDetteBattery: rBat.serviceDette,
+      serviceDetteBuilding: rB.serviceDette || 0,
+      serviceDetteBattery: rBat.serviceDette || 0,
       serviceDette: serviceDetteGlobal,
-      dscr: serviceDetteGlobal > 0 ? (ebitdaGlobal - isGlobal) / serviceDetteGlobal : 9.99,
+      dscr: serviceDetteGlobal > 0.01 ? (ebitdaGlobal - isGlobal) / serviceDetteGlobal : 9.99,
       rembPrincipal: rembPrincipalGlobal,
       tresorerie: tresorerieGlobal,
       cafds: ebitdaGlobal - isGlobal,
-      isGlobal: true 
+      isGlobal: true,
+      isCombined: true // Extra flag for safety
     });
   }
 
-  const totalConsGlobal = bpBuilding.totalConstruction + bpBattery.capexTotal;
-  const totalApportGlobal = bpBuilding.apport10 + (batteryConfig.apport || 0);
+  const totalConsGlobal = (bpBuilding.totalConstruction || 0) + (bpBattery.capexTotal || 0);
+  const totalApportGlobal = (bpBuilding.apport10 || 0) + (batteryConfig.apport || 0);
 
   const cashFlowProjet = [-totalConsGlobal, ...combinedRows.map(r => r.cafds)];
   const cashFlowFP = [-totalApportGlobal, ...combinedRows.map(r => r.tresorerie)];
@@ -911,7 +912,7 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
   const sumCA = combinedRows.reduce((acc, r) => acc + r.ca, 0);
   const sumOpex = combinedRows.reduce((acc, r) => acc + r.opex, 0);
   const gains = sumCA - sumOpex - totalConsGlobal;
-  const payback = totalConsGlobal / (sumCA / years);
+  const payback = years > 0 ? (totalConsGlobal / (sumCA / years)) : 20;
   const dscrs = combinedRows.filter(r => r.serviceDette > 0).map(r => r.dscr);
   const dscrMoyen = dscrs.length > 0 ? dscrs.reduce((a, b) => a + b, 0) / dscrs.length : 0;
 
@@ -921,7 +922,7 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
     dscrMoyen,
     totalConstruction: totalConsGlobal,
     totalInvestissement: totalConsGlobal,
-    apport10: bpBuilding.apport10 + (batteryConfig.apport || 0), // Global initial equity
+    apport10: totalApportGlobal,
     triProjet,
     triFP,
     sumCA,
@@ -1367,7 +1368,7 @@ function BatterySection({ config, setParams }) {
 }
 // ─── Shared Component: Tableau Previsionnel ───────────────────────────────
 
-function TableauPrevisionnel({ params, rows }) {
+function TableauPrevisionnel({ params, rows, apport10 }) {
   const DataRow = ({ label, propName, isPercent, isCurrency, format, showSum }) => {
     const totalSum = showSum ? rows.reduce((acc, r) => acc + (r[propName] || 0), 0) : null;
     return (
@@ -1386,7 +1387,7 @@ function TableauPrevisionnel({ params, rows }) {
   };
 
   return (
-    <SectionCard title={rows[0]?.isGlobal ? "PLAN D'AFFAIRES PREVISIONNEL GLOBAL" : "PLAN D'AFFAIRES PREVISIONNEL BÂTIMENT"} className="p-0 border-none shadow-none">
+    <SectionCard title={rows[0]?.isGlobal ? "PLAN D'AFFAIRES PREVISIONNEL BÂTIMENT + BATTERIE STAND-ALONE" : "PLAN D'AFFAIRES PREVISIONNEL BÂTIMENT"} className="p-0 border-none shadow-none">
       <div className="overflow-x-auto w-full">
         <table className="text-[11px] w-full border-collapse">
           <thead>
@@ -1467,12 +1468,20 @@ function TableauPrevisionnel({ params, rows }) {
             <DataRow label="Dette début période" propName="detteDebut" isCurrency />
             <DataRow label="CAFDS" propName="cafds" isCurrency />
             <DataRow label="MRA onduleurs" propName="mra" isCurrency />
-            <DataRow label="Service de la Dette" propName="serviceDette" isCurrency />
+            {rows[0]?.isGlobal ? (
+              <>
+                <DataRow label="Dette Bâtiment" propName="serviceDetteBuilding" isCurrency className="text-slate-500 italic" />
+                <DataRow label="Dette Batterie" propName="serviceDetteBattery" isCurrency className="text-slate-500 italic" />
+                <DataRow label="TOTAL Service de la Dette" propName="serviceDette" isCurrency bold />
+              </>
+            ) : (
+              <DataRow label="Service de la Dette" propName="serviceDette" isCurrency />
+            )}
             <DataRow label="Remb principal" propName="rembPrincipal" isCurrency />
             <DataRow label="DSCR" propName="dscr" isPercent />
             <tr className="border border-slate-300 bg-amber-400 font-black">
               <td className="px-2 py-1 uppercase">Trésorerie nette annuelle</td>
-              <td className="px-2 py-1 text-right border-l border-slate-300">{fmtEur(-params.apport10)}</td>
+              <td className="px-2 py-1 text-right border-l border-slate-300">{fmtEur(-apport10)}</td>
               {rows.map((r, i) => (
                 <td key={i} className="px-1 py-1 text-right border-l border-slate-300 text-slate-900">{fmtEur(r.tresorerie)}</td>
               ))}
@@ -1496,6 +1505,7 @@ function TabBpProjets({
   computeResteACharge, 
   calculateGoalSeekDSCR, 
   bpResults, 
+  autoCoeffs,
   totalInvestissement, 
   apport10, 
   totalConstruction, 
@@ -1699,30 +1709,18 @@ function TabBpProjets({
     }
   }, [collapsedParams, resteACharge, target]);
 
-  // Compute BP with the selected renteType and its automatically found coefficient
-  const bp = useMemo(() => {
-    // If ACAMA, we use manual coefficients from params (RESTORE MANUAL CONTROL)
-    // If GREEN INVEST, we keep automation if desired.
-    
-    const bpParams = { 
-      ...collapsedParams, 
-      apport: resteACharge,
-      loyerCoeff: isGreenInvest ? autoCoeffs.loyer : (params.loyerCoeff || 0),
-      soulteCoeff: isGreenInvest ? autoCoeffs.soulte : (params.soulteCoeff || 0)
-    };
-    return computeBusinessPlan(bpParams);
-  }, [collapsedParams, resteACharge, autoCoeffs, params.loyerCoeff, params.soulteCoeff, isGreenInvest]);
-
-  const { rows, annuite, emprunt, soulte: calcSoulte, sumCA, sumOpex } = bp;
+  // Note: bpResults and autoCoeffs are now passed as props
+  const { rows, annuite, emprunt, soulte: calcSoulte, sumCA, sumOpex } = bpResults;
   const marginForCoeffs = sumCA - sumOpex;
-  const targetLoyerTotal = marginForCoeffs * autoCoeffs.loyer;
-  const targetSoulte = (marginForCoeffs * autoCoeffs.soulte) / 2;
+  const targetLoyerTotal = marginForCoeffs * (autoCoeffs?.loyer || 0);
+  const targetSoulte = (marginForCoeffs * (autoCoeffs?.soulte || 0)) / 2;
 
   // handleGoalSeek removed as it is now automated
 
   const limitDSCR = params.targetDSCR || 1.16;
-  const dscrColor = bp.dscrMoyen >= limitDSCR ? 'text-green-600 bg-green-50' : bp.dscrMoyen >= (limitDSCR - 0.06) ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50';
-  const DscrIcon = bp.dscrMoyen >= limitDSCR ? CheckCircle : bp.dscrMoyen >= (limitDSCR - 0.06) ? AlertTriangle : AlertCircle;
+  const dscrMoyenVal = bpResults.dscrMoyen || 0;
+  const dscrColor = dscrMoyenVal >= limitDSCR ? 'text-green-600 bg-green-50' : dscrMoyenVal >= (limitDSCR - 0.06) ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50';
+  const DscrIcon = dscrMoyenVal >= limitDSCR ? CheckCircle : dscrMoyenVal >= (limitDSCR - 0.06) ? AlertTriangle : AlertCircle;
 
 
   const applyProject = (id) => {
@@ -2394,7 +2392,7 @@ function TabBpProjets({
           <div className="lg:col-span-6 xl:col-span-4 space-y-6 flex flex-col h-full">
             <div className="bg-white rounded-lg border border-slate-200 p-4 flex flex-col items-center justify-center text-center space-y-1 shadow-sm border-t-4 border-t-green-500 grow">
               <div className="p-1.5 bg-green-50 rounded-full mb-0.5"><CheckCircle className="w-5 h-5 text-green-500" /></div>
-              <div className="text-3xl font-black text-green-600">{fmtPct(bp.dscrMoyen)}</div>
+              <div className="text-3xl font-black text-green-600">{fmtPct(bpResults.dscrMoyen)}</div>
               <div className="text-[12px] font-bold text-slate-500 uppercase tracking-widest">DSCR MOYEN 20 ANS</div>
               <div className="text-[11px] text-slate-400">Seuil bancaire : {fmt(params.targetDSCR * 100, 0)}%</div>
             </div>
@@ -2413,8 +2411,8 @@ function TabBpProjets({
                <div className="space-y-1">
                  <div className="flex justify-between text-sm"><span className="text-slate-500 text-[12px]">Apport avec soulte :</span><span className="font-bold text-blue-800 text-[13px]">{fmtEur(apport10 + (calcSoulte > 0 ? calcSoulte : 0))}</span></div>
                  <div className="flex justify-between text-sm"><span className="text-slate-500 text-[12px]">Emprunt net :</span><span className="font-bold text-blue-800 text-[13px]">{fmtEur(emprunt)}</span></div>
-                 <div className="flex justify-between text-sm"><span className="text-slate-500 text-[12px]">CA an 1 :</span><span className="font-bold text-blue-600 text-[13px]">{fmtEur(bp.rows[0]?.ca)}</span></div>
-                 <div className="flex justify-between text-sm"><span className="text-slate-500 text-[12px]">Charges an 1 :</span><span className="font-bold text-red-600 text-[13px]">{fmtEur((bp.rows[0]?.opex || 0) + (bp.rows[0]?.serviceDette || 0))}</span></div>
+                 <div className="flex justify-between text-sm"><span className="text-slate-500 text-[12px]">CA an 1 :</span><span className="font-bold text-blue-600 text-[13px]">{fmtEur(bpResults.rows[0]?.ca)}</span></div>
+                 <div className="flex justify-between text-sm"><span className="text-slate-500 text-[12px]">Charges an 1 :</span><span className="font-bold text-red-600 text-[13px]">{fmtEur((bpResults.rows[0]?.opex || 0) + (bpResults.rows[0]?.serviceDette || 0))}</span></div>
                </div>
             </SectionCard>
 
@@ -2439,28 +2437,28 @@ function TabBpProjets({
                     <div className="w-full grid grid-cols-2 gap-2 pt-1 border-t border-slate-50 mt-1">
                       <div className="flex flex-col items-center p-1 bg-blue-50/50 rounded border border-blue-100">
                         <span className="text-[10px] text-blue-400 font-bold uppercase">Loyer possible</span>
-                        <span className="text-[12px] font-bold text-blue-800">{fmtEur(autoCoeffs.loyer * (bp.sumCA - bp.sumOpex) / 20)}</span>
+                        <span className="text-[12px] font-bold text-blue-800">{fmtEur((autoCoeffs?.loyer || 0) * (bpResults.sumCA - bpResults.sumOpex) / 20)}</span>
                       </div>
                       <div className="flex flex-col items-center p-1 bg-amber-50/50 rounded border border-amber-100">
                         <span className="text-[10px] text-amber-500 font-bold uppercase">Soulte possible</span>
-                        <span className="text-[12px] font-bold text-amber-700">{fmtEur(autoCoeffs.soulte * (bp.sumCA - bp.sumOpex) / 2)}</span>
+                        <span className="text-[12px] font-bold text-amber-700">{fmtEur((autoCoeffs?.soulte || 0) * (bpResults.sumCA - bpResults.sumOpex) / 2)}</span>
                       </div>
                     </div>
                     
                     <div className="w-full bg-slate-50 rounded p-2 border border-slate-100 flex justify-between items-center mt-1">
                        <span className="text-[10px] text-slate-400 font-bold uppercase">Loyer annuel actuel :</span>
-                       <span className="text-sm font-black text-slate-800">{fmtEur(bp.loyer)}</span>
+                       <span className="text-sm font-black text-slate-800">{fmtEur(bpResults.loyer)}</span>
                     </div>
                  </div>
 
                  <div className="space-y-0.5 pt-1 border-t border-slate-100">
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">CA 20 ans :</span><span className="font-bold text-blue-800">{fmtEur(bp.sumCA)}</span></div>
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">Gains 20 ans :</span><span className="font-bold text-green-700">{fmtEur(bp.gains)}</span></div>
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">TRI FP :</span><span className="font-bold text-green-600">{fmtPct(bp.triFP)}</span></div>
-                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">RETOUR :</span><span className="font-bold text-blue-600">{fmt(bp.payback, 1)} ans</span></div>
+                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">CA 20 ans :</span><span className="font-bold text-blue-800">{fmtEur(bpResults.sumCA)}</span></div>
+                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">Gains 20 ans :</span><span className="font-bold text-green-700">{fmtEur(bpResults.gains)}</span></div>
+                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">TRI FP :</span><span className="font-bold text-green-600">{fmtPct(bpResults.triFP)}</span></div>
+                   <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">RETOUR :</span><span className="font-bold text-blue-600">{fmt(bpResults.payback || bpResults.tempsRetour || 0, 1)} ans</span></div>
                    <div className="flex justify-between text-[11px] pt-1 mt-1 border-t border-slate-50">
                       <span className="text-slate-400 font-bold uppercase">Prix au Wc global :</span>
-                      <span className="font-bold text-slate-700">{fmtEur(totalInvestissement / (bp.rows[0]?.kwcDeg || 1))} /Wc</span>
+                      <span className="font-bold text-slate-700">{fmtEur(totalInvestissement / (bpResults.rows[0]?.kwcDeg || 1))} /Wc</span>
                    </div>
                  </div>
                </div>
@@ -2479,7 +2477,7 @@ function TabBpProjets({
         {/* Page 2 (or 3 if battery) */}
         <div id="pdf-section-2" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
           <div className="mt-4">
-            <TableauPrevisionnel params={collapsedParams} rows={rows} />
+            <TableauPrevisionnel params={collapsedParams} rows={rows} apport10={bpResults.apport10} />
           </div>
         </div>
       </div>
@@ -4160,14 +4158,29 @@ export default function BpAcama() {
 
   const resteACharge = useMemo(() => computeResteACharge(collapsedParams), [collapsedParams]);
 
-  // Rafraîchir les projets quand on arrive sur l'onglet des sauvegardes
-  useEffect(() => {
-    if (activeTab === 'bp_saved') {
-      refreshProjects();
+  // AUTOMATION: Calculate potential coefficients for rent/soulte to reach target DSCR
+  const target = params.targetDSCR || 1.17;
+  const autoCoeffs = useMemo(() => {
+    try {
+      const lCoeff = calculateGoalSeekDSCR({ ...collapsedParams, renteType: 'loyer', apport: resteACharge }, 'loyer', target);
+      const sCoeff = calculateGoalSeekDSCR({ ...collapsedParams, renteType: 'soulte', apport: resteACharge }, 'soulte', target);
+      return { loyer: lCoeff, soulte: sCoeff };
+    } catch (e) {
+      console.error("Goal Seek failed", e);
+      return { loyer: 0, soulte: 0 };
     }
-  }, [activeTab, refreshProjects]);
+  }, [collapsedParams, resteACharge, target]);
 
-  const bpBuilding = useMemo(() => computeBusinessPlan({ ...collapsedParams, apport: resteACharge }), [collapsedParams, resteACharge]);
+  const bpBuilding = useMemo(() => {
+    const bpParams = { 
+        ...collapsedParams, 
+        apport: resteACharge,
+        loyerCoeff: isGreenInvest ? autoCoeffs.loyer : (params.loyerCoeff || 0),
+        soulteCoeff: isGreenInvest ? autoCoeffs.soulte : (params.soulteCoeff || 0)
+    };
+    return computeBusinessPlan(bpParams);
+  }, [collapsedParams, resteACharge, autoCoeffs, params.loyerCoeff, params.soulteCoeff, isGreenInvest]);
+
   const bpBattery = useMemo(() => {
     if (params.batteryConfig?.enabled) {
       return computeBatteryProfitability(params.batteryConfig);
@@ -4176,7 +4189,8 @@ export default function BpAcama() {
   }, [params.batteryConfig]);
 
   const bp = useMemo(() => {
-    if (params.batteryConfig?.enabled && params.batteryConfig?.isGlobal && bpBattery) {
+    const isGlobalMode = params.batteryConfig?.enabled && params.batteryConfig?.isGlobal && bpBattery;
+    if (isGlobalMode) {
       return mergeGlobalBP(bpBuilding, bpBattery, params.batteryConfig);
     }
     return bpBuilding;
@@ -4339,6 +4353,7 @@ export default function BpAcama() {
           computeResteACharge={computeResteACharge}
           calculateGoalSeekDSCR={calculateGoalSeekDSCR}
           bpResults={bp}
+          autoCoeffs={autoCoeffs}
           totalInvestissement={totalInvestissement}
           apport10={apport10}
           totalConstruction={totalConstruction}
