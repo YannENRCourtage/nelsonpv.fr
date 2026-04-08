@@ -2335,7 +2335,7 @@ function TabBpProjets({
                   </div>
                   <div className="flex justify-between text-[13px] mt-1 pt-1 border-t border-slate-200 font-bold">
                     <span className="text-slate-700 font-bold uppercase text-[11px]">Annuité :</span>
-                    <span className="text-slate-900">{fmtEur(bp.annuite)}</span>
+                    <span className="text-slate-900">{fmtEur(annuite)}</span>
                   </div>
                 </div>
               </div>
