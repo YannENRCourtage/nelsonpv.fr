@@ -1384,7 +1384,7 @@ function TableauPrevisionnel({ params, rows, apport10 }) {
     return (
       <tr className={cn("border-b border-slate-200 bg-white hover:bg-slate-50", className)}>
         <td className={cn("px-2 py-1 bg-slate-50 align-top text-[11px] border border-slate-200", bold ? "font-bold text-slate-900" : "font-medium text-slate-700")}>{label}</td>
-        <td className={cn("px-2 py-1 w-20 align-top text-right border border-slate-200 text-[11px] font-bold bg-slate-50 shadow-inner", showSum ? "text-slate-900" : "text-slate-400")}>
+        <td className={cn("px-2 py-1 w-28 whitespace-nowrap align-top text-right border border-slate-200 text-[11px] font-bold bg-slate-50 shadow-inner", showSum ? "text-slate-900" : "text-slate-400")}>
           {showSum ? (isCurrency ? fmtEur(totalSum) : fmt(totalSum, 2)) : "—"}
         </td>
         {rows.map((r, i) => (
@@ -1403,7 +1403,7 @@ function TableauPrevisionnel({ params, rows, apport10 }) {
           <thead>
             <tr className="bg-slate-100">
               <td className="w-[180px] p-2 border border-slate-200 text-slate-400 font-bold italic">{rows[0]?.isGlobal ? "Étude Combinée" : ""}</td>
-              <td className="w-20 p-1 border border-slate-200 text-center font-bold bg-amber-50 uppercase text-[10px] text-amber-900">TOTAL</td>
+              <td className="w-28 p-1 border border-slate-200 text-center font-bold bg-amber-50 uppercase text-[10px] text-amber-900">TOTAL</td>
               {rows.map((r, i) => (
                 <td key={i} className="p-1 border border-slate-200 text-center font-bold bg-slate-50">{r.year}</td>
               ))}
@@ -1453,7 +1453,7 @@ function TableauPrevisionnel({ params, rows, apport10 }) {
             <DataRow label="Remplacement des onduleurs" propName="mra" isCurrency />
             <tr className="border border-slate-200 bg-slate-50 font-bold">
               <td className="px-2 py-1">Total des charges</td>
-              <td className="px-2 py-1 text-right border-l border-slate-200 bg-slate-100/50">
+              <td className="px-2 py-1 w-28 whitespace-nowrap text-right border-l border-slate-200 bg-slate-100/50">
                 {fmtEur(rows.reduce((acc, r) => acc + (r.opex || 0) + (r.serviceDette || 0) + (r.mra || 0), 0))}
               </td>
               {rows.map((r, i) => (
@@ -1493,7 +1493,7 @@ function TableauPrevisionnel({ params, rows, apport10 }) {
             <DataRow label="DSCR" propName="dscr" isPercent />
             <tr className="border border-slate-300 bg-amber-400 font-black">
               <td className="px-2 py-1 uppercase">Trésorerie nette annuelle</td>
-              <td className="px-2 py-1 text-right border-l border-slate-300 bg-amber-500/20">
+              <td className="px-2 py-1 w-28 whitespace-nowrap text-right border-l border-slate-300 bg-amber-500/20">
                 {fmtEur(rows.reduce((acc, r) => acc + (r.tresorerie || 0), 0))}
               </td>
               {rows.map((r, i) => (
