@@ -1371,13 +1371,13 @@ function BatterySection({ config, setParams }) {
 // ─── Shared Component: Tableau Previsionnel ───────────────────────────────
 
 function TableauPrevisionnel({ params, rows, apport10 }) {
-  const DataRow = ({ label, propName, isPercent, isCurrency, format, showSum }) => {
+  const DataRow = ({ label, propName, isPercent, isCurrency, format, showSum, bold, className }) => {
     const totalSum = showSum ? rows.reduce((acc, r) => acc + (r[propName] || 0), 0) : null;
     return (
-      <tr className="border-b border-slate-200 bg-white hover:bg-slate-50">
-        <td className="px-2 py-1 font-medium bg-slate-50 align-top text-[11px] border border-slate-200">{label}</td>
-        <td className="px-2 py-1 text-slate-400 w-12 align-top text-right border border-slate-200 text-[11px]">
-          {showSum ? (isCurrency ? fmtEur(totalSum) : fmt(totalSum, 2)) : "-"}
+      <tr className={cn("border-b border-slate-200 bg-white hover:bg-slate-50", className)}>
+        <td className={cn("px-2 py-1 bg-slate-50 align-top text-[11px] border border-slate-200", bold ? "font-bold text-slate-900" : "font-medium text-slate-700")}>{label}</td>
+        <td className={cn("px-2 py-1 w-20 align-top text-right border border-slate-200 text-[11px] font-bold bg-slate-50 shadow-inner", showSum ? "text-slate-900" : "text-slate-400")}>
+          {showSum ? (isCurrency ? fmtEur(totalSum) : fmt(totalSum, 2)) : "—"}
         </td>
         {rows.map((r, i) => (
           <td key={i} className="px-1 py-1 text-right border border-slate-200 font-medium align-top text-[11px]">
@@ -1395,7 +1395,7 @@ function TableauPrevisionnel({ params, rows, apport10 }) {
           <thead>
             <tr className="bg-slate-100">
               <td className="w-[180px] p-2 border border-slate-200 text-slate-400 font-bold italic">{rows[0]?.isGlobal ? "Étude Combinée" : ""}</td>
-              <td className="w-12 p-1 border border-slate-200"></td>
+              <td className="w-20 p-1 border border-slate-200 text-center font-bold bg-amber-50 uppercase text-[10px] text-amber-900">TOTAL</td>
               {rows.map((r, i) => (
                 <td key={i} className="p-1 border border-slate-200 text-center font-bold bg-slate-50">{r.year}</td>
               ))}
@@ -1443,11 +1443,13 @@ function TableauPrevisionnel({ params, rows, apport10 }) {
             <DataRow label="Gestion administrative" propName="admin" isCurrency />
             <DataRow label="Location terrain" propName="loyer" isCurrency />
             <DataRow label="Remplacement des onduleurs" propName="mra" isCurrency />
-            <tr className="border border-slate-200 bg-slate-50">
-              <td className="px-2 py-1 font-bold">Total des charges</td>
-              <td className="px-2 py-1 text-right border-l border-slate-200">-</td>
+            <tr className="border border-slate-200 bg-slate-50 font-bold">
+              <td className="px-2 py-1">Total des charges</td>
+              <td className="px-2 py-1 text-right border-l border-slate-200 bg-slate-100/50">
+                {fmtEur(rows.reduce((acc, r) => acc + (r.opex || 0) + (r.serviceDette || 0) + (r.mra || 0), 0))}
+              </td>
               {rows.map((r, i) => (
-                <td key={i} className="px-1 py-1 text-right border-l border-slate-200 font-bold text-red-700">{fmtEur(r.opex + r.serviceDette + r.mra)}</td>
+                <td key={i} className="px-1 py-1 text-right border-l border-slate-200 text-red-700">{fmtEur(r.opex + r.serviceDette + r.mra)}</td>
               ))}
             </tr>
             <DataRow label="OPEX" propName="opex" isCurrency />
@@ -1483,7 +1485,9 @@ function TableauPrevisionnel({ params, rows, apport10 }) {
             <DataRow label="DSCR" propName="dscr" isPercent />
             <tr className="border border-slate-300 bg-amber-400 font-black">
               <td className="px-2 py-1 uppercase">Trésorerie nette annuelle</td>
-              <td className="px-2 py-1 text-right border-l border-slate-300">{fmtEur(-apport10)}</td>
+              <td className="px-2 py-1 text-right border-l border-slate-300 bg-amber-500/20">
+                {fmtEur(rows.reduce((acc, r) => acc + (r.tresorerie || 0), 0))}
+              </td>
               {rows.map((r, i) => (
                 <td key={i} className="px-1 py-1 text-right border-l border-slate-300 text-slate-900">{fmtEur(r.tresorerie)}</td>
               ))}
