@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import {
   BarChart3, FileText, Calculator, TrendingUp, Users, Building,
   FileDown, Save, ChevronDown, Search, X, CheckCircle, AlertCircle,
-  AlertTriangle, RefreshCw, Plus, Trash2, MapPin, ChevronUp, Download
+  AlertTriangle, RefreshCw, Plus, Trash2, MapPin, ChevronUp, Download, Menu
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, ComposedChart } from 'recharts';
 
@@ -840,7 +840,7 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
   const tauxIS = batteryConfig.tauxIS || 25;
 
   for (let i = 0; i < years; i++) {
-    const rB = bpBuilding.rows[i];
+    const rB = bpBuilding.rows[i] || { year: i+1, ca: 0, opex: 0, serviceDette: 0, amortissement: 0, interets: 0, fraisDSRF: 0, rembPrincipal: 0 };
     // computeBatteryProfitability row has: year, arbitrage, reserve, capacite, effacement, caTotal, opex, serviceDette, ebe, interest, principal, tresorerie
     const rBat = bpBattery.rows[i] || { year: rB.year, arbitrage: 0, reserve: 0, capacite: 0, effacement: 0, caTotal: 0, opex: 0, serviceDette: 0, ebe: 0, interest: 0, principal: 0, tresorerie: 0 };
 
