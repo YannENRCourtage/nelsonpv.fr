@@ -1296,7 +1296,7 @@ function BatterySection({ config, setParams }) {
               <Field label="Développement" value={config.developpement} onChange={v => update('developpement', v)} type="number" suffix="€" readOnly />
               <Field label="Frais comm." value={config.fraisCommerciaux} onChange={v => update('fraisCommerciaux', v)} type="number" suffix="€" />
               <div className="pt-2 border-t border-slate-200 mt-1">
-                <Field label="Invest. Total" value={results.capexTotal} type="number" suffix="€" readOnly className="font-bold bg-slate-100" />
+                <Field label="Invest. Total" value={fmt(results.capexTotal, 0)} type="text" suffix="€" disabled className="font-bold" />
               </div>
             </div>
           </div>
