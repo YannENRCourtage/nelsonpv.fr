@@ -7,7 +7,8 @@ const enedisService = {
    */
   initiateAuth(projectId) {
     if (!projectId) throw new Error('Project ID is required');
-    window.location.href = `/api/enedis/auth?projectId=${projectId}`;
+    // Open in a new tab to preserve the user's current project context
+    window.open(`/api/enedis/auth?projectId=${projectId}`, '_blank', 'noopener,noreferrer');
   },
 
   /**
@@ -22,7 +23,14 @@ const enedisService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching Enedis data:', error);
-      throw error;
+      // Re-throw with a more user-friendly message
+      if (error.response?.status === 404) {
+        throw new Error('Aucun consentement Enedis trouvé pour ce projet. Veuillez vous connecter à Enedis d\'abord.');
+      } else if (error.response?.status === 403) {
+        throw new Error('Accès refusé. Le consentement Enedis a peut-être expiré.');
+      } else {
+        throw new Error(error.response?.data?.error || error.message || 'Impossible de récupérer les données Enedis.');
+      }
     }
   }
 };
