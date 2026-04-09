@@ -3993,7 +3993,7 @@ function AltiMouseIndicator({ activeLayers, layersRef }) {
     }
   });
 
-  if (!isLiDARActive || !isVisible || data.alt === null) return null;
+  if (!isLiDARActive || !isVisible || typeof data.alt !== 'number') return null;
 
   return (
     <div 
