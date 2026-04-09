@@ -26,6 +26,8 @@ import znzvData from "@/data/znzv.json";
 import { apiService } from "@/services/api";
 import { ACAMA_PREDEFINED_BUILDINGS } from "@/data/simulatorPredefinedBuildings";
 import { calculateRequiredResteACharge } from "@/lib/profitabilityCalculations";
+import enedisService from "@/services/enedis";
+import ConsumptionChart from "@/components/enedis/ConsumptionChart";
 
 const INCLINATION_OPTIONS = Array.from({ length: 91 }, (_, i) => {
   const percentage = Math.tan(i * Math.PI / 180) * 100;
@@ -138,6 +140,7 @@ export default function ProjectEditor() {
   // Reset layers when project changes
   useEffect(() => {
     setActiveLayers(new Set());
+    setEnedisData(null); // Reset Enedis data on project change
   }, [projectId]);
   const [isAngleDefaulted, setIsAngleDefaulted] = useState(false);
   const [isAzimuthDefaulted, setIsAzimuthDefaulted] = useState(false);
@@ -159,6 +162,31 @@ export default function ProjectEditor() {
   });
   const [companies, setCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
+  const [enedisData, setEnedisData] = useState(null);
+  const [enedisPrm, setEnedisPrm] = useState('');
+  const [isEnedisLoading, setIsEnedisLoading] = useState(false);
+
+  // Fetch Enedis data if tokens exist
+  useEffect(() => {
+    if (!projectId || projectId === 'new') return;
+    
+    const fetchEnedis = async () => {
+      setIsEnedisLoading(true);
+      try {
+        const result = await enedisService.fetchData({ projectId });
+        if (result && result.data) {
+          setEnedisData(result.data);
+          setEnedisPrm(result.prm);
+        }
+      } catch (err) {
+        console.warn('Could not fetch Enedis data. Consent might be missing.');
+      } finally {
+        setIsEnedisLoading(false);
+      }
+    };
+
+    fetchEnedis();
+  }, [projectId]);
 
   useEffect(() => {
     const handleForceReset = () => {
@@ -731,6 +759,81 @@ export default function ProjectEditor() {
                 </Select>
               </div>
             </div>
+          </div>
+
+          {/* Section Intégration Enedis */}
+          <div className="mt-6 border-t pt-4">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <Zap size={16} className="text-yellow-500" />
+              Intégration Enedis Data Connect
+            </h3>
+            
+            {!enedisData ? (
+              <div className="flex flex-col gap-4 bg-gray-50 p-4 rounded-xl border border-dashed border-gray-300">
+                <p className="text-xs text-gray-600">
+                  Récupérez automatiquement les données de consommation réelle (Annuelle, Quotidienne et Courbe de charge 30min) de votre client.
+                </p>
+                
+                <div className="flex flex-col lg:flex-row items-end gap-3">
+                  <div className="flex-1 w-full">
+                    <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">PRM (Optionnel)</label>
+                    <Input 
+                      value={enedisPrm} 
+                      onChange={e => setEnedisPrm(e.target.value)} 
+                      placeholder="N° de compteur (14 chiffres)" 
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      type="button" 
+                      onClick={() => enedisService.initiateAuth(projectId)}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      disabled={projectId === 'new' || isEnedisLoading}
+                    >
+                      {isEnedisLoading ? 'Chargement...' : 'Se connecter à Enedis'}
+                    </Button>
+                    {enedisPrm && (
+                      <Button 
+                        variant="outline"
+                        onClick={async () => {
+                          setIsEnedisLoading(true);
+                          try {
+                            const result = await enedisService.fetchData({ projectId, prm: enedisPrm });
+                            if (result && result.data) setEnedisData(result.data);
+                            toast({ title: "Données récupérées", description: "Consommation chargée via PRM manuel." });
+                          } catch (err) {
+                            toast({ title: "Erreur", description: "Impossible de récupérer les données pour ce PRM.", variant: "destructive" });
+                          } finally {
+                            setIsEnedisLoading(false);
+                          }
+                        }}
+                      >
+                        Consulter ce PRM
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {projectId === 'new' && <span className="text-[10px] text-red-500 italic">Sauvegardez le projet d'abord</span>}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-1 rounded-md border border-green-200">
+                    Connecté au PRM : {enedisPrm}
+                  </span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => enedisService.initiateAuth(projectId)}
+                    className="text-[10px] text-gray-500 hover:text-blue-600"
+                  >
+                    Changer de compteur / Reconnecter
+                  </Button>
+                </div>
+                <ConsumptionChart data={enedisData} loading={isEnedisLoading} />
+              </div>
+            )}
           </div>
 
           {/* Body: collapsed on mobile by default, always visible on desktop */}
