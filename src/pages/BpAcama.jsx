@@ -117,7 +117,8 @@ const BATTERY_MODELS = [
   { id: 'sungrow', brand: 'Sungrow', model: 'PowerStack ST275', power: 125, capacity: 275, price: 55000 },
   { id: 'deye', brand: 'Deye', model: 'GE-F120', power: 120, capacity: 215, price: 43000 },
   { id: 'socomec', brand: 'Socomec', model: 'SUNSYS HES L', power: 250, capacity: 500, price: 130000 },
-  { id: 'pylontech', brand: 'Pylontech', model: 'Optimus-280', power: 100, capacity: 280, price: 52000 }
+  { id: 'pylontech', brand: 'Pylontech', model: 'Optimus-280', power: 100, capacity: 280, price: 52000 },
+  { id: 'cesc_mercury', brand: 'CESC', model: 'Mercury233 EU 05kW/233kWh', power: 105, capacity: 233, price: 30298.71 }
 ];
 
 const SUIVI_BAT_DATA_GREEN_INVEST = [
@@ -1294,6 +1295,9 @@ function BatterySection({ config, setParams }) {
               <Field label="Raccordement" value={config.raccordement} onChange={v => update('raccordement', v)} type="number" suffix="€" readOnly />
               <Field label="Développement" value={config.developpement} onChange={v => update('developpement', v)} type="number" suffix="€" readOnly />
               <Field label="Frais comm." value={config.fraisCommerciaux} onChange={v => update('fraisCommerciaux', v)} type="number" suffix="€" />
+              <div className="pt-2 border-t border-slate-200 mt-1">
+                <Field label="Invest. Total" value={results.capexTotal} type="number" suffix="€" readOnly className="font-bold bg-slate-100" />
+              </div>
             </div>
           </div>
         </div>
