@@ -19,6 +19,7 @@ import {
 import { useProjects } from "@/contexts/ProjectContext.jsx";
 import { useAuth } from "@/contexts/AuthContext.jsx";
 import { Input } from "@/components/ui/input.jsx";
+import { AddressAutocomplete } from "@/components/ui/address-autocomplete";
 import { toast } from "@/components/ui/use-toast.js";
 import { cn } from "@/lib/utils";
 import PredefinedBuildingsPanel from "@/components/editor/PredefinedBuildingsPanel.jsx";
@@ -95,6 +96,21 @@ function SymbolsPanel({ onSymbolSelect, selectedSymbol }) {
 export default function ProjectEditor() {
   const { projectId } = useParams();
   const { projects, setProject, project, updateProject, saveProject } = useProjects();
+  const p = project || {};
+
+  const handleAddressSelect = (feature) => {
+    const { name, postcode, city, label } = feature.properties;
+    const [lng, lat] = feature.geometry.coordinates;
+    updateProject({
+      address: name || label.split(',')[0],
+      zip: postcode || '',
+      city: city || '',
+      gps: `${lat}, ${lng}`
+    });
+    window.dispatchEvent(new CustomEvent('map:goto-location', {
+      detail: { lat, lng, zoom: 18 }
+    }));
+  };
 
   // ...
 
@@ -882,7 +898,13 @@ export default function ProjectEditor() {
               {/* Ligne 2: Adresse */}
               <div>
                 <label className="text-xs font-medium">Adresse</label>
-                <Input value={p.address || ''} onChange={e => updateProject({ address: e.target.value })} className="mt-0.5 h-8" placeholder="Adresse du projet" />
+                <AddressAutocomplete 
+                  value={p.address || ''} 
+                  onChange={e => updateProject({ address: e.target.value })} 
+                  onSelect={handleAddressSelect}
+                  className="mt-0.5 h-8" 
+                  placeholder="Adresse du projet" 
+                />
               </div>
 
               {/* Ligne 3: CP + Ville */}
@@ -1074,7 +1096,16 @@ export default function ProjectEditor() {
               <div className="col-span-3"><label className="text-sm font-medium">Téléphone</label><Input value={p.phone || ''} onChange={e => updateProject({ phone: e.target.value })} className="mt-1 h-10" placeholder="Téléphone" /></div>
               <div className="col-span-3"><label className="text-sm font-medium">Email</label><Input value={p.email || ''} onChange={e => updateProject({ email: e.target.value })} className="mt-1 h-10" placeholder="Email" /></div>
               {/* Desktop: Adresse, CP, Ville */}
-              <div className="col-span-6"><label className="text-sm font-medium">Adresse du projet</label><Input value={p.address || ''} onChange={e => updateProject({ address: e.target.value })} className="mt-1 h-10" placeholder="Adresse du projet" /></div>
+              <div className="col-span-6">
+                <label className="text-sm font-medium">Adresse du projet</label>
+                <AddressAutocomplete 
+                  value={p.address || ''} 
+                  onChange={e => updateProject({ address: e.target.value })} 
+                  onSelect={handleAddressSelect}
+                  className="mt-1 h-10" 
+                  placeholder="Adresse du projet" 
+                />
+              </div>
               <div className="col-span-2"><label className="text-sm font-medium">Code postal</label><Input value={p.zip || ''} onChange={e => updateProject({ zip: e.target.value })} className="mt-1 h-10" placeholder="Code postal" /></div>
               <div className="col-span-4"><label className="text-sm font-medium">Ville</label><Input value={p.city || ''} onChange={e => updateProject({ city: e.target.value })} className="mt-1 h-10" placeholder="Ville" /></div>
 
