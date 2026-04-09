@@ -3941,6 +3941,91 @@ function MapInternalController({ layersRef, activeLayers, setSelectedCompany, se
   return null;
 }
 
+function AltiMouseIndicator({ activeLayers, layersRef }) {
+  const map = useMap();
+  const [data, setData] = useState({ alt: null });
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isVisible, setIsVisible] = useState(false);
+  const timeoutRef = useRef(null);
+
+  const isLiDARActive = useMemo(() => {
+    if (!map || !layersRef.current) return false;
+    // Check overlays
+    const overlays = ['lidarMNT', 'lidarMNS', 'lidarMNH'];
+    const hasActiveOverlay = overlays.some(k => activeLayers?.has(k));
+    if (hasActiveOverlay) return true;
+
+    // Check base layer (lidarMNT can be a base layer)
+    try {
+      if (layersRef.current['lidarMNT'] && map.hasLayer(layersRef.current['lidarMNT'])) return true;
+    } catch(e) {}
+    
+    return false;
+  }, [activeLayers, map, layersRef.current]);
+
+  useMapEvents({
+    mousemove(e) {
+      if (!isLiDARActive) {
+        if (isVisible) setIsVisible(false);
+        return;
+      }
+      
+      const pos = map.latLngToContainerPoint(e.latlng);
+      setMousePos(pos);
+      if (!isVisible) setIsVisible(true);
+
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(async () => {
+        try {
+          const res = await fetch(`https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json?resource=ign_rge_alti_wld&lon=${e.latlng.lng}&lat=${e.latlng.lat}&zonly=true`);
+          if (!res.ok) return;
+          const json = await res.json();
+          if (json.elevations?.[0]) {
+            setData({ alt: json.elevations[0].z });
+          }
+        } catch (err) {
+          // Silent error for hover
+        }
+      }, 150); // Fast enough for "real-time" feel but slow enough for API limits
+    },
+    mouseout() {
+      setIsVisible(false);
+    }
+  });
+
+  if (!isLiDARActive || !isVisible || data.alt === null) return null;
+
+  return (
+    <div 
+      style={{
+        position: 'absolute',
+        left: mousePos.x + 15,
+        top: mousePos.y + 15,
+        zIndex: 10000,
+        pointerEvents: 'none',
+        background: 'rgba(255, 255, 255, 0.9)',
+        backdropFilter: 'blur(8px)',
+        padding: '5px 10px',
+        borderRadius: '8px',
+        border: '1px solid rgba(59, 130, 246, 0.4)',
+        boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+        fontSize: '13px',
+        fontWeight: '700',
+        color: '#1e3a8a',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        whiteSpace: 'nowrap',
+        transition: 'opacity 0.2s'
+      }}
+    >
+      <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+      <span>{data.alt.toFixed(1)} m</span>
+      <span className="text-[10px] text-blue-400 font-normal opacity-70">NGF</span>
+    </div>
+  );
+}
+
 export default function MapElements({ 
   style = {}, 
   project, 
@@ -4157,6 +4242,8 @@ export default function MapElements({
           <PostesHTALayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <PostesSourcesRTELayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <DemographicLayerManager layersRef={layersRef} activeLayers={activeLayers} />
+          
+          <AltiMouseIndicator activeLayers={activeLayers} layersRef={layersRef} />
 
           {/* Controls inside map */}
           <BasemapControl layersRef={layersRef} />
