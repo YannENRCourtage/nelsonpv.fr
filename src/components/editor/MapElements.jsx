@@ -2178,7 +2178,7 @@ const LAYERS = {
   google: { name: "Google", url: "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0, maxZoom: 22 },
   ignPlan: { name: "IGN - Plan IGN", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0, maxNativeZoom: 18, maxZoom: 22 },
   osm: { name: "Plan OSM", url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attrib: '© OpenStreetMap contributors', zIndex: 0, maxNativeZoom: 19, maxZoom: 22 },
-  lidarMNT: { name: "LiDAR HD - Terrain (MNT)", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN LiDAR HD', zIndex: 0, maxZoom: 22 },
+  lidarMNT: { name: "LiDAR HD - Terrain (MNT)", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN LiDAR HD', zIndex: 0, maxNativeZoom: 19, maxZoom: 22 },
 
   // ========== CALQUES OVERLAY ==========
   // Cadastre & Bâtiments
@@ -2355,6 +2355,7 @@ const LAYERS = {
     isOverlay: true,
     zIndex: 120,
     opacity: 0.8,
+    maxNativeZoom: 19,
     maxZoom: 22
   },
   lidarMNH: {
@@ -2364,6 +2365,7 @@ const LAYERS = {
     isOverlay: true,
     zIndex: 121,
     opacity: 0.8,
+    maxNativeZoom: 19,
     maxZoom: 22
   },
   capareseau: {
