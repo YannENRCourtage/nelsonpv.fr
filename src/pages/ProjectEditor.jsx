@@ -800,16 +800,38 @@ export default function ProjectEditor() {
                           setIsEnedisLoading(true);
                           try {
                             const result = await enedisService.fetchData({ projectId, prm: enedisPrm });
-                            if (result && result.data) setEnedisData(result.data);
-                            toast({ title: "Données récupérées", description: "Consommation chargée via PRM manuel." });
+                            if (result && result.data) {
+                              setEnedisData(result.data);
+                              toast({ title: "✅ Données récupérées", description: "Consommation chargée avec succès." });
+                            }
                           } catch (err) {
-                            toast({ title: "Erreur", description: "Impossible de récupérer les données pour ce PRM.", variant: "destructive" });
+                            const msg = err.message || '';
+                            if (msg.includes('consentement') || msg.includes('404') || msg.includes('No Enedis consent')) {
+                              toast({ 
+                                title: "Consentement requis", 
+                                description: "Pour accéder aux données de ce compteur, le propriétaire doit d'abord autoriser l'accès via le bouton « Se connecter à Enedis ».",
+                                variant: "destructive" 
+                              });
+                            } else if (msg.includes('expiré') || msg.includes('403')) {
+                              toast({ 
+                                title: "Accès expiré", 
+                                description: "Le consentement Enedis a expiré. Cliquez sur « Se connecter à Enedis » pour le renouveler.",
+                                variant: "destructive" 
+                              });
+                            } else {
+                              toast({ 
+                                title: "Erreur Enedis", 
+                                description: msg || "Impossible de récupérer les données. Vérifiez que le flux de consentement a bien été complété.",
+                                variant: "destructive" 
+                              });
+                            }
                           } finally {
                             setIsEnedisLoading(false);
                           }
                         }}
+                        disabled={isEnedisLoading}
                       >
-                        Consulter ce PRM
+                        {isEnedisLoading ? 'Chargement...' : 'Consulter ce PRM'}
                       </Button>
                     )}
                   </div>

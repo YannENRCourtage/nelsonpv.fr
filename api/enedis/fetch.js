@@ -69,7 +69,10 @@ export default async function handler(req, res) {
         }
 
         if (!consentDoc || !consentDoc.exists) {
-            return res.status(404).json({ error: 'No Enedis consent found' });
+            return res.status(404).json({ 
+                error: 'Aucun consentement Enedis trouvé pour ce PRM ou ce projet.',
+                hint: 'Le propriétaire du compteur doit d\'abord autoriser l\'accès via le bouton "Se connecter à Enedis".'
+            });
         }
 
         let consent = consentDoc.data();
