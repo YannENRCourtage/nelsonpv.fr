@@ -96,7 +96,6 @@ function SymbolsPanel({ onSymbolSelect, selectedSymbol }) {
 export default function ProjectEditor() {
   const { projectId } = useParams();
   const { projects, setProject, project, updateProject, saveProject } = useProjects();
-  const p = project || {};
 
   const handleAddressSelect = (feature) => {
     const { name, postcode, city, label } = feature.properties;
