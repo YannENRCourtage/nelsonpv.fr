@@ -23,15 +23,16 @@ export function Bracing({
     const angleRad = (roofPitch * Math.PI) / 180;
     const bracings = [];
 
+    const createRod = (start, end, key) => (
+        <BraceRod key={key} start={start} end={end} material={bracingMaterial} thickness={0.03} />
+    );
+
     // Loop through bays and add bracing every 4 bays
     for (let i = 0; i < bayCount; i += 4) {
         const zStart = -i * baySpacing;
         const zEnd = -(i + 1) * baySpacing;
 
         const yBot = 0.5;
-        const createRod = (start, end, key) => (
-            <BraceRod key={key} start={start} end={end} material={bracingMaterial} thickness={0.03} />
-        );
 
         // --- CUSTOM MODE GENERATION ---
         if (configMode === 'custom') {
@@ -81,10 +82,6 @@ export function Bracing({
         }
 
 
-
-        const createRod = (start, end, key) => (
-            <BraceRod key={key} start={start} end={end} material={bracingMaterial} thickness={0.03} />
-        );
 
         // Main Left Wall (-width/2 ou -15.4 pour T5)
         const xLeftWall = buildingType === 'epona_talian5' ? -15.4 : -width / 2;
