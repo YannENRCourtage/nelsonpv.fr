@@ -137,7 +137,14 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
     // Rafter Height = 0.2m (from boxGeometry below)
     // Rafter Top = 0.1m from center line
     // Purlin Center = 0.07m (half of 0.14)
-    const purlinPerpOffset = 0.1 + (purlinHeight / 2);
+    let purlinPerpOffset = 0.1 + (purlinHeight / 2);
+
+    // USER REQUEST 10/04/2026: Sur-mesure uniquement - Calage 5cm au-dessus de la panne basse
+    // On veut RoofBottom = PurlinTop + 0.05m
+    // Avec RoofOffset = 0.52m au faîtage, cela impose purlinPerpOffset * cos(alpha) + PurlinHalfH = 0.47m
+    if (isCustom) {
+        purlinPerpOffset = (0.47 - (purlinHeight / 2)) / Math.cos(angleRad);
+    }
 
     const numPurlins = Math.floor(slopeLength / purlinSpacing);
 
@@ -226,7 +233,12 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
     const baseCoverY = 0.35;
     let extraCoverY = (buildingType === 'asymetrique_2' && side === 'right') ? 0.15 : 0;
     if (buildingType === 'asymetrique_2' && side === 'right' && !isAcama) extraCoverY += 0.1; // Round 8: +0.1m for GI
-    const finalCoverY = baseCoverY + extraCoverY;
+    let finalCoverY = baseCoverY + extraCoverY;
+
+    // USER REQUEST 10/04/2026: Sur-mesure uniquement - Alignement pile avec la couverture bâtiment (0.52m d'offset)
+    if (isCustom) {
+        finalCoverY = 0.52;
+    }
 
     return (
         <group

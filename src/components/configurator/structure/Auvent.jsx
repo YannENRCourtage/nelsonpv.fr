@@ -222,6 +222,13 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
         purlinPerpOffset -= 0.30;
     }
 
+    // USER REQUEST 10/04/2026: Sur-mesure uniquement - Calage 5cm au-dessus de la panne basse
+    // On veut RoofBottom = PurlinTop + 0.05m
+    // Avec RoofOffset = 0.52m au faîtage, cela impose purlinPerpOffset * cos(alpha) = 0.40m
+    if (isCustom) {
+        purlinPerpOffset = 0.40 / Math.cos(angleRad);
+    }
+
     const numPurlins = Math.floor(slopeLength / purlinSpacing);
     const numFrames = bayCount + 1;
 
@@ -384,8 +391,12 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
         // Monopente: Lower awning coverage by 16cm
         roofY = -0.10 - 0.16;
     }
-    // USER REQUEST 10/04/2026: Sur-mesure uniquement - Remonte couverture auvent de 0.3m
-    if (isCustom) roofY += 0.30;
+    // USER REQUEST 10/04/2026: Sur-mesure uniquement - Alignement pile avec la couverture bâtiment (0.52m d'offset)
+    // On ajuste roofY pour compenser la rotation du mesh centrée sur slopeLength/2
+    if (isCustom) {
+        const buildingCoverOffset = 0.52; 
+        roofY = buildingCoverOffset - (slopeLength / 2) * Math.sin(angleRad);
+    }
 
     return (
         <group

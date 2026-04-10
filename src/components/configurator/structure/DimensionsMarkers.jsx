@@ -912,8 +912,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             {/* 12. SURFACE AREA TEXT OVER BUILDING */}
             <Text
                 position={[
-                    buildingType === 'epona_talian5' ? -11.27 : 0,
-                    Math.min(eaveHeight, ridgeHeight) + (buildingType === 'epona_talian5' ? 1.5 : 4),
+                    buildingType === 'epona_talian5' ? -11.27 : (isCustom ? (-width / 2 + spans.left) : 0),
+                    isCustom ? (cp.ridgeHeight + 0.52 + 1.0) : (Math.min(eaveHeight, ridgeHeight) + (buildingType === 'epona_talian5' ? 1.5 : 4)),
                     -length / 2
                 ]}
                 rotation={[-Math.PI / 2, 0, Math.PI / 2]} 
