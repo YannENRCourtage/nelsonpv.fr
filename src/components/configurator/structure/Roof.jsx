@@ -487,9 +487,17 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
 
         if (!isAcama) {
             let leftEaveAdjustment = -0.3; 
-            if (isWidth25) leftEaveAdjustment -= 0.3;  // USER REQUEST 10/04/2026: -0.3m supplémentaire pour 25.5m GI
-            if (isWidth29) leftEaveAdjustment += 0.3 + 0.3;  // USER REQUEST 10/04/2026: +0.3m supplémentaire pour 29.1m GI (base +0.3 + ajout +0.3)
-            const rightEaveAdjustment = 0.2; 
+            let rightEaveAdjustment = 0.2;
+
+            if (isWidth25) {
+                leftEaveAdjustment = -0.6; // USER REQUEST 10/04/2026: abaisse de 0.3m (total -0.6m)
+                rightEaveAdjustment = 0.3;  // USER REQUEST 10/04/2026: remonte de 0.1m (total +0.3m)
+            }
+            if (isWidth29) {
+                leftEaveAdjustment = -0.2; // USER REQUEST 10/04/2026: remonte de 0.1m (total -0.2m)
+                rightEaveAdjustment = 0.3;  // USER REQUEST 10/04/2026: remonte de 0.1m (total +0.3m)
+            }
+
             leftAngleGI = Math.atan(Math.tan(15 * Math.PI / 180) + (-leftEaveAdjustment / leftSpanVisible));
             rightAngleGI = Math.atan(Math.tan(15 * Math.PI / 180) - (rightEaveAdjustment / rightSpanVisible));
             const offsetDist = (0.140 / 2) + (0.001 / 2) + 0.35 + 0.10; 
