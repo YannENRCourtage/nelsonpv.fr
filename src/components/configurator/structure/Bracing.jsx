@@ -12,6 +12,13 @@ export function Bracing({
     leftSide = 'none', rightSide = 'none', leftWidth = 0, rightWidth = 0
 }) {
     const { isAcama, configMode, customParams, customSpans } = useConfiguratorValues();
+    const isCustom = configMode === 'custom';
+    
+    // ACAMA Models check
+    const isTalian4 = !isCustom && isAcama && buildingType === 'symetrique' && Math.abs(width - 13.7) < 0.1;
+    const isTalian1 = !isCustom && isAcama && buildingType === 'symetrique' && Math.abs(width - 18.8) < 0.1;
+    const isTalian3 = !isCustom && isAcama && buildingType === 'symetrique' && Math.abs(width - 17.5) < 0.1;
+    const isTalian = isTalian4 || isTalian1 || isTalian3;
     const bracingMaterial = useMemo(() => new THREE.MeshStandardMaterial({
         color: '#a0a0a0',
         metalness: 0.6,

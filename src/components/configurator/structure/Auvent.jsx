@@ -22,6 +22,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     const isTalian4 = !isCustom && isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 13.7) < 0.1;
     const isTalian1 = !isCustom && isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 18.8) < 0.1;
     const isTalian3 = !isCustom && isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 17.5) < 0.1;
+    const isTalian = isTalian4 || isTalian1 || isTalian3;
     const isEpona = !isCustom && isAcama && buildingType === 'epona';
 
     let auventWidth = isCustom ? (side === 'left' ? cp.leftExtensionWidth : cp.rightExtensionWidth) : 4.0;
