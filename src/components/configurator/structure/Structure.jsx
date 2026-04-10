@@ -10,48 +10,48 @@ import { DimensionsMarkers } from './DimensionsMarkers.jsx';
 import { Awning } from './Awning.jsx';
 import { Auvent } from './Auvent.jsx';
 
+// Ridge Flashing (Bande Lisse Faîtière)
+const RidgeFlashing = ({ len, h, angle, x = 0 }) => {
+    // Material
+    const mat = React.useMemo(() => new THREE.MeshStandardMaterial({
+        color: '#4A4A4A', 
+        roughness: 0.5,
+        metalness: 0.4,
+        side: THREE.DoubleSide
+    }), []);
+
+    const shape = React.useMemo(() => {
+        const s = new THREE.Shape();
+        const halfW = 0.5; // 0.5m
+        const drop = halfW * Math.tan(angle);
+        const t = 0.005;
+
+        s.moveTo(0, 0.02); 
+        s.lineTo(-halfW, -drop);
+        s.lineTo(-halfW, -drop - t);
+        s.lineTo(0, 0.02 - t);
+        s.lineTo(halfW, -drop - t);
+        s.lineTo(halfW, -drop);
+        s.lineTo(0, 0.02);
+        return s;
+    }, [angle]);
+
+    const geo = React.useMemo(() => new THREE.ExtrudeGeometry(shape, {
+        depth: len,
+        bevelEnabled: false
+    }), [shape, len]);
+
+    return (
+        <mesh geometry={geo} material={mat} position={[x, h, 0.5]} rotation={[0, Math.PI, 0]} castShadow />
+    );
+};
+
 export function Structure() {
     const config = useConfiguratorValues();
     const { buildingType, width, length, bayCount, baySpacing, eaveHeight, roofPitch, ridgeHeight, leftSide, rightSide, showDimensions, configMode, customParams, customSpans } = config;
 
     // Use exact ridge height from store (Map values) instead of calculated
     const calculatedRidgeHeight = ridgeHeight;
-
-    // Ridge Flashing (Bande Lisse Faîtière)
-    const RidgeFlashing = ({ len, h, angle, x = 0 }) => {
-        // Material
-        const mat = useMemo(() => new THREE.MeshStandardMaterial({
-            color: '#4A4A4A', 
-            roughness: 0.5,
-            metalness: 0.4,
-            side: THREE.DoubleSide
-        }), []);
-
-        const shape = useMemo(() => {
-            const s = new THREE.Shape();
-            const halfW = 0.5; // 0.5m
-            const drop = halfW * Math.tan(angle);
-            const t = 0.005;
-
-            s.moveTo(0, 0.02); 
-            s.lineTo(-halfW, -drop);
-            s.lineTo(-halfW, -drop - t);
-            s.lineTo(0, 0.02 - t);
-            s.lineTo(halfW, -drop - t);
-            s.lineTo(halfW, -drop);
-            s.lineTo(0, 0.02);
-            return s;
-        }, [angle]);
-
-        const geo = useMemo(() => new THREE.ExtrudeGeometry(shape, {
-            depth: len,
-            bevelEnabled: false
-        }), [shape, len]);
-
-        return (
-            <mesh geometry={geo} material={mat} position={[x, h, 0.5]} rotation={[0, Math.PI, 0]} castShadow />
-        );
-    };
 
     const frames = [];
     const numFrames = bayCount + 1;
