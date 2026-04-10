@@ -32,8 +32,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     const getExtWidth = (type, side) => {
         if (isCustom) {
-            if (side === 'left') return cp.leftExtensionWidth || 0;
-            if (side === 'right') return cp.rightExtensionWidth || 0;
+            if (side === 'left') return cp.leftExtWidth || 0;
+            if (side === 'right') return cp.rightExtWidth || 0;
         }
         if (isEpona) return side === 'left' ? 2.5 : 9.1; 
         if (isTalian4) return 11.2;
@@ -45,9 +45,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     };
     const getExtHeight = (type, side) => {
         if (isCustom) {
-            // For custom extension peak height: logic might need to be refined, 
-            // but for markers let's assume it connects to eave.
-            return side === 'left' ? cp.leftEaveHeight : cp.rightEaveHeight;
+            // En mode custom : la hauteur de la sablière est la hauteur d'extrémité de l'extension
+            if (side === 'left') return cp.leftExtHeight || 3.0;
+            if (side === 'right') return cp.rightExtHeight || 3.0;
         }
         if (isEpona) return side === 'left' ? 5.0 : 3.8;
         if (isTalian4) return 4.5;
@@ -235,13 +235,20 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             }
         }
 
-        const x = (isCustom ? (cp.leftSide !== 'none' || cp.leftExtensionWidth > 0) : (leftSide !== 'none')) ? -width / 2 - 1.5 : -width / 2 - 3.0;
+        // En mode custom, si une extension gauche existe, la sablière gauche est déjà affichée par leftExtData
+        // Pour éviter le doublon, on recule le marqueur de sablière principale seulement si pas d'extension
+        const hasLeftExt = isCustom ? (cp.leftExtension && cp.leftExtension !== 'none') : false;
+        const x = (isCustom ? (cp.leftExtension !== 'none') : (leftSide !== 'none')) ? -width / 2 - 1.5 : -width / 2 - 3.0;
+
+        if (!isCustom && buildingType === 'epona') return null;
+
+        // En mode custom simple (pas d'extension gauche), on affiche normalement
+        // avec extension gauche, on saute car leftExtData affiche déjà la hauteur au bout
+        if (isCustom && hasLeftExt) return null;
 
         const start = new THREE.Vector3(x, 0, 0);
         const end = new THREE.Vector3(x, h, 0);
         const mid = new THREE.Vector3(x, h / 2, 0);
-
-        if (!isCustom && buildingType === 'epona') return null;
 
         return {
             xLeft: x,
@@ -254,13 +261,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         };
     }, [buildingType, width, leftSide, gapSize, isEpona, isCustom, cp, ridgeHeight]);
 
-    // 3d. Right Eave Height (Asymmetrical 2 Zones ONLY)
+    // 3d. Right Eave Height (Asymmetrical 2 Zones ONLY + Custom)
     const asym2RightEaveData = useMemo(() => {
         if (!isCustom && buildingType !== 'asymetrique_2' && !isEpona) return null;
         if (isEpona) return null; 
         
         let h = isCustom ? cp.rightEaveHeight : (isEpona ? 4.3 : 4.0);
         const x = width / 2 + 1.5; 
+
+        // En mode custom, si extension droite existe → hauteur affichée par rightExtData → pas de doublon
+        if (isCustom && cp.rightExtension && cp.rightExtension !== 'none') return null;
 
         const start = new THREE.Vector3(x, 0, 0);
         const end = new THREE.Vector3(x, h, 0);

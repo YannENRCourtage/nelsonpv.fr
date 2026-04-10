@@ -20,7 +20,7 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
     const isCustom = configMode === 'custom';
     const cp = customParams;
 
-    let awningWidth = isCustom ? (side === 'left' ? cp.leftExtensionWidth : cp.rightExtensionWidth) : 9.3;
+    let awningWidth = isCustom ? (side === 'left' ? cp.leftExtWidth : cp.rightExtWidth) : 9.3;
     let startHeight = eaveHeight; 
     let angleRad = (roofPitch * Math.PI) / 180;
     

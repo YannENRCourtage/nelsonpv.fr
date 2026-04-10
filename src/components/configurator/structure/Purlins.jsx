@@ -655,21 +655,41 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
 
         for (let bayIndex = 0; bayIndex < bayCount; bayIndex++) {
             const zStart = -bayIndex * baySpacing;
-            // Left Slope
-            for (let i = 0; i <= numPLeft; i++) {
-                const dist = i * purlinSpacing;
-                const xLocal = dist * Math.cos(lAngle);
-                const yLocal = dist * Math.sin(lAngle);
-                const xP = -pOffset * Math.sin(lAngle);
-                const yP = pOffset * Math.cos(lAngle);
-                customPurlins.push(
-                    <mesh key={`Bay${bayIndex}-C-L-${i}`} geometry={bayGeometry} material={material}
-                        position={[-halfWidth + xLocal + xP, cp.leftEaveHeight + yLocal + yP, zStart]}
-                        rotation={[0, Math.PI, -lAngle]} />
-                );
-            }
-            // Right Slope
-            if (cp.buildingType !== 'monopente') {
+
+            if (cp.buildingType === 'monopente') {
+                // Monopente: une seule pente de gauche (haut=ridgeHeight) vers droite (bas=leftEaveHeight)
+                // La pente descend de gauche à droite
+                const monoAngle = lAngle; // Use leftPitch
+                const monoSlopeLen = cp.width / Math.cos(monoAngle);
+                const numMono = Math.floor(monoSlopeLen / purlinSpacing);
+
+                for (let i = 0; i <= numMono; i++) {
+                    const dist = i * purlinSpacing;
+                    const xLocal = dist * Math.cos(monoAngle);
+                    const yLocal = -dist * Math.sin(monoAngle); // DESCEND vers la droite
+                    const xP = pOffset * Math.sin(monoAngle);
+                    const yP = pOffset * Math.cos(monoAngle);
+                    customPurlins.push(
+                        <mesh key={`Bay${bayIndex}-C-Mono-${i}`} geometry={bayGeometry} material={material}
+                            position={[-halfWidth + xLocal + xP, cp.ridgeHeight + yLocal + yP, zStart]}
+                            rotation={[0, Math.PI, -monoAngle]} />
+                    );
+                }
+            } else {
+                // Left Slope (Symétrique/Asymétrique)
+                for (let i = 0; i <= numPLeft; i++) {
+                    const dist = i * purlinSpacing;
+                    const xLocal = dist * Math.cos(lAngle);
+                    const yLocal = dist * Math.sin(lAngle);
+                    const xP = -pOffset * Math.sin(lAngle);
+                    const yP = pOffset * Math.cos(lAngle);
+                    customPurlins.push(
+                        <mesh key={`Bay${bayIndex}-C-L-${i}`} geometry={bayGeometry} material={material}
+                            position={[-halfWidth + xLocal + xP, cp.leftEaveHeight + yLocal + yP, zStart]}
+                            rotation={[0, Math.PI, -lAngle]} />
+                    );
+                }
+                // Right Slope
                 const apexX = -halfWidth + spans.left;
                 for (let i = 0; i <= numPRight; i++) {
                     const dist = i * purlinSpacing;
