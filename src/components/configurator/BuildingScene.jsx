@@ -40,12 +40,14 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
 
             {/* Camera Handling */}
             {viewMode === '3D' && (
-                <>
-                    <PerspectiveCamera makeDefault position={[20, 15, 30]} fov={50} />
+        <>
+                    <PerspectiveCamera makeDefault position={[20, 15, 30]} fov={50} near={0.1} far={2000} />
                     {/* Target optimization for PDF Capture: Center on the building mass */}
                     {/* Normal mode: X=8 shifts building to the Left visually. Y=4 lowers building in view. */}
                     <OrbitControls
                         maxPolarAngle={Math.PI}
+                        minDistance={2}
+                        maxDistance={300}
                         target={isCapturing
                             ? [0, config.eaveHeight / 2, -config.length / 2]
                             : [8, 4, 0]

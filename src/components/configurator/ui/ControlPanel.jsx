@@ -559,67 +559,37 @@ export function ControlPanel({ isAcama = false }) {
 
                     {/* PENTES */}
                     <div className="space-y-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                        <div className="flex justify-between items-center mb-1">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Réglage des pentes</label>
-                            <select 
-                                value={customParams.pitchUnit}
-                                onChange={(e) => updateCustomParams({ pitchUnit: e.target.value })}
-                                className="text-[9px] font-bold bg-white border rounded px-1"
-                            >
-                                <option value="degree">Degrés (°)</option>
-                                <option value="percent">Pourcentage (%)</option>
-                            </select>
-                        </div>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Réglage des pentes</label>
 
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
                                 <label className="text-[9px] font-bold text-slate-400 uppercase">Pente Gauche</label>
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1.5">
                                     <input
                                         type="number"
                                         step="0.1"
-                                        value={customParams.pitchUnit === 'degree' 
-                                            ? parseFloat(customParams.leftPitch.toFixed(1)) 
-                                            : parseFloat((Math.tan(customParams.leftPitch * Math.PI / 180) * 100).toFixed(1))}
-                                        onChange={(e) => {
-                                            const val = Number(e.target.value);
-                                            const degree = customParams.pitchUnit === 'degree' ? val : Math.atan(val / 100) * 180 / Math.PI;
-                                            updateCustomParams({ leftPitch: degree });
-                                        }}
-                                        className="w-full px-2 py-1.5 border rounded-md text-sm font-medium"
+                                        value={parseFloat(customParams.leftPitch.toFixed(1))}
+                                        onChange={(e) => updateCustomParams({ leftPitch: Number(e.target.value) })}
+                                        className="w-16 px-2 py-1.5 border rounded-md text-sm font-medium"
                                     />
-                                    <span className="text-xs font-bold text-slate-400">{customParams.pitchUnit === 'degree' ? '°' : '%'}</span>
-                                </div>
-                                <div className="text-[8px] text-slate-400 italic">
-                                    {customParams.pitchUnit === 'degree' 
-                                        ? `≈ ${(Math.tan(customParams.leftPitch * Math.PI / 180) * 100).toFixed(1)}%` 
-                                        : `≈ ${(customParams.leftPitch).toFixed(1)}°`}
+                                    <span className="text-xs font-bold text-slate-500">°</span>
+                                    <span className="text-[10px] text-slate-400">≈ {(Math.tan(customParams.leftPitch * Math.PI / 180) * 100).toFixed(1)}%</span>
                                 </div>
                             </div>
 
                             {customParams.buildingType !== 'monopente' && (
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-bold text-slate-400 uppercase">Pente Droite</label>
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-1.5">
                                         <input
                                             type="number"
                                             step="0.1"
-                                            value={customParams.pitchUnit === 'degree' 
-                                                ? parseFloat(customParams.rightPitch.toFixed(1)) 
-                                                : parseFloat((Math.tan(customParams.rightPitch * Math.PI / 180) * 100).toFixed(1))}
-                                            onChange={(e) => {
-                                                const val = Number(e.target.value);
-                                                const degree = customParams.pitchUnit === 'degree' ? val : Math.atan(val / 100) * 180 / Math.PI;
-                                                updateCustomParams({ rightPitch: degree });
-                                            }}
-                                            className="w-full px-2 py-1.5 border rounded-md text-sm font-medium"
+                                            value={parseFloat(customParams.rightPitch.toFixed(1))}
+                                            onChange={(e) => updateCustomParams({ rightPitch: Number(e.target.value) })}
+                                            className="w-16 px-2 py-1.5 border rounded-md text-sm font-medium"
                                         />
-                                        <span className="text-xs font-bold text-slate-400">{customParams.pitchUnit === 'degree' ? '°' : '%'}</span>
-                                    </div>
-                                    <div className="text-[8px] text-slate-400 italic">
-                                        {customParams.pitchUnit === 'degree' 
-                                            ? `≈ ${(Math.tan(customParams.rightPitch * Math.PI / 180) * 100).toFixed(1)}%` 
-                                            : `≈ ${(customParams.rightPitch).toFixed(1)}°`}
+                                        <span className="text-xs font-bold text-slate-500">°</span>
+                                        <span className="text-[10px] text-slate-400">≈ {(Math.tan(customParams.rightPitch * Math.PI / 180) * 100).toFixed(1)}%</span>
                                     </div>
                                 </div>
                             )}
@@ -634,15 +604,23 @@ export function ControlPanel({ isAcama = false }) {
                         <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100">
                             <div className="flex items-center justify-between mb-3">
                                 <span className="text-xs font-bold text-blue-800">Côté Gauche</span>
-                                <select 
-                                    value={customParams.leftExtension}
-                                    onChange={(e) => updateCustomParams({ leftExtension: e.target.value })}
-                                    className="text-[10px] font-bold py-1 px-2 border rounded-md bg-white"
-                                >
-                                    <option value="none">Aucune</option>
-                                    <option value="auvent">Auvent</option>
-                                    <option value="appentis">Appentis</option>
-                                </select>
+                                <div className="flex gap-1">
+                                    {['none', 'auvent', 'appentis'].map((opt) => (
+                                        <button
+                                            key={opt}
+                                            onClick={() => updateCustomParams({ leftExtension: opt })}
+                                            className={`text-[10px] font-bold py-1 px-2 rounded-md border transition-all ${
+                                                customParams.leftExtension === opt
+                                                    ? opt === 'none' ? 'bg-slate-200 text-slate-700 border-slate-300'
+                                                    : opt === 'auvent' ? 'bg-sky-500 text-white border-sky-600'
+                                                    : 'bg-violet-500 text-white border-violet-600'
+                                                    : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            {opt === 'none' ? 'Aucun' : opt === 'auvent' ? 'Auvent' : 'Appentis'}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                             {customParams.leftExtension !== 'none' && (
                                 <div className="grid grid-cols-2 gap-3">
@@ -657,7 +635,7 @@ export function ControlPanel({ isAcama = false }) {
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[9px] font-bold text-slate-400 uppercase">H. Sablière (m)</label>
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase">H. Sablère (m)</label>
                                         <input
                                             type="number"
                                             step="0.1"
@@ -674,15 +652,23 @@ export function ControlPanel({ isAcama = false }) {
                         <div className="p-3 bg-purple-50/50 rounded-xl border border-purple-100">
                             <div className="flex items-center justify-between mb-3">
                                 <span className="text-xs font-bold text-purple-800">Côté Droit</span>
-                                <select 
-                                    value={customParams.rightExtension}
-                                    onChange={(e) => updateCustomParams({ rightExtension: e.target.value })}
-                                    className="text-[10px] font-bold py-1 px-2 border rounded-md bg-white"
-                                >
-                                    <option value="none">Aucune</option>
-                                    <option value="auvent">Auvent</option>
-                                    <option value="appentis">Appentis</option>
-                                </select>
+                                <div className="flex gap-1">
+                                    {['none', 'auvent', 'appentis'].map((opt) => (
+                                        <button
+                                            key={opt}
+                                            onClick={() => updateCustomParams({ rightExtension: opt })}
+                                            className={`text-[10px] font-bold py-1 px-2 rounded-md border transition-all ${
+                                                customParams.rightExtension === opt
+                                                    ? opt === 'none' ? 'bg-slate-200 text-slate-700 border-slate-300'
+                                                    : opt === 'auvent' ? 'bg-sky-500 text-white border-sky-600'
+                                                    : 'bg-violet-500 text-white border-violet-600'
+                                                    : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            {opt === 'none' ? 'Aucun' : opt === 'auvent' ? 'Auvent' : 'Appentis'}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                             {customParams.rightExtension !== 'none' && (
                                 <div className="grid grid-cols-2 gap-3">
@@ -697,7 +683,7 @@ export function ControlPanel({ isAcama = false }) {
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[9px] font-bold text-slate-400 uppercase">H. Sablière (m)</label>
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase">H. Sablère (m)</label>
                                         <input
                                             type="number"
                                             step="0.1"

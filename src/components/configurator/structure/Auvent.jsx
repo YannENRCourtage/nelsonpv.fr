@@ -25,7 +25,7 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     const isTalian = isTalian4 || isTalian1 || isTalian3;
     const isEpona = !isCustom && isAcama && buildingType === 'epona';
 
-    let auventWidth = isCustom ? (side === 'left' ? cp.leftExtensionWidth : cp.rightExtensionWidth) : 4.0;
+    let auventWidth = isCustom ? (side === 'left' ? cp.leftExtWidth : cp.rightExtWidth) : 4.0;
     let angleRad = 5 * (Math.PI / 180); // Default 5 deg
     let startHeight = eaveHeight;
 
