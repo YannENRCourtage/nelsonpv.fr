@@ -114,8 +114,8 @@ export function Structure() {
                             else if (Math.abs(width - 16.4) < 0.5) h -= 0.06; 
                         } else if (config.buildingType === 'asymetrique_2') {
                             if (!config.isAcama) {
-                                if (Math.abs(width - 25.5) < 0.2) h += 1.10; // USER REQUEST 10/04/2026: lowered by 0.3m to follow roof
-                                else if (Math.abs(width - 29.1) < 0.2) h += 1.75; // USER REQUEST 10/04/2026: raised by 0.4m to follow roof
+                                if (Math.abs(width - 25.5) < 0.2) h += 1.40; // USER REQUEST 10/04/2026: raised by 0.3m
+                                else if (Math.abs(width - 29.1) < 0.2) h += 2.05; // USER REQUEST 10/04/2026: raised by 0.3m
                                 else h += 1.15; 
                             }
                             if (Math.abs(width - 25.5) < 0.5) h -= 0.44; 
