@@ -114,7 +114,7 @@ export function Structure() {
                             if (Math.abs(width - 20) < 0.5) h += 0.30; // +30cm (prev +20, +10 requested)
                             else if (Math.abs(width - 16.4) < 0.5) h -= 0.06; // -6cm (prev -8, +2 requested)
                         } else if (config.buildingType === 'asymetrique_2') {
-                            if (!config.isAcama) h += 1.0; // Raise ridge cap by 1m for Green Invest
+                            if (!config.isAcama) h += 1.4; // Raise ridge cap total +1.4m for Green Invest
                             if (Math.abs(width - 25.5) < 0.5) h -= 0.44; // -44cm (prev -40, -4 requested)
                             else if (Math.abs(width - 29.1) < 0.5) h -= 0.44; // -44cm (prev -40, -4 requested)
                         }

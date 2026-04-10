@@ -188,7 +188,7 @@ export function Bracing({
 
             // Brace Offset: Position them on the rafters (approx eaveHeight + 0.35)
             const roofOffset = 0.35;
-            const yL = leftEaveY + roofOffset;
+            const yL = leftEaveY + roofOffset + 1.5; // Raised lower end of left oblique bracing by 1.5m
             const yApex = ridgeY + roofOffset;
             const yMid = midColY + roofOffset;
             const yR = baseEaveH + roofOffset;

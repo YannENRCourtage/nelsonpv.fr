@@ -559,7 +559,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
 
         // USER REQUEST 10/04/2026: Raise Left Cover (Cover 1) just above purlins for Green Invest
         if (!isAcama) {
-            leftOffset += 3.02; // +0.42 initial + 2.60 requested
+            leftOffset += 3.82; // +3.02 initial + 0.80 requested
         }
 
         // Additional adjustments for specific widths
