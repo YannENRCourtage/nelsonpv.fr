@@ -27,60 +27,7 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
     const halfWidth = width / 2;
     const purlins = [];
 
-    // --- CUSTOM MODE GENERATION ---
-    if (configMode === 'custom') {
-        const cp = customParams;
-        const spans = customSpans;
-        const lAngle = cp.leftPitch * (Math.PI / 180);
-        const rAngle = cp.rightPitch * (Math.PI / 180);
-
-        const lSlopeLen = spans.left / Math.cos(lAngle);
-        const rSlopeLen = (cp.buildingType === 'monopente') ? 0 : (spans.right / Math.cos(rAngle));
-
-        const numPLeft = Math.floor(lSlopeLen / purlinSpacing);
-        const numPRight = Math.floor(rSlopeLen / purlinSpacing);
-
-        const rafterOffset = 0.20;
-        const perpOffset = rafterOffset + (purlinHeight / 2) + 0.001;
-
-        for (let bayIndex = 0; bayIndex < bayCount; bayIndex++) {
-            const zStart = -bayIndex * baySpacing;
-
-            // Left Slope
-            for (let i = 0; i <= numPLeft; i++) {
-                const dist = i * purlinSpacing;
-                const xLocal = dist * Math.cos(lAngle);
-                const yLocal = dist * Math.sin(lAngle);
-                const xPerp = -perpOffset * Math.sin(lAngle);
-                const yPerp = perpOffset * Math.cos(lAngle);
-
-                purlins.push(
-                    <mesh key={`Bay${bayIndex}-C-L-${i}`} geometry={bayGeometry} material={material}
-                        position={[-halfWidth + xLocal + xPerp, cp.leftEaveHeight + yLocal + yPerp, zStart]}
-                        rotation={[0, Math.PI, -lAngle]} />
-                );
-            }
-
-            // Right Slope
-            if (cp.buildingType !== 'monopente') {
-                const apexX = -halfWidth + spans.left;
-                for (let i = 0; i <= numPRight; i++) {
-                    const dist = i * purlinSpacing;
-                    const xLocal = dist * Math.cos(rAngle);
-                    const yLocal = -dist * Math.sin(rAngle);
-                    const xPerp = perpOffset * Math.sin(rAngle);
-                    const yPerp = perpOffset * Math.cos(rAngle);
-
-                    purlins.push(
-                        <mesh key={`Bay${bayIndex}-C-R-${i}`} geometry={bayGeometry} material={material}
-                            position={[apexX + xLocal + xPerp, cp.ridgeHeight + yLocal + yPerp, zStart]}
-                            rotation={[0, Math.PI, rAngle]} />
-                    );
-                }
-            }
-        }
-        return <group>{purlins}</group>;
-    }
+    // --- HOOKS READY ---
 
     const isMonopente = buildingType === 'monopente';
     const isEpona = isAcama && (buildingType === 'epona' || buildingType === 'epona_talian5');
@@ -683,6 +630,62 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
                 );
             }
         }
+    }
+
+    // ==========================================
+    // RENDU FINAL (BRANCHING)
+    // ==========================================
+
+    if (configMode === 'custom') {
+        const cp = customParams;
+        const spans = customSpans;
+        const lAngle = cp.leftPitch * (Math.PI / 180);
+        const rAngle = cp.rightPitch * (Math.PI / 180);
+
+        const lSlopeLen = spans.left / Math.cos(lAngle);
+        const rSlopeLen = (cp.buildingType === 'monopente') ? 0 : (spans.right / Math.cos(rAngle));
+
+        const numPLeft = Math.floor(lSlopeLen / purlinSpacing);
+        const numPRight = Math.floor(rSlopeLen / purlinSpacing);
+
+        const rOffset = 0.20;
+        const pOffset = rOffset + (purlinHeight / 2) + 0.001;
+
+        const customPurlins = [];
+
+        for (let bayIndex = 0; bayIndex < bayCount; bayIndex++) {
+            const zStart = -bayIndex * baySpacing;
+            // Left Slope
+            for (let i = 0; i <= numPLeft; i++) {
+                const dist = i * purlinSpacing;
+                const xLocal = dist * Math.cos(lAngle);
+                const yLocal = dist * Math.sin(lAngle);
+                const xP = -pOffset * Math.sin(lAngle);
+                const yP = pOffset * Math.cos(lAngle);
+                customPurlins.push(
+                    <mesh key={`Bay${bayIndex}-C-L-${i}`} geometry={bayGeometry} material={material}
+                        position={[-halfWidth + xLocal + xP, cp.leftEaveHeight + yLocal + yP, zStart]}
+                        rotation={[0, Math.PI, -lAngle]} />
+                );
+            }
+            // Right Slope
+            if (cp.buildingType !== 'monopente') {
+                const apexX = -halfWidth + spans.left;
+                for (let i = 0; i <= numPRight; i++) {
+                    const dist = i * purlinSpacing;
+                    const xLocal = dist * Math.cos(rAngle);
+                    const yLocal = -dist * Math.sin(rAngle);
+                    const xP = pOffset * Math.sin(rAngle);
+                    const yP = pOffset * Math.cos(rAngle);
+                    customPurlins.push(
+                        <mesh key={`Bay${bayIndex}-C-R-${i}`} geometry={bayGeometry} material={material}
+                            position={[apexX + xLocal + xP, cp.ridgeHeight + yLocal + yP, zStart]}
+                            rotation={[0, Math.PI, rAngle]} />
+                    );
+                }
+            }
+        }
+        return <group>{customPurlins}</group>;
     }
 
     return <group>{purlins}</group>;

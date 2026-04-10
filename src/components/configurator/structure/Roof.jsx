@@ -14,60 +14,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         side: THREE.DoubleSide
     }), []);
 
-    // --- CUSTOM MODE RENDER ---
-    if (configMode === 'custom') {
-        const cp = customParams;
-        const spans = customSpans;
-        const w = width;
-        const l = length;
-
-        const lAngle = cp.leftPitch * (Math.PI / 180);
-        const rAngle = cp.rightPitch * (Math.PI / 180);
-
-        const leftRoofLength = spans.left / Math.cos(lAngle) + (cp.buildingType === 'monopente' ? 0.5 : 0.5); // Standard 50cm overhang
-        const rightRoofLength = cp.buildingType === 'monopente' ? 0 : (spans.right / Math.cos(rAngle) + 0.5);
-
-        const leftProfile = createTrapezoidalProfile(leftRoofLength, 0.035, 0.25);
-        const rightProfile = rightRoofLength > 0 ? createTrapezoidalProfile(rightRoofLength, 0.035, 0.25) : null;
-
-        const leftGeo = new THREE.ExtrudeGeometry(leftProfile, { depth: l + 1.0, bevelEnabled: false });
-        const rightGeo = rightProfile ? new THREE.ExtrudeGeometry(rightProfile, { depth: l + 1.0, bevelEnabled: false }) : null;
-
-        const perpOffset = (0.140 / 2) + (0.001 / 2) + 0.35 + 0.10;
-        const apexX = -w / 2 + spans.left;
-        const ridgeY = cp.ridgeHeight;
-
-        // Positioning
-        const getProps = (slopeLen, angle, isRight, overhang, startX, startY) => {
-            const centerDist = (slopeLen - overhang) / 2;
-            const midX = isRight ? startX + centerDist * Math.cos(angle) : startX - centerDist * Math.cos(angle);
-            const midY = startY - centerDist * Math.sin(angle);
-            const nX = isRight ? Math.sin(angle) : -Math.sin(angle);
-            const nY = Math.cos(angle);
-            return { x: midX + perpOffset * nX, y: midY + perpOffset * nY, rot: isRight ? -angle : angle };
-        };
-
-        const leftP = getProps(leftRoofLength, lAngle, false, 0.5, apexX, ridgeY);
-        const rightP = rightGeo ? getProps(rightRoofLength, rAngle, true, 0.5, apexX, ridgeY) : null;
-
-        return (
-            <group>
-                <mesh geometry={leftGeo} material={roofMaterial} position={[leftP.x, leftP.y, -l - 0.5]} rotation={[0, 0, leftP.rot]} castShadow receiveShadow />
-                <group position={[leftP.x, leftP.y, -l / 2]} rotation={[0, 0, leftP.rot]}>
-                    <SolarPanels surfaceWidth={leftRoofLength} surfaceLength={l + 1.0} />
-                </group>
-
-                {rightGeo && (
-                    <>
-                        <mesh geometry={rightGeo} material={roofMaterial} position={[rightP.x, rightP.y, -l - 0.5]} rotation={[0, 0, rightP.rot]} scale={[-1, 1, 1]} castShadow receiveShadow />
-                        <group position={[rightP.x, rightP.y, -l / 2]} rotation={[0, 0, rightP.rot]} scale={[-1, 1, 1]}>
-                            <SolarPanels surfaceWidth={rightRoofLength} surfaceLength={l + 1.0} />
-                        </group>
-                    </>
-                )}
-            </group>
-        );
-    }
+    // --- HOOKS INIT ---
 
     const buildingTypePre = buildingType; // Alias for conditional below
     const isMonopente = buildingTypePre === 'monopente';
@@ -658,6 +605,60 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
                 <group position={[-width / 2 + lProps.x, asymLeftEaveH + lProps.y + 0.10 + (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5 ? -0.12 : 0) + (Math.abs(width - 20) < 0.5 ? -0.05 : 0), -length / 2]} rotation={[0, 0, lProps.rot]}>
                     <SolarPanels surfaceWidth={asymLeftRoofLength} surfaceLength={length + 1.0} />
                 </group>
+            </group>
+        );
+    }
+
+    // ==========================================
+    // RENDU FINAL (BRANCHING)
+    // ==========================================
+
+    if (configMode === 'custom') {
+        const cp = customParams;
+        const spans = customSpans;
+        const lAngle = cp.leftPitch * (Math.PI / 180);
+        const rAngle = cp.rightPitch * (Math.PI / 180);
+        const l = length;
+
+        const leftRoofLength = spans.left / Math.cos(lAngle) + 0.5; 
+        const rightRoofLength = cp.buildingType === 'monopente' ? 0 : (spans.right / Math.cos(rAngle) + 0.5);
+
+        const leftProfile = createTrapezoidalProfile(leftRoofLength, 0.035, 0.25);
+        const rightProfile = rightRoofLength > 0 ? createTrapezoidalProfile(rightRoofLength, 0.035, 0.25) : null;
+
+        const leftGeo = new THREE.ExtrudeGeometry(leftProfile, { depth: l + 1.0, bevelEnabled: false });
+        const rightGeo = rightProfile ? new THREE.ExtrudeGeometry(rightProfile, { depth: l + 1.0, bevelEnabled: false }) : null;
+
+        const pOffsetCustom = (0.140 / 2) + (0.001 / 2) + 0.35 + 0.10;
+        const apexX = -width / 2 + spans.left;
+        const ridgeY = cp.ridgeHeight;
+
+        const getProps = (slopeLen, angle, isRight, overhang, startX, startY) => {
+            const centerDist = (slopeLen - overhang) / 2;
+            const midX = isRight ? startX + centerDist * Math.cos(angle) : startX - centerDist * Math.cos(angle);
+            const midY = startY - centerDist * Math.sin(angle);
+            const nX = isRight ? Math.sin(angle) : -Math.sin(angle);
+            const nY = Math.cos(angle);
+            return { x: midX + pOffsetCustom * nX, y: midY + pOffsetCustom * nY, rot: isRight ? -angle : angle };
+        };
+
+        const leftP = getProps(leftRoofLength, lAngle, false, 0.5, apexX, ridgeY);
+        const rightP = rightGeo ? getProps(rightRoofLength, rAngle, true, 0.5, apexX, ridgeY) : null;
+
+        return (
+            <group>
+                <mesh geometry={leftGeo} material={roofMaterial} position={[leftP.x, leftP.y, -l - 0.5]} rotation={[0, 0, leftP.rot]} castShadow receiveShadow />
+                <group position={[leftP.x, leftP.y, -l / 2]} rotation={[0, 0, leftP.rot]}>
+                    <SolarPanels surfaceWidth={leftRoofLength} surfaceLength={l + 1.0} />
+                </group>
+                {rightGeo && (
+                    <>
+                        <mesh geometry={rightGeo} material={roofMaterial} position={[rightP.x, rightP.y, -l - 0.5]} rotation={[0, 0, rightP.rot]} scale={[-1, 1, 1]} castShadow receiveShadow />
+                        <group position={[rightP.x, rightP.y, -l / 2]} rotation={[0, 0, rightP.rot]} scale={[-1, 1, 1]}>
+                            <SolarPanels surfaceWidth={rightRoofLength} surfaceLength={l + 1.0} />
+                        </group>
+                    </>
+                )}
             </group>
         );
     }
