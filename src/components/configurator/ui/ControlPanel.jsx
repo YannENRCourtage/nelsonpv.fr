@@ -732,10 +732,6 @@ export function ControlPanel({ isAcama = false }) {
                 </div>
             )}
 
-        </div >
-
-
-
-        </div >
+        </div>
     );
 }
