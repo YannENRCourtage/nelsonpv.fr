@@ -20,7 +20,7 @@ export function PortalFrame({
     roofPitch = 10,
     buildingType = 'symetrique'
 }) {
-    const { isAcama } = useConfiguratorValues();
+    const { isAcama, configMode, customParams, customSpans } = useConfiguratorValues();
     // Industrial PBR Material (Galvanized Steel)
     const steelMaterial = useMemo(() => new THREE.MeshStandardMaterial({
         color: '#8a949b',
@@ -38,15 +38,12 @@ export function PortalFrame({
     const rafterProfileType = 'IPE400';
 
     // --- HEIGHT & ANGLE LOGIC (Hoisted) ---
-    const isMonopente = buildingType === 'monopente';
-    const isAsymetrique = buildingType === 'asymetrique_1';
-    const isAsymetrique2 = buildingType === 'asymetrique_2';
+    const isMonopente = (configMode === 'custom' ? customParams.buildingType === 'monopente' : buildingType === 'monopente');
+    const isAsymetrique = (configMode === 'custom' ? customParams.buildingType === 'asymetrique' : buildingType === 'asymetrique_1');
+    const isAsymetrique2 = (configMode === 'custom' ? false : buildingType === 'asymetrique_2'); // Asym2 only for predefined GI
 
-    const isSymetrique = buildingType === 'symetrique';
-    const isEpona = isAcama && (buildingType === 'epona' || buildingType === 'epona_talian5');
-
-    // ACAMA: TALIAN 5 is also an Asymetrique 2 Zones structure
-    // const isTalian5 = isAcama && buildingType === 'asymetrique_2' && Math.abs(width - 27.6) < 0.1; // OBSOLÈTE
+    const isSymetrique = (configMode === 'custom' ? customParams.buildingType === 'symetrique' : buildingType === 'symetrique');
+    const isEpona = isAcama && (buildingType === 'epona' || buildingType === 'epona_talian5') && configMode === 'predefined';
 
     // Variables dimensionnelles calculées
     let leftSpan, rightSpan, lAngle, rAngle, effectiveRidgeHeight, apexX;
@@ -58,63 +55,62 @@ export function PortalFrame({
     let leftSectionSpan, rightSectionSpan, middleSectionSpan;
     let leftSectionAngle, rightSectionAngle, middleSectionAngle;
 
-    // Determine Geometry params based on Type
-    if (isEpona) {
+    // --- CUSTOM MODE OVERRIDE ---
+    if (configMode === 'custom') {
+        const cp = customParams;
+        leftEaveHeight = cp.leftEaveHeight;
+        rightEaveHeight = cp.rightEaveHeight;
+        effectiveRidgeHeight = cp.ridgeHeight;
+        
+        lAngle = cp.leftPitch * (Math.PI / 180);
+        rAngle = cp.rightPitch * (Math.PI / 180);
+        
+        leftSpan = customSpans.left;
+        rightSpan = customSpans.right;
+        apexX = -width / 2 + leftSpan;
+
+        // Compatibility for logic below
+        leftSectionSpan = leftSpan;
+        rightSectionSpan = rightSpan;
+        leftSectionAngle = lAngle;
+        rightSectionAngle = rAngle;
+
+    } else if (isEpona) {
         if (buildingType === 'epona_talian5') {
-            // TALIAN 5 (Modèle asymétrique 3 poteaux repensé pour s'étendre aux sablières directes)
+            // TALIAN 5
             leftEaveHeight = 7.9;
             rightEaveHeight = 4.3;
-            
-            // Nouveau calcul pour supprimer les débords = allonger l'entre-poteaux de 0.6m chaque côté
-            // Ancien leftSpan = 15.4 => Nouveau = 16.0. Ancien rightSpan = 11.0 => Nouveau = 11.6.
             leftSpan = 15.4;
             rightSpan = 11.0;
-
-            // Calcul de l'apex pour respecter la crête
-            // (8.1 - 7.9) / tan(10°) = 1.13m depuis le nouveau poteau gauche (-15.4)
-            // USER REQUEST Ph3: Décaler le faîtage vers la droite de 3m. 1.13 + 3 = 4.13
             const offsetApexFromLeft = 4.13;
-            apexX = -15.4 + offsetApexFromLeft; // -11.27
+            apexX = -15.4 + offsetApexFromLeft;
             effectiveRidgeHeight = 8.1;
-
-            // Pente gauche: de 7.9m à 8.1m
             leftSectionSpan = offsetApexFromLeft;
             leftSectionAngle = Math.atan((effectiveRidgeHeight - leftEaveHeight) / leftSectionSpan);
             lAngle = leftSectionAngle;
-
-            // Pente droite (jusqu'au poteau central fixe de 6m à X=0)
-            middleSectionSpan = 15.4 - offsetApexFromLeft; // du pic jusqu'à x=0
+            middleSectionSpan = 15.4 - offsetApexFromLeft;
             middleColumnX = 0;
-
-            // Pente depuis l'apex jusqu'au poteau central
             middleSectionAngle = Math.atan((effectiveRidgeHeight - 6.0) / middleSectionSpan);
-
-            // Hauteur du poteau central
-            const dropToMiddle = middleSectionSpan * Math.tan(middleSectionAngle);
-            middleColumnHeight = effectiveRidgeHeight - dropToMiddle;
-
-            // Seconde moitié de la pente droite (P. central -> P. droit à X=11.0m et H=4.3m)
+            middleColumnHeight = 6.0;
             rightSectionSpan = 11.0;
             rightSectionAngle = Math.atan((6.0 - 4.3) / rightSectionSpan);
             rAngle = rightSectionAngle;
-
         } else {
-            // EPONA (Asymmetrical 2 Zones original)
+            // EPONA
             const mainPitch = 17 * (Math.PI / 180);
             leftEaveHeight = 5.0;
             rightEaveHeight = 2.6;
             leftSpan = 11.8;
             rightSpan = 19.65;
-            apexX = -11.8 + leftSpan; // 0
-            effectiveRidgeHeight = leftEaveHeight + (leftSpan * Math.tan(mainPitch));
-            middleColumnX = -11.8 + 23.6; // 11.8
+            apexX = 0;
+            effectiveRidgeHeight = ridgeHeight; 
+            middleColumnX = 11.8;
             lAngle = mainPitch;
             rAngle = mainPitch;
-            const distApexToMiddle = middleColumnX - apexX; // 11.8
-            middleColumnHeight = effectiveRidgeHeight - (distApexToMiddle * Math.tan(rAngle));
+            middleColumnHeight = effectiveRidgeHeight - (11.8 * Math.tan(mainPitch));
             leftSectionSpan = leftSpan;
             leftSectionAngle = lAngle;
-            middleSectionSpan = distApexToMiddle;
+            middleSectionSpan = 11.8;
             middleSectionAngle = rAngle;
             rightSectionSpan = 7.85;
             rightSectionAngle = rAngle;
@@ -141,62 +137,39 @@ export function PortalFrame({
 
         rAngle = mainPitch;
         lAngle = mainPitch;
-
         const distApexToMiddle = middleColumnX - apexX;
-        const ratio = distApexToMiddle / rightSpan;
-        const rightSectionRise = effectiveRidgeHeight - rightEaveHeight;
-        middleColumnHeight = effectiveRidgeHeight - (rightSectionRise * ratio);
-
+        middleColumnHeight = effectiveRidgeHeight - (distApexToMiddle * Math.tan(rAngle));
         leftSectionSpan = leftSpan;
-        const leftSectionRise = effectiveRidgeHeight - leftEaveHeight;
-        leftSectionAngle = Math.atan(leftSectionRise / leftSectionSpan);
-
+        leftSectionAngle = Math.atan((effectiveRidgeHeight - leftEaveHeight) / leftSectionSpan);
         middleSectionSpan = distApexToMiddle;
-        const middleSectionRise = effectiveRidgeHeight - middleColumnHeight;
-        middleSectionAngle = Math.atan(middleSectionRise / middleSectionSpan);
-
+        middleSectionAngle = rAngle;
         rightSectionSpan = rightSpan - distApexToMiddle;
-        const rightSectionRise2 = middleColumnHeight - rightEaveHeight;
-        rightSectionAngle = Math.atan(rightSectionRise2 / rightSectionSpan);
-
+        rightSectionAngle = rAngle;
     } else if (isAsymetrique) {
-        // Asymmetrical: Right Eave 4.0m, Left/Right Slope 15°.
         const mainPitch = 15 * (Math.PI / 180);
-
         rightSpan = width * 0.75;
         leftSpan = width * 0.25;
         apexX = -width / 2 + leftSpan;
-
-        // Angles
         rAngle = mainPitch;
         lAngle = mainPitch;
-
-        // Fixed Right Eave
         rightEaveHeight = 4.0;
-
-        // Ridge
-        const rightRise = rightSpan * Math.tan(rAngle);
-        effectiveRidgeHeight = rightEaveHeight + rightRise;
-
-        // Left Eave
-        const leftDrop = leftSpan * Math.tan(lAngle);
-        leftEaveHeight = effectiveRidgeHeight - leftDrop;
-
+        effectiveRidgeHeight = rightEaveHeight + (rightSpan * Math.tan(rAngle));
+        leftEaveHeight = effectiveRidgeHeight - (leftSpan * Math.tan(lAngle));
     } else if (isMonopente) {
-        // Monopente Logic
         const monoSlopeRad = Math.atan((ridgeHeight - eaveHeight) / width);
-        lAngle = monoSlopeRad; // Not really used same way but for vars consistency
+        lAngle = monoSlopeRad; 
         rAngle = monoSlopeRad;
         effectiveRidgeHeight = ridgeHeight;
-        // ...
+        leftSpan = width;
+        rightSpan = 0;
+        apexX = -width / 2;
     } else {
-        // Symmetrical
         const symAngleRad = (roofPitch * Math.PI) / 180;
         lAngle = symAngleRad;
         rAngle = symAngleRad;
         leftSpan = width / 2;
         rightSpan = width / 2;
-        effectiveRidgeHeight = ridgeHeight; // OR calculated?
+        effectiveRidgeHeight = ridgeHeight;
         apexX = 0;
     }
 

@@ -20,6 +20,8 @@ export function ControlPanel({ isAcama = false }) {
         selectedTalian1Model,
         selectedTalian3Model,
         selectedTalian5Model,
+        configMode,
+        customParams,
     } = useConfiguratorValues();
 
     const {
@@ -38,6 +40,8 @@ export function ControlPanel({ isAcama = false }) {
         setTalian1Model,
         setTalian3Model,
         setTalian5Model,
+        setConfigMode,
+        updateCustomParams,
     } = useConfiguratorActions();
 
     // ACAMA mode: show EPONA model selector when buildingType is 'epona'
@@ -69,8 +73,24 @@ export function ControlPanel({ isAcama = false }) {
             {/* HEADER */}
             <div className="mb-6 border-b pb-4">
                 <h2 className="text-2xl font-bold text-slate-900">Configurateur 2D/3D</h2>
-                <p className="text-xs text-slate-500 uppercase tracking-wide mt-1">Bâtiment Métallique Pro</p>
+                <div className="flex gap-2 mt-4">
+                    <button
+                        onClick={() => setConfigMode('predefined')}
+                        className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${configMode === 'predefined' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                    >
+                        Bâtiments prédéfinis
+                    </button>
+                    <button
+                        onClick={() => setConfigMode('custom')}
+                        className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${configMode === 'custom' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                    >
+                        Bâtiments sur-mesure
+                    </button>
+                </div>
             </div>
+
+            {configMode === 'predefined' ? (
+                <>
 
             {/* ========== TYPE DE BÂTIMENT ========== */}
             <div className="param-group mb-4">
@@ -427,6 +447,292 @@ export function ControlPanel({ isAcama = false }) {
                     </div>
                 )}
             </div>
+
+                </>
+            ) : (
+                <div className="custom-config-form space-y-5">
+                    {/* FORMULAIRE SUR-MESURE */}
+                    <div className="param-group">
+                        <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">Type de bâtiment</label>
+                        <select
+                            value={customParams.buildingType}
+                            onChange={(e) => updateCustomParams({ buildingType: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-lg text-sm font-semibold"
+                        >
+                            <option value="symetrique">Symétrique</option>
+                            <option value="asymetrique">Asymétrique</option>
+                            <option value="monopente">Monopente</option>
+                        </select>
+                    </div>
+
+                    {customParams.buildingType === 'asymetrique' && (
+                        <div className="param-group">
+                            <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">Proportion</label>
+                            <select
+                                value={customParams.proportion}
+                                onChange={(e) => updateCustomParams({ proportion: e.target.value })}
+                                className="w-full px-3 py-2 border rounded-lg text-sm font-semibold"
+                            >
+                                <option value="1/6-5/6">1/6 - 5/6</option>
+                                <option value="1/5-4/5">1/5 - 4/5</option>
+                                <option value="1/4-3/4">1/4 - 3/4</option>
+                                <option value="1/3-2/3">1/3 - 2/3</option>
+                                <option value="1/2-1/2">1/2 - 1/2</option>
+                            </select>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="param-group">
+                            <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Largeur (m)</label>
+                            <input
+                                type="number"
+                                value={customParams.width}
+                                onChange={(e) => updateCustomParams({ width: Number(e.target.value) })}
+                                className="w-full px-3 py-2 border rounded-lg text-sm"
+                            />
+                        </div>
+                        <div className="param-group">
+                            <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Longueur (m)</label>
+                            <div className="w-full px-3 py-2 border rounded-lg bg-slate-50 text-sm font-bold text-slate-600">
+                                {(customParams.bayCount * customParams.baySpacing).toFixed(1)}m
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="param-group">
+                            <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Largeur travée (m)</label>
+                            <input
+                                type="number"
+                                step="0.1"
+                                value={customParams.baySpacing}
+                                onChange={(e) => updateCustomParams({ baySpacing: Number(e.target.value) })}
+                                className="w-full px-3 py-2 border rounded-lg text-sm"
+                            />
+                        </div>
+                        <div className="param-group">
+                            <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Nb travées</label>
+                            <input
+                                type="number"
+                                value={customParams.bayCount}
+                                onChange={(e) => updateCustomParams({ bayCount: Number(e.target.value) })}
+                                className="w-full px-3 py-2 border rounded-lg text-sm"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="param-group">
+                        <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Hauteur faîtage (m)</label>
+                        <input
+                            type="number"
+                            step="0.05"
+                            value={parseFloat(customParams.ridgeHeight.toFixed(2))}
+                            onChange={(e) => updateCustomParams({ ridgeHeight: Number(e.target.value) })}
+                            className="w-full px-3 py-2 border-2 border-orange-200 rounded-lg text-sm font-bold text-orange-700 focus:border-orange-500 outline-none"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="param-group">
+                            <label className="block text-xs font-bold text-slate-500 mb-1 uppercase text-[10px]">Sablière Gauche (m)</label>
+                            <input
+                                type="number"
+                                step="0.05"
+                                value={customParams.leftEaveHeight}
+                                onChange={(e) => updateCustomParams({ leftEaveHeight: Number(e.target.value) })}
+                                className="w-full px-3 py-2 border rounded-lg text-sm"
+                            />
+                        </div>
+                        <div className="param-group">
+                            <label className="block text-xs font-bold text-slate-500 mb-1 uppercase text-[10px]">Sablière Droite (m)</label>
+                            <input
+                                type="number"
+                                step="0.05"
+                                value={customParams.rightEaveHeight}
+                                disabled={customParams.buildingType === 'monopente'}
+                                onChange={(e) => updateCustomParams({ rightEaveHeight: Number(e.target.value) })}
+                                className={`w-full px-3 py-2 border rounded-lg text-sm ${customParams.buildingType === 'monopente' ? 'bg-slate-100 opacity-50' : ''}`}
+                            />
+                        </div>
+                    </div>
+
+                    {/* PENTES */}
+                    <div className="space-y-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Réglage des pentes</label>
+                            <select 
+                                value={customParams.pitchUnit}
+                                onChange={(e) => updateCustomParams({ pitchUnit: e.target.value })}
+                                className="text-[9px] font-bold bg-white border rounded px-1"
+                            >
+                                <option value="degree">Degrés (°)</option>
+                                <option value="percent">Pourcentage (%)</option>
+                            </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-bold text-slate-400 uppercase">Pente Gauche</label>
+                                <div className="flex items-center gap-1">
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={customParams.pitchUnit === 'degree' 
+                                            ? parseFloat(customParams.leftPitch.toFixed(1)) 
+                                            : parseFloat((Math.tan(customParams.leftPitch * Math.PI / 180) * 100).toFixed(1))}
+                                        onChange={(e) => {
+                                            const val = Number(e.target.value);
+                                            const degree = customParams.pitchUnit === 'degree' ? val : Math.atan(val / 100) * 180 / Math.PI;
+                                            updateCustomParams({ leftPitch: degree });
+                                        }}
+                                        className="w-full px-2 py-1.5 border rounded-md text-sm font-medium"
+                                    />
+                                    <span className="text-xs font-bold text-slate-400">{customParams.pitchUnit === 'degree' ? '°' : '%'}</span>
+                                </div>
+                                <div className="text-[8px] text-slate-400 italic">
+                                    {customParams.pitchUnit === 'degree' 
+                                        ? `≈ ${(Math.tan(customParams.leftPitch * Math.PI / 180) * 100).toFixed(1)}%` 
+                                        : `≈ ${(customParams.leftPitch).toFixed(1)}°`}
+                                </div>
+                            </div>
+
+                            {customParams.buildingType !== 'monopente' && (
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold text-slate-400 uppercase">Pente Droite</label>
+                                    <div className="flex items-center gap-1">
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={customParams.pitchUnit === 'degree' 
+                                                ? parseFloat(customParams.rightPitch.toFixed(1)) 
+                                                : parseFloat((Math.tan(customParams.rightPitch * Math.PI / 180) * 100).toFixed(1))}
+                                            onChange={(e) => {
+                                                const val = Number(e.target.value);
+                                                const degree = customParams.pitchUnit === 'degree' ? val : Math.atan(val / 100) * 180 / Math.PI;
+                                                updateCustomParams({ rightPitch: degree });
+                                            }}
+                                            className="w-full px-2 py-1.5 border rounded-md text-sm font-medium"
+                                        />
+                                        <span className="text-xs font-bold text-slate-400">{customParams.pitchUnit === 'degree' ? '°' : '%'}</span>
+                                    </div>
+                                    <div className="text-[8px] text-slate-400 italic">
+                                        {customParams.pitchUnit === 'degree' 
+                                            ? `≈ ${(Math.tan(customParams.rightPitch * Math.PI / 180) * 100).toFixed(1)}%` 
+                                            : `≈ ${(customParams.rightPitch).toFixed(1)}°`}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* EXTENSIONS SUR-MESURE */}
+                    <div className="space-y-4 pt-2 border-t">
+                        <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Extensions (Auvents / Appentis)</h4>
+                        
+                        {/* GAUCHE */}
+                        <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-xs font-bold text-blue-800">Côté Gauche</span>
+                                <select 
+                                    value={customParams.leftExtension}
+                                    onChange={(e) => updateCustomParams({ leftExtension: e.target.value })}
+                                    className="text-[10px] font-bold py-1 px-2 border rounded-md bg-white"
+                                >
+                                    <option value="none">Aucune</option>
+                                    <option value="auvent">Auvent</option>
+                                    <option value="appentis">Appentis</option>
+                                </select>
+                            </div>
+                            {customParams.leftExtension !== 'none' && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase">Largeur (m)</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={customParams.leftExtWidth}
+                                            onChange={(e) => updateCustomParams({ leftExtWidth: Number(e.target.value) })}
+                                            className="w-full px-2 py-1 border rounded-md text-sm"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase">H. Sablière (m)</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={customParams.leftExtHeight}
+                                            onChange={(e) => updateCustomParams({ leftExtHeight: Number(e.target.value) })}
+                                            className="w-full px-2 py-1 border rounded-md text-sm"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* DROITE */}
+                        <div className="p-3 bg-purple-50/50 rounded-xl border border-purple-100">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-xs font-bold text-purple-800">Côté Droit</span>
+                                <select 
+                                    value={customParams.rightExtension}
+                                    onChange={(e) => updateCustomParams({ rightExtension: e.target.value })}
+                                    className="text-[10px] font-bold py-1 px-2 border rounded-md bg-white"
+                                >
+                                    <option value="none">Aucune</option>
+                                    <option value="auvent">Auvent</option>
+                                    <option value="appentis">Appentis</option>
+                                </select>
+                            </div>
+                            {customParams.rightExtension !== 'none' && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase">Largeur (m)</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={customParams.rightExtWidth}
+                                            onChange={(e) => updateCustomParams({ rightExtWidth: Number(e.target.value) })}
+                                            className="w-full px-2 py-1 border rounded-md text-sm"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase">H. Sablière (m)</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={customParams.rightExtHeight}
+                                            onChange={(e) => updateCustomParams({ rightExtHeight: Number(e.target.value) })}
+                                            className="w-full px-2 py-1 border rounded-md text-sm"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={toggleSolar}
+                        className={`
+                            w-full py-3 rounded-xl font-bold text-sm transition-all duration-200 shadow-sm border mt-4
+                            ${hasSolar
+                                ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                            }
+                        `}
+                    >
+                        🚀 Activer Couverture Solaire PV
+                    </button>
+                    {hasSolar && (
+                        <div className="p-3 bg-yellow-50 border border-yellow-100 rounded-lg text-center">
+                            <div className="text-[10px] text-yellow-700 font-bold mb-1">PUISSANCE ESTIMÉE</div>
+                            <div className="text-xl font-black text-yellow-900">{solarStats?.power?.toFixed(2)} kWc</div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+        </div >
 
 
 

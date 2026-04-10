@@ -5,7 +5,7 @@ import { SolarPanels } from './SolarPanels.jsx';
 import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
 
 export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildingType = 'symetrique' }) {
-    const { isAcama } = useConfiguratorValues();
+    const { isAcama, configMode, customParams, customSpans } = useConfiguratorValues();
     // Material: RAL 7016 (Anthracite Grey)
     const roofMaterial = useMemo(() => new THREE.MeshStandardMaterial({
         color: '#383e42', // RAL 7016 approx
@@ -14,10 +14,66 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         side: THREE.DoubleSide
     }), []);
 
-    const isMonopente = buildingType === 'monopente';
-    const isAsymetrique = buildingType === 'asymetrique_1';
-    const isAsymetrique2 = buildingType === 'asymetrique_2';
-    const isEpona = isAcama && (buildingType === 'epona' || buildingType === 'epona_talian5');
+    // --- CUSTOM MODE RENDER ---
+    if (configMode === 'custom') {
+        const cp = customParams;
+        const spans = customSpans;
+        const w = width;
+        const l = length;
+
+        const lAngle = cp.leftPitch * (Math.PI / 180);
+        const rAngle = cp.rightPitch * (Math.PI / 180);
+
+        const leftRoofLength = spans.left / Math.cos(lAngle) + (cp.buildingType === 'monopente' ? 0.5 : 0.5); // Standard 50cm overhang
+        const rightRoofLength = cp.buildingType === 'monopente' ? 0 : (spans.right / Math.cos(rAngle) + 0.5);
+
+        const leftProfile = createTrapezoidalProfile(leftRoofLength, 0.035, 0.25);
+        const rightProfile = rightRoofLength > 0 ? createTrapezoidalProfile(rightRoofLength, 0.035, 0.25) : null;
+
+        const leftGeo = new THREE.ExtrudeGeometry(leftProfile, { depth: l + 1.0, bevelEnabled: false });
+        const rightGeo = rightProfile ? new THREE.ExtrudeGeometry(rightProfile, { depth: l + 1.0, bevelEnabled: false }) : null;
+
+        const perpOffset = (0.140 / 2) + (0.001 / 2) + 0.35 + 0.10;
+        const apexX = -w / 2 + spans.left;
+        const ridgeY = cp.ridgeHeight;
+
+        // Positioning
+        const getProps = (slopeLen, angle, isRight, overhang, startX, startY) => {
+            const centerDist = (slopeLen - overhang) / 2;
+            const midX = isRight ? startX + centerDist * Math.cos(angle) : startX - centerDist * Math.cos(angle);
+            const midY = startY - centerDist * Math.sin(angle);
+            const nX = isRight ? Math.sin(angle) : -Math.sin(angle);
+            const nY = Math.cos(angle);
+            return { x: midX + perpOffset * nX, y: midY + perpOffset * nY, rot: isRight ? -angle : angle };
+        };
+
+        const leftP = getProps(leftRoofLength, lAngle, false, 0.5, apexX, ridgeY);
+        const rightP = rightGeo ? getProps(rightRoofLength, rAngle, true, 0.5, apexX, ridgeY) : null;
+
+        return (
+            <group>
+                <mesh geometry={leftGeo} material={roofMaterial} position={[leftP.x, leftP.y, -l - 0.5]} rotation={[0, 0, leftP.rot]} castShadow receiveShadow />
+                <group position={[leftP.x, leftP.y, -l / 2]} rotation={[0, 0, leftP.rot]}>
+                    <SolarPanels surfaceWidth={leftRoofLength} surfaceLength={l + 1.0} />
+                </group>
+
+                {rightGeo && (
+                    <>
+                        <mesh geometry={rightGeo} material={roofMaterial} position={[rightP.x, rightP.y, -l - 0.5]} rotation={[0, 0, rightP.rot]} scale={[-1, 1, 1]} castShadow receiveShadow />
+                        <group position={[rightP.x, rightP.y, -l / 2]} rotation={[0, 0, rightP.rot]} scale={[-1, 1, 1]}>
+                            <SolarPanels surfaceWidth={rightRoofLength} surfaceLength={l + 1.0} />
+                        </group>
+                    </>
+                )}
+            </group>
+        );
+    }
+
+    const buildingTypePre = buildingType; // Alias for conditional below
+    const isMonopente = buildingTypePre === 'monopente';
+    const isAsymetrique = buildingTypePre === 'asymetrique_1';
+    const isAsymetrique2 = buildingTypePre === 'asymetrique_2';
+    const isEpona = isAcama && (buildingTypePre === 'epona' || buildingTypePre === 'epona_talian5');
     // const isAcamaTalian5 = isAcama && buildingType === 'asymetrique_2' && Math.abs(width - 27.6) < 0.1; // OBSOLÈTE
     // ==========================================
     // HOOKS (Must be unconditional)
@@ -77,10 +133,12 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     // RENDER LOGIC
     // ==========================================
 
+    const buildingTypeRender = buildingType;
+
     // --- 0. OMBRIÈRE VL SIMPLE & DOUBLE & PL ---
-    const isOmbriereSimple = buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche';
-    const isOmbriereDouble = buildingType === 'ombriere_vl_double';
-    const isOmbrierePL = buildingType === 'ombriere_pl';
+    const isOmbriereSimple = buildingTypeRender === 'ombriere_vl_simple_droite' || buildingTypeRender === 'ombriere_vl_simple_gauche';
+    const isOmbriereDouble = buildingTypeRender === 'ombriere_vl_double';
+    const isOmbrierePL = buildingTypeRender === 'ombriere_pl';
 
     if (isOmbriereSimple || isOmbriereDouble || isOmbrierePL) {
         // Exact same calculation as PortalFrame (12.2 deg usually)
@@ -196,7 +254,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     }
 
     // --- B0. EPONA ---
-    if (isEpona && buildingType !== 'epona_talian5') {
+    if (isEpona && buildingTypeRender !== 'epona_talian5') {
         // Geometric Constants from Image 3
         const mainSlope = 17 * (Math.PI / 180);
         const leftEaveH = 5.0;
@@ -327,7 +385,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     }
 
     // --- B0.5 TALIAN 5 ---
-    if (buildingType === 'epona_talian5') {
+    if (buildingTypeRender === 'epona_talian5') {
         const leftEaveH = 7.9;
         const effectiveRidgeHeight = 8.1;
         const midEaveH = 6.0;
@@ -415,52 +473,33 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         );
     }
 
-    // --- B. ASYMETRIQUE 2 ZONES & TALIAN 5 ---
+    // --- B. ASYMETRIQUE 2 ZONES ---
     if (isAsymetrique2) {
-        // Same slope across sections for default, but TALIAN 5 has specific logic
-        let leftAngleAsym2 = 15 * (Math.PI / 180);
-        let middleAngleAsym2 = 15 * (Math.PI / 180);
-        let rightAngleAsym2 = 15 * (Math.PI / 180);
-
-        let leftEaveHeightAsym2 = 4.0;
-        let middleColumnHeightAsym2 = 4.0; // Needs calculation below
-        let ridgeHAsym2 = 6.0;
-
         const w = width;
+        const mainSlope = 15 * (Math.PI / 180);
+        const rightSpan = w * 0.75;
+        const distRightToMiddle = rightSpan * 0.6; 
+        const ridgeHAsym2 = 4.0 + (rightSpan * Math.tan(mainSlope));
+        const middleColumnHeightAsym2 = ridgeHAsym2 - ((rightSpan - distRightToMiddle) * Math.tan(mainSlope));
 
-        let rightSpan, distRightToMiddle, mainSlope;
-
-        // Default Asymetrique 2 Zones (Green Invest)
-        leftEaveHeightAsym2 = 4.0; // Base
-        mainSlope = 15 * (Math.PI / 180);
-        rightSpan = w * 0.75;
-        distRightToMiddle = rightSpan * 0.6; // Position arbitraire du poteau milieu
-        ridgeHAsym2 = 4.0 + (rightSpan * Math.tan(mainSlope));
-        middleColumnHeightAsym2 = ridgeHAsym2 - ((rightSpan - distRightToMiddle) * Math.tan(mainSlope));
-
-        // Aliases for positioning meshes below
         const asymRightEaveH = 4.0;
-        const asymLeftEaveH = leftEaveHeightAsym2;
+        const asymLeftEaveH = 4.0;
         const middleColumnHeight = middleColumnHeightAsym2;
         const middleColumnX = width / 2 - distRightToMiddle;
 
-        // Section 1: Right (from right eave to middle column)
         const section1Span = distRightToMiddle;
         const section1Length = section1Span / Math.cos(mainSlope);
         const section1Overhang = 0.50;
         const section1RoofLength = section1Length + section1Overhang;
 
-        // Section 2: Middle (from middle column to apex)
         const section2Span = rightSpan - section1Span;
         const section2Length = section2Span / Math.cos(mainSlope);
-        const section2RoofLength = section2Length + 0.25; // Half overhang
+        const section2RoofLength = section2Length + 0.25; 
 
-        // Section 3: Left (from apex to left eave)
         const leftSpan = width * 0.25;
         const section3Length = leftSpan / Math.cos(mainSlope);
-        const section3RoofLength = section3Length; // No overhang on left
+        const section3RoofLength = section3Length; 
 
-        // Create geometries for 3 sections (directly, no useMemo in conditional)
         const section1Profile = createTrapezoidalProfile(section1RoofLength, 0.035, 0.25);
         const section2Profile = createTrapezoidalProfile(section2RoofLength, 0.035, 0.25);
         const section3Profile = createTrapezoidalProfile(section3RoofLength, 0.035, 0.25);
@@ -469,250 +508,153 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         const section2Geo = new THREE.ExtrudeGeometry(section2Profile, { depth: length + 1.0, bevelEnabled: false });
         const section3Geo = new THREE.ExtrudeGeometry(section3Profile, { depth: length + 1.0, bevelEnabled: false });
 
-        // Positioning helper
-        const getOffsetProps = (slopeLen, angle, isRight, overhang) => {
-            const centerDist = (slopeLen - overhang) / 2;
-            const localX = centerDist * Math.cos(angle);
-            const localY = centerDist * Math.sin(angle);
-
-            const extraLift = 0.10;
-            const purlinH = 0.140;
-            const thick = 0.001;
-            const offsetDist = (purlinH / 2) + (thick / 2) + 0.35 + extraLift;
-
-            const nX = isRight ? Math.sin(angle) : -Math.sin(angle);
-            const nY = Math.cos(angle);
-
-            return {
-                x: localX + (offsetDist * nX),
-                y: localY + (offsetDist * nY),
-                rot: isRight ? -angle : angle
-            };
-        };
-
-        // Calculate ACTUAL angles based on geometry (Ridge/Eave Heights)
-        // This ensures parallelism with the structure even if pitch is slightly off (e.g. 14.37 vs 15)
-        // NEW REQUEST (Step 542 & 562): Width-dependent adjustments
         const isWidth29 = Math.abs(width - 29.1) < 0.1;
         const isWidth25 = Math.abs(width - 25.5) < 0.1;
 
-        // NEW REQUEST 12/01/2026: Cover 2 (Section 2) pitch 15° for 29.1m only
         const rightAngle = 15 * (Math.PI / 180);
-        // NEW REQUEST 10/01/2026: Cover 3 (Section 1) pitch 15°
         const section1Angle = 15 * (Math.PI / 180);
         const leftAngle = 15 * (Math.PI / 180);
 
-        // Left Offset Logic
-        // Base was -0.25 (from step 478).
-        // For 25.5m: Lower by 20cm -> -0.45.
-        // For 29.1m: Raise by 10cm -> -0.25 + 0.10 = -0.15.
         const leftRefOffset = -0.25;
         let leftOffset = leftRefOffset;
         if (isWidth25) leftOffset = leftRefOffset - 0.20;
-        if (isWidth29) leftOffset = leftRefOffset + 0.10; // -0.15
+        if (isWidth29) leftOffset = leftRefOffset + 0.10;
 
-        // Right Offset Logic
-        // Base was -0.10 (from step 471).
-        // NEW REQUEST:
-        // For 25.5m: Raise by 10cm -> -0.10 + 0.10 = 0.00.
-        // For 29.1m: Raise by 20cm -> -0.10 + 0.20 = +0.10.
         const rightRefOffset = -0.10;
-
-        // Split Offsets for Section 1 (Right) and Section 2 (Middle)
-        let section1Offset = rightRefOffset; // Right (Cover 3)
-        let section2Offset = rightRefOffset; // Middle (Cover 2)
+        let section1Offset = rightRefOffset; 
+        let section2Offset = rightRefOffset; 
 
         if (isWidth25) {
-            // 25.5m Base logic: +10cm
             section1Offset += 0.10;
             section2Offset += 0.10;
         }
         if (isWidth29) {
-            // 29.1m Base logic: +20cm
             section1Offset += 0.20;
             section2Offset += 0.20;
         }
 
-        // USER REQUEST 10/01/2026 Round 1: 
-        // "Abaisse la hauteur de la couverture 2 de 20cm" -> Middle (Section 2) -> -0.20
-        // "Augmente la hauteur de la couverture 3 de 10cm" -> Right (Section 1) -> +0.10
-        // USER REQUEST 10/01/2026 Round 2:
-        // "Abaisse la hauteur de la couverture 1 de 10cm" -> Left -> leftOffset - 0.10
-        // "Remonte la couverture 2 de 5cm" -> Middle -> section2Offset + 0.05
-        // USER REQUEST 10/01/2026 Round 3:
-        // "Remonte la hauteur de la couverture 1 de 5cm" -> Left -> +0.05
-        // "Remonte la couverture 2 de 2cm" -> Middle -> +0.02
-        // "Abaisse la couverture 3 de 30cm" -> Right -> -0.30
-        // USER REQUEST 12/01/2026 (Round 1):
-        // "Réhausse la couverture 1 de 5cm pour 29.1m uniquement" -> Left (29.1m only) -> +0.05
-        // USER REQUEST 12/01/2026 (Round 2):
-        // "Réhausse la couverture 3 de 3cm pour 29.1m uniquement" -> Right (29.1m only) -> +0.03
-        // USER REQUEST 12/01/2026 (Round 3):
-        // "Réhausse la couverture 3 de 8cm pour 25.5m uniquement" -> Right (25.5m only) -> +0.08
-        // USER REQUEST 12/01/2026 (Round 4):
-        // "Réhausse couvertures 2 et 3 de 4cm pour 25.5m" -> Middle & Right (25.5m) -> +0.04 each
-        // "Réhausse couverture 1 de 5cm pour 29.1m" -> Left (29.1m) -> +0.05
-
-        // Width-dependent spans
         const leftSpanVisible = width * 0.25;
         const rightSpanVisible = width * 0.75;
-
-        // Angles
         let leftAngleGI = 15 * (Math.PI / 180);
         let rightAngleGI = 15 * (Math.PI / 180);
 
-        // Adjustments for GREEN INVEST
         if (!isAcama) {
-            // Target height adjustments (relative to standard 15° mesh)
-            let leftEaveAdjustment = -0.3; // Base from Round 7
-            if (isWidth25) leftEaveAdjustment -= 0.3; // Additional lower by 0.3m for 25.5m
-            if (isWidth29) leftEaveAdjustment += 0.3; // Additional raise by 0.3m for 29.1m
-
-            const rightEaveAdjustment = 0.2; // From Round 7
-
-            // Calculate new angles such that Top Height stays the same
+            let leftEaveAdjustment = -0.3; 
+            if (isWidth25) leftEaveAdjustment -= 0.3; 
+            if (isWidth29) leftEaveAdjustment += 0.3; 
+            const rightEaveAdjustment = 0.2; 
             leftAngleGI = Math.atan(Math.tan(15 * Math.PI / 180) + (-leftEaveAdjustment / leftSpanVisible));
             rightAngleGI = Math.atan(Math.tan(15 * Math.PI / 180) - (rightEaveAdjustment / rightSpanVisible));
-
-            // Adjust offsets to compensate for rotation shifting the mesh vertically
-            const offsetDist = (0.140 / 2) + (0.001 / 2) + 0.35 + 0.10; // From getOffsetProps logic
+            const offsetDist = (0.140 / 2) + (0.001 / 2) + 0.35 + 0.10; 
             const baseBottomH = offsetDist * Math.cos(15 * Math.PI / 180);
-
             leftOffset = (baseBottomH + 3.62 + leftEaveAdjustment) - (offsetDist * Math.cos(leftAngleGI));
             section1Offset = (baseBottomH - 0.2 + rightEaveAdjustment) - (offsetDist * Math.cos(rightAngleGI));
-            section2Offset = section1Offset; // Keep sections 1 & 2 continuous
+            section2Offset = section1Offset; 
         }
 
-        const section1Props = getOffsetProps(section1Length, rightAngleGI, true, section1Overhang);
-        const section2Props = getOffsetProps(section2Length, rightAngleGI, true, 0.25);
-        const section3Props = getOffsetProps(section3Length, leftAngleGI, false, 0);
+        const positioningHelper = (slopeLen, angle, isRight, overhang) => {
+            const centerDist = (slopeLen - overhang) / 2;
+            const localX = centerDist * Math.cos(angle);
+            const localY = centerDist * Math.sin(angle);
+            const extraLift = 0.10;
+            const purlinH = 0.140;
+            const thick = 0.001;
+            const offsetDist = (purlinH / 2) + (thick / 2) + 0.35 + extraLift;
+            const nX = isRight ? Math.sin(angle) : -Math.sin(angle);
+            const nY = Math.cos(angle);
+            return { x: localX + (offsetDist * nX), y: localY + (offsetDist * nY), rot: isRight ? -angle : angle };
+        };
+
+        const section1Props = positioningHelper(section1RoofLength, rightAngleGI, true, section1Overhang);
+        const section2Props = positioningHelper(section2RoofLength, rightAngleGI, true, 0.25);
+        const section3Props = positioningHelper(section3Length, leftAngleGI, false, 0);
 
         return (
             <group>
-                {/* Section 1 (Right/Cover 3): Right column to middle column */}
                 <mesh geometry={section1Geo} material={roofMaterial}
                     position={[width / 2 - section1Props.x, asymRightEaveH + section1Props.y + section1Offset, -length - 0.5]}
                     rotation={[0, 0, section1Props.rot]}
                     scale={[-1, 1, 1]}
                     castShadow receiveShadow />
 
-                {/* Solar Section 1 */}
                 <group position={[width / 2 - section1Props.x, asymRightEaveH + section1Props.y + section1Offset, -length / 2]}
                     rotation={[0, 0, section1Props.rot]}
-                    scale={[-1, 1, 1]}> {/* Scale needed for mirroring? SolarPanels generates locally positive X. 
-                                            If we mirror X (-1), then panels might be flipped. 
-                                            Actually SolarPanels aligns with width. 
-                                            Roof mesh uses scale [-1, 1, 1] to flip the trapezoid geometry? 
-                                            Yes, trapezoid is 0 to L. We need it from R to L.
-                                            Let's apply scale to Solar Group too or ensure rotation handles it.
-                                            Right Side rotation is -Angle. 
-                                            If we scale -1 on X for the group, it should match the roof mesh. */}
+                    scale={[-1, 1, 1]}>
                     <SolarPanels surfaceWidth={section1RoofLength} surfaceLength={length + 1.0} />
                 </group>
 
-                {/* Section 2 (Middle/Cover 2): Middle column to apex */}
                 <mesh geometry={section2Geo} material={roofMaterial}
                     position={[middleColumnX - section2Props.x, middleColumnHeight + section2Props.y + section2Offset, -length - 0.5]}
                     rotation={[0, 0, section2Props.rot]}
                     scale={[-1, 1, 1]}
                     castShadow receiveShadow />
 
-                {/* Solar Section 2 */}
                 <group position={[middleColumnX - section2Props.x, middleColumnHeight + section2Props.y + section2Offset, -length / 2]}
                     rotation={[0, 0, section2Props.rot]}
                     scale={[-1, 1, 1]}>
                     <SolarPanels surfaceWidth={section2RoofLength} surfaceLength={length + 1.0} />
                 </group>
 
-                {/* Section 3 (Left/Cover 1): Apex to left column */}
                 <mesh geometry={section3Geo} material={roofMaterial}
                     position={[-width / 2 + section3Props.x, asymLeftEaveH + section3Props.y + leftOffset, -length - 0.5]}
                     rotation={[0, 0, section3Props.rot]}
                     castShadow receiveShadow />
 
-                {/* Solar Section 3 */}
                 <group position={[-width / 2 + section3Props.x, asymLeftEaveH + section3Props.y + leftOffset, -length / 2]}
                     rotation={[0, 0, section3Props.rot]}>
                     <SolarPanels surfaceWidth={section3RoofLength} surfaceLength={length + 1.0} />
                 </group>
-
             </group>
         );
     }
 
     // --- C. ASYMETRIQUE (1 ZONE) ---
     if (isAsymetrique) {
-        // Exact Heights Logic (Match PortalFrame - FORCED 15 DEG)
         const asymRightEaveH = 4.0;
         const w = width;
         const mainSlope = 15 * (Math.PI / 180);
-
-        // Ridge from Right
         const ridgeH = 4.0 + (w * 0.75 * Math.tan(mainSlope));
-
-        // Left Eave from Ridge (15 deg)
         const asymLeftEaveH = ridgeH - (w * 0.25 * Math.tan(mainSlope));
-
-        // Angles
         const rAngle = mainSlope;
         const lAngle = mainSlope;
-
-        // Derived Left Angle (Redundant but safe)
         const rSpan = w * 0.75;
         const lSpan = w * 0.25;
-        const lRise = ridgeH - asymLeftEaveH;
-
-        // Recalc Lengths with Derived Angles
         const rSlopeLen = rSpan / Math.cos(rAngle);
         const lSlopeLen = lSpan / Math.cos(lAngle);
 
-        const getOffsetProps = (slopeLen, angle, isRight, overhang) => {
+        const positioningHelper = (slopeLen, angle, isRight, overhang) => {
             const centerDist = (slopeLen - overhang) / 2;
             const localX = centerDist * Math.cos(angle);
             const localY = centerDist * Math.sin(angle);
-
-            // Perp Offset - Lifted above purlins
-            // Base: 0.35 (Rafter) + 0.14/2 (Purlin/2) + Thick/2
-            // User requested "Au dessus". Adding extra lift.
             const extraLift = 0.10;
             const purlinH = 0.140;
             const thick = 0.001;
             const offsetDist = (purlinH / 2) + (thick / 2) + 0.35 + extraLift;
-
             const nX = isRight ? Math.sin(angle) : -Math.sin(angle);
             const nY = Math.cos(angle);
-
-            return {
-                x: localX + (offsetDist * nX),
-                y: localY + (offsetDist * nY),
-                rot: isRight ? -angle : angle
-            };
+            return { x: localX + (offsetDist * nX), y: localY + (offsetDist * nY), rot: isRight ? -angle : angle };
         };
 
-        const rProps = getOffsetProps(rSlopeLen, rAngle, true, asymRightOverhang);
-        const lProps = getOffsetProps(lSlopeLen, lAngle, false, asymLeftOverhang);
+        const rProps = positioningHelper(rSlopeLen, rAngle, true, asymRightOverhang);
+        const lProps = positioningHelper(lSlopeLen, lAngle, false, asymLeftOverhang);
 
         return (
             <group>
-                {/* Left Side */}
                 <mesh geometry={asymLeftGeo} material={roofMaterial}
                     position={[-width / 2 + lProps.x, asymLeftEaveH + lProps.y + 0.10 + (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5 ? -0.12 : 0) + (Math.abs(width - 20) < 0.5 ? -0.05 : 0), -length - 0.5]}
                     rotation={[0, 0, lProps.rot]}
                     castShadow receiveShadow />
 
-                {/* Right Side */}
                 <mesh geometry={asymRightGeo} material={roofMaterial}
                     position={[width / 2 - rProps.x, asymRightEaveH + rProps.y, -length - 0.5]}
                     rotation={[0, 0, rProps.rot]}
                     scale={[-1, 1, 1]}
                     castShadow receiveShadow />
 
-                {/* Solar */}
                 <group position={[width / 2 - rProps.x, asymRightEaveH + rProps.y, -length / 2]} rotation={[0, 0, rProps.rot]}>
                     <SolarPanels surfaceWidth={asymRightRoofLength} surfaceLength={length + 1.0} />
                 </group>
 
-                {/* Solar Panels on Left Roof (USER REQUEST 12/01/2026) */}
                 <group position={[-width / 2 + lProps.x, asymLeftEaveH + lProps.y + 0.10 + (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5 ? -0.12 : 0) + (Math.abs(width - 20) < 0.5 ? -0.05 : 0), -length / 2]} rotation={[0, 0, lProps.rot]}>
                     <SolarPanels surfaceWidth={asymLeftRoofLength} surfaceLength={length + 1.0} />
                 </group>
@@ -721,69 +663,36 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     }
 
     // --- D. SYMMETRICAL (Default) ---
-    // Offset Logic
     const purlinHeight = 0.140;
     const roofThickness = 0.001;
     const perpOffset = (purlinHeight / 2) + (roofThickness / 2) + 0.35;
-
     const centerDist = (symGeometricSlopeLength - symOverhang) / 2;
     const localCenterX = centerDist * Math.cos(symAngleRad);
     const localCenterY = centerDist * Math.sin(symAngleRad);
-
-    // Perpendicular Offset Vectors
     const offsetX = -perpOffset * Math.sin(symAngleRad);
     const offsetY = perpOffset * Math.cos(symAngleRad);
 
     return (
         <group>
-            {/* Left Roof Side */}
             <mesh
                 geometry={symGeometry}
                 material={roofMaterial}
-                position={[
-                    -symHalfWidth + localCenterX + offsetX,
-                    eaveHeight + localCenterY + offsetY,
-                    -length - 0.5
-                ]}
+                position={[-symHalfWidth + localCenterX + offsetX, eaveHeight + localCenterY + offsetY, -length - 0.5]}
                 rotation={[0, 0, symAngleRad]}
                 castShadow receiveShadow
             />
-
-            {/* Right Roof Side */}
             <mesh
                 geometry={symGeometry}
                 material={roofMaterial}
-                position={[
-                    symHalfWidth - localCenterX - offsetX, // Mirror X
-                    eaveHeight + localCenterY + offsetY, // Same Y height
-                    -length - 0.5
-                ]}
+                position={[symHalfWidth - localCenterX - offsetX, eaveHeight + localCenterY + offsetY, -length - 0.5]}
                 rotation={[0, 0, -symAngleRad]}
                 scale={[-1, 1, 1]}
                 castShadow receiveShadow
             />
-
-            {/* Solar Panels Left */}
-            <group
-                position={[
-                    -symHalfWidth + localCenterX + offsetX,
-                    eaveHeight + localCenterY + offsetY,
-                    -length / 2
-                ]}
-                rotation={[0, 0, symAngleRad]}
-            >
+            <group position={[-symHalfWidth + localCenterX + offsetX, eaveHeight + localCenterY + offsetY, -length / 2]} rotation={[0, 0, symAngleRad]}>
                 <SolarPanels surfaceWidth={symRoofSlopeLength} surfaceLength={length + 1.0} />
             </group>
-
-            {/* Solar Panels Right */}
-            <group
-                position={[
-                    symHalfWidth - localCenterX - offsetX,
-                    eaveHeight + localCenterY + offsetY,
-                    -length / 2
-                ]}
-                rotation={[0, 0, -symAngleRad]}
-            >
+            <group position={[symHalfWidth - localCenterX - offsetX, eaveHeight + localCenterY + offsetY, -length / 2]} rotation={[0, 0, -symAngleRad]}>
                 <SolarPanels surfaceWidth={symRoofSlopeLength} surfaceLength={length + 1.0} />
             </group>
         </group>

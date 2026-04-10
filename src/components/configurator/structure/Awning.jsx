@@ -16,21 +16,30 @@ import { SolarPanels } from './SolarPanels.jsx';
 export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount, baySpacing, side = 'right', buildingType = 'symetrique' }) {
 
     // --- DIMENSIONS ---
-    let awningWidth = 9.3;
-    let startHeight = eaveHeight; // 5.5m
+    const { isAcama, configMode, customParams } = useConfiguratorValues();
+    const isCustom = configMode === 'custom';
+    const cp = customParams;
+
+    let awningWidth = isCustom ? (side === 'left' ? cp.leftExtensionWidth : cp.rightExtensionWidth) : 9.3;
+    let startHeight = eaveHeight; 
     let angleRad = (roofPitch * Math.PI) / 180;
-    let endHeight = 3.87;
+    
+    // In custom mode, use the correct building slope for the awning
+    if (isCustom) {
+        angleRad = (side === 'left' ? cp.leftPitch : cp.rightPitch) * (Math.PI / 180);
+    }
 
-    const { isAcama } = useConfiguratorValues();
-    const isTalian4 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 13.7) < 0.1;
-    const isTalian1 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 18.8) < 0.1;
-    const isTalian3 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 17.5) < 0.1;
+    let endHeight = startHeight - (awningWidth * Math.tan(angleRad));
+
+    const isTalian4 = !isCustom && isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 13.7) < 0.1;
+    const isTalian1 = !isCustom && isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 18.8) < 0.1;
+    const isTalian3 = !isCustom && isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 17.5) < 0.1;
     const isTalian = isTalian4 || isTalian1 || isTalian3;
-    const isEpona = isAcama && buildingType === 'epona';
+    const isEpona = !isCustom && isAcama && buildingType === 'epona';
 
-
-
-    if (isAcama && buildingType === 'epona') {
+    if (isCustom) {
+        // Handled by default let assignments above
+    } else if (isAcama && buildingType === 'epona') {
         // ACAMA EPONA: Appentis droit 7.8m (Connecté à la toiture)
         awningWidth = 7.8;
         angleRad = (roofPitch * Math.PI) / 180;
@@ -49,21 +58,12 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
         endHeight = 3.0;
 
     } else if (buildingType === 'monopente' && side === 'left') {
-        // Specific heights requested for Monopente Left Awning
-        // Width 12.7m -> Sablière 6.4m
-        // Width 16.4m -> Sablière 7.4m
         if (Math.abs(buildingWidth - 12.7) < 0.2) {
             endHeight = 6.4;
         } else if (Math.abs(buildingWidth - 16.4) < 0.2) {
             endHeight = 7.4;
         }
-        // Note: This overrides the default endHeight calculation.
-        // We assume startHeight (eaveHeight) provided is correct for the attachment point.
-    } else {
-        // Standard calculation for others if needed?
-        // endHeight is currently hardcoded 3.87 in original code line 20, 
-        // but that implies specific width/pitch combination.
-    }
+    } 
 
     // Position: Attached to the building
     // Right: +buildingWidth/2

@@ -16,20 +16,27 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const gapSize = 3.0;
     const isOmbriere = buildingType.startsWith('ombriere');
 
-    const { isAcama } = useConfiguratorValues();
+    const { isAcama, configMode, customParams, customSpans } = useConfiguratorValues();
     const isAcamaInStore = isAcama;
     const isAcamaReal = isAcamaInStore || false; // Safe check
 
-    const isEpona = isAcama && (buildingType === 'epona' || buildingType === 'epona_talian5');
-    const isTalian4 = isAcama && buildingType === 'symetrique' && Math.abs(width - 13.7) < 0.1;
-    const isTalian1 = isAcama && buildingType === 'symetrique' && Math.abs(width - 18.8) < 0.1;
-    const isTalian3 = isAcama && buildingType === 'symetrique' && Math.abs(width - 17.5) < 0.1;
-    // const isTalian5 = isAcama && buildingType === 'asymetrique_2' && Math.abs(width - 27.6) < 0.1; // OBSOLETE
+    // Override for Custom Mode
+    const isCustom = configMode === 'custom';
+    const cp = customParams;
+    const spans = customSpans;
+
+    const isEpona = !isCustom && isAcama && (buildingType === 'epona' || buildingType === 'epona_talian5');
+    const isTalian4 = !isCustom && isAcama && buildingType === 'symetrique' && Math.abs(width - 13.7) < 0.1;
+    const isTalian1 = !isCustom && isAcama && buildingType === 'symetrique' && Math.abs(width - 18.8) < 0.1;
+    const isTalian3 = !isCustom && isAcama && buildingType === 'symetrique' && Math.abs(width - 17.5) < 0.1;
     const isTalian = isTalian4 || isTalian1 || isTalian3;
 
     const getExtWidth = (type, side) => {
-        if (isEpona) return side === 'left' ? 2.5 : 9.1; // Appentis depth: 7.85 (span) + 1.25 (overhang) = 9.1m
-
+        if (isCustom) {
+            if (side === 'left') return cp.leftExtensionWidth || 0;
+            if (side === 'right') return cp.rightExtensionWidth || 0;
+        }
+        if (isEpona) return side === 'left' ? 2.5 : 9.1; 
         if (isTalian4) return 11.2;
         if (isTalian1) return 2.3;
         if (isTalian3) return 1.8;
@@ -38,10 +45,15 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         return 0;
     };
     const getExtHeight = (type, side) => {
+        if (isCustom) {
+            // For custom extension peak height: logic might need to be refined, 
+            // but for markers let's assume it connects to eave.
+            return side === 'left' ? cp.leftEaveHeight : cp.rightEaveHeight;
+        }
         if (isEpona) return side === 'left' ? 5.0 : 3.8;
         if (isTalian4) return 4.5;
-        if (isTalian1) return 3.8; // Reverted for Talian 1 as requested
-        if (isTalian3) return 2.5; // Only Talian 3 is 2.5m
+        if (isTalian1) return 3.8; 
+        if (isTalian3) return 2.5; 
         if (type === 'auvent') return 4.8;
         if (type === 'appentis') return 3.9;
         return 0;
@@ -49,7 +61,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     const getVisualOffset = () => {
         if (isEpona) return -1.0;
         if (isTalian4) return -1.2;
-        if (isTalian1) return 0; // Pas de demande d'abaissement visuel pour TALIAN 1 encore
+        if (isTalian1) return 0; 
         return 0;
     };
 
@@ -62,13 +74,10 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // 1. Width Arrow
     const { widthPoints, widthStart, widthEnd } = useMemo(() => {
-        const isOmbriere = buildingType.startsWith('ombriere');
-        const yHeight = 0.1; // Reverted: Always ground level for building width
-
+        const yHeight = 0.1; 
         const zFront = 3.0;
         const start = new THREE.Vector3(-width / 2, yHeight, zFront);
         const end = new THREE.Vector3(width / 2, yHeight, zFront);
-
         const mid = new THREE.Vector3(0, yHeight, zFront);
         return {
             widthStart: start,
@@ -78,11 +87,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(mid.x + gapSize / 2, mid.y, mid.z), end]
             ]
         };
-    }, [width, gapSize, buildingType]);
+    }, [width, gapSize]);
 
     // 2. Length Arrow (Right Side)
     const { lengthPoints, lengthStart, lengthEnd, xSide } = useMemo(() => {
-        const x = width / 2 + rightWidth + (buildingType === 'epona_talian5' ? -6.0 : 3.0); 
+        const x = width / 2 + rightWidth + (buildingType === 'epona_talian5' && !isCustom ? -6.0 : 3.0); 
         const start = new THREE.Vector3(x, 0.1, 0);
         const end = new THREE.Vector3(x, 0.1, -length);
         const mid = new THREE.Vector3(x, 0.1, -length / 2);
@@ -95,14 +104,6 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(x, 0.1, mid.z - gapSize / 2), end]
             ]
         };
-    }, [width, length, rightWidth, gapSize, buildingType]);
-
-    // 3. Eave Height (Left Side - Wait, if Left Ext exists, Eave marker moves?)
-    // Originally: `x = hasAuvent ? (width / 2 + 2.0) : (-width / 2 - 2.0);`
-    // This logic was ensuring the Eave Marker is NOT overlapped by left extension?
-    // If Left Extension exists, the Eave Marker for the MAIN building (-width/2) is hidden inside?
-    // Or does it move to the EDGE of the extension?
-    // User requested "Alignement verticale au trait".
     // Usually Eave Height is for the Main Building.
     // If Extension is there, maybe keep it at Main Building Eave?
     // BUT the marker code moved it.
@@ -169,39 +170,16 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         let x = 0;
         let h = ridgeHeight;
 
-        if (buildingType === 'monopente') {
+        if (isCustom) {
+            x = -width / 2 + spans.left;
+            h = cp.ridgeHeight;
+        } else if (buildingType === 'monopente') {
             x = -width / 2 - 1.5; // Left Side
         } else if (buildingType === 'ombriere_vl_simple_droite') {
-            // Slope Down-Right. Ridge is HIGH LEFT.
-            // Eave (Low Right) is on Right.
-            // So Ridge Marker should be on LEFT.
             x = -width / 2 - 1.5;
         } else if (buildingType === 'ombriere_vl_simple_gauche') {
-            // Updated 13/01: Slope Down-Right (same as Droite).
-            // Ridge is HIGH LEFT. Eave (Low Right) is on Right.
-            x = -width / 2 - 1.5; // Set Ridge Marker to Left side for 'gauche'
-        }
-        // USER REQUEST 13/01/2026: Swap markers for 'gauche'.
-        // 'ombriere_vl_simple_droite': High Left (Ridge), Low Right (Eave). (Already handled by standard logic if slopes are negative?)
-        // 'ombriere_vl_simple_gauche': High Left (Ridge), Low Right (Eave).
-
-        // WAIT. If they are geometrically identical (High Left -> Low Right), then the markers should correspond to geometry.
-        // If geometry is High Left, then Ridge IS Left.
-        // Previously I might have forced them differently.
-
-        // Let's explicitly set based on type to be sure.
-
-        // The provided code block for `startText` and `endText` seems to be for text labels,
-        // not for determining the `x` coordinate of the ridge line itself.
-        // The `x` coordinate for the ridge marker for ombriere_vl_simple_gauche was already set to `width / 2 + 1.5` (Right side).
-        // If the user wants the ridge marker for 'gauche' to be on the LEFT (like 'droite'),
-        // then the `x` value needs to be changed here.
-        // Based on the comment "Ridge Left (4.5m), Eave Right (2.9m)" for 'gauche',
-        // it implies the ridge marker should be on the left side for 'gauche' as well.
-        if (buildingType === 'ombriere_vl_simple_gauche') {
-            x = -width / 2 - 1.5; // Set Ridge Marker to Left side for 'gauche'
+            x = -width / 2 - 1.5; 
         } else if (buildingType === 'ombriere_vl_double' || buildingType === 'ombriere_pl') {
-            // Match 'simple_gauche': Ridge Left, Eave Right.
             x = -width / 2 - 1.5;
         } else if (buildingType === 'asymetrique_1') {
             // Asym Ridge: Exact
@@ -209,44 +187,29 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             h = 4.0 + (width * 0.75 * Math.tan(rAngle));
             if (Math.abs(width - 20) < 0.5) h = 8.4;
             else if (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5) h = 7.4;
-
-            // Apex
             x = -width / 2 + (width * 0.25);
         } else if (buildingType === 'asymetrique_2') {
-            // Asym 2 Ridge: at apex (1/4 from left)
-            if (Math.abs(width - 25.5) < 0.1) {
-                h = 8.9;
-            } else if (Math.abs(width - 29.1) < 0.1) {
-                h = 9.8;
-            } else {
+            if (Math.abs(width - 25.5) < 0.1) h = 8.9;
+            else if (Math.abs(width - 29.1) < 0.1) h = 9.8;
+            else {
                 const rAngle = 15 * (Math.PI / 180);
                 h = 4.0 + (width * 0.75 * Math.tan(rAngle));
             }
-
-            // Apex at 1/4 from left
             x = -width / 2 + (width * 0.25);
         } else if (buildingType === 'epona_talian5') {
-            // New Ridge Position: -11.27
             x = -11.27;
             h = 8.1;
         }
 
-
-        // USER REQUEST 14/01/2026: Specific Ridge Heights for Ombrière VL Double
-        // 9.1m -> 4.6m
-        // 11.3m -> 4.7m
-        if (buildingType === 'ombriere_vl_double') {
+        if (buildingType === 'ombriere_vl_double' && !isCustom) {
             if (Math.abs(width - 9.1) < 0.1) h = 4.6;
             else if (Math.abs(width - 11.3) < 0.1) h = 4.7;
         }
 
-        // USER REQUEST 14/01/2026: Specific Ridge Heights for Ombrière VL Simple
-        if (buildingType === 'ombriere_vl_simple_gauche') h = 4.7; // was 4.4, requested 4.7
-        if (buildingType === 'ombriere_vl_simple_droite') h = 4.1; // was 4.7, requested 4.1
+        if (buildingType === 'ombriere_vl_simple_gauche' && !isCustom) h = 4.7; 
+        if (buildingType === 'ombriere_vl_simple_droite' && !isCustom) h = 4.1; 
 
-        // OMBRIÈRE PL
-        if (buildingType === 'ombriere_pl') {
-            // USER REQUEST 15/01/2026: Specific Ridge Heights
+        if (buildingType === 'ombriere_pl' && !isCustom) {
             if (Math.abs(width - 15.8) < 0.1) h = 7.9;
             else if (Math.abs(width - 20.2) < 0.1) h = 9.3;
             else if (Math.abs(width - 24.6) < 0.1) h = 9.3;
@@ -261,7 +224,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const end = new THREE.Vector3(x, visualTop, z);
         const mid = new THREE.Vector3(x, visualMid, z);
 
-        const finalLabel = isTalian4 ? 5.9 : (isTalian1 ? 6.7 : h);
+        const finalLabel = !isCustom && isTalian4 ? 5.9 : (!isCustom && isTalian1 ? 6.7 : h);
 
         return {
             xRidge: x,
@@ -274,50 +237,39 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
             ]
         };
-    }, [width, ridgeHeight, gapSize, buildingType, isEpona, isTalian4, isTalian1]);
+    }, [width, ridgeHeight, gapSize, buildingType, isEpona, isTalian4, isTalian1, isCustom, cp, spans]);
 
 
     // 3c. Left Eave Height (Asymmetrical ONLY — masqué pour EPONA)
     const asymLeftEaveData = useMemo(() => {
-        // Pour EPONA, on ne montre pas la sablière gauche du bâtiment
-        if (buildingType !== 'asymetrique_1' && buildingType !== 'asymetrique_2') return null;
-        if (buildingType === 'epona_talian5') return null; // Avoid duplicate 7.9m with eponaMarkers
-        // Uniquement pour ACAMA
-
-
-        // Dynamic Calculation: Ridge - Left Drop
-        const rightEave = 4.0;
-        const rSpan = width * 0.75;
-        const rAngle = 15 * (Math.PI / 180);
-        const ridge = rightEave + (rSpan * Math.tan(rAngle));
+        if (!isCustom && buildingType !== 'asymetrique_1' && buildingType !== 'asymetrique_2') return null;
+        if (!isCustom && buildingType === 'epona_talian5') return null; 
 
         let h;
-        if (isEpona) {
+        if (isCustom) {
+            h = cp.leftEaveHeight;
+        } else if (isEpona) {
             h = 7.9;
         } else if (buildingType === 'asymetrique_2') {
-            // USER REQUEST 12/01/2026: Updated sablière heights for BUILDING
             if (Math.abs(width - 25.5) < 0.1) h = 6.9;
             else if (Math.abs(width - 29.1) < 0.1) h = 7.9;
-            else h = 6.9; // Fallback
+            else h = 6.9; 
         } else {
-            // Asym 1
             h = 6.4;
             if (Math.abs(width - 20) < 0.5) h = 7.4;
             else if (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5) h = 6.4;
             else {
-                // Fallback
-                h = ridge - ((width * 0.25) * Math.tan(15 * Math.PI / 180));
+                h = ridgeHeight - ((width * 0.25) * Math.tan(15 * Math.PI / 180));
             }
         }
 
-        const x = leftSide !== 'none' ? -width / 2 - 1.5 : -width / 2 - 3.0;
+        const x = (isCustom ? (cp.leftSide !== 'none' || cp.leftExtensionWidth > 0) : (leftSide !== 'none')) ? -width / 2 - 1.5 : -width / 2 - 3.0;
 
         const start = new THREE.Vector3(x, 0, 0);
         const end = new THREE.Vector3(x, h, 0);
         const mid = new THREE.Vector3(x, h / 2, 0);
 
-        // Pour EPONA, on demande de masquer l'indication de 7.9m
-        if (buildingType === 'epona') return null;
+        if (!isCustom && buildingType === 'epona') return null;
 
         return {
             xLeft: x,
@@ -328,7 +280,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
             ]
         };
-    }, [buildingType, width, leftSide, gapSize, isEpona]);
+    }, [buildingType, width, leftSide, gapSize, isEpona, isCustom, cp, ridgeHeight]);
 
     // 3d. Right Eave Height (Asymmetrical 2 Zones ONLY)
     const asym2RightEaveData = useMemo(() => {

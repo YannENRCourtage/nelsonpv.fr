@@ -4,7 +4,7 @@ import { createZProfile } from '../utils/profiles.js';
 import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
 
 export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHeight, ridgeHeight, buildingType = 'symetrique' }) {
-    const { isAcama } = useConfiguratorValues();
+    const { isAcama, configMode, customParams, customSpans } = useConfiguratorValues();
     const material = useMemo(() => new THREE.MeshStandardMaterial({
         color: '#d0d0d0', // Galvanized
         metalness: 0.5,
@@ -18,26 +18,77 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
     const purlinSpacing = 1.3; // Distance between purlins along slope
 
     // Geometry for a SINGLE BAY
-    // Extrude depth = baySpacing.
     const shape = useMemo(() => createZProfile(purlinHeight, purlinWidth, thickness), []);
-
-    // We want the purlin to run along the bay (-Z direction usually if we just offset).
-    // Let's create it with positive depth and rotate/position accordingly.
     const bayGeometry = useMemo(() => new THREE.ExtrudeGeometry(shape, {
         depth: baySpacing,
         bevelEnabled: false
     }), [baySpacing, shape]);
 
     const halfWidth = width / 2;
+    const purlins = [];
+
+    // --- CUSTOM MODE GENERATION ---
+    if (configMode === 'custom') {
+        const cp = customParams;
+        const spans = customSpans;
+        const lAngle = cp.leftPitch * (Math.PI / 180);
+        const rAngle = cp.rightPitch * (Math.PI / 180);
+
+        const lSlopeLen = spans.left / Math.cos(lAngle);
+        const rSlopeLen = (cp.buildingType === 'monopente') ? 0 : (spans.right / Math.cos(rAngle));
+
+        const numPLeft = Math.floor(lSlopeLen / purlinSpacing);
+        const numPRight = Math.floor(rSlopeLen / purlinSpacing);
+
+        const rafterOffset = 0.20;
+        const perpOffset = rafterOffset + (purlinHeight / 2) + 0.001;
+
+        for (let bayIndex = 0; bayIndex < bayCount; bayIndex++) {
+            const zStart = -bayIndex * baySpacing;
+
+            // Left Slope
+            for (let i = 0; i <= numPLeft; i++) {
+                const dist = i * purlinSpacing;
+                const xLocal = dist * Math.cos(lAngle);
+                const yLocal = dist * Math.sin(lAngle);
+                const xPerp = -perpOffset * Math.sin(lAngle);
+                const yPerp = perpOffset * Math.cos(lAngle);
+
+                purlins.push(
+                    <mesh key={`Bay${bayIndex}-C-L-${i}`} geometry={bayGeometry} material={material}
+                        position={[-halfWidth + xLocal + xPerp, cp.leftEaveHeight + yLocal + yPerp, zStart]}
+                        rotation={[0, Math.PI, -lAngle]} />
+                );
+            }
+
+            // Right Slope
+            if (cp.buildingType !== 'monopente') {
+                const apexX = -halfWidth + spans.left;
+                for (let i = 0; i <= numPRight; i++) {
+                    const dist = i * purlinSpacing;
+                    const xLocal = dist * Math.cos(rAngle);
+                    const yLocal = -dist * Math.sin(rAngle);
+                    const xPerp = perpOffset * Math.sin(rAngle);
+                    const yPerp = perpOffset * Math.cos(rAngle);
+
+                    purlins.push(
+                        <mesh key={`Bay${bayIndex}-C-R-${i}`} geometry={bayGeometry} material={material}
+                            position={[apexX + xLocal + xPerp, cp.ridgeHeight + yLocal + yPerp, zStart]}
+                            rotation={[0, Math.PI, rAngle]} />
+                    );
+                }
+            }
+        }
+        return <group>{purlins}</group>;
+    }
+
     const isMonopente = buildingType === 'monopente';
+    const isEpona = isAcama && (buildingType === 'epona' || buildingType === 'epona_talian5');
 
     // Rafter IPE 400 (Height = 0.4m). Half-height = 0.2m.
     // Purlin sits ON TOP of Rafter.
     const rafterOffset = 0.20;
     const perpOffset = rafterOffset + (purlinHeight / 2) + 0.001; // Small 1mm tolerance
-
-    const purlins = [];
-    const isEpona = isAcama && (buildingType === 'epona' || buildingType === 'epona_talian5');
 
     // --- EPONA GENERATION ---
     if (isEpona && buildingType !== 'epona_talian5') {

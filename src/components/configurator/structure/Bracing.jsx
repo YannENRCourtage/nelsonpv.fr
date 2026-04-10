@@ -11,7 +11,7 @@ export function Bracing({
     width, length, bayCount, baySpacing, eaveHeight, roofPitch, ridgeHeight, buildingType = 'symetrique',
     leftSide = 'none', rightSide = 'none', leftWidth = 0, rightWidth = 0
 }) {
-    const { isAcama } = useConfiguratorValues();
+    const { isAcama, configMode, customParams, customSpans } = useConfiguratorValues();
     const bracingMaterial = useMemo(() => new THREE.MeshStandardMaterial({
         color: '#a0a0a0',
         metalness: 0.6,
@@ -21,23 +21,52 @@ export function Bracing({
     if (buildingType.startsWith('ombriere')) return null;
 
     const angleRad = (roofPitch * Math.PI) / 180;
-    const symRidgeHeight = eaveHeight + ((width / 2) * Math.tan(angleRad));
-
     const bracings = [];
-
-    const isTalian4 = isAcama && buildingType === 'symetrique' && Math.abs(width - 13.7) < 0.1;
-    const isTalian1 = isAcama && buildingType === 'symetrique' && Math.abs(width - 18.8) < 0.1;
-    const isTalian3 = isAcama && buildingType === 'symetrique' && Math.abs(width - 17.5) < 0.1;
-    const isTalian = isTalian4 || isTalian1 || isTalian3;
 
     // Loop through bays and add bracing every 4 bays
     for (let i = 0; i < bayCount; i += 4) {
-        // Z start and end of this bay
         const zStart = -i * baySpacing;
         const zEnd = -(i + 1) * baySpacing;
 
-        // --- Wall Bracing (Long pans) ---
         const yBot = 0.5;
+        const createRod = (start, end, key) => (
+            <BraceRod key={key} start={start} end={end} material={bracingMaterial} thickness={0.03} />
+        );
+
+        // --- CUSTOM MODE GENERATION ---
+        if (configMode === 'custom') {
+            const cp = customParams;
+            const spans = customSpans;
+            const w = width;
+            const apexX = -w / 2 + spans.left;
+            const roofOffset = 0.35;
+
+            // Wall Bracing
+            bracings.push(createRod(new THREE.Vector3(-w / 2, yBot, zStart), new THREE.Vector3(-w / 2, cp.leftEaveHeight - 0.5, zEnd), `wall-C-L-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(-w / 2, cp.leftEaveHeight - 0.5, zStart), new THREE.Vector3(-w / 2, yBot, zEnd), `wall-C-L-${i}-2`));
+
+            if (cp.buildingType !== 'monopente') {
+                bracings.push(createRod(new THREE.Vector3(w / 2, yBot, zStart), new THREE.Vector3(w / 2, cp.rightEaveHeight - 0.5, zEnd), `wall-C-R-${i}-1`));
+                bracings.push(createRod(new THREE.Vector3(w / 2, cp.rightEaveHeight - 0.5, zStart), new THREE.Vector3(w / 2, yBot, zEnd), `wall-C-R-${i}-2`));
+            }
+
+            // Roof Bracing
+            const L_Eave_Start = new THREE.Vector3(-w / 2, cp.leftEaveHeight + roofOffset, zStart);
+            const Apex_End = new THREE.Vector3(apexX, cp.ridgeHeight + roofOffset, zEnd);
+            const Apex_Start = new THREE.Vector3(apexX, cp.ridgeHeight + roofOffset, zStart);
+            const L_Eave_End = new THREE.Vector3(-w / 2, cp.leftEaveHeight + roofOffset, zEnd);
+
+            bracings.push(createRod(L_Eave_Start, Apex_End, `roof-C-L-${i}-1`));
+            bracings.push(createRod(Apex_Start, L_Eave_End, `roof-C-L-${i}-2`));
+
+            if (cp.buildingType !== 'monopente') {
+                const R_Eave_End = new THREE.Vector3(w / 2, cp.rightEaveHeight + roofOffset, zEnd);
+                const R_Eave_Start = new THREE.Vector3(w / 2, cp.rightEaveHeight + roofOffset, zStart);
+                bracings.push(createRod(Apex_Start, R_Eave_End, `roof-C-R-${i}-1`));
+                bracings.push(createRod(R_Eave_Start, Apex_End, `roof-C-R-${i}-2`));
+            }
+            continue; // Move to next bay
+        }
 
         // --- Main Building Eaves ---
         let yTopMainLeft = (buildingType === 'monopente') ? ridgeHeight - 0.5 : eaveHeight - 0.5;

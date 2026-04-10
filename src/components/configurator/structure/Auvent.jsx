@@ -15,22 +15,24 @@ import { SolarPanels } from './SolarPanels.jsx';
 export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWidth, bayCount, baySpacing, side = 'left', buildingType = 'symetrique' }) {
 
     // --- DIMENSIONS ---
-    const { isAcama } = useConfiguratorValues();
-    const isTalian4 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 13.7) < 0.1;
-    const isTalian1 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 18.8) < 0.1;
-    const isTalian3 = isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 17.5) < 0.1;
-    const isEpona = isAcama && buildingType === 'epona';
+    const { isAcama, configMode, customParams } = useConfiguratorValues();
+    const isCustom = configMode === 'custom';
+    const cp = customParams;
 
+    const isTalian4 = !isCustom && isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 13.7) < 0.1;
+    const isTalian1 = !isCustom && isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 18.8) < 0.1;
+    const isTalian3 = !isCustom && isAcama && buildingType === 'symetrique' && Math.abs(buildingWidth - 17.5) < 0.1;
+    const isEpona = !isCustom && isAcama && buildingType === 'epona';
 
-
-    let auventWidth = 4.0; // Fixed 4m
+    let auventWidth = isCustom ? (side === 'left' ? cp.leftExtensionWidth : cp.rightExtensionWidth) : 4.0;
     let angleRad = 5 * (Math.PI / 180); // Default 5 deg
     let startHeight = eaveHeight;
 
-    if (buildingType === 'asymetrique_2') {
-        // USER REQUEST 05/03/2026: Asymétrique 2 zones - Continuité de la pente pour l'auvent gauche
+    if (isCustom) {
+        angleRad = 10 * (Math.PI / 180); // Default 10 deg for Custom Auvent
+        startHeight = side === 'left' ? cp.leftEaveHeight : cp.rightEaveHeight;
+    } else if (buildingType === 'asymetrique_2') {
         const w = buildingWidth;
-
         if (side === 'right') {
             angleRad = 15 * (Math.PI / 180);
             startHeight = 4.0;

@@ -332,6 +332,28 @@ export const useConfiguratorStore = create((set, get) => ({
     leftWidth: 9.3,     // Standard
     rightWidth: 9.3,    // Standard
 
+    // --- CUSTOM MODE (SUR-MESURE) ---
+    configMode: 'predefined', // 'predefined' | 'custom'
+    customParams: {
+        buildingType: 'symetrique',
+        proportion: '1/2-1/2',
+        width: 15,
+        baySpacing: 7.5,
+        bayCount: 4,
+        ridgeHeight: 5,
+        leftEaveHeight: 3.5,
+        rightEaveHeight: 3.5,
+        leftPitch: 11.31,
+        rightPitch: 11.31,
+        pitchUnit: 'degree', // 'degree' | 'percent'
+        leftExtension: 'none', // 'none' | 'auvent' | 'appentis'
+        rightExtension: 'none',
+        leftExtWidth: 4.0,
+        leftExtHeight: 3.0,
+        rightExtWidth: 4.0,
+        rightExtHeight: 3.0,
+    },
+
     get availableWidths() {
         const type = get().buildingType;
         return TYPE_WIDTHS_MAP[type] || TYPE_WIDTHS_MAP['symetrique'];
@@ -500,6 +522,85 @@ export const useConfiguratorStore = create((set, get) => ({
     toggleSolar: () => set((state) => ({ hasSolar: !state.hasSolar })),
     toggleDimensions: () => set((state) => ({ showDimensions: !state.showDimensions })),
 
+    setConfigMode: (mode) => set({ configMode: mode }),
+
+    updateCustomParams: (updates) => {
+        set((state) => {
+            const newParams = { ...state.customParams, ...updates };
+
+            const getSpans = (width, type, proportion) => {
+                if (type === 'symetrique') return { left: width / 2, right: width / 2 };
+                if (type === 'monopente') return { left: width, right: 0 };
+                // Asymetrique
+                const matches = proportion.match(/(\d+)\/(\d+)-(\d+)\/(\d+)/);
+                if (matches) {
+                    const lNum = parseInt(matches[1]);
+                    const lDen = parseInt(matches[2]);
+                    const left = (lNum / lDen) * width;
+                    return { left, right: width - left };
+                }
+                return { left: width / 2, right: width / 2 };
+            };
+
+            const spans = getSpans(newParams.width, newParams.buildingType, newParams.proportion);
+
+            // AUTO-CALCULATIONS
+            // 1. If Ridge Height changed, update Pitches
+            if (updates.ridgeHeight !== undefined) {
+                if (spans.left > 0) {
+                    newParams.leftPitch = Math.atan((newParams.ridgeHeight - newParams.leftEaveHeight) / spans.left) * 180 / Math.PI;
+                }
+                if (spans.right > 0) {
+                    newParams.rightPitch = Math.atan((newParams.ridgeHeight - newParams.rightEaveHeight) / spans.right) * 180 / Math.PI;
+                }
+            }
+            // 2. If Left Pitch changed, update Ridge Height (and then Right Pitch)
+            else if (updates.leftPitch !== undefined) {
+                if (spans.left > 0) {
+                    newParams.ridgeHeight = newParams.leftEaveHeight + spans.left * Math.tan(newParams.leftPitch * Math.PI / 180);
+                    // Sync Right Pitch
+                    if (spans.right > 0) {
+                        newParams.rightPitch = Math.atan((newParams.ridgeHeight - newParams.rightEaveHeight) / spans.right) * 180 / Math.PI;
+                    }
+                }
+            }
+            // 3. If Right Pitch changed, update Ridge Height (and then Left Pitch)
+            else if (updates.rightPitch !== undefined) {
+                if (spans.right > 0) {
+                    newParams.ridgeHeight = newParams.rightEaveHeight + spans.right * Math.tan(newParams.rightPitch * Math.PI / 180);
+                    // Sync Left Pitch
+                    if (spans.left > 0) {
+                        newParams.leftPitch = Math.atan((newParams.ridgeHeight - newParams.leftEaveHeight) / spans.left) * 180 / Math.PI;
+                    }
+                }
+            }
+            // 4. If Eave Heights changed
+            else if (updates.leftEaveHeight !== undefined || updates.rightEaveHeight !== undefined) {
+                // Priority: Keep pitches fixed, update Ridge Height? 
+                // Actually user usually wants Ridge fixed if they move Eave.
+                // Re-sync pitches based on fixed ridge.
+                if (spans.left > 0) {
+                    newParams.leftPitch = Math.atan((newParams.ridgeHeight - newParams.leftEaveHeight) / spans.left) * 180 / Math.PI;
+                }
+                if (spans.right > 0) {
+                    newParams.rightPitch = Math.atan((newParams.ridgeHeight - newParams.rightEaveHeight) / spans.right) * 180 / Math.PI;
+                }
+            }
+            // 5. If Width or Proportion changed
+            else if (updates.width !== undefined || updates.proportion !== undefined || updates.buildingType !== undefined) {
+                // Keep Pitches fixed, update Ridge Height
+                if (spans.left > 0) {
+                    newParams.ridgeHeight = newParams.leftEaveHeight + spans.left * Math.tan(newParams.leftPitch * Math.PI / 180);
+                    if (spans.right > 0) {
+                        newParams.rightPitch = Math.atan((newParams.ridgeHeight - newParams.rightEaveHeight) / spans.right) * 180 / Math.PI;
+                    }
+                }
+            }
+
+            return { customParams: newParams };
+        });
+    },
+
     reset: () => set({
         buildingType: 'symetrique',
         width: 18.6,
@@ -659,6 +760,75 @@ export const useConfiguratorValues = () => {
 
         const availableWidths = TYPE_WIDTHS_MAP[state.buildingType] || TYPE_WIDTHS_MAP['symetrique'];
 
+        // --- CUSTOM MODE OVERRIDE ---
+        if (state.configMode === 'custom') {
+            const cp = state.customParams;
+            const customLength = cp.bayCount * cp.baySpacing;
+            
+            // Re-calculate spans correctly
+            const getSpans = (w, t, p) => {
+                if (t === 'symetrique') return { left: w / 2, right: w / 2 };
+                if (t === 'monopente') return { left: w, right: 0 };
+                const matches = p.match(/(\d+)\/(\d+)-(\d+)\/(\d+)/);
+                if (matches) {
+                    const lNum = parseInt(matches[1]);
+                    const lDen = parseInt(matches[2]);
+                    const left = (lNum / lDen) * w;
+                    return { left, right: w - left };
+                }
+                return { left: w / 2, right: w / 2 };
+            };
+            const spans = getSpans(cp.width, cp.buildingType, cp.proportion);
+
+            // Solar for custom
+            let customSolarCount = 0;
+            if (state.hasSolar) {
+                const lLength = customLength + 1.0;
+                // Left slope
+                const leftSlope = spans.left / Math.cos(cp.leftPitch * Math.PI / 180) + 0.5;
+                customSolarCount += getPanelCount(leftSlope, lLength);
+                // Right slope
+                if (cp.buildingType !== 'monopente') {
+                    const rightSlope = spans.right / Math.cos(cp.rightPitch * Math.PI / 180) + 0.5;
+                    customSolarCount += getPanelCount(rightSlope, lLength);
+                }
+                // Extensions
+                if (cp.leftExtension !== 'none') {
+                    const extSlope = cp.leftExtWidth / Math.cos(cp.leftPitch * Math.PI / 180) + 0.2;
+                    customSolarCount += getPanelCount(extSlope, lLength, cp.leftExtWidth < 4.0 ? 0.20 : 0.50);
+                }
+                if (cp.rightExtension !== 'none') {
+                    const extSlope = cp.rightExtWidth / Math.cos(cp.rightPitch * Math.PI / 180) + 0.2;
+                    customSolarCount += getPanelCount(extSlope, lLength, cp.rightExtWidth < 4.0 ? 0.20 : 0.50);
+                }
+            }
+
+            const PANEL_WATT = state.isAcama ? 460 : 465;
+
+            return {
+                ...state,
+                availableWidths,
+                buildingType: cp.buildingType,
+                width: cp.width,
+                length: customLength,
+                ridgeHeight: cp.ridgeHeight,
+                eaveHeight: cp.leftEaveHeight, // Base reference
+                rightEaveHeight: cp.rightEaveHeight, // For components that support it
+                roofPitch: cp.leftPitch, // For components that support it
+                rightPitch: cp.rightPitch,
+                baySpacing: cp.baySpacing,
+                bayCount: cp.bayCount,
+                leftSide: cp.leftExtension,
+                rightSide: cp.rightExtension,
+                leftWidth: cp.leftExtWidth,
+                rightWidth: cp.rightExtWidth,
+                leftExtHeight: cp.leftExtHeight,
+                rightExtHeight: cp.rightExtHeight,
+                solarStats: { count: customSolarCount, power: (customSolarCount * PANEL_WATT) / 1000 },
+                customSpans: spans, // To use in Roof.jsx
+            };
+        }
+
         return {
             ...state,
             availableWidths,
@@ -695,5 +865,7 @@ export const useConfiguratorActions = () => {
         setTalian3Model: (m) => useConfiguratorStore.getState().setTalian3Model(m),
         setTalian5Model: (m) => useConfiguratorStore.getState().setTalian5Model(m),
         setIsAcama: (v) => useConfiguratorStore.getState().setIsAcama(v),
+        setConfigMode: (m) => useConfiguratorStore.getState().setConfigMode(m),
+        updateCustomParams: (u) => useConfiguratorStore.getState().updateCustomParams(u),
     }), []);
 };

@@ -12,18 +12,16 @@ import { Auvent } from './Auvent.jsx';
 
 export function Structure() {
     const config = useConfiguratorValues();
-    const { buildingType, width, length, bayCount, baySpacing, eaveHeight, roofPitch, ridgeHeight, leftSide, rightSide, showDimensions } = config;
-
+    const { buildingType, width, length, bayCount, baySpacing, eaveHeight, roofPitch, ridgeHeight, leftSide, rightSide, showDimensions, configMode, customParams, customSpans } = config;
 
     // Use exact ridge height from store (Map values) instead of calculated
     const calculatedRidgeHeight = ridgeHeight;
 
     // Ridge Flashing (Bande Lisse Faîtière)
-    // 1m wide (0.5m each side), spanning length.
     const RidgeFlashing = ({ len, h, angle, x = 0 }) => {
         // Material
         const mat = useMemo(() => new THREE.MeshStandardMaterial({
-            color: '#4A4A4A', // Dark Grey / Anthracite often used for flashings
+            color: '#4A4A4A', 
             roughness: 0.5,
             metalness: 0.4,
             side: THREE.DoubleSide
@@ -35,9 +33,7 @@ export function Structure() {
             const drop = halfW * Math.tan(angle);
             const t = 0.005;
 
-            // Profile in XY plane
-            // Center is peak
-            s.moveTo(0, 0.02); // Exact peak slightly raised
+            s.moveTo(0, 0.02); 
             s.lineTo(-halfW, -drop);
             s.lineTo(-halfW, -drop - t);
             s.lineTo(0, 0.02 - t);
@@ -53,12 +49,6 @@ export function Structure() {
         }), [shape, len]);
 
         return (
-            // Rotate Y 180 to extrude towards -Z (since frames are usually 0 to -L)
-            // Or -Z? 
-            // In Structure loop: zPos = -i * baySpacing. So building spans 0 to -Length.
-            // ExtrudeGeometry defaults +Z.
-            // Rotate Y PI -> +Z becomes -Z.
-            // Position: [x, h, 0.5] to center on length (since len is L+1, and structure is 0 to -L)
             <mesh geometry={geo} material={mat} position={[x, h, 0.5]} rotation={[0, Math.PI, 0]} castShadow />
         );
     };
@@ -75,7 +65,7 @@ export function Structure() {
                 position={[0, 0, zPos]}
                 width={width}
                 eaveHeight={eaveHeight}
-                ridgeHeight={calculatedRidgeHeight} // Same prop name
+                ridgeHeight={calculatedRidgeHeight} 
                 roofPitch={roofPitch}
                 buildingType={config.buildingType}
             />
@@ -86,14 +76,24 @@ export function Structure() {
 
     return (
         <group>
-            {(config.buildingType === 'symetrique' || config.buildingType === 'epona') && (
+            {/* CUSTOM MODE RIDGE FLASHING */}
+            {configMode === 'custom' && customParams.buildingType !== 'monopente' && (
+                <RidgeFlashing
+                    len={length + 1.0}
+                    h={customParams.ridgeHeight + 0.5}
+                    angle={(customParams.leftPitch + customParams.rightPitch) / 2 * (Math.PI / 180)}
+                    x={-width / 2 + customSpans.left}
+                />
+            )}
+
+            {configMode === 'predefined' && (config.buildingType === 'symetrique' || config.buildingType === 'epona') && (
                 <RidgeFlashing
                     len={length + 1.0}
                     h={(() => {
                         if (config.isAcama) {
                             if (config.buildingType === 'epona') {
                                 const mainSlope = 17 * (Math.PI / 180);
-                                return 5.0 + 11.8 * Math.tan(mainSlope) + 0.5; // True geometric apex + offset
+                                return 5.0 + 11.8 * Math.tan(mainSlope) + 0.5; 
                             }
                             if (config.buildingType === 'symetrique' && Math.abs(width - 18.8) < 0.1) return calculatedRidgeHeight + 0.5;
                             if (config.buildingType === 'symetrique' && Math.abs(width - 17.5) < 0.1) return calculatedRidgeHeight + 0.6;
@@ -104,28 +104,27 @@ export function Structure() {
                     x={0}
                 />
             )}
-            {((buildingType === 'asymetrique_1' || buildingType === 'asymetrique_2')) && (
+            {configMode === 'predefined' && ((buildingType === 'asymetrique_1' || buildingType === 'asymetrique_2')) && (
                 <RidgeFlashing
                     len={length + 1.0}
                     h={(() => {
-                        // Base for Asym is calculatedRidgeHeight + 1.0
                         let h = calculatedRidgeHeight + 1.0;
                         if (config.buildingType === 'asymetrique_1') {
-                            if (Math.abs(width - 20) < 0.5) h += 0.30; // +30cm (prev +20, +10 requested)
-                            else if (Math.abs(width - 16.4) < 0.5) h -= 0.06; // -6cm (prev -8, +2 requested)
+                            if (Math.abs(width - 20) < 0.5) h += 0.30; 
+                            else if (Math.abs(width - 16.4) < 0.5) h -= 0.06; 
                         } else if (config.buildingType === 'asymetrique_2') {
                             if (!config.isAcama) {
-                                if (Math.abs(width - 25.5) < 0.2) h += 1.35; // Round 8: +0.2m for 25.5m
-                                else if (Math.abs(width - 29.1) < 0.2) h += 1.55; // Round 8: +0.4m for 29.1m
-                                else h += 1.15; // Base GI Round 7
+                                if (Math.abs(width - 25.5) < 0.2) h += 1.35; 
+                                else if (Math.abs(width - 29.1) < 0.2) h += 1.55; 
+                                else h += 1.15; 
                             }
-                            if (Math.abs(width - 25.5) < 0.5) h -= 0.44; // -44cm (prev -40, -4 requested)
-                            else if (Math.abs(width - 29.1) < 0.5) h -= 0.44; // -44cm (prev -40, -4 requested)
+                            if (Math.abs(width - 25.5) < 0.5) h -= 0.44; 
+                            else if (Math.abs(width - 29.1) < 0.5) h -= 0.44; 
                         }
                         return h;
                     })()}
-                    angle={15 * Math.PI / 180} // 15 degrees
-                    x={-width * 0.25} // Apex position
+                    angle={15 * Math.PI / 180} 
+                    x={-width * 0.25} 
                 />
             )}
 
@@ -179,7 +178,7 @@ export function Structure() {
                 <Auvent
                     side="left"
                     length={length}
-                    eaveHeight={eaveHeight}
+                    eaveHeight={configMode === 'custom' ? customParams.leftEaveHeight : eaveHeight}
                     ridgeHeight={calculatedRidgeHeight} // Needed for Monopente
                     roofPitch={roofPitch}
                     buildingWidth={width}
@@ -192,7 +191,7 @@ export function Structure() {
                 <Awning
                     side="left"
                     length={length}
-                    eaveHeight={eaveHeight}
+                    eaveHeight={configMode === 'custom' ? customParams.leftEaveHeight : eaveHeight}
                     roofPitch={roofPitch}
                     buildingWidth={width}
                     bayCount={bayCount}
@@ -206,7 +205,7 @@ export function Structure() {
                 <Auvent
                     side="right"
                     length={length}
-                    eaveHeight={eaveHeight}
+                    eaveHeight={configMode === 'custom' ? customParams.rightEaveHeight : eaveHeight}
                     ridgeHeight={calculatedRidgeHeight} // Needed for Monopente
                     roofPitch={roofPitch}
                     buildingWidth={width}
@@ -219,7 +218,7 @@ export function Structure() {
                 <Awning
                     side="right"
                     length={length}
-                    eaveHeight={eaveHeight}
+                    eaveHeight={configMode === 'custom' ? customParams.rightEaveHeight : eaveHeight}
                     roofPitch={roofPitch}
                     buildingWidth={width}
                     bayCount={bayCount}
