@@ -564,8 +564,11 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         // Adjustments for GREEN INVEST
         if (!isAcama) {
             // Target height adjustments (relative to standard 15° mesh)
-            const leftEaveAdjustment = -0.3; // Lower eave by 0.3m
-            const rightEaveAdjustment = 0.2; // Raise eave by 0.2m
+            let leftEaveAdjustment = -0.3; // Base from Round 7
+            if (isWidth25) leftEaveAdjustment -= 0.3; // Additional lower by 0.3m for 25.5m
+            if (isWidth29) leftEaveAdjustment += 0.3; // Additional raise by 0.3m for 29.1m
+
+            const rightEaveAdjustment = 0.2; // From Round 7
 
             // Calculate new angles such that Top Height stays the same
             leftAngleGI = Math.atan(Math.tan(15 * Math.PI / 180) + (-leftEaveAdjustment / leftSpanVisible));

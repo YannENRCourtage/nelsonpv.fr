@@ -114,7 +114,11 @@ export function Structure() {
                             if (Math.abs(width - 20) < 0.5) h += 0.30; // +30cm (prev +20, +10 requested)
                             else if (Math.abs(width - 16.4) < 0.5) h -= 0.06; // -6cm (prev -8, +2 requested)
                         } else if (config.buildingType === 'asymetrique_2') {
-                            if (!config.isAcama) h += 1.15; // Raise ridge cap total +1.15m for GI (1.1 + 0.05 requested)
+                            if (!config.isAcama) {
+                                if (Math.abs(width - 25.5) < 0.2) h += 1.35; // Round 8: +0.2m for 25.5m
+                                else if (Math.abs(width - 29.1) < 0.2) h += 1.55; // Round 8: +0.4m for 29.1m
+                                else h += 1.15; // Base GI Round 7
+                            }
                             if (Math.abs(width - 25.5) < 0.5) h -= 0.44; // -44cm (prev -40, -4 requested)
                             else if (Math.abs(width - 29.1) < 0.5) h -= 0.44; // -44cm (prev -40, -4 requested)
                         }

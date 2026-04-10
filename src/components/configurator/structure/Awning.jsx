@@ -214,7 +214,8 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
     // Base is 0.35.
     // For asym_2 right, add 0.15 -> 0.50.
     const baseCoverY = 0.35;
-    const extraCoverY = (buildingType === 'asymetrique_2' && side === 'right') ? 0.15 : 0;
+    let extraCoverY = (buildingType === 'asymetrique_2' && side === 'right') ? 0.15 : 0;
+    if (buildingType === 'asymetrique_2' && side === 'right' && !isAcama) extraCoverY += 0.1; // Round 8: +0.1m for GI
     const finalCoverY = baseCoverY + extraCoverY;
 
     return (
