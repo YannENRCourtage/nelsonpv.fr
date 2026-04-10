@@ -553,30 +553,36 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         // "Réhausse couvertures 2 et 3 de 4cm pour 25.5m" -> Middle & Right (25.5m) -> +0.04 each
         // "Réhausse couverture 1 de 5cm pour 29.1m" -> Left (29.1m) -> +0.05
 
-        section2Offset = section2Offset - 0.20 + 0.05 + 0.02;
-        section1Offset = section1Offset + 0.10 - 0.30;
-        leftOffset = leftOffset - 0.10 + 0.05;
+        // Width-dependent spans
+        const leftSpanVisible = width * 0.25;
+        const rightSpanVisible = width * 0.75;
 
-        // USER REQUEST 10/04/2026: Raise Left Cover (Cover 1) just above purlins for Green Invest
+        // Angles
+        let leftAngleGI = 15 * (Math.PI / 180);
+        let rightAngleGI = 15 * (Math.PI / 180);
+
+        // Adjustments for GREEN INVEST
         if (!isAcama) {
-            leftOffset += 3.62; // 3.52 current + 0.10 requested
-            section1Offset -= 0.2; // -0.3 current + 0.10 requested
-            section2Offset -= 0.2; // -0.3 current + 0.10 requested
+            // Target height adjustments (relative to standard 15° mesh)
+            const leftEaveAdjustment = -0.3; // Lower eave by 0.3m
+            const rightEaveAdjustment = 0.2; // Raise eave by 0.2m
+
+            // Calculate new angles such that Top Height stays the same
+            leftAngleGI = Math.atan(Math.tan(15 * Math.PI / 180) + (-leftEaveAdjustment / leftSpanVisible));
+            rightAngleGI = Math.atan(Math.tan(15 * Math.PI / 180) - (rightEaveAdjustment / rightSpanVisible));
+
+            // Adjust offsets to compensate for rotation shifting the mesh vertically
+            const offsetDist = (0.140 / 2) + (0.001 / 2) + 0.35 + 0.10; // From getOffsetProps logic
+            const baseBottomH = offsetDist * Math.cos(15 * Math.PI / 180);
+
+            leftOffset = (baseBottomH + 3.62 + leftEaveAdjustment) - (offsetDist * Math.cos(leftAngleGI));
+            section1Offset = (baseBottomH - 0.2 + rightEaveAdjustment) - (offsetDist * Math.cos(rightAngleGI));
+            section2Offset = section1Offset; // Keep sections 1 & 2 continuous
         }
 
-        // Additional adjustments for specific widths
-        if (isWidth29) {
-            leftOffset += 0.05 + 0.05; // Additional 5cm + 5cm raise for Cover 1 at 29.1m (total +10cm)
-            section1Offset += 0.03; // Additional 3cm raise for Cover 3 at 29.1m
-        }
-        if (isWidth25) {
-            section1Offset += 0.08 + 0.04; // Additional 8cm + 4cm raise for Cover 3 at 25.5m (total +12cm)
-            section2Offset += 0.04; // Additional 4cm raise for Cover 2 at 25.5m
-        }
-
-        const section1Props = getOffsetProps(section1Length, section1Angle, true, section1Overhang);
-        const section2Props = getOffsetProps(section2Length, rightAngle, true, 0.25);
-        const section3Props = getOffsetProps(section3Length, leftAngle, false, 0);
+        const section1Props = getOffsetProps(section1Length, rightAngleGI, true, section1Overhang);
+        const section2Props = getOffsetProps(section2Length, rightAngleGI, true, 0.25);
+        const section3Props = getOffsetProps(section3Length, leftAngleGI, false, 0);
 
         return (
             <group>
