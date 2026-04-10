@@ -384,6 +384,8 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
         // Monopente: Lower awning coverage by 16cm
         roofY = -0.10 - 0.16;
     }
+    // USER REQUEST 10/04/2026: Sur-mesure uniquement - Remonte couverture auvent de 0.3m
+    if (isCustom) roofY += 0.30;
 
     return (
         <group
