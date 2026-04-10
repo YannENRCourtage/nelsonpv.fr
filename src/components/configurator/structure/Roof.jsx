@@ -557,6 +557,11 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         section1Offset = section1Offset + 0.10 - 0.30;
         leftOffset = leftOffset - 0.10 + 0.05;
 
+        // USER REQUEST 10/04/2026: Raise Left Cover (Cover 1) just above purlins for Green Invest
+        if (!isAcama) {
+            leftOffset += 0.42; // Bringing it to same level as sections 1 & 2
+        }
+
         // Additional adjustments for specific widths
         if (isWidth29) {
             leftOffset += 0.05 + 0.05; // Additional 5cm + 5cm raise for Cover 1 at 29.1m (total +10cm)

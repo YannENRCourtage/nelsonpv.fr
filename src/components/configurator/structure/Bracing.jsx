@@ -172,6 +172,39 @@ export function Bracing({
             bracings.push(createRod(new THREE.Vector3(middleColumnX, midStartY, zStart), new THREE.Vector3(rightColumnX, rightStartY, zEnd), `roof-R-T5-${i}-1`));
             bracings.push(createRod(new THREE.Vector3(rightColumnX, rightStartY, zStart), new THREE.Vector3(middleColumnX, midStartY, zEnd), `roof-R-T5-${i}-2`));
 
+        } else if (buildingType === 'asymetrique_2' && !isAcama) {
+            // GREEN INVEST Asymétrique 2 Zones Roof Bracing
+            const w = width;
+            const mainSlope = 15 * (Math.PI / 180);
+            const rightSpan = w * 0.75;
+            const distRightToMiddle = rightSpan * 0.6;
+            const apexX = -w / 2 + (w * 0.25);
+            const middleColumnX = w / 2 - distRightToMiddle;
+
+            const baseEaveH = 4.0;
+            const ridgeY = baseEaveH + (rightSpan * Math.tan(mainSlope));
+            const midColY = ridgeY - ((rightSpan - distRightToMiddle) * Math.tan(mainSlope));
+            const leftEaveY = baseEaveH; // Both eaves at 4m for GI Asym2
+
+            // Brace Offset: Position them on the rafters (approx eaveHeight + 0.35)
+            const roofOffset = 0.35;
+            const yL = leftEaveY + roofOffset;
+            const yApex = ridgeY + roofOffset;
+            const yMid = midColY + roofOffset;
+            const yR = baseEaveH + roofOffset;
+
+            // Segment 1: Left Wall (-w/2) to Apex
+            bracings.push(createRod(new THREE.Vector3(-w / 2, yL, zStart), new THREE.Vector3(apexX, yApex, zEnd), `roof-L-Asym2-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(apexX, yApex, zStart), new THREE.Vector3(-w / 2, yL, zEnd), `roof-L-Asym2-${i}-2`));
+
+            // Segment 2: Apex to Middle Column
+            bracings.push(createRod(new THREE.Vector3(apexX, yApex, zStart), new THREE.Vector3(middleColumnX, yMid, zEnd), `roof-M-Asym2-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(middleColumnX, yMid, zStart), new THREE.Vector3(apexX, yApex, zEnd), `roof-M-Asym2-${i}-2`));
+
+            // Segment 3: Middle Column to Right Wall (+w/2)
+            bracings.push(createRod(new THREE.Vector3(middleColumnX, yMid, zStart), new THREE.Vector3(w / 2, yR, zEnd), `roof-R-Asym2-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(w / 2, yR, zStart), new THREE.Vector3(middleColumnX, yMid, zEnd), `roof-R-Asym2-${i}-2`));
+
         } else if (buildingType === 'epona') {
             // No roof bracing for asymetrique_2 as requested
         } else {
