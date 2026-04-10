@@ -1,7 +1,9 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
+import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
 import { getIPEProfileParams } from '../utils/profiles.js';
 
+export function LongitudinalBeams({ width, length, eaveHeight, ridgeHeight, buildingType, roofPitch }) {
     const { configMode, customParams, customSpans } = useConfiguratorValues();
     const isMonopente = (configMode === 'custom' ? customParams.buildingType === 'monopente' : buildingType === 'monopente');
 
