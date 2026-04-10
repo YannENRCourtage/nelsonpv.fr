@@ -30,8 +30,12 @@ export function Auvent({ length, eaveHeight, ridgeHeight, roofPitch, buildingWid
     let startHeight = eaveHeight;
 
     if (isCustom) {
-        angleRad = 10 * (Math.PI / 180); // Default 10 deg for Custom Auvent
         startHeight = side === 'left' ? cp.leftEaveHeight : cp.rightEaveHeight;
+        const tipHeight = side === 'left' ? (cp.leftExtHeight ?? 3.0) : (cp.rightExtHeight ?? 3.0);
+        // Angle dynamique : la pente s'adapte pour que le bout de l'auvent soit exactement à tipHeight
+        const heightDiff = startHeight - tipHeight;
+        const extW = side === 'left' ? cp.leftExtWidth : cp.rightExtWidth;
+        angleRad = extW > 0 ? Math.atan(Math.max(0, heightDiff) / extW) : (10 * (Math.PI / 180));
     } else if (buildingType === 'asymetrique_2') {
         const w = buildingWidth;
         if (side === 'right') {

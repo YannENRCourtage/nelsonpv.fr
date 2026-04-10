@@ -24,9 +24,13 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
     let startHeight = eaveHeight; 
     let angleRad = (roofPitch * Math.PI) / 180;
     
-    // In custom mode, use the correct building slope for the awning
+    // In custom mode, use the correct building eave height and compute angle from tipHeight
     if (isCustom) {
-        angleRad = (side === 'left' ? cp.leftPitch : cp.rightPitch) * (Math.PI / 180);
+        startHeight = side === 'left' ? cp.leftEaveHeight : cp.rightEaveHeight;
+        const tipHeight = side === 'left' ? (cp.leftExtHeight ?? 3.0) : (cp.rightExtHeight ?? 3.0);
+        const heightDiff = startHeight - tipHeight;
+        const extW = awningWidth;
+        angleRad = extW > 0 ? Math.atan(Math.max(0, heightDiff) / extW) : (roofPitch * Math.PI / 180);
     }
 
     let endHeight = startHeight - (awningWidth * Math.tan(angleRad));
@@ -57,6 +61,12 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
         awningWidth = (4.0 - 3.0) / Math.tan(angleRad); // approx 3.73m
         endHeight = 3.0;
 
+        // USER REQUEST 10/04/2026: GI uniquement - remonte couverture appentis droit +0.1m (25.5m et 29.1m)
+        if (!isAcama) {
+            const extraLift = 0.1;
+            startHeight += extraLift;
+            endHeight += extraLift;
+        }
     } else if (buildingType === 'monopente' && side === 'left') {
         if (Math.abs(buildingWidth - 12.7) < 0.2) {
             endHeight = 6.4;
