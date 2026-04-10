@@ -136,7 +136,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
             ]
         };
-    }, [width, eaveHeight, leftSide, rightSide, gapSize, buildingType]);
+    }, [width, eaveHeight, leftSide, rightSide, gapSize, buildingType, isCustom]);
 
     // 3b. Ridge Height
     const { ridgePoints, ridgeStart, ridgeEnd, xRidge, zRidge, ridgeLabelValue } = useMemo(() => {
@@ -215,7 +215,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // 3c. Left Eave Height (Asymmetrical ONLY — masqué pour EPONA)
     const asymLeftEaveData = useMemo(() => {
-        if (!isCustom && buildingType !== 'asymetrique_1' && buildingType !== 'asymetrique_2') return null;
+        if (!isCustom && buildingType !== 'asymetrique_1' && buildingType !== 'asymetrique_2' && !isEpona) return null;
         if (!isCustom && buildingType === 'epona_talian5') return null; 
 
         let h;
@@ -257,11 +257,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // 3d. Right Eave Height (Asymmetrical 2 Zones ONLY)
     const asym2RightEaveData = useMemo(() => {
-        if (buildingType !== 'asymetrique_2' && !isEpona) return null;
-        if (isEpona) return null; // USER REQUEST: Remove for both Talian 5 and EPONA original
-        // USER REQUEST 12/01/2026: Right sablière height for asymmetric 2 zones = 4m (BUILDING, not awning)
-        const h = isEpona ? 4.3 : 4.0; // Fixed right eave height for BUILDING
-        const x = width / 2 + 1.5; // Right side, outside
+        if (!isCustom && buildingType !== 'asymetrique_2' && !isEpona) return null;
+        if (isEpona) return null; 
+        
+        let h = isCustom ? cp.rightEaveHeight : (isEpona ? 4.3 : 4.0);
+        const x = width / 2 + 1.5; 
 
         const start = new THREE.Vector3(x, 0, 0);
         const end = new THREE.Vector3(x, h, 0);
@@ -276,7 +276,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(mid.x, mid.y + gapSize / 2, mid.z), end]
             ]
         };
-    }, [buildingType, width, gapSize, isEpona]);
+    }, [buildingType, width, isEpona, gapSize, isCustom, cp]);
 
     // 5. Left Extension Dimensions
     const leftExtData = useMemo(() => {
@@ -485,223 +485,103 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // 7. Surface Area
     const surfaceArea = useMemo(() => {
-        const totalWidth = width + leftWidth + rightWidth;
-        return (totalWidth * length).toFixed(0);
+        const totalW = width + leftWidth + rightWidth;
+        return (totalW * length).toFixed(0);
     }, [width, length, leftWidth, rightWidth]);
 
-    // 7b. EPONA/TALIAN Total Width Marker (ACAMA uniquement)
+    // 8. Total Width Marker (ACAMA)
     const acamaTotalWidthData = useMemo(() => {
         if (!isEpona && !isTalian) return null;
         const totalW = buildingType === 'epona_talian5' ? 27.6 : (isEpona ? 35.3 : (isTalian4 ? 37.5 : (isTalian3 ? 21.1 : 23.5)));
         const zPos = 6.0;
-
         const yPos = 0.1;
-
         let xStart, xEnd, xMid;
         if (buildingType === 'epona_talian5') {
-            // TALIAN 5: De l'extérieur poteau gauche (-16.0) à l'extérieur poteau droit (11.6)
             xStart = new THREE.Vector3(-16.0, yPos, zPos);
             xEnd = new THREE.Vector3(11.6, yPos, zPos);
             xMid = new THREE.Vector3((-16.0 + 11.6) / 2, yPos, zPos);
         } else if (isEpona) {
-            // Epona total width bounds: from left auvent eave (-11.8 - 2.5) to right appentis eave (19.65)
-            // Left edge: -14.3
-            // Right edge: 19.65
             xStart = new THREE.Vector3(-14.3, yPos, zPos);
             xEnd = new THREE.Vector3(19.65, yPos, zPos);
             xMid = new THREE.Vector3((-14.3 + 19.65) / 2, yPos, zPos);
         } else {
-            // Talian 1, 3, 4: Stop at actual eaves
             xStart = new THREE.Vector3(-totalW / 2, yPos, zPos);
             xEnd = new THREE.Vector3(totalW / 2, yPos, zPos);
             xMid = new THREE.Vector3(0, yPos, zPos);
         }
-        return {
-            totalW, xStart, xEnd, xMid, zPos,
-            points: [
-                [xStart, new THREE.Vector3(xMid.x - gapSize / 2, yPos, zPos)],
-                [new THREE.Vector3(xMid.x + gapSize / 2, yPos, zPos), xEnd]
-            ]
-        };
+        return { totalW, xStart, xEnd, xMid, zPos, points: [[xStart, new THREE.Vector3(xMid.x - gapSize / 2, yPos, zPos)], [new THREE.Vector3(xMid.x + gapSize / 2, yPos, zPos), xEnd]] };
     }, [isEpona, isTalian, isTalian4, isTalian3, isTalian1, gapSize, buildingType]);
 
-
-
-    // 10. NEW: Cross Height Marker for Ombrière VL Double 11.3m
-
+    // 9. Cross Height Marker (Ombrière)
     const crossHeightData = useMemo(() => {
         if (buildingType === 'ombriere_vl_double' && Math.abs(width - 11.3) < 0.1) {
             const h = 2.2;
-            const x = 0; // Center
-            const z = 0.3; // USER REQUEST 15/01/2026: Move forward by 30cm
-            const start = new THREE.Vector3(x, 0, z);
-            const end = new THREE.Vector3(x, h, z);
-            const mid = new THREE.Vector3(x, h / 2, z);
-
-            // User wants gap UNDER the text? Or gap around.
-            // Let's assume standard gap around center is what is needed but maybe larger.
-            const localGap = 0.6; // Larger gap
-
-            return {
-                hVal: h,
-                start, end,
-                points: [
-                    [start, new THREE.Vector3(mid.x, mid.y - localGap / 2, mid.z)],
-                    [new THREE.Vector3(mid.x, mid.y + localGap / 2, mid.z), end]
-                ]
-            };
+            const z = 0.3;
+            const start = new THREE.Vector3(0, 0, z);
+            const end = new THREE.Vector3(0, h, z);
+            const mid = new THREE.Vector3(0, h / 2, z);
+            const localGap = 0.6;
+            return { hVal: h, start, end, points: [[start, new THREE.Vector3(mid.x, mid.y - localGap / 2, mid.z)], [new THREE.Vector3(mid.x, mid.y + localGap / 2, mid.z), end]] };
         }
         return null;
     }, [buildingType, width, gapSize]);
 
-    // 11. EPONA/TALIAN 5 Specific Custom Markers
+    // 10. Epona Specific Markers
     const eponaMarkers = useMemo(() => {
         if (!isEpona) return null;
-
         const leftPostX = buildingType === 'epona_talian5' ? -15.4 : -11.8;
         const midPostX = buildingType === 'epona_talian5' ? 0 : 11.8;
         const rightPostX = buildingType === 'epona_talian5' ? 11.0 : 19.65;
-        const zFront = 3.0; // matching default width marker `zFront`
-        const zFrontLength = -length / 2 + length / 2; // This is basically 0, let's look at length markers
-        // The length marker starts at xSide and spans -length to 0.
-        // The point at the end of length marker is at z = 0 (or -length).
-        // User wants markers on the axis of first pillars with the point of length marker.
-        // Length marker end point is usually at Z=0 (front) or Z=-length (back).
-        // Based on the screenshot, it's the front point, which is at Z=0.
-        const markerZ = 0; 
-        const eponaBaseY = 0.1; 
+        const zFront = 3.0;
+        const markerZ = 0;
+        const eponaBaseY = 0.1;
 
-        // --- LARGEURS ---
-
-        // Right Span (11.0m pour T5, 7.85m pour EPONA)
         const rightSpanLength = buildingType === 'epona_talian5' ? 11.0 : 7.85;
-        const rightSpanLabel = buildingType === 'epona_talian5' ? "11 m" : "7.8 m"; 
+        const rightSpanLabel = buildingType === 'epona_talian5' ? "11 m" : "7.8 m";
         const rSpanStart = new THREE.Vector3(midPostX, 0.1, zFront);
         const rSpanEnd = new THREE.Vector3(rightPostX, 0.1, zFront);
         const rSpanMid = new THREE.Vector3(midPostX + rightSpanLength / 2, 0.1, zFront);
         const rSpanGap = buildingType === 'epona_talian5' ? 3.0 : 2.0;
-        const rSpanPoints = [
-            [rSpanStart, new THREE.Vector3(rSpanMid.x - rSpanGap / 2, 0.1, zFront)],
-            // USER REQUEST: Line visible to the right until the point
-            [new THREE.Vector3(rSpanMid.x + rSpanGap / 2, eponaBaseY, zFront), rSpanEnd]
-        ];
+        const rSpanPoints = [[rSpanStart, new THREE.Vector3(rSpanMid.x - rSpanGap / 2, 0.1, zFront)], [new THREE.Vector3(rSpanMid.x + rSpanGap / 2, eponaBaseY, zFront), rSpanEnd]];
 
-        // Left Span Central (TALIAN_5: 16.0m, EPONA: pas affiché tel quel, c'est l'auvent)
-        let lCenterStart, lCenterEnd, lCenterMid, lCenterPoints = [];
-        let lCenterLabel = "";
+        let lCenterStart, lCenterEnd, lCenterMid, lCenterPoints = [], lCenterLabel = "";
         if (buildingType === 'epona_talian5') {
-            const lCenterLength = 16.0;
             lCenterLabel = "15.4 m";
             lCenterStart = new THREE.Vector3(leftPostX, eponaBaseY, zFront);
             lCenterEnd = new THREE.Vector3(midPostX, eponaBaseY, zFront);
-            lCenterMid = new THREE.Vector3(leftPostX + lCenterLength / 2, eponaBaseY, zFront);
-            const lCenterGap = 6.0;
-            lCenterPoints.push([lCenterStart, new THREE.Vector3(lCenterMid.x - lCenterGap / 2, eponaBaseY, zFront)]);
-            lCenterPoints.push([new THREE.Vector3(lCenterMid.x + lCenterGap / 2, eponaBaseY, zFront), lCenterEnd]);
+            lCenterMid = new THREE.Vector3(leftPostX + 16.0 / 2, eponaBaseY, zFront);
+            lCenterPoints.push([lCenterStart, new THREE.Vector3(lCenterMid.x - 6.0 / 2, eponaBaseY, zFront)], [new THREE.Vector3(lCenterMid.x + 6.0 / 2, eponaBaseY, zFront), lCenterEnd]);
         }
 
-        // Left Awning (EPONA Seulement 2.5m)
-        // Left Awning (EPONA Seulement 2.5m)
         const lAwningStart = new THREE.Vector3(leftPostX - 2.5, eponaBaseY, zFront);
         const lAwningEnd = new THREE.Vector3(leftPostX, eponaBaseY, zFront);
         const lAwningMid = new THREE.Vector3(leftPostX - 1.25, eponaBaseY, zFront);
-        // USER REQUEST 11/03/2026: Hide for TALIAN 5
-        const lAwningPoints = buildingType === 'epona_talian5' ? [] : [
-            [lAwningStart, new THREE.Vector3(lAwningMid.x - 1.0, eponaBaseY, zFront)],
-            [new THREE.Vector3(lAwningMid.x + 1.0, eponaBaseY, zFront), lAwningEnd]
-        ];
+        const lAwningPoints = buildingType === 'epona_talian5' ? [] : [[lAwningStart, new THREE.Vector3(lAwningMid.x - 1.0, eponaBaseY, zFront)], [new THREE.Vector3(lAwningMid.x + 1.0, eponaBaseY, zFront), lAwningEnd]];
 
-        // --- HAUTEURS FAÇADES ---
+        const rHeightVal = buildingType === 'epona_talian5' ? 4.3 : 3.8;
+        const rHeightX = rightPostX + 2.0;
+        const rHeightPoints = [[new THREE.Vector3(rHeightX, 0, markerZ), new THREE.Vector3(rHeightX, rHeightVal / 2 - 0.6, markerZ)], [new THREE.Vector3(rHeightX, rHeightVal / 2 + 0.6, markerZ), new THREE.Vector3(rHeightX, rHeightVal, markerZ)]];
 
-        // --- HAUTEUR DROITE (TALIAN_5: 4.3m) ou (EPONA: 3.8m) ---
-        const rHeightPoints = [];
-        const rightHeightZ = buildingType === 'epona_talian5' ? 0 : 3.5; 
-        let rGapBottom, rGapTop, rHeightStart, rHeightEnd, rHeightVal, rHeightX;
-        rHeightX = buildingType === 'epona_talian5' ? rightPostX + 2.0 : rightPostX + 2.0;
-        if (buildingType === 'epona_talian5') {
-            rHeightVal = 4.3;
-            rGapBottom = rHeightVal / 2 - 1.0;
-            rGapTop = rHeightVal / 2 + 1.0;
-            rHeightStart = new THREE.Vector3(rHeightX, eponaBaseY, rightHeightZ);
-            rHeightEnd = new THREE.Vector3(rHeightX, rHeightVal, rightHeightZ);
-            rHeightPoints.push([rHeightStart, new THREE.Vector3(rHeightX, rGapBottom, rightHeightZ)]);
-            rHeightPoints.push([new THREE.Vector3(rHeightX, rGapTop, rightHeightZ), rHeightEnd]);
-        } else {
-            // Epona Right Height Default
-            rHeightVal = 3.8; 
-            rGapBottom = rHeightVal / 2 - 0.6;
-            rGapTop = rHeightVal / 2 + 0.6;
-            rHeightStart = new THREE.Vector3(rHeightX, 0, markerZ); 
-            rHeightEnd = new THREE.Vector3(rHeightX, rHeightVal, markerZ);
-            rHeightPoints.push([rHeightStart, new THREE.Vector3(rHeightX, rGapBottom, markerZ)]);
-            rHeightPoints.push([new THREE.Vector3(rHeightX, rGapTop, markerZ), rHeightEnd]);
-        }
-
-        // --- HAUTEUR CENTRALE (TALIAN_5: 6.0m) ---
         const mHeightPoints = [];
-        const midHeightZ = 0; // USER REQUEST Round 4: Align with main axis (Z=0)
-        let mGapBottom, mGapTop, mHeightStart, mHeightEnd, mHeightVal, mHeightX;
-        mHeightX = midPostX - 0.5; // USER REQUEST: Move to the left of the post
         if (buildingType === 'epona_talian5') {
-            mHeightVal = 6.0;
-            mGapBottom = mHeightVal / 2 - 0.6;
-            mGapTop = mHeightVal / 2 + 0.6;
-            mHeightStart = new THREE.Vector3(mHeightX, eponaBaseY, midHeightZ);
-            mHeightEnd = new THREE.Vector3(mHeightX, mHeightVal, midHeightZ);
-            mHeightPoints.push([mHeightStart, new THREE.Vector3(mHeightX, mGapBottom, midHeightZ)]);
-            mHeightPoints.push([new THREE.Vector3(mHeightX, mGapTop, midHeightZ), mHeightEnd]);
+            const h = 6.0;
+            const x = midPostX - 0.5;
+            mHeightPoints.push([new THREE.Vector3(x, 0.1, 0), new THREE.Vector3(x, h / 2 - 0.6, 0)], [new THREE.Vector3(x, h / 2 + 0.6, 0), new THREE.Vector3(x, h, 0)]);
         }
 
-        // --- HAUTEUR GAUCHE (TALIAN_5: 7.9m) ou (EPONA: 5.0m) ---
-        const lHeightPoints = [];
-        const leftHeightZ = buildingType === 'epona_talian5' ? 0 : 3.5;
-        let lGapBottom, lGapTop, lHeightStart, lHeightEnd, lHeightVal, lHeightX;
-        lHeightX = buildingType === 'epona_talian5' ? leftPostX - 2.0 : leftPostX - 3.0; // USER REQUEST: -2m from post for Talian 5
-        if (buildingType === 'epona_talian5') {
-            lHeightVal = 7.9;
-            lGapBottom = lHeightVal / 2 - 0.6;
-            lGapTop = lHeightVal / 2 + 0.6;
-            lHeightStart = new THREE.Vector3(lHeightX, eponaBaseY, leftHeightZ);
-            lHeightEnd = new THREE.Vector3(lHeightX, lHeightVal, leftHeightZ);
-            lHeightPoints.push([lHeightStart, new THREE.Vector3(lHeightX, lGapBottom, leftHeightZ)]);
-            lHeightPoints.push([new THREE.Vector3(lHeightX, lGapTop, leftHeightZ), lHeightEnd]);
-        } else {
-            // Epona Left Height Default (5.0m)
-            lHeightVal = 5.0;
-            lGapBottom = lHeightVal / 2 - 0.6;
-            lGapTop = lHeightVal / 2 + 0.6;
-            lHeightStart = new THREE.Vector3(lHeightX, eponaBaseY, markerZ); // USER REQUEST: Move to Z=0
-            lHeightEnd = new THREE.Vector3(lHeightX, lHeightVal, markerZ);
-            lHeightPoints.push([lHeightStart, new THREE.Vector3(lHeightX, lGapBottom, markerZ)]);
-            lHeightPoints.push([new THREE.Vector3(lHeightX, lGapTop, markerZ), lHeightEnd]);
-        }
+        const lHeightVal = buildingType === 'epona_talian5' ? 7.9 : 5.0;
+        const lHeightX = buildingType === 'epona_talian5' ? leftPostX - 2.0 : leftPostX - 3.0;
+        const lHeightPoints = [[new THREE.Vector3(lHeightX, 0.1, markerZ), new THREE.Vector3(lHeightX, lHeightVal / 2 - 0.6, markerZ)], [new THREE.Vector3(lHeightX, lHeightVal / 2 + 0.6, markerZ), new THREE.Vector3(lHeightX, lHeightVal, markerZ)]];
 
-        return {
-            rSpanStart, rSpanEnd, rSpanMid, rSpanPoints, rightSpanLabel,
-            lCenterStart, lCenterEnd, lCenterMid, lCenterPoints,
-            lAwningStart, lAwningEnd, lAwningMid, lAwningPoints,
-            rHeightPoints, rHeightStart, rHeightEnd, rHeightVal, rHeightX,
-            mHeightPoints, mHeightStart, mHeightEnd, mHeightVal, mHeightX, midHeightZ,
-            lHeightPoints, lHeightStart, lHeightEnd, lHeightVal, lHeightX, markerZ,
-            lCenterLabel
-        };
+        return { rSpanStart, rSpanEnd, rSpanMid, rSpanPoints, rightSpanLabel, lCenterStart, lCenterEnd, lCenterMid, lCenterPoints, lAwningStart, lAwningEnd, lAwningMid, lAwningPoints, rHeightPoints, rHeightVal, rHeightX, mHeightPoints, lHeightPoints, lHeightVal, lHeightX, markerZ, lCenterLabel };
     }, [isEpona, gapSize, buildingType, length]);
 
-
-    // Helper for Eave Text Content
     const getEaveText = () => {
         if (buildingType === 'asymetrique_1') return '4 m';
-        if (buildingType === 'ombriere_vl_double') {
-            if (Math.abs(width - 9.1) < 0.1) return '3 m';
-            if (Math.abs(width - 11.3) < 0.1) return '2.8 m';
-        }
-        if (buildingType === 'ombriere_vl_simple_droite') return '2.9 m'; // Requested 2.9m
-        if (buildingType === 'ombriere_vl_simple_gauche') return '3.7 m'; // Requested 3.7m
-        if (buildingType === 'ombriere_pl') {
-            if (Math.abs(width - 15.8) < 0.1) return '5.1 m';
-            if (Math.abs(width - 20.2) < 0.1) return '5.7 m';
-            if (Math.abs(width - 24.6) < 0.1) return '5 m';
-        }
+        if (buildingType === 'ombriere_vl_double') return Math.abs(width - 9.1) < 0.1 ? '3 m' : '2.8 m';
+        if (buildingType === 'ombriere_vl_simple_droite') return '2.9 m';
+        if (buildingType === 'ombriere_vl_simple_gauche') return '3.7 m';
+        if (buildingType === 'ombriere_pl') return Math.abs(width - 15.8) < 0.1 ? '5.1 m' : (Math.abs(width - 20.2) < 0.1 ? '5.7 m' : '5 m');
         if (isOmbriere) return '2.9 m';
         return `${parseFloat(eaveHeight.toFixed(2))} m`;
     };
@@ -745,7 +625,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </group>
             )}
 
-            {/* 3. EAVE HEIGHT (Left/Standard) - EXCLUDE Asym 2, EPONA et TALIAN (marqueur sablière bâtiment masqué) */}
+            {/* 3. EAVE HEIGHT (Left/Standard) */}
             {heightPoints && buildingType !== 'asymetrique_2' && !isEpona && !isTalian && (
                 <group>
                     <Line points={heightPoints[0]} color={lineColor} lineWidth={lineWidth} />
@@ -754,7 +634,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={heightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
                         position={[xEave - 0.5, heightEnd.y / 2, 0]}
-                        rotation={[0, 0, Math.PI / 2]} // Vertical text to match others
+                        rotation={[0, 0, Math.PI / 2]} 
                         fontSize={0.8}
                         color={textColor}
                         anchorX="center"
@@ -767,34 +647,8 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </group>
             )}
 
-            {/* ... (Existing Ridge Render) ... */}
-
-            {/* 10. CROSS HEIGHT MARKER */}
-            {crossHeightData && (
-                <group>
-                    <Line points={crossHeightData.points[0]} color={lineColor} lineWidth={lineWidth} />
-                    <Line points={crossHeightData.points[1]} color={lineColor} lineWidth={lineWidth} />
-                    <mesh position={crossHeightData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <mesh position={crossHeightData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text
-                        position={[0, crossHeightData.hVal / 2, 0.3]} // Text shifted to Z=0.3 to match lines
-                        rotation={[0, 0, 0]}
-                        fontSize={0.8}
-                        color={textColor}
-                        anchorX="center"
-                        anchorY="middle"
-                        outlineWidth={0.1}
-                        outlineColor="#ffffff"
-                    >
-                        {`${crossHeightData.hVal} m`}
-                    </Text>
-                </group>
-            )}
-
-            {/* ... (Rest of Renders) ... */}
-
             {/* 4. RIDGE HEIGHT */}
-            {true && (
+            {ridgePoints && (
                 <group>
                     <Line points={ridgePoints[0]} color={lineColor} lineWidth={lineWidth} />
                     <Line points={ridgePoints[1]} color={lineColor} lineWidth={lineWidth} />
@@ -827,14 +681,12 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={asym2RightEaveData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={asym2RightEaveData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text position={[asym2RightEaveData.xRight + 0.5, asym2RightEaveData.hVal / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                        {buildingType === 'epona_talian5' ? '4.3 m' : '4 m'}
+                        {buildingType === 'epona_talian5' ? '4.3 m' : (isCustom ? `${asym2RightEaveData.hVal.toFixed(1)} m` : '4 m')}
                     </Text>
                 </group>
             )}
 
-
-
-            {/* 5. RIGHT EXTENSION (If Exists) */}
+            {/* 5. RIGHT EXTENSION */}
             {rightExtData && (
                 <>
                     <group>
@@ -848,10 +700,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                             </>
                         )}
                         <Text position={[width / 2 + rightExtData.extWidth / 2, 0.2, isTalian4 ? 4.5 : 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                            {isEpona ? '7.8m' : `${rightExtData.extWidth} m`}
+                            {isEpona ? '7.8 m' : `${rightExtData.extWidth} m`}
                         </Text>
                     </group>
-                    {/* Gap implementation for Right Extension height */}
                     {rightExtData.heightPoints?.map((p, i) => (
                         <Line key={i} points={p} color={lineColor} lineWidth={lineWidth} />
                     ))}
@@ -865,7 +716,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 </>
             )}
 
-            {/* 6. LEFT EXTENSION (If Exists) */}
+            {/* 6. LEFT EXTENSION */}
             {leftExtData && (
                 <group>
                     {!isTalian4 && (
@@ -887,19 +738,15 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         outlineWidth={0.1}
                         outlineColor="#ffffff"
                     >
-                        {isEpona ? '2.5m' : `${leftExtData.extWidth} m`}
+                        {isEpona ? '2.5 m' : `${leftExtData.extWidth} m`}
                     </Text>
                     {leftExtData.heightPoints?.map((p, i) => (
                         <Line key={i} points={p} color={lineColor} lineWidth={lineWidth} />
                     ))}
-                    {isAcama && (
-                        <>
-                            {!isTalian4 && (
-                                <mesh position={leftExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                            )}
-                            <mesh position={leftExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        </>
+                    {!isTalian4 && (
+                        <mesh position={leftExtData.hStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     )}
+                    <mesh position={leftExtData.hEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text position={[leftExtData.xH, (isEpona ? leftExtData.extHeight : (isTalian4 ? leftExtData.extHeight - 1.2 : (isTalian1 ? leftExtData.extHeight : leftExtData.extHeight))) / 2, 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
                         {`${parseFloat(Number(isTalian4 ? 4.5 : (isTalian1 ? 3.8 : leftExtData.extHeight)).toFixed(2))} m`}
                     </Text>
@@ -926,205 +773,139 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                         {`13.1 m`}
                     </Text>
                 </group>
-            )
-            }
+            )}
 
-            {/* 8. ASYMMETRIC 2 ZONES RIGHT DISTANCE (Middle to Right) */}
-            {
-                asym2RightDistData && (
-                    <group>
-                        <Line points={asym2RightDistData.widthPoints[0]} color={lineColor} lineWidth={lineWidth} />
-                        <Line points={asym2RightDistData.widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
-                        <mesh position={asym2RightDistData.rStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <mesh position={asym2RightDistData.rEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <Text
-                            position={[asym2RightDistData.rMid.x, 0.2, 1.5]}
-                            rotation={[-Math.PI / 2, 0, 0]}
-                            fontSize={0.8}
-                            color={textColor}
-                            anchorX="center"
-                            anchorY="bottom"
-                            outlineWidth={0.1}
-                            outlineColor="#ffffff"
-                        >
-                            {`${asym2RightDistData.distance} m`}
-                        </Text>
-                    </group >
-                )
-            }
-
-            {/* 9. ACAMA TOTAL WIDTH MARKER (35.3m) */}
-            {
-                acamaTotalWidthData && (
-                    <group>
-                        <Line points={acamaTotalWidthData.points[0]} color={lineColor} lineWidth={lineWidth} />
-                        <Line points={acamaTotalWidthData.points[1]} color={lineColor} lineWidth={lineWidth} />
-                        <mesh position={acamaTotalWidthData.xStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <mesh position={acamaTotalWidthData.xEnd}><sphereGeometry args={[buildingType === 'epona_talian5' ? 0 : 0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <Text
-                            position={[acamaTotalWidthData.xMid.x, 0.2, acamaTotalWidthData.zPos + 0.5]}
-                            rotation={[-Math.PI / 2, 0, 0]}
-                            fontSize={0.8}
-                            color={textColor}
-                            anchorX="center"
-                            anchorY="bottom"
-                            outlineWidth={0.1}
-                            outlineColor="#ffffff"
-                        >
-                            {`${acamaTotalWidthData.totalW} m`}
-                        </Text>
-                    </group>
-                )
-            }
-
-
-            {/* 11. EPONA SPECIFIC MARKERS */}
-            {
-                eponaMarkers && (
-                    <group>
-                        {/* Right Span 7.85m / 11.0m */}
-                        <Line points={eponaMarkers.rSpanPoints[0]} color={lineColor} lineWidth={lineWidth} />
-                        <Line points={eponaMarkers.rSpanPoints[1]} color={lineColor} lineWidth={lineWidth} />
-                        <mesh position={eponaMarkers.rSpanStart}><sphereGeometry args={[buildingType === 'epona_talian5' ? 0 : 0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <mesh position={eponaMarkers.rSpanEnd}><sphereGeometry args={[buildingType === 'epona_talian5' ? 0 : 0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                        <Text position={[eponaMarkers.rSpanMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                            {eponaMarkers.rightSpanLabel}
-                        </Text>
-
-                        {/* Middle Span 15.4m pour TALIAN 5 */}
-                        {eponaMarkers.lCenterPoints?.length > 0 && (
-                            <>
-                                <Line points={eponaMarkers.lCenterPoints[0]} color={lineColor} lineWidth={lineWidth} />
-                                <Line points={eponaMarkers.lCenterPoints[1]} color={lineColor} lineWidth={lineWidth} />
-                                <mesh position={eponaMarkers.lCenterStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                <mesh position={eponaMarkers.lCenterEnd}><sphereGeometry args={[buildingType === 'epona_talian5' ? 0.1 : 0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                <Text position={[eponaMarkers.lCenterMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                                    {eponaMarkers.lCenterLabel}
-                                </Text>
-                            </>
-                        )}
-
-                        {/* Left Awning 2.5m (EPONA ONLY) */}
-                        {eponaMarkers.lAwningPoints?.length > 0 && (
-                            <>
-                                <Line points={eponaMarkers.lAwningPoints[0]} color={lineColor} lineWidth={lineWidth} />
-                                <Line points={eponaMarkers.lAwningPoints[1]} color={lineColor} lineWidth={lineWidth} />
-                                <mesh position={eponaMarkers.lAwningStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                <mesh position={eponaMarkers.lAwningEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                <Text position={[eponaMarkers.lAwningMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                                    2.5 m
-                                </Text>
-                            </>
-                        )}
-
-                        {/* Right Height 2.6m (EPONA) or 4.3m (TALIAN 5) */}
-                        {eponaMarkers.rHeightPoints?.map((p, i) => (
-                            <Line key={`rh-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />
-                        ))}
-                        <group>
-                            <mesh position={eponaMarkers.rHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                            <mesh position={eponaMarkers.rHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                            <Text 
-                                position={[
-                                    eponaMarkers.rHeightX, 
-                                    eponaMarkers.rHeightVal / 2, 
-                                    eponaMarkers.markerZ || 0
-                                ]} 
-                                rotation={[0, 0, Math.PI / 2]} 
-                                fontSize={0.8} 
-                                color={textColor} 
-                                anchorX="center" 
-                                anchorY="middle" 
-                                outlineWidth={0.1} 
-                                outlineColor="#ffffff"
-                            >
-                                {`${eponaMarkers.rHeightVal} m`}
-                            </Text>
-                        </group>
-
-                        {/* Mid Height 6.0m (TALIAN 5) - USER REQUEST: Keep? The user didn't explicitly ask to remove it, but mentioned only 4.3m and 7.9m. */}
-                        {eponaMarkers.mHeightPoints?.map((p, i) => (
-                            <Line key={`mh-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />
-                        ))}
-                        {eponaMarkers.mHeightPoints?.length > 0 && (
-                            <>
-                                <mesh position={eponaMarkers.mHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                <mesh position={eponaMarkers.mHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                                <Text position={[eponaMarkers.mHeightX - 0.7, eponaMarkers.mHeightVal / 2, eponaMarkers.midHeightZ]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                                    6 m
-                                </Text>
-                            </>
-                        )}
-
-                        {/* Left Height 7.9m (TALIAN 5) or 5.0m (EPONA) */}
-                        {eponaMarkers.lHeightPoints?.map((p, i) => (
-                            <Line key={`lh-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />
-                        ))}
-                        <group>
-                            <mesh position={eponaMarkers.lHeightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                            <mesh position={eponaMarkers.lHeightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                            <Text position={[eponaMarkers.lHeightX - 0.5, eponaMarkers.lHeightVal / 2, eponaMarkers.markerZ || 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
-                                {`${eponaMarkers.lHeightVal} m`}
-                            </Text>
-                        </group>
-                    </group>
-                )
-            }
-
-            {/* 12. SURFACE TEXT */}
-            {
-                showDimensions && (
+            {/* 8. ASYMMETRIC 2 ZONES RIGHT DISTANCE */}
+            {asym2RightDistData && (
+                <group>
+                    <Line points={asym2RightDistData.widthPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={asym2RightDistData.widthPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={asym2RightDistData.rStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={asym2RightDistData.rEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text
-                        position={[
-                            buildingType === 'epona_talian5' ? -11.27 : 0, // Positionner au faitage pour Talian 5
-                            Math.min(eaveHeight, ridgeHeight) + (buildingType === 'epona_talian5' ? 1.5 : 4), // Raise by 1.5m for Talian 5
-                            -length / 2 // Move back to the middle of the building (neg Z)
-                        ]}
-                        rotation={[-Math.PI / 2, 0, Math.PI / 2]} // 90° Counter-clockwise Horizontal
-                        fontSize={3}
-                        color="#ffffff"
+                        position={[asym2RightDistData.rMid.x, 0.2, 1.5]}
+                        rotation={[-Math.PI / 2, 0, 0]}
+                        fontSize={0.8}
+                        color={textColor}
+                        anchorX="center"
+                        anchorY="bottom"
+                        outlineWidth={0.1}
+                        outlineColor="#ffffff"
+                    >
+                        {`${asym2RightDistData.distance} m`}
+                    </Text>
+                </group>
+            )}
+
+            {/* 9. ACAMA TOTAL WIDTH MARKER */}
+            {acamaTotalWidthData && (
+                <group>
+                    <Line points={acamaTotalWidthData.points[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={acamaTotalWidthData.points[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={acamaTotalWidthData.xStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={acamaTotalWidthData.xEnd}><sphereGeometry args={[buildingType === 'epona_talian5' ? 0 : 0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text
+                        position={[acamaTotalWidthData.xMid.x, 0.2, acamaTotalWidthData.zPos + 0.5]}
+                        rotation={[-Math.PI / 2, 0, 0]}
+                        fontSize={0.8}
+                        color={textColor}
+                        anchorX="center"
+                        anchorY="bottom"
+                        outlineWidth={0.1}
+                        outlineColor="#ffffff"
+                    >
+                        {`${acamaTotalWidthData.totalW} m`}
+                    </Text>
+                </group>
+            )}
+
+            {/* 10. CROSS HEIGHT MARKER */}
+            {crossHeightData && (
+                <group>
+                    <Line points={crossHeightData.points[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={crossHeightData.points[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={crossHeightData.start}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={crossHeightData.end}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text
+                        position={[0, crossHeightData.hVal / 2, 0.3]} 
+                        rotation={[0, 0, 0]}
+                        fontSize={0.8}
+                        color={textColor}
                         anchorX="center"
                         anchorY="middle"
-                        outlineWidth={0.2}
-                        outlineColor="#000000"
+                        outlineWidth={0.1}
+                        outlineColor="#ffffff"
                     >
-                        {`${surfaceArea} m²`}
+                        {`${crossHeightData.hVal} m`}
                     </Text>
-                )
-            }
+                </group>
+            )}
 
-            {/* SURFACE AREA */}
-            {/* <Text
+            {/* 11. EPONA SPECIFIC MARKERS */}
+            {eponaMarkers && (
+                <group>
+                    {/* Right Span */}
+                    <Line points={eponaMarkers.rSpanPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                    <Line points={eponaMarkers.rSpanPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                    <mesh position={eponaMarkers.rSpanStart}><sphereGeometry args={[buildingType === 'epona_talian5' ? 0 : 0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <mesh position={eponaMarkers.rSpanEnd}><sphereGeometry args={[buildingType === 'epona_talian5' ? 0 : 0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                    <Text position={[eponaMarkers.rSpanMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                        {eponaMarkers.rightSpanLabel}
+                    </Text>
+
+                    {/* Middle Span */}
+                    {eponaMarkers.lCenterPoints?.length > 0 && (
+                        <>
+                            <Line points={eponaMarkers.lCenterPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                            <Line points={eponaMarkers.lCenterPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                            <mesh position={eponaMarkers.lCenterStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                            <mesh position={eponaMarkers.lCenterEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                            <Text position={[eponaMarkers.lCenterMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                                {eponaMarkers.lCenterLabel}
+                            </Text>
+                        </>
+                    )}
+
+                    {/* Left Awning */}
+                    {eponaMarkers.lAwningPoints?.length > 0 && (
+                        <>
+                            <Line points={eponaMarkers.lAwningPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                            <Line points={eponaMarkers.lAwningPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                            <mesh position={eponaMarkers.lAwningStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                            <mesh position={eponaMarkers.lAwningEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                            <Text position={[eponaMarkers.lAwningMid.x, 0.2, 3.5]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
+                                2.5 m
+                            </Text>
+                        </>
+                    )}
+
+                    {/* Heights */}
+                    {eponaMarkers.rHeightPoints?.map((p, i) => <Line key={`rh-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />)}
+                    {eponaMarkers.mHeightPoints?.map((p, i) => <Line key={`mh-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />)}
+                    {eponaMarkers.lHeightPoints?.map((p, i) => <Line key={`lh-${i}`} points={p} color={lineColor} lineWidth={lineWidth} />)}
+                    
+                    <Text position={[eponaMarkers.rHeightX, eponaMarkers.rHeightVal / 2, eponaMarkers.markerZ || 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                        {`${eponaMarkers.rHeightVal} m`}
+                    </Text>
+                    {eponaMarkers.mHeightPoints?.length > 0 && (
+                        <Text position={[eponaMarkers.mHeightX - 0.7, eponaMarkers.mHeightVal / 2, eponaMarkers.midHeightZ]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                            6 m
+                        </Text>
+                    )}
+                    <Text position={[eponaMarkers.lHeightX - 0.5, eponaMarkers.lHeightVal / 2, eponaMarkers.markerZ || 0]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="middle" outlineWidth={0.1} outlineColor="#ffffff">
+                        {`${eponaMarkers.lHeightVal} m`}
+                    </Text>
+                </group>
+            )}
+
+            {/* 12. SURFACE AREA TEXT OVER BUILDING */}
+            <Text
                 position={[
-                    width / 4,
-                    (() => {
-                        // USER REQUEST 12/01/2026: Raise surface area by 20cm
-                        let baseHeight = buildingType === 'symetrique' ? ridgeHeight + 1.0 : ridgeHeight - 1.0;
-                        if (isAcama && buildingType === 'asymetrique_1' && (Math.abs(width - 16.4) < 0.5 || Math.abs(width - 16) < 0.5)) {
-                            baseHeight += 0.20; // Raise by 20cm for 16.4m width
-                        }
-
-                        if (isEpona) {
-                            baseHeight += 1.5;
-                        }
-
-                        // USER REQUEST 13/01/2026: Raise surface area by 1m for ombriere
-                        // USER REQUEST 13/01/2026 Part 3: Raise by additional 1.5m (Total 2.5m)
-                        // USER REQUEST 13/01/2026: Raise surface area by 1m for ombriere (adjusted down -1m from 2.5)
-                        if (buildingType.startsWith('ombriere')) {
-                            baseHeight += 1.5;
-                            if (buildingType === 'ombriere_vl_double') {
-                                baseHeight += 1.0; // Raise by additional 1m for Double
-                            }
-                            if (buildingType === 'ombriere_pl') {
-                                baseHeight += 1.0; // USER REQUEST 15/01/2026: Raise by 1m for PL
-                            }
-                        }
-                        return baseHeight;
-                    })(),
-                    -length / 2,
+                    buildingType === 'epona_talian5' ? -11.27 : 0,
+                    Math.min(eaveHeight, ridgeHeight) + (buildingType === 'epona_talian5' ? 1.5 : 4),
+                    -length / 2
                 ]}
-                rotation={[-Math.PI / 2, 0, Math.PI / 2]} // 90° Counter-clockwise Horizontal
+                rotation={[-Math.PI / 2, 0, Math.PI / 2]} 
                 fontSize={3}
                 color="#ffffff"
                 anchorX="center"
@@ -1134,7 +915,6 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             >
                 {`${surfaceArea} m²`}
             </Text>
-            {/* 9. ROOF SLOPE LABELS (Faitage/Sablière) */}
 
         </group>
     );
