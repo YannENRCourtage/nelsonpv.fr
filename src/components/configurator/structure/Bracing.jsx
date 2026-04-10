@@ -242,10 +242,10 @@ export function Bracing({
             // No roof bracing for asymetrique_2 as requested
         } else {
             // Symmetrical
-            bracings.push(createRod(new THREE.Vector3(-width / 2, eaveHeight, zStart), new THREE.Vector3(-0.1, symRidgeHeight, zEnd), `roof-L-${i}-1`));
-            bracings.push(createRod(new THREE.Vector3(-0.1, symRidgeHeight, zStart), new THREE.Vector3(-width / 2, eaveHeight, zEnd), `roof-L-${i}-2`));
-            bracings.push(createRod(new THREE.Vector3(width / 2, eaveHeight, zStart), new THREE.Vector3(0.1, symRidgeHeight, zEnd), `roof-R-${i}-1`));
-            bracings.push(createRod(new THREE.Vector3(0.1, symRidgeHeight, zStart), new THREE.Vector3(width / 2, eaveHeight, zEnd), `roof-R-${i}-2`));
+            bracings.push(createRod(new THREE.Vector3(-width / 2, eaveHeight, zStart), new THREE.Vector3(-0.1, ridgeHeight, zEnd), `roof-L-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(-0.1, ridgeHeight, zStart), new THREE.Vector3(-width / 2, eaveHeight, zEnd), `roof-L-${i}-2`));
+            bracings.push(createRod(new THREE.Vector3(width / 2, eaveHeight, zStart), new THREE.Vector3(0.1, ridgeHeight, zEnd), `roof-R-${i}-1`));
+            bracings.push(createRod(new THREE.Vector3(0.1, ridgeHeight, zStart), new THREE.Vector3(width / 2, eaveHeight, zEnd), `roof-R-${i}-2`));
         }
     }
 
