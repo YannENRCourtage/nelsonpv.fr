@@ -104,34 +104,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                 [new THREE.Vector3(x, 0.1, mid.z - gapSize / 2), end]
             ]
         };
-    // Usually Eave Height is for the Main Building.
-    // If Extension is there, maybe keep it at Main Building Eave?
-    // BUT the marker code moved it.
-    // If Left Extension exists, `x` should be `-width/2 - leftWidth - 2.0`?
-    // Or if `hasAuvent` (Left), it moved to `width/2 + 2.0` (Right Side)?
-    // Ah, if Left has Auvent, it moved the Eave Marker to the RIGHT side?
-    // Let's check original code `DimensionsMarkers.jsx` lines 54:
-    // `const x = hasAuvent ? (width / 2 + 2.0) : (-width / 2 - 2.0);`
-    // If `hasAuvent` (Left), x = Right Side.
-    // So it moved the indicator to avoid the Auvent.
-    // Now we have independent sides.
-    // If Left has Extension, try Right.
-    // If Right has Extension, try Left?
-    // If BOTH have extensions, pick one outer edge?
-    // Let's assume we place it on Left, but offset if Left Ext exists.
-    // `const x = -width/2 - leftWidth - 2.0;`
-    // This places it outside the left extension.
-    // And verifies the height of the EAVE (which is usually same for extension connection?).
-    // Actually eaveHeight is Main Building Eave.
-    // Extension might be lower/higher.
-    // Marker usually indicates Main Building Eave.
-    // I'll place it at `x = -width/2 - leftWidth - 2.0`.
-
-    // 3. Eave Height (Right Side for Monopente, Left for Sym?)
-    // Actually, Sym is Left/Right same. 
-    // Monopente New: Left is Ridge, Right is Eave.
-    // So Eave Marker should be on Right for Monopente.
-    // Sym: Keep on Left (Standard).
+    }, [width, length, rightWidth, gapSize, buildingType, isCustom]);
 
     // 3. Eave Height (Standard / Right for Asym/Monopente)
     const { heightPoints, heightStart, heightEnd, xEave } = useMemo(() => {
