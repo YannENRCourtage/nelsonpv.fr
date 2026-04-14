@@ -2175,12 +2175,13 @@ const LAYERS = {
   // ========== FONDS DE CARTE ==========
   solargis: { 
     name: "Irradiation solaire (Solargis)", 
-    url: "https://data.geopf.fr/wms-r/wms", 
+    url: "https://data.geopf.fr/wms-r/ows", 
     layers: "IRRADIATION.SOLAIRE", 
     format: "image/png", 
     transparent: true, 
     attrib: 'Solargis / IGN', 
     type: 'wms', 
+    version: '1.3.0',
     zIndex: 0, 
     maxZoom: 22 
   },
@@ -3882,7 +3883,7 @@ function MapStateSync({ project, setProject }) {
           console.log("Restoring saved MapView:", center, zoom);
           map.setView(center, zoom, { animate: false });
         }
-      } else if (project.gps) {
+      } else if (project?.gps && typeof project.gps === 'string') {
         // 2. Pas de vue mais GPS
         const parts = project.gps.split(',').map(Number);
         if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
