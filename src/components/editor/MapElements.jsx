@@ -2625,7 +2625,7 @@ function ParkingLegend({ layersRef }) {
 
   return (
     <div
-      className="absolute bottom-[200px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[210px]"
+      className="absolute bottom-[280px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[210px]"
       style={{ userSelect: 'none' }}
     >
       <div className="flex justify-between items-center mb-2">
