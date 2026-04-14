@@ -303,7 +303,7 @@ const overlayCategories = {
             },
             'ZNIEFF 1': {
                 url: 'https://data.geopf.fr/wms-v/ows',
-                layers: 'ZNIEFF1',
+                layers: 'Patrinat_ZNIEFF1_France',
                 format: 'image/png',
                 transparent: true,
                 attribution: 'IGN-F/Géoportail',
@@ -312,7 +312,7 @@ const overlayCategories = {
             },
             'ZNIEFF 2': {
                 url: 'https://data.geopf.fr/wms-v/ows',
-                layers: 'ZNIEFF2',
+                layers: 'Patrinat_ZNIEFF2_France',
                 format: 'image/png',
                 transparent: true,
                 attribution: 'IGN-F/Géoportail',
@@ -321,7 +321,7 @@ const overlayCategories = {
             },
             'Natura 2000 Oiseaux': {
                 url: 'https://data.geopf.fr/wms-v/ows',
-                layers: 'NATURA2000_ZPS',
+                layers: 'Patrinat_ZPS_France',
                 format: 'image/png',
                 transparent: true,
                 attribution: 'IGN-F/Géoportail',
@@ -330,7 +330,7 @@ const overlayCategories = {
             },
             'Natura 2000 Habitat': {
                 url: 'https://data.geopf.fr/wms-v/ows',
-                layers: 'NATURA2000_SIC',
+                layers: 'Patrinat_SIC_France',
                 format: 'image/png',
                 transparent: true,
                 attribution: 'IGN-F/Géoportail',
