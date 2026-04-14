@@ -315,6 +315,15 @@ const overlayCategories = {
                 type: 'wms',
                 version: '1.3.0'
             },
+            'BAN PLUS': {
+                url: 'https://data.geopf.fr/wms-v/ows',
+                layers: 'BAN.DATA.GOUV',
+                format: 'image/png',
+                transparent: true,
+                attribution: 'IGN / BAN',
+                type: 'wms',
+                version: '1.3.0'
+            },
             'Parking >500m²': {
                 url: 'https://data.geopf.fr/wms-v/ows',
                 layers: 'PARKING.SUP.500',

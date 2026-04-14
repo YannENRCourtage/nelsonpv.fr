@@ -1867,6 +1867,7 @@ export default function ProjectEditor() {
                     { key: 'cadastreSolaire', label: 'Cadastre solaire' },
                     { key: 'zaer', label: 'ZAER' },
                     { key: 'loiLittoral', label: 'Loi littoral' },
+                    { key: 'banPlus', label: 'BAN PLUS' },
                     { key: 'postesSourcesRTE', label: 'Postes Sources RTE' },
                   ].map(layer => (
                     <button
@@ -1931,6 +1932,7 @@ export default function ProjectEditor() {
                         { key: 'cadastreSolaire', label: 'Cadastre sol.' },
                         { key: 'zaer', label: 'ZAER' },
                         { key: 'loiLittoral', label: 'Loi lit.' },
+                        { key: 'banPlus', label: 'BAN PLUS' },
                         { key: 'postesSourcesRTE', label: 'P. Sources RTE' },
                       ].map(layer => (
                         <button
