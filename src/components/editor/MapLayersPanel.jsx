@@ -336,6 +336,15 @@ const overlayCategories = {
                 type: 'wms',
                 version: '1.3.0'
             },
+            'Servitude aéronautique DGAC': {
+                url: 'https://data.geopf.fr/wms-v/ows',
+                layers: 'dgac_psa_plan_wmsv',
+                format: 'image/png',
+                transparent: true,
+                attribution: 'DGAC / IGN',
+                type: 'wms',
+                version: '1.3.0'
+            },
         },
     },
     'Agriculture et occupation du sol': {

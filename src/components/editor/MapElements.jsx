@@ -2325,6 +2325,19 @@ const LAYERS = {
     maxNativeZoom: 16,
     maxZoom: 22
   },
+  dgac: {
+    name: "Servitude aéronautique DGAC",
+    url: "https://data.geopf.fr/wms-v/ows",
+    layers: "dgac_psa_plan_wmsv",
+    format: "image/png",
+    transparent: true,
+    attribution: "DGAC / IGN",
+    isOverlay: true,
+    zIndex: 105,
+    opacity: 0.6,
+    maxNativeZoom: 18,
+    maxZoom: 22
+  },
   abf: {
     name: "ABF (Zones AC1)",
     url: "https://data.geopf.fr/wms-v/ows",
