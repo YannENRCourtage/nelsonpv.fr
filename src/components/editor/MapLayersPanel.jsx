@@ -301,6 +301,15 @@ const overlayCategories = {
                 attribution: 'IGN-F/Géoportail',
                 type: 'tile',
             },
+            'Cadastre solaire': {
+                url: 'https://data.geopf.fr/wms-v/ows',
+                layers: 'CADASTRES.SOLAIRES.LOCAUX',
+                format: 'image/png',
+                transparent: true,
+                attribution: 'Cerema / IGN',
+                type: 'wms',
+                version: '1.3.0'
+            },
             'Cartofriches': {
                 url: 'https://data.geopf.fr/wms-v/ows',
                 layers: 'POTENTIEL.SOLAIRE.FRICHE',
