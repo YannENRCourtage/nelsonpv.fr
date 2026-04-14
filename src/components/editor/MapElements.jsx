@@ -2271,20 +2271,6 @@ const LAYERS = {
     zIndex: 55,
     minZoom: 8
   },
-  geodesie: {
-    name: "Géodésie et Nivellement",
-    url: "https://data.geopf.fr/wms-v/ows",
-    layers: "GEODESIE_DATA",
-    format: "image/png",
-    transparent: true,
-    attribution: "IGN Géodésie",
-    isOverlay: true,
-    zIndex: 108,
-    opacity: 1.0,
-    minZoom: 12,
-    maxNativeZoom: 18,
-    maxZoom: 22
-  },
   // Urbanisme
   zoneInondable: {
     name: "Zone Inondable",
@@ -2325,7 +2311,6 @@ const LAYERS = {
     maxNativeZoom: 18,
     maxZoom: 22
   },
-  rgeAlti: { name: "RGE ALTI\u00ae (Ombrage)", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '\u00a9 IGN RGE ALTI', isOverlay: true, zIndex: 109, opacity: 0.85, maxNativeZoom: 16, maxZoom: 22 },
   "ZNIEFF 1": {
     name: "ZNIEFF 1",
     url: "https://data.geopf.fr/wms-v/ows",
@@ -2605,41 +2590,6 @@ function SDISLegend({ layersRef }) {
   );
 }
 
-// ====================================================================
-// LÉGENDE GÉODÉSIE ET NIVELLEMENT
-// ====================================================================
-function GeodesieWmsLegend({ layersRef }) {
-  const map = useMap();
-  const [showLegend, setShowLegend] = useState(false);
-
-  useEffect(() => {
-    const checkLayer = () => {
-      const layer = layersRef.current['geodesie'];
-      setShowLegend(layer && map.hasLayer(layer));
-    };
-    checkLayer();
-    const interval = setInterval(checkLayer, 500);
-    return () => clearInterval(interval);
-  }, [map, layersRef]);
-
-  if (!showLegend) return null;
-
-  return (
-    <div
-      className="absolute bottom-[268px] right-[10px] z-[994] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[230px]"
-      style={{ userSelect: 'none' }}
-    >
-      <div className="flex justify-between items-center mb-2">
-        <h4 className="font-bold text-xs text-gray-900">Légende Géodésie</h4>
-      </div>
-      <img
-        src="https://data.geopf.fr/wms-v/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image%2Fpng&layer=GEODESIE_DATA"
-        alt="Légende Géodésie et Nivellement"
-        className="max-w-full"
-      />
-    </div>
-  );
-}
 
 // ====================================================================
 // MANAGER SDIS (Données Nationales Overpass)
@@ -4352,7 +4302,6 @@ export default function MapElements({
           <RPGLegend layersRef={layersRef} />
           <ZoneInondableLegend layersRef={layersRef} />
           <SDISLegend layersRef={layersRef} />
-          <GeodesieWmsLegend layersRef={layersRef} />
 
           {window.innerWidth > 1024 && (
             <div className="hidden lg:block">

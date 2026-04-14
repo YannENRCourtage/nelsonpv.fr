@@ -197,11 +197,7 @@ const overlayCategories = {
                 attribution: 'IGN LiDAR HD',
                 type: 'tile',
             },
-            'RGE ALTI\u00ae (Ombrage)': {
-                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
-                attribution: '\u00a9 IGN RGE ALTI',
-                type: 'tile',
-            },
+
         },
     },
     'Cadastre et parcelles': {
@@ -281,20 +277,6 @@ const overlayCategories = {
                 type: 'postes-sources-rte-custom',
                 attribution: 'ODRÉ / RTE',
                 minZoom: 8,
-            },
-        },
-    },
-    'Géodésie et Nivellement': {
-        layers: {
-            'Géodésie et Nivellement': {
-                url: 'https://data.geopf.fr/wms-v/ows',
-                layers: 'GEODESIE_DATA',
-                format: 'image/png',
-                transparent: true,
-                attribution: 'IGN Géodésie',
-                type: 'wms',
-                version: '1.3.0',
-                minZoom: 12,
             },
         },
     },
