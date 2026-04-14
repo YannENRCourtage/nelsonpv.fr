@@ -152,12 +152,6 @@ const baseLayers = {
         attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap',
         maxZoom: 17,
     },
-    rgeAlti: {
-        name: 'RGE ALTI\u00ae (Ombrage)',
-        url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
-        attribution: '\u00a9 IGN RGE ALTI',
-        maxZoom: 19,
-    },
     irradiation: {
         name: 'Irradiation solaire (Solargis)',
         url: 'https://data.geopf.fr/wms-r/wms',
@@ -201,6 +195,11 @@ const overlayCategories = {
             'LiDAR HD - Hauteur (MNH)': {
                 url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=IGNF_LIDAR-HD_MNH_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
                 attribution: 'IGN LiDAR HD',
+                type: 'tile',
+            },
+            'RGE ALTI\u00ae (Ombrage)': {
+                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+                attribution: '\u00a9 IGN RGE ALTI',
                 type: 'tile',
             },
         },
