@@ -2306,12 +2306,8 @@ function TabBpProjets({
               </div>
               <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-1 items-end bg-blue-50/30 rounded px-3 py-2">
                 <div className="flex items-center gap-2">
-                   <span className="text-[13px] text-slate-400 font-bold uppercase">Total Construction :</span>
-                   <span className="text-[13px] font-bold text-slate-800">{fmtEur(totalConstruction)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                   <span className="text-[13px] text-slate-400 font-bold uppercase">Total avec TVA (20%) :</span>
-                   <span className="text-md font-black text-blue-900">{fmtEur(totalInvestissement)}</span>
+                   <span className="text-[13px] text-slate-400 font-bold uppercase">Total Investissement :</span>
+                   <span className="text-md font-black text-blue-900">{fmtEur(totalConstruction)}</span>
                 </div>
               </div>
             </SectionCard>
@@ -4147,20 +4143,27 @@ export default function BpAcama() {
     const totalKwc = buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0), 0);
     const developpement = isGreenInvest ? 0 : (totalKwc * 40);
 
-    const totalConst = buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0) + (parseFloat(b.raccordement) || 0) + (parseFloat(b.frais) || 0) + (parseFloat(b.soulte) || 0), 0) + developpement;
+    const coutCentrale = buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0), 0);
+    const coutCharpente = buildings.reduce((sum, b) => sum + (parseFloat(b.coutCharpente) || 0), 0);
+    
+    // Frais communs
+    const raccordement = parseFloat(params.raccordement) || 0;
+    const frais = parseFloat(params.frais) || 0;
+    const soulte = parseFloat(params.soulte) || 0;
+
+    const totalConst = coutCentrale + coutCharpente + raccordement + frais + soulte + developpement;
 
     return {
       ...params,
       kwc: totalKwc,
       developpement,
-      // Average productible weight by kwc for better accuracy? For now simple average
       productible: buildings.length > 0 ? (buildings.reduce((sum, b) => sum + (parseFloat(b.productible) || 0) * (parseFloat(b.kwc) || 0), 0) / buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0), 0) || 1123.08) : 1123.08,
-      coutCentrale: buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0), 0),
-      coutCharpente: buildings.reduce((sum, b) => sum + (parseFloat(b.coutCharpente) || 0), 0),
-      raccordement: buildings.reduce((sum, b) => sum + (parseFloat(b.raccordement) || 0), 0),
-      frais: buildings.reduce((sum, b) => sum + (parseFloat(b.frais) || 0), 0),
-      soulte: buildings.reduce((sum, b) => sum + (parseFloat(b.soulte) || 0), 0),
-      totalInvestissement: totalConst * 1.2
+      coutCentrale,
+      coutCharpente,
+      raccordement,
+      frais,
+      soulte,
+      totalInvestissement: totalConst
     };
   }, [params, isGreenInvest]);
 
