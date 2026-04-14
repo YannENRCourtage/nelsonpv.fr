@@ -2641,14 +2641,13 @@ function ParkingLegend({ layersRef }) {
 
   useEffect(() => {
     const checkLayer = () => {
-      const hasLayer = layersRef.current && !!layersRef.current['parkingSup500'];
-      if (hasLayer !== showLegend) {
-        setShowLegend(hasLayer);
-      }
+      const layer = layersRef.current['parkingSup500'];
+      setShowLegend(layer && map.hasLayer(layer));
     };
+    checkLayer();
     const interval = setInterval(checkLayer, 500);
     return () => clearInterval(interval);
-  }, [map, layersRef, showLegend]);
+  }, [map, layersRef]);
 
   if (!showLegend) return null;
 
@@ -2681,14 +2680,13 @@ function LoiLittoralLegend({ layersRef }) {
 
   useEffect(() => {
     const checkLayer = () => {
-      const hasLayer = layersRef.current && !!layersRef.current['loiLittoral'];
-      if (hasLayer !== showLegend) {
-        setShowLegend(hasLayer);
-      }
+      const layer = layersRef.current['loiLittoral'];
+      setShowLegend(layer && map.hasLayer(layer));
     };
+    checkLayer();
     const interval = setInterval(checkLayer, 500);
     return () => clearInterval(interval);
-  }, [map, layersRef, showLegend]);
+  }, [map, layersRef]);
 
   if (!showLegend) return null;
 
@@ -2721,14 +2719,13 @@ function ZaerLegend({ layersRef }) {
 
   useEffect(() => {
     const checkLayer = () => {
-      const hasLayer = layersRef.current && !!layersRef.current['zaer'];
-      if (hasLayer !== showLegend) {
-        setShowLegend(hasLayer);
-      }
+      const layer = layersRef.current['zaer'];
+      setShowLegend(layer && map.hasLayer(layer));
     };
+    checkLayer();
     const interval = setInterval(checkLayer, 500);
     return () => clearInterval(interval);
-  }, [map, layersRef, showLegend]);
+  }, [map, layersRef]);
 
   if (!showLegend) return null;
 
