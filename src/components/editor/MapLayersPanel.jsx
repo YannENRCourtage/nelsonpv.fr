@@ -301,6 +301,15 @@ const overlayCategories = {
                 attribution: 'IGN-F/Géoportail',
                 type: 'tile',
             },
+            'Cartofriches': {
+                url: 'https://data.geopf.fr/wms-v/ows',
+                layers: 'POTENTIEL.SOLAIRE.FRICHE',
+                format: 'image/png',
+                transparent: true,
+                attribution: 'Cerema / IGN',
+                type: 'wms',
+                version: '1.3.0'
+            },
             'ZNIEFF 1': {
                 url: 'https://data.geopf.fr/wms-v/ows',
                 layers: 'Patrinat_ZNIEFF1_France',

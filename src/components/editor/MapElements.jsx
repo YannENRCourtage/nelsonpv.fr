@@ -2284,6 +2284,19 @@ const LAYERS = {
     maxNativeZoom: 14,
     maxZoom: 22
   },
+  cartofriches: {
+    name: "Cartofriches",
+    url: "https://data.geopf.fr/wms-v/ows",
+    layers: "POTENTIEL.SOLAIRE.FRICHE",
+    format: "image/png",
+    transparent: true,
+    attribution: "Cerema / IGN",
+    isOverlay: true,
+    zIndex: 106,
+    opacity: 0.7,
+    maxNativeZoom: 18,
+    maxZoom: 22
+  },
   "ZNIEFF 1": {
     name: "ZNIEFF 1",
     url: "https://data.geopf.fr/wms-v/ows",
