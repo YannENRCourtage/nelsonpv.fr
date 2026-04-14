@@ -324,6 +324,15 @@ const overlayCategories = {
                 type: 'wms',
                 version: '1.3.0'
             },
+            'Courbes de niveau': {
+                url: 'https://data.geopf.fr/wms-v/ows',
+                layers: 'ELEVATION.CONTOUR.LINE',
+                format: 'image/png',
+                transparent: true,
+                attribution: 'IGN',
+                type: 'wms',
+                version: '1.3.0'
+            },
             'Parking >500m²': {
                 url: 'https://data.geopf.fr/wms-v/ows',
                 layers: 'PARKING.SUP.500',

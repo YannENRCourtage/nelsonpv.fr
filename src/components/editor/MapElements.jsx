@@ -2367,6 +2367,20 @@ const LAYERS = {
     maxNativeZoom: 18,
     maxZoom: 22
   },
+  courbesNiveau: {
+    name: "Courbes de niveau",
+    url: "https://data.geopf.fr/wms-v/ows",
+    layers: "ELEVATION.CONTOUR.LINE",
+    format: "image/png",
+    transparent: true,
+    attribution: "IGN",
+    isOverlay: true,
+    zIndex: 104,
+    opacity: 0.8,
+    minZoom: 14,
+    maxNativeZoom: 18,
+    maxZoom: 22
+  },
   "ZNIEFF 1": {
     name: "ZNIEFF 1",
     url: "https://data.geopf.fr/wms-v/ows",

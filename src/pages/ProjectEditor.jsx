@@ -1844,6 +1844,7 @@ export default function ProjectEditor() {
                   {[
                     { key: 'cadastre', label: 'Cadastre' },
                     { key: 'zoneInondable', label: 'Zone Inondable' },
+                    { key: 'courbesNiveau', label: 'Courbes de niveau' },
                     { key: 'batiments', label: 'Bâtiments' },
                     { key: 'rpg', label: 'Parcelles agricoles' },
                     { key: 'hydro', label: 'Hydrographie' },
@@ -1909,6 +1910,7 @@ export default function ProjectEditor() {
                       {[
                         { key: 'cadastre', label: 'Cadastre' },
                         { key: 'zoneInondable', label: 'Z. Inond.' },
+                        { key: 'courbesNiveau', label: 'Courbes niv.' },
                         { key: 'batiments', label: 'Bâtiments' },
                         { key: 'rpg', label: 'Parcelles agr.' },
                         { key: 'hydro', label: 'Hydro.' },
