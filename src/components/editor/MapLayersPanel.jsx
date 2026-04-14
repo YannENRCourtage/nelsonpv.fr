@@ -298,6 +298,15 @@ const overlayCategories = {
                 attribution: 'IGN-F/Géoportail',
                 type: 'tile',
             },
+            'ZAER': {
+                url: 'https://data.geopf.fr/wms-v/ows?key=enr',
+                layers: 'AC_ARRETE_ZAER',
+                format: 'image/png',
+                transparent: true,
+                attribution: 'Cerema / IGN',
+                type: 'wms',
+                version: '1.3.0'
+            },
             'Parking >500m²': {
                 url: 'https://data.geopf.fr/wms-v/ows',
                 layers: 'PARKING.SUP.500',

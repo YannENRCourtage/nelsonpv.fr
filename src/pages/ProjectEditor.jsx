@@ -1865,6 +1865,7 @@ export default function ProjectEditor() {
                     { key: 'cartofriches', label: 'Cartofriches' },
                     { key: 'parkingSup500', label: 'Parking >500m²' },
                     { key: 'cadastreSolaire', label: 'Cadastre solaire' },
+                    { key: 'zaer', label: 'ZAER' },
                     { key: 'postesSourcesRTE', label: 'Postes Sources RTE' },
                   ].map(layer => (
                     <button
@@ -1927,6 +1928,7 @@ export default function ProjectEditor() {
                         { key: 'cartofriches', label: 'Cartofriches' },
                         { key: 'parkingSup500', label: 'Park. >500m²' },
                         { key: 'cadastreSolaire', label: 'Cadastre sol.' },
+                        { key: 'zaer', label: 'ZAER' },
                         { key: 'postesSourcesRTE', label: 'P. Sources RTE' },
                       ].map(layer => (
                         <button

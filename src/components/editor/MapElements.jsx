@@ -2325,6 +2325,20 @@ const LAYERS = {
     maxNativeZoom: 18,
     maxZoom: 22
   },
+  zaer: {
+    name: "ZAER",
+    url: "https://data.geopf.fr/wms-v/ows?key=enr",
+    layers: "AC_ARRETE_ZAER",
+    format: "image/png",
+    transparent: true,
+    attribution: "Cerema / IGN",
+    isOverlay: true,
+    zIndex: 109,
+    opacity: 0.8,
+    minZoom: 6,
+    maxNativeZoom: 18,
+    maxZoom: 22
+  },
   "ZNIEFF 1": {
     name: "ZNIEFF 1",
     url: "https://data.geopf.fr/wms-v/ows",
@@ -2613,13 +2627,14 @@ function ParkingLegend({ layersRef }) {
 
   useEffect(() => {
     const checkLayer = () => {
-      const layer = layersRef.current['parkingSup500'];
-      setShowLegend(layer && map.hasLayer(layer));
+      const hasLayer = layersRef.current && !!layersRef.current['parkingSup500'];
+      if (hasLayer !== showLegend) {
+        setShowLegend(hasLayer);
+      }
     };
-    checkLayer();
     const interval = setInterval(checkLayer, 500);
     return () => clearInterval(interval);
-  }, [map, layersRef]);
+  }, [map, layersRef, showLegend]);
 
   if (!showLegend) return null;
 
@@ -2641,6 +2656,46 @@ function ParkingLegend({ layersRef }) {
           className="max-w-full h-auto"
         />
         <p className="text-[10px] text-gray-500 italic mt-1">Recensement des parkings de plus de 500m²</p>
+      </div>
+    </div>
+  );
+}
+
+function ZaerLegend({ layersRef }) {
+  const map = useMap();
+  const [showLegend, setShowLegend] = useState(false);
+
+  useEffect(() => {
+    const checkLayer = () => {
+      const hasLayer = layersRef.current && !!layersRef.current['zaer'];
+      if (hasLayer !== showLegend) {
+        setShowLegend(hasLayer);
+      }
+    };
+    const interval = setInterval(checkLayer, 500);
+    return () => clearInterval(interval);
+  }, [map, layersRef, showLegend]);
+
+  if (!showLegend) return null;
+
+  return (
+    <div
+      className="absolute bottom-[360px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[210px]"
+      style={{ userSelect: 'none' }}
+    >
+      <div className="flex justify-between items-center mb-2">
+        <h4 className="font-bold text-xs text-gray-900">Légende ZAER</h4>
+        <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded">
+          <XIcon className="h-3 w-3" />
+        </button>
+      </div>
+      <div className="space-y-1">
+        <img 
+          src="https://data.geopf.fr/wms-v/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=AC_ARRETE_ZAER&key=enr" 
+          alt="Légende ZAER"
+          className="max-w-full h-auto"
+        />
+        <p className="text-[10px] text-gray-500 italic mt-1">Zones d'accélération des énergies renouvelables</p>
       </div>
     </div>
   );
@@ -4359,6 +4414,7 @@ export default function MapElements({
           <ZoneInondableLegend layersRef={layersRef} />
           <SDISLegend layersRef={layersRef} />
           <ParkingLegend layersRef={layersRef} />
+          <ZaerLegend layersRef={layersRef} />
 
           {window.innerWidth > 1024 && (
             <div className="hidden lg:block">
