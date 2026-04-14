@@ -802,9 +802,9 @@ export default function ProjectEditor() {
                   <div className="flex gap-2">
                     <Button 
                       type="button" 
-                      onClick={() => enedisService.initiateAuth(projectId)}
+                      onClick={() => enedisService.initiateAuth(p.id)}
                       className="bg-green-600 hover:bg-green-700 text-white"
-                      disabled={projectId === 'new' || isEnedisLoading}
+                      disabled={(!projectId || projectId === 'new') || isEnedisLoading}
                     >
                       {isEnedisLoading ? 'Chargement...' : 'Se connecter à Enedis'}
                     </Button>
@@ -814,7 +814,7 @@ export default function ProjectEditor() {
                         onClick={async () => {
                           setIsEnedisLoading(true);
                           try {
-                            const result = await enedisService.fetchData({ projectId, prm: enedisPrm });
+                            const result = await enedisService.fetchData({ projectId: p.id, prm: enedisPrm });
                             if (result && result.data) {
                               setEnedisData(result.data);
                               toast({ title: "✅ Données récupérées", description: "Consommation chargée avec succès." });
@@ -851,7 +851,7 @@ export default function ProjectEditor() {
                     )}
                   </div>
                 </div>
-                {projectId === 'new' && <span className="text-[10px] text-red-500 italic">Sauvegardez le projet d'abord</span>}
+                {(!projectId || projectId === 'new') && <span className="text-[10px] text-red-500 italic">Sauvegardez le projet d'abord</span>}
               </div>
             ) : (
               <div className="space-y-4">
@@ -862,7 +862,7 @@ export default function ProjectEditor() {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    onClick={() => enedisService.initiateAuth(projectId)}
+                    onClick={() => enedisService.initiateAuth(p.id)}
                     className="text-[10px] text-gray-500 hover:text-blue-600"
                   >
                     Changer de compteur / Reconnecter

@@ -300,37 +300,41 @@ const overlayCategories = {
                 attribution: 'IGN-F/Géoportail',
                 type: 'tile',
             },
-            'ZNIEFF type 1': {
+            'ZNIEFF 1': {
                 url: 'https://data.geopf.fr/wms-v/ows',
-                layers: 'PROTECTEDAREAS.ZNIEFF1',
+                layers: 'ZNIEFF1',
                 format: 'image/png',
                 transparent: true,
                 attribution: 'IGN-F/Géoportail',
                 type: 'wms',
+                version: '1.3.0'
             },
-            'ZNIEFF type 2': {
+            'ZNIEFF 2': {
                 url: 'https://data.geopf.fr/wms-v/ows',
-                layers: 'PROTECTEDAREAS.ZNIEFF2',
+                layers: 'ZNIEFF2',
                 format: 'image/png',
                 transparent: true,
                 attribution: 'IGN-F/Géoportail',
                 type: 'wms',
+                version: '1.3.0'
             },
             'Natura 2000 Oiseaux': {
                 url: 'https://data.geopf.fr/wms-v/ows',
-                layers: 'PROTECTEDAREAS.ZPS',
+                layers: 'NATURA2000_ZPS',
                 format: 'image/png',
                 transparent: true,
                 attribution: 'IGN-F/Géoportail',
                 type: 'wms',
+                version: '1.3.0'
             },
             'Natura 2000 Habitat': {
                 url: 'https://data.geopf.fr/wms-v/ows',
-                layers: 'PROTECTEDAREAS.SIC',
+                layers: 'NATURA2000_SIC',
                 format: 'image/png',
                 transparent: true,
                 attribution: 'IGN-F/Géoportail',
                 type: 'wms',
+                version: '1.3.0'
             },
         },
     },
@@ -490,6 +494,7 @@ const MapLayersPanel = ({ map }) => {
                         attribution: layerConfig.attribution,
                         maxZoom: layerConfig.maxZoom || 20,
                         opacity: layerConfig.opacity || 1.0,
+                        version: layerConfig.version || '1.1.1'
                     });
                     newOverlayLayers[layerName] = wmsLayer;
                 }
@@ -513,6 +518,25 @@ const MapLayersPanel = ({ map }) => {
     const handleBaseLayerChange = (layerKey) => {
         setActiveBaseLayer(layerKey);
     };
+
+    // Support for external layer toggling (e.g. from bottom bar in ProjectEditor)
+    useEffect(() => {
+        const handleExternalToggle = (e) => {
+            const { layerKey } = e.detail;
+            // Search for the layer in all categories
+            for (const category of Object.values(overlayCategories)) {
+                if (category.layers[layerKey]) {
+                    const isChecked = !activeOverlays[layerKey];
+                    handleOverlayToggle(layerKey, isChecked);
+                    break;
+                }
+            }
+        };
+
+        window.addEventListener('map:toggle-layer', handleExternalToggle);
+        return () => window.removeEventListener('map:toggle-layer', handleExternalToggle);
+    }, [overlayCategories, activeOverlays, handleOverlayToggle]);
+
     const handleOverlayToggle = async (layerName, checked) => {
         setActiveOverlays(prev => {
             const newActive = { ...prev, [layerName]: checked };

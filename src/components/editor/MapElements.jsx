@@ -2275,8 +2275,8 @@ const LAYERS = {
   },
   "ZNIEFF 1": {
     name: "ZNIEFF 1",
-    url: "https://data.geopf.fr/wms-v/wms",
-    layers: "PROTECTEDAREAS.ZNIEFF1",
+    url: "https://data.geopf.fr/wms-v/ows",
+    layers: "ZNIEFF1",
     format: "image/png",
     transparent: true,
     attribution: "INPN",
@@ -2288,8 +2288,8 @@ const LAYERS = {
   },
   "ZNIEFF 2": {
     name: "ZNIEFF 2",
-    url: "https://data.geopf.fr/wms-v/wms",
-    layers: "PROTECTEDAREAS.ZNIEFF2",
+    url: "https://data.geopf.fr/wms-v/ows",
+    layers: "ZNIEFF2",
     format: "image/png",
     transparent: true,
     attribution: "INPN",
@@ -2301,8 +2301,8 @@ const LAYERS = {
   },
   "Natura 2000 Oiseaux": {
     name: "Natura 2000 Oiseaux",
-    url: "https://data.geopf.fr/wms-v/wms",
-    layers: "PROTECTEDAREAS.ZPS",
+    url: "https://data.geopf.fr/wms-v/ows",
+    layers: "NATURA2000_ZPS",
     format: "image/png",
     transparent: true,
     attribution: "INPN",
@@ -2314,8 +2314,8 @@ const LAYERS = {
   },
   "Natura 2000 Habitat": {
     name: "Natura 2000 Habitat",
-    url: "https://data.geopf.fr/wms-v/wms",
-    layers: "PROTECTEDAREAS.SIC",
+    url: "https://data.geopf.fr/wms-v/ows",
+    layers: "NATURA2000_SIC",
     format: "image/png",
     transparent: true,
     attribution: "INPN",

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, Outlet, NavLink, useNavigate, useMatch } from 'react-router-dom';
+import { Link, Outlet, NavLink, useNavigate, useMatch, useLocation } from 'react-router-dom';
 import Footer from './Footer.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useProject } from '../contexts/ProjectContext.jsx';
@@ -242,6 +242,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
   const isAlexandruMihailov = (user?.firstName?.toLowerCase().includes('alexandru') && user?.lastName?.toLowerCase().includes('mihailov')) || user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr';
   const isRestrictedUser = isLaurentGuyon || isAlexandruMihailov;
   const navigate = useNavigate();
+  const location = useLocation();
   const isProjectPage = useMatch("/project/:projectId/edit");
   const { project, saveProject, setProject } = useProject();
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -366,13 +367,18 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
   const handleSave = async () => {
     if (saveProject) {
       try {
-        await saveProject();
+        const saved = await saveProject();
         toast({
           ...toastStyle,
           title: "Projet sauvegardé !",
           description: "Vos modifications ont été enregistrées avec succès.",
           variant: "default"
         });
+
+        // Redirect to real URL if it was a new project
+        if (location.pathname.includes('/new/edit') && saved?.id) {
+          navigate(`/project/${saved.id}/edit`, { replace: true });
+        }
       } catch (error) {
         console.error("Erreur sauvegarde projet:", error);
         toast({
