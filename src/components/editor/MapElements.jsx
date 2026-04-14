@@ -2338,6 +2338,19 @@ const LAYERS = {
     maxNativeZoom: 18,
     maxZoom: 22
   },
+  irradiation: {
+    name: "Irradiation",
+    url: "https://data.geopf.fr/wms-r/wms",
+    layers: "IRRADIATION.SOLAIRE",
+    format: "image/png",
+    transparent: true,
+    attribution: "Solargis / IGN",
+    isOverlay: true,
+    zIndex: 106,
+    opacity: 0.6,
+    maxNativeZoom: 14,
+    maxZoom: 22
+  },
   abf: {
     name: "ABF (Zones AC1)",
     url: "https://data.geopf.fr/wms-v/ows",

@@ -347,6 +347,18 @@ const overlayCategories = {
             },
         },
     },
+    'Potentiel Solaire': {
+        layers: {
+            'Irradiation': {
+                url: 'https://data.geopf.fr/wms-r/wms',
+                layers: 'IRRADIATION.SOLAIRE',
+                format: 'image/png',
+                transparent: true,
+                attribution: 'Solargis / IGN',
+                type: 'wms',
+            },
+        },
+    },
     'Agriculture et occupation du sol': {
         layers: {
             'RPG (Parcelles agricoles)': {
