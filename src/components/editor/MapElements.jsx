@@ -2272,6 +2272,20 @@ const LAYERS = {
     zIndex: 55,
     minZoom: 8
   },
+  geodesie: {
+    name: "Géodésie et Nivellement",
+    url: "https://data.geopf.fr/wms-v/ows",
+    layers: "GEODESIE_DATA",
+    format: "image/png",
+    transparent: true,
+    attribution: "IGN Géodésie",
+    isOverlay: true,
+    zIndex: 108,
+    opacity: 1.0,
+    minZoom: 12,
+    maxNativeZoom: 18,
+    maxZoom: 22
+  },
   // Urbanisme
   zoneInondable: {
     name: "Zone Inondable",

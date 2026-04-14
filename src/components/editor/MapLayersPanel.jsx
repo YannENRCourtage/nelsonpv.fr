@@ -285,6 +285,20 @@ const overlayCategories = {
             },
         },
     },
+    'Géodésie et Nivellement': {
+        layers: {
+            'Géodésie et Nivellement': {
+                url: 'https://data.geopf.fr/wms-v/ows',
+                layers: 'GEODESIE_DATA',
+                format: 'image/png',
+                transparent: true,
+                attribution: 'IGN Géodésie',
+                type: 'wms',
+                version: '1.3.0',
+                minZoom: 12,
+            },
+        },
+    },
     'Environnement et zones protégées': {
         layers: {
             'Forêts publiques': {

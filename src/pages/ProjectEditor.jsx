@@ -1864,6 +1864,7 @@ export default function ProjectEditor() {
                     { key: 'lidarMNH', label: 'LiDAR Hauteur' },
                     { key: 'cartofriches', label: 'Cartofriches' },
                     { key: 'cadastreSolaire', label: 'Cadastre solaire' },
+                    { key: 'geodesie', label: 'Géodésie' },
                     { key: 'postesSourcesRTE', label: 'Postes Sources RTE' },
                   ].map(layer => (
                     <button
@@ -1925,6 +1926,7 @@ export default function ProjectEditor() {
                         { key: 'lidarMNH', label: 'LiDAR Haut.' },
                         { key: 'cartofriches', label: 'Cartofriches' },
                         { key: 'cadastreSolaire', label: 'Cadastre sol.' },
+                        { key: 'geodesie', label: 'Géodésie' },
                         { key: 'postesSourcesRTE', label: 'P. Sources RTE' },
                       ].map(layer => (
                         <button
