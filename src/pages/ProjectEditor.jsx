@@ -1866,6 +1866,7 @@ export default function ProjectEditor() {
                     { key: 'parkingSup500', label: 'Parking >500m²' },
                     { key: 'cadastreSolaire', label: 'Cadastre solaire' },
                     { key: 'zaer', label: 'ZAER' },
+                    { key: 'loiLittoral', label: 'Loi littoral' },
                     { key: 'postesSourcesRTE', label: 'Postes Sources RTE' },
                   ].map(layer => (
                     <button
@@ -1929,6 +1930,7 @@ export default function ProjectEditor() {
                         { key: 'parkingSup500', label: 'Park. >500m²' },
                         { key: 'cadastreSolaire', label: 'Cadastre sol.' },
                         { key: 'zaer', label: 'ZAER' },
+                        { key: 'loiLittoral', label: 'Loi lit.' },
                         { key: 'postesSourcesRTE', label: 'P. Sources RTE' },
                       ].map(layer => (
                         <button

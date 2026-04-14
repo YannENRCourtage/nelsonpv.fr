@@ -297,13 +297,21 @@ const overlayCategories = {
                 url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=PROTECTEDAREAS.RN&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
                 attribution: 'IGN-F/Géoportail',
                 type: 'tile',
-            },
             'ZAER': {
                 url: 'https://data.geopf.fr/wms-v/ows?key=enr',
                 layers: 'AC_ARRETE_ZAER',
                 format: 'image/png',
                 transparent: true,
                 attribution: 'Cerema / IGN',
+                type: 'wms',
+                version: '1.3.0'
+            },
+            'Loi littoral': {
+                url: 'https://data.geopf.fr/wms-v/ows',
+                layers: 'Patrinat_Conservatoire_littoral',
+                format: 'image/png',
+                transparent: true,
+                attribution: 'Conservatoire du littoral / INPN',
                 type: 'wms',
                 version: '1.3.0'
             },
