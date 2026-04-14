@@ -2901,6 +2901,7 @@ function LayersBootstrap({ layersRef }) {
           layers: layerDef.layers,
           format: layerDef.format || 'image/png',
           transparent: layerDef.transparent !== false,
+          version: layerDef.version || '1.3.0',
           attribution: layerDef.attrib || layerDef.attribution,
           minZoom: layerDef.minZoom || 0,
           maxZoom: layerDef.maxZoom || 20,
