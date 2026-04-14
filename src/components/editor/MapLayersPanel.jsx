@@ -303,7 +303,7 @@ const overlayCategories = {
             },
             'Cadastre solaire': {
                 url: 'https://data.geopf.fr/wms-v/ows',
-                layers: 'CADASTRES.SOLAIRES.LOCAUX',
+                layers: 'CADASTRES.SOLAIRES.DETAILLES',
                 format: 'image/png',
                 transparent: true,
                 attribution: 'Cerema / IGN',

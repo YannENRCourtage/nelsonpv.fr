@@ -2300,13 +2300,14 @@ const LAYERS = {
   cadastreSolaire: {
     name: "Cadastre solaire",
     url: "https://data.geopf.fr/wms-v/ows",
-    layers: "CADASTRES.SOLAIRES.LOCAUX",
+    layers: "CADASTRES.SOLAIRES.DETAILLES",
     format: "image/png",
     transparent: true,
     attribution: "Cerema / IGN",
     isOverlay: true,
     zIndex: 107,
-    opacity: 0.7,
+    opacity: 0.8,
+    minZoom: 14,
     maxNativeZoom: 18,
     maxZoom: 22
   },
