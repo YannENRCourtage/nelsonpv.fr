@@ -1863,6 +1863,7 @@ export default function ProjectEditor() {
                     { key: 'sdis', label: 'SDIS' },
                     { key: 'lidarMNH', label: 'LiDAR Hauteur' },
                     { key: 'cartofriches', label: 'Cartofriches' },
+                    { key: 'parkingSup500', label: 'Parking >500m²' },
                     { key: 'cadastreSolaire', label: 'Cadastre solaire' },
                     { key: 'postesSourcesRTE', label: 'Postes Sources RTE' },
                   ].map(layer => (
@@ -1924,6 +1925,7 @@ export default function ProjectEditor() {
                         { key: 'sdis', label: 'SDIS' },
                         { key: 'lidarMNH', label: 'LiDAR Haut.' },
                         { key: 'cartofriches', label: 'Cartofriches' },
+                        { key: 'parkingSup500', label: 'Park. >500m²' },
                         { key: 'cadastreSolaire', label: 'Cadastre sol.' },
                         { key: 'postesSourcesRTE', label: 'P. Sources RTE' },
                       ].map(layer => (

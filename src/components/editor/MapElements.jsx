@@ -2311,6 +2311,20 @@ const LAYERS = {
     maxNativeZoom: 18,
     maxZoom: 22
   },
+  parkingSup500: {
+    name: "Parking >500m²",
+    url: "https://data.geopf.fr/wms-v/ows",
+    layers: "PARKING.SUP.500",
+    format: "image/png",
+    transparent: true,
+    attribution: "Cerema / IGN",
+    isOverlay: true,
+    zIndex: 108,
+    opacity: 0.8,
+    minZoom: 10,
+    maxNativeZoom: 18,
+    maxZoom: 22
+  },
   "ZNIEFF 1": {
     name: "ZNIEFF 1",
     url: "https://data.geopf.fr/wms-v/ows",
@@ -2585,6 +2599,48 @@ function SDISLegend({ layersRef }) {
           <div className="w-3 h-3 rounded-sm bg-[#3B82F6] border border-[#1E40AF]"></div>
           <span>Réserve / Point d'eau</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ====================================================================
+// LÉGENDE PARKING >500M²
+// ====================================================================
+function ParkingLegend({ layersRef }) {
+  const map = useMap();
+  const [showLegend, setShowLegend] = useState(false);
+
+  useEffect(() => {
+    const checkLayer = () => {
+      const layer = layersRef.current['parkingSup500'];
+      setShowLegend(layer && map.hasLayer(layer));
+    };
+    checkLayer();
+    const interval = setInterval(checkLayer, 500);
+    return () => clearInterval(interval);
+  }, [map, layersRef]);
+
+  if (!showLegend) return null;
+
+  return (
+    <div
+      className="absolute bottom-[200px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[210px]"
+      style={{ userSelect: 'none' }}
+    >
+      <div className="flex justify-between items-center mb-2">
+        <h4 className="font-bold text-xs text-gray-900">Légende Parkings</h4>
+        <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded">
+          <XIcon className="h-3 w-3" />
+        </button>
+      </div>
+      <div className="space-y-1">
+        <img 
+          src="https://data.geopf.fr/wms-v/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=PARKING.SUP.500" 
+          alt="Légende Parkings >500m²"
+          className="max-w-full h-auto"
+        />
+        <p className="text-[10px] text-gray-500 italic mt-1">Recensement des parkings de plus de 500m²</p>
       </div>
     </div>
   );
@@ -4302,6 +4358,7 @@ export default function MapElements({
           <RPGLegend layersRef={layersRef} />
           <ZoneInondableLegend layersRef={layersRef} />
           <SDISLegend layersRef={layersRef} />
+          <ParkingLegend layersRef={layersRef} />
 
           {window.innerWidth > 1024 && (
             <div className="hidden lg:block">

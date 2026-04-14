@@ -302,6 +302,15 @@ const overlayCategories = {
                 attribution: 'IGN-F/Géoportail',
                 type: 'tile',
             },
+            'Parking >500m²': {
+                url: 'https://data.geopf.fr/wms-v/ows',
+                layers: 'PARKING.SUP.500',
+                format: 'image/png',
+                transparent: true,
+                attribution: 'Cerema / IGN',
+                type: 'wms',
+                version: '1.3.0'
+            },
             'Cadastre solaire': {
                 url: 'https://data.geopf.fr/wms-v/ows',
                 layers: 'CADASTRES.SOLAIRES.DETAILLES',
@@ -1057,5 +1066,8 @@ const MapLayersPanel = ({ map }) => {
             </CardContent>
         </Card >
     );
-};
+}
+
+
+
 export default MapLayersPanel;
