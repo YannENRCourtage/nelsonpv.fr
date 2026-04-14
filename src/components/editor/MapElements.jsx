@@ -2173,6 +2173,11 @@ const ENEDIS_HTA_SLD = `
 // ====================================================================
 const LAYERS = {
   // ========== FONDS DE CARTE ==========
+  geoportailSat: { name: "Géoportail", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0, maxNativeZoom: 19, maxZoom: 22 },
+  googleSat: { name: "Google Satellite", url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0, maxZoom: 22 },
+  google: { name: "Google", url: "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0, maxZoom: 22 },
+  ignPlan: { name: "IGN - Plan IGN", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0, maxNativeZoom: 18, maxZoom: 22 },
+  osm: { name: "Plan OSM", url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attrib: '© OpenStreetMap contributors', zIndex: 0, maxNativeZoom: 19, maxZoom: 22 },
   solargis: { 
     name: "Irradiation solaire (Solargis)", 
     url: "https://data.geopf.fr/wms-r/ows", 
@@ -2185,12 +2190,6 @@ const LAYERS = {
     zIndex: 0, 
     maxZoom: 22 
   },
-  geoportailSat: { name: "Géoportail", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0, maxNativeZoom: 19, maxZoom: 22 },
-  googleSat: { name: "Google Satellite", url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0, maxZoom: 22 },
-  google: { name: "Google", url: "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0, maxZoom: 22 },
-  ignPlan: { name: "IGN - Plan IGN", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0, maxNativeZoom: 18, maxZoom: 22 },
-  osm: { name: "Plan OSM", url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attrib: '© OpenStreetMap contributors', zIndex: 0, maxNativeZoom: 19, maxZoom: 22 },
-  lidarMNT: { name: "LiDAR HD - Terrain (MNT)", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN LiDAR HD', zIndex: 0, maxNativeZoom: 19, maxZoom: 22 },
 
   // ========== CALQUES OVERLAY ==========
   // Cadastre & Bâtiments
@@ -2385,16 +2384,6 @@ const LAYERS = {
     isOverlay: true,
     zIndex: 106,
     color: '#800080'
-  },
-  lidarMNS: {
-    name: "LiDAR HD - Surface (MNS)",
-    url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=IGNF_LIDAR-HD_MNS_ELEVATION.ELEVATIONGRIDCOVERAGE.SHADOW&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",
-    attrib: '© IGN LiDAR HD',
-    isOverlay: true,
-    zIndex: 120,
-    opacity: 0.8,
-    maxNativeZoom: 19,
-    maxZoom: 22
   },
   lidarMNH: {
     name: "LiDAR HD - Hauteur (MNH)",
@@ -2976,7 +2965,7 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
   const DEFAULT_LNG = -0.671985;
 
   useEffect(() => {
-    if (!hasInitializedFromProject && project?.gps) {
+    if (!hasInitializedFromProject && project?.gps && typeof project.gps === 'string') {
       const parts = project.gps.split(',');
       if (parts.length === 2) {
         const plat = parseFloat(parts[0].trim());
@@ -3991,15 +3980,9 @@ function AltiMouseIndicator({ activeLayers, layersRef }) {
 
   const isLiDARActive = useMemo(() => {
     if (!map || !layersRef.current) return false;
-    // Check overlays
-    const overlays = ['lidarMNT', 'lidarMNS', 'lidarMNH'];
+    const overlays = ['lidarMNH'];
     const hasActiveOverlay = overlays.some(k => activeLayers?.has(k));
     if (hasActiveOverlay) return true;
-
-    // Check base layer (lidarMNT can be a base layer)
-    try {
-      if (layersRef.current['lidarMNT'] && map.hasLayer(layersRef.current['lidarMNT'])) return true;
-    } catch(e) {}
     
     return false;
   }, [activeLayers, map, layersRef.current]);

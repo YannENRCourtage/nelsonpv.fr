@@ -1861,8 +1861,6 @@ export default function ProjectEditor() {
                     { key: 'gaz', label: 'GAZ' },
                     { key: 'abf', label: 'ABF' },
                     { key: 'sdis', label: 'SDIS' },
-                    { key: 'lidarMNT', label: 'LiDAR Terrain' },
-                    { key: 'lidarMNS', label: 'LiDAR Surface' },
                     { key: 'lidarMNH', label: 'LiDAR Hauteur' },
                     { key: 'postesSourcesRTE', label: 'Postes Sources RTE' },
                   ].map(layer => (
@@ -1922,8 +1920,6 @@ export default function ProjectEditor() {
                         { key: 'gaz', label: 'GAZ' },
                         { key: 'abf', label: 'ABF' },
                         { key: 'sdis', label: 'SDIS' },
-                        { key: 'lidarMNT', label: 'LiDAR Terr.' },
-                        { key: 'lidarMNS', label: 'LiDAR Surf.' },
                         { key: 'lidarMNH', label: 'LiDAR Haut.' },
                         { key: 'postesSourcesRTE', label: 'P. Sources RTE' },
                       ].map(layer => (
