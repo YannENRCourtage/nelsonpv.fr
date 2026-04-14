@@ -299,7 +299,7 @@ const overlayCategories = {
                 type: 'tile',
             'ZAER': {
                 url: 'https://data.geopf.fr/wms-v/ows?key=enr',
-                layers: 'AC_ARRETE_ZAER',
+                layers: 'ZAER:zaer',
                 format: 'image/png',
                 transparent: true,
                 attribution: 'Cerema / IGN',
