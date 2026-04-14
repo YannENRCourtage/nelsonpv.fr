@@ -152,6 +152,17 @@ const baseLayers = {
         attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap',
         maxZoom: 17,
     },
+    irradiation: {
+        name: 'Irradiation solaire (Solargis)',
+        url: 'https://data.geopf.fr/wms-r/wms',
+        layers: 'IRRADIATION.SOLAIRE',
+        attribution: 'Solargis / IGN',
+        type: 'wms',
+        format: 'image/png',
+        transparent: true,
+        version: '1.3.0',
+        maxZoom: 19,
+    },
 };
 // Overlay layers with comprehensive French data
 const overlayCategories = {
@@ -347,18 +358,6 @@ const overlayCategories = {
             },
         },
     },
-    'Potentiel Solaire': {
-        layers: {
-            'Irradiation': {
-                url: 'https://data.geopf.fr/wms-r/wms',
-                layers: 'IRRADIATION.SOLAIRE',
-                format: 'image/png',
-                transparent: true,
-                attribution: 'Solargis / IGN',
-                type: 'wms',
-            },
-        },
-    },
     'Agriculture et occupation du sol': {
         layers: {
             'RPG (Parcelles agricoles)': {
@@ -466,7 +465,16 @@ const MapLayersPanel = ({ map }) => {
         const newBaseLayers = {};
         Object.entries(baseLayers).forEach(([key, layerConfig]) => {
             let layer;
-            if (layerConfig.subdomains) {
+            if (layerConfig.type === 'wms') {
+                layer = L.tileLayer.wms(layerConfig.url, {
+                    layers: layerConfig.layers,
+                    format: layerConfig.format || 'image/png',
+                    transparent: layerConfig.transparent !== false,
+                    attribution: layerConfig.attribution,
+                    version: layerConfig.version || '1.3.0',
+                    maxZoom: layerConfig.maxZoom || 19,
+                });
+            } else if (layerConfig.subdomains) {
                 layer = L.tileLayer(layerConfig.url, {
                     attribution: layerConfig.attribution,
                     maxZoom: layerConfig.maxZoom,
