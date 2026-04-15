@@ -639,6 +639,7 @@ export function ControlPanel({ isAcama = false }) {
                                         <input
                                             type="number"
                                             step="0.1"
+                                            max={customParams.leftEaveHeight}
                                             value={customParams.leftExtHeight}
                                             onChange={(e) => updateCustomParams({ leftExtHeight: Number(e.target.value) })}
                                             className="w-full px-2 py-1 border rounded-md text-sm"
@@ -687,6 +688,7 @@ export function ControlPanel({ isAcama = false }) {
                                         <input
                                             type="number"
                                             step="0.1"
+                                            max={customParams.rightEaveHeight}
                                             value={customParams.rightExtHeight}
                                             onChange={(e) => updateCustomParams({ rightExtHeight: Number(e.target.value) })}
                                             className="w-full px-2 py-1 border rounded-md text-sm"

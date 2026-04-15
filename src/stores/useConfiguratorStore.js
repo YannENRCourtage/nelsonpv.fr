@@ -597,6 +597,14 @@ export const useConfiguratorStore = create((set, get) => ({
                 }
             }
 
+            // 6. CLAMP EXTENSIONS HEIGHT TO BUILDING HEIGHT
+            if (newParams.leftExtHeight > newParams.leftEaveHeight) {
+                newParams.leftExtHeight = newParams.leftEaveHeight;
+            }
+            if (newParams.rightExtHeight > newParams.rightEaveHeight) {
+                newParams.rightExtHeight = newParams.rightEaveHeight;
+            }
+
             return { customParams: newParams };
         });
     },
