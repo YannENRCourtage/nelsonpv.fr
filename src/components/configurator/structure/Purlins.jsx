@@ -220,16 +220,11 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
                 const yLocal = -dist * Math.sin(angleRad); // Go Down
 
                 // Normal Vector for Perpendicular Offset
-                // Slope is Down-Right (-Angle). Normal is (+Sin, +Cos)? 
-                // Wait. Vector (1, -tan). Normal (tan, 1).
-                // Or simply: Previous was (+Angle). 
-                // Now we are rotating -Angle.
-                // Left-to-Right Descending.
-                // Perpendicular is "Up-Right"? No, "Up-Left" (Normal to surface).
-                // Surface Normal for -Angle: (-sin(-a), cos(-a)) -> (sin a, cos a).
-
-                const xPerp = perpOffset * Math.sin(angleRad);
-                const yPerp = perpOffset * Math.cos(angleRad);
+                // Structural Line (ridgeHeight) is now Rafter Top. 
+                // Purlin center should be purlinHeight/2 above that.
+                const appliedPerpOffset = (purlinHeight / 2) + 0.001;
+                const xPerp = appliedPerpOffset * Math.sin(angleRad);
+                const yPerp = appliedPerpOffset * Math.cos(angleRad);
 
                 purlins.push(
                     <mesh
@@ -667,8 +662,9 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
                     const dist = i * purlinSpacing;
                     const xLocal = dist * Math.cos(monoAngle);
                     const yLocal = -dist * Math.sin(monoAngle); // DESCEND vers la droite
-                    const xP = pOffset * Math.sin(monoAngle);
-                    const yP = pOffset * Math.cos(monoAngle);
+                    const appliedP = (purlinHeight / 2) + 0.001; 
+                    const xP = appliedP * Math.sin(monoAngle);
+                    const yP = appliedP * Math.cos(monoAngle);
                     customPurlins.push(
                         <mesh key={`Bay${bayIndex}-C-Mono-${i}`} geometry={bayGeometry} material={material}
                             position={[-halfWidth + xLocal + xP, cp.ridgeHeight + yLocal + yP, zStart]}

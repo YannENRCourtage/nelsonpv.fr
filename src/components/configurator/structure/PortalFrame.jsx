@@ -340,8 +340,8 @@ export function PortalFrame({
                 <mesh geometry={rightColumnGeo} material={steelMaterial} position={[width / 2, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
 
                 {/* Single Rafter */}
-                {/* Group Position: Top of Left Column (Ridge Height) */}
-                <group position={[-width / 2, ridgeHeight, 0]} rotation={[0, 0, derivedAngle]}>
+                {/* Position pivot precisely: Midline is exactly 'rafterOffset' below the structural ridge/eave line */}
+                <group position={[-width / 2, ridgeHeight - (0.20 / Math.cos(lAngle)), 0]} rotation={[0, 0, derivedAngle]}>
                     {/* Shift Mesh X by -overhang so it starts at left outer edge */}
                     <mesh geometry={monoRafterGeo} material={steelMaterial} position={[-monoSlantedOverhang, 0, 0]} rotation={[0, Math.PI / 2, 0]} castShadow receiveShadow />
                 </group>

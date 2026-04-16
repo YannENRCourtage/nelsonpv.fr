@@ -176,10 +176,11 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
 
     // --- A. MONOPENTE ---
     if (isMonopente) {
-        // Offset Logic
+        // Offset Logic: Follow the slope and stay 10cm above Z140 purlins (140mm)
+        // Structural Line = Rafter Top (set in PortalFrame)
         const purlinHeight = 0.140;
-        const roofThickness = 0.001;
-        const perpOffset = (purlinHeight / 2) + (roofThickness / 2) + 0.35;
+        const gap = 0.10; // Requested gap
+        const perpOffset = purlinHeight + gap; // Total lift from rafter top
 
         const centerY = eaveHeight + (monoDeltaH / 2);
         // Normal to slope (-angle) is (sin, cos)
@@ -191,11 +192,11 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
                 <mesh
                     geometry={monoGeometry}
                     material={roofMaterial}
-                    position={[offX, centerY + offY - 0.06, -length - 0.5]}
+                    position={[offX, centerY + offY, -length - 0.5]}
                     rotation={[0, 0, -monoSlopeAngle]} // Negative Angle
                     castShadow receiveShadow
                 />
-                <group position={[offX, centerY + offY - 0.06, -length / 2]} rotation={[0, 0, -monoSlopeAngle]}>
+                <group position={[offX, centerY + offY, -length / 2]} rotation={[0, 0, -monoSlopeAngle]}>
                     <SolarPanels surfaceWidth={monoSlopeLength} surfaceLength={length + 1.0} />
                 </group>
             </group>
@@ -642,7 +643,9 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         const leftGeo = new THREE.ExtrudeGeometry(leftProfile, { depth: l + 1.0, bevelEnabled: false });
         const rightGeo = rightProfile ? new THREE.ExtrudeGeometry(rightProfile, { depth: l + 1.0, bevelEnabled: false }) : null;
 
-        const pOffsetCustom = (0.140 / 2) + (0.001 / 2) + 0.35 + 0.10;
+        const pOffsetCustom = cp.buildingType === 'monopente' 
+            ? (0.140 + 0.10) // PurlinHeight + 10cm gap for Monopente
+            : (0.140 / 2) + (0.001 / 2) + 0.35 + 0.10;
         const apexX = isMono ? -width/2 : (-width / 2 + spans.left);
         const ridgeY = cp.ridgeHeight;
 

@@ -78,7 +78,7 @@ export function ControlPanel({ isAcama = false }) {
                         onClick={() => setConfigMode('predefined')}
                         className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${configMode === 'predefined' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
                     >
-                        Gamme ECO-EVO
+                        {isAcama ? "Bâtiments prédéfinis" : "Gamme ECO-EVO"}
                     </button>
                     <button
                         onClick={() => setConfigMode('custom')}
