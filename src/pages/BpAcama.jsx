@@ -507,11 +507,11 @@ function computeBatteryProfitability(config) {
     disponibilite = 98,
     rendementRoundTrip = 88,
     maintenanceAn = 1500,
-    revenuBailleurAn = 2500,
+    revenuBailleurAn = 1250,
     gestionChargeAn = 4562.5,
     assuranceAn = 353,
     retributionCommAn = 0,
-    commissionAgregateur = 20,
+    commissionAgregateur = 18,
     turpeAn = 2500,
     iferAn = 625,
     tauxEmprunt = 4,
@@ -984,14 +984,10 @@ function TableauPrevisionnelBatterie({ rows, detailed }) {
               <td className="px-2 py-1 border-r border-b border-slate-300">Chiffre d'Affaires (HT)</td>
               {rows.map((_, i) => <td key={i} className="border-r border-b border-slate-300"></td>)}
             </tr>
-            {detailed && (
-              <>
-                <DataRow label="Arbitrage énergie" propName="arbitrage" isCurrency indent />
-                <DataRow label="Réserve (FCR/aFRR)" propName="reserve" isCurrency indent />
-                <DataRow label="Mécanisme de capacité" propName="capacite" isCurrency indent />
-                <DataRow label="Effacement" propName="effacement" isCurrency indent />
-              </>
-            )}
+            <DataRow label="Arbitrage énergie" propName="arbitrage" isCurrency indent />
+            <DataRow label="Réserve (FCR/aFRR)" propName="reserve" isCurrency indent />
+            <DataRow label="Mécanisme de capacité" propName="capacite" isCurrency indent />
+            <DataRow label="Effacement" propName="effacement" isCurrency indent />
             <DataRow label="TOTAL REVENUS" propName="caTotal" isCurrency bold className="bg-slate-50" />
 
             <tr className="bg-slate-100 font-bold uppercase text-[11px]">
@@ -1079,7 +1075,7 @@ function BatterySection({ config, setParams }) {
         mecanismeCapacite: 20 * p,
         effacement: 20 * p,
         maintenanceAn: 6 * p,
-        revenuBailleurAn: 2500 * qty,
+        revenuBailleurAn: 1250 * qty,
         gestionChargeAn: 4562.5 * qty,
         retributionCommAn: rettComm,
         turpeAn: 20 * p,
@@ -1214,19 +1210,21 @@ function BatterySection({ config, setParams }) {
             <Field label="Comm. Agrégateur" value={config.commissionAgregateur} onChange={v => update('commissionAgregateur', v)} type="number" suffix="%" />
             <Field label="TURPE /an" value={config.turpeAn} onChange={v => update('turpeAn', v)} type="number" suffix="€" />
             <Field label="IFER /an" value={config.iferAn} onChange={v => update('iferAn', v)} type="number" suffix="€" />
-            <div className="pt-2 border-t border-slate-100 mt-2">
-               <div className="flex flex-col gap-1.5 mb-2">
-                 <label className="text-[13px] text-slate-500">Durée d'étude</label>
+            <div className="pt-2 border-t border-slate-100 mt-2 space-y-3">
+               <div className="flex items-center justify-between">
+                 <label className="text-[13px] text-slate-500 font-bold uppercase">Durée d'étude</label>
                  <select 
-                   className="border border-slate-200 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-500 h-[30px]"
+                   className="border border-slate-200 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-500 h-[30px] w-24"
                    value={config.dureeEtude || 12}
                    onChange={e => update('dureeEtude', parseInt(e.target.value))}
                  >
                    {[10, 12, 15, 20, 25, 30].map(v => <option key={v} value={v}>{v} ans</option>)}
                  </select>
                </div>
-               <Field label="Inflation ann." value={config.inflationAnnuelle} onChange={v => update('inflationAnnuelle', v)} type="number" suffix="%" />
-               <Field label="Dégradation ann." value={config.degradationAnnuelle} onChange={v => update('degradationAnnuelle', v)} type="number" suffix="%" />
+               <div className="grid grid-cols-2 gap-4">
+                 <Field label="Inflation ann." value={config.inflationAnnuelle} onChange={v => update('inflationAnnuelle', v)} type="number" suffix="%" />
+                 <Field label="Dégradation ann." value={config.degradationAnnuelle} onChange={v => update('degradationAnnuelle', v)} type="number" suffix="%" />
+               </div>
             </div>
           </div>
         </div>
@@ -1236,6 +1234,8 @@ function BatterySection({ config, setParams }) {
              <div className="space-y-3">
                 <h4 className="text-[12px] font-black text-blue-400 uppercase tracking-widest border-b border-white/10 pb-2">Indicateurs de Rentabilité</h4>
                 <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">CAPEX TOTAL</span><span className="font-bold text-lg">{fmtEur(results.capexTotal)}</span></div>
+                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-bold">REVENUS AN 1</span><span className="font-bold text-lg">{fmtEur(results.revenuAn1)}</span></div>
+                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-black text-blue-400">EBE AN 1</span><span className="font-bold text-lg text-blue-400">{fmtEur(results.ebeAn1)}</span></div>
                 <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-black">GAIN NET 20 ANS</span><span className="font-bold text-lg text-green-400">{fmtEur(results.gainNet20A)}</span></div>
                 <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-black">GAIN NET {config.dureeEtude || 12} ANS</span><span className="font-bold text-lg text-green-400">{fmtEur(results.gainNetEtude)}</span></div>
                 
