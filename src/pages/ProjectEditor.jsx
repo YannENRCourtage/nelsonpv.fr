@@ -29,7 +29,7 @@ import { ACAMA_PREDEFINED_BUILDINGS } from "@/data/simulatorPredefinedBuildings"
 import { calculateRequiredResteACharge } from "@/lib/profitabilityCalculations";
 import enedisService from "@/services/enedis";
 import ConsumptionChart from "@/components/enedis/ConsumptionChart";
-import { BATTERY_MODELS } from "@/data/batteryModels";
+import { BATTERY_MODELS } from "@/data/batteryModels.js";
 
 const INCLINATION_OPTIONS = Array.from({ length: 91 }, (_, i) => {
   const percentage = Math.tan(i * Math.PI / 180) * 100;
@@ -2400,8 +2400,6 @@ export default function ProjectEditor() {
                     </Button>
                   </div>
                 )}
-              </div>
-            )}
               </div>
             )}
           </div>
