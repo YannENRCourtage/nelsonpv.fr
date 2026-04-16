@@ -632,6 +632,7 @@ function computeBatteryProfitability(config) {
     gainNet20A,
     totalOpexStudy,
     totalRevenueStudy,
+    beneficeSurDureeEtude: totalRevenueStudy - capexTotal - totalOpexStudy,
     rows
   };
 }
@@ -1275,6 +1276,13 @@ function BatterySection({ config, setParams }) {
                    <div className="text-center">
                       <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Total recettes</div>
                       <div className="text-[13px] font-black text-green-500">{fmtEur(results.totalRevenueStudy)}</div>
+                   </div>
+                 </div>
+
+                 <div className="mt-4 pt-3 border-t border-white/20">
+                   <div className="flex justify-between items-center bg-blue-500/10 p-2 rounded">
+                      <span className="text-[11px] opacity-70 uppercase font-black">Bénéfice sur la durée d'étude</span>
+                      <span className="text-xl font-black text-white">{fmtEur(results.beneficeSurDureeEtude)}</span>
                    </div>
                  </div>
              </div>
@@ -3896,7 +3904,7 @@ export default function BpAcama() {
       enabled: false,
       isGlobal: false,
       inflationAnnuelle: 2,
-      degradationAnnuelle: 2,
+      degradationAnnuelle: 1,
       batterieBms: 33625,
       onduleurPcs: 0,
       genieCivil: 6000,
@@ -3936,7 +3944,7 @@ export default function BpAcama() {
       enabled: false,
       isGlobal: false,
       inflationAnnuelle: 2,
-      degradationAnnuelle: 2,
+      degradationAnnuelle: 1,
       batteryModelKey: 'solax',
       nbBricks: 1,
       batterieBms: 57583,
