@@ -2112,7 +2112,7 @@ export default function ProjectEditor() {
                   activeConfigTab === 'buildings' ? "text-blue-600 border-blue-600" : "text-gray-400 border-transparent hover:text-gray-600"
                 )}
               >
-                Gamme ECO-EVO
+                Bâtiments prédéfinis
               </button>
               <button
                 type="button"
@@ -2136,33 +2136,6 @@ export default function ProjectEditor() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Modèle de batterie</label>
-                  <Select value={selectedBatteryId} onValueChange={setSelectedBatteryId}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Sélectionnez un modèle" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BATTERY_MODELS.map(model => (
-                        <SelectItem key={model.id} value={model.id}>
-                          {model.brand} - {model.model}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1 block">Quantité</label>
-                  <Input 
-                    type="number" 
-                    min="1" 
-                    value={batteryQuantity} 
-                    onChange={e => setBatteryQuantity(parseInt(e.target.value) || 1)} 
-                    className="w-full"
-                  />
-                </div>
-
                 {(() => {
                   const model = BATTERY_MODELS.find(m => m.id === selectedBatteryId);
                   if (!model) return null;
@@ -2172,41 +2145,78 @@ export default function ProjectEditor() {
                   const ratio = totalPrice / totalPower;
 
                   return (
-                    <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                      <div>
-                        <div className="text-[10px] text-gray-500 uppercase font-bold">Prix Total</div>
-                        <div className="text-sm font-bold text-gray-900">{totalPrice.toLocaleString('fr-FR')} €</div>
+                    <>
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold">Bâtiments prédéfinis</h3>
+                        <Button 
+                          onClick={() => {
+                            window.dispatchEvent(new CustomEvent('map:place-battery', { 
+                              detail: { 
+                                model: model,
+                                quantity: batteryQuantity
+                              } 
+                            }));
+                          }}
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          Insérer
+                        </Button>
                       </div>
-                      <div>
-                        <div className="text-[10px] text-gray-500 uppercase font-bold">Puissance</div>
-                        <div className="text-sm font-bold text-gray-900">{totalPower} kW</div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1">
+                          <label className="text-xs font-medium text-gray-500 uppercase mb-1 block">Modèle</label>
+                          <Select value={selectedBatteryId} onValueChange={setSelectedBatteryId}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {BATTERY_MODELS.map(m => (
+                                <SelectItem key={m.id} value={m.id}>
+                                  {m.brand} - {m.model}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="w-[80px]">
+                          <label className="text-xs font-medium text-gray-500 uppercase mb-1 block">Quantité</label>
+                          <Input 
+                            type="number" 
+                            min="1" 
+                            value={batteryQuantity} 
+                            onChange={e => setBatteryQuantity(parseInt(e.target.value) || 1)} 
+                            className="w-full"
+                          />
+                        </div>
+                        <div className="flex flex-col items-end min-w-[80px]">
+                          <span className="text-xs font-medium text-gray-500 uppercase mb-1 block">Ratio</span>
+                          <span className="text-sm font-bold text-red-600">{ratio.toFixed(2)} €</span>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-[10px] text-gray-500 uppercase font-bold">Capacité</div>
-                        <div className="text-sm font-bold text-gray-900">{totalCapacity} kWh</div>
+
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-2 p-3 bg-gray-50 rounded-xl border border-gray-100 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Prix Total:</span>
+                          <span className="font-bold">{totalPrice.toLocaleString('fr-FR')} €</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Puissance:</span>
+                          <span className="font-bold">{totalPower} kW</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Capacité:</span>
+                          <span className="font-bold">{totalCapacity} kWh</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Ratio (€/kW):</span>
+                          <span className="font-bold">{ratio.toFixed(2)}</span>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-[10px] text-gray-500 uppercase font-bold">Ratio (€/kW)</div>
-                        <div className="text-sm font-bold text-gray-900">{ratio.toFixed(2)}</div>
-                      </div>
-                    </div>
+                    </>
                   );
                 })()}
-
-                <Button 
-                  onClick={() => {
-                    const model = BATTERY_MODELS.find(m => m.id === selectedBatteryId);
-                    window.dispatchEvent(new CustomEvent('map:place-battery', { 
-                      detail: { 
-                        model: model,
-                        quantity: batteryQuantity
-                      } 
-                    }));
-                  }}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Insérer sur la carte
-                </Button>
               </div>
             )}
           </div>
@@ -2306,7 +2316,7 @@ export default function ProjectEditor() {
                   className={cn("transition-colors", activeConfigTab === 'buildings' ? "text-blue-600" : "text-gray-400")}
                   onClick={(e) => { e.stopPropagation(); setActiveConfigTab('buildings'); setIsBuildingsOpen(true); }}
                 >
-                  🏗️ Gamme ECO-EVO
+                  🏗️ Bâtiments prédéfinis
                 </span>
                 <span className="text-gray-300">|</span>
                 <span 
