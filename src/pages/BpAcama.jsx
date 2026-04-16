@@ -2523,22 +2523,20 @@ function TabBpProjets({
             <p className="text-center text-slate-400 italic text-sm py-4 border-t border-slate-100">PROJET BATTERIE STAND-ALONE (SANS BÂTIMENT PV)</p>
          </div>
       )}
-      </div>
+      {/* Battery Section (Full Width) */}
+      {params.batteryConfig?.enabled && (
+        <div className="w-full">
+           <BatterySection config={params.batteryConfig} setParams={setParams} />
+        </div>
+      )}
 
-        {/* Battery Section (Full Width) */}
-        {params.batteryConfig?.enabled && (
-          <div className="w-full">
-             <BatterySection config={params.batteryConfig} setParams={setParams} />
-          </div>
-        )}
-
-        {/* Page 2 (or 3 if battery) */}
-        <div id="pdf-section-2" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
-          <div className="mt-4">
-            <TableauPrevisionnel params={collapsedParams} rows={rows} apport10={bpResults.apport10} />
-          </div>
+      {/* Page 2 (or 3 if battery) */}
+      <div id="pdf-section-2" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-6 pt-12 relative overflow-hidden">
+        <div className="mt-4">
+          <TableauPrevisionnel params={collapsedParams} rows={rows} apport10={bpResults.apport10} />
         </div>
       </div>
+    </div>
   );
 }
 
