@@ -639,22 +639,27 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             {/* 3. EAVE HEIGHT (Left/Standard) */}
             {heightPoints && buildingType !== 'asymetrique_2' && !isEpona && !isTalian && (
                 <group>
-                    <Line points={heightPoints[0]} color={lineColor} lineWidth={lineWidth} />
-                    <Line points={heightPoints[1]} color={lineColor} lineWidth={lineWidth} />
-                    <mesh position={heightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <mesh position={heightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
-                    <Text
-                        position={[xEave - 0.5, heightEnd.y / 2, 0]}
-                        rotation={[0, 0, Math.PI / 2]} 
-                        fontSize={0.8}
-                        color={textColor}
-                        anchorX="center"
-                        anchorY="middle"
-                        outlineWidth={0.1}
-                        outlineColor="#ffffff"
-                    >
-                        {getEaveText()}
-                    </Text>
+                    {/* Pour Monopente, on évite le doublon si une extension droite est présente */}
+                    {!(buildingType === 'monopente' && rightSide !== 'none') && (
+                        <>
+                            <Line points={heightPoints[0]} color={lineColor} lineWidth={lineWidth} />
+                            <Line points={heightPoints[1]} color={lineColor} lineWidth={lineWidth} />
+                            <mesh position={heightStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                            <mesh position={heightEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
+                            <Text
+                                position={[xEave - 0.5, heightEnd.y / 2, 0]}
+                                rotation={[0, 0, Math.PI / 2]} 
+                                fontSize={0.8}
+                                color={textColor}
+                                anchorX="center"
+                                anchorY="middle"
+                                outlineWidth={0.1}
+                                outlineColor="#ffffff"
+                            >
+                                {getEaveText()}
+                            </Text>
+                        </>
+                    )}
                 </group>
             )}
 
@@ -672,7 +677,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             )}
 
             {/* 4b. ASYM LEFT EAVE HEIGHT */}
-            {asymLeftEaveData && (
+            {asymLeftEaveData && buildingType !== 'monopente' && (
                 <group>
                     <Line points={asymLeftEaveData.points[0]} color={lineColor} lineWidth={lineWidth} />
                     <Line points={asymLeftEaveData.points[1]} color={lineColor} lineWidth={lineWidth} />

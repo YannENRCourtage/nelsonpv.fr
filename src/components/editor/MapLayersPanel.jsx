@@ -298,8 +298,8 @@ const overlayCategories = {
                 attribution: 'IGN-F/Géoportail',
                 type: 'tile',
             'ZAER': {
-                url: 'https://data.geopf.fr/wms-v/ows?key=enr',
-                layers: 'ZAER:zaer',
+                url: 'https://data.geopf.fr/wms-v/ows',
+                layers: 'projets_zones_acceleration_energies_renouvelables_zaer_wms',
                 format: 'image/png',
                 transparent: true,
                 attribution: 'Cerema / IGN',

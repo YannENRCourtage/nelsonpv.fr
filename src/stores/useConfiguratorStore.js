@@ -530,7 +530,7 @@ export const useConfiguratorStore = create((set, get) => ({
 
             const getSpans = (width, type, proportion) => {
                 if (type === 'symetrique') return { left: width / 2, right: width / 2 };
-                if (type === 'monopente') return { left: width, right: 0 };
+                if (type === 'monopente') return { left: 0, right: width };
                 // Asymetrique
                 const matches = proportion.match(/(\d+)\/(\d+)-(\d+)\/(\d+)/);
                 if (matches) {
@@ -595,6 +595,12 @@ export const useConfiguratorStore = create((set, get) => ({
                         newParams.rightPitch = Math.atan((newParams.ridgeHeight - newParams.rightEaveHeight) / spans.right) * 180 / Math.PI;
                     }
                 }
+            }
+
+            // MONOPENTE SPECIFIC: Left Eave == Ridge Height
+            if (newParams.buildingType === 'monopente') {
+                newParams.leftEaveHeight = newParams.ridgeHeight;
+                newParams.leftPitch = 0;
             }
 
             // 6. CLAMP EXTENSIONS HEIGHT TO BUILDING HEIGHT

@@ -59,19 +59,29 @@ export function Bracing({
             }
 
             // Roof Bracing
-            const L_Eave_Start = new THREE.Vector3(-w / 2, cp.leftEaveHeight + roofOffset, zStart);
-            const Apex_End = new THREE.Vector3(apexX, cp.ridgeHeight + roofOffset, zEnd);
-            const Apex_Start = new THREE.Vector3(apexX, cp.ridgeHeight + roofOffset, zStart);
-            const L_Eave_End = new THREE.Vector3(-w / 2, cp.leftEaveHeight + roofOffset, zEnd);
+            const L_Top_Start = new THREE.Vector3(apexX, cp.ridgeHeight + roofOffset, zStart);
+            const R_Bot_End = new THREE.Vector3(w / 2, cp.rightEaveHeight + roofOffset, zEnd);
+            const R_Bot_Start = new THREE.Vector3(w / 2, cp.rightEaveHeight + roofOffset, zStart);
+            const L_Top_End = new THREE.Vector3(apexX, cp.ridgeHeight + roofOffset, zEnd);
 
-            bracings.push(createRod(L_Eave_Start, Apex_End, `roof-C-L-${i}-1`));
-            bracings.push(createRod(Apex_Start, L_Eave_End, `roof-C-L-${i}-2`));
+            if (cp.buildingType === 'monopente') {
+                // Monopente: Single slope from Left (Ridge) to Right (Eave)
+                bracings.push(createRod(L_Top_Start, R_Bot_End, `roof-Mono-${i}-1`));
+                bracings.push(createRod(R_Bot_Start, L_Top_End, `roof-Mono-${i}-2`));
+            } else {
+                // Symmetrical/Asymmetrical: Two slopes
+                const L_Eave_Start = new THREE.Vector3(-w / 2, cp.leftEaveHeight + roofOffset, zStart);
+                const L_Eave_End = new THREE.Vector3(-w / 2, cp.leftEaveHeight + roofOffset, zEnd);
+                
+                // Left slope
+                bracings.push(createRod(L_Eave_Start, L_Top_End, `roof-C-L-${i}-1`));
+                bracings.push(createRod(L_Top_Start, L_Eave_End, `roof-C-L-${i}-2`));
 
-            if (cp.buildingType !== 'monopente') {
-                const R_Eave_End = new THREE.Vector3(w / 2, cp.rightEaveHeight + roofOffset, zEnd);
+                // Right slope
                 const R_Eave_Start = new THREE.Vector3(w / 2, cp.rightEaveHeight + roofOffset, zStart);
-                bracings.push(createRod(Apex_Start, R_Eave_End, `roof-C-R-${i}-1`));
-                bracings.push(createRod(R_Eave_Start, Apex_End, `roof-C-R-${i}-2`));
+                const R_Eave_End = new THREE.Vector3(w / 2, cp.rightEaveHeight + roofOffset, zEnd);
+                bracings.push(createRod(L_Top_Start, R_Eave_End, `roof-C-R-${i}-1`));
+                bracings.push(createRod(R_Eave_Start, L_Top_End, `roof-C-R-${i}-2`));
             }
             continue; // Move to next bay
         }
