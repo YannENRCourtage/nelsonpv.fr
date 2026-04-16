@@ -630,8 +630,11 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         const rAngle = cp.rightPitch * (Math.PI / 180);
         const l = length;
 
-        const leftRoofLength = spans.left / Math.cos(lAngle) + 0.5; 
-        const rightRoofLength = cp.buildingType === 'monopente' ? 0 : (spans.right / Math.cos(rAngle) + 0.5);
+        const isMono = cp.buildingType === 'monopente';
+        const monoAngle = isMono ? Math.atan((cp.ridgeHeight - cp.rightEaveHeight) / cp.width) : 0;
+
+        const leftRoofLength = isMono ? (cp.width / Math.cos(monoAngle) + 1.0) : (spans.left / Math.cos(lAngle) + 0.5); 
+        const rightRoofLength = isMono ? 0 : (spans.right / Math.cos(rAngle) + 0.5);
 
         const leftProfile = createTrapezoidalProfile(leftRoofLength, 0.035, 0.25);
         const rightProfile = rightRoofLength > 0 ? createTrapezoidalProfile(rightRoofLength, 0.035, 0.25) : null;
@@ -640,7 +643,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         const rightGeo = rightProfile ? new THREE.ExtrudeGeometry(rightProfile, { depth: l + 1.0, bevelEnabled: false }) : null;
 
         const pOffsetCustom = (0.140 / 2) + (0.001 / 2) + 0.35 + 0.10;
-        const apexX = -width / 2 + spans.left;
+        const apexX = isMono ? -width/2 : (-width / 2 + spans.left);
         const ridgeY = cp.ridgeHeight;
 
         const getProps = (slopeLen, angle, isRight, overhang, startX, startY) => {
@@ -652,7 +655,16 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
             return { x: midX + pOffsetCustom * nX, y: midY + pOffsetCustom * nY, rot: isRight ? -angle : angle };
         };
 
-        const leftP = getProps(leftRoofLength, lAngle, false, 0.5, apexX, ridgeY);
+        // For Monopente, the "left" panel covers EVERYTHING and starts from high point at left
+        const currentAngle = isMono ? monoAngle : lAngle;
+        // In Monopente, it's descending to the RIGHT. Our getProps(isRight=false) assumes ascending to the left from apex?
+        // Wait, if startX = -width/2 (left) and we want it to go RIGHT and DOWN.
+        // Let's use getProps logic carefully.
+        // If isRight=true, x = startX + dist*cos, y = startY - dist*sin. Correct for descending Right.
+        const leftP = isMono 
+            ? getProps(leftRoofLength, monoAngle, true, 1.0, -width/2, ridgeY)
+            : getProps(leftRoofLength, lAngle, false, 0.5, apexX, ridgeY);
+            
         const rightP = rightGeo ? getProps(rightRoofLength, rAngle, true, 0.5, apexX, ridgeY) : null;
 
         return (

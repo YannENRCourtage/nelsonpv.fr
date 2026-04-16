@@ -657,9 +657,9 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
             const zStart = -bayIndex * baySpacing;
 
             if (cp.buildingType === 'monopente') {
-                // Monopente: une seule pente de gauche (haut=ridgeHeight) vers droite (bas=leftEaveHeight)
-                // La pente descend de gauche à droite
-                const monoAngle = lAngle; // Use leftPitch
+                // Monopente: une seule pente de gauche (haut=ridgeHeight) vers droite (bas=rightEaveHeight)
+                // L'angle est calculé à partir de la différence de hauteur entre faîtage et sablière droite
+                const monoAngle = Math.atan((cp.ridgeHeight - cp.rightEaveHeight) / cp.width);
                 const monoSlopeLen = cp.width / Math.cos(monoAngle);
                 const numMono = Math.floor(monoSlopeLen / purlinSpacing);
 
