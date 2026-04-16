@@ -889,7 +889,8 @@ export default function ProjectEditor() {
               <div className="flex gap-2">
                 <div className="flex-1 min-w-[80px]"><label className="text-xs font-medium">Nom*</label><Input value={p.name || ''} onChange={e => updateProject({ name: e.target.value })} className="mt-0.5 h-8" placeholder="Nom" /></div>
                 <div className="flex-1 min-w-[80px]"><label className="text-xs font-medium">Prénom</label><Input value={p.firstName || ''} onChange={e => updateProject({ firstName: e.target.value })} className="mt-0.5 h-8" placeholder="Prénom" /></div>
-                <div className="flex-1 min-w-[90px]"><label className="text-xs font-medium">Type</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-0.5 w-full rounded-lg border px-1 py-1 h-8 bg-background text-xs"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option><option>Sol 1Ha</option><option>Batterie</option></select></div>
+                <div className="flex-1 min-w-[90px]"><label className="text-xs font-medium">Type</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-0.5 w-full rounded-lg border px-1 py-1 h-8 bg-background text-xs"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option><option>Sol 1Ha</option></select></div>
+                <div className="flex-1 min-w-[90px] ml-2"><label className="text-xs font-medium text-blue-600">Batterie SA</label><select value={p.isBatteryStandAlone || 'Non'} onChange={e => updateProject({ isBatteryStandAlone: e.target.value })} className="mt-0.5 w-full rounded-lg border px-1 py-1 h-8 bg-background text-xs text-blue-600 font-bold"><option>Non</option><option>Oui</option></select></div>
               </div>
 
               {/* Tél + Email on same line */}
@@ -1138,7 +1139,8 @@ export default function ProjectEditor() {
                   />
                 </div>
               </div>
-              <div className="col-span-3"><label className="text-sm font-medium">Type de projet</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option><option>Sol 1Ha</option><option>Batterie</option></select></div>
+              <div className="col-span-2"><label className="text-sm font-medium">Type de projet</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option><option>Sol 1Ha</option></select></div>
+              <div className="col-span-1"><label className="text-sm font-medium text-blue-600">Batterie SA</label><select value={p.isBatteryStandAlone || 'Non'} onChange={e => updateProject({ isBatteryStandAlone: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background text-blue-600 font-bold"><option>Non</option><option>Oui</option></select></div>
               <div className="col-span-6"><label className="text-sm font-medium">Projet</label><Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} className="mt-1" placeholder="Ex: 150m² ou 9kWc" /></div>
 
               {/* Desktop: Technical Fields */}
