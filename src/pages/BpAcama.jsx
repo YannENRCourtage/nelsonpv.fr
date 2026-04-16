@@ -507,7 +507,8 @@ function computeBatteryProfitability(config) {
     disponibilite = 98,
     rendementRoundTrip = 88,
     maintenanceAn = 1500,
-    revenuBailleurAn = 2000,
+    revenuBailleurAn = 2500,
+    gestionChargeAn = 4562.5,
     assuranceAn = 353,
     retributionCommAn = 0,
     commissionAgregateur = 20,
@@ -539,7 +540,7 @@ function computeBatteryProfitability(config) {
     const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
 
     const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100);
-    const chargesFixes = (maintenanceAn + assuranceAn + turpeAn + iferAn + revenuBailleurAn + retributionCommAn) * infl;
+    const chargesFixes = (maintenanceAn + assuranceAn + turpeAn + iferAn + revenuBailleurAn + gestionChargeAn + retributionCommAn) * infl;
     const chargesCom = revNet * (commissionAgregateur / 100);
     const ebe = revNet - (chargesFixes + chargesCom);
 
@@ -574,6 +575,7 @@ function computeBatteryProfitability(config) {
       opex: chargesFixes + chargesCom,
       maint: maintenanceAn * infl,
       revBailleur: revenuBailleurAn * infl,
+      gestionCharge: gestionChargeAn * infl,
       assur: assuranceAn * infl,
       turpe: turpeAn * infl,
       ifer: iferAn * infl,
@@ -1099,10 +1101,10 @@ function SignatureArea({ data, update }) {
   );
 }
 
-function TableauPrevisionnelBatterie({ rows }) {
-  const DataRow = ({ label, propName, isCurrency, format, bold, className }) => (
+function TableauPrevisionnelBatterie({ rows, detailed }) {
+  const DataRow = ({ label, propName, isCurrency, format, bold, className, indent }) => (
     <tr className={`border-b border-slate-200 bg-white hover:bg-slate-50 ${className}`}>
-      <td className={`px-2 py-1 font-medium bg-slate-50 text-[11px] border-r border-slate-200 w-[180px] ${bold ? 'font-bold' : ''}`}>{label}</td>
+      <td className={`px-2 py-1 font-medium bg-slate-50 text-[11px] border-r border-slate-200 w-[180px] ${bold ? 'font-bold' : ''} ${indent ? 'pl-4 italic text-slate-500' : ''}`}>{label}</td>
       {rows.map((r, i) => (
         <td key={i} className={`px-1 py-1 text-right border-r border-slate-200 text-[11px] min-w-[50px] ${bold ? 'font-bold' : ''}`}>
           {format ? format(r[propName]) : (isCurrency ? fmtEur(r[propName]) : fmt(r[propName], 0))}
@@ -1113,7 +1115,7 @@ function TableauPrevisionnelBatterie({ rows }) {
 
   return (
     <div className="mt-6 border-t pt-4">
-      <h4 className="text-[12px] font-black text-blue-600 uppercase mb-3 px-1">Plan d'Affaires Prévisionnel Batterie Stand-Alone</h4>
+      <h4 className="text-[12px] font-black text-blue-600 uppercase mb-3 px-1">Plan d'Affaires Prévisionnel Batterie Stand-Alone ({detailed ? 'Vue Détaillée' : 'Vue Simplifiée'})</h4>
       <div className="overflow-x-auto w-full custom-scrollbar">
         <table className="w-full border-collapse border border-slate-200">
           <thead>
@@ -1129,17 +1131,35 @@ function TableauPrevisionnelBatterie({ rows }) {
               <td className="px-2 py-1 border-r border-b border-slate-300">Chiffre d'Affaires (HT)</td>
               {rows.map((_, i) => <td key={i} className="border-r border-b border-slate-300"></td>)}
             </tr>
-            <DataRow label="Arbitrage énergie" propName="arbitrage" isCurrency />
-            <DataRow label="Réserve (FCR/aFRR)" propName="reserve" isCurrency />
-            <DataRow label="Mécanisme capacité" propName="capacite" isCurrency />
-            <DataRow label="Effacement" propName="effacement" isCurrency />
+            {detailed ? (
+              <>
+                <DataRow label="Arbitrage énergie" propName="arbitrage" isCurrency />
+                <DataRow label="Réserve (FCR/aFRR)" propName="reserve" isCurrency />
+                <DataRow label="Mécanisme capacité" propName="capacite" isCurrency />
+                <DataRow label="Effacement" propName="effacement" isCurrency />
+              </>
+            ) : null}
             <DataRow label="TOTAL REVENUS" propName="caTotal" isCurrency bold className="bg-slate-50" />
 
             <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[11px]">
               <td className="px-2 py-1 border-r border-b border-slate-200">Charges & Résultats</td>
               {rows.map((_, i) => <td key={i} className="border-r border-b border-slate-200"></td>)}
             </tr>
-            <DataRow label="Charges d'Exploitation (OPEX)" propName="opex" isCurrency />
+            
+            {detailed ? (
+              <>
+                <DataRow label="Maintenance" propName="maint" isCurrency indent />
+                <DataRow label="Revenu bailleur" propName="revBailleur" isCurrency indent />
+                <DataRow label="Gestion de la charge" propName="gestionCharge" isCurrency indent />
+                <DataRow label="Assurance" propName="assur" isCurrency indent />
+                <DataRow label="TURPE" propName="turpe" isCurrency indent />
+                <DataRow label="IFER" propName="ifer" isCurrency indent />
+                <DataRow label="Rétribution commerciale" propName="retribComm" isCurrency indent />
+                <DataRow label="Frais agrégateur" propName="fraisAgregateur" isCurrency indent />
+              </>
+            ) : null}
+            
+            <DataRow label="Charges d'Exploitation (OPEX)" propName="opex" isCurrency bold={!detailed} />
             <DataRow label="Service de la Dette" propName="serviceDette" isCurrency />
             <DataRow label="EBITDA (EBE)" propName="ebe" isCurrency bold className="bg-blue-50 text-blue-800" />
             <tr className="bg-amber-400 font-black text-slate-900 text-[11px]">
@@ -1156,6 +1176,7 @@ function TableauPrevisionnelBatterie({ rows }) {
 }
 
 function BatterySection({ config, setParams }) {
+  const [viewDetailed, setViewDetailed] = useState(false);
   if (!config.enabled) return null;
 
   const results = computeBatteryProfitability(config);
@@ -1202,7 +1223,8 @@ function BatterySection({ config, setParams }) {
         mecanismeCapacite: 20 * p,
         effacement: 20 * p,
         maintenanceAn: 6 * p,
-        revenuBailleurAn: 2000 * qty,
+        revenuBailleurAn: 2500 * qty,
+        gestionChargeAn: 4562.5 * qty,
         retributionCommAn: rettComm,
         turpeAn: 20 * p,
         iferAn: 5 * p,
@@ -1320,6 +1342,7 @@ function BatterySection({ config, setParams }) {
           <div className="grid grid-cols-1 gap-2">
             <Field label="Maintenance /an" value={config.maintenanceAn} onChange={v => update('maintenanceAn', v)} type="number" suffix="€" />
             <Field label="Revenu bailleur" value={config.revenuBailleurAn} onChange={v => update('revenuBailleurAn', v)} type="number" suffix="€" />
+            <Field label="Gestion de la charge" value={config.gestionChargeAn} onChange={v => update('gestionChargeAn', v)} type="number" suffix="€" />
             <Field label="Rétribution comm." value={config.retributionCommAn || 0} onChange={v => update('retributionCommAn', v)} type="number" suffix="€" />
             <Field label="Assurance /an" value={config.assuranceAn} onChange={v => update('assuranceAn', v)} type="number" suffix="€" />
             <Field label="Comm. Agrégateur" value={config.commissionAgregateur} onChange={v => update('commissionAgregateur', v)} type="number" suffix="%" />
@@ -1369,7 +1392,34 @@ function BatterySection({ config, setParams }) {
         )}
       </div>
 
-      {!config.isGlobal && <TableauPrevisionnelBatterie rows={results.rows} />}
+           </div>
+        )}
+      </div>
+
+      <div className="flex justify-start mt-6 mb-2 pt-4 border-t border-slate-100">
+         <div className="flex bg-slate-100 p-1 rounded-lg">
+            <button 
+              onClick={() => setViewDetailed(false)}
+              className={cn(
+                "px-4 py-1.5 text-[11px] font-bold rounded-md transition-all uppercase tracking-wider",
+                !viewDetailed ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              Vue Simplifiée
+            </button>
+            <button 
+              onClick={() => setViewDetailed(true)}
+              className={cn(
+                "px-4 py-1.5 text-[11px] font-bold rounded-md transition-all uppercase tracking-wider",
+                viewDetailed ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              Vue Détaillée
+            </button>
+         </div>
+      </div>
+
+      {!config.isGlobal && <TableauPrevisionnelBatterie rows={results.rows} detailed={viewDetailed} />}
     </SectionCard>
   );
 }
@@ -1524,7 +1574,8 @@ function TabBpProjets({
   apportSoulte,
   activeSuiviBatData,
   isGreenInvest,
-  resteACharge
+  resteACharge,
+  isBatteryStandAlone = selectedProject?.isBatteryStandAlone === 'Oui'
 }) {
   const PDFHeader = () => (
     <div className="pdf-header hidden flex flex-row items-start w-full mb-2 pb-1">
@@ -1896,7 +1947,14 @@ function TabBpProjets({
         {selectedProject && (
           <div className="flex items-center gap-2 shrink-0">
             <Button size="sm" variant="outline" className="gap-2 h-8 border-slate-300" onClick={() => {
-              const sections = ['pdf-section-1'];
+              const sections = [];
+              if (!isBatteryStandAlone) {
+                sections.push('pdf-section-1');
+              } else {
+                // If SA, we still need a header on section battery or 2
+                // We'll handle this by making sure section-battery has the header if section-1 is missing
+              }
+              
               if (params.batteryConfig?.enabled && !params.batteryConfig?.isGlobal) {
                 sections.push('pdf-section-battery');
               }
@@ -1917,8 +1975,9 @@ function TabBpProjets({
         )}
       </div>
 
-      <div id="pdf-section-1" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-4 pt-6 relative overflow-hidden">
-        <PDFHeader selectedProject={selectedProject} />
+      {!isBatteryStandAlone && (
+        <div id="pdf-section-1" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-4 pt-6 relative overflow-hidden">
+          <PDFHeader selectedProject={selectedProject} />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2 items-stretch">
           {/* Column 1: Projects and Investment (Widened) */}
           <div className="lg:col-span-12 xl:col-span-5 space-y-8 flex flex-col h-full">
@@ -2460,6 +2519,14 @@ function TabBpProjets({
             </SectionCard>
           </div>
         </div>
+      )}
+
+      {isBatteryStandAlone && (
+         <div className="pdf-header-container bg-white rounded-lg border border-slate-200 p-4 pt-6 relative overflow-hidden">
+            <PDFHeader selectedProject={selectedProject} />
+            <p className="text-center text-slate-400 italic text-sm py-4 border-t border-slate-100">PROJET BATTERIE STAND-ALONE (SANS BÂTIMENT PV)</p>
+         </div>
+      )}
       </div>
 
         {/* Battery Section (Full Width) */}
@@ -3960,7 +4027,8 @@ export default function BpAcama() {
       disponibilite: 98,
       rendementRoundTrip: 88,
       maintenanceAn: 750,
-      revenuBailleurAn: 2000,
+      revenuBailleurAn: 2500,
+      gestionChargeAn: 4562.5,
       retributionCommAn: 550,
       assuranceAn: 240,
       commissionAgregateur: 20,
@@ -4001,7 +4069,8 @@ export default function BpAcama() {
       disponibilite: 98,
       rendementRoundTrip: 88,
       maintenanceAn: 750,
-      revenuBailleurAn: 2000,
+      revenuBailleurAn: 2500,
+      gestionChargeAn: 4562.5,
       retributionCommAn: 550,
       assuranceAn: 383, // Updated for 57583 base (95733 total * 0.4%)
       commissionAgregateur: 20,
@@ -4031,6 +4100,15 @@ export default function BpAcama() {
         if (saved.batteryConfig.assuranceAn === 240 || saved.batteryConfig.assuranceAn === 390) saved.batteryConfig.assuranceAn = 353;
         if (saved.batteryConfig.turpeAn === 5000) saved.batteryConfig.turpeAn = 2500;
         if (saved.batteryConfig.iferAn === 1250) saved.batteryConfig.iferAn = 625;
+        
+        // RECENT UPDATES: revenuBailleur (2500) and gestionCharge (4562.5)
+        const nbB = saved.batteryConfig.nbBricks || 1;
+        if (saved.batteryConfig.revenuBailleurAn === 2000 * nbB) {
+          saved.batteryConfig.revenuBailleurAn = 2500 * nbB;
+        }
+        if (saved.batteryConfig.gestionChargeAn === undefined) {
+          saved.batteryConfig.gestionChargeAn = 4562.5 * nbB;
+        }
       }
 
       // Enrich saved state with missing building types, products & power from map
