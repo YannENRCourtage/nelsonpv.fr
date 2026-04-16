@@ -27,7 +27,9 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
     // ==========================================
 
     // --- 1. Monopente Geometries ---
-    const monoDeltaH = ridgeHeight - eaveHeight; // 7.4 - 4.0 = 3.4
+    const customMonoH = (configMode === 'custom') ? customParams.ridgeHeight : ridgeHeight;
+    const customMonoEave = (configMode === 'custom') ? customParams.rightEaveHeight : eaveHeight;
+    const monoDeltaH = customMonoH - customMonoEave;
     const monoSlopeAngle = isMonopente ? Math.atan(monoDeltaH / width) : 0;
     // Overhangs: 50cm horizontal projection each side -> Total Width + 1.0
     // Fallback 1.0 to avoid NaN if logic skipped, though useMemo dep array handles it.

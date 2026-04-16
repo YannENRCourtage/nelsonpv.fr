@@ -112,6 +112,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
         if (buildingType === 'monopente') {
             // Right Side
+            h = isCustom ? cp.rightEaveHeight : eaveHeight;
             x = rightSide !== 'none' ? width / 2 + 1.5 : width / 2 + 3.0;
         } else if (buildingType === 'ombriere_vl_simple_droite' || buildingType === 'ombriere_vl_simple_gauche' || buildingType === 'ombriere_vl_double' || buildingType === 'ombriere_pl') {
             x = width / 2 + 1.5;
@@ -218,6 +219,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // 3c. Left Eave Height (Asymmetrical ONLY — masqué pour EPONA)
     const asymLeftEaveData = useMemo(() => {
+        if (buildingType === 'monopente') return null;
         if (!isCustom && buildingType !== 'asymetrique_1' && buildingType !== 'asymetrique_2' && !isEpona) return null;
         if (!isCustom && buildingType === 'epona_talian5') return null; 
 
@@ -267,6 +269,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
 
     // 3d. Right Eave Height (Asymmetrical 2 Zones ONLY + Custom)
     const asym2RightEaveData = useMemo(() => {
+        if (buildingType === 'monopente') return null;
         if (!isCustom && buildingType !== 'asymetrique_2' && !isEpona) return null;
         if (isEpona) return null; 
         
@@ -596,6 +599,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         if (buildingType === 'ombriere_vl_simple_gauche') return '3.7 m';
         if (buildingType === 'ombriere_pl') return Math.abs(width - 15.8) < 0.1 ? '5.1 m' : (Math.abs(width - 20.2) < 0.1 ? '5.7 m' : '5 m');
         if (isOmbriere) return '2.9 m';
+        if (buildingType === 'monopente') {
+            return `${parseFloat((isCustom ? cp.rightEaveHeight : eaveHeight).toFixed(2))} m`;
+        }
         return `${parseFloat(eaveHeight.toFixed(2))} m`;
     };
 
@@ -675,7 +681,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
                     <mesh position={ridgeStart}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <mesh position={ridgeEnd}><sphereGeometry args={[0.1]} /><meshBasicMaterial color={lineColor} /></mesh>
                     <Text position={[xRidge + 0.5, (isEpona ? (ridgeLabelValue || ridgeHeight) - 0.5 : (ridgeLabelValue || ridgeHeight)) / 2, zRidge]} rotation={[0, 0, Math.PI / 2]} fontSize={0.8} color={textColor} anchorX="center" anchorY="bottom" outlineWidth={0.1} outlineColor="#ffffff">
-                        {`${Number(ridgeLabelValue || ridgeHeight).toFixed(1)} m`}
+                        {`${Number(ridgeLabelValue || ridgeHeight).toFixed(2)} m`}
                     </Text>
                 </group>
             )}

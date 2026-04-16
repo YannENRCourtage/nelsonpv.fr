@@ -156,10 +156,22 @@ export function PortalFrame({
         effectiveRidgeHeight = rightEaveHeight + (rightSpan * Math.tan(rAngle));
         leftEaveHeight = effectiveRidgeHeight - (leftSpan * Math.tan(lAngle));
     } else if (isMonopente) {
-        const monoSlopeRad = Math.atan((ridgeHeight - eaveHeight) / width);
-        lAngle = monoSlopeRad; 
-        rAngle = monoSlopeRad;
-        effectiveRidgeHeight = ridgeHeight;
+        if (configMode === 'custom') {
+            const cp = customParams;
+            leftEaveHeight = cp.ridgeHeight;
+            rightEaveHeight = cp.rightEaveHeight;
+            const monoSlopeRad = Math.atan((cp.ridgeHeight - cp.rightEaveHeight) / width);
+            lAngle = monoSlopeRad;
+            rAngle = monoSlopeRad;
+            effectiveRidgeHeight = cp.ridgeHeight;
+        } else {
+            const monoSlopeRad = Math.atan((ridgeHeight - eaveHeight) / width);
+            lAngle = monoSlopeRad; 
+            rAngle = monoSlopeRad;
+            effectiveRidgeHeight = ridgeHeight;
+            leftEaveHeight = ridgeHeight;
+            rightEaveHeight = eaveHeight;
+        }
         leftSpan = width;
         rightSpan = 0;
         apexX = -width / 2;
