@@ -180,7 +180,9 @@ export default function ProjectEditor() {
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [enedisData, setEnedisData] = useState(null);
   const [enedisPrm, setEnedisPrm] = useState('');
+  const [enedisPrms, setEnedisPrms] = useState([]);
   const [isEnedisLoading, setIsEnedisLoading] = useState(false);
+  const [enedisStep, setEnedisStep] = useState(1); // 1: Consent, 2: PRM, 3: Data
   const [activeConfigTab, setActiveConfigTab] = useState('buildings'); // 'buildings' or 'battery'
   const [selectedBatteryId, setSelectedBatteryId] = useState(BATTERY_MODELS[0].id);
   const [batteryQuantity, setBatteryQuantity] = useState(4);
@@ -196,6 +198,7 @@ export default function ProjectEditor() {
         if (result && result.data) {
           setEnedisData(result.data);
           setEnedisPrm(result.prm);
+          setEnedisStep(3);
         }
       } catch (err) {
         console.warn('Could not fetch Enedis data. Consent might be missing.');
@@ -780,101 +783,175 @@ export default function ProjectEditor() {
             </div>
           </div>
 
-          {/* Section Intégration Enedis */}
+          {/* Section Intégration Enedis Data Connect */}
           <div className="mt-6 border-t pt-4">
             <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-              <Zap size={16} className="text-yellow-500" />
+              <Zap size={16} className="text-blue-600 fill-blue-600" />
               Intégration Enedis Data Connect
             </h3>
             
-            {!enedisData ? (
-              <div className="flex flex-col gap-4 bg-gray-50 p-4 rounded-xl border border-dashed border-gray-300">
-                <p className="text-xs text-gray-600">
-                  Récupérez automatiquement les données de consommation réelle (Annuelle, Quotidienne et Courbe de charge 30min) de votre client.
-                </p>
-                
-                <div className="flex flex-col lg:flex-row items-end gap-3">
-                  <div className="flex-1 w-full">
-                    <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">PRM (Optionnel)</label>
-                    <Input 
-                      value={enedisPrm} 
-                      onChange={e => setEnedisPrm(e.target.value)} 
-                      placeholder="N° de compteur (14 chiffres)" 
-                      className="h-9"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      type="button" 
-                      onClick={() => enedisService.initiateAuth(p.id)}
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                      disabled={(!projectId || projectId === 'new') || isEnedisLoading}
+            <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+               {/* Steps Header */}
+               <div className="flex border-b border-slate-200 bg-white">
+                  {[1, 2, 3].map(step => (
+                    <div 
+                      key={step}
+                      onClick={() => enedisStep >= step && setEnedisStep(step)}
+                      className={cn(
+                        "flex-1 py-2 px-4 text-center text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer",
+                        enedisStep === step ? "bg-blue-600 text-white" : enedisStep > step ? "text-blue-600 hover:bg-blue-50" : "text-slate-400 cursor-not-allowed"
+                      )}
                     >
-                      {isEnedisLoading ? 'Chargement...' : 'Se connecter à Enedis'}
-                    </Button>
-                    {enedisPrm && (
-                      <Button 
-                        variant="outline"
-                        onClick={async () => {
-                          setIsEnedisLoading(true);
-                          try {
-                            const result = await enedisService.fetchData({ projectId: p.id, prm: enedisPrm });
-                            if (result && result.data) {
-                              setEnedisData(result.data);
-                              toast({ title: "✅ Données récupérées", description: "Consommation chargée avec succès." });
+                      Étape {step} : {step === 1 ? "Consentement" : step === 2 ? "PRM Client" : "Consulter"}
+                    </div>
+                  ))}
+               </div>
+
+               <div className="p-4">
+                  {enedisStep === 1 && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      <div className="flex gap-4 items-start">
+                        <div className="bg-blue-100 p-2 rounded-lg"><HomeIcon className="text-blue-600 h-5 w-5" /></div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">Obtenir le consentement du client</p>
+                          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                            Pour accéder aux données de consommation, votre client doit autoriser l'accès via son Espace Client Enedis.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex justify-center py-4">
+                        <button 
+                          onClick={() => enedisService.initiateAuth(p.id)}
+                          disabled={!p.id || p.id === 'new'}
+                          className="enedis-connect-button"
+                        >
+                          <svg viewBox="0 0 24 24" className="enedis-logo-small fill-white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
+                          J'accède à mon espace client Enedis
+                        </button>
+                      </div>
+                      {(!p.id || p.id === 'new') && <p className="text-center text-[10px] text-red-500 italic">Veuillez d'abord sauvegarder le projet.</p>}
+                      <div className="text-center flex justify-center">
+                        <Button variant="ghost" size="sm" onClick={() => setEnedisStep(2)} className="text-xs text-blue-600 font-bold">J'ai déjà le consentement →</Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {enedisStep === 2 && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      <div className="flex gap-4 items-start">
+                        <div className="bg-amber-100 p-2 rounded-lg"><Plug className="text-amber-600 h-5 w-5" /></div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">Récupérer les numéros de PRM</p>
+                          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                            Une fois le consentement validé, interrogez Enedis pour trouver les Points de Référence et de Mesure (PRM) du client.
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col gap-3 max-w-md mx-auto">
+                        <Button 
+                          onClick={async () => {
+                            setIsEnedisLoading(true);
+                            try {
+                              const res = await enedisService.fetchPrms(p.id);
+                              if (res.prms && res.prms.length > 0) {
+                                setEnedisPrms(res.prms);
+                                if (res.prms.length === 1) setEnedisPrm(res.prms[0]);
+                                toast({ title: "PRM récupérés", description: `${res.prms.length} point(s) de livraison trouvé(s).` });
+                              }
+                            } catch (e) {
+                              toast({ title: "Aucun PRM trouvé", description: "Vérifiez que le client a bien validé le consentement.", variant: "destructive" });
+                            } finally {
+                              setIsEnedisLoading(false);
                             }
-                          } catch (err) {
-                            const msg = err.message || '';
-                            if (msg.includes('consentement') || msg.includes('404') || msg.includes('No Enedis consent')) {
-                              toast({ 
-                                title: "Consentement requis", 
-                                description: "Pour accéder aux données de ce compteur, le propriétaire doit d'abord autoriser l'accès via le bouton « Se connecter à Enedis ».",
-                                variant: "destructive" 
-                              });
-                            } else if (msg.includes('expiré') || msg.includes('403')) {
-                              toast({ 
-                                title: "Accès expiré", 
-                                description: "Le consentement Enedis a expiré. Cliquez sur « Se connecter à Enedis » pour le renouveler.",
-                                variant: "destructive" 
-                              });
-                            } else {
-                              toast({ 
-                                title: "Erreur Enedis", 
-                                description: msg || "Impossible de récupérer les données. Vérifiez que le flux de consentement a bien été complété.",
-                                variant: "destructive" 
-                              });
-                            }
-                          } finally {
-                            setIsEnedisLoading(false);
-                          }
-                        }}
-                        disabled={isEnedisLoading}
-                      >
-                        {isEnedisLoading ? 'Chargement...' : 'Consulter ce PRM'}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                {(!projectId || projectId === 'new') && <span className="text-[10px] text-red-500 italic">Sauvegardez le projet d'abord</span>}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-1 rounded-md border border-green-200">
-                    Connecté au PRM : {enedisPrm}
-                  </span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => enedisService.initiateAuth(p.id)}
-                    className="text-[10px] text-gray-500 hover:text-blue-600"
-                  >
-                    Changer de compteur / Reconnecter
-                  </Button>
-                </div>
-                <ConsumptionChart data={enedisData} loading={isEnedisLoading} />
-              </div>
-            )}
+                          }}
+                          className="w-full bg-blue-600 hover:bg-blue-700 h-10 font-bold"
+                          disabled={isEnedisLoading}
+                        >
+                          <RotateCw className={cn("mr-2 h-4 w-4", isEnedisLoading && "animate-spin")} />
+                          {isEnedisLoading ? 'Interrogation...' : 'Actualiser les PRM du client'}
+                        </Button>
+
+                        <div className="relative">
+                          <Input 
+                            value={enedisPrm}
+                            onChange={e => setEnedisPrm(e.target.value)}
+                            placeholder="Saisir un PRM manuellement"
+                            className="bg-white border-slate-300 h-10 pr-10"
+                          />
+                          <Select 
+                            onValueChange={v => setEnedisPrm(v)}
+                            className="absolute right-0 top-0 h-full border-l rounded-l-none"
+                          >
+                            <SelectTrigger className="w-10 border-none bg-transparent h-full"><SelectValue placeholder=" " /></SelectTrigger>
+                            <SelectContent>
+                              {enedisPrms.map(prm => <SelectItem key={prm} value={prm}>{prm}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {enedisPrm && enedisPrm.length === 14 && (
+                          <Button 
+                            variant="outline" 
+                            className="w-full border-blue-600 text-blue-600 hover:bg-blue-50 font-bold"
+                            onClick={() => setEnedisStep(3)}
+                          >
+                            Continuer avec ce PRM →
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {enedisStep === 3 && (
+                    <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
+                      <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200">
+                        <div className="flex items-center gap-3">
+                          <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                          <span className="text-sm font-bold text-slate-700">PRM : {enedisPrm}</span>
+                        </div>
+                        <div className="flex gap-2">
+                           <Button 
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              setIsEnedisLoading(true);
+                              try {
+                                const result = await enedisService.fetchData({ projectId: p.id, prm: enedisPrm });
+                                if (result && result.data) {
+                                  setEnedisData(result.data);
+                                  toast({ title: "Données à jour", description: "Consommation actualisée." });
+                                }
+                              } catch (e) {
+                                toast({ title: "Erreur", description: e.message, variant: "destructive" });
+                              } finally {
+                                setIsEnedisLoading(false);
+                              }
+                            }}
+                            disabled={isEnedisLoading}
+                            className="h-8 text-xs"
+                          >
+                            <RotateCw className={cn("mr-2 h-3 w-3", isEnedisLoading && "animate-spin")} />
+                            Actualiser
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => setEnedisStep(2)}
+                            className="h-8 text-xs text-slate-500"
+                          >
+                            Changer
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className={cn("rounded-lg overflow-hidden", isEnedisLoading && "enedis-scanning-effect")}>
+                        <ConsumptionChart data={enedisData} loading={isEnedisLoading} />
+                      </div>
+                    </div>
+                  )}
+               </div>
+            </div>
           </div>
 
           {/* Body: collapsed on mobile by default, always visible on desktop */}

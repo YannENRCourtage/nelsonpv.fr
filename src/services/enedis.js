@@ -12,8 +12,34 @@ const enedisService = {
   },
 
   /**
+   * Directly get the authorize URL for display or redirection
+   * @param {string} projectId 
+   */
+  getAuthorizeUrl(projectId) {
+    // In production, this would be the Enedis Data Connect URL
+    // We use our backend to proxy and inject client_id securely
+    return `/api/enedis/auth?projectId=${projectId}`;
+  },
+
+  /**
+   * Fetch PRM numbers (usage points) for a project after consent
+   * @param {string} projectId 
+   */
+  async fetchPrms(projectId) {
+    try {
+      const response = await axios.get('/api/enedis/prms', {
+        params: { projectId }
+      });
+      return response.data; // Expected: { prms: ['...', '...'] }
+    } catch (error) {
+      console.error('Error fetching PRMs:', error);
+      throw new Error(error.response?.data?.error || 'Impossible de récupérer la liste des PRM.');
+    }
+  },
+
+  /**
    * Fetch consumption data for a project or PRM
-   * @param {Object} params { projectIdRank, prm }
+   * @param {Object} params { projectId, prm }
    */
   async fetchData({ projectId, prm }) {
     try {
@@ -23,13 +49,12 @@ const enedisService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching Enedis data:', error);
-      // Re-throw with a more user-friendly message
       if (error.response?.status === 404) {
-        throw new Error('Aucun consentement Enedis trouvé pour ce projet. Veuillez vous connecter à Enedis d\'abord.');
+        throw new Error('Aucun consentement Enedis trouvé. Veuillez autoriser l\'accès d\'abord.');
       } else if (error.response?.status === 403) {
-        throw new Error('Accès refusé. Le consentement Enedis a peut-être expiré.');
+        throw new Error('Accès refusé ou expiré. Renouvelez le consentement.');
       } else {
-        throw new Error(error.response?.data?.error || error.message || 'Impossible de récupérer les données Enedis.');
+        throw new Error(error.response?.data?.error || error.message || 'Erreur lors de la récupération des données.');
       }
     }
   }
