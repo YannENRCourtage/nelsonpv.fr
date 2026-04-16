@@ -518,7 +518,7 @@ function computeBatteryProfitability(config) {
     dureeEmprunt = 20,
     apport = 0,
     tauxIS = 25,
-    dureeEtude = 20
+    dureeEtude = 12
   } = config;
 
   const capexTotal = batterieBms + genieCivil + raccordement + developpement + fraisCommerciaux;
@@ -527,11 +527,12 @@ function computeBatteryProfitability(config) {
   const emprunt = Math.max(0, capexTotal - apport);
   const annuite = emprunt > 0 ? -PMT(tauxEmprunt / 100, dureeEmprunt, emprunt) : 0;
 
-  const cashFlows = [-capexTotal];
+  const cashFlowsProjet = [-capexTotal];
+  const cashFlowsFP = [-apport];
   let remainingDebt = emprunt;
   let totalNetGain = 0;
-  let paybackMonth = null;
-  let runningCashFlow = -capexTotal;
+  let dynamicPayback = null;
+  let runningCashFlow = -apport;
   let resY1 = {};
 
   const rows = [];
@@ -539,7 +540,7 @@ function computeBatteryProfitability(config) {
     const infl = Math.pow(1 + inflationAnnuelle / 100, y - 1);
     const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
 
-    const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100);
+    const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100);
     const chargesFixes = (maintenanceAn + assuranceAn + turpeAn + iferAn + revenuBailleurAn + gestionChargeAn + retributionCommAn) * infl;
     const chargesCom = revNet * (commissionAgregateur / 100);
     const ebe = revNet - (chargesFixes + chargesCom);
@@ -553,14 +554,19 @@ function computeBatteryProfitability(config) {
     
     const cashFlow = ebe - interest - principal - is;
     
-    if (paybackMonth === null) {
-        if (runningCashFlow + cashFlow >= 0) {
-            paybackMonth = (y - 1) + (Math.abs(runningCashFlow) / cashFlow);
-        }
+    if (dynamicPayback === null && runningCashFlow + cashFlow >= 0) {
+        dynamicPayback = (y - 1) + (Math.abs(runningCashFlow) / cashFlow);
     }
     runningCashFlow += cashFlow;
 
-    cashFlows.push(ebe - is);
+    // Project Cash Flow (Unlevered): EBE - Tax (without interest shield)
+    const ebitUnlevered = ebe - (capexTotal / dureeEtude);
+    const taxUnlevered = ebitUnlevered > 0 ? ebitUnlevered * (tauxIS / 100) : 0;
+    cashFlowsProjet.push(ebe - taxUnlevered);
+    
+    // Equity Cash Flow (Levered): EBE - Debt Service - Tax (with interest shield)
+    cashFlowsFP.push(cashFlow);
+
     remainingDebt = Math.max(0, remainingDebt - principal);
     totalNetGain += cashFlow;
 
@@ -599,10 +605,11 @@ function computeBatteryProfitability(config) {
     capexTotal,
     revenuAn1: resY1.revNet,
     ebeAn1: resY1.ebe,
-    triProjet: IRR(cashFlows, 0.1),
-    payback: simplePayback,
+    triProjet: IRR(cashFlowsProjet, 0.1),
+    triFP: IRR(cashFlowsFP, 0.1),
+    payback: dynamicPayback || (resY1.ebe > 0 ? capexTotal / resY1.ebe : dureeEtude),
     dscrAn1: resY1.dscr,
-    gainNet20A: totalNetGain,
+    gainNetTotal: totalNetGain,
     rows
   };
 }
@@ -1353,7 +1360,7 @@ function BatterySection({ config, setParams }) {
                  <label className="text-[13px] text-slate-500">Durée d'étude</label>
                  <select 
                    className="border border-slate-200 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-500 h-[30px]"
-                   value={config.dureeEtude || 20}
+                   value={config.dureeEtude || 12}
                    onChange={e => update('dureeEtude', parseInt(e.target.value))}
                  >
                    {[10, 15, 20, 25, 30].map(v => <option key={v} value={v}>{v} ans</option>)}
@@ -1372,20 +1379,24 @@ function BatterySection({ config, setParams }) {
                 <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">CAPEX TOTAL</span><span className="font-bold text-lg">{fmtEur(results.capexTotal)}</span></div>
                 <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">REVENUS AN 1</span><span className="font-bold text-green-400">{fmtEur(results.revenuAn1)}</span></div>
                 <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">EBE AN 1</span><span className="font-bold text-blue-400">{fmtEur(results.ebeAn1)}</span></div>
-                <div className="flex justify-between items-center pt-2 border-t border-white/10"><span className="text-[11px] opacity-60 uppercase">GAIN NET {config.dureeEtude || 20}A</span><span className="font-bold text-green-400">{fmtEur(results.gainNet20A)}</span></div>
-             </div>
-             <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/20">
-                <div className="text-center">
-                   <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">TRI Projet</div>
-                   <div className="text-lg font-black text-blue-400">{fmtPct(results.triProjet)}</div>
-                </div>
-                <div className="text-center border-x border-white/10 px-1">
-                   <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">Retour</div>
-                   <div className="text-lg font-black text-amber-400">{fmt(results.payback, 1)} ans</div>
-                </div>
-                <div className="text-center">
-                   <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">DSCR Prêt</div>
-                   <div className="text-lg font-black text-green-400">{fmt(results.dscrAn1, 2)}</div>
+                
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3 mt-4 pt-4 border-t border-white/20">
+                  <div className="text-center">
+                     <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">TRI Projet</div>
+                     <div className="text-lg font-black text-blue-400">{fmtPct(results.triProjet)}</div>
+                  </div>
+                  <div className="text-center">
+                     <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">TRI FP (Fonds Propres)</div>
+                     <div className="text-lg font-black text-purple-400">{fmtPct(results.triFP)}</div>
+                  </div>
+                  <div className="text-center border-t border-white/10 pt-2">
+                     <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">Retour (Payback)</div>
+                     <div className="text-lg font-black text-amber-400">{fmt(results.payback, 1)} ans</div>
+                  </div>
+                  <div className="text-center border-t border-white/10 pt-2">
+                     <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">DSCR Prêt An 1</div>
+                     <div className="text-lg font-black text-green-400">{fmt(results.dscrAn1, 2)}</div>
+                  </div>
                 </div>
              </div>
           </div>
