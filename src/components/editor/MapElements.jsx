@@ -3489,6 +3489,42 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
     });
   }, [project?.panelAspect, project?.panelAspect2, setFeatures, isRotatingRef]);
   useEffect(() => {
+    const handlePlaceBattery = (e) => {
+      const { model, quantity } = e.detail;
+      const batteryWidth = 5; // m
+      const batteryHeight = 4; // m
+      
+      const metersPerPixel = 40075016.686 * Math.abs(Math.cos(map.getCenter().lat * Math.PI / 180)) / Math.pow(2, map.getZoom() + 8);
+      const widthInPixels = batteryWidth / metersPerPixel;
+      const heightInPixels = batteryHeight / metersPerPixel;
+      
+      const centerPoint = map.getSize().divideBy(2);
+      const southWestPoint = L.point(centerPoint.x - widthInPixels / 2, centerPoint.y + heightInPixels / 2);
+      const northEastPoint = L.point(centerPoint.x + widthInPixels / 2, centerPoint.y - heightInPixels / 2);
+      
+      const sw = map.containerPointToLatLng(southWestPoint);
+      const ne = map.containerPointToLatLng(northEastPoint);
+      const nw = L.latLng(ne.lat, sw.lng);
+      const se = L.latLng(sw.lat, ne.lng);
+      
+      const id = crypto.randomUUID();
+      const initialAngle = 0;
+      
+      setFeatures(arr => [...arr, { 
+        id, 
+        type: "rectangle", 
+        buildingName: `Batterie ${model.brand}`, 
+        coords: [nw, ne, se, sw], 
+        angle: initialAngle, 
+        isBattery: true,
+        batteryModel: model.model,
+        batteryQuantity: quantity,
+        label: `Batterie ${model.brand} ${model.model} (x${quantity})`
+      }]);
+      
+      toast({ ...toastStyle, title: "Batterie ajoutée", description: `${model.brand} ${model.model} (x${quantity}) - Rectangle 5x4m` });
+    };
+
     const handlePlaceBuilding = (e) => {
       const { building } = e.detail;
       const metersPerPixel = 40075016.686 * Math.abs(Math.cos(map.getCenter().lat * Math.PI / 180)) / Math.pow(2, map.getZoom() + 8);
@@ -3605,9 +3641,11 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
     };
 
     window.addEventListener("map:place-building", handlePlaceBuilding);
+    window.addEventListener("map:place-battery", handlePlaceBattery);
     window.addEventListener("map:update-last-building", handleUpdateLastBuilding);
     return () => {
       window.removeEventListener("map:place-building", handlePlaceBuilding);
+      window.removeEventListener("map:place-battery", handlePlaceBattery);
       window.removeEventListener("map:update-last-building", handleUpdateLastBuilding);
     };
     // NOTE: features added to dependencies to fix closure bug causing isSecondBuilding to always be false

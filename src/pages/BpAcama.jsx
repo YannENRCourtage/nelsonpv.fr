@@ -16,6 +16,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as
 import { generateBpAcamaPDF } from '../components/bp-acama/BpAcamaPDFGenerator.jsx';
 import ProjectSelect from '../components/bp-acama/ProjectSelect.jsx';
 import * as XLSX from 'xlsx';
+import { BATTERY_MODELS } from '../data/batteryModels.js';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -109,17 +110,7 @@ const parseFirestoreDate = (dateVal) => {
   return (d instanceof Date && !isNaN(d.getTime())) ? d : null;
 };
 
-const BATTERY_MODELS = [
-  { id: 'solax', brand: 'Solax', model: 'TRENE-P125B261L', power: 125, capacity: 261, price: 57583 },
-  { id: 'huawei', brand: 'Huawei', model: 'LUNA2000-200KWH', power: 100, capacity: 200, price: 45000 },
-  { id: 'goodwe', brand: 'GoodWe', model: 'Lynx C (Armoire)', power: 100, capacity: 156, price: 35000 },
-  { id: 'byd', brand: 'BYD', model: 'Battery-Box C&I', power: 100, capacity: 215, price: 42000 },
-  { id: 'sungrow', brand: 'Sungrow', model: 'PowerStack ST275', power: 125, capacity: 275, price: 55000 },
-  { id: 'deye', brand: 'Deye', model: 'GE-F120', power: 120, capacity: 215, price: 43000 },
-  { id: 'socomec', brand: 'Socomec', model: 'SUNSYS HES L', power: 250, capacity: 500, price: 130000 },
-  { id: 'pylontech', brand: 'Pylontech', model: 'Optimus-280', power: 100, capacity: 280, price: 52000 },
-  { id: 'cesc_mercury', brand: 'CESC', model: 'Mercury233 EU 05kW/233kWh', power: 105, capacity: 233, price: 30298.71 }
-];
+// BATTERY_MODELS moved to shared file
 
 const SUIVI_BAT_DATA_GREEN_INVEST = [
   {type:"ORION 16 O1",spv:"GREEN INVEST",kwc:96,cout_bat:57288,longueur:30,largeur:16.4,travees:"4 x 7.5m",hSud:"4m",hNord:"4m",faitage:"7.42m",surfTot:492},

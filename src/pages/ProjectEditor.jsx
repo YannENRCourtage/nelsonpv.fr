@@ -29,6 +29,7 @@ import { ACAMA_PREDEFINED_BUILDINGS } from "@/data/simulatorPredefinedBuildings"
 import { calculateRequiredResteACharge } from "@/lib/profitabilityCalculations";
 import enedisService from "@/services/enedis";
 import ConsumptionChart from "@/components/enedis/ConsumptionChart";
+import { BATTERY_MODELS } from "@/data/batteryModels";
 
 const INCLINATION_OPTIONS = Array.from({ length: 91 }, (_, i) => {
   const percentage = Math.tan(i * Math.PI / 180) * 100;
@@ -180,6 +181,9 @@ export default function ProjectEditor() {
   const [enedisData, setEnedisData] = useState(null);
   const [enedisPrm, setEnedisPrm] = useState('');
   const [isEnedisLoading, setIsEnedisLoading] = useState(false);
+  const [activeConfigTab, setActiveConfigTab] = useState('buildings'); // 'buildings' or 'battery'
+  const [selectedBatteryId, setSelectedBatteryId] = useState(BATTERY_MODELS[0].id);
+  const [batteryQuantity, setBatteryQuantity] = useState(4);
 
   // Fetch Enedis data if tokens exist
   useEffect(() => {
@@ -885,7 +889,7 @@ export default function ProjectEditor() {
               <div className="flex gap-2">
                 <div className="flex-1 min-w-[80px]"><label className="text-xs font-medium">Nom*</label><Input value={p.name || ''} onChange={e => updateProject({ name: e.target.value })} className="mt-0.5 h-8" placeholder="Nom" /></div>
                 <div className="flex-1 min-w-[80px]"><label className="text-xs font-medium">Prénom</label><Input value={p.firstName || ''} onChange={e => updateProject({ firstName: e.target.value })} className="mt-0.5 h-8" placeholder="Prénom" /></div>
-                <div className="flex-1 min-w-[90px]"><label className="text-xs font-medium">Type</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-0.5 w-full rounded-lg border px-1 py-1 h-8 bg-background text-xs"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option></select></div>
+                <div className="flex-1 min-w-[90px]"><label className="text-xs font-medium">Type</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-0.5 w-full rounded-lg border px-1 py-1 h-8 bg-background text-xs"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option><option>Sol 1Ha</option><option>Batterie</option></select></div>
               </div>
 
               {/* Tél + Email on same line */}
@@ -1134,7 +1138,7 @@ export default function ProjectEditor() {
                   />
                 </div>
               </div>
-              <div className="col-span-3"><label className="text-sm font-medium">Type de projet</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option></select></div>
+              <div className="col-span-3"><label className="text-sm font-medium">Type de projet</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option><option>Sol 1Ha</option><option>Batterie</option></select></div>
               <div className="col-span-6"><label className="text-sm font-medium">Projet</label><Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} className="mt-1" placeholder="Ex: 150m² ou 9kWc" /></div>
 
               {/* Desktop: Technical Fields */}
@@ -2098,7 +2102,114 @@ export default function ProjectEditor() {
             </div>
           )}
 
-          <PredefinedBuildingsPanel onBuildingSelect={handleBuildingSelect} onConfigChange={handleBuildingConfigChange} tenantId={activeTenantId} />
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <div className="flex gap-4 border-b mb-4 pb-2">
+              <button
+                type="button"
+                onClick={() => setActiveConfigTab('buildings')}
+                className={cn(
+                  "px-2 py-1 text-sm font-bold transition-all border-b-2",
+                  activeConfigTab === 'buildings' ? "text-blue-600 border-blue-600" : "text-gray-400 border-transparent hover:text-gray-600"
+                )}
+              >
+                Gamme ECO-EVO
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveConfigTab('battery')}
+                className={cn(
+                  "px-2 py-1 text-sm font-bold transition-all border-b-2",
+                  activeConfigTab === 'battery' ? "text-blue-600 border-blue-600" : "text-gray-400 border-transparent hover:text-gray-600"
+                )}
+              >
+                Batterie
+              </button>
+            </div>
+
+            {activeConfigTab === 'buildings' ? (
+              <div className="-mx-4 -mb-4">
+                <PredefinedBuildingsPanel 
+                  onBuildingSelect={handleBuildingSelect} 
+                  onConfigChange={handleBuildingConfigChange} 
+                  tenantId={activeTenantId} 
+                />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Modèle de batterie</label>
+                  <Select value={selectedBatteryId} onValueChange={setSelectedBatteryId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Sélectionnez un modèle" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BATTERY_MODELS.map(model => (
+                        <SelectItem key={model.id} value={model.id}>
+                          {model.brand} - {model.model}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-1 block">Quantité</label>
+                  <Input 
+                    type="number" 
+                    min="1" 
+                    value={batteryQuantity} 
+                    onChange={e => setBatteryQuantity(parseInt(e.target.value) || 1)} 
+                    className="w-full"
+                  />
+                </div>
+
+                {(() => {
+                  const model = BATTERY_MODELS.find(m => m.id === selectedBatteryId);
+                  if (!model) return null;
+                  const totalPrice = model.price * batteryQuantity;
+                  const totalPower = model.power * batteryQuantity;
+                  const totalCapacity = model.capacity * batteryQuantity;
+                  const ratio = totalPrice / totalPower;
+
+                  return (
+                    <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                      <div>
+                        <div className="text-[10px] text-gray-500 uppercase font-bold">Prix Total</div>
+                        <div className="text-sm font-bold text-gray-900">{totalPrice.toLocaleString('fr-FR')} €</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-gray-500 uppercase font-bold">Puissance</div>
+                        <div className="text-sm font-bold text-gray-900">{totalPower} kW</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-gray-500 uppercase font-bold">Capacité</div>
+                        <div className="text-sm font-bold text-gray-900">{totalCapacity} kWh</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-gray-500 uppercase font-bold">Ratio (€/kW)</div>
+                        <div className="text-sm font-bold text-gray-900">{ratio.toFixed(2)}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <Button 
+                  onClick={() => {
+                    const model = BATTERY_MODELS.find(m => m.id === selectedBatteryId);
+                    window.dispatchEvent(new CustomEvent('map:place-battery', { 
+                      detail: { 
+                        model: model,
+                        quantity: batteryQuantity
+                      } 
+                    }));
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Insérer sur la carte
+                </Button>
+              </div>
+            )}
+          </div>
           <div className="rounded-2xl bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Capturer la vue</h3>
@@ -2190,12 +2301,107 @@ export default function ProjectEditor() {
               className="w-full flex items-center justify-between px-4 py-3 font-semibold text-sm text-gray-700"
               onClick={() => setIsBuildingsOpen(v => !v)}
             >
-              <span>🏗️ Bâtiments prédéfinis</span>
+              <div className="flex gap-3">
+                <span 
+                  className={cn("transition-colors", activeConfigTab === 'buildings' ? "text-blue-600" : "text-gray-400")}
+                  onClick={(e) => { e.stopPropagation(); setActiveConfigTab('buildings'); setIsBuildingsOpen(true); }}
+                >
+                  🏗️ Gamme ECO-EVO
+                </span>
+                <span className="text-gray-300">|</span>
+                <span 
+                  className={cn("transition-colors", activeConfigTab === 'battery' ? "text-blue-600" : "text-gray-400")}
+                  onClick={(e) => { e.stopPropagation(); setActiveConfigTab('battery'); setIsBuildingsOpen(true); }}
+                >
+                  🔋 Batterie
+                </span>
+              </div>
               <span className="text-lg">{isBuildingsOpen ? '▲' : '▼'}</span>
             </button>
             {isBuildingsOpen && (
               <div className="px-3 pb-3">
-                <PredefinedBuildingsPanel onBuildingSelect={handleBuildingSelect} onConfigChange={handleBuildingConfigChange} tenantId={activeTenantId} />
+                {activeConfigTab === 'buildings' ? (
+                  <PredefinedBuildingsPanel 
+                    onBuildingSelect={(b) => { handleBuildingSelect(b); setIsBuildingsOpen(false); }} 
+                    onConfigChange={handleBuildingConfigChange} 
+                    tenantId={activeTenantId} 
+                  />
+                ) : (
+                  <div className="space-y-4 p-2">
+                    <div>
+                      <label className="text-xs font-medium text-gray-700 mb-1 block">Modèle</label>
+                      <Select value={selectedBatteryId} onValueChange={setSelectedBatteryId}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {BATTERY_MODELS.map(model => (
+                            <SelectItem key={model.id} value={model.id} className="text-xs">
+                              {model.brand} - {model.model}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-gray-700 mb-1 block">Quantité</label>
+                      <Input 
+                        type="number" 
+                        min="1" 
+                        value={batteryQuantity} 
+                        onChange={e => setBatteryQuantity(parseInt(e.target.value) || 1)} 
+                        className="h-9 text-xs"
+                      />
+                    </div>
+
+                    {(() => {
+                      const model = BATTERY_MODELS.find(m => m.id === selectedBatteryId);
+                      if (!model) return null;
+                      const totalPrice = model.price * batteryQuantity;
+                      const totalPower = model.power * batteryQuantity;
+                      const totalCapacity = model.capacity * batteryQuantity;
+                      const ratio = totalPrice / totalPower;
+
+                      return (
+                        <div className="grid grid-cols-2 gap-2 p-2 bg-gray-50 rounded-lg border border-gray-100 text-[10px]">
+                          <div>
+                            <div className="text-gray-500 uppercase font-bold">Prix</div>
+                            <div className="font-bold">{totalPrice.toLocaleString('fr-FR')} €</div>
+                          </div>
+                          <div>
+                            <div className="text-gray-500 uppercase font-bold">Puiss.</div>
+                            <div className="font-bold">{totalPower} kW</div>
+                          </div>
+                          <div>
+                            <div className="text-gray-500 uppercase font-bold">Cap.</div>
+                            <div className="font-bold">{totalCapacity} kWh</div>
+                          </div>
+                          <div>
+                            <div className="text-gray-500 uppercase font-bold">Ratio</div>
+                            <div className="font-bold">{ratio.toFixed(2)}</div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    <Button 
+                      onClick={() => {
+                        const model = BATTERY_MODELS.find(m => m.id === selectedBatteryId);
+                        window.dispatchEvent(new CustomEvent('map:place-battery', { 
+                          detail: { 
+                            model: model,
+                            quantity: batteryQuantity
+                          } 
+                        }));
+                        setIsBuildingsOpen(false);
+                      }}
+                      className="w-full h-9 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      Insérer sur la carte
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
               </div>
             )}
           </div>
