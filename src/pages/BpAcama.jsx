@@ -1392,10 +1392,6 @@ function BatterySection({ config, setParams }) {
         )}
       </div>
 
-           </div>
-        )}
-      </div>
-
       <div className="flex justify-start mt-6 mb-2 pt-4 border-t border-slate-100">
          <div className="flex bg-slate-100 p-1 rounded-lg">
             <button 
