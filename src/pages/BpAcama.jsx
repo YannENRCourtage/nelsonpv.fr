@@ -965,20 +965,65 @@ function TableauPrevisionnelBatterie({ rows, detailed }) {
       ))}
     </tr>
   );
+
   return (
     <div className="mt-6 border-t pt-4 text-slate-900">
       <h4 className="text-[12px] font-black text-blue-600 uppercase mb-3 px-1">Plan d'Affaires Prévisionnel Batterie</h4>
       <div className="overflow-x-auto w-full custom-scrollbar">
         <table className="w-full border-collapse border border-slate-200">
-          <thead><tr className="bg-slate-100"><td className="p-2 border-r border-b border-slate-200 text-[11px] font-bold w-[180px]">Indicateurs</td>{rows.map((r, i) => (<td key={i} className="p-1 border-r border-b border-slate-200 text-center font-bold bg-slate-50 text-[11px]">{r.year}</td>))}</tr></thead>
+          <thead>
+            <tr className="bg-slate-100">
+              <td className="p-2 border-r border-b border-slate-200 text-[11px] font-bold w-[180px]">Indicateurs</td>
+              {rows.map((r, i) => (
+                <td key={i} className="p-1 border-r border-b border-slate-200 text-center font-bold bg-slate-50 text-[11px]">{r.year}</td>
+              ))}
+            </tr>
+          </thead>
           <tbody>
-            <tr className="bg-amber-400 font-bold uppercase text-[11px]"><td className="px-2 py-1 border-r border-b border-slate-300">Chiffre d'Affaires (HT)</td>{rows.map((_, i) => <td key={i} className="border-r border-b border-slate-300"></td>)}</tr>
+            <tr className="bg-amber-400 font-bold uppercase text-[11px]">
+              <td className="px-2 py-1 border-r border-b border-slate-300">Chiffre d'Affaires (HT)</td>
+              {rows.map((_, i) => <td key={i} className="border-r border-b border-slate-300"></td>)}
+            </tr>
+            {detailed && (
+              <>
+                <DataRow label="Arbitrage énergie" propName="arbitrage" isCurrency indent />
+                <DataRow label="Réserve (FCR/aFRR)" propName="reserve" isCurrency indent />
+                <DataRow label="Mécanisme de capacité" propName="capacite" isCurrency indent />
+                <DataRow label="Effacement" propName="effacement" isCurrency indent />
+              </>
+            )}
             <DataRow label="TOTAL REVENUS" propName="caTotal" isCurrency bold className="bg-slate-50" />
-            <tr className="bg-slate-100 font-bold uppercase text-[11px]"><td className="px-2 py-1 border-r border-b border-slate-200">Charges & Résultats</td>{rows.map((_, i) => <td key={i} className="border-r border-b border-slate-200"></td>)}</tr>
-            <DataRow label="Charges d'Exploitation (OPEX)" propName="opex" isCurrency />
+
+            <tr className="bg-slate-100 font-bold uppercase text-[11px]">
+              <td className="px-2 py-1 border-r border-b border-slate-200">Charges & Résultats</td>
+              {rows.map((_, i) => <td key={i} className="border-r border-b border-slate-200"></td>)}
+            </tr>
+            {detailed ? (
+              <>
+                <DataRow label="Maintenance" propName="maint" isCurrency indent />
+                <DataRow label="Revenu bailleur" propName="revBailleur" isCurrency indent />
+                <DataRow label="Gestion de la charge" propName="gestionCharge" isCurrency indent />
+                <DataRow label="Rétribution commerciale" propName="retribComm" isCurrency indent />
+                <DataRow label="Assurance" propName="assur" isCurrency indent />
+                <DataRow label="Commission Agrégateur" propName="fraisAgregateur" isCurrency indent />
+                <DataRow label="TURPE" propName="turpe" isCurrency indent />
+                <DataRow label="IFER" propName="ifer" isCurrency indent />
+              </>
+            ) : (
+              <DataRow label="Charges d'Exploitation (OPEX)" propName="opex" isCurrency />
+            )}
+            
             <DataRow label="Service de la Dette" propName="serviceDette" isCurrency />
             <DataRow label="EBITDA (EBE)" propName="ebe" isCurrency bold className="bg-blue-50 text-blue-800" />
-            <tr className="bg-amber-400 font-black text-slate-900 text-[11px]"><td className="px-2 py-1 uppercase border-r border-slate-300">Trésorerie nette annuelle</td>{rows.map((r, i) => (<td key={i} className="px-1 py-1 text-right border-r border-slate-300">{fmtEur(r.tresorerie)}</td>))}</tr>
+            
+            <tr className="bg-amber-400 font-black text-slate-900 text-[11px]">
+              <td className="px-2 py-1 uppercase border-r border-slate-300">Trésorerie nette annuelle</td>
+              {rows.map((r, i) => (
+                <td key={i} className="px-1 py-1 text-right border-r border-slate-300">
+                  {fmtEur(r.tresorerie)}
+                </td>
+              ))}
+            </tr>
           </tbody>
         </table>
       </div>
