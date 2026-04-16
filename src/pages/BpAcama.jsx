@@ -1184,6 +1184,10 @@ function BatterySection({ config, setParams }) {
             <Field label="Réserve (FCR/aFRR)" value={config.reserveFCR} onChange={v => update('reserveFCR', v)} type="number" suffix="€" />
             <Field label="Méc. capacité" value={config.mecanismeCapacite} onChange={v => update('mecanismeCapacite', v)} type="number" suffix="€" />
             <Field label="Effacement" value={config.effacement} onChange={v => update('effacement', v)} type="number" suffix="€" />
+            <div className="pt-2 border-t border-blue-100 flex justify-between items-center px-2 py-1 bg-blue-50/50 rounded">
+              <span className="text-[11px] font-black text-blue-700 uppercase">Total Revenus An 1 (Brut)</span>
+              <span className="text-sm font-black text-slate-900">{fmtEur((parseFloat(config.arbitrageEnergie)||0) + (parseFloat(config.reserveFCR)||0) + (parseFloat(config.mecanismeCapacite)||0) + (parseFloat(config.effacement)||0))}</span>
+            </div>
             <div className="pt-2 border-t border-slate-100 mt-2">
                <Field label="Disponibilité" value={config.disponibilite} onChange={v => update('disponibilite', v)} type="number" suffix="%" />
                <Field label="Rendement R-T" value={config.rendementRoundTrip} onChange={v => update('rendementRoundTrip', v)} type="number" suffix="%" />
@@ -3888,11 +3892,11 @@ export default function BpAcama() {
       disponibilite: 98,
       rendementRoundTrip: 88,
       maintenanceAn: 750,
-      revenuBailleurAn: 2500,
+      revenuBailleurAn: 1250,
       gestionChargeAn: 4562.5,
       retributionCommAn: 550,
       assuranceAn: 240,
-      commissionAgregateur: 20,
+      commissionAgregateur: 18,
       turpeAn: 5000,
       iferAn: 1250,
       tauxEmprunt: 3.9,
@@ -3930,11 +3934,11 @@ export default function BpAcama() {
       disponibilite: 98,
       rendementRoundTrip: 88,
       maintenanceAn: 750,
-      revenuBailleurAn: 2500,
+      revenuBailleurAn: 1250,
       gestionChargeAn: 4562.5,
       retributionCommAn: 550,
       assuranceAn: 383, // Updated for 57583 base (95733 total * 0.4%)
-      commissionAgregateur: 20,
+      commissionAgregateur: 18,
       turpeAn: 2500,
       iferAn: 625,
       tauxEmprunt: 3.9,
@@ -3962,10 +3966,13 @@ export default function BpAcama() {
         if (saved.batteryConfig.turpeAn === 5000) saved.batteryConfig.turpeAn = 2500;
         if (saved.batteryConfig.iferAn === 1250) saved.batteryConfig.iferAn = 625;
         
-        // RECENT UPDATES: revenuBailleur (2500) and gestionCharge (4562.5)
+        // RECENT UPDATES: revenuBailleur (1250) and commissionAgregateur (18)
         const nbB = saved.batteryConfig.nbBricks || 1;
-        if (saved.batteryConfig.revenuBailleurAn === 2000 * nbB) {
-          saved.batteryConfig.revenuBailleurAn = 2500 * nbB;
+        if (saved.batteryConfig.revenuBailleurAn === 2500 * nbB || saved.batteryConfig.revenuBailleurAn === 2000 * nbB) {
+          saved.batteryConfig.revenuBailleurAn = 1250 * nbB;
+        }
+        if (saved.batteryConfig.commissionAgregateur === 20 || saved.batteryConfig.commissionAgregateur === undefined) {
+          saved.batteryConfig.commissionAgregateur = 18;
         }
         if (saved.batteryConfig.gestionChargeAn === undefined) {
           saved.batteryConfig.gestionChargeAn = 4562.5 * nbB;
