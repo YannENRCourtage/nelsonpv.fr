@@ -2513,9 +2513,10 @@ function TabBpProjets({
                  </div>
                </div>
             </SectionCard>
-          </div>
         </div>
-      )}
+      </div>
+    </div>
+  )}
 
       {isBatteryStandAlone && (
          <div className="pdf-header-container bg-white rounded-lg border border-slate-200 p-4 pt-6 relative overflow-hidden">
