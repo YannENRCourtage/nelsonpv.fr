@@ -110,21 +110,6 @@ const parseFirestoreDate = (dateVal) => {
   return (d instanceof Date && !isNaN(d.getTime())) ? d : null;
 };
 
-// --- Formatters ---
-const fmt = (val, dec = 2) => {
-  if (val === undefined || val === null || isNaN(val)) return '0';
-  return Number(val).toLocaleString('fr-FR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
-};
-
-const fmtEur = (val) => {
-  if (val === undefined || val === null || isNaN(val)) return '0,00 €';
-  return Number(val).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
-};
-
-const fmtPct = (val) => {
-  if (val === undefined || val === null || isNaN(val)) return '0,0%';
-  return (Number(val) * 100).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
-};
 
 // BATTERY_MODELS moved to shared file
 
