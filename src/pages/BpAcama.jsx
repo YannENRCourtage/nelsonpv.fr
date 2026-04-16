@@ -494,7 +494,7 @@ function computeBatteryProfitability(config) {
   
   const {
     inflationAnnuelle = 2,
-    degradationAnnuelle = 2,
+    degradationAnnuelle = 1,
     batterieBms = 50209,
     genieCivil = 6000,
     raccordement = 19900,
@@ -1226,8 +1226,8 @@ function BatterySection({ config, setParams }) {
                  </select>
                </div>
                <div className="grid grid-cols-2 gap-4">
-                 <Field label="Inflation ann." value={config.inflationAnnuelle} onChange={v => update('inflationAnnuelle', v)} type="number" suffix="%" />
-                 <Field label="Dégradation ann." value={config.degradationAnnuelle} onChange={v => update('degradationAnnuelle', v)} type="number" suffix="%" />
+                  <Field label="Inflation ann." value={config.inflationAnnuelle ?? 2} onChange={v => update('inflationAnnuelle', v)} type="number" suffix="%" step={0.5} />
+                  <Field label="Dégradation ann." value={config.degradationAnnuelle ?? 1} onChange={v => update('degradationAnnuelle', v)} type="number" suffix="%" step={0.5} />
                </div>
             </div>
           </div>
