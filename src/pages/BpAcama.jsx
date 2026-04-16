@@ -475,7 +475,7 @@ function PMT(ir, np, pv) {
 function IRR(values, guess = 0.1) {
   if (!values || values.length < 2) return 0;
   let min = -1.0;
-  let max = 1.0;
+  let max = 10.0;
   let guessVal = guess;
   for (let i = 0; i < 100; i++) {
     let npv = 0;
@@ -518,10 +518,15 @@ function computeBatteryProfitability(config) {
     dureeEmprunt = 20,
     apport = 0,
     tauxIS = 25,
-    dureeEtude = 12
+    dureeEtude = 12,
+    isInvestPropre = false
   } = config;
 
-  const capexTotal = batterieBms + genieCivil + raccordement + developpement + fraisCommerciaux;
+  // Zero out commercial fees if own investment
+  const effectiveFraisComm = isInvestPropre ? 0 : (fraisCommerciaux || 0);
+  const effectiveRetribComm = isInvestPropre ? 0 : (retributionCommAn || 0);
+
+  const capexTotal = batterieBms + genieCivil + raccordement + developpement + effectiveFraisComm;
   const revenusBrutsAn1 = arbitrageEnergie + reserveFCR + mecanismeCapacite + effacement;
   
   const emprunt = Math.max(0, capexTotal - apport);
@@ -530,18 +535,24 @@ function computeBatteryProfitability(config) {
   const cashFlowsProjet = [-capexTotal];
   const cashFlowsFP = [-apport];
   let remainingDebt = emprunt;
-  let totalNetGain = 0;
+  let gainNetEtude = 0;
+  let gainNet20A = 0;
   let dynamicPayback = null;
   let runningCashFlow = -apport;
   let resY1 = {};
 
   const rows = [];
-  for (let y = 1; y <= dureeEtude; y++) {
+  const maxYearsLoop = Math.max(20, dureeEtude);
+
+  for (let y = 1; y <= maxYearsLoop; y++) {
     const infl = Math.pow(1 + inflationAnnuelle / 100, y - 1);
     const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
 
     const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100);
-    const chargesFixes = (maintenanceAn + assuranceAn + turpeAn + iferAn + revenuBailleurAn + gestionChargeAn + retributionCommAn) * infl;
+    // revenuBailleur remains fixed (not indexed)
+    const chargesFixesNoBailleur = (maintenanceAn + assuranceAn + turpeAn + iferAn + gestionChargeAn + effectiveRetribComm) * infl;
+    const chargesFixes = chargesFixesNoBailleur + (revenuBailleurAn || 0);
+    
     const chargesCom = revNet * (commissionAgregateur / 100);
     const ebe = revNet - (chargesFixes + chargesCom);
 
@@ -554,52 +565,56 @@ function computeBatteryProfitability(config) {
     
     const cashFlow = ebe - interest - principal - is;
     
-    if (dynamicPayback === null && runningCashFlow + cashFlow >= 0) {
-        dynamicPayback = (y - 1) + (Math.abs(runningCashFlow) / cashFlow);
-    }
-    runningCashFlow += cashFlow;
+    if (y <= dureeEtude) {
+        if (dynamicPayback === null && runningCashFlow + cashFlow >= 0) {
+            dynamicPayback = (y - 1) + (Math.abs(runningCashFlow) / cashFlow);
+        }
+        runningCashFlow += cashFlow;
+        gainNetEtude += cashFlow;
 
-    // Project Cash Flow (Unlevered): EBE - Tax (without interest shield)
-    const ebitUnlevered = ebe - (capexTotal / dureeEtude);
-    const taxUnlevered = ebitUnlevered > 0 ? ebitUnlevered * (tauxIS / 100) : 0;
-    cashFlowsProjet.push(ebe - taxUnlevered);
-    
-    // Equity Cash Flow (Levered): EBE - Debt Service - Tax (with interest shield)
-    cashFlowsFP.push(cashFlow);
+        // Project Cash Flow (Unlevered): EBE - Tax (without interest shield)
+        const ebitUnlevered = ebe - (capexTotal / dureeEtude);
+        const taxUnlevered = ebitUnlevered > 0 ? ebitUnlevered * (tauxIS / 100) : 0;
+        cashFlowsProjet.push(ebe - taxUnlevered);
+        
+        // Equity Cash Flow (Levered): EBE - Debt Service - Tax (with interest shield)
+        cashFlowsFP.push(cashFlow);
+
+        const yearLabel = 2026 + y - 1;
+        rows.push({
+          year: yearLabel,
+          arbitrage: arbitrageEnergie * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
+          reserve: reserveFCR * deg * infl * (disponibilite / 100),
+          capacite: mecanismeCapacite * deg * infl * (disponibilite / 100),
+          effacement: effacement * deg * infl * (disponibilite / 100),
+          caTotal: revNet,
+          opex: chargesFixes + chargesCom,
+          maint: maintenanceAn * infl,
+          revBailleur: revenuBailleurAn, // Fixed
+          gestionCharge: gestionChargeAn * infl,
+          assur: assuranceAn * infl,
+          turpe: turpeAn * infl,
+          ifer: iferAn * infl,
+          retribComm: effectiveRetribComm * infl,
+          fraisAgregateur: chargesCom,
+          serviceDette: interest + principal,
+          ebe,
+          interest,
+          principal,
+          tresorerie: cashFlow
+        });
+
+        if (y === 1) {
+          resY1 = { revNet, ebe, dscr: annuite > 0 ? ebe / annuite : 9.99 };
+        }
+    }
+
+    if (y <= 20) {
+        gainNet20A += cashFlow;
+    }
 
     remainingDebt = Math.max(0, remainingDebt - principal);
-    totalNetGain += cashFlow;
-
-    const yearLabel = 2026 + y - 1;
-    rows.push({
-      year: yearLabel,
-      arbitrage: arbitrageEnergie * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
-      reserve: reserveFCR * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
-      capacite: mecanismeCapacite * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
-      effacement: effacement * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
-      caTotal: revNet,
-      opex: chargesFixes + chargesCom,
-      maint: maintenanceAn * infl,
-      revBailleur: revenuBailleurAn * infl,
-      gestionCharge: gestionChargeAn * infl,
-      assur: assuranceAn * infl,
-      turpe: turpeAn * infl,
-      ifer: iferAn * infl,
-      retribComm: retributionCommAn * infl,
-      fraisAgregateur: chargesCom,
-      serviceDette: interest + principal,
-      ebe,
-      interest,
-      principal,
-      tresorerie: cashFlow
-    });
-
-    if (y === 1) {
-      resY1 = { revNet, ebe, dscr: annuite > 0 ? ebe / annuite : 9.99 };
-    }
   }
-
-  const simplePayback = resY1.ebe > 0 ? (capexTotal / resY1.ebe) : 20;
 
   return {
     capexTotal,
@@ -609,7 +624,8 @@ function computeBatteryProfitability(config) {
     triFP: IRR(cashFlowsFP, 0.1),
     payback: dynamicPayback || (resY1.ebe > 0 ? capexTotal / resY1.ebe : dureeEtude),
     dscrAn1: resY1.dscr,
-    gainNetTotal: totalNetGain,
+    gainNetEtude,
+    gainNet20A,
     rows
   };
 }
@@ -626,7 +642,7 @@ function computeBusinessPlan(params) {
     assurance = 867.10,
     taxesLocales = 0,
     gestionAdmin = 0,
-    totalInvestissement = 435655.12, // TTC
+    totalInvestissement = 435655.12,
     coutCentrale = 0,
     coutCharpente = 0,
     raccordement = 0,
@@ -648,7 +664,6 @@ function computeBusinessPlan(params) {
   const prodHautInit = Math.max(0, prodTotale * ((productible - seuilKwhKwc) / (productible || 1)));
   const prodBasInit = prodTotale - prodHautInit;
 
-  // 1. First pass: calculate total CA and Opex (excluding loyer/soulte) to get the margin
   let totalCA = 0;
   let totalOpexBaseSum = 0;
   for (let y = 1; y <= 20; y++) {
@@ -671,12 +686,9 @@ function computeBusinessPlan(params) {
   }
 
   const margin = totalCA - totalOpexBaseSum;
-  
-  // Potential values (if applied)
   const calculatedLoyer = (margin * (loyerCoeff || 0)) / 20;
   const calculatedSoulte = (margin * (soulteCoeff || 0)) / 2;
 
-  // Actual values applied based on renteType selecion in UI
   const actualLoyerOpex = params.renteType === 'loyer' ? calculatedLoyer : 0;
   const actualSoulteCapitalized = params.renteType === 'soulte' ? calculatedSoulte : (params.renteType === 'none' ? 0 : (params.soulte || 0));
 
@@ -687,30 +699,18 @@ function computeBusinessPlan(params) {
 
   const rows = [];
   let dscrs = [];
-
   let detteDebut = emprunt;
-  let cfCumule = 0;
-  let sumCA = 0;
-  let sumOpex = 0;
-  
-  const opexBase = maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin + actualLoyerOpex;
-
-  // For IRR we need array of cash flows: Year 0 = -Apport (Wait, in Excel D61 = -K19)
   const cashFlowFP = [-apport10];
-  const cashFlowProjet = [-totalConstruction]; // D62 = -Q12
-  let sumCAFDS = 0;
-
-  let fraisDSRFInit = 0;
+  const cashFlowProjet = [-totalConstruction];
+  const opexBase = maintenance + locationCompteur + assurance + taxesLocales + gestionAdmin + actualLoyerOpex;
 
   for (let i = 1; i <= 20; i++) {
     const deg = Math.pow(1 - degradation, i - 1);
     const idxT = Math.pow(1 + indexationTarif, i - 1);
     const idxOpex = Math.pow(1 + indexationOpex, i - 1);
 
-    const pKw = kwc * deg;
     const ph = prodHautInit * deg;
     const pb = prodBasInit * deg;
-
     const prodACC = (ph + pb) * partACC;
     const new_ph = Math.max(0, ph - prodACC);
     const rem_acc_y = Math.max(0, prodACC - ph);
@@ -719,128 +719,74 @@ function computeBusinessPlan(params) {
     const tBas = tarifBas * idxT;
     const tHaut = tarifHaut * idxT;
     const ca = (prodACC * tarifACC * idxT) + (new_pb * tBas) + (new_ph * tHaut);
-
-    if (i === 1) {
-      fraisDSRFInit = (ca / 1.35 * 0.5) * (tauxCredit / 100 * 0.35);
-      sumCA += ca;
-    } else { sumCA += ca; }
-
     const opex = opexBase * idxOpex;
-    sumOpex += opex;
-    
-    // We reconstruct the flat OPEX values matching existing display
-    const maint = maintenance * idxOpex;
-    const loc = locationCompteur * idxOpex;
-    const ass = assurance * idxOpex;
-    const taxes = taxesLocales * idxOpex;
-    const admin = gestionAdmin * idxOpex;
 
     const ebitda = ca - opex;
     const amortissement = totalConstruction / 20;
     const ebit = ebitda - amortissement;
-
     const interets = (tauxCredit / 100) * detteDebut;
-    const fraisDSRF = fraisDSRFInit; // Constant
-    const resFin = interets + fraisDSRF;
-    const resFiscal = ebit - resFin;
+    const resFiscal = ebit - interets;
 
-    // IS
     let is = 0;
     if (resFiscal > 0) {
-      if (resFiscal < 42500) {
-        is = resFiscal * 0.15;
-      } else {
-        is = (42500 * 0.15) + ((resFiscal - 42500) * 0.25);
-      }
+      if (resFiscal < 42500) is = resFiscal * 0.15;
+      else is = (42500 * 0.15) + ((resFiscal - 42500) * 0.25);
     }
     
-    const resApresIS = resFiscal - is;
     const cafds = ebitda - is;
-
-    const mra = (20 * kwc) / 10;
-    
     const sd = i <= dureeEmprunt ? serviceDette : 0;
     const rembPrincipal = sd > 0 ? sd - interets : 0;
-    // Fix: If no debt, DSCR is technically infinite/very high.
-    const dscr = sd > 1 ? (cafds / sd) : (sd > 0 ? (cafds / sd) : 9.99);
+    const dscr = sd > 1 ? (cafds / sd) : 9.99;
 
-    const tresorerie = ebitda - resFin - is - rembPrincipal;
-    cfCumule += tresorerie;
-
+    const tresorerie = ebitda - interets - is - rembPrincipal;
     cashFlowFP.push(tresorerie);
     cashFlowProjet.push(cafds);
     if (sd > 0) dscrs.push(dscr);
 
     rows.push({
       year: 2025 + i,
-      kwcDeg: pKw,
+      kwcDeg: kwc * deg,
       prod: pb + ph,
       prodBas: new_pb,
       prodHaut: new_ph,
       tBas,
       tHaut,
       ca,
-      maint,
-      loc,
-      ass,
-      taxes,
-      admin,
-      loyer: actualLoyerOpex * idxOpex,
-      opex, // Total indexed OPEX
+      opex,
       ebitda,
       amortissement,
       ebit,
       interets,
-      fraisDSRF,
-      resFin,
       resFiscal,
       is,
-      resApresIS,
       detteDebut,
       cafds,
-      mra,
       serviceDette: sd,
       rembPrincipal,
       dscr,
       prodACC,
-      tresorerie,
-      cfCumule
+      tresorerie
     });
     detteDebut = Math.max(0, detteDebut - rembPrincipal);
   }
 
-  const dscrMoyen = dscrs.length > 0 ? dscrs.reduce((a, b) => a + b, 0) / dscrs.length : 0;
-  
-  // Gains sur 20 ans: turnover vs costs & investment
-  const gainsVrai = sumCA - sumOpex - totalConstruction;
-
-  // Average annual turnover (CA) payback
-  const payback = totalConstruction / (Math.max(1, sumCA) / 20);
-
-  // Rentabilité
-  const triProjet = IRR(cashFlowProjet, 0.05); // W8
-  let triFP = IRR(cashFlowFP, 0.05); // W7
-  if (triFP < -0.99 || triFP > 10) triFP = null; 
-  
-  const tempsRetour = payback; // Sync both names for safety
+  const sumCA = rows.reduce((acc, r) => acc + r.ca, 0);
+  const sumOpex = rows.reduce((acc, r) => acc + r.opex, 0);
 
   return { 
     rows, 
-    dscrMoyen,
+    dscrMoyen: dscrs.reduce((a, b) => a + b, 0) / (dscrs.length || 1),
     annuite: serviceDette, 
     emprunt,
-    triProjet,
-    triFP,
-    payback,
-    tempsRetour,
+    triProjet: IRR(cashFlowProjet, 0.05),
+    triFP: IRR(cashFlowFP, 0.05),
+    payback: totalConstruction / (sumCA / 20),
     loyer: calculatedLoyer,
     soulte: calculatedSoulte,
     totalConstruction,
-    totalInvestissement: totalConstruction,
-    apport10,
     sumCA,
     sumOpex,
-    gains: gainsVrai
+    gains: sumCA - sumOpex - totalConstruction
   };
 }
 
@@ -850,158 +796,94 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
   const tauxIS = batteryConfig.tauxIS || 25;
 
   for (let i = 0; i < years; i++) {
-    const rB = bpBuilding.rows[i] || { year: i+1, ca: 0, opex: 0, serviceDette: 0, amortissement: 0, interets: 0, fraisDSRF: 0, rembPrincipal: 0 };
-    // computeBatteryProfitability row has: year, arbitrage, reserve, capacite, effacement, caTotal, opex, serviceDette, ebe, interest, principal, tresorerie
-    const rBat = bpBattery.rows[i] || { year: rB.year, arbitrage: 0, reserve: 0, capacite: 0, effacement: 0, caTotal: 0, opex: 0, serviceDette: 0, ebe: 0, interest: 0, principal: 0, tresorerie: 0 };
+    const rB = bpBuilding.rows[i];
+    const rBat = bpBattery.rows[i] || { caTotal: 0, opex: 0, serviceDette: 0, principal: 0, interest: 0 };
 
     const caGlobal = (rB.ca || 0) + (rBat.caTotal || 0);
     const opexGlobal = (rB.opex || 0) + (rBat.opex || 0);
-    
     const ebitdaGlobal = caGlobal - opexGlobal;
-    const amortissementGlobal = (rB.amortissement || 0) + (bpBattery.capexTotal / (batteryConfig.dureeEtude || 20));
+    const amortissementGlobal = rB.amortissement + (bpBattery.capexTotal / (batteryConfig.dureeEtude || 12));
     const ebitGlobal = ebitdaGlobal - amortissementGlobal;
-    
-    const interetsGlobal = (rB.interets || 0) + (rBat.interest || 0);
-    const resFinGlobal = interetsGlobal + (rB.fraisDSRF || 0);
-    const resFiscalGlobal = ebitGlobal - resFinGlobal;
+    const interetsGlobal = rB.interets + (rBat.interest || 0);
+    const resFiscalGlobal = ebitGlobal - interetsGlobal;
     
     let impotGlobal = 0;
     if (resFiscalGlobal > 0) {
-      if (resFiscalGlobal < 42500) {
-        impotGlobal = resFiscalGlobal * 0.15;
-      } else {
-        impotGlobal = (42500 * 0.15) + ((resFiscalGlobal - 42500) * (tauxIS/100));
-      }
+      if (resFiscalGlobal < 42500) impotGlobal = resFiscalGlobal * 0.15;
+      else impotGlobal = (42500 * 0.15) + ((resFiscalGlobal - 42500) * (tauxIS/100));
     }
     
-    const resApresISGlobal = resFiscalGlobal - impotGlobal;
-    const rembPrincipalGlobal = (rB.rembPrincipal || 0) + (rBat.principal || 0);
-    const serviceDetteGlobal = (rB.serviceDette || 0) + (rBat.serviceDette || 0);
-    const tresorerieGlobal = ebitdaGlobal - resFinGlobal - impotGlobal - rembPrincipalGlobal;
+    const rembPrincipalGlobal = rB.rembPrincipal + (rBat.principal || 0);
+    const serviceDetteGlobal = rB.serviceDette + (rBat.serviceDette || 0);
+    const cafdsGlobal = ebitdaGlobal - impotGlobal;
 
     combinedRows.push({
       ...rB,
-      ...rBat,
       year: rB.year,
       ca: caGlobal,
       opex: opexGlobal,
-      maint: (rB.maint || 0) + (rBat.maint || 0),
-      ass: (rB.ass || 0) + (rBat.assur || 0),
-      loc: (rB.loc || 0),
-      taxes: (rB.taxes || 0) + (rBat.turpe || 0) + (rBat.ifer || 0),
-      admin: (rB.admin || 0) + (rBat.retribComm || 0),
-      revenuBailleur: rBat.revBailleur || 0,
       ebitda: ebitdaGlobal,
       amortissement: amortissementGlobal,
       ebit: ebitGlobal,
       interets: interetsGlobal,
-      resFin: resFinGlobal,
       resFiscal: resFiscalGlobal,
       is: impotGlobal,
-      resApresIS: resApresISGlobal,
-      serviceDetteBuilding: rB.serviceDette || 0,
-      serviceDetteBattery: rBat.serviceDette || 0,
+      serviceDetteBuilding: rB.serviceDette,
+      serviceDetteBattery: rBat.serviceDette,
       serviceDette: serviceDetteGlobal,
-      dscr: serviceDetteGlobal > 0.01 ? (ebitdaGlobal - impotGlobal) / serviceDetteGlobal : 9.99,
+      dscr: serviceDetteGlobal > 0.01 ? cafdsGlobal / serviceDetteGlobal : 9.99,
       rembPrincipal: rembPrincipalGlobal,
-      tresorerie: tresorerieGlobal,
-      cafds: ebitdaGlobal - impotGlobal,
-      fraisAgregateur: rBat.fraisAgregateur || 0,
+      tresorerie: ebitdaGlobal - interetsGlobal - impotGlobal - rembPrincipalGlobal,
+      cafds: cafdsGlobal,
       isGlobal: true,
       isCombined: true
     });
   }
 
-  const totalConsGlobal = (bpBuilding.totalConstruction || 0) + (bpBattery.capexTotal || 0);
-  const totalApportGlobal = (bpBuilding.apport10 || 0) + (batteryConfig.apport || 0);
-
-  const cashFlowProjet = [-totalConsGlobal, ...combinedRows.map(r => r.cafds)];
-  const cashFlowFP = [-totalApportGlobal, ...combinedRows.map(r => r.tresorerie)];
-
-  const triProjet = IRR(cashFlowProjet, 0.05);
-  let triFP = IRR(cashFlowFP, 0.05);
-  if (triFP < -0.99 || triFP > 10) triFP = null;
-
+  const totalConsGlobal = bpBuilding.totalConstruction + bpBattery.capexTotal;
+  const triProjet = IRR([-totalConsGlobal, ...combinedRows.map(r => r.cafds)], 0.05);
   const sumCA = combinedRows.reduce((acc, r) => acc + r.ca, 0);
   const sumOpex = combinedRows.reduce((acc, r) => acc + r.opex, 0);
-  const gains = sumCA - sumOpex - totalConsGlobal;
-  const payback = years > 0 ? (totalConsGlobal / (sumCA / years)) : 20;
-  const dscrs = combinedRows.filter(r => r.serviceDette > 0).map(r => r.dscr);
-  const dscrMoyen = dscrs.length > 0 ? dscrs.reduce((a, b) => a + b, 0) / dscrs.length : 0;
 
   return {
     ...bpBuilding,
     rows: combinedRows,
-    dscrMoyen,
-    totalConstruction: totalConsGlobal,
-    totalInvestissement: totalConsGlobal,
-    apport10: totalApportGlobal,
     triProjet,
-    triFP,
+    totalConstruction: totalConsGlobal,
     sumCA,
     sumOpex,
-    gains,
-    payback,
-    tempsRetour: payback
+    gains: sumCA - sumOpex - totalConsGlobal
   };
 }
 
 function calculateGoalSeekDSCR(params, type, target = 1.17) {
-  if (!params.kwc) throw new Error("Aucun projet chargé ou puissance nulle.");
-  
-  let lo = 0, hi = 20; // Wide range for coeff
-  let bestCoeff = 0;
-  
+  let lo = 0, hi = 20;
   for (let i = 0; i < 100; i++) {
     const mid = (lo + hi) / 2;
     const testParams = { ...params };
-    if (type === 'loyer') {
-      testParams.loyerCoeff = mid;
-      testParams.soulteCoeff = 0;
-    } else {
-      testParams.loyerCoeff = 0;
-      testParams.soulteCoeff = mid;
-    }
-    
+    if (type === 'loyer') { testParams.loyerCoeff = mid; testParams.soulteCoeff = 0; }
+    else { testParams.loyerCoeff = 0; testParams.soulteCoeff = mid; }
     const { dscrMoyen } = computeBusinessPlan(testParams);
-    
-    // DSCR decreases as coeff increases (higher rent/soulte = less cash flow for debt)
-    if (dscrMoyen > target) {
-      lo = mid;
-    } else {
-      hi = mid;
-    }
-    bestCoeff = mid;
+    if (dscrMoyen > target) lo = mid; else hi = mid;
   }
-  return bestCoeff;
+  return lo;
 }
 
-
 function computeResteACharge(params) {
-  if (!params.totalInvestissement || params.totalInvestissement <= 0) return 0;
   const targetDscr = params.targetDSCR || 1.17;
-  // Binary search: find the additional apport needed so dscrMoyen >= targetDscr
   let lo = 0, hi = params.totalInvestissement;
   for (let i = 0; i < 60; i++) {
     const mid = (lo + hi) / 2;
     const { dscrMoyen } = computeBusinessPlan({ ...params, apport: mid });
-    if (isNaN(dscrMoyen) || dscrMoyen >= targetDscr) { hi = mid; } else { lo = mid; }
+    if (dscrMoyen >= targetDscr) hi = mid; else lo = mid;
   }
-  // Return early if target reached with 0 additional apport
-  const { dscrMoyen: dscrInit } = computeBusinessPlan({ ...params, apport: 0 });
-  if (dscrInit >= targetDscr) return 0;
-
-  return hi < 0.01 ? 0 : Math.min(Math.ceil(hi), (params.totalInvestissement || 0) * 1.2);
+  return Math.max(0, Math.ceil(hi));
 }
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const fmt = (n, dec = 0) => (n ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const fmtEur = (n) => `${fmt(n, 2)} €`;
 const fmtPct = (n) => `${fmt(n * 100, 1)}%`;
-const fmtEurK = (v) => `${(v / 1000).toFixed(0)}k€`;
 
-// Lateral drag-scroll hook
 const useDragScroll = () => {
   const ref = React.useRef(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -1021,25 +903,13 @@ const useDragScroll = () => {
       if (!isDragging || !ref.current) return;
       e.preventDefault();
       const x = e.pageX - ref.current.offsetLeft;
-      const walk = (x - startX) * 1.5;
-      ref.current.scrollLeft = scrollLeft - walk;
+      ref.current.scrollLeft = scrollLeft - (x - startX) * 1.5;
     };
-
-    if (isDragging) {
-      window.addEventListener('mouseup', handleMouseUp);
-      window.addEventListener('mousemove', handleMouseMove);
-    }
-    return () => {
-      window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('mousemove', handleMouseMove);
-    };
+    if (isDragging) { window.addEventListener('mouseup', handleMouseUp); window.addEventListener('mousemove', handleMouseMove); }
+    return () => { window.removeEventListener('mouseup', handleMouseUp); window.removeEventListener('mousemove', handleMouseMove); };
   }, [isDragging, startX, scrollLeft]);
 
-  return { 
-    ref, 
-    onMouseDown,
-    className: cn("overflow-auto border border-slate-200 rounded-lg select-none cursor-grab", isDragging && "cursor-grabbing") 
-  };
+  return { ref, onMouseDown, className: cn("overflow-auto border border-slate-200 rounded-lg select-none cursor-grab", isDragging && "cursor-grabbing") };
 };
 
 function Field({ label, value, onChange, type = 'text', suffix, className, step, disabled, precision = 2, hideLabel = false }) {
@@ -1050,18 +920,10 @@ function Field({ label, value, onChange, type = 'text', suffix, className, step,
         <input
           type={type}
           disabled={disabled}
-          min={type === 'number' ? 0 : undefined}
-          className={cn(
-            "border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none transition-colors focus:ring-1 focus:ring-blue-500",
-            disabled ? "bg-slate-50 text-slate-400 cursor-not-allowed" : "text-slate-900 bg-white"
-          )}
-          value={type === 'number' && typeof value === 'number' ? (Math.round(value * Math.pow(10, precision)) / Math.pow(10, precision)).toString() : (value ?? '')}
-          onChange={e => {
-            let val = type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value;
-            if (type === 'number' && val < 0) val = 0;
-            onChange?.(val);
-          }}
-          step={step ?? (type === 'number' ? 'any' : undefined)}
+          className={cn("border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none", disabled ? "bg-slate-50 text-slate-400" : "bg-white")}
+          value={type === 'number' ? (Math.round(value * Math.pow(10, precision)) / Math.pow(10, precision)).toString() : (value ?? '')}
+          onChange={e => onChange?.(type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value)}
+          step={step}
         />
         {suffix && <span className="text-sm text-slate-500 shrink-0">{suffix}</span>}
       </div>
@@ -1085,96 +947,38 @@ function SignatureArea({ data, update }) {
   return (
     <div className="mt-12 pt-8 border-t border-slate-200 grid grid-cols-2 gap-12">
       <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] font-bold text-slate-700 uppercase">Fait à :</span>
-          <input 
-            className="flex-1 outline-none text-[13px] px-1 focus:bg-blue-50/50 bg-transparent"
-            value={data.faitA || ''} 
-            onChange={e => update('faitA', e.target.value)}
-            placeholder=".........................................."
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] font-bold text-slate-700 uppercase">Le :</span>
-          <input 
-            className="flex-1 outline-none text-[13px] px-1 focus:bg-blue-50/50 bg-transparent"
-            value={data.faitLe || ''} 
-            onChange={e => update('faitLe', e.target.value)}
-            placeholder=".........................................."
-          />
-        </div>
+        <div className="flex items-center gap-2"><span className="text-[12px] font-bold text-slate-700 uppercase">Fait à :</span><input value={data.faitA || ''} onChange={e => update('faitA', e.target.value)} placeholder="..." className="flex-1 border-b border-slate-200 outline-none text-[13px]"/></div>
+        <div className="flex items-center gap-2"><span className="text-[12px] font-bold text-slate-700 uppercase">Le :</span><input value={data.faitLe || ''} onChange={e => update('faitLe', e.target.value)} placeholder="..." className="flex-1 border-b border-slate-200 outline-none text-[13px]"/></div>
       </div>
     </div>
   );
 }
 
 function TableauPrevisionnelBatterie({ rows, detailed }) {
-  const DataRow = ({ label, propName, isCurrency, format, bold, className, indent }) => (
+  const DataRow = ({ label, propName, isCurrency, bold, className, indent }) => (
     <tr className={`border-b border-slate-200 bg-white hover:bg-slate-50 ${className}`}>
       <td className={`px-2 py-1 font-medium bg-slate-50 text-[11px] border-r border-slate-200 w-[180px] ${bold ? 'font-bold' : ''} ${indent ? 'pl-4 italic text-slate-500' : ''}`}>{label}</td>
       {rows.map((r, i) => (
         <td key={i} className={`px-1 py-1 text-right border-r border-slate-200 text-[11px] min-w-[50px] ${bold ? 'font-bold' : ''}`}>
-          {format ? format(r[propName]) : (isCurrency ? fmtEur(r[propName]) : fmt(r[propName], 0))}
+          {isCurrency ? fmtEur(r[propName]) : fmt(r[propName], 0)}
         </td>
       ))}
     </tr>
   );
-
   return (
-    <div className="mt-6 border-t pt-4">
-      <h4 className="text-[12px] font-black text-blue-600 uppercase mb-3 px-1">Plan d'Affaires Prévisionnel Batterie Stand-Alone ({detailed ? 'Vue Détaillée' : 'Vue Simplifiée'})</h4>
+    <div className="mt-6 border-t pt-4 text-slate-900">
+      <h4 className="text-[12px] font-black text-blue-600 uppercase mb-3 px-1">Plan d'Affaires Prévisionnel Batterie</h4>
       <div className="overflow-x-auto w-full custom-scrollbar">
         <table className="w-full border-collapse border border-slate-200">
-          <thead>
-            <tr className="bg-slate-100">
-              <td className="p-2 border-r border-b border-slate-200 text-[11px] font-bold w-[180px]">Indicateurs</td>
-              {rows.map((r, i) => (
-                <td key={i} className="p-1 border-r border-b border-slate-200 text-center font-bold bg-slate-50 text-[11px]">{r.year}</td>
-              ))}
-            </tr>
-          </thead>
+          <thead><tr className="bg-slate-100"><td className="p-2 border-r border-b border-slate-200 text-[11px] font-bold w-[180px]">Indicateurs</td>{rows.map((r, i) => (<td key={i} className="p-1 border-r border-b border-slate-200 text-center font-bold bg-slate-50 text-[11px]">{r.year}</td>))}</tr></thead>
           <tbody>
-            <tr className="bg-amber-400 text-slate-900 font-bold uppercase text-[11px]">
-              <td className="px-2 py-1 border-r border-b border-slate-300">Chiffre d'Affaires (HT)</td>
-              {rows.map((_, i) => <td key={i} className="border-r border-b border-slate-300"></td>)}
-            </tr>
-            {detailed ? (
-              <>
-                <DataRow label="Arbitrage énergie" propName="arbitrage" isCurrency />
-                <DataRow label="Réserve (FCR/aFRR)" propName="reserve" isCurrency />
-                <DataRow label="Mécanisme capacité" propName="capacite" isCurrency />
-                <DataRow label="Effacement" propName="effacement" isCurrency />
-              </>
-            ) : null}
+            <tr className="bg-amber-400 font-bold uppercase text-[11px]"><td className="px-2 py-1 border-r border-b border-slate-300">Chiffre d'Affaires (HT)</td>{rows.map((_, i) => <td key={i} className="border-r border-b border-slate-300"></td>)}</tr>
             <DataRow label="TOTAL REVENUS" propName="caTotal" isCurrency bold className="bg-slate-50" />
-
-            <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[11px]">
-              <td className="px-2 py-1 border-r border-b border-slate-200">Charges & Résultats</td>
-              {rows.map((_, i) => <td key={i} className="border-r border-b border-slate-200"></td>)}
-            </tr>
-            
-            {detailed ? (
-              <>
-                <DataRow label="Maintenance" propName="maint" isCurrency indent />
-                <DataRow label="Revenu bailleur" propName="revBailleur" isCurrency indent />
-                <DataRow label="Gestion de la charge" propName="gestionCharge" isCurrency indent />
-                <DataRow label="Assurance" propName="assur" isCurrency indent />
-                <DataRow label="TURPE" propName="turpe" isCurrency indent />
-                <DataRow label="IFER" propName="ifer" isCurrency indent />
-                <DataRow label="Rétribution commerciale" propName="retribComm" isCurrency indent />
-                <DataRow label="Frais agrégateur" propName="fraisAgregateur" isCurrency indent />
-              </>
-            ) : null}
-            
-            <DataRow label="Charges d'Exploitation (OPEX)" propName="opex" isCurrency bold={!detailed} />
+            <tr className="bg-slate-100 font-bold uppercase text-[11px]"><td className="px-2 py-1 border-r border-b border-slate-200">Charges & Résultats</td>{rows.map((_, i) => <td key={i} className="border-r border-b border-slate-200"></td>)}</tr>
+            <DataRow label="Charges d'Exploitation (OPEX)" propName="opex" isCurrency />
             <DataRow label="Service de la Dette" propName="serviceDette" isCurrency />
             <DataRow label="EBITDA (EBE)" propName="ebe" isCurrency bold className="bg-blue-50 text-blue-800" />
-            <tr className="bg-amber-400 font-black text-slate-900 text-[11px]">
-              <td className="px-2 py-1 uppercase border-r border-slate-300">Trésorerie nette annuelle</td>
-              {rows.map((r, i) => (
-                <td key={i} className="px-1 py-1 text-right border-r border-slate-300">{fmtEur(r.tresorerie)}</td>
-              ))}
-            </tr>
+            <tr className="bg-amber-400 font-black text-slate-900 text-[11px]"><td className="px-2 py-1 uppercase border-r border-slate-300">Trésorerie nette annuelle</td>{rows.map((r, i) => (<td key={i} className="px-1 py-1 text-right border-r border-slate-300">{fmtEur(r.tresorerie)}</td>))}</tr>
           </tbody>
         </table>
       </div>
@@ -1315,9 +1119,19 @@ function BatterySection({ config, setParams }) {
               <Field label="Raccordement" value={config.raccordement} onChange={v => update('raccordement', v)} type="number" suffix="€" readOnly />
               <Field label="Développement" value={config.developpement} onChange={v => update('developpement', v)} type="number" suffix="€" readOnly />
               <Field label="Frais comm." value={config.fraisCommerciaux} onChange={v => update('fraisCommerciaux', v)} type="number" suffix="€" />
-              <div className="pt-2 border-t border-slate-200 mt-1">
-                <Field label="Invest. Total" value={fmt(results.capexTotal, 0)} type="text" suffix="€" disabled className="font-bold" />
-              </div>
+              <div className="flex items-center gap-2 px-1 mb-2">
+                 <input 
+                   type="checkbox" 
+                   id="investPropre"
+                   checked={config.isInvestPropre || false}
+                   onChange={e => update('isInvestPropre', e.target.checked)}
+                   className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                 />
+                 <label htmlFor="investPropre" className="text-[11px] font-bold text-slate-700 uppercase cursor-pointer">Investissement Propre</label>
+               </div>
+               <div className="pt-2 border-t border-slate-200 mt-1">
+                 <Field label="Invest. Total" value={fmt(results.capexTotal, 0)} type="text" suffix="€" disabled className="font-bold" />
+               </div>
             </div>
           </div>
         </div>
@@ -1363,7 +1177,7 @@ function BatterySection({ config, setParams }) {
                    value={config.dureeEtude || 12}
                    onChange={e => update('dureeEtude', parseInt(e.target.value))}
                  >
-                   {[10, 15, 20, 25, 30].map(v => <option key={v} value={v}>{v} ans</option>)}
+                   {[10, 12, 15, 20, 25, 30].map(v => <option key={v} value={v}>{v} ans</option>)}
                  </select>
                </div>
                <Field label="Inflation ann." value={config.inflationAnnuelle} onChange={v => update('inflationAnnuelle', v)} type="number" suffix="%" />
@@ -1377,24 +1191,20 @@ function BatterySection({ config, setParams }) {
              <div className="space-y-3">
                 <h4 className="text-[12px] font-black text-blue-400 uppercase tracking-widest border-b border-white/10 pb-2">Indicateurs de Rentabilité</h4>
                 <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">CAPEX TOTAL</span><span className="font-bold text-lg">{fmtEur(results.capexTotal)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">REVENUS AN 1</span><span className="font-bold text-green-400">{fmtEur(results.revenuAn1)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase">EBE AN 1</span><span className="font-bold text-blue-400">{fmtEur(results.ebeAn1)}</span></div>
+                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-black">GAIN NET 20 ANS</span><span className="font-bold text-lg text-green-400">{fmtEur(results.gainNet20A)}</span></div>
+                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-black">GAIN NET {config.dureeEtude || 12} ANS</span><span className="font-bold text-lg text-green-400">{fmtEur(results.gainNetEtude)}</span></div>
                 
-                <div className="grid grid-cols-2 gap-x-4 gap-y-3 mt-4 pt-4 border-t border-white/20">
+                <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/20">
                   <div className="text-center">
-                     <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">TRI Projet</div>
+                     <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">TRI Projet</div>
                      <div className="text-lg font-black text-blue-400">{fmtPct(results.triProjet)}</div>
                   </div>
-                  <div className="text-center">
-                     <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">TRI FP (Fonds Propres)</div>
-                     <div className="text-lg font-black text-purple-400">{fmtPct(results.triFP)}</div>
-                  </div>
-                  <div className="text-center border-t border-white/10 pt-2">
-                     <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">Retour (Payback)</div>
+                  <div className="text-center border-x border-white/10 px-1">
+                     <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Temps de Retour</div>
                      <div className="text-lg font-black text-amber-400">{fmt(results.payback, 1)} ans</div>
                   </div>
-                  <div className="text-center border-t border-white/10 pt-2">
-                     <div className="text-[10px] opacity-50 uppercase leading-tight mb-1">DSCR Prêt An 1</div>
+                  <div className="text-center">
+                     <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">DSCR Prêt An 1</div>
                      <div className="text-lg font-black text-green-400">{fmt(results.dscrAn1, 2)}</div>
                   </div>
                 </div>
