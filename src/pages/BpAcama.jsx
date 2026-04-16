@@ -540,6 +540,8 @@ function computeBatteryProfitability(config) {
   let dynamicPayback = null;
   let runningCashFlow = -apport;
   let resY1 = {};
+  let totalOpexStudy = 0;
+  let totalRevenueStudy = 0;
 
   const rows = [];
   const maxYearsLoop = Math.max(20, dureeEtude);
@@ -571,6 +573,8 @@ function computeBatteryProfitability(config) {
         }
         runningCashFlow += cashFlow;
         gainNetEtude += cashFlow;
+        totalOpexStudy += (chargesFixes + chargesCom);
+        totalRevenueStudy += revNet;
 
         // Project Cash Flow (Unlevered): EBE - Tax (without interest shield)
         const ebitUnlevered = ebe - (capexTotal / dureeEtude);
@@ -626,6 +630,8 @@ function computeBatteryProfitability(config) {
     dscrAn1: resY1.dscr,
     gainNetEtude,
     gainNet20A,
+    totalOpexStudy,
+    totalRevenueStudy,
     rows
   };
 }
@@ -1241,22 +1247,36 @@ function BatterySection({ config, setParams }) {
                 <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-bold">REVENUS AN 1</span><span className="font-bold text-lg">{fmtEur(results.revenuAn1)}</span></div>
                 <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-black text-blue-400">EBE AN 1</span><span className="font-bold text-lg text-blue-400">{fmtEur(results.ebeAn1)}</span></div>
                 <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-black">GAIN NET 20 ANS</span><span className="font-bold text-lg text-green-400">{fmtEur(results.gainNet20A)}</span></div>
-                <div className="flex justify-between items-center"><span className="text-[11px] opacity-60 uppercase font-black">GAIN NET {config.dureeEtude || 12} ANS</span><span className="font-bold text-lg text-green-400">{fmtEur(results.gainNetEtude)}</span></div>
                 
                 <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/20">
-                  <div className="text-center">
-                     <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">TRI Projet</div>
-                     <div className="text-lg font-black text-blue-400">{fmtPct(results.triProjet)}</div>
-                  </div>
-                  <div className="text-center border-x border-white/10 px-1">
-                     <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Temps de Retour</div>
-                     <div className="text-lg font-black text-amber-400">{fmt(results.payback, 1)} ans</div>
-                  </div>
-                  <div className="text-center">
-                     <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">DSCR Prêt An 1</div>
-                     <div className="text-lg font-black text-green-400">{fmt(results.dscrAn1, 2)}</div>
-                  </div>
-                </div>
+                   <div className="text-center">
+                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">TRI Projet</div>
+                      <div className="text-lg font-black text-blue-400">{fmtPct(results.triProjet)}</div>
+                   </div>
+                   <div className="text-center border-x border-white/10 px-1">
+                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Temps de Retour</div>
+                      <div className="text-lg font-black text-amber-400">{fmt(results.payback, 1)} ans</div>
+                   </div>
+                   <div className="text-center">
+                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">DSCR Prêt An 1</div>
+                      <div className="text-lg font-black text-green-400">{fmt(results.dscrAn1, 2)}</div>
+                   </div>
+                 </div>
+
+                 <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-white/10">
+                   <div className="text-center">
+                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Total CAPEX</div>
+                      <div className="text-[13px] font-black text-red-500">{fmtEur(results.capexTotal)}</div>
+                   </div>
+                   <div className="text-center border-x border-white/10 px-1">
+                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Total OPEX</div>
+                      <div className="text-[13px] font-black text-orange-500">{fmtEur(results.totalOpexStudy)}</div>
+                   </div>
+                   <div className="text-center">
+                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Total recettes</div>
+                      <div className="text-[13px] font-black text-green-500">{fmtEur(results.totalRevenueStudy)}</div>
+                   </div>
+                 </div>
              </div>
           </div>
         )}
