@@ -143,7 +143,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         let h = ridgeHeight;
 
         if (isCustom) {
-            x = -width / 2 + spans.left;
+            if (cp.buildingType === 'monopente') {
+                x = -width / 2 - 1.5;
+            } else {
+                x = -width / 2 + spans.left;
+            }
             h = cp.ridgeHeight;
         } else if (buildingType === 'monopente') {
             x = -width / 2 - 1.5; // Left Side

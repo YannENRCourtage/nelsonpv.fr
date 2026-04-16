@@ -782,7 +782,7 @@ export const useConfiguratorValues = () => {
             // Re-calculate spans correctly
             const getSpans = (w, t, p) => {
                 if (t === 'symetrique') return { left: w / 2, right: w / 2 };
-                if (t === 'monopente') return { left: w, right: 0 };
+                if (t === 'monopente') return { left: 0, right: w };
                 const matches = p.match(/(\d+)\/(\d+)-(\d+)\/(\d+)/);
                 if (matches) {
                     const lNum = parseInt(matches[1]);
