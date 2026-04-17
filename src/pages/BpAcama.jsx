@@ -551,35 +551,37 @@ function computeBatteryProfitability(config) {
   const rows = [];
   const maxYearsLoop = Math.max(20, dureeEtude);
 
-  for (let y = 1; y <= maxYearsLoop; y++) {
-    const infl = Math.pow(1 + inflationAnnuelle / 100, y - 1);
-    const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
+    let totalDebtServiceStudy = 0;
+    for (let y = 1; y <= maxYearsLoop; y++) {
+        const infl = Math.pow(1 + inflationAnnuelle / 100, y - 1);
+        const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
 
-    const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100);
-    // revenuBailleur remains fixed (not indexed)
-    const chargesFixesNoBailleur = (maintenanceAn + assuranceAn + turpeAn + iferAn + gestionChargeAn + effectiveRetribComm) * infl;
-    const chargesFixes = chargesFixesNoBailleur + (revenuBailleurAn || 0);
-    
-    const chargesCom = revNet * (commissionAgregateur / 100);
-    const ebe = revNet - (chargesFixes + chargesCom);
+        const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100);
+        const chargesFixesNoBailleur = (maintenanceAn + assuranceAn + turpeAn + iferAn + gestionChargeAn + effectiveRetribComm) * infl;
+        const chargesFixes = chargesFixesNoBailleur + (revenuBailleurAn || 0);
+        
+        const chargesCom = revNet * (commissionAgregateur / 100);
+        const ebe = revNet - (chargesFixes + chargesCom);
 
-    const interest = y <= dureeEmprunt ? remainingDebt * (tauxEmprunt / 100) : 0;
-    const principal = y <= dureeEmprunt ? annuite - interest : 0;
-    
-    const amortissement = capexTotal / dureeEtude;
-    const ebit = ebe - amortissement - interest;
-    const is = ebit > 0 ? ebit * (tauxIS / 100) : 0;
-    
-    const cashFlow = ebe - interest - principal - is;
-    
-    if (y <= dureeEtude) {
-        if (dynamicPayback === null && runningCashFlow + cashFlow >= 0) {
-            dynamicPayback = (y - 1) + (Math.abs(runningCashFlow) / cashFlow);
-        }
-        runningCashFlow += cashFlow;
-        gainNetEtude += cashFlow;
-        totalOpexStudy += (chargesFixes + chargesCom);
-        totalRevenueStudy += revNet;
+        const interest = y <= dureeEmprunt ? remainingDebt * (tauxEmprunt / 100) : 0;
+        const principal = y <= dureeEmprunt ? annuite - interest : 0;
+        const serviceDette = y <= dureeEmprunt ? annuite : 0;
+        
+        const amortissement = capexTotal / dureeEtude;
+        const ebit = ebe - amortissement - interest;
+        const is = ebit > 0 ? ebit * (tauxIS / 100) : 0;
+        
+        const cashFlow = ebe - interest - principal - is;
+        
+        if (y <= dureeEtude) {
+            if (dynamicPayback === null && runningCashFlow + cashFlow >= 0) {
+                dynamicPayback = (y - 1) + (Math.abs(runningCashFlow) / cashFlow);
+            }
+            runningCashFlow += cashFlow;
+            gainNetEtude += cashFlow;
+            totalOpexStudy += (chargesFixes + chargesCom);
+            totalRevenueStudy += revNet;
+            totalDebtServiceStudy += serviceDette;
 
         // Project Cash Flow (Unlevered): EBE - Tax (without interest shield)
         const ebitUnlevered = ebe - (capexTotal / dureeEtude);
@@ -637,7 +639,9 @@ function computeBatteryProfitability(config) {
     gainNet20A,
     totalOpexStudy,
     totalRevenueStudy,
+    totalDebtServiceStudy,
     beneficeSurDureeEtude: totalRevenueStudy - capexTotal - totalOpexStudy,
+    beneficeAvecFinancement: (totalRevenueStudy - capexTotal - totalOpexStudy) - totalDebtServiceStudy,
     rows
   };
 }
@@ -1397,11 +1401,15 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                    </div>
                  </div>
 
-                 <div className="mt-4 pt-3 border-t border-white/20">
-                   <div className="flex justify-between items-center bg-blue-500/10 p-2 rounded">
-                      <span className="text-[11px] opacity-70 uppercase font-black">Bénéfice sur la durée d'étude</span>
-                      <span className="text-xl font-black text-white">{fmtEur(results.beneficeSurDureeEtude)}</span>
-                   </div>
+                 <div className="mt-4 pt-3 border-t border-white/20 space-y-2">
+                    <div className="flex justify-between items-center bg-blue-500/10 p-2 rounded">
+                       <span className="text-[11px] opacity-70 uppercase font-black">Bénéfice sur la durée d'étude</span>
+                       <span className="text-xl font-black text-white">{fmtEur(results.beneficeSurDureeEtude)}</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-green-500/20 p-2 rounded border border-green-500/30">
+                       <span className="text-[11px] opacity-90 uppercase font-bold text-green-400 leading-tight">Bénéfice sur durée étude<br/>(avec Financement)</span>
+                       <span className="text-xl font-black text-white">{fmtEur(results.beneficeAvecFinancement)}</span>
+                    </div>
                  </div>
              </div>
           </div>
