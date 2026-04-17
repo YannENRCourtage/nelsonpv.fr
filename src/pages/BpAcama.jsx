@@ -1045,6 +1045,10 @@ function BatterySection({ config, setParams, isEnrCourtage }) {
 
   const results = computeBatteryProfitability(config);
   
+  const revenusBruts = (config.arbitrageEnergie || 0) + (config.reserveFCR || 0) + (config.mecanismeCapacite || 0) + (config.effacement || 0);
+  const revNetY1 = revenusBruts * (config.disponibilite || 98) / 100;
+  const commAgregateurMontant = revNetY1 * (config.commissionAgregateur || 0) / 100;
+  
   const currentModelKey = config.batteryModelKey || 'solax';
   const selectedModel = BATTERY_MODELS.find(m => m.id === currentModelKey) || BATTERY_MODELS[0];
   const nbBricks = config.nbBricks || 1;
@@ -1225,7 +1229,29 @@ function BatterySection({ config, setParams, isEnrCourtage }) {
             <Field label="Gestion de la charge" value={config.gestionChargeAn} onChange={v => update('gestionChargeAn', v)} type="number" suffix="€" />
             <Field label="Rétribution comm." value={config.retributionCommAn || 0} onChange={v => update('retributionCommAn', v)} type="number" suffix="€" />
             <Field label="Assurance /an" value={config.assuranceAn} onChange={v => update('assuranceAn', v)} type="number" suffix="€" />
-            <Field label="Comm. Agrégateur" value={config.commissionAgregateur} onChange={v => update('commissionAgregateur', v)} type="number" suffix="%" />
+            <div className="flex items-center gap-2">
+              <label className="text-[13px] text-slate-500 w-32 shrink-0">Comm. Agrégateur</label>
+              <div className="flex items-center gap-1 flex-1">
+                <div className="flex items-center gap-1 w-20 relative">
+                   <input
+                     type="number"
+                     className="border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none bg-white"
+                     value={config.commissionAgregateur ?? 18}
+                     onChange={e => update('commissionAgregateur', parseFloat(e.target.value) || 0)}
+                   />
+                   <span className="text-sm text-slate-500 shrink-0">%</span>
+                </div>
+                <span className="text-[13px] text-slate-400 mx-1">soit</span>
+                <div className="flex items-center gap-1 flex-1 relative">
+                   <input
+                     type="text"
+                     disabled
+                     className="border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none bg-slate-50 text-slate-600 font-bold"
+                     value={fmtEur(commAgregateurMontant)}
+                   />
+                </div>
+              </div>
+            </div>
             <Field label="TURPE /an" value={config.turpeAn} onChange={v => update('turpeAn', v)} type="number" suffix="€" />
             <Field label="IFER /an" value={config.iferAn} onChange={v => update('iferAn', v)} type="number" suffix="€" />
             <div className="pt-2 border-t border-slate-100 mt-2 space-y-3">
