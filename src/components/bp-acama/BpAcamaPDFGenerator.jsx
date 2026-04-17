@@ -160,7 +160,19 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                         if (isPortrait) {
                             s.style.width = '1000px'; 
                         } else {
-                            s.style.width = id === 'pdf-section-2' ? '2200px' : '1600px'; 
+                            // Détection dynamique du nombre d'années pour garder la même échelle (Image 1)
+                            if (id === 'pdf-section-battery') {
+                                const yearThs = s.querySelectorAll('thead tr:first-child th, thead tr:first-child td').length - 1; 
+                                // On garde 1600px pour 12 ans (référence Image 1)
+                                // Au delà, on augmente la largeur pour ne pas compresser les colonnes
+                                if (yearThs > 12) {
+                                    s.style.width = `${1600 + (yearThs - 12) * 80}px`;
+                                } else {
+                                    s.style.width = '1600px';
+                                }
+                            } else {
+                                s.style.width = id === 'pdf-section-2' ? '2200px' : '1600px'; 
+                            }
                         }
 
                         const grid = s.querySelector('.grid');
@@ -183,25 +195,26 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
 
             const imgData = canvas.toDataURL('image/png');
             const imgProps = pdf.getImageProperties(imgData);
-            let imgHeight = (imgProps.height * contentWidth) / imgProps.width;
-            let xPos = margin;
-            let yPos = margin;
-            let finalWidth = contentWidth;
-
-            // Ajustement pour faire tenir sur une seule page en largeur ET en hauteur
-            // On calcule le ratio nécessaire pour le meilleur ajustement (Best Fit)
-            const widthRatio = contentWidth / imgProps.width;
-            const heightRatio = contentHeight / imgProps.height;
-            const bestRatio = Math.min(widthRatio, heightRatio);
             
-            finalWidth = imgProps.width * bestRatio;
-            imgHeight = imgProps.height * bestRatio;
+            // Échelle de référence (Image 1) : 1600px -> 277mm (A4 Landscape utile)
+            const SCALE_RATIO = 0.173125; 
             
-            // Centrage horizontal et vertical (si nécessaire)
-            xPos = margin + (contentWidth - finalWidth) / 2;
-            yPos = margin + (contentHeight - imgHeight) / 2;
+            let finalWidth = imgProps.width * SCALE_RATIO;
+            let imgHeight = imgProps.height * SCALE_RATIO;
+            
+            // Dimensions de la page nécessaires (avec marges)
+            const pageWidth = finalWidth + (margin * 2);
+            const pageHeight = imgHeight + (margin * 2);
 
-            pdf.addImage(imgData, 'PNG', xPos, yPos, finalWidth, imgHeight);
+            if (addPage) {
+                pdf.addPage([pageWidth, pageHeight], isPortrait ? 'p' : 'l');
+            } else {
+                // On ajuste la taille de la première page en en créant une nouvelle et en supprimant l'A4 par défaut
+                pdf.addPage([pageWidth, pageHeight], isPortrait ? 'p' : 'l');
+                pdf.deletePage(1);
+            }
+
+            pdf.addImage(imgData, 'PNG', margin, margin, finalWidth, imgHeight);
         };
 
         if (sections && sections.length > 0) {
