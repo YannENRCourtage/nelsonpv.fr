@@ -1039,7 +1039,7 @@ function TableauPrevisionnelBatterie({ rows, detailed }) {
   );
 }
 
-function BatterySection({ config, setParams }) {
+function BatterySection({ config, setParams, isEnrCourtage }) {
   const [viewDetailed, setViewDetailed] = useState(false);
   if (!config.enabled) return null;
 
@@ -1172,16 +1172,18 @@ function BatterySection({ config, setParams }) {
               <Field label="Raccordement" value={config.raccordement} onChange={v => update('raccordement', v)} type="number" suffix="€" readOnly />
               <Field label="Développement" value={config.developpement} onChange={v => update('developpement', v)} type="number" suffix="€" readOnly />
               <Field label="Frais comm." value={config.fraisCommerciaux} onChange={v => update('fraisCommerciaux', v)} type="number" suffix="€" />
-              <div className="flex items-center gap-2 px-1 mb-2">
-                 <input 
-                   type="checkbox" 
-                   id="investPropre"
-                   checked={config.isInvestPropre || false}
-                   onChange={e => update('isInvestPropre', e.target.checked)}
-                   className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                 />
-                 <label htmlFor="investPropre" className="text-[11px] font-bold text-slate-700 uppercase cursor-pointer">Investissement Propre</label>
-               </div>
+              {isEnrCourtage && (
+                <div className="flex items-center gap-2 px-1 mb-2">
+                   <input 
+                     type="checkbox" 
+                     id="investPropre"
+                     checked={config.isInvestPropre || false}
+                     onChange={e => update('isInvestPropre', e.target.checked)}
+                     className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                   />
+                   <label htmlFor="investPropre" className="text-[11px] font-bold text-slate-700 uppercase cursor-pointer">Investissement Propre</label>
+                 </div>
+              )}
                <div className="pt-2 border-t border-slate-200 mt-1">
                  <Field label="Invest. Total" value={fmt(results.capexTotal, 0)} type="text" suffix="€" disabled className="font-bold" />
                </div>
@@ -2430,7 +2432,7 @@ function TabBpProjets({
       {/* Battery Section (Full Width) */}
       {params.batteryConfig?.enabled && (
         <div className="w-full">
-           <BatterySection config={params.batteryConfig} setParams={setParams} />
+           <BatterySection config={params.batteryConfig} setParams={setParams} isEnrCourtage={isEnrCourtage} />
         </div>
       )}
 
