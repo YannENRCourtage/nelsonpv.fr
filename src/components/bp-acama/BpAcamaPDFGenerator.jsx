@@ -160,18 +160,7 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                         if (isPortrait) {
                             s.style.width = '1000px'; 
                         } else {
-                            // Détection dynamique du nombre d'années pour la batterie
-                            if (id === 'pdf-section-battery') {
-                                const yearThs = s.querySelectorAll('thead tr:first-child th').length - 1; 
-                                // On augmente la largeur si plus de 12 ans (Image 3)
-                                if (yearThs > 12) {
-                                    s.style.width = `${1600 + (yearThs - 12) * 80}px`;
-                                } else {
-                                    s.style.width = '1600px';
-                                }
-                            } else {
-                                s.style.width = id === 'pdf-section-2' ? '2200px' : '1600px'; 
-                            }
+                            s.style.width = id === 'pdf-section-2' ? '2200px' : '1600px'; 
                         }
 
                         const grid = s.querySelector('.grid');
@@ -199,21 +188,18 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
             let yPos = margin;
             let finalWidth = contentWidth;
 
-            // On force l'occupation de toute la largeur (Image 1)
-            // On ne réduit plus la largeur si l'image est trop haute, pour éviter les marges blanches latérales
-            // Si vraiment trop haut, on laisse le dépassement ou on pourrait envisager d'autres solutions, 
-            // mais ici la priorité est la largeur constante.
-            if (imgHeight > contentHeight * 1.1) {
-                // Seulement si c'est vraiment démesuré (>10% de dépassement), on réduit un peu 
-                // mais on garde un ratio généreux
-                const maxAllowedHeight = contentHeight * 1.1; 
-                const ratio = maxAllowedHeight / imgHeight;
-                if (ratio < 0.85) { // On ne descend pas en dessous de 85% de la largeur pour garder l'aspect "Image 1"
-                    finalWidth = contentWidth * Math.max(0.85, ratio);
-                    imgHeight = imgHeight * Math.max(0.85, ratio);
-                    xPos = margin + (contentWidth - finalWidth) / 2;
-                }
-            }
+            // Ajustement pour faire tenir sur une seule page en largeur ET en hauteur
+            // On calcule le ratio nécessaire pour le meilleur ajustement (Best Fit)
+            const widthRatio = contentWidth / imgProps.width;
+            const heightRatio = contentHeight / imgProps.height;
+            const bestRatio = Math.min(widthRatio, heightRatio);
+            
+            finalWidth = imgProps.width * bestRatio;
+            imgHeight = imgProps.height * bestRatio;
+            
+            // Centrage horizontal et vertical (si nécessaire)
+            xPos = margin + (contentWidth - finalWidth) / 2;
+            yPos = margin + (contentHeight - imgHeight) / 2;
 
             pdf.addImage(imgData, 'PNG', xPos, yPos, finalWidth, imgHeight);
         };

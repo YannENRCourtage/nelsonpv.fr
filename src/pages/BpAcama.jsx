@@ -1166,7 +1166,6 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
         </div>
         <div className="flex-1 text-center self-center">
           <span className="text-[22px] font-black text-slate-800 uppercase tracking-widest">{isGreenInvest ? 'BP' : 'Business Plan'}</span>
-          <div className="text-[12px] font-bold text-blue-600 mt-1 uppercase tracking-tighter italic">Étude Stockage Batterie</div>
         </div>
         <div className="flex-1 text-right flex flex-col items-end">
           <h1 className="text-sm font-black text-slate-900 uppercase leading-tight">
@@ -1175,8 +1174,6 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           <p className="text-[10px] font-bold text-slate-500 mt-1">{new Date().toLocaleDateString('fr-FR')}</p>
         </div>
       </div>
-      <div className="w-full text-center mt-4">
-        <h2 className="text-xl font-black text-blue-900 uppercase tracking-wide">RENTABILITÉ BATTERIE STAND-ALONE</h2>
       </div>
     </div>
   );
