@@ -49,6 +49,13 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                         header.style.setProperty('display', 'flex', 'important');
                     });
 
+                    // Nettoyage des bordures et ombres pour les sections spécifiques
+                    clonedDoc.querySelectorAll('.pdf-no-top-border').forEach(el => {
+                        el.style.setProperty('border-top', 'none', 'important');
+                        el.style.setProperty('box-shadow', 'none', 'important');
+                        el.style.setProperty('padding-top', '0', 'important');
+                    });
+
                     clonedDoc.querySelectorAll('input, select').forEach(el => {
                         const parent = el.parentNode;
                         if (!parent) return;

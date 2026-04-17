@@ -973,10 +973,10 @@ function Field({ label, value, onChange, type = 'text', suffix, className, step,
   );
 }
 
-function SectionCard({ title, children, className, id, actions }) {
+function SectionCard({ title, children, className, id, actions, "data-pdf-hide-header": hideHeader }) {
   return (
-    <div id={id} className={cn('bg-white rounded-lg border border-slate-200 p-4 space-y-3', className)}>
-      <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-1">
+    <div id={id} className={cn('bg-white rounded-lg border border-slate-200 p-4 space-y-3', className)} data-pdf-hide-header={hideHeader}>
+      <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-1" data-html2canvas-ignore={hideHeader ? "true" : undefined}>
         <h3 className="text-[13px] font-bold text-slate-800 uppercase tracking-wider">{title}</h3>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
@@ -1159,19 +1159,24 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
   const GroupTitle = ({ title }) => <h4 className="text-[11px] font-black text-blue-600 uppercase mb-2 border-b border-blue-100 pb-1">{title}</h4>;
 
   const PDFHeader = () => (
-    <div className="pdf-header hidden flex flex-row items-start w-full mb-6 pb-2 border-b-2 border-slate-100">
-      <div className="flex-1">
-        <img src="/logo-nelson.png" alt="Logo" className="h-16 w-auto object-contain" />
+    <div className="pdf-header hidden flex flex-col items-center w-full mb-6 pb-2 border-b-2 border-slate-100">
+      <div className="flex flex-row items-start w-full mb-2">
+        <div className="flex-1">
+          <img src="/logo-nelson.png" alt="Logo" className="h-16 w-auto object-contain" />
+        </div>
+        <div className="flex-1 text-center self-center">
+          <span className="text-[22px] font-black text-slate-800 uppercase tracking-widest">{isGreenInvest ? 'BP' : 'Business Plan'}</span>
+          <div className="text-[12px] font-bold text-blue-600 mt-1 uppercase tracking-tighter italic">Étude Stockage Batterie</div>
+        </div>
+        <div className="flex-1 text-right flex flex-col items-end">
+          <h1 className="text-sm font-black text-slate-900 uppercase leading-tight">
+            {selectedProject?.name || selectedProject?.client_name || selectedProject?.client_firstname || 'Projet Sans Nom'}
+          </h1>
+          <p className="text-[10px] font-bold text-slate-500 mt-1">{new Date().toLocaleDateString('fr-FR')}</p>
+        </div>
       </div>
-      <div className="flex-1 text-center self-center">
-        <span className="text-[22px] font-black text-slate-800 uppercase tracking-widest">{isGreenInvest ? 'BP' : 'Business Plan'}</span>
-        <div className="text-[12px] font-bold text-blue-600 mt-1 uppercase tracking-tighter italic">Étude Stockage Batterie</div>
-      </div>
-      <div className="flex-1 text-right flex flex-col items-end">
-        <h1 className="text-sm font-black text-slate-900 uppercase leading-tight">
-          {selectedProject?.name || selectedProject?.client_name || selectedProject?.client_firstname || 'Projet Sans Nom'}
-        </h1>
-        <p className="text-[10px] font-bold text-slate-500 mt-1">{new Date().toLocaleDateString('fr-FR')}</p>
+      <div className="w-full text-center mt-4">
+        <h2 className="text-xl font-black text-blue-900 uppercase tracking-wide">RENTABILITÉ BATTERIE STAND-ALONE</h2>
       </div>
     </div>
   );
@@ -1180,7 +1185,8 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
     <SectionCard 
       title="RENTABILITÉ BATTERIE STAND-ALONE" 
       id="pdf-section-battery" 
-      className="bg-white border-t-4 border-t-blue-600 shadow-lg relative"
+      className="bg-white border-t-4 border-t-blue-600 shadow-lg relative pdf-no-top-border"
+      data-pdf-hide-header="true"
       actions={
         <Button 
           size="sm" 
@@ -1191,6 +1197,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             fileName: `BP_Batterie_${selectedProject?.name || 'Projet'}.pdf`,
             orientation: 'landscape'
           })}
+          data-html2canvas-ignore="true"
         >
           <FileDown className="w-3.5 h-3.5" />
           PDF BATTERIE
