@@ -1049,6 +1049,15 @@ function BatterySection({ config, setParams, isEnrCourtage }) {
   const revNetY1 = revenusBruts * (config.disponibilite || 98) / 100;
   const commAgregateurMontant = revNetY1 * (config.commissionAgregateur || 0) / 100;
   
+  const totalOpexAn1 = (config.maintenanceAn || 0) + 
+                       (config.revenuBailleurAn || 0) + 
+                       (config.gestionChargeAn || 0) + 
+                       (config.retributionCommAn || 0) + 
+                       (config.assuranceAn || 0) + 
+                       commAgregateurMontant + 
+                       (config.turpeAn || 0) + 
+                       (config.iferAn || 0);
+  
   const currentModelKey = config.batteryModelKey || 'solax';
   const selectedModel = BATTERY_MODELS.find(m => m.id === currentModelKey) || BATTERY_MODELS[0];
   const nbBricks = config.nbBricks || 1;
@@ -1252,8 +1261,13 @@ function BatterySection({ config, setParams, isEnrCourtage }) {
                 </div>
               </div>
             </div>
-            <Field label="TURPE /an" value={config.turpeAn} onChange={v => update('turpeAn', v)} type="number" suffix="€" />
-            <Field label="IFER /an" value={config.iferAn} onChange={v => update('iferAn', v)} type="number" suffix="€" />
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="TURPE /an" value={config.turpeAn} onChange={v => update('turpeAn', v)} type="number" suffix="€" />
+              <Field label="IFER /an" value={config.iferAn} onChange={v => update('iferAn', v)} type="number" suffix="€" />
+            </div>
+            <div className="pt-1 mt-1 border-t border-slate-100">
+               <Field label="Total OPEX" value={fmtEur(totalOpexAn1)} type="text" disabled className="font-bold text-blue-700" />
+            </div>
             <div className="pt-2 border-t border-slate-100 mt-2 space-y-3">
                <div className="flex items-center justify-between">
                  <label className="text-[13px] text-slate-500 font-bold uppercase">Durée d'étude</label>
