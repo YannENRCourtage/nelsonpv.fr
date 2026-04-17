@@ -195,25 +195,24 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
             const imgData = canvas.toDataURL('image/png');
             const imgProps = pdf.getImageProperties(imgData);
             
-            // Échelle de référence (Image 1) : 1600px -> 277mm (A4 Landscape utile)
-            const SCALE_RATIO = 0.173125; 
+            const targetWidth = pdfWidth - (margin * 2);
+            const targetHeight = pdfHeight - (margin * 2);
+
+            const widthRatio = targetWidth / imgProps.width;
+            const heightRatio = targetHeight / imgProps.height;
+            const bestRatio = Math.min(widthRatio, heightRatio);
             
-            let finalWidth = imgProps.width * SCALE_RATIO;
-            let imgHeight = imgProps.height * SCALE_RATIO;
+            const finalWidth = imgProps.width * bestRatio;
+            const finalHeight = imgProps.height * bestRatio;
             
-            // Dimensions de la page nécessaires (avec marges)
-            const pageWidth = finalWidth + (margin * 2);
-            const pageHeight = imgHeight + (margin * 2);
+            const xPos = margin + (targetWidth - finalWidth) / 2;
+            const yPos = margin + (targetHeight - finalHeight) / 2;
 
             if (isNewPage) {
-                pdf.addPage([pageWidth, pageHeight], isPortrait ? 'p' : 'l');
-            } else {
-                // On ajuste la taille de la première page en en créant une nouvelle et en supprimant l'A4 par défaut
-                pdf.addPage([pageWidth, pageHeight], isPortrait ? 'p' : 'l');
-                pdf.deletePage(1);
+                pdf.addPage();
             }
 
-            pdf.addImage(imgData, 'PNG', margin, margin, finalWidth, imgHeight);
+            pdf.addImage(imgData, 'PNG', xPos, yPos, finalWidth, finalHeight);
         };
 
         if (sections && sections.length > 0) {
