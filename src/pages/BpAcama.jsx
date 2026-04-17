@@ -1106,12 +1106,12 @@ function BatterySection({ config, setParams, isEnrCourtage }) {
     const newRaccordement = getHtaCost(p, rHT) + (dPriv * 20);
     const newGenieCivil = 6000 + (qty - 1) * 1300;
     const newDeveloppement = 6000 + (qty - 1) * 500;
-    const fraisComm = 50 * p;
+    const fraisComm = 20 * p;
     
     const capexPlusRacc = batteryBms + newGenieCivil + newRaccordement + newDeveloppement + fraisComm;
     
     const revBruts = (30 * p) + (150 * p) + (20 * p) + (20 * p);
-    const rettComm = Math.round(revBruts * 0.02);
+    const rettComm = Math.round(revBruts * 0.03);
 
     setParams(prev => ({
       ...prev,
