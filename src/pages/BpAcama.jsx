@@ -731,7 +731,22 @@ function computeBusinessPlan(params) {
     const tBas = tarifBas * idxT;
     const tHaut = tarifHaut * idxT;
     const ca = (prodACC * tarifACC * idxT) + (new_pb * tBas) + (new_ph * tHaut);
-    const opex = opexBase * idxOpex;
+    
+    // Detailed OPEX
+    const rowMaint = (maintenance || 0) * idxOpex;
+    const rowAss = (assurance || 0) * idxOpex;
+    const rowLoc = (locationCompteur || 0) * idxOpex;
+    const rowTaxes = (taxesLocales || 0) * idxOpex;
+    const rowGestion = (gestionAdmin || 0) * idxOpex;
+    const rowLoyer = actualLoyerOpex * idxOpex;
+    
+    // Onduleurs at year 12
+    let rowMra = 0;
+    if (i === 12) {
+      rowMra = params.onduleurs || (totalConstruction * 0.1);
+    }
+
+    const opex = rowMaint + rowAss + rowLoc + rowTaxes + rowGestion + rowLoyer;
 
     const ebitda = ca - opex;
     const amortissement = totalConstruction / 20;
@@ -777,7 +792,11 @@ function computeBusinessPlan(params) {
       rembPrincipal,
       dscr,
       prodACC,
-      tresorerie
+      tresorerie,
+      maint: rowMaint,
+      ass: rowAss,
+      loc: rowLoc,
+      mra: rowMra
     });
     detteDebut = Math.max(0, detteDebut - rembPrincipal);
   }
@@ -850,7 +869,14 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
       tresorerie: ebitdaGlobal - interetsGlobal - impotGlobal - rembPrincipalGlobal,
       cafds: cafdsGlobal,
       isGlobal: true,
-      isCombined: true
+      isCombined: true,
+      maint: (rB.maint || 0) + (rBat.maint || 0),
+      ass: (rB.ass || 0) + (rBat.assur || 0),
+      loc: (rB.loc || 0),
+      mra: (rB.mra || 0),
+      taxes: (rBat.turpe || 0) + (rBat.ifer || 0),
+      admin: (rBat.retribComm || 0),
+      revenuBailleur: (rBat.revBailleur || 0)
     });
   }
 
@@ -1449,7 +1475,7 @@ function TableauPrevisionnel({ params, rows, apport10 }) {
                 {fmtEur(rows.reduce((acc, r) => acc + (r.opex || 0) + (r.serviceDette || 0) + (r.mra || 0), 0))}
               </td>
               {rows.map((r, i) => (
-                <td key={i} className="px-1 py-1 text-right border-l border-slate-200 text-red-700">{fmtEur(r.opex + r.serviceDette + r.mra)}</td>
+                <td key={i} className="px-1 py-1 text-right border-l border-slate-200 text-red-700">{fmtEur((r.opex || 0) + (r.serviceDette || 0) + (r.mra || 0))}</td>
               ))}
             </tr>
             <DataRow label="OPEX" propName="opex" isCurrency />
