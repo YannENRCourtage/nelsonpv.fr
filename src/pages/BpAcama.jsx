@@ -797,6 +797,7 @@ function computeBusinessPlan(params) {
     soulte: calculatedSoulte,
     apport10,
     totalConstruction,
+    totalInvestissement: totalConstruction,
     sumCA,
     sumOpex,
     gains: sumCA - sumOpex - totalConstruction
@@ -863,6 +864,7 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
     rows: combinedRows,
     triProjet,
     totalConstruction: totalConsGlobal,
+    totalInvestissement: totalConsGlobal,
     apport10: bpBuilding.apport10,
     sumCA,
     sumOpex,
