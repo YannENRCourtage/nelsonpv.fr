@@ -1174,7 +1174,6 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           <p className="text-[10px] font-bold text-slate-500 mt-1">{new Date().toLocaleDateString('fr-FR')}</p>
         </div>
       </div>
-      </div>
     </div>
   );
 
