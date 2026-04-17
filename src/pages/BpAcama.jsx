@@ -2458,7 +2458,7 @@ function TabBpProjets({
                    <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">RETOUR :</span><span className="font-bold text-blue-600">{fmt(bpResults.payback || bpResults.tempsRetour || 0, 1)} ans</span></div>
                    <div className="flex justify-between text-[11px] pt-1 mt-1 border-t border-slate-50">
                       <span className="text-slate-400 font-bold uppercase">Prix au Wc global :</span>
-                      <span className="font-bold text-slate-700">{fmtEur(totalInvestissement / (params.kwc * 1000))} /Wc</span>
+                      <span className="font-bold text-slate-700">{fmtEur(totalConstruction / (collapsedParams.kwc * 1000))} /Wc</span>
                    </div>
                  </div>
                </div>
