@@ -1069,7 +1069,7 @@ function TableauPrevisionnelBatterie({ rows, detailed }) {
   );
 }
 
-function BatterySection({ config, setParams, isEnrCourtage }) {
+function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isGreenInvest }) {
   const [viewDetailed, setViewDetailed] = useState(false);
   if (!config.enabled) return null;
 
@@ -1158,8 +1158,46 @@ function BatterySection({ config, setParams, isEnrCourtage }) {
 
   const GroupTitle = ({ title }) => <h4 className="text-[11px] font-black text-blue-600 uppercase mb-2 border-b border-blue-100 pb-1">{title}</h4>;
 
+  const PDFHeader = () => (
+    <div className="pdf-header hidden flex flex-row items-start w-full mb-6 pb-2 border-b-2 border-slate-100">
+      <div className="flex-1">
+        <img src="/logo-nelson.png" alt="Logo" className="h-16 w-auto object-contain" />
+      </div>
+      <div className="flex-1 text-center self-center">
+        <span className="text-[22px] font-black text-slate-800 uppercase tracking-widest">{isGreenInvest ? 'BP' : 'Business Plan'}</span>
+        <div className="text-[12px] font-bold text-blue-600 mt-1 uppercase tracking-tighter italic">Étude Stockage Batterie</div>
+      </div>
+      <div className="flex-1 text-right flex flex-col items-end">
+        <h1 className="text-sm font-black text-slate-900 uppercase leading-tight">
+          {selectedProject?.name || selectedProject?.client_name || selectedProject?.client_firstname || 'Projet Sans Nom'}
+        </h1>
+        <p className="text-[10px] font-bold text-slate-500 mt-1">{new Date().toLocaleDateString('fr-FR')}</p>
+      </div>
+    </div>
+  );
+
   return (
-    <SectionCard title="RENTABILITÉ BATTERIE STAND-ALONE" id="pdf-section-battery" className="bg-white border-t-4 border-t-blue-600 shadow-lg">
+    <SectionCard 
+      title="RENTABILITÉ BATTERIE STAND-ALONE" 
+      id="pdf-section-battery" 
+      className="bg-white border-t-4 border-t-blue-600 shadow-lg relative"
+      actions={
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="h-7 gap-1.5 text-[11px] font-bold border-blue-200 text-blue-700 hover:bg-blue-50"
+          onClick={() => generateBpAcamaPDF({ 
+            elementId: 'pdf-section-battery', 
+            fileName: `BP_Batterie_${selectedProject?.name || 'Projet'}.pdf`,
+            orientation: 'landscape'
+          })}
+        >
+          <FileDown className="w-3.5 h-3.5" />
+          PDF BATTERIE
+        </Button>
+      }
+    >
+      <PDFHeader />
       <div className="mb-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
         <GroupTitle title="Dimensionnement batterie" />
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
@@ -2503,7 +2541,13 @@ function TabBpProjets({
       {/* Battery Section (Full Width) */}
       {params.batteryConfig?.enabled && (
         <div className="w-full">
-           <BatterySection config={params.batteryConfig} setParams={setParams} isEnrCourtage={isEnrCourtage} />
+           <BatterySection 
+            config={params.batteryConfig} 
+            setParams={setParams} 
+            isEnrCourtage={isEnrCourtage} 
+            selectedProject={selectedProject}
+            isGreenInvest={isGreenInvest}
+           />
         </div>
       )}
 
