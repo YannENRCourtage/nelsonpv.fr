@@ -472,13 +472,15 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
             )}
 
             {(user?.activeTenantId === 'acama' || user?.tenantId === 'acama' ||
+              user?.activeTenantId === 'enr-courtage-energie' || user?.tenantId === 'enr-courtage-energie' ||
               user?.role === 'admin' || user?.role === 'Administrator' ||
               user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr' || isLaurentGuyon) && (
               <NavLink 
                 to="/bp-acama" 
                 className={({ isActive }) => {
                   const baseClass = isActive ? 'nav-link active bp-acama' : 'nav-link bp-acama';
-                  const isGreenInvest = activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
+                  const isEnrCourtage = activeTenantId === 'enr-courtage-energie' || user?.activeTenantId === 'enr-courtage-energie' || user?.tenantId === 'enr-courtage-energie';
+                  const isGreenInvest = activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest' || isEnrCourtage;
                   if (isActive && isGreenInvest) {
                     return `${baseClass} bg-green-400 text-white px-3 py-1 rounded-md`;
                   }
@@ -486,7 +488,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
                 }}
               >
                 <TrendingUp className="w-4 h-4 mr-1 inline-block" />
-                { (activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest') ? 'BP' : 'BP ACAMA' }
+                { (activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest' || activeTenantId === 'enr-courtage-energie') ? 'BP' : 'BP ACAMA' }
               </NavLink>
             )}
 
@@ -708,13 +710,15 @@ export default function AppLayout() {
             )}
 
             {(user?.activeTenantId === 'acama' || user?.tenantId === 'acama' ||
+              user?.activeTenantId === 'enr-courtage-energie' || user?.tenantId === 'enr-courtage-energie' ||
               user?.role === 'admin' || user?.role === 'Administrator' ||
               user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr' || isLaurentGuyon) && (
               <NavLink
                 to="/bp-acama"
                 className={({ isActive }) => {
                   const baseClass = isActive ? 'mobile-nav-link active bp-acama' : 'mobile-nav-link bp-acama';
-                  const isGreenInvest = activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
+                  const isEnrCourtage = activeTenantId === 'enr-courtage-energie' || user?.activeTenantId === 'enr-courtage-energie' || user?.tenantId === 'enr-courtage-energie';
+                  const isGreenInvest = activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest' || isEnrCourtage;
                   if (isActive && isGreenInvest) {
                     return `${baseClass} bg-green-400 text-white px-3 py-1 rounded-md mx-2`;
                   }
@@ -723,7 +727,7 @@ export default function AppLayout() {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <TrendingUp className="w-4 h-4 mr-2 inline-block" />
-                {(activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest') ? 'BP' : 'BP ACAMA'}
+                {(activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest' || activeTenantId === 'enr-courtage-energie') ? 'BP' : 'BP ACAMA'}
               </NavLink>
             )}
 

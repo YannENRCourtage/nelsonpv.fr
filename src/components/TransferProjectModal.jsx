@@ -27,8 +27,8 @@ const TransferProjectModal = ({ show, onClose, project, onTransfer }) => {
         }
     };
 
-    const currentTenantLabel = project.tenantId === 'acama' ? 'ACAMA' : 'GREEN INVEST';
-    const targetTenantLabel = targetTenant === 'acama' ? 'ACAMA' : targetTenant === 'green-invest' ? 'GREEN INVEST' : 'Sélectionner...';
+    const currentTenantLabel = project.tenantId === 'acama' ? 'ACAMA' : (project.tenantId === 'enr-courtage-energie' ? 'ENR COURTAGE ENERGIE' : 'GREEN INVEST');
+    const targetTenantLabel = targetTenant === 'acama' ? 'ACAMA' : (targetTenant === 'enr-courtage-energie' ? 'ENR COURTAGE ENERGIE' : (targetTenant === 'green-invest' ? 'GREEN INVEST' : 'Sélectionner...'));
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4 text-left">
@@ -55,6 +55,7 @@ const TransferProjectModal = ({ show, onClose, project, onTransfer }) => {
                         >
                             <option value="">Choisir la destination...</option>
                             {project.tenantId !== 'green-invest' && <option value="green-invest">GREEN INVEST</option>}
+                            {project.tenantId !== 'enr-courtage-energie' && <option value="enr-courtage-energie">ENR COURTAGE ENERGIE</option>}
                             {project.tenantId !== 'acama' && <option value="acama">ACAMA</option>}
                         </select>
                     </div>

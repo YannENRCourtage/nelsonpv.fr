@@ -182,7 +182,7 @@ const PDFGenerator = ({ project }) => {
               <span style={labelStyle}>Zone de séisme :</span>
               <span style={valueStyle}>{p.seismicZone || 'N/A'}</span>
             </div>
-            {p.tenantId !== 'green-invest' && p.resteACharge !== undefined && (
+            {p.tenantId !== 'green-invest' && p.tenantId !== 'enr-courtage-energie' && p.resteACharge !== undefined && (
               <div style={fieldStyle}>
                 <span style={labelStyle}>Reste à charge :</span>
                 <span style={valueStyle}>

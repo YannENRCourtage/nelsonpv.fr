@@ -29,7 +29,8 @@ import { migrateCollectionToTenant, TENANTS, cleanupProjectActivities } from '@/
 
 const TENANT_OPTIONS = [
   { value: 'green-invest', label: 'GREEN INVEST (BARCONNIERE)' },
-  { value: 'acama', label: 'ACAMA' }
+  { value: 'acama', label: 'ACAMA' },
+  { value: 'enr-courtage-energie', label: 'ENR COURTAGE ENERGIE' }
 ];
 
 export default function Admin() {

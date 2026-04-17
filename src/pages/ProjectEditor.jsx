@@ -1334,9 +1334,8 @@ export default function ProjectEditor() {
                           />
                         </div>
 
-                        {/* Reste à charge 1 */}
                         <div className="flex-1 flex gap-1 items-end">
-                          {activeTenantId !== 'green-invest' && (
+                          {activeTenantId !== 'green-invest' && activeTenantId !== 'enr-courtage-energie' && (
                             <div className="flex-1">
                               <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Reste à charge">{labelPrefix1}Reste à charge</label>
                               <Input
@@ -1574,7 +1573,7 @@ export default function ProjectEditor() {
 
                       {/* Reste à charge 2 */}
                       <div className="flex-1 flex gap-1 items-end">
-                        {activeTenantId !== 'green-invest' && (
+                        {activeTenantId !== 'green-invest' && activeTenantId !== 'enr-courtage-energie' && (
                           <div className="flex-1">
                             <label className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis block" title="Reste à charge">{labelPrefix2}Reste à charge</label>
                             <Input

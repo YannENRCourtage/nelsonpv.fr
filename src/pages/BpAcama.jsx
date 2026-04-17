@@ -340,6 +340,11 @@ const SUIVI_BAT_DATA_GREEN_INVEST = [
   {type:"SOLEA 41 S40",spv:"GREEN INVEST",kwc:460,cout_bat:220040,longueur:52.5,largeur:41.5,travees:"7 x 7.5m",hSud:"4.6m",hNord:"4.6m",faitage:"8.5m",surfTot:2178},
 ];
 
+const SUIVI_BAT_DATA_ENR_COURTAGE = SUIVI_BAT_DATA_GREEN_INVEST.map(item => ({
+  ...item,
+  spv: "ENR COURTAGE"
+}));
+
 const DETAILED_SUIVI_DATA = [
   { id:1, type:'TYPE 1 MINI', spv:'ACAMA SPV1', cap:270, massifs:22, long:53.72, larg:23.47, travees:7, lTravee:7.5, hSud:4, hNord:4, hFait:6.9, lRemS:11.97, lRemN:11.97, sSud:643.0, sNord:643.0, sTot:1286.1, axeS:11.82, axeN:11.82, pS:14.01, pN:14.01, bPO_d:115.54, bPO_e:8088, bPE_d:115.54, bPE_e:8088, bLN_d:231.69, bLN_e:12743, bLS_d:231.69, bLS_e:12743, chS:6017, chN:6017, faitage:1612, anticond:2572 },
   { id:2, type:'TYPE 1 MID', spv:'ACAMA SPV1', cap:306, massifs:24, long:60.67, larg:23.47, travees:8, lTravee:7.5, hSud:4, hNord:4, hFait:6.9, lRemS:11.97, lRemN:11.97, sSud:725.6, sNord:725.6, sTot:1451.2, axeS:11.82, axeN:11.82, pS:14.01, pN:14.01, bPO_d:115.54, bPO_e:8088, bPE_d:115.54, bPE_e:8088, bLN_d:264.75, bLN_e:14561, bLS_d:264.75, bLS_e:14561, chS:6789, chN:6789, faitage:1819, anticond:2902 },
@@ -4101,7 +4106,8 @@ export default function BpAcama() {
   const isAdmin = user?.role === 'admin';
   const isAlexandru = user?.email === 'a.mihailov@acama-energies.fr';
   const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
-  const isGreenInvest = activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest';
+  const isEnrCourtage = activeTenantId === 'enr-courtage-energie' || user?.activeTenantId === 'enr-courtage-energie' || user?.tenantId === 'enr-courtage-energie';
+  const isGreenInvest = activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest' || isEnrCourtage;
 
   const collapsedParams = useMemo(() => {
     const buildings = params.buildings || [];
@@ -4247,16 +4253,16 @@ export default function BpAcama() {
   }
 
   useEffect(() => {
-    const tenant = isGreenInvest ? 'greeninvest' : 'acama';
+    const tenant = isEnrCourtage ? 'enr-courtage-energie' : (isGreenInvest ? 'greeninvest' : 'acama');
     let unsubscribe = () => {};
     apiService.subscribeToSuiviBatData(tenant, (data) => {
       setRemoteBatData(data);
     }).then(unsub => { unsubscribe = unsub; });
     return () => unsubscribe();
-  }, [isGreenInvest]);
+  }, [isGreenInvest, isEnrCourtage]);
 
   const activeSuiviBatData = useMemo(() => {
-    const baseConstant = isGreenInvest ? SUIVI_BAT_DATA_GREEN_INVEST : SUIVI_BAT_DATA_ACAMA;
+    const baseConstant = isEnrCourtage ? SUIVI_BAT_DATA_ENR_COURTAGE : (isGreenInvest ? SUIVI_BAT_DATA_GREEN_INVEST : SUIVI_BAT_DATA_ACAMA);
     let data = (remoteBatData || baseConstant).map((r, i) => ({ ...r, id: r.id || `base-${i}` }));
 
     // Apply local edits
@@ -4281,7 +4287,7 @@ export default function BpAcama() {
   const saveSuiviBatData = async () => {
     setIsSavingBat(true);
     try {
-      const tenant = isGreenInvest ? 'greeninvest' : 'acama';
+      const tenant = isEnrCourtage ? 'enr-courtage-energie' : (isGreenInvest ? 'greeninvest' : 'acama');
       // Map rows to remove IDs that are only for UI tracking
       const dataToSave = activeSuiviBatData.map(({ id, ...rest }) => rest);
       await apiService.updateSuiviBatData(tenant, dataToSave);
@@ -4381,8 +4387,8 @@ export default function BpAcama() {
       )}>
         <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
           <div>
-            {isGreenInvest ? (
-              <h1 className="text-sm font-bold text-white uppercase">BP</h1>
+            {(isGreenInvest || isEnrCourtage) ? (
+              <h1 className="text-sm font-bold text-white uppercase">{isEnrCourtage ? 'BP ENR COURTAGE' : 'BP'}</h1>
             ) : (
               <>
                 <h1 className="text-sm font-bold text-white uppercase">BP ACAMA</h1>
@@ -4423,7 +4429,7 @@ export default function BpAcama() {
           })}
         </nav>
         <div className="px-4 py-3 border-t border-slate-700 text-[12px] text-slate-400">
-          {isGreenInvest ? 'Interface GREEN INVEST' : 'Interface ACAMA'} • {new Date().getFullYear()}
+            {isEnrCourtage ? 'Interface ENR COURTAGE' : (isGreenInvest ? 'Interface GREEN INVEST' : 'Interface ACAMA')} • {new Date().getFullYear()}
         </div>
       </aside>
 
@@ -4440,9 +4446,9 @@ export default function BpAcama() {
           </Button>
           <h2 className={cn(
             "text-sm font-bold rounded px-2 py-0.5",
-            isGreenInvest ? "bg-green-50 text-green-800" : "text-slate-800"
+            (isGreenInvest || isEnrCourtage) ? "bg-green-50 text-green-800" : "text-slate-800"
           )}>
-            {isGreenInvest ? 'BP' : (activeTab === 'bp_projets' ? 'BUSINESS PLAN PROJETS' : TABS.find(t => t.id === activeTab)?.label)}
+            {(isGreenInvest || isEnrCourtage) ? 'BP' : (activeTab === 'bp_projets' ? 'BUSINESS PLAN PROJETS' : TABS.find(t => t.id === activeTab)?.label)}
           </h2>
         </div>
         {renderContent()}
