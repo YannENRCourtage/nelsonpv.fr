@@ -1475,6 +1475,7 @@ function TabBpProjets({
   apportSoulte,
   activeSuiviBatData,
   isGreenInvest,
+  isEnrCourtage,
   resteACharge,
   isBatteryStandAlone = selectedProject?.isBatteryStandAlone === 'Oui'
 }) {
@@ -4346,6 +4347,7 @@ export default function BpAcama() {
           apportSoulte={apportSoulte}
           activeSuiviBatData={activeSuiviBatData}
           isGreenInvest={isGreenInvest}
+          isEnrCourtage={isEnrCourtage}
         />
       );
       case 'suivi': return <TabSuivi projects={projects || []} projectEdits={projectEdits} updateProjectEdit={updateProjectEdit} />;
