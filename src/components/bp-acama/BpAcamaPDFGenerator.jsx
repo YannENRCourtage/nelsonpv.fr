@@ -27,7 +27,6 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                 console.warn(`Section not found: ${id}`);
                 return;
             }
-            if (isNewPage) pdf.addPage();
 
             const margin = 10; // 10mm margin
             const contentWidth = pdfWidth - (2 * margin);
@@ -206,7 +205,7 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
             const pageWidth = finalWidth + (margin * 2);
             const pageHeight = imgHeight + (margin * 2);
 
-            if (addPage) {
+            if (isNewPage) {
                 pdf.addPage([pageWidth, pageHeight], isPortrait ? 'p' : 'l');
             } else {
                 // On ajuste la taille de la première page en en créant une nouvelle et en supprimant l'A4 par défaut
