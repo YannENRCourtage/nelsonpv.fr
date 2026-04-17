@@ -18,6 +18,20 @@ export const AuthProvider = ({ children }) => {
     try { return localStorage.getItem(TENANT_LS_KEY) || DEFAULT_TENANT; } catch { return DEFAULT_TENANT; }
   });
 
+  const isEnrCourtageAuthorized = useCallback((userData) => {
+    if (!userData) return false;
+    const email = userData.email?.toLowerCase();
+    const firstName = (userData.firstName || userData.displayName || '').toLowerCase();
+    
+    // Yann et Nelson Admin
+    if (email === 'y.barberis@enr-courtage.fr' || email === 'contact@nelsonpv.fr') return true;
+    
+    // Véro
+    if (firstName.includes('vero') || firstName.includes('véro')) return true;
+    
+    return false;
+  }, []);
+
   useEffect(() => {
     // Listen to Firebase auth state changes
     const unsubscribe = authService.onAuthChange((userData) => {
@@ -64,12 +78,26 @@ export const AuthProvider = ({ children }) => {
 
         // For non-admin users, lock the tenant to their own tenantId
         if (userData.role !== 'admin') {
-          const userTenant = userData.tenantId || DEFAULT_TENANT;
+          let userTenant = userData.tenantId || DEFAULT_TENANT;
+          
+          // --- RESTRICTION ENR COURTAGE ---
+          if (userTenant === 'enr-courtage-energie' && !isEnrCourtageAuthorized(userData)) {
+            userTenant = DEFAULT_TENANT;
+          }
+          // -------------------------------
+
           setActiveTenantId(userTenant);
           try { localStorage.setItem(TENANT_LS_KEY, userTenant); } catch { }
         } else {
           // For admins: restore from localStorage or default
-          const stored = (() => { try { return localStorage.getItem(TENANT_LS_KEY); } catch { return null; } })();
+          let stored = (() => { try { return localStorage.getItem(TENANT_LS_KEY); } catch { return null; } })();
+          
+          // --- RESTRICTION ENR COURTAGE ---
+          if (stored === 'enr-courtage-energie' && !isEnrCourtageAuthorized(userData)) {
+            stored = DEFAULT_TENANT;
+          }
+          // -------------------------------
+
           setActiveTenantId(stored || DEFAULT_TENANT);
         }
       } else {
@@ -108,9 +136,16 @@ export const AuthProvider = ({ children }) => {
   /** Switch tenant (admins only) */
   const switchTenant = useCallback((tenantId) => {
     if (!tenantId) return;
+    
+    // Restriction ENR COURTAGE
+    if (tenantId === 'enr-courtage-energie' && !isEnrCourtageAuthorized(user)) {
+      console.warn("Unauthorized attempt to switch to ENR COURTAGE ENERGIE");
+      return;
+    }
+
     setActiveTenantId(tenantId);
     try { localStorage.setItem(TENANT_LS_KEY, tenantId); } catch { }
-  }, []);
+  }, [user, isEnrCourtageAuthorized]);
 
   // Helper functions for permission checks
   const hasPermission = (permission) => {
