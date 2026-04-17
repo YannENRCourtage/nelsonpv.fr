@@ -795,6 +795,7 @@ function computeBusinessPlan(params) {
     payback: totalConstruction / (sumCA / 20),
     loyer: calculatedLoyer,
     soulte: calculatedSoulte,
+    apport10,
     totalConstruction,
     sumCA,
     sumOpex,
@@ -862,6 +863,7 @@ function mergeGlobalBP(bpBuilding, bpBattery, batteryConfig) {
     rows: combinedRows,
     triProjet,
     totalConstruction: totalConsGlobal,
+    apport10: bpBuilding.apport10,
     sumCA,
     sumOpex,
     gains: sumCA - sumOpex - totalConsGlobal
@@ -2454,7 +2456,7 @@ function TabBpProjets({
                    <div className="flex justify-between text-[11px]"><span className="text-slate-400 font-bold uppercase">RETOUR :</span><span className="font-bold text-blue-600">{fmt(bpResults.payback || bpResults.tempsRetour || 0, 1)} ans</span></div>
                    <div className="flex justify-between text-[11px] pt-1 mt-1 border-t border-slate-50">
                       <span className="text-slate-400 font-bold uppercase">Prix au Wc global :</span>
-                      <span className="font-bold text-slate-700">{fmtEur(totalInvestissement / (bpResults.rows[0]?.kwcDeg || 1))} /Wc</span>
+                      <span className="font-bold text-slate-700">{fmtEur(totalInvestissement / (params.kwc * 1000))} /Wc</span>
                    </div>
                  </div>
                </div>
