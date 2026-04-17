@@ -4134,6 +4134,19 @@ export default function BpAcama() {
         if (saved.batteryConfig.gestionChargeAn === undefined) {
           saved.batteryConfig.gestionChargeAn = 4562.5 * nbB;
         }
+
+        // UPDATED STANDARDS: fraisCommerciaux (2500), retributionCommAn (825) and degradationAnnuelle (1)
+        if (saved.batteryConfig.fraisCommerciaux === 6250 || saved.batteryConfig.fraisCommerciaux === 12500) {
+          saved.batteryConfig.fraisCommerciaux = 20 * (saved.batteryConfig.puissanceDemandee || 125);
+        }
+        if (saved.batteryConfig.retributionCommAn === 550 || saved.batteryConfig.retributionCommAn === 1100) {
+          const p = saved.batteryConfig.puissanceDemandee || 125;
+          const revBruts = (30 * p) + (150 * p) + (20 * p) + (20 * p);
+          saved.batteryConfig.retributionCommAn = Math.round(revBruts * 0.03);
+        }
+        if (saved.batteryConfig.degradationAnnuelle === 2 || saved.batteryConfig.degradationAnnuelle === undefined) {
+          saved.batteryConfig.degradationAnnuelle = 1;
+        }
       }
 
       // Enrich saved state with missing building types, products & power from map
