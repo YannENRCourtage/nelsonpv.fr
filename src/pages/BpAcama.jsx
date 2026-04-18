@@ -552,6 +552,7 @@ function computeBatteryProfitability(config) {
   const maxYearsLoop = Math.max(20, dureeEtude);
 
     let totalDebtServiceStudy = 0;
+    let totalInterestStudy = 0;
     for (let y = 1; y <= maxYearsLoop; y++) {
         const infl = Math.pow(1 + inflationAnnuelle / 100, y - 1);
         const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
@@ -582,6 +583,7 @@ function computeBatteryProfitability(config) {
             totalOpexStudy += (chargesFixes + chargesCom);
             totalRevenueStudy += revNet;
             totalDebtServiceStudy += serviceDette;
+            totalInterestStudy += interest;
 
         // Project Cash Flow (Unlevered): EBE - Tax (without interest shield)
         const ebitUnlevered = ebe - (capexTotal / dureeEtude);
@@ -640,8 +642,9 @@ function computeBatteryProfitability(config) {
     totalOpexStudy,
     totalRevenueStudy,
     totalDebtServiceStudy,
+    totalInterestStudy,
     beneficeSurDureeEtude: totalRevenueStudy - capexTotal - totalOpexStudy,
-    beneficeAvecFinancement: (totalRevenueStudy - capexTotal - totalOpexStudy) - totalDebtServiceStudy,
+    beneficeAvecFinancement: (totalRevenueStudy - capexTotal - totalOpexStudy) - totalInterestStudy,
     rows
   };
 }
