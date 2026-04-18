@@ -159,17 +159,24 @@ export async function generateBpAcamaPDF({ elementId, sections, fileName, orient
                         if (isPortrait) {
                             s.style.width = '1000px'; 
                         } else {
-                            // Détection dynamique du nombre d'années pour garder la même échelle (Image 1)
-                            if (id === 'pdf-section-battery') {
-                                const yearThs = s.querySelectorAll('thead tr:first-child th, thead tr:first-child td').length - 1; 
-                                // On garde 1600px pour 12 ans (référence Image 1)
-                                // Au delà, on augmente la largeur pour ne pas compresser les colonnes
+                            // Détection dynamique du nombre de colonnes pour adapter la largeur
+                            const table = s.querySelector('table');
+                            const isDetailed = table?.getAttribute('data-detailed') === 'true';
+                            const yearThs = s.querySelectorAll('thead tr:first-child th, thead tr:first-child td').length - 1; 
+                            
+                            if (yearThs > 0) {
+                                // On augmente la largeur de base et l'incrément par année
+                                // Base 1800px pour 12 ans (donne ~120px par colonne + labels)
+                                const baseWidth = isDetailed ? 2000 : 1800;
+                                const perYearIncrement = isDetailed ? 120 : 110;
+
                                 if (yearThs > 12) {
-                                    s.style.width = `${1600 + (yearThs - 12) * 80}px`;
+                                    s.style.width = `${baseWidth + (yearThs - 12) * perYearIncrement}px`;
                                 } else {
-                                    s.style.width = '1600px';
+                                    s.style.width = `${baseWidth}px`;
                                 }
                             } else {
+                                // Fallback pour les sections sans années identifiées
                                 s.style.width = id === 'pdf-section-2' ? '2200px' : '1600px'; 
                             }
                         }

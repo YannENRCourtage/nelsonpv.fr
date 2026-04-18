@@ -1003,7 +1003,7 @@ function SignatureArea({ data, update }) {
 function TableauPrevisionnelBatterie({ rows, detailed }) {
   const DataRow = ({ label, propName, isCurrency, bold, className, indent }) => (
     <tr className={`border-b border-slate-200 bg-white hover:bg-slate-50 ${className}`}>
-      <td className={`px-2 py-1 font-medium bg-slate-50 text-[11px] border-r border-slate-200 w-[180px] ${bold ? 'font-bold' : ''} ${indent ? 'pl-4 italic text-slate-500' : ''}`}>{label}</td>
+      <td className={`px-2 py-1 font-medium bg-slate-50 text-[11px] border-r border-slate-200 ${detailed ? 'w-[240px]' : 'w-[180px]'} ${bold ? 'font-bold' : ''} ${indent ? 'pl-4 italic text-slate-500' : ''}`}>{label}</td>
       {rows.map((r, i) => (
         <td key={i} className={`px-1 py-1 text-right border-r border-slate-200 text-[11px] min-w-[50px] ${bold ? 'font-bold' : ''}`}>
           {isCurrency ? fmtEur(r[propName]) : fmt(r[propName], 0)}
@@ -1016,10 +1016,10 @@ function TableauPrevisionnelBatterie({ rows, detailed }) {
     <div className="mt-6 border-t pt-4 text-slate-900">
       <h4 className="text-[12px] font-black text-blue-600 uppercase mb-3 px-1">Plan d'Affaires Prévisionnel Batterie</h4>
       <div className="overflow-x-auto w-full custom-scrollbar">
-        <table className="w-full border-collapse border border-slate-200">
+        <table className="w-full border-collapse border border-slate-200" data-detailed={detailed ? "true" : "false"}>
           <thead>
             <tr className="bg-slate-100">
-              <td className="p-2 border-r border-b border-slate-200 text-[11px] font-bold w-[180px]">Indicateurs</td>
+              <td className={`p-2 border-r border-b border-slate-200 text-[11px] font-bold ${detailed ? 'w-[240px]' : 'w-[180px]'}`}>Indicateurs</td>
               {rows.map((r, i) => (
                 <td key={i} className="p-1 border-r border-b border-slate-200 text-center font-bold bg-slate-50 text-[11px]">{r.year}</td>
               ))}
@@ -1466,7 +1466,7 @@ function TableauPrevisionnel({ params, rows, apport10 }) {
   return (
     <SectionCard title={rows[0]?.isGlobal ? "PLAN D'AFFAIRES PREVISIONNEL BÂTIMENT + BATTERIE STAND-ALONE" : "PLAN D'AFFAIRES PREVISIONNEL BÂTIMENT"} className="p-0 border-none shadow-none">
       <div className="overflow-x-auto w-full">
-        <table className="text-[11px] w-full border-collapse">
+        <table className="text-[11px] w-full border-collapse" data-years={rows.length}>
           <thead>
             <tr className="bg-slate-100">
               <td className="w-[180px] p-2 border border-slate-200 text-slate-400 font-bold italic">{rows[0]?.isGlobal ? "Étude Combinée" : ""}</td>
