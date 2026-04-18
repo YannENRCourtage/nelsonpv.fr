@@ -3539,7 +3539,7 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
       .filter(p => {
         if (!p.bpAcamaState) return false;
         const pTenant = p.tenantId || p.tenant || p.bpAcamaState?.tenantId || p.bpAcamaState?.tenant;
-        const normalizedTenant = (pTenant === 'greeninvest' || pTenant === 'green-invest') ? 'green-invest' : pTenant;
+        const normalizedTenant = (pTenant === 'greeninvest' || pTenant === 'green-invest' || pTenant === 'enr-courtage-energie') ? 'green-invest' : pTenant;
         const pName = (p.name || '').toUpperCase();
         const isKnownAcama = pName.includes('PAPA') || pName.includes('BATIOT') || pName.includes('POUDERAU');
         
@@ -3588,9 +3588,23 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
         };
 
         const rac = computeResteACharge(collapsedForSaved);
-        const bp = computeBusinessPlan({ ...collapsedForSaved, apport: rac });
+        let bp = computeBusinessPlan({ ...collapsedForSaved, apport: rac });
         
-        return { ...p, bpResults: bp, totalKwc: kwcTotal };
+        // Battery stand-alone handling
+        const isBatterySA = p.isBatteryStandAlone === 'Oui' || (kwcTotal === 0 && state.batteryConfig?.enabled);
+        let displayKwc = kwcTotal;
+
+        if (state.batteryConfig?.enabled) {
+          const bpBattery = computeBatteryProfitability(state.batteryConfig);
+          if (state.batteryConfig.isGlobal && !isBatterySA) {
+            bp = mergeGlobalBP(bp, bpBattery, state.batteryConfig);
+          } else if (isBatterySA) {
+            bp = bpBattery;
+            displayKwc = state.batteryConfig.puissanceDemandee || 0;
+          }
+        }
+        
+        return { ...p, bpResults: bp, totalKwc: displayKwc, isBatterySA };
       })
       .sort((a, b) => {
         const dateA = parseFirestoreDate(a.updatedAt || a.createdAt) || new Date(0);
@@ -3711,7 +3725,9 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
                   <td className="px-3 py-2 text-slate-600 font-medium text-[12px] max-w-[150px] truncate align-middle" title={p.address}>{p.address || '—'}</td>
                   <td className="px-3 py-2 text-slate-500 truncate align-middle" title={`${p.zip || ''} ${p.city || ''}`}>{p.city || '—'}</td>
                   <td className="px-3 py-2 text-slate-500 text-[11px] font-medium italic max-w-[120px] truncate align-middle" title={batTypes}>{batTypes || '—'}</td>
-                  <td className="px-3 py-2 text-center font-bold text-blue-700 align-middle">{fmt(p.totalKwc || 0, 1)} kWc</td>
+                  <td className="px-3 py-2 text-center font-bold text-blue-700 align-middle">
+                    {fmt(p.totalKwc || 0, 1)} {p.isBatterySA ? 'kW' : 'kWc'}
+                  </td>
                   <td className="px-3 py-2 text-center text-slate-600 align-middle">
                     <div className="font-bold">{fmt(state.tarifBas, 4)} €</div>
                     <div className="text-[10px] opacity-60">{fmtEur(state.tarifACC)} (ACC)</div>
@@ -3720,9 +3736,9 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
                   <td className="px-3 py-2 text-center align-middle">
                     <div className={cn(
                       "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-black",
-                      (p.bpResults.dscrMoyen || 0) >= (state.targetDSCR || 1.17) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                      (p.bpResults?.dscrMoyen || p.bpResults?.dscrAn1 || 0) >= (state.targetDSCR || 0.8) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                     )}>
-                      {fmtPct(p.bpResults.dscrMoyen)}
+                      {fmtPct(p.bpResults?.dscrMoyen || p.bpResults?.dscrAn1 || 0)}
                     </div>
                   </td>
                   <td className="px-3 py-2 text-center font-bold text-green-600 align-middle">{fmtPct(p.bpResults.triFP)}</td>
