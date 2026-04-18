@@ -3531,7 +3531,7 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
 
 // ─── Tab: BP Sauvegardés ───────────────────────────────────────────────────
 
-function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest }) {
+function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest, isEnrCourtage }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
 
   const savedProjects = useMemo(() => {
@@ -3544,7 +3544,7 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
         const isKnownAcama = pName.includes('PAPA') || pName.includes('BATIOT') || pName.includes('POUDERAU');
         
         if (isGreenInvest) {
-          if (isKnownAcama) return false;
+          if (isKnownAcama && !isEnrCourtage) return false;
           return normalizedTenant === 'green-invest' || !normalizedTenant;
         } else {
           if (isKnownAcama) return true;
@@ -4464,7 +4464,7 @@ export default function BpAcama() {
   const renderContent = () => {
     switch (activeTab) {
       case 'calcul': return <TabCalcul projects={projects || []} isGreenInvest={isGreenInvest} />;
-      case 'bp_saved': return <TabBpSaved projects={projects || []} onSelect={setSelectedProject} activeTab={activeTab} setActiveTab={setActiveTab} isGreenInvest={isGreenInvest} />;
+      case 'bp_saved': return <TabBpSaved projects={projects || []} onSelect={setSelectedProject} activeTab={activeTab} setActiveTab={setActiveTab} isGreenInvest={isGreenInvest} isEnrCourtage={isEnrCourtage} />;
       case 'bp_projets': return (
         <TabBpProjets 
           projects={projects || []} 
