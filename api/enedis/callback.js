@@ -22,6 +22,7 @@ export default async function handler(req, res) {
 
     try {
         // 1. Exchange Auth Code for Access Token
+        console.log('[Enedis Callback] Exchanging code for token...');
         const tokenResponse = await axios.post('https://ext.enedis.fr/oauth2/v3/token', new URLSearchParams({
             grant_type: 'authorization_code',
             code,
@@ -34,19 +35,24 @@ export default async function handler(req, res) {
 
         const { access_token, refresh_token, expires_in } = tokenResponse.data;
         const expiresAt = new Date(Date.now() + expires_in * 1000).toISOString();
+        console.log('[Enedis Callback] Token obtained successfully.');
 
         // 2. Discover PRMs (Search usage points)
+        console.log('[Enedis Callback] Discovering PRMs...');
         const prmResponse = await axios.get('https://ext.enedis.fr/customer/v1/usage_points', {
             headers: { 'Authorization': `Bearer ${access_token}` }
         });
 
         const usagePoints = prmResponse.data.usage_points || [];
+        console.log(`[Enedis Callback] Found ${usagePoints.length} usage points.`);
 
         if (usagePoints.length === 0) {
+            console.warn('[Enedis Callback] No PRM found for this user.');
             return res.redirect(`/project/${projectId}?enedis=error&message=no_prm_found`);
         }
 
         // 3. Save to Firestore - Global by PRM
+        console.log('[Enedis Callback] Saving consents to Firestore...');
         const batch = adminDb.batch();
         usagePoints.forEach(up => {
             const upid = up.usage_point_id;
@@ -63,10 +69,11 @@ export default async function handler(req, res) {
         await batch.commit();
 
         const firstPrm = usagePoints[0].usage_point_id;
+        console.log(`[Enedis Callback] Success! Redirecting back with PRM: ${firstPrm}`);
         res.redirect(`/project/${projectId}?enedis=success&prm=${firstPrm}`);
 
     } catch (err) {
-        console.error('Enedis Callback Error:', err.response?.data || err.message);
+        console.error('[Enedis Callback] Error:', err.response?.data || err.message);
         const errorMsg = err.response?.data?.error_description || err.message;
         res.redirect(`/project/${projectId}?enedis=error&message=${encodeURIComponent(errorMsg)}`);
     }
