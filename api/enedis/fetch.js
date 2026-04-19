@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { adminDb } from '../../src/lib/firebase-admin';
+import { adminDb } from '../../src/lib/firebase-admin.js';
+import { withAuth } from '../common/authMiddleware.js';
 
 const ENEDIS_API_BASE = 'https://ext.enedis.fr/customer/v1/metering_data';
 
@@ -45,13 +46,13 @@ async function fetchEnedisApi(endpoint, prm, startDate, endDate, token) {
         return response.data;
     } catch (err) {
         if (err.response?.status === 403) {
-            console.warn(`Enedis API 403 for ${endpoint}: Consent scope missing.`);
+            console.warn(`Enedis API 403 for ${endpoint}: Consent scope missing or expired.`);
         }
         throw err;
     }
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
     const { projectId, prm, forceRefresh = false } = req.query;
 
     if (!projectId && !prm) {
@@ -61,17 +62,26 @@ export default async function handler(req, res) {
     try {
         let consentDoc;
         
-        if (projectId) {
+        // 1. Prioritize global lookup by PRM
+        if (prm) {
+            consentDoc = await adminDb.collection('enedis_consents').doc(prm).get();
+        }
+
+        // 2. Fallback to project-specific consent (Legacy or first-time)
+        if ((!consentDoc || !consentDoc.exists) && projectId) {
             consentDoc = await adminDb.collection('enedis_consents').doc(projectId).get();
-        } else {
+        }
+
+        // 3. Last resort: search PRM in field (slow, but handles cases where doc ID is not PRM)
+        if ((!consentDoc || !consentDoc.exists) && prm) {
             const snapshot = await adminDb.collection('enedis_consents').where('prm', '==', prm).limit(1).get();
-            consentDoc = snapshot.docs[0];
+            if (!snapshot.empty) consentDoc = snapshot.docs[0];
         }
 
         if (!consentDoc || !consentDoc.exists) {
             return res.status(404).json({ 
-                error: 'Aucun consentement Enedis trouvé pour ce PRM ou ce projet.',
-                hint: 'Le propriétaire du compteur doit d\'abord autoriser l\'accès via le bouton "Se connecter à Enedis".'
+                error: 'Aucun consentement Enedis trouvé pour ce PRM.',
+                hint: 'Veuillez autoriser Nelson sur votre Espace Client Enedis.'
             });
         }
 
@@ -79,7 +89,12 @@ export default async function handler(req, res) {
 
         // --- 1. Token Refresh ---
         if (new Date() >= new Date(consent.expiresAt) || forceRefresh) {
-            consent = await refreshToken(consentDoc);
+            try {
+                consent = await refreshToken(consentDoc);
+            } catch (refErr) {
+                console.error('Refresh token failed:', refErr.response?.data || refErr.message);
+                return res.status(401).json({ error: 'Échec du renouvellement de la session. Veuillez vous reconnecter à Enedis.' });
+            }
         }
 
         // --- 2. Date Range ---
@@ -95,27 +110,10 @@ export default async function handler(req, res) {
         // --- 3. Fetch Data ---
         try {
             results.daily = await fetchEnedisApi('daily_consumption', consent.prm, startDate, endDate, consent.accessToken);
-            // Save daily to Firestore
-            await adminDb.collection('enedis_data').doc(`${consent.prm}_daily_${startDate}`).set({
-                prm: consent.prm,
-                type: 'daily',
-                startDate,
-                endDate,
-                data: results.daily,
-                updatedAt: new Date().toISOString()
-            }, { merge: true });
         } catch (e) { results.daily = { error: e.message }; }
 
         try {
             results.loadCurve = await fetchEnedisApi('consumption_load_curve', consent.prm, startDate, endDate, consent.accessToken);
-            await adminDb.collection('enedis_data').doc(`${consent.prm}_loadcurve_${startDate}`).set({
-                prm: consent.prm,
-                type: 'load_curve',
-                startDate,
-                endDate,
-                data: results.loadCurve,
-                updatedAt: new Date().toISOString()
-            }, { merge: true });
         } catch (e) { results.loadCurve = { error: e.message }; }
 
         try {
@@ -132,3 +130,5 @@ export default async function handler(req, res) {
         res.status(500).json({ error: 'Failed to fetch Enedis data', details: error.message });
     }
 }
+
+export default withAuth(handler);

@@ -46,20 +46,24 @@ export default async function handler(req, res) {
             return res.redirect(`/project/${projectId}?enedis=error&message=no_prm_found`);
         }
 
-        const prm = usagePoints[0].usage_point_id;
+        // 3. Save to Firestore - Global by PRM
+        const batch = adminDb.batch();
+        usagePoints.forEach(up => {
+            const upid = up.usage_point_id;
+            const ref = adminDb.collection('enedis_consents').doc(upid);
+            batch.set(ref, {
+                prm: upid,
+                accessToken: access_token,
+                refreshToken: refresh_token,
+                expiresAt,
+                projectId, // Link to origin project
+                updatedAt: new Date().toISOString()
+            }, { merge: true });
+        });
+        await batch.commit();
 
-        // 3. Save to Firestore
-        // Using collection 'enedis_consents'
-        await adminDb.collection('enedis_consents').doc(projectId).set({
-            prm,
-            accessToken: access_token,
-            refreshToken: refresh_token,
-            expiresAt,
-            projectId,
-            updatedAt: new Date().toISOString()
-        }, { merge: true });
-
-        res.redirect(`/project/${projectId}?enedis=success&prm=${prm}`);
+        const firstPrm = usagePoints[0].usage_point_id;
+        res.redirect(`/project/${projectId}?enedis=success&prm=${firstPrm}`);
 
     } catch (err) {
         console.error('Enedis Callback Error:', err.response?.data || err.message);
