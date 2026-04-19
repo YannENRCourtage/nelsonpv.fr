@@ -3796,7 +3796,7 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
                       <td className="px-3 py-2 text-center font-bold text-slate-700 align-middle">
                         {fmtEur(p.bpResults.capexTotal)}
                       </td>
-                      <td className="px-3 py-2 text-center font-bold text-green-700 align-middle text-[12px]">
+                      <td className="px-3 py-2 text-center font-bold text-green-700 align-middle">
                         {fmtEur(p.bpResults.gainNetEtude)}
                       </td>
                       <td className="px-3 py-2 text-center font-bold text-green-600 align-middle">
