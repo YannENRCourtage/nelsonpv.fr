@@ -23,16 +23,16 @@ async function handler(req, res) {
         const scopes = [
             'pdl_daily_consumption',
             'pdl_consumption_load_curve',
-            'pdl_max_power',
-            'pdl_identity'
+            'pdl_max_power'
+            // pdl_identity removed for production compatibility
         ].join(' ');
 
         const state = JSON.stringify({ projectId });
         const encodedState = Buffer.from(state).toString('base64');
 
         // Enedis Authorization URL
-        // Data Connect V5+ uses mon-compte-particulier.enedis.fr/auth/oauth2/authorize
-        const authUrl = new URL('https://mon-compte-particulier.enedis.fr/auth/oauth2/authorize');
+        // Using the standard production authorize URL
+        const authUrl = new URL('https://ext.enedis.fr/oauth2/authorize');
         authUrl.searchParams.append('client_id', clientId);
         authUrl.searchParams.append('response_type', 'code');
         authUrl.searchParams.append('redirect_uri', redirectUri);
