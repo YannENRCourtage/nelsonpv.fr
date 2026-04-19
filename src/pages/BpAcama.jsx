@@ -3533,8 +3533,9 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
 
 function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest, isEnrCourtage }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [subTab, setSubTab] = useState('batiments');
 
-  const savedProjects = useMemo(() => {
+  const allSavedProjects = useMemo(() => {
     return projects
       .filter(p => {
         if (!p.bpAcamaState) return false;
@@ -3552,27 +3553,16 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
         }
       })
       .map(p => {
-        // Enrichment logic to ensure calculations match the Business Plan tab
         const state = p.bpAcamaState || {};
         const buildings = state.buildings || [];
-        
-        // Sum building powers 
         const kwcTotal = buildings.reduce((acc, b) => acc + (parseFloat(b.kwc) || 0), 0);
-        
-        // Sum building costs
         const totalCentrale = buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0), 0);
         const totalCharpente = buildings.reduce((sum, b) => sum + (parseFloat(b.coutCharpente) || 0), 0);
-        
-        // Global fields from ROOT of state (important: these were missing in previous calc)
         const totalRaccordement = parseFloat(state.raccordement) || 0;
         const totalFrais = parseFloat(state.frais) || 0;
         const totalSoulte = parseFloat(state.soulte) || 0;
-        
-        // Productible weighted average
         const totalProdKwh = buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0) * (parseFloat(b.productible) || 0), 0);
         const averageProd = kwcTotal > 0 ? totalProdKwh / kwcTotal : 0;
-        
-        // Total technical construction cost
         const totalConst = totalCentrale + totalCharpente + totalRaccordement + totalFrais;
           
         const collapsedForSaved = {
@@ -3590,7 +3580,6 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
         const rac = computeResteACharge(collapsedForSaved);
         let bp = computeBusinessPlan({ ...collapsedForSaved, apport: rac });
         
-        // Battery stand-alone handling
         const isBatterySA = p.isBatteryStandAlone === 'Oui' || (kwcTotal === 0 && state.batteryConfig?.enabled);
         let displayKwc = kwcTotal;
 
@@ -3613,11 +3602,16 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
       });
   }, [projects, isGreenInvest]);
 
+  const batimentProjects = useMemo(() => allSavedProjects.filter(p => !p.isBatterySA), [allSavedProjects]);
+  const batteryProjects = useMemo(() => allSavedProjects.filter(p => p.isBatterySA), [allSavedProjects]);
+
+  const currentProjects = subTab === 'batiments' ? batimentProjects : batteryProjects;
+
   const toggleAll = () => {
-    if (selectedIds.size === savedProjects.length && savedProjects.length > 0) {
+    if (selectedIds.size === currentProjects.length && currentProjects.length > 0) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(savedProjects.map(p => p.id)));
+      setSelectedIds(new Set(currentProjects.map(p => p.id)));
     }
   };
 
@@ -3629,13 +3623,29 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
   };
 
   const exportToExcel = () => {
-    const selectedData = savedProjects
+    const selectedData = currentProjects
       .filter(p => selectedIds.has(p.id))
       .map(p => {
         const state = p.bpAcamaState || {};
         const batTypes = (state.buildings || []).map(b => b.typeBat).filter(Boolean).join(', ');
         const d = parseFirestoreDate(p.updatedAt || p.createdAt);
         
+        if (subTab === 'batteries') {
+           return {
+            'Projet': p.name,
+            'Adresse': p.address || '',
+            'Commune': p.city || '',
+            'Type Bat.': 'Batterie Stand-Alone',
+            'Puissance (kW)': (p.totalKwc || 0).toFixed(1),
+            'Total CAPEX (€)': (p.bpResults?.capexTotal || 0).toFixed(2),
+            'Bénéfice sur durée étude (€)': (p.bpResults?.gainNetEtude || 0).toFixed(2),
+            'TRI Projet (%)': ((p.bpResults?.triProjet || 0) * 100).toFixed(1),
+            'Temps de retour (ans)': (p.bpResults?.payback || 0).toFixed(1),
+            'DSCR': (p.bpResults?.dscrAn1 || 0).toFixed(2),
+            'Dernière Modif': d ? d.toLocaleString('fr-FR') : ''
+          };
+        }
+
         return {
           'Projet': p.name,
           'Adresse': p.address || '',
@@ -3656,28 +3666,52 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
 
     const ws = XLSX.utils.json_to_sheet(selectedData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "BP Sauvegardés");
-    XLSX.writeFile(wb, `Export_BP_Sauvegardes_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, `BP ${subTab === 'batteries' ? 'Batteries' : 'Bâtiments'}`);
+    XLSX.writeFile(wb, `Export_BP_${subTab === 'batteries' ? 'Batteries' : 'Batiments'}_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   return (
     <div className="p-4 flex flex-col h-full overflow-hidden bg-slate-50">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <h3 className="text-sm font-bold text-slate-800">BP Sauvegardés ({savedProjects.length})</h3>
-          {selectedIds.size > 0 && (
-            <Button 
-              size="sm" 
-              variant="outline" 
-              className="h-7 text-[11px] gap-2 border-green-600 text-green-600 hover:bg-green-50"
-              onClick={exportToExcel}
-            >
-              <Download className="w-3.5 h-3.5" />
-              Exporter Excel ({selectedIds.size})
-            </Button>
-          )}
+      <div className="flex flex-col gap-4 mb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h3 className="text-sm font-bold text-slate-800">BP Sauvegardés ({allSavedProjects.length})</h3>
+            {selectedIds.size > 0 && (
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="h-7 text-[11px] gap-2 border-green-600 text-green-600 hover:bg-green-50"
+                onClick={exportToExcel}
+              >
+                <Download className="w-3.5 h-3.5" />
+                Exporter Excel ({selectedIds.size})
+              </Button>
+            )}
+          </div>
+          <p className="text-[12px] text-slate-500 italic">Derniers enregistrements en haut</p>
         </div>
-        <p className="text-[12px] text-slate-500 italic">Derniers enregistrements en haut</p>
+
+        {/* Sub-Tabs Selector */}
+        <div className="flex p-1 bg-slate-200/50 rounded-lg self-start">
+          <button
+            onClick={() => { setSubTab('batiments'); setSelectedIds(new Set()); }}
+            className={cn(
+              "px-4 py-1.5 rounded-md text-[11px] font-bold transition-all uppercase tracking-wider",
+              subTab === 'batiments' ? "bg-[#002060] text-white shadow-md" : "text-slate-500 hover:text-slate-700"
+            )}
+          >
+            Projets Bâtiments ({batimentProjects.length})
+          </button>
+          <button
+            onClick={() => { setSubTab('batteries'); setSelectedIds(new Set()); }}
+            className={cn(
+              "px-4 py-1.5 rounded-md text-[11px] font-bold transition-all uppercase tracking-wider",
+              subTab === 'batteries' ? "bg-[#002060] text-white shadow-md" : "text-slate-500 hover:text-slate-700"
+            )}
+          >
+            Projets Batteries ({batteryProjects.length})
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto border border-slate-200 rounded-xl bg-white shadow-sm no-scrollbar">
@@ -3688,7 +3722,7 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
                 <input 
                   type="checkbox" 
                   className="w-4 h-4 rounded border-slate-400 focus:ring-blue-500"
-                  checked={savedProjects.length > 0 && selectedIds.size === savedProjects.length}
+                  checked={currentProjects.length > 0 && selectedIds.size === currentProjects.length}
                   onChange={toggleAll}
                 />
               </th>
@@ -3697,17 +3731,31 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
               <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Commune</th>
               <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Type Bat.</th>
               <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Puissance</th>
-              <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Tarifs TB / ACC</th>
-              <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Part ACC</th>
-              <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">DSCR 20a</th>
-              <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">TRI FP</th>
-              <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Retour</th>
+              
+              {subTab === 'batiments' ? (
+                <>
+                  <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Tarifs TB / ACC</th>
+                  <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Part ACC</th>
+                  <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">DSCR 20a</th>
+                  <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">TRI FP</th>
+                  <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Retour</th>
+                </>
+              ) : (
+                <>
+                  <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Total CAPEX</th>
+                  <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Bénéfice sur durée étude</th>
+                  <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">TRI Projet</th>
+                  <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Temps de retour</th>
+                  <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">DSCR</th>
+                </>
+              )}
+
               <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700 w-32">Dernière Modif.</th>
               <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700 w-24">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {savedProjects.map((p) => {
+            {currentProjects.map((p) => {
               const state = p.bpAcamaState || {};
               const batTypes = (state.buildings || []).map(b => b.typeBat).filter(Boolean).join(', ');
               
@@ -3724,25 +3772,56 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
                   <td className="px-3 py-2 font-bold text-slate-800 uppercase truncate align-middle" title={p.name}>{p.name}</td>
                   <td className="px-3 py-2 text-slate-600 font-medium text-[12px] max-w-[150px] truncate align-middle" title={p.address}>{p.address || '—'}</td>
                   <td className="px-3 py-2 text-slate-500 truncate align-middle" title={`${p.zip || ''} ${p.city || ''}`}>{p.city || '—'}</td>
-                  <td className="px-3 py-2 text-slate-500 text-[11px] font-medium italic max-w-[120px] truncate align-middle" title={batTypes}>{batTypes || '—'}</td>
+                  <td className="px-3 py-2 text-slate-500 text-[11px] font-medium italic max-w-[120px] truncate align-middle" title={subTab === 'batteries' ? 'Batterie Stand-Alone' : batTypes}>
+                    {subTab === 'batteries' ? 'Batterie Stand-Alone' : (batTypes || '—')}
+                  </td>
                   <td className="px-3 py-2 text-center font-bold text-blue-700 align-middle">
                     {fmt(p.totalKwc || 0, 1)} {p.isBatterySA ? 'kW' : 'kWc'}
                   </td>
-                  <td className="px-3 py-2 text-center text-slate-600 align-middle">
-                    <div className="font-bold">{fmt(state.tarifBas, 4)} €</div>
-                    <div className="text-[10px] opacity-60">{fmtEur(state.tarifACC)} (ACC)</div>
-                  </td>
-                  <td className="px-3 py-2 text-center font-bold text-slate-700 align-middle">{fmt(state.partACC * 100, 0)}%</td>
-                  <td className="px-3 py-2 text-center align-middle">
-                    <div className={cn(
-                      "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-black",
-                      (p.bpResults?.dscrMoyen || p.bpResults?.dscrAn1 || 0) >= (state.targetDSCR || 0.8) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                    )}>
-                      {fmtPct(p.bpResults?.dscrMoyen || p.bpResults?.dscrAn1 || 0)}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 text-center font-bold text-green-600 align-middle">{fmtPct(p.bpResults.triFP)}</td>
-                  <td className="px-3 py-2 text-center font-bold text-blue-600 align-middle">{fmt(p.bpResults.payback, 1)} ans</td>
+
+                  {subTab === 'batiments' ? (
+                    <>
+                      <td className="px-3 py-2 text-center text-slate-600 align-middle">
+                        <div className="font-bold">{fmt(state.tarifBas, 4)} €</div>
+                        <div className="text-[10px] opacity-60">{fmtEur(state.tarifACC)} (ACC)</div>
+                      </td>
+                      <td className="px-3 py-2 text-center font-bold text-slate-700 align-middle">{fmt(state.partACC * 100, 0)}%</td>
+                      <td className="px-3 py-2 text-center align-middle">
+                        <div className={cn(
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-black",
+                          (p.bpResults?.dscrMoyen || p.bpResults?.dscrAn1 || 0) >= (state.targetDSCR || 0.8) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                        )}>
+                          {fmtPct(p.bpResults?.dscrMoyen || p.bpResults?.dscrAn1 || 0)}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-center font-bold text-green-600 align-middle">{fmtPct(p.bpResults.triFP)}</td>
+                      <td className="px-3 py-2 text-center font-bold text-blue-600 align-middle">{fmt(p.bpResults.payback, 1)} ans</td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-3 py-2 text-center font-bold text-slate-700 align-middle">
+                        {fmtEur(p.bpResults.capexTotal)}
+                      </td>
+                      <td className="px-3 py-2 text-center font-bold text-green-700 align-middle text-[12px]">
+                        {fmtEur(p.bpResults.gainNetEtude)}
+                      </td>
+                      <td className="px-3 py-2 text-center font-bold text-green-600 align-middle">
+                        {fmtPct(p.bpResults.triProjet)}
+                      </td>
+                      <td className="px-3 py-2 text-center font-bold text-blue-600 align-middle">
+                        {fmt(p.bpResults.payback, 1)} ans
+                      </td>
+                      <td className="px-3 py-2 text-center align-middle">
+                         <div className={cn(
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-black",
+                          (p.bpResults?.dscrAn1 || 0) >= (state.batteryConfig?.targetDSCR || 1.1) ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                        )}>
+                          {fmt(p.bpResults.dscrAn1, 2)}
+                        </div>
+                      </td>
+                    </>
+                  )}
+
                   <td className="px-3 py-2 text-slate-400 text-[12px] align-middle">
                     {(() => {
                       const d = parseFirestoreDate(p.updatedAt || p.createdAt);
@@ -3805,9 +3884,9 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
               </tr>
             );
           })}
-            {savedProjects.length === 0 && (
+            {currentProjects.length === 0 && (
               <tr>
-                <td colSpan={14} className="px-4 py-12 text-center text-slate-400 italic">Aucun business plan sauvegardé pour le moment.</td>
+                <td colSpan={14} className="px-4 py-12 text-center text-slate-400 italic">Aucun business plan {subTab === 'batteries' ? 'batterie' : ''} sauvegardé pour le moment.</td>
               </tr>
             )}
           </tbody>
@@ -3816,6 +3895,7 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
     </div>
   );
 }
+
 
 // ─── Tab: CALCUL ──────────────────────────────────────────────────────────────
 
