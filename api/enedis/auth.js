@@ -31,8 +31,8 @@ async function handler(req, res) {
         const encodedState = Buffer.from(state).toString('base64');
 
         // Enedis Authorization URL
-        // Using the standard production authorize URL
-        const authUrl = new URL('https://ext.enedis.fr/oauth2/authorize');
+        // Using the official Data Connect v5 authorize URL
+        const authUrl = new URL('https://mon-compte-particulier.enedis.fr/dataconnect/v1/oauth2/authorize');
         authUrl.searchParams.append('client_id', clientId);
         authUrl.searchParams.append('response_type', 'code');
         authUrl.searchParams.append('redirect_uri', redirectUri);
