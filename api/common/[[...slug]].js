@@ -1,15 +1,16 @@
 import { prisma } from '../../src/lib/prisma.js'
 import docusign from 'docusign-esign'
 import bcrypt from 'bcryptjs'
+import { withAuth } from '../common/authMiddleware.js'
 
-export default async function handler(req, res) {
+async function handler(req, res) {
     // CORS headers
     res.setHeader('Access-Control-Allow-Credentials', true)
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT')
     res.setHeader(
         'Access-Control-Allow-Headers',
-        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
     )
 
     if (req.method === 'OPTIONS') {
@@ -52,6 +53,12 @@ export default async function handler(req, res) {
                 case 'GET': {
                     const { userId } = req.query
                     if (!userId) return res.status(400).json({ error: 'userId is required' })
+                    
+                    // Ownership Check: User can only see their own notifications
+                    if (req.user && req.user.uid !== userId && req.user.email !== 'y.barberis@enr-courtage.fr') {
+                        return res.status(403).json({ error: 'Forbidden: Access denied to these notifications' })
+                    }
+
                     const notifications = await prisma.notification.findMany({
                         where: { userId }, orderBy: { createdAt: 'desc' }, take: 50
                     })
@@ -60,6 +67,11 @@ export default async function handler(req, res) {
                 case 'PUT': {
                     const { notificationIds, userId } = req.body
                     if (!userId) return res.status(400).json({ error: 'userId is required' })
+                    
+                    if (req.user && req.user.uid !== userId) {
+                        return res.status(403).json({ error: 'Forbidden' })
+                    }
+
                     if (notificationIds && Array.isArray(notificationIds)) {
                         await prisma.notification.updateMany({ where: { id: { in: notificationIds }, userId }, data: { read: true } })
                     } else {
@@ -109,7 +121,7 @@ export default async function handler(req, res) {
             return res.status(200).json({ url: viewUrl.url, envelopeId: envelopeSummary.envelopeId })
         }
 
-        // Auth
+        // Auth (Legacy)
         if (module === 'auth') {
             if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
             const { email, password } = req.body
@@ -127,4 +139,16 @@ export default async function handler(req, res) {
         console.error('Common API Error:', error)
         return res.status(500).json({ error: error.message || 'Internal server error' })
     }
+}
+
+export default async function(req, res) {
+    const { slug } = req.query
+    const module = slug && slug.length > 0 ? slug[0] : null
+    
+    // Auth module doesn't need withAuth because it's for logging in
+    if (module === 'auth') {
+        return handler(req, res)
+    }
+    
+    return withAuth(handler)(req, res)
 }

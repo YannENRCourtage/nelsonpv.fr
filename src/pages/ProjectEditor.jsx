@@ -8,6 +8,7 @@ import SubstationProximityCards from "../components/editor/SubstationProximityCa
 
 import ShadowMapTab from "../components/ShadowMapTab.jsx";
 import ChatBox from "../components/editor/ChatBox.jsx";
+import UrbanismeTab from "../components/editor/UrbanismeTab.jsx";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -1843,12 +1844,11 @@ export default function ProjectEditor() {
             </div>
           </div>
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden flex-1 min-h-[60vh] lg:h-[750px]">
-            {/* Onglet Carte & Urbanisme */}
-            {(activeTab === 'map' || activeTab === 'urbanisme') && (
+            {/* Onglet Carte */}
+            {activeTab === 'map' && (
               <div className="w-full flex flex-col h-full">
                 <div className="flex-1 min-h-[55vh] lg:min-h-0">
                   <MapEditor
-                    isUrbanismeMode={activeTab === 'urbanisme'}
                     key={`${projectId}-${remountKey}`}
                     onAddressFound={handleAddressFound}
                     onAddressSearched={handleAddressSearched}
@@ -1993,6 +1993,20 @@ export default function ProjectEditor() {
                   )}
                 </div>
               </div>
+            )}
+
+            {/* Onglet Urbanisme (DP) */}
+            {activeTab === 'urbanisme' && (
+              <UrbanismeTab 
+                project={project}
+                updateProject={updateProject}
+                onGenerateDP={async () => {
+                   // Appel au service de génération DP
+                   console.log("Génération DP demandée...");
+                   const { generateDPDossier } = await import("@/services/DPGeneratorService");
+                   await generateDPDossier(project);
+                }}
+              />
             )}
 
 

@@ -6,94 +6,94 @@ service cloud.firestore {
       return request.auth != null;
     }
     
+    // Get user data from their profile document
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isAdmin() {
-      // Fix: Use email check to bypass get() deployment issue
       return isAuthenticated() && (
         request.auth.token.email == 'y.barberis@enr-courtage.fr' || 
-        request.auth.token.email == 'contact@nelsonpv.fr'
+        request.auth.token.email == 'contact@nelsonpv.fr' ||
+        getUserData().role == 'admin'
       ); 
     }
-    
-    function canViewAllProjects() {
-      return isAuthenticated(); // Allow view all for now to ensure sync
+
+    // Check if user belongs to the same tenant as the resource
+    function belongsToTenant(tenantId) {
+      return isAuthenticated() && (getUserData().tenantId == tenantId);
+    }
+
+    // Projects: Members of the same tenant can read/write
+    match /projects/{projectId} {
+      allow read, write: if isAdmin() || (isAuthenticated() && belongsToTenant(resource.data.tenantId));
+      allow create: if isAuthenticated();
     }
     
-    // RÈGLES TEMPORAIRES DE DEBUG - Permettre lecture à tous authentifiés
-    // TODO: Revenir aux règles strictes une fois le problème identifié
+    // Users collection
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      // Allow users to update their own profile
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      // Only admins can create new users
       allow create, delete: if isAdmin();
     }
     
     // Contacts collection
     match /contacts/{contactId} {
-      allow read: if isAuthenticated();
+      allow read, write: if isAdmin() || (isAuthenticated() && belongsToTenant(resource.data.tenantId));
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated(); // COLLABORATIVE MODE
     }
     
-    // Comments collection - anyone can read, only author can update/delete
+    // Comments collection
     match /comments/{commentId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && (isAdmin() || belongsToTenant(resource.data.tenantId));
+      allow create: if isAuthenticated();
       allow update, delete: if isAuthenticated() && 
                                 (isAdmin() || resource.data.userId == request.auth.uid);
     }
     
-    // Notifications collection - users can only read their own notifications
+    // Notifications collection
     match /notifications/{notificationId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow delete: if isAuthenticated() && 
-                       (isAdmin() || resource.data.userId == request.auth.uid);
-    }
-
-    // Projects collection
-    match /projects/{projectId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated(); // COLLABORATIVE MODE
+      allow update, delete: if isAuthenticated() && 
+                               (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     // Tasks collection
     match /tasks/{taskId} {
-      allow read: if isAuthenticated();
+      allow read, write: if isAdmin() || (isAuthenticated() && belongsToTenant(resource.data.tenantId));
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated();
     }
 
     // Activities collection
     match /activities/{activityId} {
-      allow read: if isAuthenticated();
+      allow read: if isAdmin() || (isAuthenticated() && belongsToTenant(resource.data.tenantId));
       allow create: if isAuthenticated();
       allow update, delete: if isAdmin();
     }
 
-    // Config collection - shared application configuration
+    // Config collection
     match /config/{document} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated(); // Tous peuvent modifier pour sync temps réel
+      allow write: if isAdmin();
     }
     
-    // Financial Simulations - Admin only
+    // Financial Simulations
     match /financial_simulations/{simulationId} {
-      allow read: if isAuthenticated(); // Tous peuvent lire
-      allow create: if isAuthenticated(); // Tous peuvent créer
-      allow update, delete: if isAdmin(); // Seuls les admins peuvent modifier/supprimer
+      allow read: if isAuthenticated() && (isAdmin() || belongsToTenant(resource.data.tenantId));
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
     }
     
-    // Daily KPI - Monday tables ( Collaborative )
+    // Monday tables
     match /monday_tables/{tableId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || (isAuthenticated() && belongsToTenant(resource.data.tenantId));
       
       match /rows/{rowId} {
-        allow read, write: if isAuthenticated();
+        allow read: if isAuthenticated();
+        allow write: if isAdmin() || (isAuthenticated() && belongsToTenant(get(/databases/$(database)/documents/monday_tables/$(tableId)).data.tenantId));
       }
     }
-
   }
 }

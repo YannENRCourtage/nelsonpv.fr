@@ -1407,7 +1407,7 @@ function useDeleteKey(onDelete) {
   }, [onDelete]);
 }
 
-function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject, setIsAzimuthDefaulted, isRotatingRef, isUrbanismeMode, setShowInfoPanel, isochroneConfig }) {
+function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject, setIsAzimuthDefaulted, isRotatingRef, isUrbanismeMode, setShowInfoPanel, isochroneConfig, forceHideFeatures }) {
   const [mousePos, setMousePos] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [ignoreNextClick, setIgnoreNextClick] = useState(false);
@@ -4219,8 +4219,7 @@ function MapStateSync({ project, setProject }) {
 
   return null;
 }
-
-function MapInternalController({ layersRef, activeLayers, setSelectedCompany, setSelectedSubstation }) {
+function MapInternalController({ layersRef, activeLayers, setSelectedCompany, setSelectedSubstation, setForceHideFeatures }) {
   const map = useMap();
 
   // 1. Navigation and selection handlers
@@ -4231,20 +4230,40 @@ function MapInternalController({ layersRef, activeLayers, setSelectedCompany, se
         map.setView([lat, lng], zoom || 18, { animate: true });
       }
     };
-
     const handleSelectCompany = (e) => setSelectedCompany(e.detail.company);
     const handleSelectSubstation = (e) => setSelectedSubstation(e.detail.substation);
+    
+    const handleToggleFeatures = (e) => {
+        setForceHideFeatures(!e.detail.visible);
+    };
+
+    const handleToggleBasemap = (e) => {
+        const { id } = e.detail;
+        if (layersRef.current) {
+            const layers = Object.keys(mapData.layers);
+            layers.forEach(l => {
+                if (layersRef.current[l]) {
+                    if (l === id) map.addLayer(layersRef.current[l]);
+                    else map.removeLayer(layersRef.current[l]);
+                }
+            });
+        }
+    };
 
     window.addEventListener('map:goto-location', handleGoto);
     window.addEventListener('map:select-company', handleSelectCompany);
     window.addEventListener('map:select-substation', handleSelectSubstation);
+    window.addEventListener('map:toggle-features', handleToggleFeatures);
+    window.addEventListener('map:toggle-basemap', handleToggleBasemap);
 
     return () => {
       window.removeEventListener('map:goto-location', handleGoto);
       window.removeEventListener('map:select-company', handleSelectCompany);
       window.removeEventListener('map:select-substation', handleSelectSubstation);
+      window.removeEventListener('map:toggle-features', handleToggleFeatures);
+      window.removeEventListener('map:toggle-basemap', handleToggleBasemap);
     };
-  }, [map, setSelectedCompany, setSelectedSubstation]);
+  }, [map, setSelectedCompany, setSelectedSubstation, setForceHideFeatures, layersRef]);
 
   // 2. Synchronisation déclarative des calques
   useEffect(() => {
@@ -4372,6 +4391,7 @@ export default function MapElements({
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [selectedSubstation, setSelectedSubstation] = useState(null);
   const [selectedRoutingData, setSelectedRoutingData] = useState(null);
+  const [forceHideFeatures, setForceHideFeatures] = useState(false);
 
 
   const [mode, setMode] = useState(null);
@@ -4548,6 +4568,7 @@ export default function MapElements({
             activeLayers={activeLayers} 
             setSelectedCompany={setSelectedCompany} 
             setSelectedSubstation={setSelectedSubstation} 
+            setForceHideFeatures={setForceHideFeatures}
           />
 
           <div
@@ -4623,6 +4644,7 @@ export default function MapElements({
             isUrbanismeMode={isUrbanismeMode}
             setShowInfoPanel={setShowInfoPanel}
             isochroneConfig={isochroneConfig}
+            forceHideFeatures={forceHideFeatures}
           />
           {/* Sociétés UI (Managed by Manager now) */}
 

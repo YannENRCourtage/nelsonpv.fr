@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as authService from '@/services/firebase/auth.service.js';
+import axios from 'axios';
 
 const AuthContext = createContext(null);
 
@@ -18,17 +19,37 @@ export const AuthProvider = ({ children }) => {
     try { return localStorage.getItem(TENANT_LS_KEY) || DEFAULT_TENANT; } catch { return DEFAULT_TENANT; }
   });
 
+  // AXIOS INTERCEPTOR FOR AUTH
+  useEffect(() => {
+    const interceptor = axios.interceptors.request.use(
+      async (config) => {
+        // Only target internal /api routes
+        if (config.url && config.url.startsWith('/api')) {
+          try {
+            const currentUser = authService.auth.currentUser;
+            if (currentUser) {
+              const token = await currentUser.getIdToken();
+              config.headers.Authorization = `Bearer ${token}`;
+            }
+          } catch (error) {
+            console.error('Failed to get auth token for API request', error);
+          }
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    return () => axios.interceptors.request.eject(interceptor);
+  }, []);
+
   const isEnrCourtageAuthorized = useCallback((userData) => {
+    // ... logic ...
     if (!userData) return false;
     const email = userData.email?.toLowerCase();
     const firstName = (userData.firstName || userData.displayName || '').toLowerCase();
-    
-    // Yann et Nelson Admin
     if (email === 'y.barberis@enr-courtage.fr' || email === 'contact@nelsonpv.fr') return true;
-    
-    // Véro
     if (firstName.includes('vero') || firstName.includes('véro')) return true;
-    
     return false;
   }, []);
 
@@ -36,21 +57,18 @@ export const AuthProvider = ({ children }) => {
     // Listen to Firebase auth state changes
     const unsubscribe = authService.onAuthChange((userData) => {
       if (userData) {
+        // ... existing logic ...
         // --- OVERRIDE DU COMPTE 'CONTACT' ---
-        // Le compte contact@enr-courtage.fr est forcement 'user' et sans accès Admin/Simulateur
         if (userData.email === 'contact@enr-courtage.fr') {
-          console.log("Applying strict restrictions to contact@enr-courtage.fr");
           userData.role = 'user';
           userData.permissions = {
             ...userData.permissions,
             canAccessSimulator: false,
             canAccessAdmin: false,
-            canAccessCRM: true, // Conserve l'accès CRM
+            canAccessCRM: true,
           };
         }
-        // ------------------------------------
 
-        // --- GESTION ACCÈS CONFIGURATEUR ---
         const CONFIGURATOR_USERS = [
           'contact@enr-courtage.fr',
           'elodievinet17@gmail.com',
@@ -71,33 +89,22 @@ export const AuthProvider = ({ children }) => {
             canAccessConfigurator: true
           };
         }
-        // ------------------------------------
 
         setUser(userData);
         setIsAuthenticated(true);
 
-        // For non-admin users, lock the tenant to their own tenantId
         if (userData.role !== 'admin') {
           let userTenant = userData.tenantId || DEFAULT_TENANT;
-          
-          // --- RESTRICTION ENR COURTAGE ---
           if (userTenant === 'enr-courtage-energie' && !isEnrCourtageAuthorized(userData)) {
             userTenant = DEFAULT_TENANT;
           }
-          // -------------------------------
-
           setActiveTenantId(userTenant);
           try { localStorage.setItem(TENANT_LS_KEY, userTenant); } catch { }
         } else {
-          // For admins: restore from localStorage or default
           let stored = (() => { try { return localStorage.getItem(TENANT_LS_KEY); } catch { return null; } })();
-          
-          // --- RESTRICTION ENR COURTAGE ---
           if (stored === 'enr-courtage-energie' && !isEnrCourtageAuthorized(userData)) {
             stored = DEFAULT_TENANT;
           }
-          // -------------------------------
-
           setActiveTenantId(stored || DEFAULT_TENANT);
         }
       } else {
@@ -108,7 +115,7 @@ export const AuthProvider = ({ children }) => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [isEnrCourtageAuthorized]);
 
   const login = async (email, password) => {
     try {
@@ -133,21 +140,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  /** Switch tenant (admins only) */
   const switchTenant = useCallback((tenantId) => {
     if (!tenantId) return;
-    
-    // Restriction ENR COURTAGE
     if (tenantId === 'enr-courtage-energie' && !isEnrCourtageAuthorized(user)) {
-      console.warn("Unauthorized attempt to switch to ENR COURTAGE ENERGIE");
       return;
     }
-
     setActiveTenantId(tenantId);
     try { localStorage.setItem(TENANT_LS_KEY, tenantId); } catch { }
   }, [user, isEnrCourtageAuthorized]);
 
-  // Helper functions for permission checks
   const hasPermission = (permission) => {
     if (!user || !user.permissions) return false;
     return user.permissions[permission] === true;
@@ -157,38 +158,20 @@ export const AuthProvider = ({ children }) => {
     return user?.role === 'admin';
   };
 
-  const canAccessCRM = () => {
-    return isAdmin() || hasPermission('canAccessCRM');
-  };
-
-  const canAccessEditor = () => {
-    return isAdmin() || hasPermission('canAccessEditor');
-  };
-
-  const canAccessSimulator = () => {
-    return isAdmin() || hasPermission('canAccessSimulator');
-  };
-
-  const canViewAllProjects = () => {
-    return isAdmin() || hasPermission('canViewAllProjects');
-  };
-
   const value = {
     user,
     isAuthenticated,
     loading,
     login,
     logout,
-    // Tenant management
     activeTenantId,
     switchTenant,
-    // Permission helpers
     hasPermission,
     isAdmin,
-    canAccessCRM,
-    canAccessEditor,
-    canAccessSimulator,
-    canViewAllProjects,
+    canAccessCRM: () => isAdmin() || hasPermission('canAccessCRM'),
+    canAccessEditor: () => isAdmin() || hasPermission('canAccessEditor'),
+    canAccessSimulator: () => isAdmin() || hasPermission('canAccessSimulator'),
+    canViewAllProjects: () => isAdmin() || hasPermission('canViewAllProjects'),
     canAccessConfigurator: () => hasPermission('canAccessConfigurator')
   };
 

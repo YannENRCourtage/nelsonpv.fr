@@ -247,6 +247,30 @@ export function ProjectProvider({ children }) {
         // Update project with Storage URLs
         savedProject.photos = photoUrls;
       }
+      
+      // Handle urbanisme_captures: upload each key to Storage if it's a data URL
+      if (savedProject.urbanisme_captures && typeof savedProject.urbanisme_captures === 'object') {
+        console.log("Processing urbanisme_captures for upload to Storage...");
+        const newUrbanismeCaptures = { ...savedProject.urbanisme_captures };
+        const keys = Object.keys(newUrbanismeCaptures);
+        
+        await Promise.all(
+          keys.map(async (key) => {
+            const capture = newUrbanismeCaptures[key];
+            if (capture && typeof capture === 'string' && capture.startsWith('data:image')) {
+              console.log(`Uploading urbanisme capture ${key} to Storage...`);
+              try {
+                const tempId = projectId && projectId !== 'new' ? projectId : `temp_${Date.now()}`;
+                const downloadUrl = await uploadProjectCapture(capture, tempId, `urb_${key}`);
+                newUrbanismeCaptures[key] = downloadUrl;
+              } catch (uploadError) {
+                console.error(`Failed to upload urbanisme capture ${key}:`, uploadError);
+              }
+            }
+          })
+        );
+        savedProject.urbanisme_captures = newUrbanismeCaptures;
+      }
 
       // Helper to remove undefined values for Firestore
       const sanitizeForFirestore = (obj) => {

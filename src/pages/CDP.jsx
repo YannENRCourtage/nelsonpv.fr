@@ -8,6 +8,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { PDFViewer } from '../components/PDFViewer';
 import { signDocument } from '../services/docusignService';
+import html2canvas from 'html2canvas';
+import { PlateSituation, PlateMasse, PlateNotice } from '../components/editor/DPPlates';
 
 export default function CDP() {
     const { user } = useAuth();
@@ -181,6 +183,7 @@ export default function CDP() {
 
     // Templates
     const availableTemplates = [
+        { id: 'dp_dossier', name: 'Déclaration Préalable (DP) - Dossier Complet', category: 'Urbanisme' },
         { id: 'mandat_representation', name: 'Mandat de représentation', category: 'Juridique' },
         { id: 'attestation_elagage', name: 'Attestation élagage', category: 'Administratif' },
         { id: 'attestation_amiante', name: 'Attestation enlèvement amiante', category: 'Technique' },
@@ -383,8 +386,54 @@ export default function CDP() {
                 // Mode Séparé
                 for (const templateId of selectedTemplates) {
                     const template = availableTemplates.find(t => t.id === templateId);
-                    // Generate
-                    const blob = await generatePdf(templateId);
+                    
+                    let blob;
+                    if (templateId === 'dp_dossier') {
+                        // Cas spécial DP
+                        if (!targetProject?.urbanisme_captures) {
+                            toast({ 
+                                variant: "destructive", 
+                                title: "Captures manquantes", 
+                                description: "Veuillez d'abord réaliser les captures dans l'Éditeur (Onglet Urbanisme) pour ce projet." 
+                            });
+                            continue;
+                        }
+
+                        toast({ title: "Génération DP...", description: "Veuillez patienter, rendu des planches en cours." });
+                        
+                        // Attendre un peu que le DOM masqué soit prêt si on vient de changer de projet
+                        await new Promise(r => setTimeout(r, 1000));
+                        
+                        const plates = {};
+                        const plateIds = ['dp-plate-situation', 'dp-plate-masse', 'dp-plate-notice'];
+                        for (const id of plateIds) {
+                            const el = document.getElementById(id);
+                            if (el) {
+                                const canvas = await html2canvas(el, { scale: 2 });
+                                plates[id] = canvas.toDataURL('image/png');
+                            }
+                        }
+
+                        const { generateDPDossier } = await import("@/services/DPGeneratorService");
+                        // On injecte les données du formulaire CDP dans l'objet projet pour la génération
+                        const projectWithForm = {
+                            ...targetProject,
+                            ...clientData,
+                            name: clientData.nom,
+                            firstName: clientData.prenom,
+                            address: clientData.adresse,
+                            zip: clientData.codePostal,
+                            city: clientData.ville
+                        };
+                        
+                        // generateDPDossier télécharge déjà le fichier, mais on veut peut-être le blob pour docusign
+                        // Pour l'instant, on laisse le téléchargement tel quel dans le service
+                        await generateDPDossier(projectWithForm, plates);
+                        continue; 
+                    } else {
+                        // Cas général templates PDF
+                        blob = await generatePdf(templateId);
+                    }
 
                     // Download
                     const url = URL.createObjectURL(blob);
@@ -1041,6 +1090,16 @@ export default function CDP() {
                     </div>
                 </div>
             )}
+            {/* Hidden container for actual rendering of DP plates */}
+            <div className="fixed left-[-9999px] top-0 pointer-events-none">
+                {targetProject && (
+                    <>
+                        <PlateSituation project={targetProject} captures={targetProject.urbanisme_captures} />
+                        <PlateMasse project={targetProject} captures={targetProject.urbanisme_captures} />
+                        <PlateNotice project={targetProject} captures={targetProject.urbanisme_captures} />
+                    </>
+                )}
+            </div>
         </div>
     );
 }

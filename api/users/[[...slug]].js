@@ -1,7 +1,8 @@
 import { prisma } from '../../src/lib/prisma.js'
 import bcrypt from 'bcryptjs'
+import { withAdmin } from '../common/authMiddleware.js'
 
-export default async function handler(req, res) {
+async function handler(req, res) {
     // CORS headers
     res.setHeader('Access-Control-Allow-Credentials', true)
     res.setHeader('Access-Control-Allow-Origin', '*')
@@ -115,3 +116,5 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Internal server error', details: error.message })
     }
 }
+
+export default withAdmin(handler)
