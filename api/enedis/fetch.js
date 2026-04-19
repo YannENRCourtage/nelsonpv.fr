@@ -98,8 +98,14 @@ async function handler(req, res) {
         }
 
         // --- 2. Date Range ---
-        const endDate = new Date().toISOString().split('T')[0];
-        const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        // Default to last 365 days if not provided
+        const defaultEndDate = new Date().toISOString().split('T')[0];
+        const defaultStartDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        const start = req.query.startDate || defaultStartDate;
+        const end = req.query.endDate || defaultEndDate;
+
+        console.log(`[Enedis Fetch] Period: ${start} to ${end} for PRM ${consent.prm}`);
 
         const results = {
             daily: null,
@@ -108,17 +114,29 @@ async function handler(req, res) {
         };
 
         // --- 3. Fetch Data ---
+        // We wrap each call in a separate try/catch to return partial data if some endpoints are not available
         try {
-            results.daily = await fetchEnedisApi('daily_consumption', consent.prm, startDate, endDate, consent.accessToken);
-        } catch (e) { results.daily = { error: e.message }; }
+            results.daily = await fetchEnedisApi('daily_consumption', consent.prm, start, end, consent.accessToken);
+        } catch (e) { 
+            console.error(`[Enedis Fetch] Daily Error: ${e.message}`);
+            results.daily = { error: e.message, status: e.response?.status }; 
+        }
 
         try {
-            results.loadCurve = await fetchEnedisApi('consumption_load_curve', consent.prm, startDate, endDate, consent.accessToken);
-        } catch (e) { results.loadCurve = { error: e.message }; }
+            // Note: Load curve can be very large for 1 year, Enedis might require smaller chunks 
+            // but for now we try the full period.
+            results.loadCurve = await fetchEnedisApi('consumption_load_curve', consent.prm, start, end, consent.accessToken);
+        } catch (e) { 
+            console.error(`[Enedis Fetch] Load Curve Error: ${e.message}`);
+            results.loadCurve = { error: e.message, status: e.response?.status }; 
+        }
 
         try {
-            results.maxPower = await fetchEnedisApi('daily_consumption_max_power', consent.prm, startDate, endDate, consent.accessToken);
-        } catch (e) { results.maxPower = { error: e.message }; }
+            results.maxPower = await fetchEnedisApi('daily_consumption_max_power', consent.prm, start, end, consent.accessToken);
+        } catch (e) { 
+            console.error(`[Enedis Fetch] Max Power Error: ${e.message}`);
+            results.maxPower = { error: e.message, status: e.response?.status }; 
+        }
 
         res.status(200).json({
             prm: consent.prm,
