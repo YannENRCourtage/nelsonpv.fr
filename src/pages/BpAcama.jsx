@@ -529,7 +529,6 @@ function computeBatteryProfitability(config) {
 
   // Zero out commercial fees if own investment
   const effectiveFraisComm = isInvestPropre ? 0 : (fraisCommerciaux || 0);
-  const effectiveRetribComm = isInvestPropre ? 0 : (retributionCommAn || 0);
 
   const capexTotal = batterieBms + genieCivil + raccordement + developpement + effectiveFraisComm;
   const revenusBrutsAn1 = arbitrageEnergie + reserveFCR + mecanismeCapacite + effacement;
@@ -558,7 +557,7 @@ function computeBatteryProfitability(config) {
         const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
 
         const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100);
-        const chargesFixesNoBailleur = (maintenanceAn + assuranceAn + turpeAn + iferAn + gestionChargeAn + effectiveRetribComm) * infl;
+        const chargesFixesNoBailleur = (maintenanceAn + assuranceAn + turpeAn + iferAn + gestionChargeAn) * infl;
         const chargesFixes = chargesFixesNoBailleur + (revenuBailleurAn || 0);
         
         const chargesCom = revNet * (commissionAgregateur / 100);
@@ -608,7 +607,6 @@ function computeBatteryProfitability(config) {
           assur: assuranceAn * infl,
           turpe: turpeAn * infl,
           ifer: iferAn * infl,
-          retribComm: effectiveRetribComm * infl,
           fraisAgregateur: chargesCom,
           serviceDette: interest + principal,
           ebe,
@@ -1089,7 +1087,6 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
   const totalOpexAn1 = (config.maintenanceAn || 0) + 
                        (config.revenuBailleurAn || 0) + 
                        (config.gestionChargeAn || 0) + 
-                       (config.retributionCommAn || 0) + 
                        (config.assuranceAn || 0) + 
                        commAgregateurMontant + 
                        (config.turpeAn || 0) + 
@@ -1113,12 +1110,11 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
     const newRaccordement = getHtaCost(p, rHT) + (dPriv * 20);
     const newGenieCivil = 6000 + (qty - 1) * 1300;
     const newDeveloppement = 6000 + (qty - 1) * 500;
-    const fraisComm = 20 * p;
+    const fraisComm = 40 * p;
     
     const capexPlusRacc = batteryBms + newGenieCivil + newRaccordement + newDeveloppement + fraisComm;
     
     const revBruts = (30 * p) + (150 * p) + (20 * p) + (20 * p);
-    const rettComm = Math.round(revBruts * 0.03);
 
     setParams(prev => ({
       ...prev,
@@ -1139,7 +1135,6 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
         maintenanceAn: 6 * p,
         revenuBailleurAn: 1250 * qty,
         gestionChargeAn: 4562.5 * qty,
-        retributionCommAn: rettComm,
         turpeAn: 20 * p,
         iferAn: 5 * p,
         onduleurPcs: 0,
@@ -1314,7 +1309,6 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             <Field label="Maintenance /an" value={config.maintenanceAn} onChange={v => update('maintenanceAn', v)} type="number" suffix="€" />
             <Field label="Revenu bailleur" value={config.revenuBailleurAn} onChange={v => update('revenuBailleurAn', v)} type="number" suffix="€" />
             <Field label="Gestion de la charge" value={config.gestionChargeAn} onChange={v => update('gestionChargeAn', v)} type="number" suffix="€" />
-            <Field label="Rétribution comm." value={config.retributionCommAn || 0} onChange={v => update('retributionCommAn', v)} type="number" suffix="€" />
             <Field label="Assurance /an" value={config.assuranceAn} onChange={v => update('assuranceAn', v)} type="number" suffix="€" />
             <div className="flex items-center gap-2">
               <label className="text-[13px] text-slate-500 w-32 shrink-0">Comm. Agrégateur</label>
@@ -4144,7 +4138,7 @@ export default function BpAcama() {
       dureeDecharge: 2,
       raccordement: 9000,
       developpement: 5000,
-      fraisCommerciaux: 2500,
+      fraisCommerciaux: 5000,
       arbitrageEnergie: 3750,
       reserveFCR: 18750,
       mecanismeCapacite: 2500,
@@ -4154,7 +4148,6 @@ export default function BpAcama() {
       maintenanceAn: 750,
       revenuBailleurAn: 1250,
       gestionChargeAn: 4562.5,
-      retributionCommAn: 825,
       assuranceAn: 240,
       commissionAgregateur: 18,
       turpeAn: 5000,
@@ -4186,7 +4179,7 @@ export default function BpAcama() {
       dureeDecharge: 2,
       raccordement: 19900,
       developpement: 6000,
-      fraisCommerciaux: 2500,
+      fraisCommerciaux: 5000,
       arbitrageEnergie: 3750,
       reserveFCR: 18750,
       mecanismeCapacite: 2500,
@@ -4196,7 +4189,6 @@ export default function BpAcama() {
       maintenanceAn: 750,
       revenuBailleurAn: 1250,
       gestionChargeAn: 4562.5,
-      retributionCommAn: 825,
       assuranceAn: 383, // Updated for 57583 base (95733 total * 0.4%)
       commissionAgregateur: 18,
       turpeAn: 2500,
@@ -4238,14 +4230,13 @@ export default function BpAcama() {
           saved.batteryConfig.gestionChargeAn = 4562.5 * nbB;
         }
 
-        // UPDATED STANDARDS: fraisCommerciaux (2500), retributionCommAn (825) and degradationAnnuelle (1)
-        if (saved.batteryConfig.fraisCommerciaux === 6250 || saved.batteryConfig.fraisCommerciaux === 12500) {
-          saved.batteryConfig.fraisCommerciaux = 20 * (saved.batteryConfig.puissanceDemandee || 125);
+        // UPDATED STANDARDS: fraisCommerciaux (40€/kW) and degradationAnnuelle (1)
+        if (saved.batteryConfig.fraisCommerciaux === 2500 || saved.batteryConfig.fraisCommerciaux === 6250 || saved.batteryConfig.fraisCommerciaux === 12500) {
+          saved.batteryConfig.fraisCommerciaux = 40 * (saved.batteryConfig.puissanceDemandee || 125);
         }
-        if (saved.batteryConfig.retributionCommAn === 550 || saved.batteryConfig.retributionCommAn === 1100) {
-          const p = saved.batteryConfig.puissanceDemandee || 125;
-          const revBruts = (30 * p) + (150 * p) + (20 * p) + (20 * p);
-          saved.batteryConfig.retributionCommAn = Math.round(revBruts * 0.03);
+        // Always clear retribution if present
+        if (saved.batteryConfig.retributionCommAn !== undefined) {
+          delete saved.batteryConfig.retributionCommAn;
         }
         if (saved.batteryConfig.degradationAnnuelle === 2 || saved.batteryConfig.degradationAnnuelle === undefined) {
           saved.batteryConfig.degradationAnnuelle = 1;
