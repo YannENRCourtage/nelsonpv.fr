@@ -1,4 +1,6 @@
-export default async function handler(req, res) {
+import { withAuth } from '../common/authMiddleware.js';
+
+async function handler(req, res) {
     const { projectId } = req.query;
 
     if (!projectId) {
@@ -21,8 +23,8 @@ export default async function handler(req, res) {
     const encodedState = Buffer.from(state).toString('base64');
 
     // Enedis Authorization URL
-    // For Sandbox/Production the base URL is usually the same or depends on the portal
     // Data Connect V5+ uses mon-compte-particulier.enedis.fr/auth/oauth2/authorize
+    // Note: For business/enterprise PRMs, Enedis generally handles the flow or redirects.
     const authUrl = new URL('https://mon-compte-particulier.enedis.fr/auth/oauth2/authorize');
     authUrl.searchParams.append('client_id', clientId);
     authUrl.searchParams.append('response_type', 'code');
@@ -33,3 +35,5 @@ export default async function handler(req, res) {
 
     res.redirect(authUrl.toString());
 }
+
+export default withAuth(handler)
