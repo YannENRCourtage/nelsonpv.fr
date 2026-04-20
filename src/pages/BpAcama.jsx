@@ -2542,7 +2542,6 @@ function TabBpProjets({
             </SectionCard>
         </div>
       </div>
-      </div>
     </div>
 
       {isBatteryStandAlone && params.buildings?.length === 0 && !params.batteryConfig?.enabled && (
