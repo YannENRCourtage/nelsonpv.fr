@@ -1993,8 +1993,13 @@ function TabBpProjets({
         )}
       </div>
 
-      {!isBatteryStandAlone && (
-        <div id="pdf-section-1" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-4 pt-6 relative overflow-hidden">
+      <div id="pdf-section-1" className="pdf-header-container bg-white rounded-lg border border-slate-200 p-4 pt-6 relative overflow-hidden">
+          {isBatteryStandAlone && (
+            <div className="mb-4 bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-center gap-2 text-amber-800" data-html2canvas-ignore="true">
+              <AlertTriangle className="w-4 h-4" />
+              <span className="text-sm font-medium">Ce projet est marqué comme Batterie Stand-Alone. Vous pouvez néanmoins réaliser une étude combinée ici.</span>
+            </div>
+          )}
           <PDFHeader selectedProject={selectedProject} />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2 items-stretch">
           {/* Column 1: Projects and Investment (Widened) */}
@@ -2537,10 +2542,10 @@ function TabBpProjets({
             </SectionCard>
         </div>
       </div>
+      </div>
     </div>
-  )}
 
-      {isBatteryStandAlone && (
+      {isBatteryStandAlone && params.buildings?.length === 0 && !params.batteryConfig?.enabled && (
          <div className="pdf-header-container bg-white rounded-lg border border-slate-200 p-4 pt-6 relative overflow-hidden">
             <PDFHeader selectedProject={selectedProject} />
             <p className="text-center text-slate-400 italic text-sm py-4 border-t border-slate-100">PROJET BATTERIE STAND-ALONE (SANS BÂTIMENT PV)</p>
@@ -3528,6 +3533,7 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
 function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest, isEnrCourtage }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [subTab, setSubTab] = useState('batiments');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const allSavedProjects = useMemo(() => {
     return projects
@@ -3596,8 +3602,31 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
       });
   }, [projects, isGreenInvest]);
 
-  const batimentProjects = useMemo(() => allSavedProjects.filter(p => !p.isBatterySA), [allSavedProjects]);
-  const batteryProjects = useMemo(() => allSavedProjects.filter(p => p.isBatterySA), [allSavedProjects]);
+  const batimentProjects = useMemo(() => {
+    let filtered = allSavedProjects.filter(p => !p.isBatterySA);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(p => 
+        (p.name || '').toLowerCase().includes(q) || 
+        (p.city || '').toLowerCase().includes(q) || 
+        (p.address || '').toLowerCase().includes(q)
+      );
+    }
+    return filtered;
+  }, [allSavedProjects, searchQuery]);
+
+  const batteryProjects = useMemo(() => {
+    let filtered = allSavedProjects.filter(p => p.isBatterySA);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(p => 
+        (p.name || '').toLowerCase().includes(q) || 
+        (p.city || '').toLowerCase().includes(q) || 
+        (p.address || '').toLowerCase().includes(q)
+      );
+    }
+    return filtered;
+  }, [allSavedProjects, searchQuery]);
 
   const currentProjects = subTab === 'batiments' ? batimentProjects : batteryProjects;
 
@@ -3682,7 +3711,19 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
               </Button>
             )}
           </div>
-          <p className="text-[12px] text-slate-500 italic">Derniers enregistrements en haut</p>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input 
+                type="text"
+                placeholder="Rechercher un projet..."
+                className="bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-sm w-64 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <p className="text-[12px] text-slate-500 italic">Derniers enregistrements en haut</p>
+          </div>
         </div>
 
         {/* Sub-Tabs Selector */}
