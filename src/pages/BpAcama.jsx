@@ -3643,7 +3643,7 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
       .filter(p => selectedIds.has(p.id))
       .map(p => {
         const state = p.bpAcamaState || {};
-        const batTypes = (state.buildings || []).map(b => b.typeBat).filter(Boolean).join(', ');
+        const batTypes = (state.buildings || []).map(b => (b.projectType === 'BAC' && (b.typeBat === 'Batterie CESC' || !b.typeBat)) ? 'Sur-mesure' : b.typeBat).filter(Boolean).join(', ');
         const d = parseFirestoreDate(p.updatedAt || p.createdAt);
         
         if (subTab === 'batteries') {
@@ -3786,7 +3786,7 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
           <tbody className="divide-y divide-slate-100">
             {currentProjects.map((p) => {
               const state = p.bpAcamaState || {};
-              const batTypes = (state.buildings || []).map(b => b.typeBat).filter(Boolean).join(', ');
+              const batTypes = (state.buildings || []).map(b => (b.projectType === 'BAC' && (b.typeBat === 'Batterie CESC' || !b.typeBat)) ? 'Sur-mesure' : b.typeBat).filter(Boolean).join(', ');
               
               return (
                 <tr key={p.id} className={cn('hover:bg-blue-50/30 transition-colors group', selectedIds.has(p.id) && 'bg-blue-50/50')}>
