@@ -1965,13 +1965,7 @@ function TabBpProjets({
         {selectedProject && (
           <div className="flex items-center gap-2 shrink-0">
             <Button size="sm" variant="outline" className="gap-2 h-8 border-slate-300" onClick={() => {
-              const sections = [];
-              if (!isBatteryStandAlone) {
-                sections.push('pdf-section-1');
-              } else {
-                // If SA, we still need a header on section battery or 2
-                // We'll handle this by making sure section-battery has the header if section-1 is missing
-              }
+              const sections = ['pdf-section-1'];
               
               if (params.batteryConfig?.enabled && !params.batteryConfig?.isGlobal) {
                 sections.push('pdf-section-battery');
@@ -3579,7 +3573,7 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
         const rac = computeResteACharge(collapsedForSaved);
         let bp = computeBusinessPlan({ ...collapsedForSaved, apport: rac });
         
-        const isBatterySA = p.isBatteryStandAlone === 'Oui' || (kwcTotal === 0 && state.batteryConfig?.enabled);
+        const isBatterySA = kwcTotal === 0 && state.batteryConfig?.enabled;
         let displayKwc = kwcTotal;
 
         if (state.batteryConfig?.enabled) {
@@ -3710,41 +3704,42 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
               </Button>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input 
-                type="text"
-                placeholder="Rechercher un projet..."
-                className="bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-sm w-64 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <p className="text-[12px] text-slate-500 italic">Derniers enregistrements en haut</p>
-          </div>
+          <p className="text-[12px] text-slate-500 italic">Derniers enregistrements en haut</p>
         </div>
 
-        {/* Sub-Tabs Selector */}
-        <div className="flex p-1 bg-slate-200/50 rounded-lg self-start">
-          <button
-            onClick={() => { setSubTab('batiments'); setSelectedIds(new Set()); }}
-            className={cn(
-              "px-4 py-1.5 rounded-md text-[11px] font-bold transition-all uppercase tracking-wider",
-              subTab === 'batiments' ? "bg-[#002060] text-white shadow-md" : "text-slate-500 hover:text-slate-700"
-            )}
-          >
-            Projets Bâtiments ({batimentProjects.length})
-          </button>
-          <button
-            onClick={() => { setSubTab('batteries'); setSelectedIds(new Set()); }}
-            className={cn(
-              "px-4 py-1.5 rounded-md text-[11px] font-bold transition-all uppercase tracking-wider",
-              subTab === 'batteries' ? "bg-[#002060] text-white shadow-md" : "text-slate-500 hover:text-slate-700"
-            )}
-          >
-            Projets Batteries ({batteryProjects.length})
-          </button>
+        <div className="flex items-center gap-4">
+          {/* Sub-Tabs Selector */}
+          <div className="flex p-1 bg-slate-200/50 rounded-lg self-start">
+            <button
+              onClick={() => { setSubTab('batiments'); setSelectedIds(new Set()); }}
+              className={cn(
+                "px-4 py-1.5 rounded-md text-[11px] font-bold transition-all uppercase tracking-wider",
+                subTab === 'batiments' ? "bg-[#002060] text-white shadow-md" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              Projets Bâtiments ({batimentProjects.length})
+            </button>
+            <button
+              onClick={() => { setSubTab('batteries'); setSelectedIds(new Set()); }}
+              className={cn(
+                "px-4 py-1.5 rounded-md text-[11px] font-bold transition-all uppercase tracking-wider",
+                subTab === 'batteries' ? "bg-[#002060] text-white shadow-md" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              Projets Batteries ({batteryProjects.length})
+            </button>
+          </div>
+
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input 
+              type="text"
+              placeholder="Rechercher un projet..."
+              className="bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-sm w-64 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
