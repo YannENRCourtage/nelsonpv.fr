@@ -3667,6 +3667,7 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
           'Adresse': p.address || '',
           'Commune': p.city || '',
           'Type Bat.': batTypes || '',
+          'Option Batterie': state.batteryConfig?.enabled ? 'Oui' : 'Non',
           'Puissance (kWc)': (p.totalKwc || 0).toFixed(1),
           'Tarif TB (€)': state.tarifBas || 0,
           'Tarif ACC (€)': state.tarifACC || 0,
@@ -3759,6 +3760,7 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
               <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Adresse</th>
               <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Commune</th>
               <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Type Bat.</th>
+              <th className="px-3 py-2 text-left font-bold uppercase tracking-wider border-b border-slate-700">Option batterie</th>
               <th className="px-3 py-2 text-center font-bold uppercase tracking-wider border-b border-slate-700">Puissance</th>
               
               {subTab === 'batiments' ? (
@@ -3803,6 +3805,14 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
                   <td className="px-3 py-2 text-slate-500 truncate align-middle" title={`${p.zip || ''} ${p.city || ''}`}>{p.city || '—'}</td>
                   <td className="px-3 py-2 text-slate-500 text-[11px] font-medium italic max-w-[120px] truncate align-middle" title={subTab === 'batteries' ? 'Batterie Stand-Alone' : batTypes}>
                     {subTab === 'batteries' ? 'Batterie Stand-Alone' : (batTypes || '—')}
+                  </td>
+                  <td className="px-3 py-2 text-center align-middle">
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                      state.batteryConfig?.enabled ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
+                    )}>
+                      {state.batteryConfig?.enabled ? 'Oui' : 'Non'}
+                    </span>
                   </td>
                   <td className="px-3 py-2 text-center font-bold text-blue-700 align-middle">
                     {fmt(p.totalKwc || 0, 1)} {p.isBatterySA ? 'kW' : 'kWc'}
