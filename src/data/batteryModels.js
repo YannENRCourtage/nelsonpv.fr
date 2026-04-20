@@ -1,5 +1,5 @@
 export const BATTERY_MODELS = [
-  { id: 'cesc_mercury_261', brand: 'CESC', model: 'Mercury261 EU 261kWh (125kW)', power: 125, capacity: 261, price: 34625 },
+  { id: 'cesc_mercury_261', brand: 'CESC', model: 'Mercury261 EU 261kWh', power: 125, capacity: 261, price: 34625 },
   { id: 'solax', brand: 'Solax', model: 'TRENE-P125B261L', power: 125, capacity: 261, price: 57583 },
   { id: 'huawei', brand: 'Huawei', model: 'LUNA2000-200KWH', power: 100, capacity: 200, price: 45000 },
   { id: 'goodwe', brand: 'GoodWe', model: 'Lynx C (Armoire)', power: 100, capacity: 156, price: 35000 },
