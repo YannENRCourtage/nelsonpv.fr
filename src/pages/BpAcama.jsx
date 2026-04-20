@@ -2234,7 +2234,7 @@ function TabBpProjets({
                             {b.projectType !== 'BE' && (
                               <div className="bg-slate-100 border border-slate-300 rounded px-2 py-1 text-[13px] w-full font-bold text-slate-500 text-center flex items-center justify-center gap-1 shadow-inner">
                                 <Building className="w-3 h-3 opacity-40" />
-                                {b.typeBat || '—'}
+                                {((!b.typeBat || b.typeBat === '' || b.typeBat === 'Batterie CESC') && b.projectType === 'BAC') ? 'Sur-mesure' : (b.typeBat || '—')}
                               </div>
                             )}
                           </td>
