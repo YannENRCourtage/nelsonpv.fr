@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     try {
         // 1. Exchange Auth Code for Access Token
         console.log('[Enedis Callback] Exchanging code for token...');
-        const tokenResponse = await axios.post('https://ext.enedis.fr/oauth2/v3/token', new URLSearchParams({
+        const tokenResponse = await axios.post('https://api.enedis.fr/oauth2/v3/token', new URLSearchParams({
             grant_type: 'authorization_code',
             code,
             client_id: process.env.ENEDIS_CLIENT_ID,
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
 
         // 2. Discover PRMs (Search usage points)
         console.log('[Enedis Callback] Discovering PRMs...');
-        const prmResponse = await axios.get('https://ext.enedis.fr/customer/v1/usage_points', {
+        const prmResponse = await axios.get('https://api.enedis.fr/customer/v1/usage_points', {
             headers: { 'Authorization': `Bearer ${access_token}` }
         });
 

@@ -2,11 +2,11 @@ import axios from 'axios';
 import { adminDb } from '../../src/lib/firebase-admin.js';
 import { withAuth } from '../common/authMiddleware.js';
 
-const ENEDIS_API_BASE = 'https://ext.enedis.fr/customer/v1/metering_data';
+const ENEDIS_API_BASE = 'https://api.enedis.fr/customer/v1/metering_data';
 
 async function refreshToken(consentDoc) {
     const consent = consentDoc.data();
-    const response = await axios.post('https://ext.enedis.fr/oauth2/v3/token', new URLSearchParams({
+    const response = await axios.post('https://api.enedis.fr/oauth2/v3/token', new URLSearchParams({
         grant_type: 'refresh_token',
         refresh_token: consent.refreshToken,
         client_id: process.env.ENEDIS_CLIENT_ID,
