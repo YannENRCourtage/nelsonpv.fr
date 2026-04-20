@@ -1092,7 +1092,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                        (config.turpeAn || 0) + 
                        (config.iferAn || 0);
   
-  const currentModelKey = config.batteryModelKey || 'solax';
+  const currentModelKey = config.batteryModelKey || 'cesc_mercury_261';
   const selectedModel = BATTERY_MODELS.find(m => m.id === currentModelKey) || BATTERY_MODELS[0];
   const nbBricks = config.nbBricks || 1;
 
@@ -4170,9 +4170,9 @@ export default function BpAcama() {
       isGlobal: false,
       inflationAnnuelle: 2,
       degradationAnnuelle: 1,
-      batteryModelKey: 'solax',
+      batteryModelKey: 'cesc_mercury_261',
       nbBricks: 1,
-      batterieBms: 57583,
+      batterieBms: 34625,
       onduleurPcs: 0,
       genieCivil: 6000,
       puissanceDemandee: 125,
@@ -4189,7 +4189,7 @@ export default function BpAcama() {
       maintenanceAn: 750,
       revenuBailleurAn: 1250,
       gestionChargeAn: 4562.5,
-      assuranceAn: 383, // Updated for 57583 base (95733 total * 0.4%)
+      assuranceAn: 286, // Updated for 34625 base (71525 total * 0.4%)
       commissionAgregateur: 18,
       turpeAn: 2500,
       iferAn: 625,
