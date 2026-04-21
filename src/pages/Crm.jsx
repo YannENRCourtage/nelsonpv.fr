@@ -191,6 +191,13 @@ export default function Crm() {
           }
         }).catch(e => console.warn("Project cleanup check failed", e));
 
+        // Auto-Deduplication silencieuse pour les admins
+        if (user?.role === 'admin') {
+          setTimeout(() => {
+            handleDeduplicateContacts(true); // mode silencieux
+          }, 2000);
+        }
+
         setContacts(validContacts);
         setTasks(tasksData || []);
         setActivities(activitiesData || []);
@@ -507,104 +514,78 @@ export default function Crm() {
   /**
    * Déduplication des contacts :
    * - Regroupe les contacts par email (ou nom+téléphone si pas d'email)
-   * - Pour chaque groupe, conserve le contact le plus "riche" (le plus de champs renseignés)
-   * - Si un contact a des projets associés, il est toujours conservé
+   * - Pour chaque groupe, conserve le contact le plus "riche"
    * - Supprime les doublons et les contacts sans projets associés
    */
-  const handleDeduplicateContacts = async () => {
-    const allContacts = await apiService.getContacts(activeTenantId);
-    const allProjects = projects;
-
-    // Clé de déduplication
-    const getContactKey = (c) => {
-      const email = (c.email || '').trim().toLowerCase();
-      if (email && email !== '-') return `email:${email}`;
-      const name = (c.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
-      const phone = (c.phone || '').trim().replace(/[\s-]/g, '');
-      if (phone) return `name+phone:${name}|${phone}`;
-      const city = (c.city || '').trim().toLowerCase();
-      return `name+city:${name}|${city}`;
-    };
-
-    // Projets liés à un contact
-    const getLinkedProjects = (contact) => {
-      return allProjects.filter(p =>
-        (p.email && contact.email && p.email.toLowerCase() === contact.email.toLowerCase()) ||
-        (p.name && contact.name && p.name.toLowerCase() === contact.name.toLowerCase())
-      );
-    };
-
-    // Grouper par clé
-    const groups = {};
-    allContacts.forEach(c => {
-      const key = getContactKey(c);
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(c);
-    });
-
-    const duplicateGroups = Object.values(groups).filter(g => g.length > 1);
-    const singleWithNoProject = Object.values(groups)
-      .filter(g => g.length === 1)
-      .map(g => g[0])
-      .filter(c => getLinkedProjects(c).length === 0);
-
-    const toDelete = [];
-    let mergedCount = 0;
-
-    duplicateGroups.forEach(group => {
-      const scored = group.map(c => ({
-        contact: c,
-        hasProjects: getLinkedProjects(c).length > 0,
-        score: Object.values(c).filter(v => v && v !== '' && v !== '-').length
-      }));
-      scored.sort((a, b) => {
-        if (a.hasProjects !== b.hasProjects) return b.hasProjects ? 1 : -1;
-        return b.score - a.score;
-      });
-      scored.slice(1).forEach(s => toDelete.push(s.contact));
-      mergedCount++;
-    });
-
-    toDelete.push(...singleWithNoProject);
-    const totalToDelete = toDelete.length;
-
-    if (totalToDelete === 0) {
-      toast({ title: "Aucun doublon détecté", description: "Tous les contacts sont uniques et liés à des projets." });
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `⚠️ PURGE DES CONTACTS\n\n` +
-      `Analyse terminée :\n` +
-      `- ${duplicateGroups.length} groupe(s) de doublons détectés\n` +
-      `- ${singleWithNoProject.length} contact(s) sans projet associé\n\n` +
-      `TOTAL : ${totalToDelete} contact(s) vont être supprimés de façon irréversible.\n\n` +
-      `Continuer ?`
-    );
-    if (!confirmed) return;
-
-    setIsDedupLoading(true);
+  const handleDeduplicateContacts = async (silent = false) => {
     try {
-      let deleted = 0;
-      for (const c of toDelete) {
-        try {
-          await apiService.deleteContact(String(c.id), true);
-          deleted++;
-        } catch (e) {
-          console.warn(`Impossible de supprimer le contact ${c.id}:`, e);
-        }
-      }
-      const fresh = await apiService.getContacts(activeTenantId);
-      setContacts(fresh || []);
-      toast({
-        title: `✅ Purge terminée`,
-        description: `${deleted} contact(s) supprimé(s). ${mergedCount > 0 ? `${mergedCount} groupe(s) fusionné(s).` : ''} La liste est maintenant propre.`
+      const allContacts = await apiService.getContacts(activeTenantId);
+      const allProjects = projects;
+
+      const getContactKey = (c) => {
+        const email = (c.email || '').trim().toLowerCase();
+        if (email && email !== '-') return `email:${email}`;
+        const name = (c.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        const phone = (c.phone || '').trim().replace(/[\s-]/g, '');
+        if (phone) return `name+phone:${name}|${phone}`;
+        const city = (c.city || '').trim().toLowerCase();
+        return `name+city:${name}|${city}`;
+      };
+
+      const getLinkedProjects = (contact) => {
+        return (allProjects || []).filter(p =>
+          (p.email && contact.email && p.email.toLowerCase() === contact.email.toLowerCase()) ||
+          (p.name && contact.name && p.name.toLowerCase() === contact.name.toLowerCase()) ||
+          (p.id === contact.projectId)
+        );
+      };
+
+      const groups = {};
+      allContacts.forEach(c => {
+        const key = getContactKey(c);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(c);
       });
+
+      const duplicateGroups = Object.values(groups).filter(g => g.length > 1);
+      const singleWithNoProject = Object.values(groups)
+        .filter(g => g.length === 1)
+        .map(g => g[0])
+        .filter(c => getLinkedProjects(c).length === 0);
+
+      const toDelete = [];
+      duplicateGroups.forEach(group => {
+        const scored = group.map(c => ({
+          contact: c,
+          hasProjects: getLinkedProjects(c).length > 0,
+          score: Object.values(c).filter(v => v && v !== '' && v !== '-').length
+        }));
+        scored.sort((a, b) => {
+          if (a.hasProjects !== b.hasProjects) return b.hasProjects ? 1 : -1;
+          return b.score - a.score;
+        });
+        scored.slice(1).forEach(s => toDelete.push(s.contact));
+      });
+
+      toDelete.push(...singleWithNoProject);
+      if (toDelete.length === 0) return;
+
+      if (!silent) {
+        const confirmed = window.confirm(`⚠️ PURGE DES CONTACTS\n\n${toDelete.length} contact(s) vont être supprimés. Continuer ?`);
+        if (!confirmed) return;
+      }
+
+      for (const c of toDelete) {
+        await apiService.deleteContact(String(c.id), true);
+      }
+
+      if (!silent) {
+        const fresh = await apiService.getContacts(activeTenantId);
+        setContacts(fresh || []);
+        toast({ title: "✅ Purge terminée" });
+      }
     } catch (error) {
-      console.error('Dedup error:', error);
-      toast({ title: "Erreur", description: "Une erreur est survenue pendant la purge.", variant: "destructive" });
-    } finally {
-      setIsDedupLoading(false);
+      if (!silent) console.error('Dedup error:', error);
     }
   };
 
@@ -863,23 +844,7 @@ export default function Crm() {
             </button>
           </div>
 
-          {/* Bouton dédupliquer - admin uniquement */}
-          {user?.role === 'admin' && (
-            <Button
-              onClick={handleDeduplicateContacts}
-              disabled={isDedupLoading}
-              variant="outline"
-              className="hidden lg:flex border-red-200 text-red-600 hover:bg-red-50 hover:border-red-400 gap-2"
-              title="Supprimer les doublons et les contacts sans projets associés"
-            >
-              {isDedupLoading ? (
-                <RotateCw className="w-4 h-4 animate-spin" />
-              ) : (
-                <Shuffle className="w-4 h-4" />
-              )}
-              {isDedupLoading ? 'Purge en cours...' : 'Dédupliquer'}
-            </Button>
-          )}
+          {/* Bouton dédupliquer - supprimé pour automatisation */}
 
           <Button
             onClick={handleAddContact}

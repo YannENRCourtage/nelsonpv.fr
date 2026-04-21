@@ -207,7 +207,42 @@ class ApiService {
     async createContact(data, skipLog = false, tenantId) {
         const user = await this._getCurrentUser();
         const tId = tenantId || user.tenantId || 'green-invest';
-        const created = await firestoreService.createContact(data, user.uid, tId);
+        
+        // 1. Recherche de doublons avant création
+        let existingContact = null;
+        try {
+            const allContacts = await this.getContacts(tId);
+            
+            // Recherche par email
+            if (data.email && data.email !== '-' && data.email !== '') {
+                existingContact = allContacts.find(c => c.email && c.email.toLowerCase() === data.email.toLowerCase());
+            }
+            
+            // Recherche par Nom + Ville si pas trouvé par email
+            if (!existingContact && data.name) {
+                const normalizedName = data.name.toLowerCase().trim();
+                const normalizedCity = (data.city || '').toLowerCase().trim();
+                existingContact = allContacts.find(c => 
+                    c.name && c.name.toLowerCase().trim() === normalizedName && 
+                    (normalizedCity === '' || (c.city && c.city.toLowerCase().trim() === normalizedCity))
+                );
+            }
+        } catch (e) {
+            console.warn("Erreur lors de la recherche de doublons (non-bloquant):", e);
+        }
+
+        let created;
+        if (existingContact) {
+            // Mise à jour de l'existant
+            await firestoreService.updateContact(existingContact.id, {
+                ...data,
+                updatedAt: serverTimestamp()
+            });
+            created = { ...existingContact, ...data };
+        } else {
+            // Création normale
+            created = await firestoreService.createContact(data, user.uid, tId);
+        }
 
         if (!skipLog) {
             await this.logActivity({

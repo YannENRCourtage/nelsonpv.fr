@@ -318,7 +318,7 @@ export function ProjectProvider({ children }) {
         }
       }
 
-      // 3. Sauvegarde Contact (Améliorée pour déduplication)
+      // 3. Sauvegarde Contact (Désormais dédupliqué automatiquement par le service API)
       try {
         const contactData = {
           name: [savedProject.firstName, savedProject.name].filter(Boolean).join(' ').trim() || 'Client sans nom',
@@ -327,31 +327,12 @@ export function ProjectProvider({ children }) {
           phone: savedProject.phone || null,
           city: savedProject.city || null,
           status: savedProject.status || 'Nouveau',
-          projectId: projectId, // On garde le dernier projet associé comme référence directe
+          projectId: projectId,
         };
 
-        const allContacts = await apiService.getContacts(activeTenantIdRef.current);
-        
-        // Recherche intelligente du contact existant
-        let existingContact = allContacts.find(c => c.projectId === projectId);
-        
-        if (!existingContact && savedProject.email) {
-          existingContact = allContacts.find(c => c.email && c.email.toLowerCase() === savedProject.email.toLowerCase());
-        }
-        
-        if (!existingContact) {
-          const normalizedName = contactData.name.toLowerCase();
-          existingContact = allContacts.find(c => 
-            c.name && c.name.toLowerCase() === normalizedName && 
-            c.city && c.city.toLowerCase() === (savedProject.city || '').toLowerCase()
-          );
-        }
-
-        if (existingContact) {
-          await apiService.updateContact(existingContact.id, contactData, true);
-        } else {
-          await apiService.createContact(contactData, true);
-        }
+        // apiService.createContact est désormais "intelligent" et gère le merge
+        // avec les contacts existants par email ou nom+ville.
+        await apiService.createContact(contactData, true);
       } catch (contactError) {
         console.error("Erreur sauvegarde contact (non-bloquant):", contactError);
       }
