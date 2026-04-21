@@ -171,12 +171,25 @@ export default function Crm() {
           apiService.getActivities(12, activeTenantId),
           apiService.getUsers()
         ]);
-        // CLEANUP: Filter out and delete "Client sans nom" contacts
+        // CLEANUP: Filtrage initial
         const validContacts = [];
         const contactDeletions = [];
+        
+        // On récupère aussi les projets pour vérifier l'appartenance réelle
+        const projsData = await apiService.getProjects(activeTenantId);
+        
         (contactsData || []).forEach(c => {
+          const hasLocalProjects = projsData.some(p => 
+            (p.email && c.email && p.email.toLowerCase() === c.email.toLowerCase()) ||
+            (p.name && c.name && p.name.toLowerCase() === c.name.toLowerCase()) ||
+            (p.id === c.projectId)
+          );
+
           if (c.name === 'Client sans nom' || c.name === 'Contact sans nom') {
             contactDeletions.push(apiService.deleteContact(c.id).catch(e => console.warn("Cleanup contact failed", e)));
+          } else if (!hasLocalProjects) {
+            // Si le contact n'a aucun projet local, on ne l'affiche pas (Isolation Tenant)
+            // Note: On ne le supprime pas forcément tout de suite ici, on l'isole.
           } else {
             validContacts.push(c);
           }
@@ -193,9 +206,8 @@ export default function Crm() {
 
         // Auto-Deduplication silencieuse pour les admins
         if (user?.role === 'admin') {
-          setTimeout(() => {
-            handleDeduplicateContacts(true); // mode silencieux
-          }, 2000);
+          // On passe les données fraîches car les states ne sont pas encore mis à jour
+          handleDeduplicateContacts(true, validContacts, projsData); 
         }
 
         setContacts(validContacts);
@@ -513,14 +525,14 @@ export default function Crm() {
 
   /**
    * Déduplication des contacts :
-   * - Regroupe les contacts par email (ou nom+téléphone si pas d'email)
+   * - Regroupe les contacts par email (ou nom+prm si pas d'email)
    * - Pour chaque groupe, conserve le contact le plus "riche"
    * - Supprime les doublons et les contacts sans projets associés
    */
-  const handleDeduplicateContacts = async (silent = false) => {
+  const handleDeduplicateContacts = async (silent = false, initialContacts = null, initialProjects = null) => {
     try {
-      const allContacts = await apiService.getContacts(activeTenantId);
-      const allProjects = projects;
+      const allContacts = initialContacts || await apiService.getContacts(activeTenantId);
+      const allProjects = initialProjects || projects;
 
       const getContactKey = (c) => {
         const email = (c.email || '').trim().toLowerCase();
@@ -1033,6 +1045,8 @@ export default function Crm() {
                           (p.id === contact.projectId)
                         );
 
+                        // Si on voit un contact ici, il DOIT avoir des projets suite au filtre dans useEffect
+                        // Mais on garde la sécurité au cas où
                         if (associatedProjects.length === 0) return <span className="text-slate-400 text-xs italic">Aucun</span>;
 
                         return (
