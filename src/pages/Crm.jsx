@@ -943,31 +943,49 @@ export default function Crm() {
                 </span>
               </div>
 
-              {contact.hasProject && contact.projectId && (
-                <div className="mt-4 pt-4 border-t border-slate-100 flex gap-2">
-                  <Button
-                    onClick={() => navigate(`/project/${contact.projectId}/edit`)}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm"
-                    size="sm"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Ouvrir le projet
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      const project = projects.find(p => p.id === contact.projectId);
-                      if (project) {
-                        generatePdfForProject(project);
-                      }
-                    }}
-                    className="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-sm"
-                    size="sm"
-                  >
-                    <FileDown className="w-4 h-4 mr-2" />
-                    Télécharger PDF
-                  </Button>
-                </div>
-              )}
+              {(() => {
+                const associatedProjects = projects.filter(p =>
+                  (p.email && contact.email && p.email.toLowerCase() === contact.email.toLowerCase()) ||
+                  (p.name && contact.name && p.name.toLowerCase() === contact.name.toLowerCase()) ||
+                  (p.id === contact.projectId)
+                );
+
+                if (associatedProjects.length === 0) return null;
+
+                return (
+                  <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Projets ({associatedProjects.length})</p>
+                    <div className="flex flex-wrap gap-2">
+                      {associatedProjects.map(project => (
+                        <div key={project.id} className="flex flex-col gap-1 w-full bg-slate-50 p-2 rounded-lg border border-slate-100">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-700 truncate max-w-[150px]">{project.name || 'Projet'}</span>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">{project.status || 'Nouveau'}</Badge>
+                          </div>
+                          <div className="flex gap-1 mt-1">
+                            <Button
+                              onClick={() => navigate(`/project/${project.id}/edit`)}
+                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] h-7"
+                              size="sm"
+                            >
+                              <ExternalLink className="w-3 h-3 mr-1" />
+                              Ouvrir
+                            </Button>
+                            <Button
+                              onClick={() => generatePdfForProject(project)}
+                              className="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-[10px] h-7"
+                              size="sm"
+                            >
+                              <FileDown className="w-3 h-3 mr-1" />
+                              PDF
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           ))}
         </div>
@@ -990,107 +1008,100 @@ export default function Crm() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredContacts.map((contact) => {
-                  let project = null;
-                  if (contact.projectId) {
-                    project = projects.find(p => p.id === contact.projectId);
-                  }
-                  if (!project) {
-                    project = projects.find(p =>
-                      (p.client && p.client.email && contact.email && p.client.email.toLowerCase() === contact.email.toLowerCase()) ||
-                      (p.name && contact.name && p.name.toLowerCase() === contact.name.toLowerCase())
-                    );
-                  }
+                {filteredContacts.map((contact) => (
+                  <tr key={contact.id} id={`contact-${contact.id}`} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4 font-medium text-slate-900">{contact.name}</td>
+                    <td className="px-6 py-4">
+                      {(() => {
+                        let contactCreator = contact.createdByFirstName || contact.user;
+                        let photoURL = null;
 
-                  return (
-                    <tr key={contact.id} id={`contact-${contact.id}`} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 font-medium text-slate-900">{contact.name}</td>
-                      <td className="px-6 py-4">
-                        {(() => {
-                          let contactCreator = contact.createdByFirstName || contact.user;
-                          let photoURL = null;
-
-                          // Si la valeur est "Utilisateur" (valeur par défaut legacy), essayer de trouver mieux
-                          if (!contactCreator || contactCreator === 'Utilisateur') {
-                            if (contact.createdBy && users.length > 0) {
-                              const userFromList = users.find(u => u.id === contact.createdBy);
-                              if (userFromList) {
-                                contactCreator = userFromList.firstName || userFromList.displayName;
-                                photoURL = userFromList.photoURL;
-                              }
+                        if (!contactCreator || contactCreator === 'Utilisateur') {
+                          if (contact.createdBy && users.length > 0) {
+                            const userFromList = users.find(u => u.id === contact.createdBy);
+                            if (userFromList) {
+                              contactCreator = userFromList.firstName || userFromList.displayName;
+                              photoURL = userFromList.photoURL;
                             }
                           }
+                        }
 
-                          // Si on a un nom, on cherche sa photo si on ne l'a pas encore
-                          if (contactCreator && !photoURL && users.length > 0) {
-                            const userWithPhoto = users.find(u =>
-                              (u.firstName && u.firstName.toLowerCase() === contactCreator.toLowerCase()) ||
-                              (u.displayName && u.displayName.toLowerCase() === contactCreator.toLowerCase())
-                            );
-                            if (userWithPhoto) photoURL = userWithPhoto.photoURL;
-                          }
-
-                          // Fallback static avatar for Jack
-                          const avatarSrc = photoURL ||
-                            (contactCreator?.toLowerCase().trim().includes('jack') ? '/assets/avatars/jack.jpg' : null);
-
-                          console.log('[CRM AVATAR]', {
-                            contactName: contact.name,
-                            contactCreator,
-                            photoURL,
-                            avatarSrc,
-                            isJack: contactCreator?.toLowerCase() === 'jack'
-                          });
-
-                          return (
-                            <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full ${getUserColor(contactCreator)} w-fit pr-5 text-left`}>
-                              <div className="w-8 h-8 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
-                                {avatarSrc ?
-                                  <img src={avatarSrc} className="w-full h-full object-cover" alt={contactCreator} /> :
-                                  <span className="flex items-center justify-center w-full h-full text-xs font-bold">{contactCreator?.[0]}</span>
-                                }
-                              </div>
-                              <span className="text-sm font-semibold truncate max-w-[120px]">{contactCreator || 'Utilisateur'}</span>
-                            </div>
+                        if (contactCreator && !photoURL && users.length > 0) {
+                          const userWithPhoto = users.find(u =>
+                            (u.firstName && u.firstName.toLowerCase() === contactCreator.toLowerCase()) ||
+                            (u.displayName && u.displayName.toLowerCase() === contactCreator.toLowerCase())
                           );
-                        })()}
+                          if (userWithPhoto) photoURL = userWithPhoto.photoURL;
+                        }
 
-                      </td>
-                      <td className="px-6 py-4 text-slate-600 text-sm">{contact.email}</td>
-                      <td className="px-6 py-4 text-slate-600 text-sm">{contact.phone}</td>
-                      <td className="px-6 py-4 text-slate-600 text-sm">{project?.address || '-'}</td>
-                      <td className="px-6 py-4 text-slate-600 text-sm">{project?.zip || '-'}</td>
-                      <td className="px-6 py-4 text-slate-600">{contact.city}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1.5 rounded-full text-xs font-bold text-center shadow-sm w-full block max-w-[120px] ${getStatusColor(contact.status)}`}>
-                          {contact.status === 'draft' ? 'Nouveau' : (contact.status || 'Nouveau')}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        {project && (
-                          <Button
-                            variant="link"
-                            size="sm"
-                            onClick={() => navigate(`/project/${project.id}/edit`)}
-                            className="text-blue-600 hover:text-blue-800 p-0 h-auto font-medium"
-                          >
-                            {[project.name, project.city].filter(Boolean).join(' - ')} <ExternalLink className="w-3 h-3 ml-1 inline" />
-                          </Button>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleEditContact(contact)}>
-                            <Edit className="w-4 h-4 text-slate-500" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDeleteContact(contact.id)}>
-                            <Trash2 className="w-4 h-4 text-red-500" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        const avatarSrc = photoURL ||
+                          (contactCreator?.toLowerCase().trim().includes('jack') ? '/assets/avatars/jack.jpg' : null);
+
+                        return (
+                          <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full ${getUserColor(contactCreator)} w-fit pr-5 text-left`}>
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
+                              {avatarSrc ?
+                                <img src={avatarSrc} className="w-full h-full object-cover" alt={contactCreator} /> :
+                                <span className="flex items-center justify-center w-full h-full text-xs font-bold">{contactCreator?.[0]}</span>
+                              }
+                            </div>
+                            <span className="text-sm font-semibold truncate max-w-[120px]">{contactCreator || 'Utilisateur'}</span>
+                          </div>
+                        );
+                      })()}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600 text-sm">{contact.email}</td>
+                    <td className="px-6 py-4 text-slate-600 text-sm">{contact.phone}</td>
+                    <td className="px-6 py-4 text-slate-600 text-sm">{contact.address || '-'}</td>
+                    <td className="px-6 py-4 text-slate-600 text-sm">{contact.zipCode || '-'}</td>
+                    <td className="px-6 py-4 text-slate-600">{contact.city}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold text-center shadow-sm w-full block max-w-[120px] ${getStatusColor(contact.status)}`}>
+                        {contact.status === 'draft' ? 'Nouveau' : (contact.status || 'Nouveau')}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {(() => {
+                        const associatedProjects = projects.filter(p =>
+                          (p.email && contact.email && p.email.toLowerCase() === contact.email.toLowerCase()) ||
+                          (p.name && contact.name && p.name.toLowerCase() === contact.name.toLowerCase()) ||
+                          (p.id === contact.projectId)
+                        );
+
+                        if (associatedProjects.length === 0) return <span className="text-slate-400 text-xs italic">Aucun</span>;
+
+                        return (
+                          <div className="flex flex-col gap-1">
+                            {associatedProjects.map(project => (
+                              <Button
+                                key={project.id}
+                                variant="link"
+                                size="sm"
+                                onClick={() => navigate(`/project/${project.id}/edit`)}
+                                className="text-blue-600 hover:text-blue-800 p-0 h-auto font-medium text-left justify-start group"
+                              >
+                                <span className="truncate max-w-[150px] inline-block">
+                                  {[project.name, project.city].filter(Boolean).join(' - ')}
+                                </span>
+                                <ExternalLink className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </Button>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleEditContact(contact)}>
+                          <Edit className="w-4 h-4 text-slate-500" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteContact(contact.id)}>
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
