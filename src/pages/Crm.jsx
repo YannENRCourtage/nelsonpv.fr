@@ -990,7 +990,15 @@ export default function Crm() {
                     <td className="px-6 py-4 font-medium text-slate-900">{contact.name}</td>
                     <td className="px-6 py-4">
                       {(() => {
-                        let contactCreator = contact.createdByFirstName || contact.user;
+                        // On récupère le commercial du PREMIER projet associé (priorité au projet)
+                        const associatedProjects = projects.filter(p =>
+                          (p.email && contact.email && p.email.toLowerCase() === contact.email.toLowerCase()) ||
+                          (p.name && contact.name && p.name.toLowerCase() === contact.name.toLowerCase()) ||
+                          (p.id === contact.projectId)
+                        );
+                        
+                        const projectCommercial = associatedProjects.find(p => p.commercial)?.commercial;
+                        let contactCreator = projectCommercial || contact.createdByFirstName || contact.user;
                         let photoURL = null;
 
                         if (!contactCreator || contactCreator === 'Utilisateur') {
@@ -1541,8 +1549,8 @@ export default function Crm() {
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Nom Projet</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Client</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Commercial</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Commercial</th>
+                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Commercial</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Chef de projet</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Adresse</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Code Postal</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Ville</th>
