@@ -2810,7 +2810,7 @@ function BanPlusLegend({ layersRef }) {
           <XIcon className="h-3 w-3" />
         </button>
       </div>
-      <div className="space-y-1.5 text-[10px]">
+      <div className="space-y-1.5 text-[11px]">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-[#32CD32] border border-gray-300"></div>
           <span>Adresse certifiée</span>
