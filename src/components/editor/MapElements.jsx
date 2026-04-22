@@ -2810,13 +2810,18 @@ function BanPlusLegend({ layersRef }) {
           <XIcon className="h-3 w-3" />
         </button>
       </div>
-      <div className="space-y-1">
-        <img 
-          src="https://data.geopf.fr/wms-v/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=BAN.DATA.GOUV" 
-          alt="Légende BAN PLUS"
-          className="max-w-full h-auto"
-        />
-        <p className="text-[10px] text-gray-500 italic mt-1">Base Adresse Nationale et composantes</p>
+      <div className="space-y-1.5 text-[10px]">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-[#32CD32] border border-gray-300"></div>
+          <span>Adresse certifiée</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-[#FFD700] border border-gray-300"></div>
+          <span>Adresse non certifiée</span>
+        </div>
+        <p className="text-[10px] text-gray-500 italic mt-1 pt-1 border-t border-gray-100">
+          Base Adresse Nationale et composantes
+        </p>
       </div>
     </div>
   );
