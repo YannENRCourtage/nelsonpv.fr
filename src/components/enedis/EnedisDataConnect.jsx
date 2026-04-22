@@ -40,11 +40,20 @@ const EnedisDataConnect = ({
         setEnedisStatus('connected');
         toast({ title: "✅ Données récupérées", description: "Les données de consommation ont été récupérées avec succès." });
       } else {
-        throw new Error("Consentement requis");
+        // Données partielles ou erreur sur un endpoint — on les affiche quand même
+        setEnedisData(result?.data || null);
+        setEnedisStatus('connected');
+        toast({ title: "⚠️ Données partielles", description: "Certaines données n'ont pas pu être récupérées.", variant: "default" });
       }
     } catch (e) {
-      // Si pas de consentement, démarrer le flux OAuth
-      enedisService.initiateAuth(projectId);
+      const msg = e.message || '';
+      if (msg.includes('expirée') || msg.includes('401')) {
+        // Session expirée : re-déclencher le consentement avec le PRM
+        toast({ title: "Session expirée", description: "Votre autorisation Enedis a expiré. Vous allez être redirigé.", variant: "destructive" });
+      }
+      // Pas de consentement ou session expirée : démarrer le flux OAuth avec le PRM
+      // Le PRM est transmis pour que la page de consentement Enedis s'affiche correctement
+      enedisService.initiateAuth(projectId, enedisPrm);
     } finally {
       setIsEnedisLoading(false);
     }
@@ -184,7 +193,7 @@ const EnedisDataConnect = ({
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3 items-start animate-in fade-in slide-in-from-top-1">
             <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs font-semibold text-amber-800 mb-0.5">Consentement required</p>
+              <p className="text-xs font-semibold text-amber-800 mb-0.5">Consentement requis</p>
               <p className="text-[11px] text-amber-700 leading-snug">
                 Aucun accès autorisé pour ce PRM. Cliquez sur le bouton ci-dessus pour rediriger le client vers son espace Enedis afin qu'il donne son consentement. Il sera ensuite redirigé automatiquement vers ce service.
               </p>

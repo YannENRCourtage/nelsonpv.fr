@@ -2,11 +2,21 @@ import axios from 'axios';
 import { adminDb } from '../../src/lib/firebase-admin.js';
 import { withAuth } from '../common/authMiddleware.js';
 
-const ENEDIS_API_BASE = 'https://api.enedis.fr/customer/v1/metering_data';
+// URLs API Enedis Data Connect — Production v5
+// Documentation : https://datahub-enedis.fr/services-api/data-connect/ressources/production/
+const ENEDIS_TOKEN_URL = 'https://gw.ext.prod.api.enedis.fr/oauth2/v3/token';
 
+// Base URL pour les données de consommation (v5)
+const ENEDIS_METERING_BASE = 'https://gw.ext.prod.api.enedis.fr/metering_data_dc/v5';
+
+// Base URL pour la puissance maximale (endpoint distinct en v5)
+const ENEDIS_MAX_POWER_BASE = 'https://gw.ext.prod.api.enedis.fr/metering_data_dcmp/v5';
+
+// Renouvelle le token Enedis si expiré
 async function refreshToken(consentDoc) {
     const consent = consentDoc.data();
-    const response = await axios.post('https://api.enedis.fr/oauth2/v3/token', new URLSearchParams({
+    console.log(`[Enedis Refresh] Renewing token for PRM ${consent.prm}...`);
+    const response = await axios.post(ENEDIS_TOKEN_URL, new URLSearchParams({
         grant_type: 'refresh_token',
         refresh_token: consent.refreshToken,
         client_id: process.env.ENEDIS_CLIENT_ID,
@@ -26,13 +36,14 @@ async function refreshToken(consentDoc) {
     if (refresh_token) updateData.refreshToken = refresh_token;
 
     await consentDoc.ref.update(updateData);
-    
+    console.log(`[Enedis Refresh] ✅ Token renewed for PRM ${consent.prm}`);
     return { ...consent, ...updateData };
 }
 
-async function fetchEnedisApi(endpoint, prm, startDate, endDate, token) {
+// Appelle un endpoint Enedis Data Connect v5
+async function fetchEnedisApi(baseUrl, endpoint, prm, startDate, endDate, token) {
     try {
-        const response = await axios.get(`${ENEDIS_API_BASE}/${endpoint}`, {
+        const response = await axios.get(`${baseUrl}/${endpoint}`, {
             params: {
                 usage_point_id: prm,
                 start: startDate,
@@ -46,7 +57,9 @@ async function fetchEnedisApi(endpoint, prm, startDate, endDate, token) {
         return response.data;
     } catch (err) {
         if (err.response?.status === 403) {
-            console.warn(`Enedis API 403 for ${endpoint}: Consent scope missing or expired.`);
+            console.warn(`[Enedis Fetch] 403 on ${endpoint}: scope missing or consent expired for PRM ${prm}`);
+        } else if (err.response?.status === 404) {
+            console.warn(`[Enedis Fetch] 404 on ${endpoint}: no data available for this period/PRM`);
         }
         throw err;
     }
@@ -61,25 +74,30 @@ async function handler(req, res) {
 
     try {
         let consentDoc;
-        
-        // 1. Prioritize global lookup by PRM
+
+        // 1. Recherche prioritaire par PRM (identifiant global du compteur)
         if (prm) {
             consentDoc = await adminDb.collection('enedis_consents').doc(prm).get();
+            console.log(`[Enedis Fetch] Consent lookup by PRM ${prm}: ${consentDoc.exists ? 'found' : 'not found'}`);
         }
 
-        // 2. Fallback to project-specific consent (Legacy or first-time)
+        // 2. Fallback par projectId (consentements anciens ou cas de premier accès)
         if ((!consentDoc || !consentDoc.exists) && projectId) {
             consentDoc = await adminDb.collection('enedis_consents').doc(projectId).get();
+            console.log(`[Enedis Fetch] Consent lookup by projectId ${projectId}: ${consentDoc?.exists ? 'found' : 'not found'}`);
         }
 
-        // 3. Last resort: search PRM in field (slow, but handles cases where doc ID is not PRM)
+        // 3. Recherche par champ prm dans la collection (cas où l'ID du doc ≠ PRM)
         if ((!consentDoc || !consentDoc.exists) && prm) {
             const snapshot = await adminDb.collection('enedis_consents').where('prm', '==', prm).limit(1).get();
-            if (!snapshot.empty) consentDoc = snapshot.docs[0];
+            if (!snapshot.empty) {
+                consentDoc = snapshot.docs[0];
+                console.log(`[Enedis Fetch] Consent found by field query for PRM ${prm}`);
+            }
         }
 
         if (!consentDoc || !consentDoc.exists) {
-            return res.status(404).json({ 
+            return res.status(404).json({
                 error: 'Aucun consentement Enedis trouvé pour ce PRM.',
                 hint: 'Veuillez autoriser Nelson sur votre Espace Client Enedis.'
             });
@@ -87,25 +105,28 @@ async function handler(req, res) {
 
         let consent = consentDoc.data();
 
-        // --- 1. Token Refresh ---
-        if (new Date() >= new Date(consent.expiresAt) || forceRefresh) {
+        // Renouvellement du token si expiré
+        if (new Date() >= new Date(consent.expiresAt) || forceRefresh === 'true') {
             try {
                 consent = await refreshToken(consentDoc);
             } catch (refErr) {
-                console.error('Refresh token failed:', refErr.response?.data || refErr.message);
-                return res.status(401).json({ error: 'Échec du renouvellement de la session. Veuillez vous reconnecter à Enedis.' });
+                console.error('[Enedis Fetch] Token refresh failed:', refErr.response?.data || refErr.message);
+                return res.status(401).json({
+                    error: 'Session expirée. Veuillez vous reconnecter à votre Espace Client Enedis.',
+                    requiresAuth: true
+                });
             }
         }
 
-        // --- 2. Date Range ---
-        // Default to last 365 days if not provided
+        // Plage de dates : 365 jours par défaut
         const defaultEndDate = new Date().toISOString().split('T')[0];
         const defaultStartDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        
+
         const start = req.query.startDate || defaultStartDate;
         const end = req.query.endDate || defaultEndDate;
+        const prmToFetch = consent.prm;
 
-        console.log(`[Enedis Fetch] Period: ${start} to ${end} for PRM ${consent.prm}`);
+        console.log(`[Enedis Fetch] Fetching data for PRM ${prmToFetch}, period: ${start} → ${end}`);
 
         const results = {
             daily: null,
@@ -113,39 +134,44 @@ async function handler(req, res) {
             maxPower: null
         };
 
-        // --- 3. Fetch Data ---
-        // We wrap each call in a separate try/catch to return partial data if some endpoints are not available
+        // Récupération des données (chaque appel est indépendant pour retourner des données partielles)
+
+        // Consommation journalière (Wh par jour)
         try {
-            results.daily = await fetchEnedisApi('daily_consumption', consent.prm, start, end, consent.accessToken);
-        } catch (e) { 
-            console.error(`[Enedis Fetch] Daily Error: ${e.message}`);
-            results.daily = { error: e.message, status: e.response?.status }; 
+            results.daily = await fetchEnedisApi(ENEDIS_METERING_BASE, 'daily_consumption', prmToFetch, start, end, consent.accessToken);
+            console.log(`[Enedis Fetch] ✅ daily_consumption OK`);
+        } catch (e) {
+            console.error(`[Enedis Fetch] daily_consumption error: ${e.response?.status} - ${e.message}`);
+            results.daily = { error: e.message, status: e.response?.status };
         }
 
+        // Courbe de charge (puissance W par demi-heure)
         try {
-            // Note: Load curve can be very large for 1 year, Enedis might require smaller chunks 
-            // but for now we try the full period.
-            results.loadCurve = await fetchEnedisApi('consumption_load_curve', consent.prm, start, end, consent.accessToken);
-        } catch (e) { 
-            console.error(`[Enedis Fetch] Load Curve Error: ${e.message}`);
-            results.loadCurve = { error: e.message, status: e.response?.status }; 
+            results.loadCurve = await fetchEnedisApi(ENEDIS_METERING_BASE, 'load_curve', prmToFetch, start, end, consent.accessToken);
+            console.log(`[Enedis Fetch] ✅ load_curve OK`);
+        } catch (e) {
+            console.error(`[Enedis Fetch] load_curve error: ${e.response?.status} - ${e.message}`);
+            results.loadCurve = { error: e.message, status: e.response?.status };
         }
 
+        // Puissance maximale journalière (endpoint sur une base URL différente en v5)
         try {
-            results.maxPower = await fetchEnedisApi('daily_consumption_max_power', consent.prm, start, end, consent.accessToken);
-        } catch (e) { 
-            console.error(`[Enedis Fetch] Max Power Error: ${e.message}`);
-            results.maxPower = { error: e.message, status: e.response?.status }; 
+            results.maxPower = await fetchEnedisApi(ENEDIS_MAX_POWER_BASE, 'daily_consumption_max_power', prmToFetch, start, end, consent.accessToken);
+            console.log(`[Enedis Fetch] ✅ daily_consumption_max_power OK`);
+        } catch (e) {
+            console.error(`[Enedis Fetch] daily_consumption_max_power error: ${e.response?.status} - ${e.message}`);
+            results.maxPower = { error: e.message, status: e.response?.status };
         }
 
         res.status(200).json({
-            prm: consent.prm,
+            prm: prmToFetch,
+            period: { start, end },
             data: results
         });
 
     } catch (error) {
-        console.error('Enedis Fetch Error:', error.response?.data || error.message);
-        res.status(500).json({ error: 'Failed to fetch Enedis data', details: error.message });
+        console.error('[Enedis Fetch] Unexpected error:', error.response?.data || error.message);
+        res.status(500).json({ error: 'Erreur lors de la récupération des données Enedis', details: error.message });
     }
 }
 
