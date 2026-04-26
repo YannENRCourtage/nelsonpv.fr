@@ -1,6 +1,9 @@
 // api/enedis/auth.js
 // Initie le flux OAuth2 Enedis Data Connect vers la page de consentement client.
-// IMPORTANT : ne demander QUE les scopes réellement autorisés dans l'app DataHub production.
+// IMPORTANT : Suivre EXACTEMENT le format de l'URL de production Enedis DataHub :
+// https://mon-compte-particulier.enedis.fr/dataconnect/v1/oauth2/authorize
+//   ?client_id=[client_id]&duration=[duration]&response_type=code&state=[state]
+// NE PAS inclure redirect_uri ni scope — ces paramètres sont gérés côté DataHub.
 
 async function handler(req, res) {
     const { projectId, prm } = req.query;
@@ -8,53 +11,39 @@ async function handler(req, res) {
     console.log(`[Enedis Auth] Initiating auth for project: ${projectId}, prm: ${prm}`);
 
     if (!projectId) {
-        console.error('[Enedis Auth] Error: Missing projectId');
         return res.status(400).json({ error: 'Missing projectId' });
     }
 
     try {
         const clientId = (process.env.ENEDIS_CLIENT_ID || "").trim();
-        const redirectUri = (process.env.ENEDIS_REDIRECT_URI || "").trim();
 
-        if (!clientId || !redirectUri) {
-            console.error('[Enedis Auth] Error: Missing ENEDIS_CLIENT_ID or ENEDIS_REDIRECT_URI in environment');
-            return res.status(500).json({ error: 'Server configuration error: missing Enedis credentials' });
+        if (!clientId) {
+            return res.status(500).json({ error: 'Missing ENEDIS_CLIENT_ID' });
         }
 
-        // IMPORTANT : N'inclure QUE les scopes autorisés dans l'application DataHub Production.
-        // L'application Nelson Production (DataHub) a uniquement ces 3 scopes autorisés.
-        // Demander des scopes non autorisés cause "Invalid authorization code" lors de l'échange de token.
-        const scopes = [
-            'daily_consumption',
-            'load_curve',
-            'daily_consumption_max_power'
-        ].join(' ');
-
-        // State = projectId + prm encodés en base64 pour transmission sécurisée via callback
+        // State = projectId + prm encodés en base64
         const state = JSON.stringify({ projectId, prm: prm || null });
         const encodedState = Buffer.from(state).toString('base64');
 
-        // URL de consentement Enedis
+        // URL de consentement Enedis Production — format exact selon DataHub docs
+        // PAS de redirect_uri (configuré dans DataHub), PAS de scope (configuré dans DataHub)
         const authUrl = new URL('https://mon-compte-particulier.enedis.fr/dataconnect/v1/oauth2/authorize');
         authUrl.searchParams.append('client_id', clientId);
         authUrl.searchParams.append('response_type', 'code');
-        authUrl.searchParams.append('redirect_uri', redirectUri);
-        authUrl.searchParams.append('scope', scopes);
+        authUrl.searchParams.append('duration', 'P3Y');
         authUrl.searchParams.append('state', encodedState);
-        authUrl.searchParams.append('duration', 'P3Y'); // 3 ans max selon contrat Data Connect
 
-        // CRITIQUE : Le PRM doit être inclus pour que la page de consentement Enedis
-        // affiche les données du client (sinon page blanche en production).
+        // Le PRM permet à Enedis d'afficher les données du client sur la page de consentement
         if (prm && prm.length === 14) {
             authUrl.searchParams.append('usage_point_id', prm);
         }
 
-        console.log(`[Enedis Auth] Redirecting to Enedis (client_id: ${clientId.substring(0, 8)}..., scopes: ${scopes})`);
+        console.log(`[Enedis Auth] Redirecting → client_id: ${clientId.substring(0, 8)}...`);
         res.redirect(authUrl.toString());
 
     } catch (err) {
-        console.error('[Enedis Auth] Global Crash:', err.message);
-        res.status(500).json({ error: 'Internal Server Error during Enedis auth initiation', detail: err.message });
+        console.error('[Enedis Auth] Error:', err.message);
+        res.status(500).json({ error: err.message });
     }
 }
 
