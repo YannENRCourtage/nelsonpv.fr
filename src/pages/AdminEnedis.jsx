@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar } from 'lucide-react';
+import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -15,6 +15,7 @@ export default function AdminEnedis() {
   const [status, setStatus] = useState('idle'); // 'idle', 'connected', 'disconnected'
   const [consents, setConsents] = useState([]);
   const [activeTab, setActiveTab] = useState('interrogation');
+  const [jsonOpen, setJsonOpen] = useState(false);
   const { toast } = useToast();
 
   // Charger les consentements via API Admin (contourne les règles Firestore)
@@ -200,8 +201,8 @@ export default function AdminEnedis() {
 
           <TabsContent value="interrogation" className="m-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {/* Colonne de gauche : Contrôles (élargie à 4/12) */}
-              <div className="lg:col-span-4 space-y-6">
+              {/* Colonne de gauche : Contrôles (3/12) */}
+              <div className="lg:col-span-3 space-y-6">
                 <Card className="border-none shadow-xl shadow-slate-200/50 rounded-3xl overflow-hidden bg-white">
                   <CardHeader className="bg-slate-50/80 border-b p-6">
                     <CardTitle className="text-xl flex items-center gap-3 text-slate-800">
@@ -303,8 +304,8 @@ export default function AdminEnedis() {
                 </Card>
               </div>
 
-              {/* Colonne de droite : Visualisation (8/12) */}
-              <div className="lg:col-span-8 space-y-6">
+              {/* Colonne de droite : Visualisation (9/12) */}
+              <div className="lg:col-span-9 space-y-4">
                 {!data ? (
                   <div className="h-full min-h-[600px] border-4 border-dashed border-slate-200 rounded-[2.5rem] flex flex-col items-center justify-center text-muted-foreground p-12 text-center bg-white shadow-inner transition-all">
                     <div className="w-32 h-32 bg-slate-50 rounded-full flex items-center justify-center mb-8 border border-slate-100 shadow-sm animate-bounce duration-[3000ms]">
@@ -317,26 +318,33 @@ export default function AdminEnedis() {
                   </div>
                 ) : (
                   <div className="animate-in fade-in slide-in-from-right-8 duration-700 space-y-8">
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100 p-2 overflow-hidden transition-all hover:shadow-blue-100/50">
+                    <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden transition-all hover:shadow-blue-100/50">
                       <ConsumptionChart data={data} loading={loading} />
                     </div>
-                    
-                    <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-slate-950">
-                      <CardHeader className="py-4 px-8 border-b border-white/10 bg-white/5 flex flex-row items-center justify-between">
-                        <CardTitle className="text-xs uppercase tracking-[0.2em] text-slate-400 font-bold">Flux de données brut (JSON)</CardTitle>
-                        <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 h-8" onClick={() => {
-                            navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-                            toast({ title: "Copié !", description: "Le JSON a été copié dans le presse-papier." });
-                        }}>
+
+                    {/* JSON Panel — collapsible */}
+                    <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-950">
+                      <button
+                        onClick={() => setJsonOpen(o => !o)}
+                        className="w-full flex items-center justify-between px-6 py-4 text-xs uppercase tracking-[0.2em] text-slate-400 font-bold hover:bg-white/5 transition-colors"
+                      >
+                        <span>Flux de données brut (JSON)</span>
+                        <div className="flex items-center gap-3">
+                          <span
+                            className="text-slate-500 hover:text-white transition-colors cursor-pointer"
+                            onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(JSON.stringify(data, null, 2)); toast({ title: 'Copié !' }); }}
+                          >
                             Copier
-                        </Button>
-                      </CardHeader>
-                      <CardContent className="p-0">
-                        <pre className="text-[11px] text-blue-200/60 p-8 overflow-auto max-h-[400px] font-mono leading-relaxed custom-scrollbar">
+                          </span>
+                          {jsonOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </div>
+                      </button>
+                      {jsonOpen && (
+                        <pre className="text-[11px] text-blue-200/60 px-8 pb-8 overflow-auto max-h-[500px] font-mono leading-relaxed custom-scrollbar">
                           {JSON.stringify(data, null, 2)}
                         </pre>
-                      </CardContent>
-                    </Card>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

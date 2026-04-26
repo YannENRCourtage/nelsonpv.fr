@@ -149,49 +149,74 @@ async function handler(req, res) {
             }
         }
 
-        // Plage de dates : 365 jours par défaut
+        // Plage de dates : 365 jours pour daily/maxPower, 30 jours pour load_curve (perf)
         const defaultEndDate = new Date().toISOString().split('T')[0];
         const defaultStartDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const loadCurveStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
         const start = req.query.startDate || defaultStartDate;
         const end = req.query.endDate || defaultEndDate;
         const prmToFetch = consent.prm;
 
-        console.log(`[Enedis Fetch] Fetching data for PRM ${prmToFetch}, period: ${start} → ${end}`);
+        console.log(`[Enedis Fetch] Parallel fetch for PRM ${prmToFetch}, period: ${start} → ${end}`);
+
+        // ⚡ APPELS PARALLÈLES — 3-4x plus rapide que séquentiel
+        const ENEDIS_CUSTOMERS_BASE = 'https://gw.ext.prod.api.enedis.fr/customers_dc/v5';
+
+        const callApi = (baseUrl, endpoint, prmParam, s, e) =>
+            axios.get(`${baseUrl}/${endpoint}`, {
+                params: { usage_point_id: prmParam, start: s, end: e },
+                headers: { 'Authorization': `Bearer ${consent.accessToken}`, 'Accept': 'application/json' },
+                timeout: 8000
+            }).then(r => r.data);
+
+        const callIdentity = (prmParam) =>
+            axios.get(`${ENEDIS_CUSTOMERS_BASE}/usage_points/identities`, {
+                params: { usage_point_id: prmParam },
+                headers: { 'Authorization': `Bearer ${consent.accessToken}`, 'Accept': 'application/json' },
+                timeout: 5000
+            }).then(r => r.data);
+
+        const [dailyRes, loadRes, maxRes, identityRes] = await Promise.allSettled([
+            callApi(ENEDIS_METERING_BASE, 'daily_consumption', prmToFetch, start, end),
+            callApi(ENEDIS_METERING_BASE, 'load_curve', prmToFetch, loadCurveStart, end),
+            callApi(ENEDIS_MAX_POWER_BASE, 'daily_consumption_max_power', prmToFetch, start, end),
+            callIdentity(prmToFetch)
+        ]);
 
         const results = {
-            daily: null,
-            loadCurve: null,
-            maxPower: null
+            daily: dailyRes.status === 'fulfilled' ? dailyRes.value : { error: dailyRes.reason?.message, status: dailyRes.reason?.response?.status },
+            loadCurve: loadRes.status === 'fulfilled' ? loadRes.value : { error: loadRes.reason?.message, status: loadRes.reason?.response?.status },
+            maxPower: maxRes.status === 'fulfilled' ? maxRes.value : { error: maxRes.reason?.message, status: maxRes.reason?.response?.status },
         };
 
-        // Récupération des données (chaque appel est indépendant pour retourner des données partielles)
+        console.log(`[Enedis Fetch] daily:${dailyRes.status} load_curve:${loadRes.status} maxPower:${maxRes.status} identity:${identityRes.status}`);
 
-        // Consommation journalière (Wh par jour)
+        // Mise à jour du consentement avec conso annuelle + identité après fetch réussi
         try {
-            results.daily = await fetchEnedisApi(ENEDIS_METERING_BASE, 'daily_consumption', prmToFetch, start, end, consent.accessToken);
-            console.log(`[Enedis Fetch] ✅ daily_consumption OK`);
-        } catch (e) {
-            console.error(`[Enedis Fetch] daily_consumption error: ${e.response?.status} - ${e.message}`);
-            results.daily = { error: e.message, status: e.response?.status };
-        }
+            const updateData = { updatedAt: new Date().toISOString() };
 
-        // Courbe de charge (puissance W par demi-heure)
-        try {
-            results.loadCurve = await fetchEnedisApi(ENEDIS_METERING_BASE, 'load_curve', prmToFetch, start, end, consent.accessToken);
-            console.log(`[Enedis Fetch] ✅ load_curve OK`);
-        } catch (e) {
-            console.error(`[Enedis Fetch] load_curve error: ${e.response?.status} - ${e.message}`);
-            results.loadCurve = { error: e.message, status: e.response?.status };
-        }
+            if (dailyRes.status === 'fulfilled') {
+                const readings = dailyRes.value?.meter_reading?.interval_reading || [];
+                const totalWh = readings.reduce((s, r) => s + parseInt(r.value || 0), 0);
+                updateData.annualConsumption = Math.round(totalWh / 1000);
+            }
 
-        // Puissance maximale journalière (endpoint sur une base URL différente en v5)
-        try {
-            results.maxPower = await fetchEnedisApi(ENEDIS_MAX_POWER_BASE, 'daily_consumption_max_power', prmToFetch, start, end, consent.accessToken);
-            console.log(`[Enedis Fetch] ✅ daily_consumption_max_power OK`);
-        } catch (e) {
-            console.error(`[Enedis Fetch] daily_consumption_max_power error: ${e.response?.status} - ${e.message}`);
-            results.maxPower = { error: e.message, status: e.response?.status };
+            if (identityRes.status === 'fulfilled') {
+                const id = identityRes.value?.customers?.[0]?.customer;
+                if (id) {
+                    const civil = id.person || id.company;
+                    updateData.titulaire = civil?.lastname
+                        ? `${civil.firstname || ''} ${civil.lastname}`.trim()
+                        : (civil?.company_name || 'Inconnu');
+                    updateData.adresse = identityRes.value?.customers?.[0]?.usage_point?.usage_point_addresses?.usage_point_address || '';
+                }
+            }
+
+            await consentDoc.ref.update(updateData);
+            console.log(`[Enedis Fetch] ✅ Consent updated (conso: ${updateData.annualConsumption} kWh, titulaire: ${updateData.titulaire || 'N/A'})`);
+        } catch (updateErr) {
+            console.warn('[Enedis Fetch] Could not update consent doc:', updateErr.message);
         }
 
         res.status(200).json({
