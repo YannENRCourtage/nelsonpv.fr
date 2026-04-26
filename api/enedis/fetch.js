@@ -9,25 +9,33 @@ const ENEDIS_METERING_BASE = 'https://gw.ext.prod.api.enedis.fr/metering_data_dc
 // Base URL pour la puissance maximale (endpoint distinct en v5)
 const ENEDIS_MAX_POWER_BASE = 'https://gw.ext.prod.api.enedis.fr/metering_data_dcmp/v5';
 
-// Renouvelle le token Enedis si expiré
+// Renouvelle le token Enedis via client_credentials (production v5)
+// Enedis production ne supporte pas refresh_token — on renouvelle avec client_credentials
 async function refreshToken(consentDoc) {
     const consent = consentDoc.data();
-    console.log(`[Enedis Refresh] Getting new app token for PRM ${consent.prm}...`);
-    const response = await axios.post(ENEDIS_TOKEN_URL, new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: consent.refreshToken,
-        client_id: (process.env.ENEDIS_CLIENT_ID || "").trim(),
-        client_secret: (process.env.ENEDIS_CLIENT_SECRET || "").trim()
-    }).toString(), {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    });
+    console.log(`[Enedis Refresh] Renewing token via client_credentials for PRM ${consent.prm}...`);
 
-    const { access_token, refresh_token: new_refresh_token, expires_in } = response.data;
+    const clientId = (process.env.ENEDIS_CLIENT_ID || '').trim();
+    const clientSecret = (process.env.ENEDIS_CLIENT_SECRET || '').trim();
+    const authHeader = 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+    const response = await axios.post(
+        ENEDIS_TOKEN_URL,
+        new URLSearchParams({ grant_type: 'client_credentials' }).toString(),
+        {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': authHeader
+            },
+            timeout: 15000
+        }
+    );
+
+    const { access_token, expires_in } = response.data;
     const expiresAt = new Date(Date.now() + (expires_in || 3600) * 1000).toISOString();
 
     const updateData = {
         accessToken: access_token,
-        refreshToken: new_refresh_token || consent.refreshToken,
         expiresAt,
         updatedAt: new Date().toISOString()
     };

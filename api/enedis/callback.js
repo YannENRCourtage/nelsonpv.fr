@@ -1,16 +1,17 @@
 import axios from 'axios';
 
 // URLs API Enedis Data Connect - Production v5
+// IMPORTANT : En production, le grant_type pour obtenir un token est "client_credentials"
+// Le code renvoyé par Enedis après consentement est à IGNORER (valeur fictive de 8 chars).
+// Le consentement est lié automatiquement au client_id + usage_point_id côté Enedis.
 const ENEDIS_TOKEN_URL = 'https://gw.ext.prod.api.enedis.fr/oauth2/v3/token';
 const ENEDIS_METERING_BASE = 'https://gw.ext.prod.api.enedis.fr/metering_data_dc/v5';
 
 export default async function handler(req, res) {
     const { state, error, usage_point_id } = req.query;
+    const code = req.query.code;
 
-    const urlObj = new URL(req.url, `http://${req.headers.host}`);
-    const code = urlObj.searchParams.get('code') || req.query.code;
-
-    console.log(`[Enedis Callback] Received - code: ${code ? code.substring(0,10)+'...' : 'MISSING'}, usage_point_id: ${usage_point_id}, error: ${error}`);
+    console.log(`[Enedis Callback] Received - code: ${code} (ignoré en prod), usage_point_id: ${usage_point_id}, error: ${error}`);
 
     if (error) {
         console.error('[Enedis Callback] Enedis returned error:', error);
@@ -30,77 +31,40 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid state parameter' });
     }
 
-    // PRM : utiliser usage_point_id du callback Enedis (le plus fiable)
+    // PRM : depuis usage_point_id du callback (plus fiable que le state)
     const finalPrm = usage_point_id || prm;
     console.log(`[Enedis Callback] projectId: ${projectId}, finalPrm: ${finalPrm}`);
 
+    if (!finalPrm) {
+        const msg = 'Aucun PRM reçu dans le callback Enedis.';
+        console.error('[Enedis Callback]', msg);
+        return res.redirect(`/enedis-admin?enedis=error&message=${encodeURIComponent(msg)}`);
+    }
+
     try {
-        if (!code) {
-            throw new Error('Code d\'autorisation manquant dans l\'URL de retour.');
-        }
+        const clientId = (process.env.ENEDIS_CLIENT_ID || '').trim();
+        const clientSecret = (process.env.ENEDIS_CLIENT_SECRET || '').trim();
 
-        const clientId = (process.env.ENEDIS_CLIENT_ID || "").trim();
-        const clientSecret = (process.env.ENEDIS_CLIENT_SECRET || "").trim();
+        console.log(`[Enedis Callback] Getting token via client_credentials for client_id: ${clientId.substring(0, 8)}...`);
 
-        console.log(`[Enedis Callback] Using client_id: ${clientId.substring(0, 8)}...`);
-
-        // Basic Auth header (méthode préférée par Enedis production)
+        // PRODUCTION Enedis v5 : utiliser client_credentials (le code OAuth est ignoré)
         const authHeader = 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
-        // Corps de la requête : SANS redirect_uri (Enedis production ne l'exige pas)
-        // redirect_uri est configuré directement dans DataHub
-        const tokenBody = new URLSearchParams({
-            grant_type: 'authorization_code',
-            code: code
-        });
-
-        console.log(`[Enedis Callback] Calling token endpoint: ${ENEDIS_TOKEN_URL}`);
-
-        let tokenResponse;
-        let tokenError;
-
-        // Tentative 1 : Basic Auth header, sans redirect_uri
-        try {
-            tokenResponse = await axios.post(ENEDIS_TOKEN_URL, tokenBody.toString(), {
+        const tokenResponse = await axios.post(
+            ENEDIS_TOKEN_URL,
+            new URLSearchParams({ grant_type: 'client_credentials' }).toString(),
+            {
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'Authorization': authHeader
                 },
                 timeout: 15000
-            });
-            console.log('[Enedis Callback] ✅ Token exchange successful (attempt 1)');
-        } catch (err1) {
-            tokenError = err1;
-            console.warn('[Enedis Callback] Attempt 1 failed:', err1.response?.status, JSON.stringify(err1.response?.data));
-
-            // Tentative 2 : credentials dans le body avec redirect_uri
-            try {
-                const redirectUri = (process.env.ENEDIS_REDIRECT_URI || "").trim();
-                const tokenBody2 = new URLSearchParams({
-                    grant_type: 'authorization_code',
-                    code: code,
-                    client_id: clientId,
-                    client_secret: clientSecret,
-                    redirect_uri: redirectUri
-                });
-                tokenResponse = await axios.post(ENEDIS_TOKEN_URL, tokenBody2.toString(), {
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    timeout: 15000
-                });
-                console.log('[Enedis Callback] ✅ Token exchange successful (attempt 2)');
-            } catch (err2) {
-                console.error('[Enedis Callback] Attempt 2 failed:', err2.response?.status, JSON.stringify(err2.response?.data));
-                throw err2; // Relancer la dernière erreur
             }
-        }
+        );
 
         const { access_token, refresh_token, expires_in } = tokenResponse.data;
         const expiresAt = new Date(Date.now() + (expires_in || 3600) * 1000).toISOString();
-        console.log(`[Enedis Callback] Token expires at: ${expiresAt}, PRM: ${finalPrm}`);
-
-        if (!finalPrm) {
-            throw new Error('Aucun PRM identifié (usage_point_id manquant dans le callback).');
-        }
+        console.log(`[Enedis Callback] ✅ Token obtained via client_credentials. Expires: ${expiresAt}`);
 
         // Sauvegarder dans Firestore
         const { getAdminDb } = await import('../../src/lib/firebase-admin.js');
@@ -149,28 +113,12 @@ export default async function handler(req, res) {
     } catch (err) {
         const errorData = err.response?.data || {};
         const errorMsg = errorData.error_description || errorData.error || err.message;
-        console.error('[Enedis Callback] FINAL ERROR:', errorMsg, '| Full response:', JSON.stringify(errorData));
-
-        // Fallback : consentement récent en Firestore ?
-        if (finalPrm) {
-            try {
-                const { getAdminDb } = await import('../../src/lib/firebase-admin.js');
-                const db = getAdminDb();
-                const doc = await db.collection('enedis_consents').doc(finalPrm).get();
-                if (doc.exists) {
-                    const data = doc.data();
-                    if (Date.now() - new Date(data.updatedAt).getTime() < 300000) {
-                        if (projectId === 'admin_test') return res.redirect(`/enedis-admin?enedis=success&prm=${finalPrm}`);
-                        return res.redirect(`/project/${projectId || 'new'}/edit?enedis=success&prm=${finalPrm}`);
-                    }
-                }
-            } catch (e) {}
-        }
+        console.error('[Enedis Callback] FINAL ERROR:', errorMsg, '| HTTP status:', err.response?.status, '| Body:', JSON.stringify(errorData));
 
         const debugInfo = Buffer.from(JSON.stringify({
-            c_id: (process.env.ENEDIS_CLIENT_ID || "").substring(0, 8),
-            code_len: code ? code.length : 0,
+            c_id: (process.env.ENEDIS_CLIENT_ID || '').substring(0, 8),
             prm: finalPrm,
+            status: err.response?.status,
             err: errorData
         })).toString('base64');
 
