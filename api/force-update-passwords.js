@@ -1,15 +1,18 @@
 import { getAdminAuth } from '../src/lib/firebase-admin.js';
 
 export default async function handler(req, res) {
-    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+    // Temporarily allow GET to trigger via browser
+    // if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
     
     // WARNING: This is a temporary UNPROTECTED route to fix critical login issues.
     // IT MUST BE DELETED IMMEDIATELY AFTER USE.
     
-    const { updates } = req.body;
-    if (!updates || !Array.isArray(updates)) {
-        return res.status(400).json({ error: "Missing updates array" });
-    }
+    // Hardcoded for emergency one-time fix
+    const updates = [
+        { email: 'a.mihaiov@acama-energies.fr', password: '#zPVEl@58ZqV9qZc' },
+        { email: 'a.mihailov@acama-energies.fr', password: '#zPVEl@58ZqV9qZc' },
+        { email: 'christophe.poisson@acama.fr', password: 'IHGS8PC8QK4Mq?TL' }
+    ];
 
     try {
         const auth = getAdminAuth();

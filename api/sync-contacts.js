@@ -2,7 +2,8 @@ import { getAdminDb } from '../src/lib/firebase-admin.js';
 import admin from 'firebase-admin';
 
 export default async function handler(req, res) {
-    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+    // Temporarily allow GET to trigger via browser
+    // if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
     
     try {
         const db = getAdminDb();
