@@ -1,8 +1,6 @@
 import axios from 'axios';
-import { withAuth } from '../common/authMiddleware.js';
 
 // URLs API Enedis Data Connect — Production v5
-// Documentation : https://datahub-enedis.fr/services-api/data-connect/ressources/production/
 const ENEDIS_TOKEN_URL = 'https://gw.ext.prod.api.enedis.fr/oauth2/v3/token';
 
 // Base URL pour les données de consommation (v5)
@@ -183,4 +181,4 @@ async function handler(req, res) {
     }
 }
 
-export default withAuth(handler);
+export default handler;
