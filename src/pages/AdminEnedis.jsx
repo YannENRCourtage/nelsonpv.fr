@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -7,15 +7,17 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import enedisService from '@/services/enedis';
 import ConsumptionChart from '@/components/enedis/ConsumptionChart';
+import EnedisPrintLayout from '@/components/enedis/EnedisPrintLayout';
 
 export default function AdminEnedis() {
   const [prm, setPrm] = useState('');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState('idle'); // 'idle', 'connected', 'disconnected'
+  const [status, setStatus] = useState('idle');
   const [consents, setConsents] = useState([]);
   const [activeTab, setActiveTab] = useState('interrogation');
   const [jsonOpen, setJsonOpen] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const { toast } = useToast();
 
   // Charger les consentements via API Admin (contourne les règles Firestore)
@@ -120,19 +122,22 @@ export default function AdminEnedis() {
     enedisService.initiateAuth('admin_test', prm);
   };
 
+  const handlePdf = useCallback(() => {
+    if (!data) { toast({ title: 'Aucune donnée', description: 'Récupérez d'abord les données.', variant: 'destructive' }); return; }
+    setIsPrinting(true);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setIsPrinting(false), 500);
+    }, 400);
+  }, [data, toast]);
+
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
     try {
       return new Date(dateStr).toLocaleDateString('fr-FR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
       });
-    } catch (e) {
-      return 'Date invalide';
-    }
+    } catch (e) { return 'Date invalide'; }
   };
 
   const formatConso = (conso) => {
@@ -164,15 +169,25 @@ export default function AdminEnedis() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {status === 'connected' && (
               <div className="flex items-center gap-2 text-sm font-bold text-green-700 bg-green-100 border-2 border-green-200 rounded-2xl px-6 py-2.5 shadow-sm animate-in fade-in zoom-in duration-300">
                 <CheckCircle2 size={18} />
                 PRM ACTIF : {prm}
               </div>
             )}
-            <Button 
-                variant="outline" 
+            {data && (
+              <Button
+                variant="outline"
+                className="rounded-2xl h-12 px-5 border-blue-200 bg-blue-50 text-blue-700 shadow-sm hover:bg-blue-100 font-bold"
+                onClick={handlePdf}
+              >
+                <FileText size={18} className="mr-2" />
+                PDF
+              </Button>
+            )}
+            <Button
+                variant="outline"
                 className="rounded-2xl h-12 px-6 border-slate-200 bg-white shadow-sm hover:bg-slate-50"
                 onClick={() => { setData(null); setStatus('idle'); setPrm(''); }}
             >
@@ -200,10 +215,10 @@ export default function AdminEnedis() {
           </TabsList>
 
           <TabsContent value="interrogation" className="m-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {/* Colonne de gauche : Contrôles (3/12) */}
-              <div className="lg:col-span-3 space-y-6">
-                <Card className="border-none shadow-xl shadow-slate-200/50 rounded-3xl overflow-hidden bg-white">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8" style={{ alignItems: 'stretch' }}>
+              {/* Colonne gauche (3/12) — flex pour aligner Détails techniques en bas */}
+              <div className="lg:col-span-3 flex flex-col gap-6">
+                <Card className="flex-1 border-none shadow-xl shadow-slate-200/50 rounded-3xl overflow-hidden bg-white">
                   <CardHeader className="bg-slate-50/80 border-b p-6">
                     <CardTitle className="text-xl flex items-center gap-3 text-slate-800">
                       <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
@@ -304,8 +319,8 @@ export default function AdminEnedis() {
                 </Card>
               </div>
 
-              {/* Colonne de droite : Visualisation (9/12) */}
-              <div className="lg:col-span-9 space-y-4">
+              {/* Colonne droite (9/12) — flex pour aligner JSON avec Détails techniques */}
+              <div className="lg:col-span-9 flex flex-col gap-4">
                 {!data ? (
                   <div className="h-full min-h-[600px] border-4 border-dashed border-slate-200 rounded-[2.5rem] flex flex-col items-center justify-center text-muted-foreground p-12 text-center bg-white shadow-inner transition-all">
                     <div className="w-32 h-32 bg-slate-50 rounded-full flex items-center justify-center mb-8 border border-slate-100 shadow-sm animate-bounce duration-[3000ms]">
@@ -317,8 +332,8 @@ export default function AdminEnedis() {
                     </p>
                   </div>
                 ) : (
-                  <div className="animate-in fade-in slide-in-from-right-8 duration-700 space-y-8">
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden transition-all hover:shadow-blue-100/50">
+                  <div className="flex-1 animate-in fade-in slide-in-from-right-8 duration-700 flex flex-col gap-4">
+                    <div className="flex-1 bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200/50 border border-slate-100 overflow-hidden transition-all hover:shadow-blue-100/50">
                       <ConsumptionChart data={data} loading={loading} />
                     </div>
 
@@ -371,7 +386,7 @@ export default function AdminEnedis() {
                     <thead>
                       <tr className="bg-slate-50/80 text-slate-500 text-[11px] uppercase tracking-widest font-bold">
                         <th className="px-8 py-5 border-b">PRM / Point de Livraison</th>
-                        <th className="px-8 py-5 border-b">Titulaire / Adresse</th>
+                        <th className="px-8 py-5 border-b">Date du Consentement</th>
                         <th className="px-8 py-5 border-b">Conso Annuelle</th>
                         <th className="px-8 py-5 border-b">Dernière mise à jour</th>
                         <th className="px-8 py-5 border-b">Expiration (Token)</th>
@@ -412,11 +427,17 @@ export default function AdminEnedis() {
                             </td>
                             <td className="px-8 py-6">
                               <div className="flex flex-col">
-                                <span className="font-bold text-slate-900">
-                                  {item.firstname || ''} {item.lastname || ''}
-                                  {(!item.firstname && !item.lastname) && <span className="text-slate-400 italic font-normal">Inconnu</span>}
-                                </span>
-                                <span className="text-xs text-slate-500 line-clamp-1">{item.address || 'Adresse non renseignée'}</span>
+                                {item.titulaire && item.titulaire !== 'Inconnu' ? (
+                                  <>
+                                    <span className="font-bold text-slate-900">{item.titulaire}</span>
+                                    <span className="text-xs text-slate-500">{item.adresse || 'Adresse non renseignée'}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-0.5">Consentement accordé le</span>
+                                    <span className="font-bold text-slate-700">{formatDate(item.updatedAt)}</span>
+                                  </>
+                                )}
                               </div>
                             </td>
                             <td className="px-8 py-6">
@@ -458,20 +479,18 @@ export default function AdminEnedis() {
         </Tabs>
       </div>
 
-      <style jsx="true">{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.2);
-        }
+      <EnedisPrintLayout
+        visible={isPrinting}
+        prm={prm}
+        data={data}
+        consent={consents.find(c => c.prm === prm) || {}}
+      />
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
       `}</style>
     </div>
   );
