@@ -20,7 +20,7 @@ export default function AdminEnedis() {
   // Charger les consentements via API Admin (contourne les règles Firestore)
   const loadConsents = useCallback(async () => {
     try {
-      const res = await fetch('/api/enedis/consents');
+      const res = await fetch('/api/enedis/fetch?action=list_consents');
       if (res.ok) {
         const json = await res.json();
         setConsents(json.consents || []);

@@ -71,7 +71,24 @@ async function fetchEnedisApi(baseUrl, endpoint, prm, startDate, endDate, token)
 }
 
 async function handler(req, res) {
-    const { projectId, prm, forceRefresh = false } = req.query;
+    const { projectId, prm, forceRefresh = false, action } = req.query;
+
+    // Action : lister les consentements (appelé par l'historique AdminEnedis)
+    if (action === 'list_consents') {
+        try {
+            const fbAdmin = await import('../../src/lib/firebase-admin.js');
+            const db = fbAdmin.getAdminDb();
+            const snapshot = await db.collection('enedis_consents').orderBy('updatedAt', 'desc').get();
+            const consents = snapshot.docs.map(doc => {
+                const d = doc.data();
+                return { id: doc.id, prm: d.prm, projectId: d.projectId, annualConsumption: d.annualConsumption, expiresAt: d.expiresAt, updatedAt: d.updatedAt };
+            });
+            return res.status(200).json({ consents });
+        } catch (e) {
+            console.error('[Enedis Fetch] list_consents error:', e.message);
+            return res.status(500).json({ error: e.message });
+        }
+    }
 
     if (!projectId && !prm) {
         return res.status(400).json({ error: 'Missing projectId or prm' });
