@@ -189,19 +189,19 @@ const ConsumptionChart = ({ data, loading }) => {
         <div className="flex flex-wrap gap-4 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-500 uppercase tracking-widest">
           <div className="flex items-center gap-2">
             <span className="opacity-50">Type:</span>
-            <span className="text-slate-700">{data.daily.meter_reading.reading_type || 'N/A'}</span>
+            <span className="text-slate-700">{typeof data.daily.meter_reading.reading_type === 'string' ? data.daily.meter_reading.reading_type : 'N/A'}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="opacity-50">Unité:</span>
-            <span className="text-slate-700">{data.daily.meter_reading.unit || 'Wh'}</span>
+            <span className="text-slate-700">{typeof data.daily.meter_reading.unit === 'string' ? data.daily.meter_reading.unit : 'Wh'}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="opacity-50">Grandeur:</span>
-            <span className="text-slate-700">{data.daily.meter_reading.measurement_kind || 'N/A'}</span>
+            <span className="text-slate-700">{typeof data.daily.meter_reading.measurement_kind === 'string' ? data.daily.meter_reading.measurement_kind : 'N/A'}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="opacity-50">Agrégation:</span>
-            <span className="text-slate-700">{data.daily.meter_reading.aggregate || 'N/A'}</span>
+            <span className="text-slate-700">{typeof data.daily.meter_reading.aggregate === 'string' ? data.daily.meter_reading.aggregate : 'N/A'}</span>
           </div>
         </div>
       )}
