@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Info, CheckCircle2, AlertCircle, RotateCw, X, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -7,8 +7,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import enedisService from '@/services/enedis';
 import ConsumptionChart from '@/components/enedis/ConsumptionChart';
-import { apiService } from '@/services/api';
-import { cn } from '@/lib/utils';
 
 export default function AdminEnedis() {
   const [prm, setPrm] = useState('');
@@ -19,15 +17,27 @@ export default function AdminEnedis() {
   const [activeTab, setActiveTab] = useState('interrogation');
   const { toast } = useToast();
 
-  // Load consents on mount
-  useEffect(() => {
-    const unsubscribe = apiService.subscribeToEnedisConsents((data) => {
-      setConsents(data);
-    });
-    return () => unsubscribe();
+  // Charger les consentements via API Admin (contourne les règles Firestore)
+  const loadConsents = useCallback(async () => {
+    try {
+      const res = await fetch('/api/enedis/consents');
+      if (res.ok) {
+        const json = await res.json();
+        setConsents(json.consents || []);
+      }
+    } catch (e) {
+      console.warn('Could not load consents:', e.message);
+    }
   }, []);
 
-  // Auto-fetch if redirected with success
+  useEffect(() => {
+    loadConsents();
+    // Rafraîchir toutes les 30 secondes
+    const interval = setInterval(loadConsents, 30000);
+    return () => clearInterval(interval);
+  }, [loadConsents]);
+
+  // Auto-fetch si redirigé avec succès depuis le callback Enedis
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const successPrm = params.get('prm');
@@ -37,9 +47,9 @@ export default function AdminEnedis() {
     if (successPrm) {
       setPrm(successPrm);
       if (enedisStatus === 'success') {
-        // Clean URL after capturing params to avoid re-triggering on refresh
         window.history.replaceState({}, document.title, window.location.pathname);
-        setTimeout(() => handleFetch(successPrm), 500);
+        // Recharger l'historique puis récupérer les données
+        setTimeout(() => { loadConsents(); handleFetch(successPrm); }, 800);
       }
     } else if (enedisStatus === 'error' && msg) {
       toast({ 
@@ -70,6 +80,7 @@ export default function AdminEnedis() {
         setStatus('connected');
         setPrm(targetPrm);
         setActiveTab('interrogation');
+        loadConsents(); // Rafraîchir l'historique après récupération
         toast({ 
           title: "Succès", 
           description: "Données récupérées pour le PRM " + targetPrm 
