@@ -123,7 +123,7 @@ export default function AdminEnedis() {
   };
 
   const handlePdf = useCallback(() => {
-    if (!data) { toast({ title: 'Aucune donnée', description: 'Récupérez d'abord les données.', variant: 'destructive' }); return; }
+    if (!data) { toast({ title: 'Aucune donnée', description: `Récupérez d'abord les données.`, variant: 'destructive' }); return; }
     setIsPrinting(true);
     setTimeout(() => {
       window.print();

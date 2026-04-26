@@ -184,6 +184,28 @@ const ConsumptionChart = ({ data, loading }) => {
         ))}
       </div>
 
+      {/* ── Metadata Info ── */}
+      {data?.daily?.meter_reading && (
+        <div className="flex flex-wrap gap-4 px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+          <div className="flex items-center gap-2">
+            <span className="opacity-50">Type:</span>
+            <span className="text-slate-700">{data.daily.meter_reading.reading_type || 'N/A'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="opacity-50">Unité:</span>
+            <span className="text-slate-700">{data.daily.meter_reading.unit || 'Wh'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="opacity-50">Grandeur:</span>
+            <span className="text-slate-700">{data.daily.meter_reading.measurement_kind || 'N/A'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="opacity-50">Agrégation:</span>
+            <span className="text-slate-700">{data.daily.meter_reading.aggregate || 'N/A'}</span>
+          </div>
+        </div>
+      )}
+
       {/* ── Filtre date range ── */}
       <div className="flex items-center gap-3 bg-slate-50 rounded-2xl px-4 py-3 border border-slate-100">
         <Calendar size={16} className="text-slate-400 shrink-0" />
@@ -237,7 +259,7 @@ const ConsumptionChart = ({ data, loading }) => {
                 {chartData.length} {period === 'day' ? 'jours' : period === 'week' ? 'semaines' : 'mois'}
                 {' · '}{chartData.reduce((s, d) => s + d.kWh, 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} kWh total
               </p>
-              <ResponsiveContainer width="100%" height={400}>
+              <ResponsiveContainer width="100%" height={500}>
                 <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <defs>
                     <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
@@ -278,7 +300,7 @@ const ConsumptionChart = ({ data, loading }) => {
             </div>
           ) : viewMode === 'chart' ? (
             <div className="bg-white rounded-2xl border border-slate-100 p-4">
-              <ResponsiveContainer width="100%" height={400}>
+              <ResponsiveContainer width="100%" height={500}>
                 <AreaChart data={loadData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <defs>
                     <linearGradient id="greenGrad" x1="0" y1="0" x2="0" y2="1">
@@ -314,7 +336,7 @@ const ConsumptionChart = ({ data, loading }) => {
             <div className="bg-slate-50 rounded-2xl p-12 text-center text-slate-400">Puissance max non disponible</div>
           ) : viewMode === 'chart' ? (
             <div className="bg-white rounded-2xl border border-slate-100 p-4">
-              <ResponsiveContainer width="100%" height={400}>
+              <ResponsiveContainer width="100%" height={500}>
                 <LineChart data={maxPwrChart} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="date" fontSize={10} tick={{ fill: '#94a3b8' }} interval={Math.floor(maxPwrChart.length / 10)} />
