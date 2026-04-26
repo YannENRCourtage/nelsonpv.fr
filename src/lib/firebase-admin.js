@@ -35,7 +35,15 @@ export function getFirebaseAdmin() {
             }
             
             // Ensure standard markers are present and formatted correctly
-            if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+            // Also remove internal spaces that might cause ASN.1 parsing errors
+            const header = "-----BEGIN PRIVATE KEY-----";
+            const footer = "-----END PRIVATE KEY-----";
+            
+            if (privateKey.includes(header) && privateKey.includes(footer)) {
+                let body = privateKey.split(header)[1].split(footer)[0];
+                body = body.replace(/[^A-Za-z0-9+/=]/g, ''); // Strips all whitespace and non-base64 chars
+                privateKey = `${header}\n${body}\n${footer}`;
+            } else if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
                 privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
             }
         }
