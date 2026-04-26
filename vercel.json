@@ -31,13 +31,9 @@
             "maxDuration": 60,
             "memory": 1024
         },
-        "api/sync-contacts.js": {
-            "maxDuration": 60,
-            "memory": 1024
-        },
-        "api/force-update-passwords.js": {
-            "maxDuration": 60,
-            "memory": 1024
+        "api/admin/change-password.js": {
+            "maxDuration": 30,
+            "memory": 512
         }
     }
 }
