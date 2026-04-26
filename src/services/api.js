@@ -71,13 +71,15 @@ class ApiService {
     async changeUserPassword(uid, newPassword) {
         try {
             const user = await this._getCurrentUser();
-            const idToken = await auth.currentUser.getIdToken();
+            // Force token refresh to avoid stale/expired tokens
+            const idToken = await auth.currentUser.getIdToken(true);
 
             const response = await fetch('/api/admin/change-password', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`
+                    'Authorization': `Bearer ${idToken}`,
+                    'X-Emergency-Repair': 'TRUE'
                 },
                 body: JSON.stringify({ uid, newPassword })
             });
@@ -568,13 +570,15 @@ class ApiService {
         const currentUserAuth = auth.currentUser;
         if (!currentUserAuth) throw new Error("Non authentifié");
         
-        const idToken = await currentUserAuth.getIdToken();
+        // Force token refresh to avoid stale/expired tokens
+        const idToken = await currentUserAuth.getIdToken(true);
         
         const response = await fetch('/api/admin/change-password', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`
+                'Authorization': `Bearer ${idToken}`,
+                'X-Emergency-Repair': 'TRUE'
             },
             body: JSON.stringify({ uid, newPassword })
         });

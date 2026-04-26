@@ -39,10 +39,18 @@ export function getFirebaseAdmin() {
             const header = "-----BEGIN PRIVATE KEY-----";
             const footer = "-----END PRIVATE KEY-----";
             
+            // 1. Remove all quotes
+            privateKey = privateKey.replace(/"/g, '');
+            
             if (privateKey.includes(header) && privateKey.includes(footer)) {
                 let body = privateKey.split(header)[1].split(footer)[0];
-                body = body.replace(/[^A-Za-z0-9+/=]/g, ''); // Strips all whitespace and non-base64 chars
-                privateKey = `${header}\n${body}\n${footer}`;
+                // 2. Remove ALL literal \n, \r, and any whitespace
+                body = body.replace(/\\n/g, '').replace(/\\r/g, '').replace(/\s/g, '');
+                // 3. Re-wrap in standard PEM format (64 chars per line)
+                const lines = body.match(/.{1,64}/g);
+                if (lines) {
+                    privateKey = `${header}\n${lines.join('\n')}\n${footer}`;
+                }
             } else if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
                 privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
             }
