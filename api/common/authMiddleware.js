@@ -1,4 +1,4 @@
-import { adminAuth } from '../../src/lib/firebase-admin.js'
+import { getAdminAuth } from '../../src/lib/firebase-admin.js'
 
 /**
  * Middleware to verify Firebase ID Token
@@ -17,6 +17,7 @@ export const withAuth = (handler) => async (req, res) => {
 
     try {
         // 2. Verify token
+        const adminAuth = getAdminAuth();
         const decodedToken = await adminAuth.verifyIdToken(idToken)
         
         // 3. Inject user info into request

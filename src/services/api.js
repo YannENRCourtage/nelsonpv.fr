@@ -4,8 +4,8 @@ import * as firestoreService from './firebase/firestore.service';
 import * as authService from './firebase/auth.service';
 import * as commentsService from './firebase/comments.service';
 import * as storageService from './firebase/storage.service';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, onSnapshot, collection, query, writeBatch } from 'firebase/firestore';
-import { db } from '@/config/firebase.js';
+import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp, onSnapshot, collection, query, writeBatch, orderBy } from 'firebase/firestore';
+import { auth, db } from '@/config/firebase.js';
 
 /**
  * Adapter class to connect legacy API calls to Firebase services
@@ -38,6 +38,59 @@ class ApiService {
 
     async logout() {
         return await authService.signOut();
+    }
+
+    async sendPasswordReset(email) {
+        return await authService.sendResetPasswordEmail(email);
+    }
+
+    // ============================================================================
+    // USERS (Admin)
+    // ============================================================================
+
+    async getUsers() {
+        return await firestoreService.listUsers();
+    }
+
+    async getUser(uid) {
+        return await firestoreService.getUser(uid);
+    }
+
+    async createUser(userData) {
+        return await authService.createUser(userData.email, userData.password, userData);
+    }
+
+    async updateUser(uid, data) {
+        return await firestoreService.updateUser(uid, data);
+    }
+
+    async deleteUser(uid) {
+        return await firestoreService.deleteUser(uid);
+    }
+
+    async changeUserPassword(uid, newPassword) {
+        try {
+            const user = await this._getCurrentUser();
+            const idToken = await auth.currentUser.getIdToken();
+
+            const response = await fetch('/api/admin/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`
+                },
+                body: JSON.stringify({ uid, newPassword })
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to change password');
+            }
+            return data;
+        } catch (error) {
+            console.error('Error changing password:', error);
+            throw error;
+        }
     }
 
     // ============================================================================
@@ -81,6 +134,25 @@ class ApiService {
         const tId = tenantId || user.tenantId || 'green-invest';
         const created = await firestoreService.createProject(data, user.uid, tId);
 
+        // SYNC CONTACT
+        try {
+            const clientName = [data.firstName, data.name].filter(Boolean).join(' ').trim() || 'Client sans nom';
+            if (clientName !== 'Client sans nom') {
+                await this.createContact({
+                    name: clientName,
+                    email: data.email || null,
+                    phone: data.phone || null,
+                    city: data.city || null,
+                    address: data.address || null,
+                    zipCode: data.zip || null,
+                    status: data.status || 'Nouveau',
+                    projectId: created.id
+                }, true, tId);
+            }
+        } catch (e) {
+            console.warn("Auto-contact creation failed", e);
+        }
+
         if (!skipLog) {
             await this.logActivity({
                 type: 'project',
@@ -99,13 +171,41 @@ class ApiService {
 
     async updateProject(id, data, skipLog = false, tenantId) {
         const result = await firestoreService.updateProject(id, data);
+        const user = await this._getCurrentUser();
+        const tId = tenantId || data.tenantId || user.tenantId || 'green-invest';
+
+        // SYNC CONTACT on update as well
+        try {
+            const clientName = [data.firstName, data.name].filter(Boolean).join(' ').trim();
+            if (clientName || data.email || data.phone || data.city) {
+                // Fetch full project if name is missing to avoid "Client sans nom"
+                let finalName = clientName;
+                if (!finalName) {
+                    const fullProject = await this.getProject(id);
+                    finalName = [fullProject.firstName, fullProject.name].filter(Boolean).join(' ').trim();
+                }
+
+                if (finalName) {
+                    await this.createContact({
+                        name: finalName,
+                        email: data.email || null,
+                        phone: data.phone || null,
+                        city: data.city || null,
+                        address: data.address || null,
+                        zipCode: data.zip || null,
+                        status: data.status || undefined,
+                        projectId: id
+                    }, true, tId);
+                }
+            }
+        } catch (e) {
+            console.warn("Auto-contact sync failed on update", e);
+        }
 
         // Log update (debounced ideally, but direct for now)
         if (!skipLog) {
             try {
-                const user = await this._getCurrentUser();
                 // Fetch project name if not in data, or use generic
-                // Optimization: if we already have the name in "data", use it. 
                 const projectName = data.name || (await this.getProject(id))?.name || 'Projet';
 
                 await this.logActivity({
@@ -116,7 +216,7 @@ class ApiService {
                     userName: user.firstName || user.displayName,
                     userPhotoURL: user.photoURL,
                     itemId: id,
-                    tenantId: tenantId || data.tenantId || undefined // Priorité au tenant actif ou celui des données
+                    tenantId: tId
                 });
             } catch (e) { console.error("Log fail", e); }
         }
@@ -464,6 +564,29 @@ class ApiService {
         return await authService.sendResetPasswordEmail(email);
     }
 
+    async changeUserPassword(uid, newPassword) {
+        const currentUserAuth = auth.currentUser;
+        if (!currentUserAuth) throw new Error("Non authentifié");
+        
+        const idToken = await currentUserAuth.getIdToken();
+        
+        const response = await fetch('/api/admin/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
+            },
+            body: JSON.stringify({ uid, newPassword })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Erreur lors du changement de mot de passe');
+        }
+        
+        return await response.json();
+    }
+
     // ============================================================================
     // NOTIFICATIONS
     // ============================================================================
@@ -770,6 +893,35 @@ class ApiService {
         } catch (error) {
             console.error('Failed to update suiviBatData:', error);
             throw error;
+        }
+    }
+
+    // ============================================================================
+    // ENEDIS CONSENTS
+    // ============================================================================
+
+    async getEnedisConsents() {
+        try {
+            const q = query(collection(db, 'enedis_consents'), orderBy('updatedAt', 'desc'));
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (error) {
+            console.error("Error getting Enedis consents:", error);
+            return [];
+        }
+    }
+
+    subscribeToEnedisConsents(callback) {
+        try {
+            const q = query(collection(db, 'enedis_consents'), orderBy('updatedAt', 'desc'));
+            return onSnapshot(q, (snapshot) => {
+                const consents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                callback(consents);
+            });
+        } catch (error) {
+            console.error("Error subscribing to Enedis consents:", error);
+            callback([]);
+            return () => { };
         }
     }
 }

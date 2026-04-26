@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { adminDb } from '../../src/lib/firebase-admin.js';
 import { withAuth } from '../common/authMiddleware.js';
 
 // URLs API Enedis Data Connect — Production v5
@@ -15,25 +14,25 @@ const ENEDIS_MAX_POWER_BASE = 'https://gw.ext.prod.api.enedis.fr/metering_data_d
 // Renouvelle le token Enedis si expiré
 async function refreshToken(consentDoc) {
     const consent = consentDoc.data();
-    console.log(`[Enedis Refresh] Renewing token for PRM ${consent.prm}...`);
+    console.log(`[Enedis Refresh] Getting new app token for PRM ${consent.prm}...`);
     const response = await axios.post(ENEDIS_TOKEN_URL, new URLSearchParams({
         grant_type: 'refresh_token',
         refresh_token: consent.refreshToken,
-        client_id: process.env.ENEDIS_CLIENT_ID,
-        client_secret: process.env.ENEDIS_CLIENT_SECRET
+        client_id: (process.env.ENEDIS_CLIENT_ID || "").trim(),
+        client_secret: (process.env.ENEDIS_CLIENT_SECRET || "").trim()
     }).toString(), {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
 
-    const { access_token, refresh_token, expires_in } = response.data;
-    const expiresAt = new Date(Date.now() + expires_in * 1000).toISOString();
+    const { access_token, refresh_token: new_refresh_token, expires_in } = response.data;
+    const expiresAt = new Date(Date.now() + (expires_in || 3600) * 1000).toISOString();
 
     const updateData = {
         accessToken: access_token,
+        refreshToken: new_refresh_token || consent.refreshToken,
         expiresAt,
         updatedAt: new Date().toISOString()
     };
-    if (refresh_token) updateData.refreshToken = refresh_token;
 
     await consentDoc.ref.update(updateData);
     console.log(`[Enedis Refresh] ✅ Token renewed for PRM ${consent.prm}`);
@@ -73,6 +72,15 @@ async function handler(req, res) {
     }
 
     try {
+        let adminDb;
+        try {
+            const fbAdmin = await import('../../src/lib/firebase-admin.js');
+            adminDb = fbAdmin.getAdminDb();
+        } catch (e) {
+            console.error('[Enedis Fetch] Failed to load firebase-admin:', e.message);
+            console.error(e.stack);
+            throw new Error(`Firebase Admin init failed: ${e.message}`);
+        }
         let consentDoc;
 
         // 1. Recherche prioritaire par PRM (identifiant global du compteur)

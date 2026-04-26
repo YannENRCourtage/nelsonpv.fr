@@ -4,7 +4,7 @@ import Footer from './Footer.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useProject } from '../contexts/ProjectContext.jsx';
 import { Button } from './ui/button.jsx';
-import { LogOut, FileDown, Save, Bell, Users, Shield, Grid, TrendingUp, Menu, X, Shuffle, List as ListIcon } from 'lucide-react';
+import { LogOut, FileDown, Save, Bell, Users, Shield, Grid, TrendingUp, Menu, X, Shuffle, List as ListIcon, Activity } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast.js";
 import jsPDF from "jspdf";
 import html2canvas from 'html2canvas';
@@ -507,6 +507,13 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
             )}
 
             {(user?.role === 'admin' || user?.role === 'Administrator') && (
+              <NavLink to="/enedis-admin" className={({ isActive }) => isActive ? 'nav-link active enedis' : 'nav-link enedis'}>
+                <Activity className="w-4 h-4 mr-1 inline-block" />
+                ENEDIS
+              </NavLink>
+            )}
+
+            {(user?.role === 'admin' || user?.role === 'Administrator') && (
               <NavLink to="/admin" className={({ isActive }) => isActive ? 'nav-link active admin' : 'nav-link admin'}>
                 <Shield className="w-4 h-4 mr-1 inline-block" />
                 Admin
@@ -750,6 +757,17 @@ export default function AppLayout() {
               >
                 <ListIcon className="w-4 h-4 mr-2 inline-block" />
                 Suivi dossiers
+              </NavLink>
+            )}
+
+            {(user?.role === 'admin' || user?.role === 'Administrator') && (
+              <NavLink
+                to="/enedis-admin"
+                className={({ isActive }) => isActive ? 'mobile-nav-link active enedis' : 'mobile-nav-link enedis'}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Activity className="w-4 h-4 mr-2 inline-block" />
+                ENEDIS
               </NavLink>
             )}
 

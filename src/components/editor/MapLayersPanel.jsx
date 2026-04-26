@@ -297,6 +297,7 @@ const overlayCategories = {
                 url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=PROTECTEDAREAS.RN&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
                 attribution: 'IGN-F/Géoportail',
                 type: 'tile',
+            },
             'ZAER': {
                 url: 'https://data.geopf.fr/wms-v/ows',
                 layers: 'projets_zones_acceleration_energies_renouvelables_zaer_wms',

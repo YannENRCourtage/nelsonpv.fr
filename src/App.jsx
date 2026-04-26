@@ -16,6 +16,7 @@ import Monday from './pages/Monday.jsx';
 import Finance from './pages/Finance.jsx';
 import DossierTracking from './pages/DossierTracking.jsx';
 import BpAcama from './pages/BpAcama.jsx';
+import AdminEnedis from './pages/AdminEnedis.jsx';
 import { Toaster } from './components/ui/toaster.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
 import { DndProvider } from 'react-dnd';
@@ -153,6 +154,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <BpAcama />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="enedis-admin"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminEnedis />
               </ProtectedRoute>
             }
           />

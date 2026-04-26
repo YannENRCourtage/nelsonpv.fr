@@ -318,26 +318,7 @@ export function ProjectProvider({ children }) {
         }
       }
 
-      // 3. Sauvegarde Contact (Désormais dédupliqué automatiquement par le service API)
-      try {
-        const contactData = {
-          name: [savedProject.firstName, savedProject.name].filter(Boolean).join(' ').trim() || 'Client sans nom',
-          company: null,
-          email: savedProject.email || null,
-          phone: savedProject.phone || null,
-          city: savedProject.city || null,
-          status: savedProject.status || 'Nouveau',
-          projectId: projectId,
-        };
-
-        // apiService.createContact est désormais "intelligent" et gère le merge
-        // avec les contacts existants par email ou nom+ville.
-        await apiService.createContact(contactData, true);
-      } catch (contactError) {
-        console.error("Erreur sauvegarde contact (non-bloquant):", contactError);
-      }
-
-      // 4. Mise à jour du Cache Local (LS) et Liste
+      // 3. Mise à jour du Cache Local (LS) et Liste
       // On recharge la liste officielle depuis le serveur avec le bon tenant
       const refreshedProjects = await apiService.getProjects(activeTenantIdRef.current);
       setProjects(refreshedProjects);

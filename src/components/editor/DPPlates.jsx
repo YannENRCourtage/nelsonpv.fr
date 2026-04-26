@@ -25,19 +25,67 @@ const HEADER_STYLE = {
 
 const LOGO_NELSON = "https://nelsonpv.fr/logo.png"; // À vérifier ou utiliser une image locale
 
-const PlateHeader = ({ title, project }) => (
+const PlateHeader = ({ title, project, showBranding }) => (
     <div style={HEADER_STYLE}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <img src={LOGO_NELSON} alt="Nelson" style={{ height: '12mm' }} />
             <div style={{ borderLeft: '1px solid #ccc', paddingLeft: '10px' }}>
                 <div style={{ fontSize: '10pt', fontWeight: 'bold', color: '#00429d' }}>NELSON</div>
-                <div style={{ fontSize: '8pt', color: '#666' }}>L'énergie solaire simplifiée</div>
+                {showBranding ? (
+                    <div style={{ fontSize: '8pt', color: '#666', fontWeight: 'bold' }}>nelsonpv.fr</div>
+                ) : (
+                    <div style={{ fontSize: '8pt', color: '#666' }}>L'énergie solaire simplifiée</div>
+                )}
             </div>
         </div>
         <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#00429d' }}>{title}</div>
             <div style={{ fontSize: '9pt', color: '#333' }}>
-                Projet : {project?.name} - {project?.city} ({project?.zip})
+                Projet : {project?.firstName} {project?.lastName} - {project?.city} ({project?.zip})
+            </div>
+        </div>
+    </div>
+);
+
+const Footer = ({ project }) => (
+    <div style={{ marginTop: '5mm', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '8pt', color: '#666', borderTop: '1px solid #eee', paddingTop: '3mm' }}>
+        <div>NELSON - nelsonpv.fr</div>
+        <div style={{ fontWeight: 'bold' }}>DOSSIER DE DÉCLARATION PRÉALABLE</div>
+        <div>Date : {new Date().toLocaleDateString('fr-FR')}</div>
+    </div>
+);
+
+/**
+ * PLANCHE 1 : PAGE DE GARDE
+ */
+export const PlateCover = ({ project }) => (
+    <div style={{ ...PAGE_STYLE, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1e293b', color: 'white', border: '15mm solid #1e293b' }} id="dp-plate-cover">
+        <div style={{ backgroundColor: 'white', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', padding: '20mm', color: '#333', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: '10mm', right: '10mm', fontSize: '10pt', color: '#666' }}>{new Date().toLocaleDateString('fr-FR')}</div>
+            
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                <h1 style={{ fontSize: '32pt', fontWeight: 'bold', color: '#00429d', marginBottom: '5mm', letterSpacing: '2px' }}>DÉCLARATION PRÉALABLE</h1>
+                <h2 style={{ fontSize: '18pt', fontWeight: 'bold', color: '#333', marginBottom: '2mm' }}>Installation de stockage batterie CESC Mercury 261</h2>
+                <p style={{ fontSize: '14pt', color: '#666', marginBottom: '15mm' }}>250 kW / 522 kWh — raccordement réseau ENEDIS</p>
+                
+                <div style={{ width: '80mm', height: '1px', backgroundColor: '#ddd', marginBottom: '15mm' }}></div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8mm', textAlign: 'center' }}>
+                    <div>
+                        <div style={{ fontSize: '10pt', color: '#666', textTransform: 'uppercase', marginBottom: '2mm' }}>Maître d'ouvrage :</div>
+                        <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#333' }}>{project?.lastName || project?.name} {project?.firstName}</div>
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '10pt', color: '#666', textTransform: 'uppercase', marginBottom: '2mm' }}>Adresse du projet :</div>
+                        <div style={{ fontSize: '12pt', fontWeight: 'medium', color: '#333' }}>{project?.address}</div>
+                        <div style={{ fontSize: '12pt', fontWeight: 'medium', color: '#333' }}>{project?.zip} {project?.city}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15mm', borderTop: '1px solid #eee', paddingTop: '10mm' }}>
+                <img src={LOGO_NELSON} alt="Nelson" style={{ height: '15mm' }} />
+                <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#00429d', letterSpacing: '1px' }}>{project?.dp_data?.cover_branding || 'NELSONPV.FR'}</div>
             </div>
         </div>
     </div>
@@ -98,51 +146,338 @@ export const PlateMasse = ({ project, captures }) => {
 };
 
 /**
- * PLANCHE 4 : NOTICE & INSERTION
+ * PLANCHE DP3 : PLAN EN COUPE
+ */
+export const PlateSection = ({ project }) => {
+    const batteryName = project?.battery_model || "CESC Mercury 261";
+    return (
+        <div style={PAGE_STYLE} id="dp-plate-section">
+            <PlateHeader title="DP3 : PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION" project={project} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '10mm' }}>
+                <div style={{ position: 'relative', width: '120mm', height: '80mm', borderBottom: '2px solid #333', marginBottom: '15mm' }}>
+                    <div style={{ position: 'absolute', bottom: '-8mm', left: 0, fontSize: '8pt', color: '#666', fontWeight: 'bold' }}>TERRAIN NATUREL EXISTANT (PLAT — PAS DE TERRASSEMENT)</div>
+                    
+                    {/* Dessin Batterie Profil */}
+                    <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '35mm', height: '65mm', backgroundColor: '#fff7ed', border: '1.5px solid #f97316', display: 'flex', flexDirection: 'column', padding: '2mm', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                        <div style={{ fontSize: '7pt', textAlign: 'center', fontWeight: 'bold', color: '#9a3412', marginBottom: '2mm', textTransform: 'uppercase' }}>{batteryName}</div>
+                        <div style={{ flex: 1, border: '1px solid #fdba74', marginBottom: '1mm', borderRadius: '1px' }}></div>
+                        <div style={{ flex: 1, border: '1px solid #fdba74', marginBottom: '1mm', borderRadius: '1px' }}></div>
+                        <div style={{ flex: 1, border: '1px solid #fdba74', marginBottom: '1mm', borderRadius: '1px' }}></div>
+                        
+                        {/* Cotes hauteur */}
+                        <div style={{ position: 'absolute', left: '40mm', top: 0, bottom: 0, width: '10mm', borderLeft: '1px solid #ef4444', borderTop: '1px solid #ef4444', borderBottom: '1px solid #ef4444', display: 'flex', alignItems: 'center' }}>
+                            <span style={{ fontSize: '9pt', color: '#ef4444', fontWeight: 'bold', paddingLeft: '2mm' }}>2,40 m</span>
+                        </div>
+                        
+                        {/* Cotes largeur */}
+                        <div style={{ position: 'absolute', bottom: '-12mm', left: 0, right: 0, height: '5mm', borderBottom: '1px solid #ef4444', borderLeft: '1px solid #ef4444', borderRight: '1px solid #ef4444', display: 'flex', justifyContent: 'center' }}>
+                            <span style={{ fontSize: '9pt', color: '#ef4444', fontWeight: 'bold', paddingTop: '6mm', position: 'absolute' }}>1,35 m</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8mm', width: '90%', marginTop: '10mm' }}>
+                    <div style={{ padding: '4mm', background: '#f8f9fa', border: '1px solid #ddd', borderRadius: '8px' }}>
+                        <h4 style={{ fontSize: '9pt', fontWeight: 'black', color: '#64748b', textTransform: 'uppercase', marginBottom: '2mm', letterSpacing: '0.05em' }}>Spécifications élévation</h4>
+                        <ul style={{ fontSize: '8pt', color: '#334155', listStyle: 'none', padding: 0, margin: 0 }}>
+                            <li style={{ marginBottom: '1mm' }}>• Hauteur totale : 2.40 m</li>
+                            <li style={{ marginBottom: '1mm' }}>• Profondeur : 1.35 m</li>
+                            <li style={{ marginBottom: '1mm' }}>• Largeur : 1.00 m</li>
+                            <li style={{ marginBottom: '1mm' }}>• Fondations : Dalle béton existante (pas de creusement)</li>
+                        </ul>
+                    </div>
+                    <div style={{ padding: '4mm', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px' }}>
+                        <h4 style={{ fontSize: '9pt', fontWeight: 'black', color: '#3b82f6', textTransform: 'uppercase', marginBottom: '2mm', letterSpacing: '0.05em' }}>Contexte du sol</h4>
+                        <p style={{ fontSize: '8pt', color: '#1e3a8a', lineHeight: '1.4', fontStyle: 'italic', margin: 0 }}>
+                            Le projet s'implante sur un terrain horizontal sans modification de l'altimétrie naturelle. 
+                            L'armoire de stockage est simplement posée sur le socle technique.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/**
+ * PLANCHE DP4 : FAÇADES ET TOITURES
+ */
+export const PlateFacades = ({ project, batteryPhoto }) => {
+    const batteryName = project?.battery_model || "CESC Mercury 261";
+    return (
+        <div style={PAGE_STYLE} id="dp-plate-facades">
+            <PlateHeader title="DP4 : PLANS DES FAÇADES ET DES TOITURES" project={project} />
+            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10mm', padding: '5mm' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8mm', justifyContent: 'center' }}>
+                    <div style={{ background: '#f8f9fa', padding: '5mm', borderRadius: '12px', border: '1px solid #e2e8f0', height: '60mm', display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '8pt', fontWeight: 'black', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4mm', letterSpacing: '0.05em' }}>Vue de face (V1)</span>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', borderBottom: '1px solid #cbd5e1', paddingBottom: '4mm' }}>
+                            <div style={{ width: '25mm', height: '38mm', border: '1.5px solid #f97316', backgroundColor: '#fff', position: 'relative' }}>
+                                <div style={{ position: 'absolute', inset: '2mm 2mm auto 2mm', height: '1mm', backgroundColor: '#fff7ed', borderBottom: '0.5px solid #fdba74' }}></div>
+                                <div style={{ position: 'absolute', top: '10mm', inset: 'auto 2mm auto 2mm', height: '1mm', backgroundColor: '#fff7ed', borderBottom: '0.5px solid #fdba74' }}></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style={{ background: '#f8f9fa', padding: '5mm', borderRadius: '12px', border: '1px solid #e2e8f0', height: '60mm', display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '8pt', fontWeight: 'black', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4mm', letterSpacing: '0.05em' }}>Vue de côté (V2)</span>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', borderBottom: '1px solid #cbd5e1', paddingBottom: '4mm' }}>
+                            <div style={{ width: '35mm', height: '38mm', border: '1.5px solid #f97316', backgroundColor: '#fff' }}></div>
+                        </div>
+                    </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div style={{ flex: 1, backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #dbeafe', overflow: 'hidden', position: 'relative', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
+                        <img src={batteryPhoto || "https://nelsonpv.fr/mercury_product_photo.jpg"} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Aspect" />
+                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4mm', background: 'linear-gradient(transparent, rgba(0,0,0,0.8))', color: '#fff' }}>
+                            <p style={{ fontSize: '9pt', fontWeight: 'black', textTransform: 'uppercase', margin: 0, letterSpacing: '0.1em' }}>{batteryName}</p>
+                            <p style={{ fontSize: '7pt', opacity: 0.8, fontStyle: 'italic', margin: '1mm 0 0 0' }}>Photographie du produit fini Nelson Mercury</p>
+                        </div>
+                    </div>
+                    <div style={{ marginTop: '6mm', padding: '4mm', background: '#fffbeb', borderRadius: '8px', border: '1px solid #fef3c7' }}>
+                        <p style={{ fontSize: '8pt', color: '#92400e', fontWeight: 'bold', margin: 0, lineHeight: '1.4' }}>
+                            Coloris standard : RAL 7016 (Gris anthracite). 
+                            Matériau : Acier haute résistance thermolaqué.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/**
+ * PLANCHE DP8.1 : NOTICE D'INSERTION
+ */
+export const PlateInsertionNotice = ({ project }) => {
+    const data = project?.dp_data || {};
+    const batteryName = project?.battery_model || "CESC Mercury 261";
+    
+    return (
+        <div style={PAGE_STYLE} id="dp-plate-notice-insertion">
+            <PlateHeader title="DP8.1 : NOTICE DÉCRIVANT LE TERRAIN ET LE PROJET" project={project} showBranding={true} />
+            <div style={{ flex: 1, padding: '10mm', overflowY: 'auto' }}>
+                <div style={{ columnCount: 2, columnGap: '15mm', fontSize: '9pt', lineHeight: '1.6', color: '#334155' }}>
+                    
+                    <section style={{ breakInside: 'avoid', marginBottom: '8mm' }}>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '3mm', fontSize: '10pt', fontWeight: 'black', color: '#2563eb', textTransform: 'uppercase', marginBottom: '3mm', borderBottom: '1.5px solid #dbeafe', paddingBottom: '1.5mm' }}>
+                            <span style={{ background: '#2563eb', color: '#fff', width: '6mm', height: '6mm', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8pt' }}>1</span>
+                            Objet de la demande
+                        </h3>
+                        <p style={{ fontWeight: 'bold', color: '#1e293b', fontStyle: 'italic', marginBottom: '3mm' }}>
+                            {data.notice_objat || `Installation d'une unité de stockage par batteries stationnaires de type ${batteryName} sur dalle béton.`}
+                        </p>
+                        <p>
+                            Le présent dossier concerne la mise en place d'une infrastructure de stockage d'énergie destinée à stabiliser le réseau électrique local et à optimiser l'injection d'énergies renouvelables.
+                        </p>
+                    </section>
+
+                    <section style={{ breakInside: 'avoid', marginBottom: '8mm' }}>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '3mm', fontSize: '10pt', fontWeight: 'black', color: '#2563eb', textTransform: 'uppercase', marginBottom: '3mm', borderBottom: '1.5px solid #dbeafe', paddingBottom: '1.5mm' }}>
+                            <span style={{ background: '#2563eb', color: '#fff', width: '6mm', height: '6mm', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8pt' }}>2</span>
+                            État initial du terrain
+                        </h3>
+                        <p>
+                            Le site est situé à l'adresse suivante : <span style={{ fontWeight: 'bold' }}>{project?.address || "—"}</span>.
+                        </p>
+                        <p style={{ marginTop: '2mm' }}>
+                            Le terrain d'implantation est actuellement une zone plane, déjà artificialisée ou destinée à un usage technique au sein de la parcelle cadastrale. 
+                            La topographie est horizontale, ne nécessitant aucun terrassement ou modification du profil naturel du sol.
+                        </p>
+                    </section>
+
+                    <section style={{ breakInside: 'avoid', marginBottom: '8mm' }}>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '3mm', fontSize: '10pt', fontWeight: 'black', color: '#2563eb', textTransform: 'uppercase', marginBottom: '3mm', borderBottom: '1.5px solid #dbeafe', paddingBottom: '1.5mm' }}>
+                            <span style={{ background: '#2563eb', color: '#fff', width: '6mm', height: '6mm', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8pt' }}>3</span>
+                            Le projet architectural
+                        </h3>
+                        <p>
+                            Le projet prévoit l'installation d'une armoire technique de <span style={{ fontWeight: 'bold' }}>2,40m de hauteur</span>. 
+                            L'emprise au sol est d'environ <span style={{ fontWeight: 'bold' }}>1,35 m²</span> par unité.
+                        </p>
+                        <p style={{ marginTop: '2mm' }}>
+                            L'aspect extérieur est sobre (RAL 7016 gris anthracite), conçu pour une intégration discrète. 
+                            Les matériaux utilisés sont pérennes et ne génèrent aucune pollution visuelle significative.
+                        </p>
+                    </section>
+
+                    <section style={{ breakInside: 'avoid', marginBottom: '8mm' }}>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '3mm', fontSize: '10pt', fontWeight: 'black', color: '#2563eb', textTransform: 'uppercase', marginBottom: '3mm', borderBottom: '1.5px solid #dbeafe', paddingBottom: '1.5mm' }}>
+                            <span style={{ background: '#2563eb', color: '#fff', width: '6mm', height: '6mm', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8pt' }}>4</span>
+                            Raccordement au réseau
+                        </h3>
+                        <p>
+                            L'unité sera raccordée au réseau de distribution publique (ENEDIS) via une liaison souterraine basse tension. 
+                            Le tracé est optimisé pour emprunter les voiries existantes du site, limitant l'impact environnemental.
+                        </p>
+                    </section>
+
+                    <section style={{ breakInside: 'avoid', marginBottom: '8mm' }}>
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '3mm', fontSize: '10pt', fontWeight: 'black', color: '#2563eb', textTransform: 'uppercase', marginBottom: '3mm', borderBottom: '1.5px solid #dbeafe', paddingBottom: '1.5mm' }}>
+                            <span style={{ background: '#2563eb', color: '#fff', width: '6mm', height: '6mm', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8pt' }}>5</span>
+                            Impact environnemental
+                        </h3>
+                        <p>
+                            Ce dispositif de stockage BESS participe activement à la transition énergétique en favorisant l'intégration des énergies renouvelables intermittentes. 
+                        </p>
+                        <div style={{ marginTop: '4mm', padding: '3mm', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #dcfce7', color: '#166534', fontWeight: 'bold', fontStyle: 'italic' }}>
+                            Note d'insertion : {data.notice_insertion || "L'implantation compacte et le choix des coloris assurent une intégration harmonieuse au paysage existant."}
+                        </div>
+                    </section>
+                </div>
+            </div>
+            <Footer project={project} />
+        </div>
+    );
+};
+
+/**
+ * PLANCHE DP5 : REPRÉSENTATION DE L'ASPECT EXTÉRIEUR
+ */
+export const PlateAspect = ({ project, batteryPhoto }) => {
+    const batteryName = project?.battery_model || "CESC Mercury 261";
+    return (
+        <div style={PAGE_STYLE} id="dp-plate-aspect">
+            <PlateHeader title="DP5 : REPRÉSENTATION DE L'ASPECT EXTÉRIEUR" project={project} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8mm', padding: '5mm' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '10mm', flex: 1 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5mm' }}>
+                        <div style={{ border: '1px solid #e2e8f0', borderRadius: '24px', overflow: 'hidden', flex: 1, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+                            <img 
+                                src={batteryPhoto || "https://nelsonpv.fr/mercury_product_photo.jpg"} 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                alt="Produit" 
+                            />
+                        </div>
+                        <div style={{ fontSize: '9pt', color: '#64748b', fontStyle: 'italic', textAlign: 'center' }}>
+                            Photographie de l'unité de stockage {batteryName} (Finition Standard)
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6mm' }}>
+                        <div style={{ background: '#f8f9fa', padding: '6mm', borderRadius: '16px', border: '1px solid #e2e8f0', flex: 1 }}>
+                            <h4 style={{ fontSize: '10pt', fontWeight: 'black', color: '#1e3a8a', marginBottom: '4mm', borderBottom: '1.5px solid #dbeafe', paddingBottom: '2mm', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Matériaux et Finitions</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4mm' }}>
+                                <div style={{ background: '#fff', padding: '3mm', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                                    <p style={{ fontSize: '8pt', fontWeight: 'bold', color: '#0f172a', margin: '0 0 1mm 0' }}>Structure</p>
+                                    <p style={{ fontSize: '7.5pt', color: '#64748b', margin: 0 }}>Châssis en acier haute résistance, traitement anti-corrosion C5.</p>
+                                </div>
+                                <div style={{ background: '#fff', padding: '3mm', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                                    <p style={{ fontSize: '8pt', fontWeight: 'bold', color: '#0f172a', margin: '0 0 1mm 0' }}>Coloris</p>
+                                    <p style={{ fontSize: '7.5pt', color: '#64748b', margin: 0 }}>Finition RAL 7016 Gris Anthracite, aspect mat anti-réflexion.</p>
+                                </div>
+                                <div style={{ background: '#fff', padding: '3mm', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                                    <p style={{ fontSize: '8pt', fontWeight: 'bold', color: '#0f172a', margin: '0 0 1mm 0' }}>Technique</p>
+                                    <p style={{ fontSize: '7.5pt', color: '#64748b', margin: 0 }}>Grilles de ventilation avec protection IP55 et filtres.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div style={{ background: '#eff6ff', padding: '5mm', borderRadius: '16px', border: '1px solid #bfdbfe' }}>
+                            <h4 style={{ fontSize: '9pt', fontWeight: 'bold', color: '#1e40af', marginBottom: '3mm' }}>Spécifications unitaires</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2mm' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8pt' }}>
+                                    <span style={{ color: '#1e3a8a' }}>Puissance max.</span>
+                                    <span style={{ fontWeight: 'bold', color: '#2563eb' }}>250 kW</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8pt' }}>
+                                    <span style={{ color: '#1e3a8a' }}>Capacité nominale</span>
+                                    <span style={{ fontWeight: 'bold', color: '#2563eb' }}>522 kWh</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8pt' }}>
+                                    <span style={{ color: '#1e3a8a' }}>Poids total</span>
+                                    <span style={{ fontWeight: 'bold', color: '#2563eb' }}>~ 4.2 tonnes</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <Footer project={project} />
+        </div>
+    );
+};
+
+/**
+ * PLANCHE DP6 : DOCUMENT GRAPHIQUE D'INSERTION
+ */
+export const PlateInsertion = ({ project, captures }) => (
+    <div style={PAGE_STYLE} id="dp-plate-insertion">
+        <PlateHeader title="DP6 : DOCUMENT GRAPHIQUE D'INSERTION" project={project} />
+        <div style={{ flex: 1, display: 'grid', gridTemplateRows: '1fr 1fr', gap: '5mm' }}>
+            <div style={{ border: '1px solid #ddd', position: 'relative', overflow: 'hidden', borderRadius: '8px' }}>
+                <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '1mm 3mm', fontSize: '9pt', fontWeight: 'bold', zIndex: 10, borderRadius: '4px' }}>État Initial (Photo Avant)</div>
+                <img src={captures?.photo_avant || captures?.satellite} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Avant" />
+            </div>
+            <div style={{ border: '1px solid #00429d', borderSize: '2px', position: 'relative', overflow: 'hidden', borderRadius: '8px' }}>
+                <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(0,66,157,0.8)', color: 'white', padding: '1mm 3mm', fontSize: '9pt', fontWeight: 'bold', zIndex: 10, borderRadius: '4px' }}>Projet Inséré (Photo Après)</div>
+                <img src={captures?.photo_apres || captures?.masse_projet} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Après" />
+            </div>
+        </div>
+        <div style={{ marginTop: '3mm', fontSize: '8pt', color: '#666', textAlign: 'center' }}>
+            Simulation de l'intégration paysagère des unités de stockage stationnaire.
+        </div>
+    </div>
+);
+
+/**
+ * PLANCHE DP7 : PHOTO ENVIRONNEMENT PROCHE
+ */
+export const PlateEnvProche = ({ project, captures }) => (
+    <div style={PAGE_STYLE} id="dp-plate-env-proche">
+        <PlateHeader title="DP7 : PHOTOGRAPHIE DE L'ENVIRONNEMENT PROCHE" project={project} />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5mm' }}>
+            <div style={{ border: '1px solid #ddd', flex: 1, position: 'relative', overflow: 'hidden', borderRadius: '8px' }}>
+                <img src={captures?.env_proche || captures?.ign} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Env Proche" />
+                <div style={{ position: 'absolute', bottom: '5mm', right: '5mm', background: 'white', padding: '2mm 4mm', border: '1px solid #00429d', borderRadius: '4px', fontSize: '10pt', fontWeight: 'bold', color: '#00429d' }}>Vue P1</div>
+            </div>
+            <div style={{ fontSize: '9pt', color: '#666', fontStyle: 'italic' }}>
+                Vue de l'emplacement du projet depuis la limite parcellaire immédiate.
+            </div>
+        </div>
+    </div>
+);
+
+/**
+ * PLANCHE DP8 : PHOTO ENVIRONNEMENT LOINTAIN
+ */
+export const PlateEnvLointain = ({ project, captures }) => (
+    <div style={PAGE_STYLE} id="dp-plate-env-lointain">
+        <PlateHeader title="DP8 : PHOTOGRAPHIE DE L'ENVIRONNEMENT LOINTAIN" project={project} />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5mm' }}>
+            <div style={{ border: '1px solid #ddd', flex: 1, position: 'relative', overflow: 'hidden', borderRadius: '8px' }}>
+                <img src={captures?.env_lointain || captures?.satellite} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Env Lointain" />
+                <div style={{ position: 'absolute', bottom: '5mm', right: '5mm', background: 'white', padding: '2mm 4mm', border: '1px solid #00429d', borderRadius: '4px', fontSize: '10pt', fontWeight: 'bold', color: '#00429d' }}>Vue P2</div>
+            </div>
+            <div style={{ fontSize: '9pt', color: '#666', fontStyle: 'italic' }}>
+                Vue panoramique intégrant le site dans son paysage environnant.
+            </div>
+        </div>
+    </div>
+);
+
+/**
+ * Ancienne Planche Notice (Maintenue pour compatibilité mais découpée)
  */
 export const PlateNotice = ({ project, captures }) => {
     return (
         <div style={PAGE_STYLE} id="dp-plate-notice">
-            <PlateHeader title="DP4 : NOTICE & INSERTION" project={project} />
+            <PlateHeader title="DÉTAILS TECHNIQUES & MATÉRIAUX" project={project} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '8mm', flex: 1 }}>
-                <div style={{ spaceY: '4mm' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4mm' }}>
                     <h3 style={{ fontSize: '12pt', fontWeight: 'bold', color: '#00429d', marginBottom: '3mm' }}>Notice Descriptive</h3>
                     <p style={{ fontSize: '9pt', lineHeight: '1.4', textAlign: 'justify' }}>
-                        Le projet consiste en l'installation d'une centrale photovoltaïque en autoconsommation. 
-                        Les panneaux seront de type monocristallin avec une finition <b>Full Black (RAL 9005)</b> pour une insertion optimale.
-                    </p>
-                    <p style={{ fontSize: '9pt', lineHeight: '1.4', textAlign: 'justify', marginTop: '3mm' }}>
-                        En complément, une solution de stockage d'énergie est prévue avec l'installation de <b>2 batteries Mercury 261</b>. 
-                        Ces unités seront positionnées sur une dalle béton à proximité du point de livraison, minimisant l'impact visuel et sonore.
+                        L'installation comprend la pose de <b>{project?.batteryQuantity || 4} batteries</b> sur une dalle béton préfabriquée. 
+                        Les unités sont conçues pour une insertion paysagère discrète avec des teintes neutres (RAL 7016 / 9005).
                     </p>
                     <div style={{ marginTop: '5mm', padding: '3mm', background: '#f0f7ff', border: '1px solid #cce3ff', borderRadius: '4px' }}>
                         <h4 style={{ fontSize: '10pt', fontWeight: 'bold', color: '#00429d', marginBottom: '2mm' }}>Matériaux & Teintes</h4>
                         <ul style={{ fontSize: '8pt', paddingLeft: '15px' }}>
-                            <li>Toiture : Bac Acier RAL 7016 (Gris Anthracite)</li>
-                            <li>Panneaux : Verre traité antireflet, cadre noir RAL 9005</li>
-                            <li>Stockage : Coffrets blancs/verts Mercury 261</li>
+                            <li>Stockage : Coffrets Mercury (Teintes RAL 7016 / 9005)</li>
+                            <li>Support : Dalle béton gris naturel ou préfabriquée</li>
                         </ul>
                     </div>
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateRows: '1fr 1fr', gap: '4mm' }}>
-                    <div style={{ border: '1px solid #ddd', position: 'relative' }}>
-                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: 'white', padding: '1mm', fontSize: '8pt', textAlign: 'center' }}>Photo Avant (Insertion)</div>
-                        <img src={captures?.photo_avant} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Avant" />
-                    </div>
-                    <div style={{ border: '1px solid #ddd', position: 'relative' }}>
-                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,100,0,0.5)', color: 'white', padding: '1mm', fontSize: '8pt', textAlign: 'center' }}>Photo Après (Insertion)</div>
-                        <img src={captures?.photo_apres || captures?.photo_projet} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Après" />
-                    </div>
-                </div>
-            </div>
-            
-            {/* Visual Mercury 261 integration */}
-            <div style={{ marginTop: '5mm', display: 'flex', gap: '5mm', alignItems: 'center', borderTop: '1px solid #eee', paddingTop: '3mm' }}>
-                <div style={{ fontSize: '9pt', fontWeight: 'bold', color: '#666' }}>Détail Stockage :</div>
-                <img src="/images/mercury261/batterie1.png" style={{ height: '25mm' }} alt="Mercury 261" />
-                <div style={{ fontSize: '8pt', fontStyle: 'italic' }}>
-                    Unité Mercury 261 sur dalle béton préfabriquée.
+                <div style={{ border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
+                    <img src={captures?.photo_projet || captures?.masse_projet} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Détail" />
                 </div>
             </div>
         </div>

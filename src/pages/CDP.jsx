@@ -8,12 +8,12 @@ import { useToast } from "@/components/ui/use-toast";
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { PDFViewer } from '../components/PDFViewer';
 import { signDocument } from '../services/docusignService';
-import html2canvas from 'html2canvas';
 import { PlateSituation, PlateMasse, PlateNotice } from '../components/editor/DPPlates';
+import html2canvas from 'html2canvas';
 
 export default function CDP() {
     const { user } = useAuth();
-    const { projects } = useProjects();
+    const { projects, updateProject, saveProject, setProject } = useProjects();
     const { toast } = useToast();
 
     // États
@@ -126,9 +126,12 @@ export default function CDP() {
         [projects, selectedProjectId]
     );
 
-    // Remplir formulaire
+    // Remplir formulaire et charger projet dans le contexte
     useEffect(() => {
         if (targetProject) {
+            // Charger le projet sélectionné dans l'état 'project' du context
+            setProject(targetProject);
+            
             setClientData({
                 nom: targetProject.name || '',
                 prenom: targetProject.firstName || '',
@@ -170,7 +173,7 @@ export default function CDP() {
                 champLibre4: ''
             });
         }
-    }, [targetProject]);
+    }, [targetProject, setProject]);
 
     // Calcul surface
     useEffect(() => {
@@ -409,7 +412,13 @@ export default function CDP() {
                         for (const id of plateIds) {
                             const el = document.getElementById(id);
                             if (el) {
-                                const canvas = await html2canvas(el, { scale: 2 });
+                                // FIX: Ajout de useCORS pour les images hébergées sur Firebase Storage
+                                const canvas = await html2canvas(el, { 
+                                    scale: 2,
+                                    useCORS: true,
+                                    allowTaint: false,
+                                    logging: false
+                                });
                                 plates[id] = canvas.toDataURL('image/png');
                             }
                         }
@@ -426,8 +435,6 @@ export default function CDP() {
                             city: clientData.ville
                         };
                         
-                        // generateDPDossier télécharge déjà le fichier, mais on veut peut-être le blob pour docusign
-                        // Pour l'instant, on laisse le téléchargement tel quel dans le service
                         await generateDPDossier(projectWithForm, plates);
                         continue; 
                     } else {
@@ -517,7 +524,7 @@ export default function CDP() {
                     <p className="text-slate-500 mt-1">Génération de documents & Signature électronique</p>
                 </div>
 
-                {/* LAYOUT 3 COLONNES */}
+                {/* CONTENT AREA */}
                 <div className="grid grid-cols-3 gap-8 items-stretch">
 
                     {/* ========== VOLET 1 : CLIENT ========== */}

@@ -43,6 +43,35 @@ class CadastreService {
             throw error;
         }
     }
+    /**
+     * Récupère les informations de contact de la mairie via l'API Établissements Publics.
+     * @param {string} codeInsee Code INSEE de la commune
+     * @returns {Promise<Object>} Détails de la mairie
+     */
+    async fetchMairie(codeInsee) {
+        try {
+            const url = `https://etablissements-publics.api.gouv.fr/v3/communes/${codeInsee}/mairie`;
+            const response = await fetch(url);
+            if (!response.ok) return null;
+            const data = await response.json();
+            if (data && data.features && data.features.length > 0) {
+                const props = data.features[0].properties;
+                return {
+                    nom: props.nom,
+                    email: props.email,
+                    telephone: props.telephone,
+                    adresse: props.adresses?.[0]?.lignes?.[0] || '',
+                    code_postal: props.adresses?.[0]?.codePostal || '',
+                    commune: props.adresses?.[0]?.commune || '',
+                    horaires: props.horaires || []
+                };
+            }
+            return null;
+        } catch (error) {
+            console.error("fetchMairie Error:", error);
+            return null;
+        }
+    }
 }
 
 export const cadastreService = new CadastreService();

@@ -247,6 +247,18 @@ export default function Admin() {
     }
   };
 
+  const handleDelete = async (uid) => {
+    if (!window.confirm("Supprimer cet utilisateur ? (Le compte Auth Firebase restera actif, seul le profil Firestore sera supprimé)")) return;
+    try {
+      await apiService.deleteUser(uid);
+      toast({ title: "Succès", description: "Utilisateur supprimé." });
+      fetchUsers();
+    } catch (error) {
+      console.error("Delete failed:", error);
+      toast({ title: "Erreur", description: "Échec de la suppression.", variant: "destructive" });
+    }
+  };
+
   const handleInitOdooStages = async () => {
     if (!window.confirm("Cela va réinitialiser les colonnes ODOO pour TOUS les utilisateurs. Continuer ?")) return;
     try {
@@ -474,8 +486,70 @@ export default function Admin() {
               />
             </div>
 
-            {/* Password Field - ONLY for NEW users, OR replaced by a reset button for existing ones */}
-            {!editingUser ? (
+            {/* Password Field - NEW behavior: Allow direct change for admins */}
+            {editingUser ? (
+              <div className="space-y-2 border-t pt-3">
+                <Label htmlFor="password">Changer le mot de passe (Admin)</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      placeholder="Nouveau mot de passe"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 h-4 text-slate-400" /> : <Eye className="h-4 h-4 text-slate-400" />}
+                    </Button>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                    disabled={!formData.password || formData.password.length < 6}
+                    onClick={async () => {
+                      if (!window.confirm(`Changer le mot de passe de ${editingUser.displayName || editingUser.email} ?`)) return;
+                      try {
+                        await apiService.changeUserPassword(editingUser.id, formData.password);
+                        toast({ title: "Succès", description: "Mot de passe mis à jour !" });
+                        setFormData(prev => ({ ...prev, password: '' }));
+                      } catch (err) {
+                        toast({ title: "Erreur", description: err.message, variant: "destructive" });
+                      }
+                    }}
+                  >
+                    Mettre à jour
+                  </Button>
+                </div>
+                <div className="flex justify-between items-center bg-slate-50 p-2 rounded text-xs text-slate-500">
+                  <span>Ou envoyer un lien par email :</span>
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    onClick={async () => {
+                      try {
+                        await apiService.sendPasswordReset(formData.email);
+                        toast({ title: "Email envoyé", description: `Un lien a été envoyé à ${formData.email}` });
+                      } catch (err) {
+                        toast({ title: "Erreur", description: err.message, variant: "destructive" });
+                      }
+                    }}
+                  >
+                    Envoyer lien reset
+                  </Button>
+                </div>
+              </div>
+            ) : (
               <div className="space-y-2">
                 <Label htmlFor="password">Mot de passe</Label>
                 <div className="relative">
@@ -497,27 +571,6 @@ export default function Admin() {
                     {showPassword ? <EyeOff className="h-4 h-4 text-slate-400" /> : <Eye className="h-4 h-4 text-slate-400" />}
                   </Button>
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-2 p-3 bg-blue-50 rounded-lg border border-blue-100 italic text-sm text-blue-700 flex justify-between items-center">
-                <span>Le mot de passe ne peut être modifié que par l'utilisateur.</span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-7 border-blue-200 hover:bg-blue-100"
-                  onClick={async () => {
-                    try {
-                      await apiService.sendPasswordReset(formData.email);
-                      toast({ title: "Email envoyé", description: `Un lien de réinitialisation a été envoyé à ${formData.email}` });
-                    } catch (err) {
-                      toast({ title: "Erreur", description: "Échec de l'envoi : " + err.message, variant: "destructive" });
-                    }
-                  }}
-                >
-                  <Mail className="w-3 h-3 mr-1" />
-                  Réinitialiser
-                </Button>
               </div>
             )}
             {/* TENANT SELECTOR */}

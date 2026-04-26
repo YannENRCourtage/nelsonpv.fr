@@ -9,6 +9,7 @@ import SubstationProximityCards from "../components/editor/SubstationProximityCa
 import ShadowMapTab from "../components/ShadowMapTab.jsx";
 import ChatBox from "../components/editor/ChatBox.jsx";
 import UrbanismeTab from "../components/editor/UrbanismeTab.jsx";
+import { PlateSituation, PlateMasse, PlateNotice } from '../components/editor/DPPlates';
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -920,8 +921,8 @@ export default function ProjectEditor() {
 
                             try {
                               const [r1, r2] = await Promise.all([
-                                fetch(`/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`),
-                                fetch(`/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${opp}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`)
+                                fetch(`/api/pvgis?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`),
+                                fetch(`/api/pvgis?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${opp}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`)
                               ]);
                               const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
                               const getEy = d => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
@@ -990,8 +991,8 @@ export default function ProjectEditor() {
 
                                 try {
                                   const [r1, r2] = await Promise.all([
-                                    fetch(`/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`),
-                                    fetch(`/api/pvgis-proxy?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${opp}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`)
+                                    fetch(`/api/pvgis?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${aspect}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`),
+                                    fetch(`/api/pvgis?lat=${lat}&lon=${lon}&peakpower=1&loss=${pvgisLoss}&angle=${angle}&aspect=${opp}&outputformat=json&mountingplace=${pvgisMounting}&pvtechchoice=crystSi`)
                                   ]);
                                   const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
                                   const getEy = d => d?.outputs?.totals?.fixed?.E_y || d?.outputs?.totals?.E_y;
@@ -1635,17 +1636,27 @@ export default function ProjectEditor() {
 
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('urbanisme'); }}
-              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'urbanisme'
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('urbanisme_dp'); }}
+              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'urbanisme_dp'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
                 }`}
               tabIndex={-1}
             >
-              Urbanisme
+              Urbanisme (DP)
             </button>
 
-
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('geoportail'); }}
+              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'geoportail'
+                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+              tabIndex={-1}
+            >
+              Géoportail Urbanisme
+            </button>
 
             <button
               type="button"
@@ -1745,10 +1756,10 @@ export default function ProjectEditor() {
               </button>
             </div>
           </div>
-          <div className="rounded-2xl bg-white shadow-sm overflow-hidden flex-1 min-h-[60vh] lg:h-[750px]">
-            {/* Onglet Carte */}
-            {activeTab === 'map' && (
-              <div className="w-full flex flex-col h-full">
+          <div className="rounded-2xl bg-white shadow-sm overflow-hidden flex-1 min-h-[60vh] lg:h-[750px] relative">
+            {/* Onglet Carte - On le garde monté si l'onglet DP est actif pour permettre les captures en arrière-plan */}
+            {(activeTab === 'map' || activeTab === 'urbanisme_dp') && (
+              <div className={`w-full h-full flex flex-col ${activeTab !== 'map' ? 'absolute inset-0 pointer-events-none opacity-0' : ''}`}>
                 <div className="flex-1 min-h-[55vh] lg:min-h-0">
                   <MapEditor
                     key={`${projectId}-${remountKey}`}
@@ -1898,19 +1909,71 @@ export default function ProjectEditor() {
             )}
 
             {/* Onglet Urbanisme (DP) */}
-            {activeTab === 'urbanisme' && (
-              <UrbanismeTab 
-                project={project}
-                updateProject={updateProject}
-                onGenerateDP={async () => {
-                   // Appel au service de génération DP
-                   console.log("Génération DP demandée...");
-                   const { generateDPDossier } = await import("@/services/DPGeneratorService");
-                   await generateDPDossier(project);
-                }}
-              />
+            {activeTab === 'urbanisme_dp' && (
+              <div className='w-full h-full overflow-y-auto bg-gray-50'>
+                <div className="p-4">
+                  <UrbanismeTab
+                    project={project}
+                    updateProject={updateProject}
+                    setActiveTab={setActiveTab}
+                    onGenerateDP={async () => {
+                      const { generateDPDossier } = await import("@/services/DPGeneratorService");
+                      await generateDPDossier(project);
+                    }}
+                  />
+                </div>
+              </div>
             )}
 
+            {/* Onglet Géoportail Urbanisme - Reverted to old behavior: show map in urbanisme mode */}
+            {(activeTab === 'geoportail') && (
+              <div className="w-full flex flex-col h-full relative">
+                <div className="flex-1">
+                  <MapEditor
+                    isUrbanismeMode={true}
+                    key={`geoportail-${projectId}-${remountKey}`}
+                    onAddressFound={handleAddressFound}
+                    onAddressSearched={handleAddressSearched}
+                    project={project}
+                    setProject={setProject}
+                    setIsAzimuthDefaulted={setIsAzimuthDefaulted}
+                    symbolToPlace={symbolToPlace}
+                    setSymbolToPlace={setSymbolToPlace}
+                    isochroneConfig={isochroneConfig}
+                    activeLayers={activeLayers}
+                    companies={companies}
+                    selectedCompany={selectedCompany}
+                    setSelectedCompany={setSelectedCompany}
+                    isRoutingActive={isRoutingActive}
+                    setIsRoutingActive={setIsRoutingActive}
+                    routingPoints={routingPoints}
+                    setRoutingPoints={setRoutingPoints}
+                  />
+                </div>
+                {/* Instructions Overlay */}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur shadow-lg border border-blue-200 p-3 rounded-xl flex items-center gap-3">
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <Building className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">Mode Géoportail</p>
+                    <p className="text-[11px] text-slate-600 italic">Cliquez sur une parcelle pour ouvrir sa fiche d'urbanisme en automatique.</p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="ml-2 border-blue-200 text-blue-600"
+                    onClick={() => {
+                       const [lat, lng] = project?.gps?.split(',').map(v => v.trim()) || [48.8534, 2.3488];
+                       window.open(`https://www.geoportail-urbanisme.gouv.fr/map/#tile=1&lon=${lng}&lat=${lat}&zoom=16&labels=1`, '_blank');
+                    }}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-1" />
+                    Ouvrir direct
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Onglet Street View */}
             {activeTab === 'streetview' && (
@@ -2397,6 +2460,16 @@ export default function ProjectEditor() {
           </div>
         </div>
       </div >
+      {/* Hidden container for actual rendering of DP plates */}
+      <div className="fixed left-[-9999px] top-0 pointer-events-none">
+        {project && (
+          <>
+            <PlateSituation project={project} captures={project.urbanisme_captures || captures} />
+            <PlateMasse project={project} captures={project.urbanisme_captures || captures} />
+            <PlateNotice project={project} captures={project.urbanisme_captures || captures} />
+          </>
+        )}
+      </div>
     </div >
   );
 }

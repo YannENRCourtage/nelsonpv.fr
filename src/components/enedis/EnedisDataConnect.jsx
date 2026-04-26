@@ -96,6 +96,9 @@ const EnedisDataConnect = ({
             </p>
           </div>
           <ul className="space-y-1.5 pl-5">
+            <li className="text-[11px] text-blue-900 leading-snug italic mb-1 border-b border-blue-100 pb-1">
+              Enedis est le gestionnaire du réseau public de distribution d’électricité sur 95% du territoire français continental.
+            </li>
             <li className="text-[11px] text-blue-900 leading-snug">
               <span className="font-medium">Finalité :</span> Ce service vous permet de visualiser et d'analyser la courbe de charge et la consommation journalière du client pour dimensionner votre installation photovoltaïque.
             </li>

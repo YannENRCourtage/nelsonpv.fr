@@ -67,15 +67,34 @@ export async function generateDPDossier(project, plates) {
 
         const cerfaFilledBytes = await pdfDoc.save();
 
-        // 3. Création du PDF Final (Fusion)
-        const finalDoc = await PDFDocument.load(cerfaFilledBytes);
+        // 3. Création du PDF Final (Nouveau document)
+        const finalDoc = await PDFDocument.create();
 
-        // 4. Ajout des planches (Page 2, 3, 4...)
+        // 4. Ajout des planches (Page 1-6)
         if (plates) {
-            const plateIds = ['dp-plate-situation', 'dp-plate-masse', 'dp-plate-notice'];
+            const plateIds = [
+                'dp-plate-cover',
+                'dp-plate-situation', 
+                'dp-plate-masse', 
+                'dp-plate-section',
+                'dp-plate-facades',
+                'dp-plate-aspect',
+                'dp-plate-insertion',
+                'dp-plate-env-proche',
+                'dp-plate-env-lointain',
+                'dp-plate-notice-insertion'
+            ];
             for (const id of plateIds) {
                 if (plates[id]) {
-                    const plateImg = await finalDoc.embedPng(plates[id]);
+                    const plateData = plates[id];
+                    let plateImg;
+                    
+                    if (plateData.startsWith('data:image/jpeg')) {
+                        plateImg = await finalDoc.embedJpg(plateData);
+                    } else {
+                        plateImg = await finalDoc.embedPng(plateData);
+                    }
+
                     const page = finalDoc.addPage([841.89, 595.28]); // A4 Paysage
                     page.drawImage(plateImg, {
                         x: 0,
@@ -86,6 +105,11 @@ export async function generateDPDossier(project, plates) {
                 }
             }
         }
+
+        // 5. Ajout du Cerfa (copie des pages du Cerfa rempli vers le document final)
+        const cerfaDoc = await PDFDocument.load(cerfaFilledBytes);
+        const cerfaPages = await finalDoc.copyPages(cerfaDoc, cerfaDoc.getPageIndices());
+        cerfaPages.forEach((page) => finalDoc.addPage(page));
         
         const finalPdfBytes = await finalDoc.save();
         

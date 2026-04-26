@@ -8,23 +8,60 @@ export function getFirebaseAdmin() {
     if (!admin.apps.length) {
         // We use environment variables for security.
         // On Vercel, make sure to add these to your project settings.
-        const serviceAccount = {
-            projectId: process.env.FIREBASE_PROJECT_ID || "nelsonpv-4722c",
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL || "firebase-adminsdk-fbsvc@nelsonpv-4722c.iam.gserviceaccount.com",
-            privateKey: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, '\n'),
-        };
+        let privateKey = process.env.FIREBASE_PRIVATE_KEY || "";
+        let clientEmail = process.env.FIREBASE_CLIENT_EMAIL || "firebase-adminsdk-fbsvc@nelsonpv-4722c.iam.gserviceaccount.com";
+        let projectId = process.env.FIREBASE_PROJECT_ID || "nelsonpv-4722c";
 
-        // Fallback for local development if variables are missing
-        if (!serviceAccount.privateKey) {
-            console.warn("Firebase Admin: FIREBASE_PRIVATE_KEY is missing. Database operations will fail on server.");
+        // Handle case where the entire JSON was pasted into FIREBASE_PRIVATE_KEY
+        if (privateKey.trim().startsWith('{')) {
+            try {
+                const sa = JSON.parse(privateKey);
+                if (sa.private_key) privateKey = sa.private_key;
+                if (sa.client_email) clientEmail = sa.client_email;
+                if (sa.project_id) projectId = sa.project_id;
+            } catch (e) {
+                console.warn("Firebase Admin: Failed to parse key as JSON, continuing as string.");
+            }
         }
 
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
-        });
+        // Clean the key string
+        if (privateKey) {
+            // Handle escaped newlines from environment variables
+            privateKey = privateKey.replace(/\\n/g, '\n');
+            
+            // Remove accidental quotes if the whole string was quoted
+            if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+                privateKey = privateKey.substring(1, privateKey.length - 1);
+            }
+            
+            // Ensure standard markers are present and formatted correctly
+            if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+                privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
+            }
+        }
+
+        const serviceAccount = {
+            projectId: projectId.trim(),
+            clientEmail: clientEmail.trim(),
+            privateKey: privateKey
+        };
+
+        try {
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount)
+            });
+            console.log("Firebase Admin: SDK Initialized successfully.");
+        } catch (initErr) {
+            // Log a sanitized version of the error for debugging
+            const errorSummary = initErr.message.includes('ASN.1') 
+                ? `${initErr.message} (Key Length: ${privateKey.length})`
+                : initErr.message;
+            console.error("Firebase Admin: Initialization FAILED:", errorSummary);
+            throw new Error(errorSummary);
+        }
     }
     return admin;
 }
 
-export const adminDb = getFirebaseAdmin().firestore();
-export const adminAuth = getFirebaseAdmin().auth();
+export const getAdminDb = () => getFirebaseAdmin().firestore();
+export const getAdminAuth = () => getFirebaseAdmin().auth();

@@ -40,14 +40,25 @@ export default function NotificationBell() {
         return () => unsubscribe();
     }, [user]);
 
-    const handleBellClick = () => {
+    const handleBellClick = async () => {
         const willShow = !showDropdown;
         setShowDropdown(willShow);
 
         if (willShow) {
-            // Dismiss the red notification badge but keep unread status for the items
+            // Dismiss the red notification badge
             localStorage.setItem(`notifs_seen_${user.uid}`, Date.now().toString());
             setUnreadCount(0);
+
+            // Mark all current unread notifications as read so they are no longer bold
+            const unreadNotifs = notifications.filter(n => !n.read);
+            if (unreadNotifs.length > 0) {
+                try {
+                    const { apiService } = await import('@/services/api');
+                    await apiService.markNotificationsAsRead(user.uid, unreadNotifs.map(n => n.id));
+                } catch (err) {
+                    console.error("Failed to mark all as read", err);
+                }
+            }
         }
     };
 

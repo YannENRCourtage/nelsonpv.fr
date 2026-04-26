@@ -1419,9 +1419,14 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
 
   const checkUrbanisme = async (latlng) => {
     try {
-      toast({ title: "Urbanisme", description: "Recherche des informations en cours..." });
+      toast({ title: "Urbanisme", description: "Recherche et ouverture du Géoportail..." });
       const info = await urbanismeService.getInfo(latlng.lat, latlng.lng);
       setUrbanismeInfo(info);
+      
+      if (info.mapUrl) {
+        window.open(info.mapUrl, '_blank');
+      }
+
       if (info.zones.length === 0 && info.documents.length === 0 && !info.isRNU) {
         toast({ title: "Urbanisme", description: "Aucune information trouvée pour ce point." });
       }
@@ -1874,7 +1879,11 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
                 return (
                   <Marker position={rotatedCenter} opacity={0}>
                     <Tooltip permanent direction="center" className="measure-label">
-                      {prefix}{f.buildingName && `${f.buildingName} - `} {dimsStr} ({f.buildingSurface != null ? `${f.buildingSurface} m²` : formatArea(area)} | {f.buildingPower != null ? `${f.buildingPower} kWc` : calculateSolarPower(area)})
+                      {f.isBattery ? (
+                        `Quantité : ${f.batteryQuantity}`
+                      ) : (
+                        `${prefix}${f.buildingName && `${f.buildingName} - `} ${dimsStr} (${f.buildingSurface != null ? `${f.buildingSurface} m²` : formatArea(area)} | ${f.buildingPower != null ? `${f.buildingPower} kWc` : calculateSolarPower(area)})`
+                      )}
                     </Tooltip>
                   </Marker>
                 );
@@ -3496,12 +3505,25 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
   useEffect(() => {
     const handlePlaceBattery = (e) => {
       const { model, quantity } = e.detail;
-      const batteryWidth = 5; // m
-      const batteryHeight = 4; // m
+      
+      // Dimensions dynamiques selon la quantité (2 batteries -> 2x5m, 4 batteries -> 2x8m)
+      let batteryLength = 5; 
+      let batteryWidth = 2; 
+      
+      if (quantity >= 4) {
+        batteryLength = 8;
+        batteryWidth = 2;
+      } else if (quantity <= 2) {
+        batteryLength = 5;
+        batteryWidth = 2;
+      } else {
+        batteryLength = 5 + (quantity - 2) * 1.5;
+        batteryWidth = 2;
+      }
       
       const metersPerPixel = 40075016.686 * Math.abs(Math.cos(map.getCenter().lat * Math.PI / 180)) / Math.pow(2, map.getZoom() + 8);
-      const widthInPixels = batteryWidth / metersPerPixel;
-      const heightInPixels = batteryHeight / metersPerPixel;
+      const widthInPixels = batteryLength / metersPerPixel;
+      const heightInPixels = batteryWidth / metersPerPixel;
       
       const centerPoint = map.getSize().divideBy(2);
       const southWestPoint = L.point(centerPoint.x - widthInPixels / 2, centerPoint.y + heightInPixels / 2);
@@ -3524,10 +3546,12 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
         isBattery: true,
         batteryModel: model.model,
         batteryQuantity: quantity,
-        label: `Batterie ${model.brand} ${model.model} (x${quantity})`
+        buildingLength: batteryLength,
+        buildingWidth: batteryWidth,
+        label: `Batterie ${model.brand} (x${quantity})`
       }]);
       
-      toast({ ...toastStyle, title: "Batterie ajoutée", description: `${model.brand} ${model.model} (x${quantity}) - Rectangle 5x4m` });
+      toast({ ...toastStyle, title: "Batterie ajoutée", description: `${model.brand} (x${quantity}) - Rectangle ${batteryLength}x${batteryWidth}m` });
     };
 
     const handlePlaceBuilding = (e) => {
