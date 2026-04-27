@@ -32,7 +32,7 @@ import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { urbanismeService } from "@/services/UrbanismeService";
 import { isochroneService } from "@/services/IsochroneService";
-import { Zap, Sun } from 'lucide-react';
+import { Zap, Sun, Users } from 'lucide-react';
 
 // --- Clé API IGN ---
 // 👇 COPIEZ VOTRE CLÉ API GÉOSERVICES IGN CI-DESSOUS 👇
