@@ -188,6 +188,13 @@ export default function ProjectEditor() {
   const [activeConfigTab, setActiveConfigTab] = useState('buildings'); // 'buildings' or 'battery'
   const [selectedBatteryId, setSelectedBatteryId] = useState(BATTERY_MODELS[0].id);
   const [batteryQuantity, setBatteryQuantity] = useState(4);
+  
+  // Ecouteur pour basculer vers l'onglet propriétaires depuis la carte
+  useEffect(() => {
+    const handleShowOwners = () => setActiveTab('owners');
+    window.addEventListener('map:show-owners', handleShowOwners);
+    return () => window.removeEventListener('map:show-owners', handleShowOwners);
+  }, []);
 
   // Fetch Enedis data if prm exists or tokens exist
   useEffect(() => {

@@ -3443,6 +3443,24 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
       <div className="flex items-center gap-1 border-t pt-1 text-gray-600 mt-1">
         <span className="flex items-center gap-1" title="Zonage urbanistique">🏛️ <strong>Zonage:</strong> {info.zoning}</span>
       </div>
+
+      {/* Liens rapides Propriétaires */}
+      <div className="flex gap-2 border-t pt-2 mt-2">
+        <button 
+          onClick={() => window.dispatchEvent(new CustomEvent('map:show-owners', { detail: { lat: info.lat, lng: info.lng } }))}
+          className="flex-1 bg-blue-50 text-blue-600 py-1.5 px-2 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-1.5 font-semibold text-xs border border-blue-100"
+        >
+          <Users size={14} /> Propriétaires
+        </button>
+        <a 
+          href={`https://proprietaires.cadastre.io/#18.5/${info.lat}/${info.lng}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 bg-gray-50 text-gray-600 py-1.5 px-2 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center gap-1.5 font-semibold text-xs border border-gray-200"
+        >
+          <ExternalLink size={14} /> Cadastre.io
+        </a>
+      </div>
     </div>
   );
 }
