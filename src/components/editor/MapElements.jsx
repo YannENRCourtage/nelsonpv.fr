@@ -4344,7 +4344,7 @@ function MapStateSync({ project, setProject }) {
 
   return null;
 }
-function MapInternalController({ layersRef, activeLayers, setSelectedCompany, setSelectedSubstation, setForceHideFeatures }) {
+function MapInternalController({ layersRef, activeLayers, setSelectedCompany, setSelectedSubstation, setForceHideFeatures, activeTab }) {
   const map = useMap();
 
   // 1. Navigation and selection handlers
@@ -4516,7 +4516,8 @@ export default function MapElements({
   isRoutingActive,
   setIsRoutingActive,
   routingPoints,
-  setRoutingPoints
+  setRoutingPoints,
+  activeTab
 }) {
   const [companies, setCompanies] = useState([]);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
@@ -4701,6 +4702,7 @@ export default function MapElements({
             setSelectedCompany={setSelectedCompany} 
             setSelectedSubstation={setSelectedSubstation} 
             setForceHideFeatures={setForceHideFeatures}
+            activeTab={activeTab}
           />
 
           <div
