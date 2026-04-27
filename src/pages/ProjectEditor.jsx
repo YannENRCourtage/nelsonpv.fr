@@ -1993,7 +1993,9 @@ export default function ProjectEditor() {
             {/* Onglet Propriétaires */}
             <div className={activeTab === 'owners' ? 'w-full h-full' : 'hidden'}>
               <iframe
-                src="https://proprietaires.cadastre.io/"
+                src={project?.gps 
+                  ? `https://proprietaires.cadastre.io/#18.5/${project.gps.split(',').map(s => s.trim()).join('/')}`
+                  : "https://proprietaires.cadastre.io/"}
                 className="w-full h-full border-0"
                 title="Propriétaires Cadastre"
                 allow="geolocation"
@@ -2013,7 +2015,9 @@ export default function ProjectEditor() {
             {/* Onglet TERRAVISU */}
             <div className={activeTab === 'terravisu' ? 'w-full h-full' : 'hidden'}>
               <iframe
-                src="https://demo-terravisu-territoires.makina-corpus.com/view/politiquespubliques#map=5.53%2F46.412%2F2.394&layers=cd68490d52c923f94830011da39cff36&basemap=8"
+                src={project?.gps
+                  ? `https://demo-terravisu-territoires.makina-corpus.com/view/politiquespubliques#layers=cd68490d52c923f94830011da39cff36&map=18.5/${project.gps.split(',').map(s => s.trim()).join('/')}`
+                  : "https://demo-terravisu-territoires.makina-corpus.com/view/politiquespubliques#map=5.53/46.412/2.394&layers=cd68490d52c923f94830011da39cff36&basemap=8"}
                 className="w-full h-full border-0"
                 title="TERRAVISU"
                 allow="geolocation"
@@ -2023,7 +2027,9 @@ export default function ProjectEditor() {
             {/* Onglet DVF */}
             <div className={activeTab === 'dvf' ? 'w-full h-full' : 'hidden'}>
               <iframe
-                src="https://explore.data.gouv.fr/fr/immobilier?ordering=mutation_date&page=1"
+                src={project?.gps
+                  ? `https://app.dvf.etalab.gouv.fr/#18.5/${project.gps.split(',').map(s => s.trim()).join('/')}`
+                  : "https://explore.data.gouv.fr/fr/immobilier?ordering=mutation_date&page=1"}
                 className="w-full h-full border-0"
                 title="DVF Etalab"
                 allow="geolocation"
