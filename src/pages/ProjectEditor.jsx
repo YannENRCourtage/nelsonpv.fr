@@ -1764,9 +1764,9 @@ export default function ProjectEditor() {
             </div>
           </div>
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden flex-1 min-h-[60vh] lg:h-[750px] relative">
-            {/* Onglet Carte - On le garde monté si l'onglet DP est actif pour permettre les captures en arrière-plan */}
-            {(activeTab === 'map' || activeTab === 'urbanisme_dp') && (
-              <div className={`w-full h-full flex flex-col ${activeTab !== 'map' ? 'absolute inset-0 pointer-events-none opacity-0' : ''}`}>
+            {/* Onglet Carte - On le garde monté si l'onglet DP ou Propriétaires est actif pour permettre les captures et la persistance du zoom */}
+            {(activeTab === 'map' || activeTab === 'urbanisme_dp' || activeTab === 'owners') && (
+              <div className={`w-full h-full flex flex-col ${(activeTab !== 'map' && activeTab !== 'owners') ? 'absolute inset-0 pointer-events-none opacity-0' : ''}`}>
                 <div className="flex-1 min-h-[55vh] lg:min-h-0">
                   <MapEditor
                     key={`${projectId}-${remountKey}`}
@@ -1779,6 +1779,7 @@ export default function ProjectEditor() {
                     setSymbolToPlace={setSymbolToPlace}
                     isochroneConfig={isochroneConfig}
                     activeLayers={activeLayers}
+                    activeTab={activeTab}
                     companies={companies}
                     selectedCompany={selectedCompany}
                     setSelectedCompany={setSelectedCompany}
@@ -1997,17 +1998,6 @@ export default function ProjectEditor() {
 
 
 
-            {/* Onglet Propriétaires */}
-            <div className={activeTab === 'owners' ? 'w-full h-full' : 'hidden'}>
-              <iframe
-                src={project?.gps 
-                  ? `https://proprietaires.cadastre.io/#18.5/${project.gps.split(',').map(s => s.trim()).join('/')}`
-                  : "https://proprietaires.cadastre.io/"}
-                className="w-full h-full border-0"
-                title="Propriétaires Cadastre"
-                allow="geolocation"
-              />
-            </div>
 
             {/* Onglet Caparéseau */}
             <div className={activeTab === 'capareseau' ? 'w-full h-full' : 'hidden'}>

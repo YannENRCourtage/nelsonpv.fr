@@ -103,7 +103,8 @@ export default function MapEditor({
   isRoutingActive,
   setIsRoutingActive,
   routingPoints,
-  setRoutingPoints
+  setRoutingPoints,
+  activeTab
 }) {
   return (
     <div className="relative w-full h-full">
@@ -133,6 +134,7 @@ export default function MapEditor({
         setIsRoutingActive={setIsRoutingActive}
         routingPoints={routingPoints}
         setRoutingPoints={setRoutingPoints}
+        activeTab={activeTab}
       />
     </div>
   );

@@ -15,7 +15,7 @@ class CadastreService {
     async getParcelle(lat, lng) {
         try {
             const geom = JSON.stringify({ type: "Point", coordinates: [lng, lat] });
-            const url = `${this.baseUrl}/parcelle?geom=${encodeURIComponent(geom)}&source_ign=BDP`;
+            const url = `${this.baseUrl}/parcelle?geom=${encodeURIComponent(geom)}&source_ign=PCI`;
 
             const response = await fetch(url);
             if (!response.ok) {

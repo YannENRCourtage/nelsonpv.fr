@@ -123,6 +123,16 @@ export default async function handler(req, res) {
             });
         }
 
+        // --- ACTION : OWNERS (ECONOMIE GOUV OPENDATASOFT) ---
+        if (action === 'owners') {
+            const { where, limit = 100 } = req.query;
+            const targetUrl = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/fichiers-des-locaux-et-des-parcelles-des-personnes-morales/records?where=${encodeURIComponent(where)}&limit=${limit}`;
+            console.log(`[PROXY OWNERS] ${targetUrl}`);
+            const response = await fetch(targetUrl);
+            const data = await response.json();
+            return res.status(200).json(data);
+        }
+
         // --- ACTION : CAPARESEAU (ODRE) ---
         if (action === 'capareseau') {
             const { dataset, where } = req.query;

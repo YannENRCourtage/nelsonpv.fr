@@ -2518,6 +2518,15 @@ const LAYERS = {
     zIndex: 108,
     minZoom: 16
   },
+  ownersMoral: {
+    name: "Propriétaires Personnes Morales",
+    type: 'owners-moral',
+    isDynamic: true,
+    attribution: 'DGFiP / Opendatasoft',
+    isOverlay: true,
+    zIndex: 109,
+    minZoom: 15
+  },
   altimetry: {
     name: "Altimétrie",
     url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",
@@ -2838,6 +2847,88 @@ function BanPlusLegend({ layersRef }) {
 
 
 
+
+// ====================================================================
+// MANAGER PROPRIÉTAIRES PERSONNES MORALES
+// ====================================================================
+function OwnersMoralLayerManager({ layersRef, activeLayers, activeTab }) {
+  const map = useMap();
+  const active = activeLayers?.has('ownersMoral') || activeTab === 'owners';
+  const loadedIds = useRef(new Set());
+  const layerGroupRef = useRef(L.featureGroup());
+
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['ownersMoral'] = layerGroupRef.current;
+  }, [layersRef]);
+
+  const fetchData = async () => {
+    if (!active || !map || map.getZoom() < 15) {
+       if (map.getZoom() < 15) {
+         layerGroupRef.current.clearLayers();
+         loadedIds.current.clear();
+       }
+       return;
+    }
+    const bounds = map.getBounds();
+    const latMax = bounds.getNorth();
+    const lonMin = bounds.getWest();
+    const latMin = bounds.getSouth();
+    const lonMax = bounds.getEast();
+
+    const whereClause = `within_box(geo_shape, ${latMax}, ${lonMin}, ${latMin}, ${lonMax})`;
+    const url = `/api/melodi?action=owners&where=${encodeURIComponent(whereClause)}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!data.results) return;
+
+      data.results.forEach(item => {
+        const id = item.code_parcelle || (item.geo_point_2d ? `${item.geo_point_2d.lat}-${item.geo_point_2d.lon}` : Math.random());
+        if (loadedIds.current.has(id)) return;
+        loadedIds.current.add(id);
+
+        if (item.geo_shape) {
+          L.geoJSON(item.geo_shape, {
+            style: {
+              color: '#4f46e5', // Indigo
+              weight: 2,
+              fillOpacity: 0.3,
+              fillColor: '#818cf8'
+            }
+          }).bindPopup(`
+            <div style="font-family: sans-serif; min-width: 200px; padding: 5px;">
+              <h4 style="margin:0 0 8px 0; color: #4f46e5; font-weight: bold; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px;">🏢 Propriétaire</h4>
+              <p style="margin:4px 0; font-size:13px; font-weight: 600; color: #1f2937;">${item.denomination_ou_raison_sociale || 'N/A'}</p>
+              <p style="margin:2px 0; font-size:11px; color: #4b5563;"><strong>Forme:</strong> ${item.nature_juridique_abregee || 'N/A'}</p>
+              <p style="margin:2px 0; font-size:11px; color: #4b5563;"><strong>SIREN:</strong> ${item.siren || 'N/A'}</p>
+              <p style="margin:2px 0; font-size:11px; color: #4b5563;"><strong>Parcelle:</strong> ${item.code_parcelle || 'N/A'}</p>
+              <div style="margin-top: 8px; font-size:10px; color: #9ca3af; font-style: italic; display: flex; justify-content: space-between; align-items: center;">
+                <span>Source: DGFiP</span>
+                <span style="background: #eef2ff; color: #4f46e5; padding: 1px 4px; rounded: 3px; font-weight: bold;">MAJIC</span>
+              </div>
+            </div>
+          `, { className: 'owners-popup' }).addTo(layerGroupRef.current);
+        }
+      });
+    } catch (err) { console.error("Error fetching Owners data", err); }
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => { map.off('moveend', onMoveEnd); };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+    }
+  }, [active, map]);
+
+  return null;
+}
 
 // ====================================================================
 // MANAGER SDIS (Données Nationales Overpass)
@@ -3291,8 +3382,8 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
           // Adresse : API Adresse
           fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${targetPos.lng}&lat=${targetPos.lat}`)
             .then(r => r.json()),
-          // Parcelle cadastrale : API Carto IGN
-          fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify({ type: "Point", coordinates: [targetPos.lng, targetPos.lat] }))}&source_ign=BDP`)
+          // Parcelle cadastrale : API Carto IGN (passage à PCI pour plus de fiabilité)
+          fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify({ type: "Point", coordinates: [targetPos.lng, targetPos.lat] }))}&source_ign=PCI`)
             .then(r => r.json()),
           // Urbanisme : utilise le service déjà intégré
           urbanismeService.getInfo(targetPos.lat, targetPos.lng)
@@ -3310,9 +3401,13 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
           : 'N/A';
 
         // Traiter la parcelle
-        const parcel = parcRes.status === 'fulfilled' && parcRes.value?.features?.[0]
-          ? `${parcRes.value.features[0].properties.section} ${parcRes.value.features[0].properties.numero}`
-          : 'N/A';
+        let parcel = 'N/A';
+        if (parcRes.status === 'fulfilled' && parcRes.value?.features?.[0]) {
+          const props = parcRes.value.features[0].properties;
+          const section = props.section || props.code_section || '';
+          const numero = props.numero || '';
+          parcel = (section || numero) ? `${section} ${numero}`.trim() : 'N/A';
+        }
 
         // Traiter le zonage urbanistique
         let zoning = 'N/A';
@@ -3444,23 +3539,6 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
         <span className="flex items-center gap-1" title="Zonage urbanistique">🏛️ <strong>Zonage:</strong> {info.zoning}</span>
       </div>
 
-      {/* Liens rapides Propriétaires */}
-      <div className="flex gap-2 border-t pt-2 mt-2">
-        <button 
-          onClick={() => window.dispatchEvent(new CustomEvent('map:show-owners', { detail: { lat: info.lat, lng: info.lng } }))}
-          className="flex-1 bg-blue-50 text-blue-600 py-1.5 px-2 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-1.5 font-semibold text-xs border border-blue-100"
-        >
-          <Users size={14} /> Propriétaires
-        </button>
-        <a 
-          href={`https://proprietaires.cadastre.io/#18.5/${info.lat}/${info.lng}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex-1 bg-gray-50 text-gray-600 py-1.5 px-2 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center gap-1.5 font-semibold text-xs border border-gray-200"
-        >
-          <ExternalLink size={14} /> Cadastre.io
-        </a>
-      </div>
     </div>
   );
 }
@@ -4323,16 +4401,23 @@ function MapInternalController({ layersRef, activeLayers, setSelectedCompany, se
       const layer = layersRef.current[key];
       if (!layer) return;
 
-      const shouldBeVisible = activeLayers.has(key);
-      const isVisible = map.hasLayer(layer);
+      let shouldBeVisible = activeLayers.has(key);
 
+      // Logique de vue dédiée pour l'onglet Propriétaires
+      if (activeTab === 'owners') {
+        if (key === 'ownersMoral') shouldBeVisible = true;
+        else if (key === 'cadastre') shouldBeVisible = true;
+        else shouldBeVisible = false; // Cache les autres pour la vue dédiée
+      }
+
+      const isVisible = map.hasLayer(layer);
       if (shouldBeVisible && !isVisible) {
         layer.addTo(map);
       } else if (!shouldBeVisible && isVisible) {
         map.removeLayer(layer);
       }
     });
-  }, [map, activeLayers, layersRef]);
+  }, [map, activeLayers, layersRef, activeTab]);
 
   return null;
 }
@@ -4634,6 +4719,7 @@ export default function MapElements({
           <PostesHTALayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <PostesSourcesRTELayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <DemographicLayerManager layersRef={layersRef} activeLayers={activeLayers} />
+          <OwnersMoralLayerManager layersRef={layersRef} activeLayers={activeLayers} activeTab={activeTab} />
           
           <AltiMouseIndicator activeLayers={activeLayers} layersRef={layersRef} />
 
