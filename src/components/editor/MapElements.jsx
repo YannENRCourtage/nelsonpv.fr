@@ -3292,7 +3292,7 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
           fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${targetPos.lng}&lat=${targetPos.lat}`)
             .then(r => r.json()),
           // Parcelle cadastrale : API Carto IGN
-          fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify({ type: "Point", coordinates: [targetPos.lng, targetPos.lat] }))}`)
+          fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify({ type: "Point", coordinates: [targetPos.lng, targetPos.lat] }))}&source_ign=BDP`)
             .then(r => r.json()),
           // Urbanisme : utilise le service déjà intégré
           urbanismeService.getInfo(targetPos.lat, targetPos.lng)
@@ -3873,7 +3873,7 @@ function PointInfoPanel({ pointInfo, setPointInfo }) {
     const fetches = [
       fetch(`https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json?resource=ign_rge_alti_wld&lon=${latlng.lng}&lat=${latlng.lat}&zonly=false`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ altitude: `${data.elevations[0].z.toFixed(1)} m` })).catch(() => ({ altitude: 'N/A' })),
       fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${latlng.lng}&lat=${latlng.lat}`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ address: data.features[0]?.properties.label || 'Non trouvée' })).catch(() => ({ address: 'N/A' })),
-      fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify({ type: "Point", coordinates: [latlng.lng, latlng.lat] }))}`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ parcel: data.features?.[0]?.properties ? `${data.features[0].properties.section} ${data.features[0].properties.numero}` : 'Non trouvée' })).catch(() => ({ parcel: 'N/A' }))
+      fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify({ type: "Point", coordinates: [latlng.lng, latlng.lat] }))}&source_ign=BDP`).then(res => res.ok ? res.json() : Promise.reject()).then(data => ({ parcel: data.features?.[0]?.properties ? `${data.features[0].properties.section} ${data.features[0].properties.numero}` : 'Non trouvée' })).catch(() => ({ parcel: 'N/A' }))
     ];
     Promise.all(fetches).then(results => { const newInfo = results.reduce((acc, current) => ({ ...acc, ...current }), {}); setPointInfo(prev => ({ ...prev, ...newInfo })); });
   }, [pointInfo, setPointInfo]);
