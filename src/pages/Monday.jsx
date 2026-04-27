@@ -1398,7 +1398,18 @@ export default function Monday() {
     useEffect(() => {
         const unsubscribe = apiService.subscribeToMondayTables((updatedTabs) => {
             setTabs(prev => {
-                const sorted = updatedTabs.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+                const sorted = updatedTabs.sort((a, b) => {
+                    const getOrder = (name) => {
+                        const n = name.toLowerCase();
+                        if (n.includes('mdp')) return 1;
+                        if (n.includes('projet')) return 2;
+                        return 3;
+                    };
+                    const orderA = getOrder(a.name);
+                    const orderB = getOrder(b.name);
+                    if (orderA !== orderB) return orderA - orderB;
+                    return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0);
+                });
                 return sorted;
             });
         });
@@ -1406,7 +1417,10 @@ export default function Monday() {
     }, []);
 
     useEffect(() => {
-        if (!activeTabId && tabs.length > 0) setActiveTabId(tabs[0].id);
+        if (!activeTabId && tabs.length > 0) {
+            const mdpTab = tabs.find(t => t.name.toLowerCase().includes('mdp'));
+            setActiveTabId(mdpTab ? mdpTab.id : tabs[0].id);
+        }
     }, [tabs, activeTabId]);
 
     const activeTab = tabs.find(t => t.id === activeTabId);
