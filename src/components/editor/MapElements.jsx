@@ -26,13 +26,13 @@ import html2canvas from "html2canvas";
 import SearchField from "./SearchField.jsx";
 import { toast } from "@/components/ui/use-toast.js";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer } from 'recharts';
-import { X as XIcon, Download, Save, Copy, RotateCw, MapPin, Maximize, Building, AlertCircle, FileText, Map as MapIcon, ExternalLink, Loader2 } from 'lucide-react';
+import { X as XIcon, Download, Save, Copy, RotateCw, MapPin, Maximize, Building, Building2, ShieldCheck, Search, AlertCircle, FileText, Map as MapIcon, ExternalLink, Loader2 } from 'lucide-react';
 import { mapData } from "@/lib/nomenclature.js";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { urbanismeService } from "@/services/UrbanismeService";
 import { isochroneService } from "@/services/IsochroneService";
-import { Zap, Sun, Users } from 'lucide-react';
+import { Zap, Sun, Users, Building as BuildingIcon } from 'lucide-react';
 
 // --- Clé API IGN ---
 // 👇 COPIEZ VOTRE CLÉ API GÉOSERVICES IGN CI-DESSOUS 👇
@@ -1407,7 +1407,7 @@ function useDeleteKey(onDelete) {
   }, [onDelete]);
 }
 
-function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject, setIsAzimuthDefaulted, isRotatingRef, isUrbanismeMode, setShowInfoPanel, isochroneConfig, forceHideFeatures }) {
+function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject, setIsAzimuthDefaulted, isRotatingRef, isUrbanismeMode, setShowInfoPanel, isochroneConfig, forceHideFeatures, activeTab, onSelectOwners }) {
   const [mousePos, setMousePos] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [ignoreNextClick, setIgnoreNextClick] = useState(false);
@@ -1669,6 +1669,46 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
           else setTemp((t) => [...t, e.latlng]);
         }
       } else {
+        // --- Nelson Propriétaires Logic ---
+        if (activeTab === 'owners') {
+          const fetchOwners = async () => {
+            try {
+              // 1. Identification de la parcelle
+              const parcRes = await fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify({ type: "Point", coordinates: [e.latlng.lng, e.latlng.lat] }))}&source_ign=PCI`);
+              if (parcRes.ok) {
+                const parcData = await parcRes.json();
+                if (parcData.features?.[0]) {
+                  const props = parcData.features[0].properties;
+                  const code = props.id || props.code_parc;
+                  
+                  // 2. Recherche des propriétaires
+                  const ownersRes = await fetch(`/api/melodi?action=owners&where=code_parcelle='${code}'`);
+                  if (ownersRes.ok) {
+                    const ownersData = await ownersRes.json();
+                    if (ownersData.results) {
+                      const owners = ownersData.results.map(o => ({
+                        name: o.denomination_ou_raison_sociale,
+                        nature: o.nature_juridique_abregee,
+                        siren: o.siren
+                      }));
+                      
+                      onSelectOwners({
+                        code,
+                        geo_shape: parcData.features[0].geometry,
+                        owners
+                      });
+                    }
+                  }
+                }
+              }
+            } catch (err) {
+              console.error("Error identifying owners on click:", err);
+            }
+          };
+          fetchOwners();
+        }
+        // --- End Nelson Propriétaires Logic ---
+
         setSelectedId(null);
         e.latlng.isManual = true;
         if (setTargetPos) setTargetPos(e.latlng);
@@ -2851,7 +2891,96 @@ function BanPlusLegend({ layersRef }) {
 // ====================================================================
 // MANAGER PROPRIÉTAIRES PERSONNES MORALES
 // ====================================================================
-function OwnersMoralLayerManager({ layersRef, activeLayers, activeTab }) {
+function OwnerDetailsPanel({ data, onClose, copyToClipboard }) {
+  if (!data || !data.owners || data.owners.length === 0) return null;
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="p-4 border-b bg-indigo-50/50">
+        <div className="flex justify-between items-start mb-2">
+          <div>
+            <h3 className="text-sm font-bold text-indigo-900 uppercase tracking-tight">Données de Propriété</h3>
+            <p className="text-[10px] text-indigo-600 font-semibold mt-0.5 flex items-center gap-1">
+              <ShieldCheck size={12} /> Source : DGFiP (MAJIC)
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-white/80 rounded-full transition-colors text-indigo-400">
+            <XIcon size={16} />
+          </button>
+        </div>
+        <div className="flex items-center gap-2 mt-3 p-2 bg-white rounded-lg border border-indigo-100 shadow-sm">
+          <MapPin size={14} className="text-indigo-500" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-indigo-400 font-bold uppercase">Parcelle</p>
+            <p className="text-xs font-bold text-indigo-900 truncate">{data.code || 'N/A'}</p>
+          </div>
+          <button onClick={() => copyToClipboard(data.code)} className="p-1 hover:bg-indigo-50 rounded text-indigo-400">
+            <Copy size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {data.owners.map((owner, idx) => (
+          <div key={idx} className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden group hover:border-indigo-200 transition-colors">
+            <div className="p-3 bg-gray-50 border-b flex justify-between items-center">
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Propriétaire {data.owners.length > 1 ? idx + 1 : ''}</span>
+              <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">
+                {owner.nature || 'PM'}
+              </span>
+            </div>
+            <div className="p-3 space-y-3">
+              <div>
+                <p className="text-sm font-black text-gray-900 leading-tight mb-1">{owner.name || 'Dénomination Inconnue'}</p>
+                <div className="flex items-center gap-2 group/siren cursor-pointer" onClick={() => copyToClipboard(owner.siren)}>
+                  <span className="text-[10px] text-gray-400 font-medium">SIREN</span>
+                  <span className="text-[11px] font-bold text-gray-600 flex items-center gap-1">
+                    {owner.siren || 'N/A'} 
+                    <Copy size={10} className="opacity-0 group-hover/siren:opacity-100 text-indigo-400" />
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-7 text-[9px] font-bold uppercase tracking-tight gap-1.5 border-gray-200 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                  onClick={() => window.open(`https://annuaire-entreprises.data.gouv.fr/entreprise/${owner.siren}`, '_blank')}
+                >
+                  <ExternalLink size={10} /> Annuaire Ent.
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-7 text-[9px] font-bold uppercase tracking-tight gap-1.5 border-gray-200 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                  onClick={() => window.open(`https://www.infogreffe.fr/recherche-entreprise-dirigeants/resultat-de-recherche-multi-critere?siren=${owner.siren}`, '_blank')}
+                >
+                  <ExternalLink size={10} /> Infogreffe
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {data.owners.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
+              <AlertCircle size={24} className="text-gray-300" />
+            </div>
+            <p className="text-xs text-gray-500 font-medium px-4">Aucun propriétaire personne morale identifié sur cette parcelle en open data.</p>
+          </div>
+        )}
+      </div>
+      
+      <div className="p-3 bg-gray-50 border-t flex justify-center italic">
+        <span className="text-[9px] text-gray-400 font-medium">Nelson Property Insights • Beta v1.0</span>
+      </div>
+    </div>
+  );
+}
+
+function OwnersMoralLayerManager({ layersRef, activeLayers, activeTab, onSelectOwners }) {
   const map = useMap();
   const active = activeLayers?.has('ownersMoral') || activeTab === 'owners';
   const loadedIds = useRef(new Set());
@@ -2884,8 +3013,25 @@ function OwnersMoralLayerManager({ layersRef, activeLayers, activeTab }) {
       const data = await response.json();
       if (!data.results) return;
 
-      data.results.forEach(item => {
-        const id = item.code_parcelle || (item.geo_point_2d ? `${item.geo_point_2d.lat}-${item.geo_point_2d.lon}` : Math.random());
+      // Group owners by parcel
+      const grouped = data.results.reduce((acc, item) => {
+        const code = item.code_parcelle;
+        if (!acc[code]) acc[code] = { 
+          code, 
+          geo_shape: item.geo_shape, 
+          geo_point_2d: item.geo_point_2d,
+          owners: [] 
+        };
+        acc[code].owners.push({
+          name: item.denomination_ou_raison_sociale,
+          nature: item.nature_juridique_abregee,
+          siren: item.siren
+        });
+        return acc;
+      }, {});
+
+      Object.values(grouped).forEach(item => {
+        const id = item.code;
         if (loadedIds.current.has(id)) return;
         loadedIds.current.add(id);
 
@@ -2893,23 +3039,20 @@ function OwnersMoralLayerManager({ layersRef, activeLayers, activeTab }) {
           L.geoJSON(item.geo_shape, {
             style: {
               color: '#4f46e5', // Indigo
-              weight: 2,
-              fillOpacity: 0.3,
-              fillColor: '#818cf8'
+              weight: 2.5,
+              opacity: 0.8,
+              fillOpacity: 0.25,
+              fillColor: '#818cf8',
+              dashArray: '5, 5'
             }
-          }).bindPopup(`
-            <div style="font-family: sans-serif; min-width: 200px; padding: 5px;">
-              <h4 style="margin:0 0 8px 0; color: #4f46e5; font-weight: bold; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px;">🏢 Propriétaire</h4>
-              <p style="margin:4px 0; font-size:13px; font-weight: 600; color: #1f2937;">${item.denomination_ou_raison_sociale || 'N/A'}</p>
-              <p style="margin:2px 0; font-size:11px; color: #4b5563;"><strong>Forme:</strong> ${item.nature_juridique_abregee || 'N/A'}</p>
-              <p style="margin:2px 0; font-size:11px; color: #4b5563;"><strong>SIREN:</strong> ${item.siren || 'N/A'}</p>
-              <p style="margin:2px 0; font-size:11px; color: #4b5563;"><strong>Parcelle:</strong> ${item.code_parcelle || 'N/A'}</p>
-              <div style="margin-top: 8px; font-size:10px; color: #9ca3af; font-style: italic; display: flex; justify-content: space-between; align-items: center;">
-                <span>Source: DGFiP</span>
-                <span style="background: #eef2ff; color: #4f46e5; padding: 1px 4px; rounded: 3px; font-weight: bold;">MAJIC</span>
-              </div>
-            </div>
-          `, { className: 'owners-popup' }).addTo(layerGroupRef.current);
+          }).on('click', (e) => {
+            L.DomEvent.stopPropagation(e);
+            onSelectOwners(item);
+          }).on('mouseover', (e) => {
+            e.target.setStyle({ fillOpacity: 0.5, weight: 4 });
+          }).on('mouseout', (e) => {
+            e.target.setStyle({ fillOpacity: 0.25, weight: 2.5 });
+          }).addTo(layerGroupRef.current);
         }
       });
     } catch (err) { console.error("Error fetching Owners data", err); }
@@ -3544,7 +3687,7 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
 }
 
 
-function MapEvents({ project, setProject, onAddressFound, onAddressSearched, setPhotoToPlace, onBuildingSelect, features, setFeatures, setIsAzimuthDefaulted, isRotatingRef, lastSyncedAzimuthRef, setTargetPos, setShowInfoPanel }) {
+function MapEvents({ project, setProject, onAddressFound, onAddressSearched, setPhotoToPlace, onBuildingSelect, features, setFeatures, setIsAzimuthDefaulted, isRotatingRef, lastSyncedAzimuthRef, setTargetPos, setShowInfoPanel, activeTab, onSelectOwners }) {
   const map = useMap();
   // lastSyncedAzimuthRef is now passed as prop
 
@@ -4523,6 +4666,8 @@ export default function MapElements({
   const [loadingCompanies, setLoadingCompanies] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [selectedSubstation, setSelectedSubstation] = useState(null);
+  const [selectedParcelOwners, setSelectedParcelOwners] = useState(null);
+  const [loadingOwners, setLoadingOwners] = useState(false);
   const [selectedRoutingData, setSelectedRoutingData] = useState(null);
   const [forceHideFeatures, setForceHideFeatures] = useState(false);
 
@@ -4721,7 +4866,7 @@ export default function MapElements({
           <PostesHTALayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <PostesSourcesRTELayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <DemographicLayerManager layersRef={layersRef} activeLayers={activeLayers} />
-          <OwnersMoralLayerManager layersRef={layersRef} activeLayers={activeLayers} activeTab={activeTab} />
+          <OwnersMoralLayerManager layersRef={layersRef} activeLayers={activeLayers} activeTab={activeTab} onSelectOwners={(item) => setSelectedParcelOwners(item)} />
           
           <AltiMouseIndicator activeLayers={activeLayers} layersRef={layersRef} />
 
@@ -4780,8 +4925,45 @@ export default function MapElements({
             setShowInfoPanel={setShowInfoPanel}
             isochroneConfig={isochroneConfig}
             forceHideFeatures={forceHideFeatures}
+            activeTab={activeTab}
+            onSelectOwners={(item) => setSelectedParcelOwners(item)}
           />
           {/* Sociétés UI (Managed by Manager now) */}
+          {(selectedCompany || selectedSubstation || selectedRoutingData || selectedParcelOwners) && (
+            <div className="absolute top-3 left-3 z-[2000] w-[320px] max-h-[calc(100%-24px)] bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col no-print hide-on-capture">
+              <div className="flex-1 overflow-y-auto">
+                {selectedCompany ? (
+                  <div className="p-4">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-tight">{selectedCompany.nom_raison_sociale || selectedCompany.name}</h3>
+                        <p className="text-[10px] text-blue-600 font-bold mt-0.5">Identifié par Nelson Search</p>
+                      </div>
+                      <button onClick={() => setSelectedCompany(null)} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"><XIcon size={16} /></button>
+                    </div>
+                    <CompanyDetailsPanel data={selectedCompany} onClose={() => setSelectedCompany(null)} copyToClipboard={copyToClipboard} />
+                  </div>
+                ) : selectedParcelOwners ? (
+                  <OwnerDetailsPanel 
+                    data={selectedParcelOwners} 
+                    onClose={() => setSelectedParcelOwners(null)} 
+                    copyToClipboard={copyToClipboard} 
+                  />
+                ) : selectedSubstation ? (
+                  <div className="p-4">
+                    {/* ... substation content ... */}
+                    <div className="flex justify-between items-start mb-4">
+                      <h3 className="text-sm font-bold text-orange-900 uppercase tracking-tight">{selectedSubstation.ouvrage_nom}</h3>
+                      <button onClick={() => setSelectedSubstation(null)} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"><XIcon size={16} /></button>
+                    </div>
+                    {/* ... other substation fields ... */}
+                  </div>
+                ) : selectedRoutingData ? (
+                  <RoutingDetailsPanel data={selectedRoutingData} onClose={() => setSelectedRoutingData(null)} copyToClipboard={copyToClipboard} />
+                ) : null}
+              </div>
+            </div>
+          )}
 
           <ZoomIndicator />
           <MapEvents
@@ -4797,6 +4979,8 @@ export default function MapElements({
             isRotatingRef={isRotatingRef}
             setTargetPos={setTargetPos}
             setShowInfoPanel={setShowInfoPanel}
+            activeTab={activeTab}
+            onSelectOwners={(item) => setSelectedParcelOwners(item)}
           />
           <PointInfoPanel pointInfo={pointInfo} setPointInfo={setPointInfo} />
           <AltimetryProfile
