@@ -13,6 +13,7 @@ export default function AdminEnedis() {
   const [prm, setPrm] = useState('');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [fetchingPrm, setFetchingPrm] = useState(null);
   const [status, setStatus] = useState('idle');
   const [consents, setConsents] = useState([]);
   const [activeTab, setActiveTab] = useState('interrogation');
@@ -63,8 +64,11 @@ export default function AdminEnedis() {
     }
   }, []);
 
-  const handleFetch = async (prmToFetch = prm) => {
-    const targetPrm = prmToFetch || prm;
+  const handleFetch = async (prmToFetch, projectIdToFetch) => {
+    // Si prmToFetch n'est pas fourni (clic depuis l'onglet Interrogation), on utilise l'état 'prm'
+    const targetPrm = (prmToFetch && typeof prmToFetch === 'string' ? prmToFetch : prm).trim();
+    const targetProjectId = projectIdToFetch || 'admin_test';
+
     if (!targetPrm || targetPrm.length !== 14) {
       toast({ 
         title: "PRM Invalide", 
@@ -74,9 +78,13 @@ export default function AdminEnedis() {
       return;
     }
 
+    setFetchingPrm(targetPrm);
     setLoading(true);
     try {
-      const result = await enedisService.fetchData({ prm: targetPrm, projectId: 'admin_test' });
+      const result = await enedisService.fetchData({ 
+        prm: targetPrm, 
+        projectId: targetProjectId 
+      });
       
       if (result && result.data) {
         setData(result.data);
@@ -106,6 +114,7 @@ export default function AdminEnedis() {
       });
     } finally {
       setLoading(false);
+      setFetchingPrm(null);
     }
   };
 
@@ -460,11 +469,11 @@ export default function AdminEnedis() {
                             </td>
                             <td className="px-8 py-6 text-right">
                               <Button 
-                                onClick={() => handleFetch(item.prm)}
+                                onClick={() => handleFetch(item.prm, item.projectId)}
                                 disabled={loading}
-                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-6 font-bold shadow-lg shadow-blue-100 transition-all hover:scale-105 active:scale-95"
+                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-6 font-bold shadow-lg shadow-blue-100 transition-all hover:scale-105 active:scale-95 min-w-[100px]"
                               >
-                                {loading ? <RotateCw className="h-4 w-4 animate-spin" /> : 'Ouvrir'}
+                                {fetchingPrm === item.prm ? <RotateCw className="h-4 w-4 animate-spin" /> : 'Ouvrir'}
                               </Button>
                             </td>
                           </tr>
