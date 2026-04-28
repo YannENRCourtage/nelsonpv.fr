@@ -601,11 +601,22 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
 }
 
 export default function AppLayout() {
-  const { user, activeTenantId } = useAuth();
+  const { user, activeTenantId, logout } = useAuth();
+  const navigate = useNavigate();
   const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
   const isAlexandruMihailov = (user?.firstName?.toLowerCase().includes('alexandru') && user?.lastName?.toLowerCase().includes('mihailov')) || user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr';
   const isRestrictedUser = isLaurentGuyon || isAlexandruMihailov;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+      setIsMobileMenuOpen(false);
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
+  };
 
   const isTrackingAuthorized = () => {
     if (!user) return false;
@@ -781,6 +792,14 @@ export default function AppLayout() {
                 Admin
               </NavLink>
             )}
+
+            <button
+              onClick={handleLogout}
+              className="mobile-nav-link text-red-500 mt-4 border-t border-gray-100 pt-4 w-full text-left"
+            >
+              <LogOut className="w-4 h-4 mr-2 inline-block" />
+              Déconnexion
+            </button>
           </nav>
         </>
       )}

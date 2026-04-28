@@ -708,11 +708,13 @@ export default function ProjectEditor() {
                 <h2 className="text-xl font-semibold">Client &amp; Projet</h2>
                 <button
                   type="button"
-                  className="lg:hidden text-gray-400 hover:text-gray-600 transition-colors"
+                  className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-100 transition-colors"
                   onClick={() => setIsClientOpen(v => !v)}
                   title={isClientOpen ? 'Replier' : 'Déplier la section client'}
                 >
-                  {isClientOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                  <Users size={14} />
+                  <span>{isClientOpen ? 'Masquer Client' : 'Voir Client'}</span>
+                  {isClientOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
               </div>
               <Button
@@ -812,6 +814,31 @@ export default function ProjectEditor() {
             enedisService={enedisService}
             toast={toast}
           />
+
+          {/* Mobile Toggle Button - Between Enedis and Client Details */}
+          <div className="lg:hidden mt-6 mb-2 border-t pt-4">
+            <button
+              type="button"
+              className={cn(
+                "w-full flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm transition-all",
+                isClientOpen 
+                  ? "bg-slate-100 text-slate-700 border border-slate-200" 
+                  : "bg-blue-600 text-white shadow-md shadow-blue-200"
+              )}
+              onClick={() => setIsClientOpen(v => !v)}
+            >
+              <div className="flex items-center gap-2">
+                <Users size={18} />
+                <span>{isClientOpen ? "Masquer les données client" : "Voir les données client"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                 <span className="text-[10px] font-normal uppercase tracking-wider opacity-80">
+                   {isClientOpen ? 'Fermer' : 'Ouvrir'}
+                 </span>
+                 {isClientOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </div>
+            </button>
+          </div>
 
           {/* Body: collapsed on mobile by default, always visible on desktop */}
           <div className={`${isClientOpen ? 'block' : 'hidden'} lg:block`}>
