@@ -506,6 +506,3 @@ export default function UrbanismeTab({ project, updateProject, setActiveTab }) {
         </div>
     );
 }
-        </div>
-    );
-}
