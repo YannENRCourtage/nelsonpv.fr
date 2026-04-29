@@ -86,22 +86,26 @@ export async function generateDPDossier(project, plates) {
             ];
             for (const id of plateIds) {
                 if (plates[id]) {
-                    const plateData = plates[id];
-                    let plateImg;
-                    
-                    if (plateData.startsWith('data:image/jpeg')) {
-                        plateImg = await finalDoc.embedJpg(plateData);
-                    } else {
-                        plateImg = await finalDoc.embedPng(plateData);
-                    }
+                    try {
+                        const plateData = plates[id];
+                        let plateImg;
+                        
+                        if (plateData.startsWith('data:image/jpeg')) {
+                            plateImg = await finalDoc.embedJpg(plateData);
+                        } else {
+                            plateImg = await finalDoc.embedPng(plateData);
+                        }
 
-                    const page = finalDoc.addPage([841.89, 595.28]); // A4 Paysage
-                    page.drawImage(plateImg, {
-                        x: 0,
-                        y: 0,
-                        width: 841.89,
-                        height: 595.28,
-                    });
+                        const page = finalDoc.addPage([841.89, 595.28]); // A4 Paysage
+                        page.drawImage(plateImg, {
+                            x: 0,
+                            y: 0,
+                            width: 841.89,
+                            height: 595.28,
+                        });
+                    } catch (err) {
+                        console.error(`Erreur sur la planche ${id}:`, err);
+                    }
                 }
             }
         }

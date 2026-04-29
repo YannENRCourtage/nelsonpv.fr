@@ -152,7 +152,7 @@ export const PlateSection = ({ project }) => {
     const batteryName = project?.battery_model || "CESC Mercury 261";
     return (
         <div style={PAGE_STYLE} id="dp-plate-section">
-            <PlateHeader title="DP3 : PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION" project={project} />
+            <PlateHeader title={`DP3 — Plan en coupe ${batteryName}`} project={project} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '10mm' }}>
                 <div style={{ position: 'relative', width: '120mm', height: '80mm', borderBottom: '2px solid #333', marginBottom: '15mm' }}>
                     <div style={{ position: 'absolute', bottom: '-8mm', left: 0, fontSize: '8pt', color: '#666', fontWeight: 'bold' }}>TERRAIN NATUREL EXISTANT (PLAT — PAS DE TERRASSEMENT)</div>
@@ -206,7 +206,7 @@ export const PlateFacades = ({ project, batteryPhoto }) => {
     const batteryName = project?.battery_model || "CESC Mercury 261";
     return (
         <div style={PAGE_STYLE} id="dp-plate-facades">
-            <PlateHeader title="DP4 : PLANS DES FAÇADES ET DES TOITURES" project={project} />
+            <PlateHeader title={`DP4 — Façades ${batteryName}`} project={project} />
             <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10mm', padding: '5mm' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8mm', justifyContent: 'center' }}>
                     <div style={{ background: '#f8f9fa', padding: '5mm', borderRadius: '12px', border: '1px solid #e2e8f0', height: '60mm', display: 'flex', flexDirection: 'column' }}>

@@ -161,20 +161,25 @@ export default function UrbanismeTab({ project, updateProject, setActiveTab }) {
             setStep('rendering');
             setCaptureStep('Génération des planches...');
 
-            // 6. Rendu des planches demandées
+            // 6. Rendu des planches demandées (Séquence complète)
             const plateIds = [
                 'dp-plate-cover',
                 'dp-plate-situation', 
                 'dp-plate-masse', 
                 'dp-plate-section',
                 'dp-plate-facades',
+                'dp-plate-aspect',
+                'dp-plate-insertion',
                 'dp-plate-env-proche',
+                'dp-plate-env-lointain',
                 'dp-plate-notice-insertion'
             ];
             
             const platePromises = plateIds.map(async (id) => {
                 const el = document.getElementById(id);
                 if (el) {
+                    // Petit délai pour laisser le temps au moteur de rendu (important pour les maps et images)
+                    await new Promise(r => setTimeout(r, 200));
                     const canvas = await html2canvas(el, { 
                         scale: 2, // Haute qualité
                         useCORS: true,
@@ -493,14 +498,16 @@ export default function UrbanismeTab({ project, updateProject, setActiveTab }) {
                 </div>
             )}
 
-            {/* Hidden Rendering Container */}
             <div className="fixed left-[-9999px] top-0 no-print pointer-events-none">
                 <div id="dp-plate-cover"><PlateCover project={{ ...project, dp_data: dpData }} /></div>
                 <div id="dp-plate-situation"><PlateSituation project={project} captures={captures} /></div>
                 <div id="dp-plate-masse"><PlateMasse project={project} captures={captures} /></div>
                 <div id="dp-plate-section"><PlateSection project={project} /></div>
                 <div id="dp-plate-facades"><PlateFacades project={project} batteryPhoto={BATTERY_PHOTO} /></div>
+                <div id="dp-plate-aspect"><PlateAspect project={project} batteryPhoto={BATTERY_PHOTO} /></div>
+                <div id="dp-plate-insertion"><PlateInsertion project={project} captures={captures} /></div>
                 <div id="dp-plate-env-proche"><PlateEnvProche project={project} captures={captures} /></div>
+                <div id="dp-plate-env-lointain"><PlateEnvLointain project={project} captures={captures} /></div>
                 <div id="dp-plate-notice-insertion"><PlateInsertionNotice project={project} /></div>
             </div>
         </div>
