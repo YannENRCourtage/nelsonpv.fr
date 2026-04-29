@@ -246,84 +246,72 @@ export const PlateFacades = ({ project, batteryPhoto }) => {
 };
 
 /**
- * PLANCHE DP8.1 : NOTICE D'INSERTION
+ * PLANCHE DP8.1 : NOTICE D'INSERTION (Texte Officiel Hangar3D)
  */
 export const PlateInsertionNotice = ({ project }) => {
     const data = project?.dp_data || {};
     const batteryName = project?.battery_model || "CESC Mercury 261";
-    
+    const count = project?.battery_quantity || 2;
+    const power = count * 125; // Exemple: 250kW pour 2 armoires
+    const capacity = count * 261; // Exemple: 522kWh pour 2 armoires
+    const emprise = count * 7.5; // Exemple emprise au sol estimée
+
     return (
         <div style={PAGE_STYLE} id="dp-plate-notice-insertion">
-            <PlateHeader title="DP8.1 : NOTICE DÉCRIVANT LE TERRAIN ET LE PROJET" project={project} showBranding={true} />
-            <div style={{ flex: 1, padding: '10mm', overflowY: 'auto' }}>
-                <div style={{ columnCount: 2, columnGap: '15mm', fontSize: '9pt', lineHeight: '1.6', color: '#334155' }}>
-                    
-                    <section style={{ breakInside: 'avoid', marginBottom: '8mm' }}>
-                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '3mm', fontSize: '10pt', fontWeight: 'black', color: '#2563eb', textTransform: 'uppercase', marginBottom: '3mm', borderBottom: '1.5px solid #dbeafe', paddingBottom: '1.5mm' }}>
-                            <span style={{ background: '#2563eb', color: '#fff', width: '6mm', height: '6mm', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8pt' }}>1</span>
-                            Objet de la demande
-                        </h3>
-                        <p style={{ fontWeight: 'bold', color: '#1e293b', fontStyle: 'italic', marginBottom: '3mm' }}>
-                            {data.notice_objat || `Installation d'une unité de stockage par batteries stationnaires de type ${batteryName} sur dalle béton.`}
-                        </p>
-                        <p>
-                            Le présent dossier concerne la mise en place d'une infrastructure de stockage d'énergie destinée à stabiliser le réseau électrique local et à optimiser l'injection d'énergies renouvelables.
-                        </p>
-                    </section>
+            <PlateHeader title="NOTICE D'INSERTION (DP 8.1)" project={project} showBranding={true} />
+            <div style={{ flex: 1, padding: '5mm 10mm', overflowY: 'hidden', fontSize: '8.5pt', lineHeight: '1.4', color: '#1e293b' }}>
+                
+                <section style={{ marginBottom: '4mm' }}>
+                    <h3 style={{ fontSize: '10pt', fontWeight: '900', borderBottom: '1px solid #000', marginBottom: '2mm', textTransform: 'uppercase' }}>1 — OBJET DE LA DEMANDE</h3>
+                    <p>
+                        La demande de Déclaration Préalable porte sur l'installation de {count} armoire(s) de stockage stationnaire par batteries {batteryName}, d'une puissance totale de {power} kW et d'une capacité de {capacity} kWh, raccordée en injection-soutirage au réseau public de distribution d'électricité pour la fourniture de services système (arbitrage, réserve de fréquence, mécanisme de capacité).
+                    </p>
+                </section>
 
-                    <section style={{ breakInside: 'avoid', marginBottom: '8mm' }}>
-                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '3mm', fontSize: '10pt', fontWeight: 'black', color: '#2563eb', textTransform: 'uppercase', marginBottom: '3mm', borderBottom: '1.5px solid #dbeafe', paddingBottom: '1.5mm' }}>
-                            <span style={{ background: '#2563eb', color: '#fff', width: '6mm', height: '6mm', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8pt' }}>2</span>
-                            État initial du terrain
-                        </h3>
-                        <p>
-                            Le site est situé à l'adresse suivante : <span style={{ fontWeight: 'bold' }}>{project?.address || "—"}</span>.
-                        </p>
-                        <p style={{ marginTop: '2mm' }}>
-                            Le terrain d'implantation est actuellement une zone plane, déjà artificialisée ou destinée à un usage technique au sein de la parcelle cadastrale. 
-                            La topographie est horizontale, ne nécessitant aucun terrassement ou modification du profil naturel du sol.
-                        </p>
-                    </section>
+                <section style={{ marginBottom: '4mm' }}>
+                    <h3 style={{ fontSize: '10pt', fontWeight: '900', borderBottom: '1px solid #000', marginBottom: '2mm', textTransform: 'uppercase' }}>2 — LE SITE</h3>
+                    <p>
+                        Le projet se situe à {project?.address || '—'}, commune de {project?.city || project?.cadastre_commune || '—'}, dans le département de {project?.zip?.substring(0,2) || '—'}. 
+                        Le terrain concerné est composé de la parcelle section {project?.cadastre_section || '—'} n°{project?.cadastre_numero || '—'}, d'une superficie de {project?.cadastre_surface || '—'} m². 
+                        L'accès au projet se fait par un chemin existant.
+                    </p>
+                </section>
 
-                    <section style={{ breakInside: 'avoid', marginBottom: '8mm' }}>
-                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '3mm', fontSize: '10pt', fontWeight: 'black', color: '#2563eb', textTransform: 'uppercase', marginBottom: '3mm', borderBottom: '1.5px solid #dbeafe', paddingBottom: '1.5mm' }}>
-                            <span style={{ background: '#2563eb', color: '#fff', width: '6mm', height: '6mm', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8pt' }}>3</span>
-                            Le projet architectural
-                        </h3>
-                        <p>
-                            Le projet prévoit l'installation d'une armoire technique de <span style={{ fontWeight: 'bold' }}>2,40m de hauteur</span>. 
-                            L'emprise au sol est d'environ <span style={{ fontWeight: 'bold' }}>1,35 m²</span> par unité.
-                        </p>
-                        <p style={{ marginTop: '2mm' }}>
-                            L'aspect extérieur est sobre (RAL 7016 gris anthracite), conçu pour une intégration discrète. 
-                            Les matériaux utilisés sont pérennes et ne génèrent aucune pollution visuelle significative.
-                        </p>
-                    </section>
+                <section style={{ marginBottom: '4mm' }}>
+                    <h3 style={{ fontSize: '10pt', fontWeight: '900', borderBottom: '1px solid #000', marginBottom: '2mm', textTransform: 'uppercase' }}>3 — LE PROJET</h3>
+                    <p>
+                        Le projet consiste en l'installation de {count} armoire(s) de stockage batterie {batteryName} (lithium ion). 
+                        Dimensions : H 2,40 m x L 1,00 m x P 1,35 m - capacité 261 kWh par armoire - acier galvanisé revêtu, coloris gris/blanc. 
+                        Les armoires sont posées sur une dalle béton au sol d'une emprise totale de {emprise} m² intégrant les dégagements nécessaires à la maintenance (accès façade, arrière et espacement thermique). 
+                        Elles ne constituent pas une construction au sens de la surface de plancher.
+                    </p>
+                </section>
 
-                    <section style={{ breakInside: 'avoid', marginBottom: '8mm' }}>
-                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '3mm', fontSize: '10pt', fontWeight: 'black', color: '#2563eb', textTransform: 'uppercase', marginBottom: '3mm', borderBottom: '1.5px solid #dbeafe', paddingBottom: '1.5mm' }}>
-                            <span style={{ background: '#2563eb', color: '#fff', width: '6mm', height: '6mm', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8pt' }}>4</span>
-                            Raccordement au réseau
-                        </h3>
-                        <p>
-                            L'unité sera raccordée au réseau de distribution publique (ENEDIS) via une liaison souterraine basse tension. 
-                            Le tracé est optimisé pour emprunter les voiries existantes du site, limitant l'impact environnemental.
-                        </p>
-                    </section>
+                <section style={{ marginBottom: '4mm' }}>
+                    <h3 style={{ fontSize: '10pt', fontWeight: '900', borderBottom: '1px solid #000', marginBottom: '2mm', textTransform: 'uppercase' }}>4 — RACCORDEMENT AUX RÉSEAUX</h3>
+                    <p>
+                        Les armoires sont raccordées de manière bidirectionnelle (injection et soutirage) au réseau de distribution ENEDIS via un point de livraison (PDL). Le raccordement est réalisé par câbles enterrés entre les armoires, le point de livraison et le poste de transformation.
+                    </p>
+                    <p style={{ marginTop: '1mm' }}>
+                        L'emplacement du point de livraison et du transformateur (le cas échéant) indiqué dans les pièces graphiques n'apparaît qu'à titre indicatif. Le positionnement définitif demeure à l'appréciation du gestionnaire de réseau en fonction du site et des équipements déjà existants.
+                    </p>
+                </section>
 
-                    <section style={{ breakInside: 'avoid', marginBottom: '8mm' }}>
-                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '3mm', fontSize: '10pt', fontWeight: 'black', color: '#2563eb', textTransform: 'uppercase', marginBottom: '3mm', borderBottom: '1.5px solid #dbeafe', paddingBottom: '1.5mm' }}>
-                            <span style={{ background: '#2563eb', color: '#fff', width: '6mm', height: '6mm', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8pt' }}>5</span>
-                            Impact environnemental
-                        </h3>
-                        <p>
-                            Ce dispositif de stockage BESS participe activement à la transition énergétique en favorisant l'intégration des énergies renouvelables intermittentes. 
-                        </p>
-                        <div style={{ marginTop: '4mm', padding: '3mm', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #dcfce7', color: '#166534', fontWeight: 'bold', fontStyle: 'italic' }}>
-                            Note d'insertion : {data.notice_insertion || "L'implantation compacte et le choix des coloris assurent une intégration harmonieuse au paysage existant."}
-                        </div>
-                    </section>
-                </div>
+                <section>
+                    <h3 style={{ fontSize: '10pt', fontWeight: '900', borderBottom: '1px solid #000', marginBottom: '2mm', textTransform: 'uppercase' }}>5 — INTÉRÊT POUR LE RÉSEAU ÉLECTRIQUE</h3>
+                    <p>
+                        L'installation de stockage par batteries contribue directement à la stabilité et à la résilience du réseau électrique national. En tant qu'actif raccordé au réseau de distribution ENEDIS, elle participe à plusieurs mécanismes de service système :
+                    </p>
+                    <ul style={{ marginTop: '1mm', paddingLeft: '5mm', listStyleType: 'dash' }}>
+                        <li><strong>Réserve de fréquence (aFFR / FCR) :</strong> réponse automatique aux écarts de fréquence du réseau, service rémunéré par RTE dans le cadre des appels d'offres de réglage fréquence.</li>
+                        <li><strong>Activation d'énergie :</strong> injection ou soutirage sur signal de RTE pour compenser les déséquilibres production/consommation en temps réel.</li>
+                        <li><strong>Mécanisme de capacité :</strong> participation au marché de capacité obligatoire (décret n°2012-1405), contribuant à la sécurité d'approvisionnement lors des pointes de consommation hivernales.</li>
+                        <li><strong>Trading / arbitrage :</strong> optimisation des flux d'énergie en achetant l'électricité en heures creuses et en la restituant en heures de pointe, contribuant au lissage de la courbe de charge.</li>
+                    </ul>
+                    <p style={{ marginTop: '2mm', fontStyle: 'italic' }}>
+                        À ce titre, l'installation s'inscrit pleinement dans les objectifs de la Programmation Pluriannuelle de l'Énergie (PPE) qui prévoit un développement massif du stockage stationnaire pour accompagner l'intégration des énergies renouvelables intermittentes sur le réseau.
+                    </p>
+                </section>
             </div>
             <Footer project={project} />
         </div>
