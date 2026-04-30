@@ -936,10 +936,10 @@ export default function DossierTracking() {
                                             className={cn(
                                                 "border-b border-r p-0 relative transition-all truncate",
                                                 isEditing && "ring-2 ring-blue-500 ring-inset z-10 bg-white",
-                                                !isEditing && "cursor-pointer"
+                                                !isEditing && col.key !== 'paye' && "cursor-pointer"
                                             )}
                                             onClick={(e) => {
-                                                if (!isEditing) {
+                                                if (!isEditing && col.key !== 'paye') {
                                                     setEditingCell({ rowId: row.id, colKey: col.key });
                                                 }
                                             }}
