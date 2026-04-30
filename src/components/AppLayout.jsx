@@ -620,14 +620,15 @@ export default function AppLayout() {
 
   const isTrackingAuthorized = () => {
     if (!user) return false;
+
+    // Admins (Véro, Yann sont admins)
+    if (user.role === 'admin' || user.role === 'Administrator') return true;
+
     if (activeTenantId !== 'green-invest') return false;
 
     const email = user.email?.toLowerCase();
     const firstName = (user.firstName || user.displayName || '').toLowerCase();
     const lastName = (user.lastName || '').toLowerCase();
-
-    // Admins (Véro, Yann sont admins)
-    if (user.role === 'admin' || user.role === 'Administrator') return true;
 
     // Laurent GUYON
     if (firstName.includes('laurent') && lastName.includes('guyon')) return true;
