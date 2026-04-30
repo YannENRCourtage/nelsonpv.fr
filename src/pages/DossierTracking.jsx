@@ -4,7 +4,8 @@ import {
     ArrowUpDown, Filter, MoreHorizontal, ChevronLeft,
     TrendingUp, FileText, Calendar, Euro, MapPin, Mail, Phone,
     Upload, Copy, CheckSquare, Square, X, GripVertical,
-    ArrowUp, ArrowDown, Loader2
+    ArrowUp, ArrowDown, Loader2, CheckCircle2, XCircle, FilterX, Settings2,
+    SlidersHorizontal, Check
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '@/services/api';
@@ -333,6 +334,7 @@ const ResizableHeader = ({ col, label, width, onResize, isResizing, setIsResizin
 const COLUMNS = [
     { key: "ref_projet", label: "Réf projet", icon: <FileText className="w-3 h-3 mr-1" /> },
     { key: "num_facture", label: "N° facture", icon: <FileText className="w-3 h-3 mr-1" /> },
+    { key: "paye", label: "Payé", icon: <CheckSquare className="w-3 h-3 mr-1" /> },
     { key: "date_facture", label: "Date facture", icon: <Calendar className="w-3 h-3 mr-1" /> },
     { key: "echeance", label: "Échéance", icon: <Calendar className="w-3 h-3 mr-1" /> },
     { key: "total_ht", label: "Total HT (€)", icon: <Euro className="w-3 h-3 mr-1" /> },
@@ -369,6 +371,16 @@ export default function DossierTracking() {
     const [isResizing, setIsResizing] = useState(false);
     const [selectedRows, setSelectedRows] = useState(new Set());
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+    const [paymentFilter, setPaymentFilter] = useState('all'); // 'all', 'paid', 'unpaid'
+    const [advancedFilters, setAdvancedFilters] = useState({
+        minKwc: '',
+        maxKwc: '',
+        dateStart: '',
+        dateEnd: '',
+        hasJalon1: 'all', // 'all', 'yes', 'no'
+        hasJalon2: 'all',
+        hasJalon3: 'all'
+    });
 
     const fileInputRef = useRef(null);
     const containerRef = useRef(null);
@@ -413,7 +425,7 @@ export default function DossierTracking() {
     useEffect(() => {
         const widths = {};
         COLUMNS.forEach(col => {
-            widths[col.key] = 160;
+            widths[col.key] = col.key === 'paye' ? 60 : 160;
         });
         setColumnWidths(widths);
     }, []);
@@ -552,6 +564,52 @@ export default function DossierTracking() {
 
     const sortedRows = useMemo(() => {
         let sorted = [...rows];
+        
+        // Payment filter
+        if (paymentFilter === 'paid') {
+            sorted = sorted.filter(row => row.paye === true);
+        } else if (paymentFilter === 'unpaid') {
+            sorted = sorted.filter(row => row.paye !== true);
+        }
+
+        // Advanced filters
+        if (advancedFilters.minKwc) {
+            sorted = sorted.filter(row => {
+                const val = parseFloat(String(row.kwc || '').replace(/\s/g, '').replace(',', '.'));
+                return !isNaN(val) && val >= parseFloat(advancedFilters.minKwc);
+            });
+        }
+        if (advancedFilters.maxKwc) {
+            sorted = sorted.filter(row => {
+                const val = parseFloat(String(row.kwc || '').replace(/\s/g, '').replace(',', '.'));
+                return !isNaN(val) && val <= parseFloat(advancedFilters.maxKwc);
+            });
+        }
+        if (advancedFilters.dateStart) {
+            const start = new Date(advancedFilters.dateStart);
+            sorted = sorted.filter(row => {
+                const rowDate = toInputDate(row.date_facture);
+                return rowDate && new Date(rowDate) >= start;
+            });
+        }
+        if (advancedFilters.dateEnd) {
+            const end = new Date(advancedFilters.dateEnd);
+            sorted = sorted.filter(row => {
+                const rowDate = toInputDate(row.date_facture);
+                return rowDate && new Date(rowDate) <= end;
+            });
+        }
+        if (advancedFilters.hasJalon1 !== 'all') {
+            sorted = sorted.filter(row => advancedFilters.hasJalon1 === 'yes' ? !!row.jalon1_pdb : !row.jalon1_pdb);
+        }
+        if (advancedFilters.hasJalon2 !== 'all') {
+            sorted = sorted.filter(row => advancedFilters.hasJalon2 === 'yes' ? !!row.jalon2_pc_dp : !row.jalon2_pc_dp);
+        }
+        if (advancedFilters.hasJalon3 !== 'all') {
+            sorted = sorted.filter(row => advancedFilters.hasJalon3 === 'yes' ? !!row.jalon3_bail : !row.jalon3_bail);
+        }
+
+        // Sorting
         if (sortConfig.key) {
             sorted.sort((a, b) => {
                 const valA = String(a[sortConfig.key] || '').toLowerCase();
@@ -561,6 +619,8 @@ export default function DossierTracking() {
                 return 0;
             });
         }
+
+        // Search query
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
             sorted = sorted.filter(row => 
@@ -568,7 +628,7 @@ export default function DossierTracking() {
             );
         }
         return sorted;
-    }, [rows, sortConfig, searchQuery]);
+    }, [rows, sortConfig, searchQuery, paymentFilter, advancedFilters]);
 
     const handleCopy = (value) => {
         navigator.clipboard.writeText(String(value || ''));
@@ -607,6 +667,138 @@ export default function DossierTracking() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="pl-8 pr-3 h-full bg-slate-50 border border-slate-200 rounded-md text-xs w-48 focus:bg-white focus:ring-1 focus:ring-blue-500 transition-all outline-none"
                         />
+                    </div>
+
+                    <div className="h-6 w-[1px] bg-slate-200 mx-1" />
+
+                    {/* Advanced Filters Button */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className={cn(
+                                    "h-8 px-3 text-xs gap-2 border-slate-200",
+                                    (advancedFilters.minKwc || advancedFilters.maxKwc || advancedFilters.dateStart || advancedFilters.dateEnd || advancedFilters.hasJalon1 !== 'all' || advancedFilters.hasJalon2 !== 'all' || advancedFilters.hasJalon3 !== 'all') && "bg-blue-50 border-blue-200 text-blue-600"
+                                )}
+                            >
+                                <SlidersHorizontal className="w-3.5 h-3.5" />
+                                Filtrer
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-72 p-4 space-y-4" align="start">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Dates facture</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Input 
+                                        type="date" 
+                                        value={advancedFilters.dateStart} 
+                                        onChange={(e) => setAdvancedFilters(prev => ({ ...prev, dateStart: e.target.value }))}
+                                        className="h-8 text-[10px]"
+                                    />
+                                    <Input 
+                                        type="date" 
+                                        value={advancedFilters.dateEnd} 
+                                        onChange={(e) => setAdvancedFilters(prev => ({ ...prev, dateEnd: e.target.value }))}
+                                        className="h-8 text-[10px]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Puissance (kWc)</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Input 
+                                        placeholder="Min" 
+                                        type="number"
+                                        value={advancedFilters.minKwc} 
+                                        onChange={(e) => setAdvancedFilters(prev => ({ ...prev, minKwc: e.target.value }))}
+                                        className="h-8 text-[10px]"
+                                    />
+                                    <Input 
+                                        placeholder="Max" 
+                                        type="number"
+                                        value={advancedFilters.maxKwc} 
+                                        onChange={(e) => setAdvancedFilters(prev => ({ ...prev, maxKwc: e.target.value }))}
+                                        className="h-8 text-[10px]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Jalons (PDB / PC / BAIL)</label>
+                                <div className="flex flex-col gap-1">
+                                    <select 
+                                        className="h-8 text-[10px] border rounded-md px-2"
+                                        value={advancedFilters.hasJalon1}
+                                        onChange={(e) => setAdvancedFilters(prev => ({ ...prev, hasJalon1: e.target.value }))}
+                                    >
+                                        <option value="all">Jalon 1 (PDB) : Tous</option>
+                                        <option value="yes">Rempli</option>
+                                        <option value="no">Vide</option>
+                                    </select>
+                                    <select 
+                                        className="h-8 text-[10px] border rounded-md px-2"
+                                        value={advancedFilters.hasJalon2}
+                                        onChange={(e) => setAdvancedFilters(prev => ({ ...prev, hasJalon2: e.target.value }))}
+                                    >
+                                        <option value="all">Jalon 2 (PC/DP) : Tous</option>
+                                        <option value="yes">Rempli</option>
+                                        <option value="no">Vide</option>
+                                    </select>
+                                    <select 
+                                        className="h-8 text-[10px] border rounded-md px-2"
+                                        value={advancedFilters.hasJalon3}
+                                        onChange={(e) => setAdvancedFilters(prev => ({ ...prev, hasJalon3: e.target.value }))}
+                                    >
+                                        <option value="all">Jalon 3 (BAIL) : Tous</option>
+                                        <option value="yes">Rempli</option>
+                                        <option value="no">Vide</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="w-full text-[10px] h-7 text-slate-500 hover:text-red-500"
+                                onClick={() => setAdvancedFilters({
+                                    minKwc: '', maxKwc: '', dateStart: '', dateEnd: '',
+                                    hasJalon1: 'all', hasJalon2: 'all', hasJalon3: 'all'
+                                })}
+                            >
+                                <FilterX className="w-3 h-3 mr-2" />
+                                Réinitialiser les filtres
+                            </Button>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Payment Status Buttons */}
+                    <div className="flex items-center gap-1 ml-1">
+                        <Button 
+                            variant={paymentFilter === 'paid' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setPaymentFilter(prev => prev === 'paid' ? 'all' : 'paid')}
+                            className={cn(
+                                "h-8 px-3 text-xs gap-2 border-slate-200",
+                                paymentFilter === 'paid' ? "bg-green-600 hover:bg-green-700 text-white border-green-600" : "text-slate-600"
+                            )}
+                        >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Factures réglées
+                        </Button>
+                        <Button 
+                            variant={paymentFilter === 'unpaid' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setPaymentFilter(prev => prev === 'unpaid' ? 'all' : 'unpaid')}
+                            className={cn(
+                                "h-8 px-3 text-xs gap-2 border-slate-200",
+                                paymentFilter === 'unpaid' ? "bg-orange-500 hover:bg-orange-600 text-white border-orange-500" : "text-slate-600"
+                            )}
+                        >
+                            <XCircle className="w-3.5 h-3.5" />
+                            Factures non réglées
+                        </Button>
                     </div>
 
                     <div className="h-6 w-[1px] bg-slate-200 mx-1" />
@@ -788,6 +980,18 @@ export default function DossierTracking() {
                                                                 }}
                                                             />
                                                         )}
+                                                    </div>
+                                                ) : col.key === 'paye' ? (
+                                                    <div className="w-full flex items-center justify-center">
+                                                        <input 
+                                                            type="checkbox"
+                                                            checked={!!row[col.key]}
+                                                            onChange={(e) => {
+                                                                e.stopPropagation();
+                                                                handleUpdateCell(row.id, col.key, e.target.checked);
+                                                            }}
+                                                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                        />
                                                     </div>
                                                 ) : (
                                                     <div className="w-full px-3 text-xs text-slate-700 truncate flex items-center justify-between">
