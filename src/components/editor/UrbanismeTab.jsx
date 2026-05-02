@@ -19,7 +19,6 @@ export default function UrbanismeTab({ project, updateProject, setActiveTab }) {
     const [captureStep, setCaptureStep] = useState('');
     const [mairie, setMairie] = useState(null);
     const [loadingMairie, setLoadingMairie] = useState(false);
-    const [viewMode, setViewMode] = useState('edit'); // 'edit' or 'review'
     const [selectedPlateId, setSelectedPlateId] = useState('CERFA'); // State for individual modification
 
     // Load existing captures from project
@@ -248,36 +247,22 @@ export default function UrbanismeTab({ project, updateProject, setActiveTab }) {
         <div className="flex flex-col gap-6 p-4 lg:p-8 bg-[#f1f5f9] min-h-screen">
             {/* Top Bar */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl shadow-sm">
-                <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
-                    <button 
-                        onClick={() => setViewMode('edit')}
-                        className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'edit' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        Configuration
-                    </button>
-                    <button 
-                        onClick={() => setViewMode('review')}
-                        className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'review' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        Demande DP
-                    </button>
+                <div>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight">Dossier Urbanisme (DP)</h2>
                 </div>
-                {viewMode === 'review' && (
-                    <Button 
-                        onClick={handleGenerate}
-                        disabled={isGenerating}
-                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-8 py-6 font-bold shadow-lg shadow-blue-200 transition-all active:scale-95"
-                    >
-                        {isGenerating ? <Loader2 className="animate-spin mr-2" /> : <Download className="mr-2" />}
-                        Générer Dossier DP complet
-                    </Button>
-                )}
+                <Button 
+                    onClick={handleGenerate}
+                    disabled={isGenerating}
+                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-8 py-6 font-bold shadow-lg shadow-blue-200 transition-all active:scale-95"
+                >
+                    {isGenerating ? <Loader2 className="animate-spin mr-2" /> : <Download className="mr-2" />}
+                    Générer Dossier DP complet
+                </Button>
             </div>
 
-            {viewMode === 'edit' ? (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* Colonne Gauche: Formulaire */}
-                    <div className="lg:col-span-4 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Colonne Gauche: Formulaire (ex-Configuration) */}
+                <div className="lg:col-span-4 space-y-6">
                         <Card className="rounded-2xl border-none shadow-sm overflow-hidden">
                             <CardHeader className="bg-white border-b border-slate-100">
                                 <CardTitle className="text-base font-bold flex items-center gap-2">
@@ -331,58 +316,20 @@ export default function UrbanismeTab({ project, updateProject, setActiveTab }) {
                         </div>
                     </div>
 
-                    {/* Colonne Droite: Preview des captures */}
-                    <div className="lg:col-span-8">
-                        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 min-h-[400px] flex flex-col items-center justify-center text-center space-y-4">
-                            {!captures.ign ? (
-                                <>
-                                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
-                                        <Camera className="text-blue-500" size={32} />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-slate-800">Prêt pour la génération ?</h3>
-                                        <p className="text-sm text-slate-500 max-w-sm mt-1">
-                                            Assurez-vous que la carte est bien centrée sur le projet. 
-                                            Les captures IGN, Satellite et Cadastre seront générées automatiquement.
-                                        </p>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="grid grid-cols-2 gap-4 w-full">
-                                    <img src={captures.ign} className="rounded-lg border shadow-sm" />
-                                    <img src={captures.satellite} className="rounded-lg border shadow-sm" />
-                                </div>
-                            )}
-                        </div>
-                    </div>
                 </div>
-            ) : (
-                /* --- MODE DEMANDE DP (Hangar3d Style) --- */
-                <div className="max-w-4xl mx-auto w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="text-center py-4">
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-xs font-black uppercase tracking-widest mb-4">
-                            📄 Dossier Officiel
-                        </div>
-                        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Demande DP</h2>
-                        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mt-2">{project?.firstName} {project?.lastName}</p>
-                    </div>
 
-                    <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
-                        <CardContent className="p-10 space-y-12">
-                            {/* Dashboard Header */}
-                            <div className="flex justify-between items-center pb-8 border-b border-slate-100">
-                                <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
-                                    <FileText className="text-blue-600" size={24} />
-                                    Demande de Déclaration Préalable (DP)
-                                </h3>
-                                <Button 
-                                    onClick={handleGenerate}
-                                    size="sm"
-                                    className="bg-blue-600 text-white font-bold rounded-lg"
-                                >
-                                    Générer Dossier DP complet
-                                </Button>
-                            </div>
+                {/* Colonne Droite: Demande DP */}
+                <div className="lg:col-span-8">
+                    <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
+                            <CardContent className="p-10 space-y-12">
+                                {/* Dashboard Header */}
+                                <div className="flex justify-between items-center pb-8 border-b border-slate-100">
+                                    <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+                                        <FileText className="text-blue-600" size={24} />
+                                        Demande de Déclaration Préalable (DP)
+                                    </h3>
+                                </div>
 
                             {/* Section 1: Parcelle & Mairie */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
@@ -506,8 +453,7 @@ export default function UrbanismeTab({ project, updateProject, setActiveTab }) {
                         </CardContent>
                     </Card>
                 </div>
-            )}
-
+            </div>
             <div className="fixed left-[-9999px] top-0 no-print pointer-events-none">
                 <div id="dp-plate-cover"><PlateCover project={{ ...project, dp_data: dpData }} /></div>
                 <div id="dp-plate-situation"><PlateSituation project={project} captures={captures} /></div>

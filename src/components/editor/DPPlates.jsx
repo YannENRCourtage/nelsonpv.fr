@@ -111,7 +111,7 @@ export const PlateSituation = ({ project, captures }) => {
                 </div>
                 
                 <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <img src={captures?.cadastre} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan de situation cadastral" />
+                    <img src={captures?.cadastre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Plan de situation cadastral" />
                 </div>
             </div>
         </div>
@@ -122,22 +122,24 @@ export const PlateSituation = ({ project, captures }) => {
  * PLANCHE 3 : PLAN DE MASSE
  */
 export const PlateMasse = ({ project, captures }) => {
-    // captures = { masse_edl: '...', masse_projet: '...' }
     return (
-        <div style={PAGE_STYLE} id="dp-plate-masse">
-            <PlateHeader title="DP2 : PLAN DE MASSE" project={project} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5mm', flex: 1 }}>
-                <div style={{ border: '1px solid #ddd', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                     <div style={{ background: '#f8f9fa', padding: '2mm', fontWeight: 'bold', borderBottom: '1px solid #ddd' }}>État de Lieux (EDL)</div>
-                     <img src={captures?.masse_edl} style={{ flex: 1, objectFit: 'contain' }} alt="EDL" />
-                </div>
-                <div style={{ border: '1px solid #ddd', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                     <div style={{ background: '#eef2ff', padding: '2mm', fontWeight: 'bold', borderBottom: '1px solid #ddd', color: '#00429d' }}>Projet</div>
-                     <img src={captures?.masse_projet} style={{ flex: 1, objectFit: 'contain' }} alt="Projet" />
-                </div>
+        <div style={{ ...PAGE_STYLE, paddingTop: '15mm', paddingLeft: '15mm', paddingRight: '15mm', paddingBottom: '10mm', backgroundColor: '#fff' }} id="dp-plate-masse">
+            <div style={{ position: 'absolute', top: '5mm', left: '15mm', fontSize: '10pt', color: '#333' }}>
+                DP2 — Plan de masse - {project?.cadastre_commune || project?.city || ''}
             </div>
-            <div style={{ marginTop: '5mm', background: '#f8f9fa', padding: '3mm', fontSize: '9pt', border: '1px solid #ddd' }}>
-                <span style={{ fontWeight: 'bold' }}>Légende :</span> 🔌 Points de Livraison (PDL) | 📍 Emplacement des unités de stockage | 🟦 Panneaux Photovoltaïques
+            
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div style={{ marginBottom: '5mm' }}>
+                    <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#000', marginBottom: '4px' }}>DP2 — Plan de masse</div>
+                    <div style={{ fontSize: '11pt', color: '#333', lineHeight: '1.2' }}>
+                        {project?.address} {project?.zip} {project?.city} — {project?.cadastre_commune || project?.city}<br/>
+                        Parcelle {project?.cadastre_section} {project?.cadastre_numero}
+                    </div>
+                </div>
+                
+                <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <img src={captures?.masse_projet} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Plan de masse" />
+                </div>
             </div>
         </div>
     );
@@ -149,48 +151,53 @@ export const PlateMasse = ({ project, captures }) => {
 export const PlateSection = ({ project }) => {
     const batteryName = project?.battery_model || "CESC Mercury 261";
     return (
-        <div style={PAGE_STYLE} id="dp-plate-section">
-            <PlateHeader title={`DP3 — Plan en coupe ${batteryName}`} project={project} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '10mm' }}>
-                <div style={{ position: 'relative', width: '120mm', height: '80mm', borderBottom: '2px solid #333', marginBottom: '15mm' }}>
-                    <div style={{ position: 'absolute', bottom: '-8mm', left: 0, fontSize: '8pt', color: '#666', fontWeight: 'bold' }}>TERRAIN NATUREL EXISTANT (PLAT — PAS DE TERRASSEMENT)</div>
-                    
-                    {/* Dessin Batterie Profil */}
-                    <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '35mm', height: '65mm', backgroundColor: '#fff7ed', border: '1.5px solid #f97316', display: 'flex', flexDirection: 'column', padding: '2mm', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                        <div style={{ fontSize: '7pt', textAlign: 'center', fontWeight: 'bold', color: '#9a3412', marginBottom: '2mm', textTransform: 'uppercase' }}>{batteryName}</div>
-                        <div style={{ flex: 1, border: '1px solid #fdba74', marginBottom: '1mm', borderRadius: '1px' }}></div>
-                        <div style={{ flex: 1, border: '1px solid #fdba74', marginBottom: '1mm', borderRadius: '1px' }}></div>
-                        <div style={{ flex: 1, border: '1px solid #fdba74', marginBottom: '1mm', borderRadius: '1px' }}></div>
+        <div style={{ ...PAGE_STYLE, paddingTop: '15mm', paddingLeft: '15mm', paddingRight: '15mm', paddingBottom: '10mm', backgroundColor: '#fff' }} id="dp-plate-section">
+            <div style={{ position: 'absolute', top: '5mm', left: '15mm', fontSize: '10pt', color: '#333' }}>
+                DP3 — Plan en coupe - {batteryName}
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div style={{ marginBottom: '15mm' }}>
+                    <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#333', marginBottom: '2px' }}>DP3 — Plan en coupe du terrain et de la construction</div>
+                    <div style={{ fontSize: '10pt', color: '#666' }}>Armoire de stockage {batteryName} — coupe latérale (profondeur)</div>
+                </div>
+
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                    <div style={{ position: 'relative', width: '100mm', height: '90mm', borderBottom: '1px solid #999', marginBottom: '5mm' }}>
+                        <div style={{ position: 'absolute', bottom: '-6mm', left: 0, right: 0, textAlign: 'center', fontSize: '8pt', color: '#999', fontStyle: 'italic' }}>Terrain naturel existant (plat — pas de terrassement)</div>
                         
-                        {/* Cotes hauteur */}
-                        <div style={{ position: 'absolute', left: '40mm', top: 0, bottom: 0, width: '10mm', borderLeft: '1px solid #ef4444', borderTop: '1px solid #ef4444', borderBottom: '1px solid #ef4444', display: 'flex', alignItems: 'center' }}>
-                            <span style={{ fontSize: '9pt', color: '#ef4444', fontWeight: 'bold', paddingLeft: '2mm' }}>2,40 m</span>
+                        {/* Dessin Batterie Profil */}
+                        <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '40mm', height: '80mm', backgroundColor: '#fef3c7', border: '1.5px solid #d97706', display: 'flex', flexDirection: 'column', padding: '2mm' }}>
+                            <div style={{ position: 'absolute', top: '-6mm', left: 0, right: 0, textAlign: 'center' }}>
+                                <div style={{ fontSize: '9pt', fontWeight: 'bold', color: '#d97706' }}>{batteryName}</div>
+                                <div style={{ fontSize: '7pt', color: '#d97706' }}>Capacité: 261 kWh   Poids: ~ 2,60 t</div>
+                            </div>
+
+                            <div style={{ flex: 1, border: '1px solid #f59e0b', marginBottom: '1mm', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '7pt', color: '#d97706' }}>Module 1</div>
+                            <div style={{ flex: 1, border: '1px solid #f59e0b', marginBottom: '1mm', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '7pt', color: '#d97706' }}>Module 2</div>
+                            <div style={{ flex: 1, border: '1px solid #f59e0b', marginBottom: '1mm', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '7pt', color: '#d97706' }}>Module 3</div>
+                            <div style={{ flex: 1, border: '1px solid #f59e0b', marginBottom: '1mm', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '7pt', color: '#d97706' }}>Module 4</div>
+                            <div style={{ flex: 1, border: '1px solid #f59e0b', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '7pt', color: '#d97706' }}>Module 5</div>
+                            
+                            {/* Cotes hauteur */}
+                            <div style={{ position: 'absolute', right: '-12mm', top: 0, bottom: 0, width: '5mm', borderRight: '1px solid #ef4444', borderTop: '1px solid #ef4444', borderBottom: '1px solid #ef4444', display: 'flex', alignItems: 'center' }}>
+                                <span style={{ fontSize: '9pt', color: '#ef4444', fontWeight: 'bold', paddingLeft: '8mm' }}>2,40 m</span>
+                            </div>
                         </div>
-                        
+
                         {/* Cotes largeur */}
-                        <div style={{ position: 'absolute', bottom: '-12mm', left: 0, right: 0, height: '5mm', borderBottom: '1px solid #ef4444', borderLeft: '1px solid #ef4444', borderRight: '1px solid #ef4444', display: 'flex', justifyContent: 'center' }}>
-                            <span style={{ fontSize: '9pt', color: '#ef4444', fontWeight: 'bold', paddingTop: '6mm', position: 'absolute' }}>1,35 m</span>
+                        <div style={{ position: 'absolute', bottom: '-15mm', left: '50%', transform: 'translateX(-50%)', width: '40mm', height: '5mm', borderBottom: '1px solid #ef4444', borderLeft: '1px solid #ef4444', borderRight: '1px solid #ef4444', display: 'flex', justifyContent: 'center' }}>
+                            <span style={{ fontSize: '9pt', color: '#ef4444', fontWeight: 'bold', paddingTop: '6mm', position: 'absolute' }}>1,35 m (profondeur)</span>
                         </div>
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8mm', width: '90%', marginTop: '10mm' }}>
-                    <div style={{ padding: '4mm', background: '#f8f9fa', border: '1px solid #ddd', borderRadius: '8px' }}>
-                        <h4 style={{ fontSize: '9pt', fontWeight: 'black', color: '#64748b', textTransform: 'uppercase', marginBottom: '2mm', letterSpacing: '0.05em' }}>Spécifications élévation</h4>
-                        <ul style={{ fontSize: '8pt', color: '#334155', listStyle: 'none', padding: 0, margin: 0 }}>
-                            <li style={{ marginBottom: '1mm' }}>• Hauteur totale : 2.40 m</li>
-                            <li style={{ marginBottom: '1mm' }}>• Profondeur : 1.35 m</li>
-                            <li style={{ marginBottom: '1mm' }}>• Largeur : 1.00 m</li>
-                            <li style={{ marginBottom: '1mm' }}>• Fondations : Dalle béton existante (pas de creusement)</li>
-                        </ul>
-                    </div>
-                    <div style={{ padding: '4mm', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px' }}>
-                        <h4 style={{ fontSize: '9pt', fontWeight: 'black', color: '#3b82f6', textTransform: 'uppercase', marginBottom: '2mm', letterSpacing: '0.05em' }}>Contexte du sol</h4>
-                        <p style={{ fontSize: '8pt', color: '#1e3a8a', lineHeight: '1.4', fontStyle: 'italic', margin: 0 }}>
-                            Le projet s'implante sur un terrain horizontal sans modification de l'altimétrie naturelle. 
-                            L'armoire de stockage est simplement posée sur le socle technique.
-                        </p>
-                    </div>
+                <div style={{ marginTop: 'auto', padding: '4mm', background: '#f8f9fa', border: '1px solid #e2e8f0', borderRadius: '4px', maxWidth: '80mm' }}>
+                    <ul style={{ fontSize: '8pt', color: '#475569', listStyle: 'none', padding: 0, margin: 0, lineHeight: '1.4' }}>
+                        <li>• Hauteur : 2,40 m</li>
+                        <li>• Profondeur : 1,35 m - Largeur : 1,00 m</li>
+                        <li>• Pas de fondation spéciale — dalle béton existante</li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -203,40 +210,76 @@ export const PlateSection = ({ project }) => {
 export const PlateFacades = ({ project, batteryPhoto }) => {
     const batteryName = project?.battery_model || "CESC Mercury 261";
     return (
-        <div style={PAGE_STYLE} id="dp-plate-facades">
-            <PlateHeader title={`DP4 — Façades ${batteryName}`} project={project} />
-            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10mm', padding: '5mm' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8mm', justifyContent: 'center' }}>
-                    <div style={{ background: '#f8f9fa', padding: '5mm', borderRadius: '12px', border: '1px solid #e2e8f0', height: '60mm', display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '8pt', fontWeight: 'black', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4mm', letterSpacing: '0.05em' }}>Vue de face (V1)</span>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', borderBottom: '1px solid #cbd5e1', paddingBottom: '4mm' }}>
-                            <div style={{ width: '25mm', height: '38mm', border: '1.5px solid #f97316', backgroundColor: '#fff', position: 'relative' }}>
-                                <div style={{ position: 'absolute', inset: '2mm 2mm auto 2mm', height: '1mm', backgroundColor: '#fff7ed', borderBottom: '0.5px solid #fdba74' }}></div>
-                                <div style={{ position: 'absolute', top: '10mm', inset: 'auto 2mm auto 2mm', height: '1mm', backgroundColor: '#fff7ed', borderBottom: '0.5px solid #fdba74' }}></div>
+        <div style={{ ...PAGE_STYLE, paddingTop: '15mm', paddingLeft: '15mm', paddingRight: '15mm', paddingBottom: '10mm', backgroundColor: '#fff' }} id="dp-plate-facades">
+            <div style={{ position: 'absolute', top: '5mm', left: '15mm', fontSize: '10pt', color: '#333' }}>
+                DP4 — Façades - {batteryName}
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div style={{ marginBottom: '15mm' }}>
+                    <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#333', marginBottom: '2px' }}>DP4 — Façades et toitures</div>
+                    <div style={{ fontSize: '10pt', color: '#666' }}>Armoire de stockage {batteryName} — vue de face, vue de côté et photo produit</div>
+                </div>
+
+                <div style={{ flex: 1, display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
+                    
+                    {/* Vue de face */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <span style={{ fontSize: '9pt', fontWeight: 'bold', color: '#d97706', marginBottom: '5mm' }}>Vue de face</span>
+                        <div style={{ position: 'relative', width: '30mm', height: '80mm', backgroundColor: '#fef3c7', border: '1.5px solid #d97706', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', paddingBottom: '5mm' }}>
+                            <div style={{ width: '1px', height: '100%', backgroundColor: '#d97706', position: 'absolute', left: '50%' }}></div>
+                            <span style={{ fontSize: '6pt', color: '#d97706', fontWeight: 'bold' }}>{batteryName}</span>
+                            
+                            {/* Cotes hauteur */}
+                            <div style={{ position: 'absolute', right: '-10mm', top: 0, bottom: 0, width: '5mm', borderRight: '1px solid #ef4444', borderTop: '1px solid #ef4444', borderBottom: '1px solid #ef4444', display: 'flex', alignItems: 'center' }}>
+                                <span style={{ fontSize: '8pt', color: '#ef4444', fontWeight: 'bold', paddingLeft: '6mm' }}>2,40 m</span>
+                            </div>
+                            
+                            {/* Cotes largeur */}
+                            <div style={{ position: 'absolute', bottom: '-10mm', left: 0, right: 0, height: '5mm', borderBottom: '1px solid #ef4444', borderLeft: '1px solid #ef4444', borderRight: '1px solid #ef4444', display: 'flex', justifyContent: 'center' }}>
+                                <span style={{ fontSize: '8pt', color: '#ef4444', fontWeight: 'bold', paddingTop: '6mm', position: 'absolute' }}>1,00 m</span>
                             </div>
                         </div>
                     </div>
-                    <div style={{ background: '#f8f9fa', padding: '5mm', borderRadius: '12px', border: '1px solid #e2e8f0', height: '60mm', display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '8pt', fontWeight: 'black', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '4mm', letterSpacing: '0.05em' }}>Vue de côté (V2)</span>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', borderBottom: '1px solid #cbd5e1', paddingBottom: '4mm' }}>
-                            <div style={{ width: '35mm', height: '38mm', border: '1.5px solid #f97316', backgroundColor: '#fff' }}></div>
+
+                    {/* Vue de côté */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <span style={{ fontSize: '9pt', fontWeight: 'bold', color: '#d97706', marginBottom: '5mm' }}>Vue de côté (profondeur)</span>
+                        <div style={{ position: 'relative', width: '40mm', height: '80mm', backgroundColor: '#fef3c7', border: '1.5px solid #d97706', display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ flex: 1, borderBottom: '1px solid #f59e0b' }}></div>
+                            <div style={{ flex: 1, borderBottom: '1px solid #f59e0b' }}></div>
+                            <div style={{ flex: 1, borderBottom: '1px solid #f59e0b' }}></div>
+                            <div style={{ flex: 1, borderBottom: '1px solid #f59e0b' }}></div>
+                            <div style={{ flex: 1 }}></div>
+
+                            {/* Cotes hauteur */}
+                            <div style={{ position: 'absolute', right: '-10mm', top: 0, bottom: 0, width: '5mm', borderRight: '1px solid #ef4444', borderTop: '1px solid #ef4444', borderBottom: '1px solid #ef4444', display: 'flex', alignItems: 'center' }}>
+                                <span style={{ fontSize: '8pt', color: '#ef4444', fontWeight: 'bold', paddingLeft: '6mm' }}>2,40 m</span>
+                            </div>
+                            
+                            {/* Cotes largeur */}
+                            <div style={{ position: 'absolute', bottom: '-10mm', left: 0, right: 0, height: '5mm', borderBottom: '1px solid #ef4444', borderLeft: '1px solid #ef4444', borderRight: '1px solid #ef4444', display: 'flex', justifyContent: 'center' }}>
+                                <span style={{ fontSize: '8pt', color: '#ef4444', fontWeight: 'bold', paddingTop: '6mm', position: 'absolute' }}>1,35 m</span>
+                            </div>
                         </div>
                     </div>
+
+                    {/* Photo */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <span style={{ fontSize: '9pt', fontWeight: 'bold', color: '#d97706', marginBottom: '5mm' }}>Photo produit</span>
+                        <div style={{ width: '60mm', height: '40mm', border: '1px solid #e2e8f0' }}>
+                            <img src={batteryPhoto || "https://nelsonpv.fr/mercury_product_photo.jpg"} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Photo produit" />
+                        </div>
+                    </div>
+
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div style={{ flex: 1, backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #dbeafe', overflow: 'hidden', position: 'relative', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
-                        <img src={batteryPhoto || "https://nelsonpv.fr/mercury_product_photo.jpg"} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Aspect" />
-                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4mm', background: 'linear-gradient(transparent, rgba(0,0,0,0.8))', color: '#fff' }}>
-                            <p style={{ fontSize: '9pt', fontWeight: 'black', textTransform: 'uppercase', margin: 0, letterSpacing: '0.1em' }}>{batteryName}</p>
-                            <p style={{ fontSize: '7pt', opacity: 0.8, fontStyle: 'italic', margin: '1mm 0 0 0' }}>Photographie du produit fini Nelson Mercury</p>
-                        </div>
-                    </div>
-                    <div style={{ marginTop: '6mm', padding: '4mm', background: '#fffbeb', borderRadius: '8px', border: '1px solid #fef3c7' }}>
-                        <p style={{ fontSize: '8pt', color: '#92400e', fontWeight: 'bold', margin: 0, lineHeight: '1.4' }}>
-                            Coloris standard : RAL 7016 (Gris anthracite). 
-                            Matériau : Acier haute résistance thermolaqué.
-                        </p>
-                    </div>
+
+                <div style={{ marginTop: 'auto', padding: '4mm', background: '#f8f9fa', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                    <p style={{ fontSize: '8pt', color: '#475569', margin: 0, lineHeight: '1.4' }}>
+                        Modèle : {batteryName}   Capacité : 261 kWh   Poids : ~ 2,60 t<br/>
+                        Dimensions (L × H × P) : 1,00 m × 2,40 m × 1,35 m - Refroidissement liquide - Indice IP54<br/>
+                        Matériau : Acier galvanisé revêtu - Couleur : Gris/Blanc - Extinction incendie : Aérosol
+                    </p>
                 </div>
             </div>
         </div>
@@ -403,23 +446,25 @@ export const PlateInsertion = ({ project, captures }) => (
     </div>
 );
 
-/**
- * PLANCHE DP7 : PHOTO ENVIRONNEMENT PROCHE
- */
-export const PlateEnvProche = ({ project, captures }) => (
-    <div style={PAGE_STYLE} id="dp-plate-env-proche">
-        <PlateHeader title="DP7 : PHOTOGRAPHIE DE L'ENVIRONNEMENT PROCHE" project={project} />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5mm' }}>
-            <div style={{ border: '1px solid #ddd', flex: 1, position: 'relative', overflow: 'hidden', borderRadius: '8px' }}>
-                <img src={captures?.env_proche || captures?.ign} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Env Proche" />
-                <div style={{ position: 'absolute', bottom: '5mm', right: '5mm', background: 'white', padding: '2mm 4mm', border: '1px solid #00429d', borderRadius: '4px', fontSize: '10pt', fontWeight: 'bold', color: '#00429d' }}>Vue P1</div>
+export const PlateEnvProche = ({ project, captures }) => {
+    return (
+        <div style={{ ...PAGE_STYLE, paddingTop: '15mm', paddingLeft: '15mm', paddingRight: '15mm', paddingBottom: '10mm', backgroundColor: '#fff' }} id="dp-plate-env-proche">
+            <div style={{ position: 'absolute', top: '5mm', left: '15mm', fontSize: '10pt', color: '#333' }}>
+                DP7 — Vue aérienne satellite - {project?.cadastre_commune || project?.city || ''}
             </div>
-            <div style={{ fontSize: '9pt', color: '#666', fontStyle: 'italic' }}>
-                Vue de l'emplacement du projet depuis la limite parcellaire immédiate.
+            
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div style={{ marginBottom: '5mm' }}>
+                    <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#000', marginBottom: '4px' }}>DP7 — Vue aérienne satellite</div>
+                </div>
+                
+                <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <img src={captures?.satellite} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Satellite" />
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 /**
  * PLANCHE DP8 : PHOTO ENVIRONNEMENT LOINTAIN
