@@ -51,7 +51,8 @@ export default function UrbanismeTab({ project, updateProject, setActiveTab }) {
                     cadastre_surface: data.contenance,
                     cadastre_commune: data.nom_commune,
                     cadastre_code_insee: data.code_commune,
-                    cadastre_plu: pluZone
+                    cadastre_plu: pluZone,
+                    cadastre_geometry: data.geometry
                 });
                 toast({ title: "Données récupérées", description: `Section ${data.section} N°${data.numero} | Zone: ${pluZone}` });
                 
@@ -117,6 +118,15 @@ export default function UrbanismeTab({ project, updateProject, setActiveTab }) {
         const newCaptures = { ...captures };
 
         try {
+            // Fetch Mairie si non présente
+            if (project?.cadastre_code_insee && (!mairie || !mairie.nom)) {
+                setCaptureStep('Récupération données Mairie...');
+                const mairieData = await cadastreService.fetchMairie(project.cadastre_code_insee);
+                if (mairieData) {
+                    setMairie(mairieData);
+                    await wait(500); // laisser le temps au DOM de se mettre à jour
+                }
+            }
             // Uniquement si les captures sont manquantes
             if (!newCaptures.ign || !newCaptures.satellite || !newCaptures.cadastre || !newCaptures.masse_projet) {
                 // 1. Capture IGN
@@ -259,7 +269,7 @@ export default function UrbanismeTab({ project, updateProject, setActiveTab }) {
                         className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-8 py-6 font-bold shadow-lg shadow-blue-200 transition-all active:scale-95"
                     >
                         {isGenerating ? <Loader2 className="animate-spin mr-2" /> : <Download className="mr-2" />}
-                        Télécharger Dossier DP complet
+                        Générer Dossier DP complet
                     </Button>
                 )}
             </div>
@@ -370,7 +380,7 @@ export default function UrbanismeTab({ project, updateProject, setActiveTab }) {
                                     size="sm"
                                     className="bg-blue-600 text-white font-bold rounded-lg"
                                 >
-                                    Télécharger Dossier DP complet
+                                    Générer Dossier DP complet
                                 </Button>
                             </div>
 

@@ -95,26 +95,24 @@ export const PlateCover = ({ project }) => (
  * PLANCHE 2 : PLAN DE SITUATION (Grille 3)
  */
 export const PlateSituation = ({ project, captures }) => {
-    // captures = { ign: '...', cadastre: '...', satellite: '...' }
     return (
-        <div style={PAGE_STYLE} id="dp-plate-situation">
-            <PlateHeader title="DP1 : PLAN DE SITUATION" project={project} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '5mm', flex: 1 }}>
-                <div style={{ gridColumn: 'span 2', border: '1px solid #ddd', position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(0,66,157,0.8)', color: 'white', padding: '1mm 3mm', fontSize: '10pt', fontWeight: 'bold', zIndex: 10 }}>Vue Aérienne</div>
-                    <img src={captures?.satellite} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Satellite" />
-                </div>
-                <div style={{ border: '1px solid #ddd', position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(0,66,157,0.8)', color: 'white', padding: '1mm 3mm', fontSize: '10pt', fontWeight: 'bold', zIndex: 10 }}>IGN</div>
-                    <img src={captures?.ign} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="IGN" />
-                </div>
-                <div style={{ border: '1px solid #ddd', position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(0,66,157,0.8)', color: 'white', padding: '1mm 3mm', fontSize: '10pt', fontWeight: 'bold', zIndex: 10 }}>Cadastre</div>
-                    <img src={captures?.cadastre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Cadastre" />
-                </div>
+        <div style={{ ...PAGE_STYLE, paddingTop: '15mm', paddingLeft: '15mm', paddingRight: '15mm', paddingBottom: '10mm', backgroundColor: '#fff' }} id="dp-plate-situation">
+            <div style={{ position: 'absolute', top: '5mm', left: '15mm', fontSize: '10pt', color: '#333' }}>
+                DP1 — Plan de situation - {project?.cadastre_commune || project?.city || ''}
             </div>
-            <div style={{ marginTop: '3mm', fontSize: '8pt', color: '#666', textAlign: 'center' }}>
-                Échelle indicative - Coordonnées GPS : {project?.gps}
+            
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div style={{ marginBottom: '5mm' }}>
+                    <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#000', marginBottom: '4px' }}>DP1 — Plan de situation</div>
+                    <div style={{ fontSize: '11pt', color: '#333', lineHeight: '1.2' }}>
+                        {project?.address} {project?.zip} {project?.city} — {project?.cadastre_commune || project?.city}<br/>
+                        Parcelle {project?.cadastre_section} {project?.cadastre_numero}
+                    </div>
+                </div>
+                
+                <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <img src={captures?.cadastre} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan de situation cadastral" />
+                </div>
             </div>
         </div>
     );

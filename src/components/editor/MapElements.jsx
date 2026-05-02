@@ -14,6 +14,7 @@ import {
   ScaleControl,
   TileLayer,
   CircleMarker,
+  GeoJSON,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -4856,6 +4857,19 @@ export default function MapElements({
           />
           <MapDrawingTools mode={mode} setMode={setMode} />
           <LayersBootstrap layersRef={layersRef} />
+
+          {project?.cadastre_geometry && (
+            <GeoJSON 
+              key={`cadastre-geom-${project?.cadastre_section}-${project?.cadastre_numero}`}
+              data={project.cadastre_geometry}
+              style={{
+                color: '#ef4444',
+                weight: 3,
+                fillColor: '#ef4444',
+                fillOpacity: 0.2
+              }}
+            />
+          )}
 
           {/* Layer Managers */}
           <ABFLayerManager layersRef={layersRef} activeLayers={activeLayers} project={project} />

@@ -34,7 +34,8 @@ class CadastreService {
                     code_commune: props.code_com,
                     nom_commune: props.nom_com,
                     contenance: props.contenance, // Surface en m²
-                    prefixe: props.prefixe || '000'
+                    prefixe: props.prefixe || '000',
+                    geometry: data.features[0].geometry
                 };
             }
             return null;
