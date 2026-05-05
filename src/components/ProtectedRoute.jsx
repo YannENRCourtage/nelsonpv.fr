@@ -21,15 +21,26 @@ export const ProtectedRoute = ({ children, requiredRole, requiredPermission }) =
     }
 
     if (requiredPermission) {
+        const { activeTenantId } = useAuth(); // Access current tenant
         const isAdmin = user?.role === 'admin' || user?.role === 'Administrator';
         const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
         
-        // Custom logic for tracking page specifically or general permission check
-        const hasPermission = isAdmin || (requiredPermission === 'canAccessTracking' && isLaurentGuyon) || (user?.permissions?.[requiredPermission] === true);
-        
-        if (!hasPermission) {
-            console.log(`Access denied: User ${user?.email} does not have permission ${requiredPermission}`, user?.permissions);
-            return <Navigate to="/" replace />;
+        // Custom logic for tracking page specifically
+        if (requiredPermission === 'canAccessTracking') {
+            if (activeTenantId !== 'green-invest') {
+                return <Navigate to="/" replace />;
+            }
+            // If on green-invest, check if admin or authorized user
+            if (!isAdmin && !isLaurentGuyon && user?.permissions?.[requiredPermission] !== true) {
+                return <Navigate to="/" replace />;
+            }
+        } else {
+            // General permission check
+            const hasPermission = isAdmin || (user?.permissions?.[requiredPermission] === true);
+            if (!hasPermission) {
+                console.log(`Access denied: User ${user?.email} does not have permission ${requiredPermission}`, user?.permissions);
+                return <Navigate to="/" replace />;
+            }
         }
     }
 

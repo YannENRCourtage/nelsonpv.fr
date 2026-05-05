@@ -543,7 +543,7 @@ export default function ProjectEditor() {
       // Logic: The panel updates the "last" building or the one being prepared.
       // If we already have >= 2 buildings, we assume we are editing the 2nd one (the last one).
       // If we have 1, we edit the 1st.
-      const predefinedBuildings = (project?.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding);
+      const predefinedBuildings = (project?.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding && !f.isBattery);
       const isSecondBuilding = predefinedBuildings.length >= 2;
       let targetBuilding = null;
       let shouldUpdate = false;
@@ -608,7 +608,7 @@ export default function ProjectEditor() {
       const updates = {};
 
       // Determine if we are adding the second building (if 1 already exists)
-      const predefinedBuildings = (project?.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding);
+      const predefinedBuildings = (project?.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding && !f.isBattery);
       const isNextBuildingSecond = predefinedBuildings.length >= 1;
 
       if (newAngle) {
@@ -888,7 +888,7 @@ export default function ProjectEditor() {
 
               {/* Technical fields - use the same IIFE for building logic */}
               {(() => {
-                const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding);
+                const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && f.isPredefinedBuilding && !f.isBattery);
                 const hasSecondBuilding = predefinedBuildings.length >= 2;
                 const hasFirstBuilding = predefinedBuildings.length >= 1;
                 const labelPrefix1 = hasSecondBuilding ? "1/ " : "";
@@ -1130,7 +1130,7 @@ export default function ProjectEditor() {
 
                   {/* Shared Logic for determining presence of second building */}
                   {(() => {
-                    const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding || f.buildingName));
+                    const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding || f.buildingName) && !f.isBattery);
                     const hasSecondBuilding = predefinedBuildings.length >= 2;
                     const hasFirstBuilding = predefinedBuildings.length >= 1;
                     const labelPrefix1 = hasSecondBuilding ? "1/ " : "";
@@ -1307,7 +1307,7 @@ export default function ProjectEditor() {
                                     if (activeTenantId === 'acama') {
                                       try {
                                         // 1. Trouver le bâtiment sélectionné pour avoir son coût
-                                        const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding || f.buildingName));
+                                        const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding || f.buildingName) && !f.isBattery);
                                         const firstBuilding = predefinedBuildings[0];
                                         const buildingInfo = firstBuilding ? ACAMA_PREDEFINED_BUILDINGS.find(b => b.label === firstBuilding.buildingName) : null;
                                         const power = p.puissance || (buildingInfo?.power) || 0;
@@ -1373,7 +1373,7 @@ export default function ProjectEditor() {
 
                 {/* --- ROW 2: Building 2 (aligned vertically) --- */}
                 {(() => {
-                  const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding || f.buildingName));
+                  const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding || f.buildingName) && !f.isBattery);
                   const hasSecondBuilding = predefinedBuildings.length >= 2;
                   if (!hasSecondBuilding) return null;
                   const labelPrefix2 = "2/ ";
@@ -1545,7 +1545,7 @@ export default function ProjectEditor() {
                                   // CALCUL AUTO RESTE A CHARGE LIGNE 2 (ACAMA UNIQUEMENT)
                                   if (activeTenantId === 'acama') {
                                     try {
-                                      const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding || f.buildingName));
+                                      const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding || f.buildingName) && !f.isBattery);
                                       const secondBuilding = predefinedBuildings[1];
                                       const buildingInfo = secondBuilding ? ACAMA_PREDEFINED_BUILDINGS.find(b => b.label === secondBuilding.buildingName) : null;
                                       const power = p.puissance2 || (buildingInfo?.power) || 0;

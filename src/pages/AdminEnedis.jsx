@@ -424,7 +424,7 @@ export default function AdminEnedis() {
                                 {item.projectId && item.projectId !== 'admin_test' && (
                                   <a 
                                       href={`/project/${item.projectId}/edit`} 
-                                      target="_blank" 
+                                      target="_blank"
                                       rel="noopener noreferrer"
                                       className="ml-11 inline-flex items-center gap-1.5 text-blue-500 hover:text-blue-700 text-[10px] font-bold transition-colors"
                                   >

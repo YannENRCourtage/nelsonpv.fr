@@ -1799,7 +1799,7 @@ function TabBpProjets({
     
     // Extract map features for immediate use
     const features = p.features || p.map_state?.features || p.map_state?.projects || [];
-    const buildingFeatures = features.filter(f => f.type === 'rectangle' || (f.type === 'polygon' && f.isPredefinedBuilding));
+    const buildingFeatures = features.filter(f => (f.type === 'rectangle' && !f.isBattery) || (f.type === 'polygon' && f.isPredefinedBuilding));
     const defaultProd = parseFloat(p.solarYieldRoof1 || p.productible) || 1123.08;
 
     // Derive building data locally to avoid stale state issues during enrichment
@@ -4208,7 +4208,7 @@ export default function BpAcama() {
     if (!selectedProject) return;
     
     const features = selectedProject.features || selectedProject.map_state?.features || selectedProject.map_state?.projects || [];
-    const buildingFeatures = features.filter(f => f.type === 'rectangle' || (f.type === 'polygon' && f.isPredefinedBuilding));
+    const buildingFeatures = features.filter(f => (f.type === 'rectangle' && !f.isBattery) || (f.type === 'polygon' && f.isPredefinedBuilding));
     
     const defaultBatteryConfig = {
       enabled: false,

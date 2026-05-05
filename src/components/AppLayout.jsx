@@ -621,10 +621,12 @@ export default function AppLayout() {
   const isTrackingAuthorized = () => {
     if (!user) return false;
 
+    // Condition impérative : être sur l'interface GREEN INVEST
+    // Même pour les administrateurs
+    if (activeTenantId !== 'green-invest') return false;
+
     // Admins (Véro, Yann sont admins)
     if (user.role === 'admin' || user.role === 'Administrator') return true;
-
-    if (activeTenantId !== 'green-invest') return false;
 
     const email = user.email?.toLowerCase();
     const firstName = (user.firstName || user.displayName || '').toLowerCase();
