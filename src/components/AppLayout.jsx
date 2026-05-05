@@ -423,7 +423,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
       <div className="app-header__container">
         <div className="flex items-center gap-8">
           <Link to="/" className="app-header__logo">
-            <img src="/logo-nelson.png" alt="NELSON par ENR Courtage" />
+            <img src="/logo-header.png" alt="NELSON par ENR Courtage" />
           </Link>
           <nav className="app-header__nav">
             {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessCRM !== false) && (
