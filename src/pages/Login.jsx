@@ -65,7 +65,7 @@ export default function Login() {
             variants={logoContainerVariants}
             className="flex flex-col items-center cursor-pointer"
           >
-            <img className="mx-auto h-20 w-auto logo-nelson-clipped mb-[-12px]" alt="Logo NELSON" src="https://horizons-cdn.hostinger.com/350bc103-daf8-48b5-9a02-076489f36a7d/c526f4549f2b349600f6df6ad6eb3193.png" />
+            <img className="mx-auto h-20 w-auto logo-nelson-clipped mb-[-12px]" alt="Logo NELSON" src="/logo-nelson.png" />
             <p className="text-sm text-gray-500">
               Par ENR COURTAGE
             </p>

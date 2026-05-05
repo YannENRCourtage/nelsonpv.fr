@@ -423,7 +423,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
       <div className="app-header__container">
         <div className="flex items-center gap-8">
           <Link to="/" className="app-header__logo">
-            <img src="https://horizons-cdn.hostinger.com/350bc103-daf8-48b5-9a02-076489f36a7d/338201d787e373b4c0b156cb07a5b792.png" alt="NELSON par ENR Courtage" />
+            <img src="/logo-nelson.png" alt="NELSON par ENR Courtage" />
           </Link>
           <nav className="app-header__nav">
             {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessCRM !== false) && (
