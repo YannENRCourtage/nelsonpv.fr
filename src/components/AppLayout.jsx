@@ -447,16 +447,20 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
             )}
 
             {/* Show Simulator if explicit permission is granted OR if admin (unless admin explicitly restricted) */}
+            {/* Simulateur masqué pour tout le monde
             {!isRestrictedUser && ((user?.role === 'admin' || user?.role === 'Administrator') && user?.permissions?.canAccessSimulator !== false || user?.permissions?.canAccessSimulator) && (
               <NavLink to="/simulator" className={({ isActive }) => isActive ? 'nav-link active simulateur' : 'nav-link simulateur'}>Simulateur</NavLink>
             )}
+            */}
 
+            {/* Finance masqué pour tout le monde
             {!isRestrictedUser && (user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessFinance) && (
               <NavLink to="/finance" className={({ isActive }) => isActive ? 'nav-link active finance' : 'nav-link finance'}>
                 <TrendingUp className="w-4 h-4 mr-1 inline-block" />
                 Finance
               </NavLink>
             )}
+            */}
 
             {/* CDP Link (Admin only or explicit permission) */}
             {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessCDP) && (
@@ -689,6 +693,7 @@ export default function AppLayout() {
               </NavLink>
             )}
 
+            {/* Simulateur masqué (Mobile)
             {!isRestrictedUser && ((user?.role === 'admin' || user?.role === 'Administrator') && user?.permissions?.canAccessSimulator !== false || user?.permissions?.canAccessSimulator) && (
               <NavLink
                 to="/simulator"
@@ -698,7 +703,9 @@ export default function AppLayout() {
                 Simulateur
               </NavLink>
             )}
+            */}
 
+            {/* Finance masqué (Mobile)
             {!isRestrictedUser && (user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessFinance) && (
               <NavLink
                 to="/finance"
@@ -709,6 +716,7 @@ export default function AppLayout() {
                 Finance
               </NavLink>
             )}
+            */}
 
             {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessCDP) && (
               <NavLink

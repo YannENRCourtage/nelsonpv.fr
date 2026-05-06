@@ -77,6 +77,7 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+          {/* Route Simulateur masquée
           <Route
             path="simulator"
             element={
@@ -85,6 +86,7 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+          */}
           <Route
             path="configurateur"
             element={
@@ -133,6 +135,7 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+          {/* Route Finance masquée
           <Route
             path="finance"
             element={
@@ -141,6 +144,7 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+          */}
           <Route
             path="tracking"
             element={
