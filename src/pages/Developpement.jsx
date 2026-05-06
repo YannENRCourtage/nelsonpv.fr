@@ -17,7 +17,6 @@ import {
 } from '@/components/editor/DPPlates';
 import RaccordementBatterie from '@/components/developpement/RaccordementBatterie';
 import { cadastreService } from '@/services/CadastreService';
-import DPBatterieTab from '@/components/developpement/DPBatterieTab';
 
 const TABS = [
     { id: 'dp-batterie', label: 'DP Batterie', icon: Battery },
