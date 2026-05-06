@@ -78,11 +78,12 @@ export default function Developpement() {
             const plateIds = [
                 'dev-plate-cover',
                 'dev-plate-situation',
-                'dev-plate-masse',   // DP2 — toujours fixe
+                'dev-plate-masse',
                 'dev-plate-section',
-                'dev-plate-facades', // DP4 — toujours fixe
+                'dev-plate-facades',
                 'dev-plate-env-proche',
                 'dev-plate-notice',
+                ...Array.from({ length: 8 }).map((_, i) => `dev-plate-cerfa-${i + 1}`)
             ];
 
             const { PDFDocument } = await import('pdf-lib');
@@ -243,118 +244,52 @@ function DPBatterieTab({
     selectedProject, setSelectedProject,
     isGenerating, captureStep, onGenerateDP,
 }) {
-    const [showClientPanel, setShowClientPanel] = useState(true);
-
     return (
-        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-            {/* ── Panneau Sélection Client ──────────────────────────────── */}
-            {showClientPanel && (
-                <div style={{
-                    width: 300,
-                    minWidth: 300,
-                    background: 'white',
-                    borderRight: '1px solid #e2e8f0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    height: 'calc(100vh - 64px)',
-                    position: 'sticky',
-                    top: 0,
-                    overflowY: 'auto',
-                }}>
-                    <div style={{ padding: '20px 16px 12px', borderBottom: '1px solid #f1f5f9' }}>
-                        <h3 style={{ fontWeight: 800, fontSize: 14, color: '#0f172a', margin: '0 0 12px' }}>
-                            <User size={14} style={{ marginRight: 6, display: 'inline', verticalAlign: 'middle' }} />
-                            Sélectionner un client
-                        </h3>
-                        <div style={{ position: 'relative' }}>
-                            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                            <input
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                placeholder="Rechercher..."
-                                style={{
-                                    width: '100%', border: '1px solid #e2e8f0', borderRadius: 10,
-                                    padding: '8px 10px 8px 32px', fontSize: 13, outline: 'none',
-                                    boxSizing: 'border-box',
-                                }}
-                            />
-                        </div>
-                    </div>
-
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px' }}>
-                        {loadingProjects ? (
-                            <div style={{ textAlign: 'center', padding: 30, color: '#94a3b8' }}>
-                                <Loader2 size={20} style={{ animation: 'spin 1s linear infinite', display: 'inline' }} />
-                                <div style={{ fontSize: 12, marginTop: 8 }}>Chargement...</div>
-                            </div>
-                        ) : projects.length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: 30, color: '#94a3b8', fontSize: 12 }}>
-                                Aucun projet trouvé
-                            </div>
-                        ) : (
-                            projects.map((p) => {
-                                const isSelected = selectedProject?.id === p.id;
-                                const clientName = `${p.firstName || ''} ${p.name || ''}`.trim();
-                                return (
-                                    <button
-                                        key={p.id}
-                                        onClick={() => setSelectedProject(p)}
-                                        style={{
-                                            display: 'block', width: '100%', textAlign: 'left',
-                                            padding: '10px 12px', borderRadius: 10, border: 'none',
-                                            cursor: 'pointer', marginBottom: 4,
-                                            background: isSelected ? '#eff6ff' : 'transparent',
-                                            borderLeft: isSelected ? '3px solid #3b82f6' : '3px solid transparent',
-                                            transition: 'all 0.15s',
-                                        }}
-                                    >
-                                        <div style={{ fontWeight: 700, fontSize: 13, color: isSelected ? '#1d4ed8' : '#1e293b' }}>
-                                            {clientName || 'Client sans nom'}
-                                        </div>
-                                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                                            {p.city || '—'} {p.zip ? `(${p.zip})` : ''}
-                                        </div>
-                                        {p.battery_model && (
-                                            <div style={{ fontSize: 10, color: '#93c5fd', marginTop: 2, fontWeight: 600 }}>
-                                                🔋 {p.battery_model}
-                                            </div>
-                                        )}
-                                    </button>
-                                );
-                            })
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* ── Zone principale DP ────────────────────────────────────── */}
+        <div style={{ display: 'flex', flex: 1, minHeight: 0, flexDirection: 'column' }}>
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
-                {/* Header */}
+                {/* Header avec Menu Déroulant */}
                 <div style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    background: 'white', borderRadius: 16, padding: '16px 24px',
+                    background: 'white', borderRadius: 16, padding: '20px 28px',
                     boxShadow: '0 1px 8px rgba(0,0,0,0.06)', marginBottom: 24,
                 }}>
-                    <div>
-                        <h2 style={{ fontWeight: 900, fontSize: 20, color: '#0f172a', margin: 0 }}>
+                    <div style={{ flex: 1 }}>
+                        <h2 style={{ fontWeight: 900, fontSize: 20, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
                             Dossier de Déclaration Préalable — Batterie
                         </h2>
-                        {selectedProject ? (
-                            <p style={{ fontSize: 13, color: '#3b82f6', margin: '4px 0 0', fontWeight: 600 }}>
-                                Client : {`${selectedProject.firstName || ''} ${selectedProject.name || ''}`.trim()} — {selectedProject.city}
-                            </p>
-                        ) : (
-                            <p style={{ fontSize: 13, color: '#94a3b8', margin: '4px 0 0' }}>
-                                Sélectionnez un client dans le panneau gauche
-                            </p>
-                        )}
+                        <div style={{ marginTop: 16 }}>
+                            <select
+                                value={selectedProject?.id || ''}
+                                onChange={(e) => {
+                                    const proj = projects.find(p => p.id === e.target.value);
+                                    setSelectedProject(proj || null);
+                                }}
+                                style={{
+                                    width: '100%', maxWidth: 450, padding: '12px 16px', borderRadius: 10,
+                                    border: '1px solid #cbd5e1', fontSize: 14, outline: 'none',
+                                    backgroundColor: '#f8fafc', color: '#0f172a', fontWeight: 600,
+                                    cursor: 'pointer', appearance: 'auto'
+                                }}
+                            >
+                                <option value="">-- Sélectionnez un projet / client --</option>
+                                {projects.map((p) => {
+                                    const clientName = `${p.firstName || ''} ${p.name || ''}`.trim() || 'Client sans nom';
+                                    const loc = p.city ? ` — ${p.city}` : '';
+                                    return (
+                                        <option key={p.id} value={p.id}>
+                                            {clientName}{loc}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        </div>
                     </div>
                     <button
                         onClick={onGenerateDP}
                         disabled={isGenerating || !selectedProject}
                         style={{
                             display: 'flex', alignItems: 'center', gap: 8,
-                            padding: '12px 24px', borderRadius: 12, border: 'none',
+                            padding: '14px 28px', borderRadius: 12, border: 'none',
                             background: isGenerating || !selectedProject
                                 ? '#e2e8f0'
                                 : 'linear-gradient(135deg, #2563eb, #7c3aed)',
@@ -382,7 +317,7 @@ function DPBatterieTab({
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-                        <DPPlatePreview id="dev-plate-cover" label="Page de garde">
+                        <DPPlatePreview id="dev-plate-cover" label="Page de garde" clientLinked>
                             <PlateCover project={selectedProject} />
                         </DPPlatePreview>
 
@@ -390,7 +325,7 @@ function DPBatterieTab({
                             <PlateSituation project={selectedProject} captures={selectedProject.urbanisme_captures || {}} />
                         </DPPlatePreview>
 
-                        <DPPlatePreview id="dev-plate-masse" label="DP2 — Plan de masse" fixed>
+                        <DPPlatePreview id="dev-plate-masse" label="DP2 — Plan de masse" clientLinked>
                             <PlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} />
                         </DPPlatePreview>
 
@@ -399,7 +334,7 @@ function DPBatterieTab({
                         </DPPlatePreview>
 
                         <DPPlatePreview id="dev-plate-facades" label="DP4 — Façades et toitures" fixed>
-                            <PlateFacades project={selectedProject} batteryPhoto="https://nelsonpv.fr/mercury_product_photo.jpg" />
+                            <PlateFacades project={selectedProject} batteryPhoto="/mercury_product_photo.jpg" />
                         </DPPlatePreview>
 
                         <DPPlatePreview id="dev-plate-env-proche" label="DP7 — Vue aérienne satellite" clientLinked>
@@ -409,6 +344,17 @@ function DPBatterieTab({
                         <DPPlatePreview id="dev-plate-notice" label="DP8.1 — Notice d'insertion" clientLinked>
                             <PlateInsertionNotice project={selectedProject} />
                         </DPPlatePreview>
+
+                        {/* Cerfa 16702*02 Pages (1 to 8) */}
+                        {Array.from({ length: 8 }).map((_, i) => (
+                            <DPPlatePreview key={i} id={`dev-plate-cerfa-${i + 1}`} label={`Cerfa 16702*02 — Page ${i + 1}`} fixed>
+                                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'white' }}>
+                                    <h1 style={{ fontSize: '3rem', color: '#e2e8f0', margin: 0 }}>CERFA 16702*02</h1>
+                                    <h2 style={{ fontSize: '2rem', color: '#cbd5e1', marginTop: 10 }}>Page {i + 1}</h2>
+                                    <p style={{ marginTop: 20, color: '#94a3b8' }}>Espace réservé pour le formulaire CERFA rempli.</p>
+                                </div>
+                            </DPPlatePreview>
+                        ))}
                     </div>
                 )}
             </div>
@@ -423,6 +369,13 @@ function DPBatterieTab({
                     <div id="dev-plate-facades"><PlateFacades project={selectedProject} batteryPhoto="https://nelsonpv.fr/mercury_product_photo.jpg" /></div>
                     <div id="dev-plate-env-proche"><PlateEnvProche project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
                     <div id="dev-plate-notice"><PlateInsertionNotice project={selectedProject} /></div>
+                    {/* Render hidden Cerfa pages */}
+                    {Array.from({ length: 8 }).map((_, i) => (
+                        <div key={i} id={`dev-plate-cerfa-${i + 1}`} style={{ width: '297mm', height: '210mm', background: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                            <h1 style={{ fontSize: '3rem', color: '#e2e8f0', margin: 0 }}>CERFA 16702*02</h1>
+                            <h2 style={{ fontSize: '2rem', color: '#cbd5e1', marginTop: 10 }}>Page {i + 1}</h2>
+                        </div>
+                    ))}
                 </div>
             )}
         </div>
@@ -468,13 +421,15 @@ function DPPlatePreview({ id, label, children, fixed, clientLinked }) {
                     borderRadius: 4,
                     overflow: 'hidden',
                     position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                 }}>
-                    {/* Rendu mis à l'échelle */}
+                    {/* Rendu mis à l'échelle et centré */}
                     <div style={{
-                        position: 'absolute', top: 0, left: 0,
                         width: '297mm', height: '210mm',
-                        transformOrigin: 'top left',
                         transform: 'scale(var(--dp-scale, 1))',
+                        transformOrigin: 'center center',
                     }} className="dp-plate-scaler">
                         {children}
                     </div>
