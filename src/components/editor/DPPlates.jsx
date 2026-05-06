@@ -1,4 +1,5 @@
 import React from 'react';
+import batteryPhotoDefault from '@/assets/battery_photo.jpg';
 
 // Dimensions A4 Paysage : 297 x 210 mm
 const PAGE_STYLE = {
@@ -321,7 +322,7 @@ export const PlateFacades = ({ project, batteryPhoto }) => {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20mm' }}>
                         <span style={{ fontSize: '11pt', fontWeight: 'bold', color: '#d97706', marginBottom: '5mm' }}>Photo produit</span>
                         <div style={{ width: '80mm', height: '50mm', border: '2px solid #e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
-                            <img src={batteryPhoto || "/battery_photo_3.jpg"} style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#f8fafc' }} alt="Photo produit" crossOrigin="anonymous" />
+                            <img src={batteryPhoto || batteryPhotoDefault} style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#f8fafc' }} alt="Photo produit" crossOrigin="anonymous" />
                         </div>
                     </div>
 

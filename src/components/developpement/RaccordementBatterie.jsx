@@ -120,6 +120,26 @@ function EmptyState() {
     );
 }
 
+function DPContent({ proj, batteryName, initialQty }) {
+    const [batteryQty, setBatteryQty] = React.useState(initialQty);
+    const power = batteryQty * 125;
+    const capacity = batteryQty * 261;
+
+    // Reset quand le projet change
+    React.useEffect(() => {
+        setBatteryQty(proj?.battery_quantity || 2);
+    }, [proj?.id]);
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <TechnicalSummary proj={proj} batteryName={batteryName} batteryQty={batteryQty} setBatteryQty={setBatteryQty} power={power} capacity={capacity} />
+            <RaccordementSchema proj={proj} batteryName={batteryName} batteryQty={batteryQty} power={power} />
+            <RaccordementNotice proj={proj} batteryName={batteryName} batteryQty={batteryQty} power={power} capacity={capacity} />
+            <DemarchesChecklist />
+        </div>
+    );
+}
+
 function TechnicalSummary({ proj, batteryName, batteryQty, setBatteryQty, power, capacity }) {
     const cards = [
         { label: 'Modèle batterie', value: batteryName, color: '#7c3aed', bg: '#f5f3ff' },
