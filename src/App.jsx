@@ -165,7 +165,7 @@ function AppContent() {
           <Route
             path="developpement"
             element={
-              <ProtectedRoute requiredRole="admin">
+              <ProtectedRoute requiredPermission="canAccessDeveloppement">
                 <Developpement />
               </ProtectedRoute>
             }
@@ -173,7 +173,7 @@ function AppContent() {
           <Route
             path="enedis-admin"
             element={
-              <ProtectedRoute requiredRole="admin">
+              <ProtectedRoute requiredPermission="canAccessEnedis">
                 <AdminEnedis />
               </ProtectedRoute>
             }
