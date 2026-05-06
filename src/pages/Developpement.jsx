@@ -82,8 +82,7 @@ export default function Developpement() {
                 'dev-plate-section',
                 'dev-plate-facades',
                 'dev-plate-env-proche',
-                'dev-plate-notice',
-                ...Array.from({ length: 8 }).map((_, i) => `dev-plate-cerfa-${i + 1}`)
+                'dev-plate-notice'
             ];
 
             const { PDFDocument } = await import('pdf-lib');
@@ -109,6 +108,20 @@ export default function Developpement() {
                 } catch (e) {
                     console.error(`Erreur planche ${id}`, e);
                 }
+            }
+
+            // Ajout du CERFA de 20 pages (cerfa_16702-02.pdf) depuis /public/
+            setCaptureStep('Ajout des pages CERFA…');
+            try {
+                const cerfaUrl = '/cerfa_16702-02.pdf';
+                const cerfaArrayBuffer = await fetch(cerfaUrl).then(res => res.arrayBuffer());
+                const cerfaDoc = await PDFDocument.load(cerfaArrayBuffer);
+                const copiedPages = await finalDoc.copyPages(cerfaDoc, cerfaDoc.getPageIndices());
+                copiedPages.forEach((page) => {
+                    finalDoc.addPage(page);
+                });
+            } catch (err) {
+                console.error("Erreur lors de l'ajout du CERFA:", err);
             }
 
             setCaptureStep('Assemblage PDF…');
@@ -344,17 +357,6 @@ function DPBatterieTab({
                         <DPPlatePreview id="dev-plate-notice" label="DP8.1 — Notice d'insertion" clientLinked>
                             <PlateInsertionNotice project={selectedProject} />
                         </DPPlatePreview>
-
-                        {/* Cerfa 16702*02 Pages (1 to 8) */}
-                        {Array.from({ length: 8 }).map((_, i) => (
-                            <DPPlatePreview key={i} id={`dev-plate-cerfa-${i + 1}`} label={`Cerfa 16702*02 — Page ${i + 1}`} fixed>
-                                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'white' }}>
-                                    <h1 style={{ fontSize: '3rem', color: '#e2e8f0', margin: 0 }}>CERFA 16702*02</h1>
-                                    <h2 style={{ fontSize: '2rem', color: '#cbd5e1', marginTop: 10 }}>Page {i + 1}</h2>
-                                    <p style={{ marginTop: 20, color: '#94a3b8' }}>Espace réservé pour le formulaire CERFA rempli.</p>
-                                </div>
-                            </DPPlatePreview>
-                        ))}
                     </div>
                 )}
             </div>
@@ -366,16 +368,9 @@ function DPBatterieTab({
                     <div id="dev-plate-situation"><PlateSituation project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
                     <div id="dev-plate-masse"><PlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
                     <div id="dev-plate-section"><PlateSection project={selectedProject} /></div>
-                    <div id="dev-plate-facades"><PlateFacades project={selectedProject} batteryPhoto="https://nelsonpv.fr/mercury_product_photo.jpg" /></div>
+                    <div id="dev-plate-facades"><PlateFacades project={selectedProject} /></div>
                     <div id="dev-plate-env-proche"><PlateEnvProche project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
                     <div id="dev-plate-notice"><PlateInsertionNotice project={selectedProject} /></div>
-                    {/* Render hidden Cerfa pages */}
-                    {Array.from({ length: 8 }).map((_, i) => (
-                        <div key={i} id={`dev-plate-cerfa-${i + 1}`} style={{ width: '297mm', height: '210mm', background: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                            <h1 style={{ fontSize: '3rem', color: '#e2e8f0', margin: 0 }}>CERFA 16702*02</h1>
-                            <h2 style={{ fontSize: '2rem', color: '#cbd5e1', marginTop: 10 }}>Page {i + 1}</h2>
-                        </div>
-                    ))}
                 </div>
             )}
         </div>
@@ -414,37 +409,25 @@ function DPPlatePreview({ id, label, children, fixed, clientLinked }) {
                 display: 'flex', justifyContent: 'center', alignItems: 'center',
             }}>
                 <div style={{
-                    width: '100%', maxWidth: 900,
+                    width: '100%', maxWidth: '1122.5px', // Exact px width of 297mm at 96dpi
                     aspectRatio: '297/210',
                     background: 'white',
                     boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
                     borderRadius: 4,
                     overflow: 'hidden',
                     position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    containerType: 'inline-size'
                 }}>
-                    {/* Rendu mis à l'échelle et centré */}
                     <div style={{
                         width: '297mm', height: '210mm',
-                        transform: 'scale(var(--dp-scale, 1))',
-                        transformOrigin: 'center center',
-                    }} className="dp-plate-scaler">
+                        transform: 'scale(calc(100cqw / 1122.5))',
+                        transformOrigin: 'top left',
+                        position: 'absolute', top: 0, left: 0
+                    }}>
                         {children}
                     </div>
                 </div>
             </div>
-            <style>{`
-                .dp-plate-scaler {
-                    --dp-scale: calc(100% / 297mm);
-                }
-                @media (min-width: 900px) {
-                    .dp-plate-scaler {
-                        --dp-scale: calc(860px / (297 * 3.7795));
-                    }
-                }
-            `}</style>
         </div>
     );
 }

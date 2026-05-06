@@ -61,31 +61,31 @@ const Footer = ({ project }) => (
 export const PlateCover = ({ project }) => (
     <div style={{ ...PAGE_STYLE, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1e293b', color: 'white', border: '15mm solid #1e293b' }} id="dp-plate-cover">
         <div style={{ backgroundColor: 'white', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', padding: '20mm', color: '#333', position: 'relative' }}>
-            <div style={{ position: 'absolute', top: '10mm', right: '10mm', fontSize: '10pt', color: '#666' }}>{new Date().toLocaleDateString('fr-FR')}</div>
+            <img src={LOGO_NELSON} alt="Nelson" style={{ position: 'absolute', top: '10mm', left: '10mm', height: '15mm' }} crossOrigin="anonymous" />
+            <div style={{ position: 'absolute', top: '15mm', right: '10mm', fontSize: '12pt', color: '#666' }}>{new Date().toLocaleDateString('fr-FR')}</div>
             
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
                 <h1 style={{ fontSize: '32pt', fontWeight: 'bold', color: '#00429d', marginBottom: '5mm', letterSpacing: '2px' }}>DÉCLARATION PRÉALABLE</h1>
                 <h2 style={{ fontSize: '18pt', fontWeight: 'bold', color: '#333', marginBottom: '2mm' }}>Installation de stockage batterie CESC Mercury 261</h2>
-                <p style={{ fontSize: '14pt', color: '#666', marginBottom: '15mm' }}>250 kW / 522 kWh — raccordement réseau ENEDIS</p>
+                <p style={{ fontSize: '14pt', color: '#666', marginBottom: '0' }}>250 kW / 522 kWh — raccordement réseau ENEDIS</p>
                 
-                <div style={{ width: '80mm', height: '1px', backgroundColor: '#ddd', marginBottom: '15mm' }}></div>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8mm', textAlign: 'center' }}>
-                    <div>
-                        <div style={{ fontSize: '10pt', color: '#666', textTransform: 'uppercase', marginBottom: '2mm' }}>Maître d'ouvrage :</div>
-                        <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#333' }}>{project?.lastName || project?.name} {project?.firstName}</div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+                    <div style={{ width: '80mm', height: '1px', backgroundColor: '#ddd', marginBottom: '15mm' }}></div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8mm', textAlign: 'center' }}>
+                        <div>
+                            <div style={{ fontSize: '12pt', color: '#666', textTransform: 'uppercase', marginBottom: '2mm' }}>Maître d'ouvrage :</div>
+                            <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#333' }}>{project?.lastName || project?.name} {project?.firstName}</div>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '12pt', color: '#666', textTransform: 'uppercase', marginBottom: '2mm' }}>Adresse du projet :</div>
+                            <div style={{ fontSize: '14pt', fontWeight: 'medium', color: '#333' }}>{project?.address}</div>
+                            <div style={{ fontSize: '14pt', fontWeight: 'medium', color: '#333' }}>{project?.zip} {project?.city}</div>
+                        </div>
                     </div>
-                    <div>
-                        <div style={{ fontSize: '10pt', color: '#666', textTransform: 'uppercase', marginBottom: '2mm' }}>Adresse du projet :</div>
-                        <div style={{ fontSize: '12pt', fontWeight: 'medium', color: '#333' }}>{project?.address}</div>
-                        <div style={{ fontSize: '12pt', fontWeight: 'medium', color: '#333' }}>{project?.zip} {project?.city}</div>
-                    </div>
-                </div>
-            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15mm', borderTop: '1px solid #eee', paddingTop: '10mm' }}>
-                <img src={LOGO_NELSON} alt="Nelson" style={{ height: '15mm' }} />
-                <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#00429d', letterSpacing: '1px' }}>{project?.dp_data?.cover_branding || 'NELSONPV.FR'}</div>
+                    <div style={{ width: '80mm', height: '1px', backgroundColor: '#ddd', marginTop: '15mm' }}></div>
+                </div>
             </div>
         </div>
     </div>
@@ -206,42 +206,41 @@ export const PlateSection = ({ project }) => {
             
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div style={{ marginBottom: '15mm' }}>
-                    <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#333', marginBottom: '2px' }}>DP3 — Plan en coupe du terrain et de la construction</div>
-                    <div style={{ fontSize: '10pt', color: '#666' }}>Armoire de stockage {batteryName} — coupe latérale (profondeur)</div>
+                    <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#333', marginBottom: '2px' }}>DP3 — Plan en coupe du terrain et de la construction</div>
+                    <div style={{ fontSize: '12pt', color: '#666' }}>Armoire de stockage {batteryName} — coupe latérale (profondeur)</div>
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
                     <div style={{ position: 'relative', width: '100mm', height: '90mm', borderBottom: '1px solid #999', marginBottom: '5mm' }}>
-                        <div style={{ position: 'absolute', bottom: '-6mm', left: 0, right: 0, textAlign: 'center', fontSize: '8pt', color: '#999', fontStyle: 'italic' }}>Terrain naturel existant (plat — pas de terrassement)</div>
+                        <div style={{ position: 'absolute', bottom: '-8mm', left: 0, right: 0, textAlign: 'center', fontSize: '10pt', color: '#999', fontStyle: 'italic' }}>Terrain naturel existant (plat — pas de terrassement)</div>
                         
                         {/* Dessin Batterie Profil */}
-                        <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '40mm', height: '80mm', backgroundColor: '#fef3c7', border: '1.5px solid #d97706', display: 'flex', flexDirection: 'column', padding: '2mm' }}>
-                            <div style={{ position: 'absolute', top: '-6mm', left: 0, right: 0, textAlign: 'center' }}>
-                                <div style={{ fontSize: '9pt', fontWeight: 'bold', color: '#d97706' }}>{batteryName}</div>
-                                <div style={{ fontSize: '7pt', color: '#d97706' }}>Capacité: 261 kWh   Poids: ~ 2,60 t</div>
+                        <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '50mm', height: '100mm', backgroundColor: '#fef3c7', border: '1.5px solid #d97706', display: 'flex', flexDirection: 'column', padding: '2mm' }}>
+                            <div style={{ position: 'absolute', top: '-10mm', left: 0, right: 0, textAlign: 'center' }}>
+                                <div style={{ fontSize: '11pt', fontWeight: 'bold', color: '#d97706' }}>{batteryName}</div>
                             </div>
 
-                            <div style={{ flex: 1, border: '1px solid #f59e0b', marginBottom: '1mm', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '7pt', color: '#d97706' }}>Module 1</div>
-                            <div style={{ flex: 1, border: '1px solid #f59e0b', marginBottom: '1mm', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '7pt', color: '#d97706' }}>Module 2</div>
-                            <div style={{ flex: 1, border: '1px solid #f59e0b', marginBottom: '1mm', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '7pt', color: '#d97706' }}>Module 3</div>
-                            <div style={{ flex: 1, border: '1px solid #f59e0b', marginBottom: '1mm', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '7pt', color: '#d97706' }}>Module 4</div>
-                            <div style={{ flex: 1, border: '1px solid #f59e0b', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '7pt', color: '#d97706' }}>Module 5</div>
+                            <div style={{ flex: 1, border: '1px solid #f59e0b', marginBottom: '1mm', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '9pt', color: '#d97706', fontWeight: 'bold' }}>Module 1</div>
+                            <div style={{ flex: 1, border: '1px solid #f59e0b', marginBottom: '1mm', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '9pt', color: '#d97706', fontWeight: 'bold' }}>Module 2</div>
+                            <div style={{ flex: 1, border: '1px solid #f59e0b', marginBottom: '1mm', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '9pt', color: '#d97706', fontWeight: 'bold' }}>Module 3</div>
+                            <div style={{ flex: 1, border: '1px solid #f59e0b', marginBottom: '1mm', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '9pt', color: '#d97706', fontWeight: 'bold' }}>Module 4</div>
+                            <div style={{ flex: 1, border: '1px solid #f59e0b', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '9pt', color: '#d97706', fontWeight: 'bold' }}>Module 5</div>
                             
                             {/* Cotes hauteur */}
-                            <div style={{ position: 'absolute', right: '-12mm', top: 0, bottom: 0, width: '5mm', borderRight: '1px solid #ef4444', borderTop: '1px solid #ef4444', borderBottom: '1px solid #ef4444', display: 'flex', alignItems: 'center' }}>
-                                <span style={{ fontSize: '9pt', color: '#ef4444', fontWeight: 'bold', paddingLeft: '8mm' }}>2,40 m</span>
+                            <div style={{ position: 'absolute', right: '-15mm', top: 0, bottom: 0, width: '8mm', borderRight: '1px solid #ef4444', borderTop: '1px solid #ef4444', borderBottom: '1px solid #ef4444', display: 'flex', alignItems: 'center' }}>
+                                <span style={{ fontSize: '11pt', color: '#ef4444', fontWeight: 'bold', paddingLeft: '10mm' }}>2,40 m</span>
                             </div>
                         </div>
 
                         {/* Cotes largeur */}
-                        <div style={{ position: 'absolute', bottom: '-15mm', left: '50%', transform: 'translateX(-50%)', width: '40mm', height: '5mm', borderBottom: '1px solid #ef4444', borderLeft: '1px solid #ef4444', borderRight: '1px solid #ef4444', display: 'flex', justifyContent: 'center' }}>
-                            <span style={{ fontSize: '9pt', color: '#ef4444', fontWeight: 'bold', paddingTop: '6mm', position: 'absolute' }}>1,35 m (profondeur)</span>
+                        <div style={{ position: 'absolute', bottom: '-15mm', left: '50%', transform: 'translateX(-50%)', width: '50mm', height: '5mm', borderBottom: '1px solid #ef4444', borderLeft: '1px solid #ef4444', borderRight: '1px solid #ef4444', display: 'flex', justifyContent: 'center' }}>
+                            <span style={{ fontSize: '11pt', color: '#ef4444', fontWeight: 'bold', paddingTop: '6mm', position: 'absolute' }}>1,35 m (profondeur)</span>
                         </div>
                     </div>
                 </div>
 
-                <div style={{ marginTop: 'auto', padding: '4mm', background: '#f8f9fa', border: '1px solid #e2e8f0', borderRadius: '4px', maxWidth: '80mm' }}>
-                    <ul style={{ fontSize: '8pt', color: '#475569', listStyle: 'none', padding: 0, margin: 0, lineHeight: '1.4' }}>
+                <div style={{ marginTop: 'auto', padding: '6mm', background: '#f8f9fa', border: '1px solid #e2e8f0', borderRadius: '4px', maxWidth: '100mm' }}>
+                    <ul style={{ fontSize: '10pt', color: '#475569', listStyle: 'none', padding: 0, margin: 0, lineHeight: '1.6' }}>
                         <li>• Hauteur : 2,40 m</li>
                         <li>• Profondeur : 1,35 m - Largeur : 1,00 m</li>
                         <li>• Pas de fondation spéciale — dalle béton existante</li>
@@ -265,35 +264,42 @@ export const PlateFacades = ({ project, batteryPhoto }) => {
             
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div style={{ marginBottom: '15mm' }}>
-                    <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#333', marginBottom: '2px' }}>DP4 — Façades et toitures</div>
-                    <div style={{ fontSize: '10pt', color: '#666' }}>Armoire de stockage {batteryName} — vue de face, vue de côté et photo produit</div>
+                    <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#333', marginBottom: '2px' }}>DP4 — Façades et toitures</div>
+                    <div style={{ fontSize: '12pt', color: '#666' }}>Armoire de stockage {batteryName} — vue de face, vue de côté et photo produit</div>
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
                     
                     {/* Vue de face */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <span style={{ fontSize: '9pt', fontWeight: 'bold', color: '#d97706', marginBottom: '5mm' }}>Vue de face</span>
-                        <div style={{ position: 'relative', width: '30mm', height: '80mm', backgroundColor: '#fef3c7', border: '1.5px solid #d97706', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', paddingBottom: '5mm' }}>
-                            <div style={{ width: '1px', height: '100%', backgroundColor: '#d97706', position: 'absolute', left: '50%' }}></div>
-                            <span style={{ fontSize: '6pt', color: '#d97706', fontWeight: 'bold' }}>{batteryName}</span>
+                        <span style={{ fontSize: '11pt', fontWeight: 'bold', color: '#d97706', marginBottom: '5mm' }}>Vue de face</span>
+                        <div style={{ position: 'relative', width: '40mm', height: '100mm', backgroundColor: '#fef3c7', border: '1.5px solid #d97706', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', paddingBottom: '5mm' }}>
+                            <div style={{ width: '1.5px', height: '100%', backgroundColor: '#d97706', position: 'absolute', left: '50%' }}></div>
+                            
+                            {/* Petits carrés style aération */}
+                            <div style={{ position: 'absolute', top: '5mm', left: '2mm', width: '12mm', height: '15mm', border: '1px solid #f59e0b', borderRadius: '1px' }}></div>
+                            <div style={{ position: 'absolute', top: '5mm', right: '2mm', width: '12mm', height: '15mm', border: '1px solid #f59e0b', borderRadius: '1px' }}></div>
+                            
+                            <div style={{ position: 'absolute', top: '40mm', left: '46%', width: '3mm', height: '8mm', backgroundColor: '#d97706' }}></div>
+
+                            <span style={{ fontSize: '8pt', color: '#d97706', fontWeight: 'bold', textAlign: 'center', zIndex: 10 }}>{batteryName}</span>
                             
                             {/* Cotes hauteur */}
-                            <div style={{ position: 'absolute', right: '-10mm', top: 0, bottom: 0, width: '5mm', borderRight: '1px solid #ef4444', borderTop: '1px solid #ef4444', borderBottom: '1px solid #ef4444', display: 'flex', alignItems: 'center' }}>
-                                <span style={{ fontSize: '8pt', color: '#ef4444', fontWeight: 'bold', paddingLeft: '6mm' }}>2,40 m</span>
+                            <div style={{ position: 'absolute', right: '-15mm', top: 0, bottom: 0, width: '8mm', borderRight: '1px solid #ef4444', borderTop: '1px solid #ef4444', borderBottom: '1px solid #ef4444', display: 'flex', alignItems: 'center' }}>
+                                <span style={{ fontSize: '10pt', color: '#ef4444', fontWeight: 'bold', paddingLeft: '10mm' }}>2,40 m</span>
                             </div>
                             
                             {/* Cotes largeur */}
-                            <div style={{ position: 'absolute', bottom: '-10mm', left: 0, right: 0, height: '5mm', borderBottom: '1px solid #ef4444', borderLeft: '1px solid #ef4444', borderRight: '1px solid #ef4444', display: 'flex', justifyContent: 'center' }}>
-                                <span style={{ fontSize: '8pt', color: '#ef4444', fontWeight: 'bold', paddingTop: '6mm', position: 'absolute' }}>1,00 m</span>
+                            <div style={{ position: 'absolute', bottom: '-15mm', left: 0, right: 0, height: '5mm', borderBottom: '1px solid #ef4444', borderLeft: '1px solid #ef4444', borderRight: '1px solid #ef4444', display: 'flex', justifyContent: 'center' }}>
+                                <span style={{ fontSize: '10pt', color: '#ef4444', fontWeight: 'bold', paddingTop: '6mm', position: 'absolute' }}>1,00 m</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Vue de côté */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <span style={{ fontSize: '9pt', fontWeight: 'bold', color: '#d97706', marginBottom: '5mm' }}>Vue de côté (profondeur)</span>
-                        <div style={{ position: 'relative', width: '40mm', height: '80mm', backgroundColor: '#fef3c7', border: '1.5px solid #d97706', display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '11pt', fontWeight: 'bold', color: '#d97706', marginBottom: '5mm' }}>Vue de côté (profondeur)</span>
+                        <div style={{ position: 'relative', width: '54mm', height: '100mm', backgroundColor: '#fef3c7', border: '1.5px solid #d97706', display: 'flex', flexDirection: 'column' }}>
                             <div style={{ flex: 1, borderBottom: '1px solid #f59e0b' }}></div>
                             <div style={{ flex: 1, borderBottom: '1px solid #f59e0b' }}></div>
                             <div style={{ flex: 1, borderBottom: '1px solid #f59e0b' }}></div>
@@ -301,29 +307,29 @@ export const PlateFacades = ({ project, batteryPhoto }) => {
                             <div style={{ flex: 1 }}></div>
 
                             {/* Cotes hauteur */}
-                            <div style={{ position: 'absolute', right: '-10mm', top: 0, bottom: 0, width: '5mm', borderRight: '1px solid #ef4444', borderTop: '1px solid #ef4444', borderBottom: '1px solid #ef4444', display: 'flex', alignItems: 'center' }}>
-                                <span style={{ fontSize: '8pt', color: '#ef4444', fontWeight: 'bold', paddingLeft: '6mm' }}>2,40 m</span>
+                            <div style={{ position: 'absolute', right: '-15mm', top: 0, bottom: 0, width: '8mm', borderRight: '1px solid #ef4444', borderTop: '1px solid #ef4444', borderBottom: '1px solid #ef4444', display: 'flex', alignItems: 'center' }}>
+                                <span style={{ fontSize: '10pt', color: '#ef4444', fontWeight: 'bold', paddingLeft: '10mm' }}>2,40 m</span>
                             </div>
                             
                             {/* Cotes largeur */}
-                            <div style={{ position: 'absolute', bottom: '-10mm', left: 0, right: 0, height: '5mm', borderBottom: '1px solid #ef4444', borderLeft: '1px solid #ef4444', borderRight: '1px solid #ef4444', display: 'flex', justifyContent: 'center' }}>
-                                <span style={{ fontSize: '8pt', color: '#ef4444', fontWeight: 'bold', paddingTop: '6mm', position: 'absolute' }}>1,35 m</span>
+                            <div style={{ position: 'absolute', bottom: '-15mm', left: 0, right: 0, height: '5mm', borderBottom: '1px solid #ef4444', borderLeft: '1px solid #ef4444', borderRight: '1px solid #ef4444', display: 'flex', justifyContent: 'center' }}>
+                                <span style={{ fontSize: '10pt', color: '#ef4444', fontWeight: 'bold', paddingTop: '6mm', position: 'absolute' }}>1,35 m</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Photo */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <span style={{ fontSize: '9pt', fontWeight: 'bold', color: '#d97706', marginBottom: '5mm' }}>Photo produit</span>
-                        <div style={{ width: '60mm', height: '40mm', border: '1px solid #e2e8f0' }}>
-                            <img src={batteryPhoto || "https://nelsonpv.fr/mercury_product_photo.jpg"} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Photo produit" />
+                        <span style={{ fontSize: '11pt', fontWeight: 'bold', color: '#d97706', marginBottom: '5mm' }}>Photo produit</span>
+                        <div style={{ width: '80mm', height: '50mm', border: '2px solid #e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                            <img src={batteryPhoto || "/battery_photo_3.jpg"} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Photo produit" crossOrigin="anonymous" />
                         </div>
                     </div>
 
                 </div>
 
-                <div style={{ marginTop: 'auto', padding: '4mm', background: '#f8f9fa', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
-                    <p style={{ fontSize: '8pt', color: '#475569', margin: 0, lineHeight: '1.4' }}>
+                <div style={{ marginTop: 'auto', padding: '6mm', background: '#f8f9fa', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                    <p style={{ fontSize: '10pt', color: '#475569', margin: 0, lineHeight: '1.6' }}>
                         Modèle : {batteryName}   Capacité : 261 kWh   Poids : ~ 2,60 t<br/>
                         Dimensions (L × H × P) : 1,00 m × 2,40 m × 1,35 m - Refroidissement liquide - Indice IP54<br/>
                         Matériau : Acier galvanisé revêtu - Couleur : Gris/Blanc - Extinction incendie : Aérosol
