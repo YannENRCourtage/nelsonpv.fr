@@ -91,6 +91,46 @@ export const PlateCover = ({ project }) => (
     </div>
 );
 
+// Helpers pour la génération de carte statique (WMS IGN)
+const getStaticMapUrl = (lat, lng, layer, zoomSize = 0.005) => {
+    if (!lat || !lng) return null;
+    const minLat = lat - zoomSize;
+    const maxLat = lat + zoomSize;
+    const minLon = lng - (zoomSize * 1.5); // Ratio paysage
+    const maxLon = lng + (zoomSize * 1.5);
+    // Note: WMS EPSG:4326 attend BBOX=minLat,minLon,maxLat,maxLon
+    return `https://data.geopf.fr/wms-r/wms?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=${layer}&STYLES=&FORMAT=image/png&CRS=EPSG:4326&BBOX=${minLat},${minLon},${maxLat},${maxLon}&WIDTH=1200&HEIGHT=800&TRANSPARENT=TRUE`;
+};
+
+const StaticMap = ({ project, layers, zoomSize = 0.005, showMarker = true }) => {
+    if (!project?.gps) return <div style={{ width: '100%', height: '100%', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Coordonnées GPS manquantes</div>;
+    
+    const [lat, lng] = project.gps.split(',').map(v => parseFloat(v.trim()));
+    
+    return (
+        <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#f8fafc', overflow: 'hidden' }}>
+            {layers.map((layer, idx) => (
+                <img 
+                    key={idx}
+                    src={getStaticMapUrl(lat, lng, layer, zoomSize)} 
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: layer.includes('CADAS') ? 0.6 : 1 }}
+                    alt={`Map layer ${layer}`}
+                    crossOrigin="anonymous"
+                />
+            ))}
+            
+            {/* Marker batterie central */}
+            {showMarker && (
+                <div style={{
+                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    width: '16px', height: '16px', backgroundColor: '#ef4444', border: '3px solid white',
+                    borderRadius: '50%', boxShadow: '0 2px 8px rgba(0,0,0,0.5)', zIndex: 10
+                }}></div>
+            )}
+        </div>
+    );
+};
+
 /**
  * PLANCHE 2 : PLAN DE SITUATION (Grille 3)
  */
@@ -110,8 +150,12 @@ export const PlateSituation = ({ project, captures }) => {
                     </div>
                 </div>
                 
-                <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <img src={captures?.cadastre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Plan de situation cadastral" />
+                <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '2px solid #e2e8f0', borderRadius: 8 }}>
+                    {captures?.cadastre ? (
+                        <img src={captures.cadastre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Plan de situation cadastral" crossOrigin="anonymous" />
+                    ) : (
+                        <StaticMap project={project} layers={['GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2', 'CADASTRALPARCELS.PARCELLAIRE_EXPRESS']} zoomSize={0.008} />
+                    )}
                 </div>
             </div>
         </div>
@@ -137,8 +181,12 @@ export const PlateMasse = ({ project, captures }) => {
                     </div>
                 </div>
                 
-                <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <img src={captures?.masse_projet} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Plan de masse" />
+                <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '2px solid #e2e8f0', borderRadius: 8 }}>
+                    {captures?.masse_projet ? (
+                        <img src={captures.masse_projet} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Plan de masse" crossOrigin="anonymous" />
+                    ) : (
+                        <StaticMap project={project} layers={['ORTHOIMAGERY.ORTHOPHOTOS', 'CADASTRALPARCELS.PARCELLAIRE_EXPRESS']} zoomSize={0.0015} />
+                    )}
                 </div>
             </div>
         </div>
@@ -440,26 +488,31 @@ export const PlateInsertion = ({ project, captures }) => (
                 <img src={captures?.photo_apres || captures?.masse_projet} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Après" />
             </div>
         </div>
-        <div style={{ marginTop: '3mm', fontSize: '8pt', color: '#666', textAlign: 'center' }}>
-            Simulation de l'intégration paysagère des unités de stockage stationnaire.
-        </div>
     </div>
 );
 
+/**
+ * PLANCHE DP7 : ENVIRONNEMENT PROCHE
+ */
 export const PlateEnvProche = ({ project, captures }) => {
     return (
         <div style={{ ...PAGE_STYLE, paddingTop: '15mm', paddingLeft: '15mm', paddingRight: '15mm', paddingBottom: '10mm', backgroundColor: '#fff' }} id="dp-plate-env-proche">
             <div style={{ position: 'absolute', top: '5mm', left: '15mm', fontSize: '10pt', color: '#333' }}>
-                DP7 — Vue aérienne satellite - {project?.cadastre_commune || project?.city || ''}
+                DP7 — Vue aérienne
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div style={{ marginBottom: '5mm' }}>
-                    <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#000', marginBottom: '4px' }}>DP7 — Vue aérienne satellite</div>
+                    <div style={{ fontSize: '16pt', fontWeight: 'bold', color: '#000', marginBottom: '4px' }}>DP7 — Photographie de l'environnement proche</div>
+                    <div style={{ fontSize: '11pt', color: '#333', lineHeight: '1.2' }}>Vue aérienne montrant l'implantation dans son contexte immédiat</div>
                 </div>
                 
-                <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <img src={captures?.satellite} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Satellite" />
+                <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '2px solid #e2e8f0', borderRadius: 8 }}>
+                    {captures?.env_proche || captures?.satellite ? (
+                        <img src={captures?.env_proche || captures?.satellite} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Environnement proche" crossOrigin="anonymous" />
+                    ) : (
+                        <StaticMap project={project} layers={['ORTHOIMAGERY.ORTHOPHOTOS']} zoomSize={0.003} />
+                    )}
                 </div>
             </div>
         </div>
