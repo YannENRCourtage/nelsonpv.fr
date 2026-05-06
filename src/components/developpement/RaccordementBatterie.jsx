@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Cable, User, Search, FileText, Download, Zap, GitBranch, Activity, AlertTriangle, CheckCircle } from 'lucide-react';
 
 /**
@@ -16,8 +16,6 @@ export default function RaccordementBatterie({ projects, selectedProject, setSel
     const proj = selectedProject;
     const batteryName = proj?.battery_model || 'CESC Mercury 261';
     const batteryQty = proj?.battery_quantity || 2;
-    const power = batteryQty * 125;
-    const capacity = batteryQty * 261;
 
     return (
         <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
@@ -100,19 +98,7 @@ export default function RaccordementBatterie({ projects, selectedProject, setSel
                 {!proj ? (
                     <EmptyState />
                 ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                        {/* Résumé technique */}
-                        <TechnicalSummary proj={proj} batteryName={batteryName} batteryQty={batteryQty} power={power} capacity={capacity} />
-
-                        {/* Schéma de raccordement */}
-                        <RaccordementSchema proj={proj} batteryName={batteryName} batteryQty={batteryQty} power={power} />
-
-                        {/* Notice raccordement */}
-                        <RaccordementNotice proj={proj} batteryName={batteryName} batteryQty={batteryQty} power={power} capacity={capacity} />
-
-                        {/* Checklist démarches */}
-                        <DemarchesChecklist />
-                    </div>
+                    <DPContent proj={proj} batteryName={batteryName} initialQty={batteryQty} />
                 )}
             </div>
         </div>
@@ -134,10 +120,10 @@ function EmptyState() {
     );
 }
 
-function TechnicalSummary({ proj, batteryName, batteryQty, power, capacity }) {
+function TechnicalSummary({ proj, batteryName, batteryQty, setBatteryQty, power, capacity }) {
     const cards = [
         { label: 'Modèle batterie', value: batteryName, color: '#7c3aed', bg: '#f5f3ff' },
-        { label: 'Nombre d\'armoires', value: `${batteryQty} unité(s)`, color: '#2563eb', bg: '#eff6ff' },
+        { label: 'Nombre d\'armoires', value: null, color: '#2563eb', bg: '#eff6ff', editable: true },
         { label: 'Puissance totale', value: `${power} kW`, color: '#059669', bg: '#ecfdf5' },
         { label: 'Capacité totale', value: `${capacity} kWh`, color: '#d97706', bg: '#fffbeb' },
         { label: 'Raccordement', value: 'ENEDIS HTB/HTA', color: '#dc2626', bg: '#fef2f2' },
@@ -157,7 +143,26 @@ function TechnicalSummary({ proj, batteryName, batteryQty, power, capacity }) {
                         border: `1px solid ${c.color}22`,
                     }}>
                         <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{c.label}</div>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: c.color, marginTop: 4 }}>{c.value}</div>
+                        {c.editable ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="20"
+                                    value={batteryQty}
+                                    onChange={e => setBatteryQty(Math.max(1, parseInt(e.target.value) || 1))}
+                                    style={{
+                                        width: 50, fontSize: 18, fontWeight: 800, color: c.color,
+                                        border: `2px solid ${c.color}44`, borderRadius: 8,
+                                        padding: '2px 6px', textAlign: 'center',
+                                        outline: 'none', background: 'white',
+                                    }}
+                                />
+                                <span style={{ fontSize: 14, fontWeight: 700, color: c.color }}>unité(s)</span>
+                            </div>
+                        ) : (
+                            <div style={{ fontSize: 18, fontWeight: 800, color: c.color, marginTop: 4 }}>{c.value}</div>
+                        )}
                     </div>
                 ))}
             </div>
@@ -166,6 +171,14 @@ function TechnicalSummary({ proj, batteryName, batteryQty, power, capacity }) {
 }
 
 function RaccordementSchema({ proj, batteryName, batteryQty, power }) {
+    // Calcul dynamique des positions des batteries
+    const batteryH = 60;
+    const batteryGap = 10;
+    const totalBattH = batteryQty * batteryH + (batteryQty - 1) * batteryGap;
+    const startY = Math.max(30, 170 - totalBattH / 2);
+    const svgHeight = Math.max(340, startY + totalBattH + 60);
+    const midY = startY + totalBattH / 2;
+
     return (
         <div style={{ background: 'white', borderRadius: 16, padding: '20px 24px', boxShadow: '0 1px 8px rgba(0,0,0,0.06)' }}>
             <h3 style={{ fontWeight: 800, fontSize: 15, color: '#0f172a', margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -173,67 +186,71 @@ function RaccordementSchema({ proj, batteryName, batteryQty, power }) {
                 Schéma de raccordement — {proj?.city || ''}
             </h3>
 
-            {/* Schéma SVG simplifié */}
+            {/* Schéma SVG dynamique */}
             <div style={{
                 background: '#f8fafc', borderRadius: 12, padding: 24,
                 border: '1px solid #e2e8f0', overflowX: 'auto',
             }}>
-                <svg viewBox="0 0 800 340" width="100%" height="auto" style={{ minWidth: 600 }}>
+                <svg viewBox={`0 0 800 ${svgHeight}`} width="100%" height="auto" style={{ minWidth: 600 }}>
                     {/* ── Réseau ENEDIS ── */}
-                    <rect x="10" y="120" width="140" height="100" rx="12" fill="#dbeafe" stroke="#2563eb" strokeWidth="2" />
-                    <text x="80" y="158" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#1d4ed8">Réseau ENEDIS</text>
-                    <text x="80" y="175" textAnchor="middle" fontSize="10" fill="#3b82f6">Distribution HTA/BT</text>
-                    <text x="80" y="192" textAnchor="middle" fontSize="9" fill="#60a5fa">Point de livraison</text>
-                    <text x="80" y="207" textAnchor="middle" fontSize="9" fill="#60a5fa">(PDL)</text>
+                    <rect x="10" y={midY - 50} width="140" height="100" rx="12" fill="#dbeafe" stroke="#2563eb" strokeWidth="2" />
+                    <text x="80" y={midY - 12} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#1d4ed8">Réseau ENEDIS</text>
+                    <text x="80" y={midY + 5} textAnchor="middle" fontSize="10" fill="#3b82f6">Distribution HTA/BT</text>
+                    <text x="80" y={midY + 22} textAnchor="middle" fontSize="9" fill="#60a5fa">Point de livraison</text>
+                    <text x="80" y={midY + 37} textAnchor="middle" fontSize="9" fill="#60a5fa">(PDL)</text>
 
                     {/* Câble réseau → Poste */}
-                    <line x1="150" y1="170" x2="230" y2="170" stroke="#2563eb" strokeWidth="3" strokeDasharray="6,3" />
-                    <text x="190" y="158" textAnchor="middle" fontSize="9" fill="#64748b">Câbles enterrés</text>
+                    <line x1="150" y1={midY} x2="230" y2={midY} stroke="#2563eb" strokeWidth="3" strokeDasharray="6,3" />
+                    <text x="190" y={midY - 12} textAnchor="middle" fontSize="9" fill="#64748b">Câbles</text>
+                    <text x="190" y={midY - 2} textAnchor="middle" fontSize="9" fill="#64748b">enterrés</text>
 
                     {/* ── Poste de transformation ── */}
-                    <rect x="230" y="110" width="130" height="120" rx="12" fill="#ecfdf5" stroke="#059669" strokeWidth="2" />
-                    <text x="295" y="148" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#065f46">Poste de</text>
-                    <text x="295" y="164" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#065f46">Transformation</text>
-                    <text x="295" y="183" textAnchor="middle" fontSize="10" fill="#059669">HTA/BT</text>
-                    <text x="295" y="200" textAnchor="middle" fontSize="9" fill="#34d399">+ Compteur ENEDIS</text>
-                    <text x="295" y="217" textAnchor="middle" fontSize="9" fill="#34d399">Bidirectionnel</text>
+                    <rect x="230" y={midY - 60} width="130" height="120" rx="12" fill="#ecfdf5" stroke="#059669" strokeWidth="2" />
+                    <text x="295" y={midY - 22} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#065f46">Poste de</text>
+                    <text x="295" y={midY - 6} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#065f46">Transformation</text>
+                    <text x="295" y={midY + 13} textAnchor="middle" fontSize="10" fill="#059669">HTA/BT</text>
+                    <text x="295" y={midY + 30} textAnchor="middle" fontSize="9" fill="#34d399">+ Compteur ENEDIS</text>
+                    <text x="295" y={midY + 47} textAnchor="middle" fontSize="9" fill="#34d399">Bidirectionnel</text>
 
                     {/* Câble poste → Armoire distribution */}
-                    <line x1="360" y1="170" x2="440" y2="170" stroke="#059669" strokeWidth="3" />
-                    <text x="400" y="158" textAnchor="middle" fontSize="9" fill="#64748b">BT - 4 conducteurs</text>
-                    <polygon points="435,164 435,176 445,170" fill="#059669" />
+                    <line x1="360" y1={midY} x2="440" y2={midY} stroke="#059669" strokeWidth="3" />
+                    <text x="400" y={midY - 18} textAnchor="middle" fontSize="9" fill="#64748b">BT</text>
+                    <text x="400" y={midY - 8} textAnchor="middle" fontSize="9" fill="#64748b">4 conducteurs</text>
+                    <polygon points={`435,${midY - 6} 435,${midY + 6} 445,${midY}`} fill="#059669" />
 
                     {/* ── Armoire de distribution ── */}
-                    <rect x="440" y="120" width="120" height="100" rx="12" fill="#fffbeb" stroke="#d97706" strokeWidth="2" />
-                    <text x="500" y="158" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#92400e">Armoire de</text>
-                    <text x="500" y="173" textAnchor="middle" fontSize="11" fontWeight="bold" fill="#92400e">Distribution</text>
-                    <text x="500" y="192" textAnchor="middle" fontSize="9" fill="#b45309">AC/DC Bidirectionnel</text>
-                    <text x="500" y="207" textAnchor="middle" fontSize="9" fill="#b45309">+ Protection IGBT</text>
+                    <rect x="440" y={midY - 50} width="120" height="100" rx="12" fill="#fffbeb" stroke="#d97706" strokeWidth="2" />
+                    <text x="500" y={midY - 12} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#92400e">Armoire de</text>
+                    <text x="500" y={midY + 3} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#92400e">Distribution</text>
+                    <text x="500" y={midY + 22} textAnchor="middle" fontSize="9" fill="#b45309">AC/DC Bidirectionnel</text>
+                    <text x="500" y={midY + 37} textAnchor="middle" fontSize="9" fill="#b45309">+ Protection IGBT</text>
 
-                    {/* Flèche vers batteries */}
-                    <line x1="560" y1="155" x2="620" y2="100" stroke="#7c3aed" strokeWidth="2.5" />
-                    <line x1="560" y1="170" x2="620" y2="170" stroke="#7c3aed" strokeWidth="2.5" />
-                    <line x1="560" y1="185" x2="620" y2="240" stroke="#7c3aed" strokeWidth="2.5" />
+                    {/* Lignes vers batteries (une par armoire) */}
+                    {Array.from({ length: batteryQty }).map((_, i) => {
+                        const by = startY + i * (batteryH + batteryGap) + batteryH / 2;
+                        return (
+                            <line key={`line-${i}`} x1="560" y1={midY} x2="620" y2={by} stroke="#7c3aed" strokeWidth="2.5" />
+                        );
+                    })}
 
                     {/* ── Batteries ── */}
-                    {Array.from({ length: Math.min(batteryQty, 3) }).map((_, i) => {
-                        const ys = [70, 145, 215];
-                        const y = ys[i] || 70 + i * 75;
+                    {Array.from({ length: batteryQty }).map((_, i) => {
+                        const y = startY + i * (batteryH + batteryGap);
                         return (
                             <g key={i}>
-                                <rect x="620" y={y} width="160" height="60" rx="10" fill="#f5f3ff" stroke="#7c3aed" strokeWidth="2" />
-                                <text x="700" y={y + 24} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#5b21b6">🔋 {batteryName}</text>
-                                <text x="700" y={y + 39} textAnchor="middle" fontSize="9" fill="#7c3aed">261 kWh — 125 kW</text>
-                                <text x="700" y={y + 52} textAnchor="middle" fontSize="8" fill="#a78bfa">Armoire {i + 1}/{batteryQty}</text>
+                                <rect x="620" y={y} width="160" height={batteryH} rx="10" fill="#f5f3ff" stroke="#7c3aed" strokeWidth="2" />
+                                <text x="700" y={y + 22} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#5b21b6">🔋 {batteryName}</text>
+                                <text x="700" y={y + 37} textAnchor="middle" fontSize="9" fill="#7c3aed">261 kWh — 125 kW</text>
+                                <text x="700" y={y + 50} textAnchor="middle" fontSize="8" fill="#a78bfa">Armoire {i + 1}/{batteryQty}</text>
                             </g>
                         );
                     })}
 
                     {/* Légende injection/soutirage */}
-                    <text x="80" y="30" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#374151">INJECTION</text>
-                    <line x1="30" y1="40" x2="130" y2="40" stroke="#10b981" strokeWidth="2" markerEnd="url(#arrowGreen)" />
-                    <text x="300" y="30" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#374151">SOUTIRAGE</text>
-                    <line x1="250" y1="40" x2="350" y2="40" stroke="#f59e0b" strokeWidth="2" strokeDasharray="5,3" />
+                    <text x="80" y="18" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#374151">INJECTION</text>
+                    <line x1="30" y1="28" x2="130" y2="28" stroke="#10b981" strokeWidth="2" markerEnd="url(#arrowGreen)" />
+                    <text x="300" y="18" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#374151">SOUTIRAGE</text>
+                    <line x1="250" y1="28" x2="350" y2="28" stroke="#f59e0b" strokeWidth="2" strokeDasharray="5,3" />
 
                     <defs>
                         <marker id="arrowGreen" markerWidth="8" markerHeight="8" refX="0" refY="3" orient="auto">

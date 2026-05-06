@@ -273,7 +273,7 @@ export const PlateFacades = ({ project, batteryPhoto }) => {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20mm' }}>
                         <span style={{ fontSize: '11pt', fontWeight: 'bold', color: '#d97706', marginBottom: '5mm' }}>Vue de face</span>
                         <div style={{ position: 'relative', width: '40mm', height: '100mm', backgroundColor: '#fef3c7', border: '1.5px solid #d97706', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', paddingBottom: '5mm' }}>
-                            <div style={{ width: '1.5px', height: '100%', backgroundColor: '#d97706', position: 'absolute', left: '50%' }}></div>
+                            <div style={{ width: '1.5px', position: 'absolute', top: 0, bottom: 0, left: '50%', backgroundColor: '#d97706' }}></div>
                             
                             {/* Petits carrés style aération */}
                             <div style={{ position: 'absolute', top: '5mm', left: '2mm', width: '12mm', height: '15mm', border: '1px solid #f59e0b', borderRadius: '1px' }}></div>
@@ -321,7 +321,7 @@ export const PlateFacades = ({ project, batteryPhoto }) => {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20mm' }}>
                         <span style={{ fontSize: '11pt', fontWeight: 'bold', color: '#d97706', marginBottom: '5mm' }}>Photo produit</span>
                         <div style={{ width: '80mm', height: '50mm', border: '2px solid #e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
-                            <img src={batteryPhoto || "/battery_photo_3.jpg"} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Photo produit" crossOrigin="anonymous" />
+                            <img src={batteryPhoto || "/battery_photo_3.jpg"} style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#f8fafc' }} alt="Photo produit" crossOrigin="anonymous" />
                         </div>
                     </div>
 
