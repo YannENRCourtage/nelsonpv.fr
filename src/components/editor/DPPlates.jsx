@@ -61,7 +61,6 @@ const Footer = ({ project }) => (
 export const PlateCover = ({ project }) => (
     <div style={{ ...PAGE_STYLE, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1e293b', color: 'white', border: '15mm solid #1e293b' }} id="dp-plate-cover">
         <div style={{ backgroundColor: 'white', width: '100%', height: '100%', display: 'flex', flexDirection: 'column', padding: '20mm', color: '#333', position: 'relative' }}>
-            <img src={LOGO_NELSON} alt="Nelson" style={{ position: 'absolute', top: '10mm', left: '10mm', height: '15mm' }} crossOrigin="anonymous" />
             <div style={{ position: 'absolute', top: '15mm', right: '10mm', fontSize: '12pt', color: '#666' }}>{new Date().toLocaleDateString('fr-FR')}</div>
             
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
@@ -271,7 +270,7 @@ export const PlateFacades = ({ project, batteryPhoto }) => {
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
                     
                     {/* Vue de face */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20mm' }}>
                         <span style={{ fontSize: '11pt', fontWeight: 'bold', color: '#d97706', marginBottom: '5mm' }}>Vue de face</span>
                         <div style={{ position: 'relative', width: '40mm', height: '100mm', backgroundColor: '#fef3c7', border: '1.5px solid #d97706', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', paddingBottom: '5mm' }}>
                             <div style={{ width: '1.5px', height: '100%', backgroundColor: '#d97706', position: 'absolute', left: '50%' }}></div>
@@ -280,7 +279,7 @@ export const PlateFacades = ({ project, batteryPhoto }) => {
                             <div style={{ position: 'absolute', top: '5mm', left: '2mm', width: '12mm', height: '15mm', border: '1px solid #f59e0b', borderRadius: '1px' }}></div>
                             <div style={{ position: 'absolute', top: '5mm', right: '2mm', width: '12mm', height: '15mm', border: '1px solid #f59e0b', borderRadius: '1px' }}></div>
                             
-                            <div style={{ position: 'absolute', top: '40mm', left: '46%', width: '3mm', height: '8mm', backgroundColor: '#d97706' }}></div>
+                            <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: '46%', width: '3mm', height: '8mm', backgroundColor: '#d97706' }}></div>
 
                             <span style={{ fontSize: '8pt', color: '#d97706', fontWeight: 'bold', textAlign: 'center', zIndex: 10 }}>{batteryName}</span>
                             
@@ -297,7 +296,7 @@ export const PlateFacades = ({ project, batteryPhoto }) => {
                     </div>
 
                     {/* Vue de côté */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20mm' }}>
                         <span style={{ fontSize: '11pt', fontWeight: 'bold', color: '#d97706', marginBottom: '5mm' }}>Vue de côté (profondeur)</span>
                         <div style={{ position: 'relative', width: '54mm', height: '100mm', backgroundColor: '#fef3c7', border: '1.5px solid #d97706', display: 'flex', flexDirection: 'column' }}>
                             <div style={{ flex: 1, borderBottom: '1px solid #f59e0b' }}></div>
@@ -319,7 +318,7 @@ export const PlateFacades = ({ project, batteryPhoto }) => {
                     </div>
 
                     {/* Photo */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20mm' }}>
                         <span style={{ fontSize: '11pt', fontWeight: 'bold', color: '#d97706', marginBottom: '5mm' }}>Photo produit</span>
                         <div style={{ width: '80mm', height: '50mm', border: '2px solid #e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
                             <img src={batteryPhoto || "/battery_photo_3.jpg"} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Photo produit" crossOrigin="anonymous" />

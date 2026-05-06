@@ -16,6 +16,8 @@ import {
     PlateEnvProche,
 } from '@/components/editor/DPPlates';
 import RaccordementBatterie from '@/components/developpement/RaccordementBatterie';
+import { cadastreService } from '@/services/CadastreService';
+import DPBatterieTab from '@/components/developpement/DPBatterieTab';
 
 const TABS = [
     { id: 'dp-batterie', label: 'DP Batterie', icon: Battery },
@@ -58,9 +60,40 @@ export default function Developpement() {
     // Filtrage projets
     const filteredProjects = projects.filter((p) => {
         const q = search.toLowerCase();
-        const name = `${p.firstName || ''} ${p.name || ''} ${p.city || ''}`.toLowerCase();
-        return name.includes(q);
+        return (
+            (p.firstName && p.firstName.toLowerCase().includes(q)) ||
+            (p.lastName && p.lastName.toLowerCase().includes(q)) ||
+            (p.city && p.city.toLowerCase().includes(q)) ||
+            (p.name && p.name.toLowerCase().includes(q))
+        );
     });
+
+    // Chargement dynamique du cadastre si manquant
+    useEffect(() => {
+        const fetchMissingCadastre = async () => {
+            if (selectedProject?.gps && !selectedProject?.cadastre_section) {
+                try {
+                    const [lat, lng] = selectedProject.gps.split(',').map(Number);
+                    const data = await cadastreService.getParcelle(lat, lng);
+                    if (data) {
+                        const updates = {
+                            cadastre_section: data.section,
+                            cadastre_numero: data.numero,
+                            cadastre_surface: data.contenance,
+                            cadastre_commune: data.nom_commune,
+                            cadastre_code_insee: data.code_commune
+                        };
+                        setSelectedProject(prev => ({ ...prev, ...updates }));
+                        await apiService.updateProject(selectedProject.id, updates);
+                    }
+                } catch (err) {
+                    console.error("Erreur récupération cadastre :", err);
+                }
+            }
+        };
+        fetchMissingCadastre();
+    }, [selectedProject?.id, selectedProject?.gps]);
+
 
     // ─── Génération du PDF DP complet ─────────────────────────────────────────
     const handleGenerateDP = async () => {
