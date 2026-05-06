@@ -414,15 +414,19 @@ export default function Admin() {
                       {user.permissions?.canAccessOdoo && (
                         <span className="px-2 py-1 rounded bg-purple-50 text-purple-700 text-xs border border-purple-200">Odoo</span>
                       )}
+                      {/* Simulateur masqué
                       {user.permissions?.canAccessSimulator && (
                         <span className="px-2 py-1 rounded bg-green-50 text-green-700 text-xs border border-green-200">Simulateur</span>
                       )}
+                      */}
                       {user.permissions?.canAccessCDP && (
                         <span className="px-2 py-1 rounded bg-yellow-50 text-yellow-700 text-xs border border-yellow-200">CDP</span>
                       )}
+                      {/* Finance masqué
                       {user.permissions?.canAccessFinance && (
                         <span className="px-2 py-1 rounded bg-teal-50 text-teal-700 text-xs border border-teal-200">Finance</span>
                       )}
+                      */}
                       {user.permissions?.canViewAllProjects && (
                         <span className="px-2 py-1 rounded bg-slate-100 text-slate-700 text-xs border border-slate-200">Tout voir</span>
                       )}
@@ -607,12 +611,14 @@ export default function Admin() {
                   onCheckedChange={(c) => handlePermissionChange('canAccessEditor', c)}
                   label="Accès Éditeur"
                 />
+                {/* Simulateur masqué
                 <ToggleSwitch
                   id="perm-simulator"
                   checked={formData.permissions.canAccessSimulator}
                   onCheckedChange={(c) => handlePermissionChange('canAccessSimulator', c)}
                   label="Accès Simulateur"
                 />
+                */}
                 <ToggleSwitch
                   id="perm-configurator"
                   checked={formData.permissions.canAccessConfigurator}
@@ -631,12 +637,14 @@ export default function Admin() {
                   onCheckedChange={(c) => handlePermissionChange('canAccessCDP', c)}
                   label="Accès CDP"
                 />
+                {/* Finance masqué
                 <ToggleSwitch
                   id="perm-finance"
                   checked={formData.permissions.canAccessFinance}
                   onCheckedChange={(c) => handlePermissionChange('canAccessFinance', c)}
                   label="Accès Finance"
                 />
+                */}
                 <ToggleSwitch
                   id="perm-viewall"
                   checked={formData.permissions.canViewAllProjects}
