@@ -63,6 +63,11 @@ export default function Admin() {
       canAccessOdoo: false,
       canAccessCDP: false,
       canAccessFinance: false,
+      canAccessBP: false,
+      canAccessMonday: false,
+      canAccessEnedis: false,
+      canAccessDeveloppement: false,
+      canAccessTracking: false,
       canViewAllProjects: false,
     }
   });
@@ -109,6 +114,11 @@ export default function Admin() {
           canAccessOdoo: user.permissions?.canAccessOdoo || false,
           canAccessCDP: user.permissions?.canAccessCDP || false,
           canAccessFinance: user.permissions?.canAccessFinance || false,
+          canAccessBP: user.permissions?.canAccessBP || false,
+          canAccessMonday: user.permissions?.canAccessMonday || false,
+          canAccessEnedis: user.permissions?.canAccessEnedis || false,
+          canAccessDeveloppement: user.permissions?.canAccessDeveloppement || false,
+          canAccessTracking: user.permissions?.canAccessTracking || false,
           canViewAllProjects: user.permissions?.canViewAllProjects || false,
         }
       });
@@ -130,6 +140,11 @@ export default function Admin() {
           canAccessOdoo: false,
           canAccessCDP: false,
           canAccessFinance: false,
+          canAccessBP: false,
+          canAccessMonday: false,
+          canAccessEnedis: false,
+          canAccessDeveloppement: false,
+          canAccessTracking: false,
           canViewAllProjects: false,
         }
       });
@@ -414,19 +429,30 @@ export default function Admin() {
                       {user.permissions?.canAccessOdoo && (
                         <span className="px-2 py-1 rounded bg-purple-50 text-purple-700 text-xs border border-purple-200">Odoo</span>
                       )}
-                      {/* Simulateur masqué
-                      {user.permissions?.canAccessSimulator && (
-                        <span className="px-2 py-1 rounded bg-green-50 text-green-700 text-xs border border-green-200">Simulateur</span>
-                      )}
-                      */}
                       {user.permissions?.canAccessCDP && (
                         <span className="px-2 py-1 rounded bg-yellow-50 text-yellow-700 text-xs border border-yellow-200">CDP</span>
                       )}
-                      {/* Finance masqué
+                      {user.permissions?.canAccessBP && (
+                        <span className="px-2 py-1 rounded bg-green-50 text-green-700 text-xs border border-green-200">BP</span>
+                      )}
+                      {user.permissions?.canAccessMonday && (
+                        <span className="px-2 py-1 rounded bg-pink-50 text-pink-700 text-xs border border-pink-200">Monday</span>
+                      )}
+                      {user.permissions?.canAccessEnedis && (
+                        <span className="px-2 py-1 rounded bg-cyan-50 text-cyan-700 text-xs border border-cyan-200">ENEDIS</span>
+                      )}
+                      {user.permissions?.canAccessDeveloppement && (
+                        <span className="px-2 py-1 rounded bg-violet-50 text-violet-700 text-xs border border-violet-200">Dév.</span>
+                      )}
+                      {user.permissions?.canAccessTracking && (
+                        <span className="px-2 py-1 rounded bg-amber-50 text-amber-700 text-xs border border-amber-200">Suivi</span>
+                      )}
+                      {user.permissions?.canAccessSimulator && (
+                        <span className="px-2 py-1 rounded bg-emerald-50 text-emerald-700 text-xs border border-emerald-200">Simulateur</span>
+                      )}
                       {user.permissions?.canAccessFinance && (
                         <span className="px-2 py-1 rounded bg-teal-50 text-teal-700 text-xs border border-teal-200">Finance</span>
                       )}
-                      */}
                       {user.permissions?.canViewAllProjects && (
                         <span className="px-2 py-1 rounded bg-slate-100 text-slate-700 text-xs border border-slate-200">Tout voir</span>
                       )}
@@ -598,7 +624,7 @@ export default function Admin() {
 
             <div className="space-y-3 border-t pt-3">
               <Label className="text-base">Permissions</Label>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3" style={{ maxHeight: '280px', overflowY: 'auto', paddingRight: 4 }}>
                 <ToggleSwitch
                   id="perm-crm"
                   checked={formData.permissions.canAccessCRM}
@@ -611,14 +637,6 @@ export default function Admin() {
                   onCheckedChange={(c) => handlePermissionChange('canAccessEditor', c)}
                   label="Accès Éditeur"
                 />
-                {/* Simulateur masqué
-                <ToggleSwitch
-                  id="perm-simulator"
-                  checked={formData.permissions.canAccessSimulator}
-                  onCheckedChange={(c) => handlePermissionChange('canAccessSimulator', c)}
-                  label="Accès Simulateur"
-                />
-                */}
                 <ToggleSwitch
                   id="perm-configurator"
                   checked={formData.permissions.canAccessConfigurator}
@@ -637,14 +655,48 @@ export default function Admin() {
                   onCheckedChange={(c) => handlePermissionChange('canAccessCDP', c)}
                   label="Accès CDP"
                 />
-                {/* Finance masqué
+                <ToggleSwitch
+                  id="perm-bp"
+                  checked={formData.permissions.canAccessBP}
+                  onCheckedChange={(c) => handlePermissionChange('canAccessBP', c)}
+                  label="Accès BP"
+                />
+                <ToggleSwitch
+                  id="perm-monday"
+                  checked={formData.permissions.canAccessMonday}
+                  onCheckedChange={(c) => handlePermissionChange('canAccessMonday', c)}
+                  label="Accès Monday"
+                />
+                <ToggleSwitch
+                  id="perm-enedis"
+                  checked={formData.permissions.canAccessEnedis}
+                  onCheckedChange={(c) => handlePermissionChange('canAccessEnedis', c)}
+                  label="Accès ENEDIS"
+                />
+                <ToggleSwitch
+                  id="perm-developpement"
+                  checked={formData.permissions.canAccessDeveloppement}
+                  onCheckedChange={(c) => handlePermissionChange('canAccessDeveloppement', c)}
+                  label="Accès Développement"
+                />
+                <ToggleSwitch
+                  id="perm-tracking"
+                  checked={formData.permissions.canAccessTracking}
+                  onCheckedChange={(c) => handlePermissionChange('canAccessTracking', c)}
+                  label="Accès Suivi dossiers"
+                />
+                <ToggleSwitch
+                  id="perm-simulator"
+                  checked={formData.permissions.canAccessSimulator}
+                  onCheckedChange={(c) => handlePermissionChange('canAccessSimulator', c)}
+                  label="Accès Simulateur"
+                />
                 <ToggleSwitch
                   id="perm-finance"
                   checked={formData.permissions.canAccessFinance}
                   onCheckedChange={(c) => handlePermissionChange('canAccessFinance', c)}
                   label="Accès Finance"
                 />
-                */}
                 <ToggleSwitch
                   id="perm-viewall"
                   checked={formData.permissions.canViewAllProjects}

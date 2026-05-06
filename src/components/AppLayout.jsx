@@ -478,6 +478,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
             {(user?.activeTenantId === 'acama' || user?.tenantId === 'acama' ||
               user?.activeTenantId === 'enr-courtage-energie' || user?.tenantId === 'enr-courtage-energie' ||
               user?.role === 'admin' || user?.role === 'Administrator' ||
+              user?.permissions?.canAccessBP ||
               user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr' || isLaurentGuyon) && (
               <NavLink 
                 to="/bp-acama" 
@@ -496,7 +497,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
               </NavLink>
             )}
 
-            {(user?.role === 'admin' || user?.role === 'Administrator') && (
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessMonday) && (
               <NavLink to="/monday" className={({ isActive }) => isActive ? 'nav-link active monday' : 'nav-link monday'}>
                 <Grid className="w-4 h-4 mr-1 inline-block" />
                 Monday
@@ -510,14 +511,14 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
               </NavLink>
             )}
 
-            {(user?.role === 'admin' || user?.role === 'Administrator') && (
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessEnedis) && (
               <NavLink to="/enedis-admin" className={({ isActive }) => isActive ? 'nav-link active enedis' : 'nav-link enedis'}>
                 <Activity className="w-4 h-4 mr-1 inline-block" />
                 ENEDIS
               </NavLink>
             )}
 
-            {(user?.role === 'admin' || user?.role === 'Administrator') && (
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessDeveloppement) && (
               <NavLink to="/developpement" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} style={({ isActive }) => isActive ? { color: '#7c3aed', borderColor: '#7c3aed' } : {}}>
                 <Layers className="w-4 h-4 mr-1 inline-block" />
                 Développement
@@ -748,6 +749,7 @@ export default function AppLayout() {
             {(user?.activeTenantId === 'acama' || user?.tenantId === 'acama' ||
               user?.activeTenantId === 'enr-courtage-energie' || user?.tenantId === 'enr-courtage-energie' ||
               user?.role === 'admin' || user?.role === 'Administrator' ||
+              user?.permissions?.canAccessBP ||
               user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr' || isLaurentGuyon) && (
               <NavLink
                 to="/bp-acama"
@@ -767,7 +769,7 @@ export default function AppLayout() {
               </NavLink>
             )}
 
-            {(user?.role === 'admin' || user?.role === 'Administrator') && (
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessMonday) && (
               <NavLink
                 to="/monday"
                 className={({ isActive }) => isActive ? 'mobile-nav-link active monday' : 'mobile-nav-link monday'}
@@ -789,7 +791,7 @@ export default function AppLayout() {
               </NavLink>
             )}
 
-            {(user?.role === 'admin' || user?.role === 'Administrator') && (
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessEnedis) && (
               <NavLink
                 to="/enedis-admin"
                 className={({ isActive }) => isActive ? 'mobile-nav-link active enedis' : 'mobile-nav-link enedis'}
@@ -800,7 +802,7 @@ export default function AppLayout() {
               </NavLink>
             )}
 
-            {(user?.role === 'admin' || user?.role === 'Administrator') && (
+            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessDeveloppement) && (
               <NavLink
                 to="/developpement"
                 className={({ isActive }) => isActive ? 'mobile-nav-link active' : 'mobile-nav-link'}
