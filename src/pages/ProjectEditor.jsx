@@ -29,8 +29,7 @@ import znzvData from "@/data/znzv.json";
 import { apiService } from "@/services/api";
 import { ACAMA_PREDEFINED_BUILDINGS } from "@/data/simulatorPredefinedBuildings";
 import { calculateRequiredResteACharge } from "@/lib/profitabilityCalculations";
-import enedisService from "@/services/enedis";
-import EnedisDataConnect from "@/components/enedis/EnedisDataConnect";
+
 import { BATTERY_MODELS } from "@/data/batteryModels.js";
 
 const INCLINATION_OPTIONS = Array.from({ length: 91 }, (_, i) => {
@@ -158,7 +157,6 @@ export default function ProjectEditor() {
   // Reset layers when project changes
   useEffect(() => {
     setActiveLayers(new Set());
-    setEnedisData(null); // Reset Enedis data on project change
   }, [projectId]);
   const [isAngleDefaulted, setIsAngleDefaulted] = useState(false);
   const [isAzimuthDefaulted, setIsAzimuthDefaulted] = useState(false);
@@ -180,11 +178,7 @@ export default function ProjectEditor() {
   });
   const [companies, setCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
-  const [enedisData, setEnedisData] = useState(null);
-  const [enedisPrm, setEnedisPrm] = useState('');
-  const [enedisPrms, setEnedisPrms] = useState([]);
-  const [isEnedisLoading, setIsEnedisLoading] = useState(false);
-  const [enedisStatus, setEnedisStatus] = useState('idle'); // 'idle', 'disconnected', 'connected'
+
   const [activeConfigTab, setActiveConfigTab] = useState('buildings'); // 'buildings' or 'battery'
   const [selectedBatteryId, setSelectedBatteryId] = useState(BATTERY_MODELS[0].id);
   const [batteryQuantity, setBatteryQuantity] = useState(4);
@@ -196,34 +190,7 @@ export default function ProjectEditor() {
     return () => window.removeEventListener('map:show-owners', handleShowOwners);
   }, []);
 
-  // Fetch Enedis data if prm exists or tokens exist
-  useEffect(() => {
-    if (!projectId || projectId === 'new') return;
-    
-    const fetchEnedis = async () => {
-      const prmToUse = enedisPrm || project?.enedisPrm;
-      if (!prmToUse && !projectId) return;
 
-      setIsEnedisLoading(true);
-      try {
-        const result = await enedisService.fetchData({ projectId, prm: prmToUse });
-        if (result && result.data) {
-          setEnedisData(result.data);
-          if (result.prm) setEnedisPrm(result.prm);
-          setEnedisStatus('connected');
-        } else {
-          setEnedisStatus('disconnected');
-        }
-      } catch (err) {
-        console.warn('Could not fetch Enedis data. Consent might be missing.');
-        setEnedisStatus('disconnected');
-      } finally {
-        setIsEnedisLoading(false);
-      }
-    };
-
-    fetchEnedis();
-  }, [projectId, project?.enedisPrm]);
 
   useEffect(() => {
     const handleForceReset = () => {
@@ -800,20 +767,7 @@ export default function ProjectEditor() {
             </div>
           </div>
 
-          {/* Section Intégration Enedis Data Connect - Conforme contrat §3.2.4 et §3.2.5 */}
-          <EnedisDataConnect
-            projectId={p.id}
-            enedisPrm={enedisPrm}
-            setEnedisPrm={setEnedisPrm}
-            enedisData={enedisData}
-            setEnedisData={setEnedisData}
-            enedisStatus={enedisStatus}
-            setEnedisStatus={setEnedisStatus}
-            isEnedisLoading={isEnedisLoading}
-            setIsEnedisLoading={setIsEnedisLoading}
-            enedisService={enedisService}
-            toast={toast}
-          />
+
 
           {/* Mobile Toggle Button - Between Enedis and Client Details */}
           <div className="lg:hidden mt-6 mb-2 border-t pt-4">
@@ -1670,18 +1624,6 @@ export default function ProjectEditor() {
 
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('urbanisme_dp'); }}
-              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'urbanisme_dp'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              Urbanisme (DP)
-            </button>
-
-            <button
-              type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('geoportail'); }}
               className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'geoportail'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
@@ -1943,22 +1885,7 @@ export default function ProjectEditor() {
               </div>
             )}
 
-            {/* Onglet Urbanisme (DP) */}
-            {activeTab === 'urbanisme_dp' && (
-              <div className='w-full h-full overflow-y-auto bg-gray-50'>
-                <div className="p-4">
-                  <UrbanismeTab
-                    project={project}
-                    updateProject={updateProject}
-                    setActiveTab={setActiveTab}
-                    onGenerateDP={async () => {
-                      const { generateDPDossier } = await import("@/services/DPGeneratorService");
-                      await generateDPDossier(project);
-                    }}
-                  />
-                </div>
-              </div>
-            )}
+
 
             {/* Onglet Géoportail Urbanisme - Reverted to old behavior: show map in urbanisme mode */}
             {(activeTab === 'geoportail') && (

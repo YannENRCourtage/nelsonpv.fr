@@ -51,6 +51,11 @@ export default function Footer() {
         </div>
         <div className="footer__bottom">
           <p>© 2020 Groupe ENR Courtage. Tous droits réservés.</p>
+          <div className="footer__legal">
+            <a href="/mentions-legales" className="footer__legal-link">Mentions Légales</a>
+            <span className="footer__separator">•</span>
+            <a href="/politique-confidentialite" className="footer__legal-link">Politique de Confidentialité</a>
+          </div>
         </div>
       </div>
     </footer>

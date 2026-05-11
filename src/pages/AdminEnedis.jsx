@@ -300,6 +300,41 @@ export default function AdminEnedis() {
                           />
                         </div>
                       </button>
+
+                      {/* Guide d'aide au consentement */}
+                      <div className="mt-2 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Info size={14} className="text-amber-600 shrink-0" />
+                          <p className="text-[11px] font-extrabold text-amber-800 uppercase tracking-widest">
+                            Guide : comment obtenir le consentement client
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-xs text-amber-900 leading-relaxed">
+                            Le consentement Enedis doit obligatoirement passer par l'espace client sécurisé (obligation RGPD). Voici les étapes à communiquer à votre client :
+                          </p>
+                          <ol className="list-decimal list-inside space-y-1.5 text-xs text-amber-900 leading-relaxed pl-1">
+                            <li><span className="font-bold">Cliquez sur le bouton bleu</span> ci-dessus pour ouvrir la page de consentement Enedis.</li>
+                            <li>Le client se connecte à son espace Enedis <span className="italic">(ou crée un compte en 2 min si nécessaire)</span>.</li>
+                            <li>Il <span className="font-bold">autorise le partage</span> de ses données de consommation avec Nelson.</li>
+                            <li>Il est automatiquement <span className="font-bold">redirigé ici</span> et les données sont récupérées.</li>
+                          </ol>
+                        </div>
+                        <div className="flex flex-col gap-2 pt-1">
+                          <a
+                            href="https://mon-compte-particulier.enedis.fr/creation-de-compte"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 hover:bg-blue-100 transition-colors w-fit"
+                          >
+                            <ExternalLink size={12} />
+                            Créer un compte Enedis (pour le client)
+                          </a>
+                          <p className="text-[10px] text-amber-700 italic leading-snug">
+                            💡 Astuce : Ouvrez ce lien sur le téléphone/tablette du client en sa présence pour qu'il puisse se connecter et donner son consentement en quelques clics.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

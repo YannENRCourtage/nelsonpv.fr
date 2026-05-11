@@ -15,6 +15,7 @@ import useNotifications from '../hooks/useNotifications.jsx';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover.jsx';
 import NotificationBell from './NotificationBell.jsx';
 import TransferProjectModal from './TransferProjectModal.jsx';
+import CookieBanner from './CookieBanner.jsx';
 import { apiService } from '@/services/api';
 import { ref, getDownloadURL } from "firebase/storage";
 import { storage } from "@/config/firebase.js";
@@ -237,7 +238,7 @@ export const generatePdfForProject = async (projectData) => {
 };
 
 function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized }) {
-  const { logout, user, activeTenantId } = useAuth();
+  const { logout, user, activeTenantId, isAdmin } = useAuth();
   const isLaurentGuyon = (user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) || user?.email?.toLowerCase().includes('guyon');
   const isAlexandruMihailov = (user?.firstName?.toLowerCase().includes('alexandru') && user?.lastName?.toLowerCase().includes('mihailov')) || user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr';
   const isRestrictedUser = isLaurentGuyon || isAlexandruMihailov;
@@ -662,6 +663,7 @@ export default function AppLayout() {
         <Outlet />
       </main>
       <Footer />
+      <CookieBanner />
 
       {/* Mobile Navigation Overlay - Outside Header Stacking Context */}
       {isMobileMenuOpen && (

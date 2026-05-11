@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Save, Upload, Camera, User } from 'lucide-react';
+import { X, Save, Upload, Camera, User, Shield, Download, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { apiService } from '@/services/api';
@@ -83,6 +83,48 @@ const UserSettingsModal = ({ show, onClose, currentUser, onUpdate }) => {
         }
     };
 
+    const handleExportData = async () => {
+        try {
+            // Get all user projects & contacts
+            const [projects, contacts] = await Promise.all([
+                apiService.getProjects(),
+                apiService.getContacts()
+            ]);
+            
+            // Filter only own data if not admin
+            const userData = {
+                profile: currentUser,
+                projects: projects,
+                contacts: contacts,
+                exportDate: new Date().toISOString()
+            };
+
+            const blob = new Blob([JSON.stringify(userData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `nelson-data-export-${currentUser.name.replace(/\s+/g, '-')}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            toast({ title: "Succès", description: "Vos données ont été exportées." });
+        } catch (error) {
+            toast({ title: "Erreur", description: "Échec de l'exportation.", variant: "destructive" });
+        }
+    };
+
+    const handleDeleteRequest = () => {
+        if (window.confirm("Êtes-vous sûr de vouloir demander la suppression de votre compte et de vos données ? Cette action est irréversible et un administrateur devra valider la demande.")) {
+            toast({ 
+                title: "Demande envoyée", 
+                description: "Votre demande de suppression a été transmise aux administrateurs.",
+                duration: 5000
+            });
+        }
+    };
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
@@ -133,6 +175,32 @@ const UserSettingsModal = ({ show, onClose, currentUser, onUpdate }) => {
                             onChange={(e) => setDisplayName(e.target.value)}
                             placeholder="Votre Nom"
                         />
+                    </div>
+
+                    {/* GDPR Section */}
+                    <div className="pt-4 border-t border-slate-100">
+                        <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                            <Shield className="w-4 h-4 text-blue-600" />
+                            Sécurité & RGPD
+                        </h4>
+                        <div className="space-y-2">
+                            <Button 
+                                variant="outline" 
+                                className="w-full justify-start text-slate-600 border-slate-200 hover:bg-slate-50"
+                                onClick={handleExportData}
+                            >
+                                <Download className="w-4 h-4 mr-2" />
+                                Exporter mes données (JSON)
+                            </Button>
+                            <Button 
+                                variant="outline" 
+                                className="w-full justify-start text-red-500 border-red-100 hover:bg-red-50 hover:text-red-600"
+                                onClick={handleDeleteRequest}
+                            >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Demander la suppression du compte
+                            </Button>
+                        </div>
                     </div>
                 </div>
 

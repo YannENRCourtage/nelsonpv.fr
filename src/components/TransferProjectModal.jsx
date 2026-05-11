@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Shuffle, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { toast } from './ui/use-toast';
@@ -30,9 +31,9 @@ const TransferProjectModal = ({ show, onClose, project, onTransfer }) => {
     const currentTenantLabel = project.tenantId === 'acama' ? 'ACAMA' : (project.tenantId === 'enr-courtage-energie' ? 'ENR COURTAGE ENERGIE' : 'GREEN INVEST');
     const targetTenantLabel = targetTenant === 'acama' ? 'ACAMA' : (targetTenant === 'enr-courtage-energie' ? 'ENR COURTAGE ENERGIE' : (targetTenant === 'green-invest' ? 'GREEN INVEST' : 'Sélectionner...'));
 
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4 text-left">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+    return createPortal(
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[99999] p-4 text-left">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200">
                 <div className="p-6 border-b border-slate-200 flex items-center justify-between">
                     <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                         <Shuffle className="w-5 h-5 text-blue-600" />
@@ -91,7 +92,8 @@ const TransferProjectModal = ({ show, onClose, project, onTransfer }) => {
                     </Button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

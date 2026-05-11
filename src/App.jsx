@@ -18,6 +18,8 @@ import DossierTracking from './pages/DossierTracking.jsx';
 import BpAcama from './pages/BpAcama.jsx';
 import Developpement from './pages/Developpement.jsx';
 import AdminEnedis from './pages/AdminEnedis.jsx';
+import MentionsLegales from './pages/Legal/MentionsLegales.jsx';
+import PrivacyPolicy from './pages/Legal/PrivacyPolicy.jsx';
 import { Toaster } from './components/ui/toaster.jsx';
 import { ProjectProvider } from './contexts/ProjectContext.jsx';
 import { DndProvider } from 'react-dnd';
@@ -179,6 +181,10 @@ function AppContent() {
             }
           />
         </Route>
+
+        {/* Routes Légales (Accessibles sans login) */}
+        <Route path="/mentions-legales" element={<MentionsLegales />} />
+        <Route path="/politique-confidentialite" element={<PrivacyPolicy />} />
 
         <Route path="*" element={<Navigate to={isAuthenticated ? '/' : '/login'} replace />} />
       </Routes>

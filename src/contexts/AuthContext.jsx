@@ -167,11 +167,11 @@ export const AuthProvider = ({ children }) => {
     activeTenantId,
     switchTenant,
     hasPermission,
-    isAdmin,
-    canAccessCRM: () => isAdmin() || hasPermission('canAccessCRM'),
-    canAccessEditor: () => isAdmin() || hasPermission('canAccessEditor'),
-    canAccessSimulator: () => isAdmin() || hasPermission('canAccessSimulator'),
-    canViewAllProjects: () => isAdmin() || hasPermission('canViewAllProjects'),
+    isAdmin: () => user?.role === 'admin' || user?.role === 'Administrator',
+    canAccessCRM: () => (user?.role === 'admin' || user?.role === 'Administrator' || hasPermission('canAccessCRM')),
+    canAccessEditor: () => (user?.role === 'admin' || user?.role === 'Administrator' || hasPermission('canAccessEditor')),
+    canAccessSimulator: () => (user?.role === 'admin' || user?.role === 'Administrator' || hasPermission('canAccessSimulator')),
+    canViewAllProjects: () => (user?.role === 'admin' || user?.role === 'Administrator' || hasPermission('canViewAllProjects')),
     canAccessConfigurator: () => hasPermission('canAccessConfigurator')
   };
 

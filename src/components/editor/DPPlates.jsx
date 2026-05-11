@@ -291,7 +291,7 @@ export const PlateFacades = ({ project, batteryPhoto }) => {
                             
                             {/* Cotes largeur */}
                             <div style={{ position: 'absolute', bottom: '-15mm', left: 0, right: 0, height: '5mm', borderBottom: '1px solid #ef4444', borderLeft: '1px solid #ef4444', borderRight: '1px solid #ef4444', display: 'flex', justifyContent: 'center' }}>
-                                <span style={{ fontSize: '10pt', color: '#ef4444', fontWeight: 'bold', paddingTop: '6mm', position: 'absolute' }}>1,00 m</span>
+                                <span style={{ fontSize: '10pt', color: '#ef4444', fontWeight: 'bold', top: '6mm', position: 'absolute' }}>1,00 m</span>
                             </div>
                         </div>
                     </div>
@@ -313,7 +313,7 @@ export const PlateFacades = ({ project, batteryPhoto }) => {
                             
                             {/* Cotes largeur */}
                             <div style={{ position: 'absolute', bottom: '-15mm', left: 0, right: 0, height: '5mm', borderBottom: '1px solid #ef4444', borderLeft: '1px solid #ef4444', borderRight: '1px solid #ef4444', display: 'flex', justifyContent: 'center' }}>
-                                <span style={{ fontSize: '10pt', color: '#ef4444', fontWeight: 'bold', paddingTop: '6mm', position: 'absolute' }}>1,35 m</span>
+                                <span style={{ fontSize: '10pt', color: '#ef4444', fontWeight: 'bold', top: '6mm', position: 'absolute' }}>1,35 m</span>
                             </div>
                         </div>
                     </div>

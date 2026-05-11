@@ -379,7 +379,7 @@ function DPBatterieTab({
                         </DPPlatePreview>
 
                         <DPPlatePreview id="dev-plate-facades" label="DP4 — Façades et toitures" fixed>
-                            <PlateFacades project={selectedProject} batteryPhoto="/mercury_product_photo.jpg" />
+                            <PlateFacades project={selectedProject} />
                         </DPPlatePreview>
 
                         <DPPlatePreview id="dev-plate-env-proche" label="DP7 — Vue aérienne satellite" clientLinked>
