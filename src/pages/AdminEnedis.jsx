@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp, FileText, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -129,6 +129,32 @@ export default function AdminEnedis() {
     }
     // Redirige vers Enedis
     enedisService.initiateAuth('admin_test', prm);
+  };
+
+  const handleCopyLink = async () => {
+    if (!prm || prm.length !== 14) {
+      toast({ 
+        title: "PRM Invalide", 
+        description: "Veuillez saisir un PRM pour générer le lien.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    const authUrl = enedisService.getAuthorizeUrl('admin_test', prm);
+    const fullUrl = window.location.origin + authUrl;
+    try {
+      await navigator.clipboard.writeText(fullUrl);
+      toast({ 
+        title: "Lien copié !", 
+        description: "Vous pouvez l'envoyer au client (par e-mail ou SMS). Il pourra utiliser FranceConnect sans créer de compte Enedis." 
+      });
+    } catch (e) {
+      toast({ 
+        title: "Erreur", 
+        description: "Impossible de copier le lien.", 
+        variant: "destructive" 
+      });
+    }
   };
 
   const handlePdf = useCallback(() => {
@@ -301,24 +327,34 @@ export default function AdminEnedis() {
                         </div>
                       </button>
 
+                      <Button 
+                        onClick={handleCopyLink} 
+                        disabled={loading || prm.length !== 14}
+                        variant="outline"
+                        className="w-full h-12 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-2xl font-bold transition-all mt-2"
+                      >
+                        <Copy className="mr-2 h-4 w-4" />
+                        Copier le lien pour le client
+                      </Button>
+
                       {/* Guide d'aide au consentement */}
-                      <div className="mt-2 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 space-y-3">
+                      <div className="mt-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 space-y-3">
                         <div className="flex items-center gap-2">
                           <Info size={14} className="text-amber-600 shrink-0" />
                           <p className="text-[11px] font-extrabold text-amber-800 uppercase tracking-widest">
-                            Guide : comment obtenir le consentement client
+                            Simplifiez le consentement client
                           </p>
                         </div>
                         <div className="space-y-2">
                           <p className="text-xs text-amber-900 leading-relaxed">
-                            Le consentement Enedis doit obligatoirement passer par l'espace client sécurisé (obligation RGPD). Voici les étapes à communiquer à votre client :
+                            Si vous êtes déjà connecté à votre compte Enedis ou si le client n'est pas avec vous, utilisez le bouton <span className="font-bold">"Copier le lien pour le client"</span>.
                           </p>
-                          <ol className="list-decimal list-inside space-y-1.5 text-xs text-amber-900 leading-relaxed pl-1">
-                            <li><span className="font-bold">Cliquez sur le bouton bleu</span> ci-dessus pour ouvrir la page de consentement Enedis.</li>
-                            <li>Le client se connecte à son espace Enedis <span className="italic">(ou crée un compte en 2 min si nécessaire)</span>.</li>
-                            <li>Il <span className="font-bold">autorise le partage</span> de ses données de consommation avec Nelson.</li>
-                            <li>Il est automatiquement <span className="font-bold">redirigé ici</span> et les données sont récupérées.</li>
-                          </ol>
+                          <ul className="list-disc list-inside space-y-1.5 text-xs text-amber-900 leading-relaxed pl-1 mt-2">
+                            <li>Envoyez ce lien au client par e-mail ou SMS.</li>
+                            <li>Le client clique sur le lien depuis son appareil.</li>
+                            <li>Il s'identifie avec <span className="font-bold">FranceConnect</span> (pas besoin de créer de compte Enedis).</li>
+                            <li>Dès qu'il valide, les données remontent automatiquement ici (rafraîchissement automatique).</li>
+                          </ul>
                         </div>
                         <div className="flex flex-col gap-2 pt-1">
                           <a
