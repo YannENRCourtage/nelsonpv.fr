@@ -1,10 +1,18 @@
 import React from 'react';
-import { Shield, Scale, MapPin, Mail, Phone, Building2 } from 'lucide-react';
+import { Shield, Scale, MapPin, Mail, Phone, Building2, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 export default function MentionsLegales() {
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Link to="/">
+          <Button variant="ghost" className="text-slate-600 hover:text-blue-600 transition-colors">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour vers Nelson
+          </Button>
+        </Link>
         <div className="bg-white shadow-xl rounded-3xl overflow-hidden border border-slate-100">
           <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-8 py-10 text-white">
             <h1 className="text-3xl font-extrabold flex items-center gap-3">
@@ -28,7 +36,7 @@ export default function MentionsLegales() {
                   <p><span className="font-semibold text-slate-800">Raison sociale :</span> ENR Courtage Énergie</p>
                   <p><span className="font-semibold text-slate-800">Forme juridique :</span> SAS</p>
                   <p><span className="font-semibold text-slate-800">Capital social :</span> 10 000 €</p>
-                  <p><span className="font-semibold text-slate-800">SIREN :</span> 882 123 456 (Exemple)</p>
+                  <p><span className="font-semibold text-slate-800">SIREN :</span> 943 854 430</p>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-start gap-2">
@@ -41,7 +49,7 @@ export default function MentionsLegales() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-blue-500" />
-                    <p>05 XX XX XX XX</p>
+                    <p>07 63 87 71 40</p>
                   </div>
                 </div>
               </div>

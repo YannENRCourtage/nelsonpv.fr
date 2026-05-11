@@ -1,10 +1,18 @@
 import React from 'react';
-import { ShieldCheck, Eye, Database, Clock, UserCheck, Lock } from 'lucide-react';
+import { ShieldCheck, Eye, Database, Clock, UserCheck, Lock, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 export default function PrivacyPolicy() {
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Link to="/">
+          <Button variant="ghost" className="text-slate-600 hover:text-indigo-600 transition-colors">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour vers Nelson
+          </Button>
+        </Link>
         <div className="bg-white shadow-xl rounded-3xl overflow-hidden border border-slate-100">
           <div className="bg-gradient-to-r from-indigo-600 to-purple-700 px-8 py-10 text-white">
             <h1 className="text-3xl font-extrabold flex items-center gap-3">
