@@ -294,9 +294,10 @@ function DPBatterieTab({
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
                 {/* Header avec Menu Déroulant */}
                 <div style={{
+                    position: 'sticky', top: -24, zIndex: 50,
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     background: 'white', borderRadius: 16, padding: '20px 28px',
-                    boxShadow: '0 1px 8px rgba(0,0,0,0.06)', marginBottom: 24,
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.08)', marginBottom: 24,
                 }}>
                     <div style={{ flex: 1 }}>
                         <h2 style={{ fontWeight: 900, fontSize: 20, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
