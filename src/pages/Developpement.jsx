@@ -177,7 +177,7 @@ export default function Developpement() {
     };
 
     return (
-        <div style={{ display: 'flex', minHeight: 'calc(100vh - 64px)', background: '#f0f4f8' }}>
+        <div style={{ display: 'flex', height: 'calc(100vh - 64px)', background: '#f0f4f8' }}>
             {/* ── Sidebar Latérale ─────────────────────────────────────────── */}
             <aside style={{
                 width: sidebarW,
@@ -294,7 +294,7 @@ function DPBatterieTab({
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
                 {/* Header avec Menu Déroulant */}
                 <div style={{
-                    position: 'sticky', top: -24, zIndex: 50,
+                    position: 'sticky', top: 0, zIndex: 50,
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     background: 'white', borderRadius: 16, padding: '20px 28px',
                     boxShadow: '0 4px 15px rgba(0,0,0,0.08)', marginBottom: 24,

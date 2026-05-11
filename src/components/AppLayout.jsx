@@ -463,14 +463,15 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
             )}
             */}
 
-            {/* CDP Link (Admin only or explicit permission) */}
+            {/* CDP Link masqué pour tous les tenants
             {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessCDP) && (
               <NavLink to="/cdp" className={({ isActive }) => isActive ? 'nav-link active cdp' : 'nav-link cdp'}>
                 CDP
               </NavLink>
             )}
+            */}
 
-            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessOdoo) && (
+            {(activeTenantId === 'green-invest') && (user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessOdoo) && (
               <NavLink to="/odoo" className={({ isActive }) => isActive ? 'nav-link active odoo' : 'nav-link odoo'}>
                 ODOO
               </NavLink>
@@ -728,6 +729,7 @@ export default function AppLayout() {
             )}
             */}
 
+            {/* CDP masqué (Mobile)
             {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessCDP) && (
               <NavLink
                 to="/cdp"
@@ -737,8 +739,9 @@ export default function AppLayout() {
                 CDP
               </NavLink>
             )}
+            */}
 
-            {(user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessOdoo) && (
+            {(activeTenantId === 'green-invest') && (user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessOdoo) && (
               <NavLink
                 to="/odoo"
                 className={({ isActive }) => isActive ? 'mobile-nav-link active odoo' : 'mobile-nav-link odoo'}
