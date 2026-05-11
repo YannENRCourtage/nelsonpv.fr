@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp, FileText, Copy, Mail, Smartphone, Send } from 'lucide-react';
+import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp, FileText, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -19,7 +19,6 @@ export default function AdminEnedis() {
   const [activeTab, setActiveTab] = useState('interrogation');
   const [jsonOpen, setJsonOpen] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
-  const [clientContact, setClientContact] = useState('');
   const { toast } = useToast();
 
   // Charger les consentements via API Admin (contourne les règles Firestore)
@@ -155,28 +154,6 @@ export default function AdminEnedis() {
         description: "Impossible de copier le lien.", 
         variant: "destructive" 
       });
-    }
-  };
-
-  const handleSendLink = (type) => {
-    if (!prm || prm.length !== 14) {
-      toast({ title: "PRM Invalide", description: "Veuillez saisir un PRM de 14 chiffres.", variant: "destructive" });
-      return;
-    }
-    if (!clientContact) {
-      toast({ title: "Contact Invalide", description: "Veuillez saisir un e-mail ou un numéro de téléphone.", variant: "destructive" });
-      return;
-    }
-    
-    const authUrl = enedisService.getAuthorizeUrl('admin_test', prm);
-    const fullUrl = window.location.origin + authUrl;
-    const message = `Bonjour, voici le lien sécurisé pour autoriser l'accès à vos données de consommation électrique (Enedis) pour votre étude photovoltaïque : ${fullUrl}`;
-    
-    if (type === 'email') {
-      window.location.href = `mailto:${clientContact}?subject=Autorisation Enedis - Étude Photovoltaïque&body=${encodeURIComponent(message)}`;
-    } else if (type === 'sms') {
-      // Pour iOS et Android le délimiteur body peut varier (? vs &) mais ?body= est le plus standard, parfois sms:num?&body=
-      window.location.href = `sms:${clientContact}?body=${encodeURIComponent(message)}`;
     }
   };
 
@@ -357,42 +334,8 @@ export default function AdminEnedis() {
                         className="w-full h-12 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-2xl font-bold transition-all mt-2"
                       >
                         <Copy className="mr-2 h-4 w-4" />
-                        Copier le lien
+                        Copier le lien pour le client
                       </Button>
-
-                      {/* Envoi direct au client */}
-                      <div className="mt-4 p-4 border border-slate-200 rounded-2xl bg-slate-50 space-y-3">
-                        <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                          <Send size={14} className="text-slate-400" />
-                          Envoyer le lien directement au client
-                        </label>
-                        <Input 
-                          placeholder="Email ou N° de téléphone"
-                          value={clientContact}
-                          onChange={(e) => setClientContact(e.target.value)}
-                          className="h-10 rounded-xl"
-                        />
-                        <div className="flex gap-2">
-                          <Button 
-                            onClick={() => handleSendLink('email')}
-                            disabled={loading || prm.length !== 14 || !clientContact}
-                            variant="secondary"
-                            className="flex-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 h-10 rounded-xl"
-                          >
-                            <Mail className="mr-2 w-4 h-4" />
-                            Email
-                          </Button>
-                          <Button 
-                            onClick={() => handleSendLink('sms')}
-                            disabled={loading || prm.length !== 14 || !clientContact}
-                            variant="secondary"
-                            className="flex-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 h-10 rounded-xl"
-                          >
-                            <Smartphone className="mr-2 w-4 h-4" />
-                            SMS
-                          </Button>
-                        </div>
-                      </div>
 
                       {/* Guide d'aide au consentement */}
                       <div className="mt-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 space-y-3">
