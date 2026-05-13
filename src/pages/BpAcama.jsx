@@ -4569,6 +4569,28 @@ export default function BpAcama() {
     return [...data, ...localRows];
   }, [isGreenInvest, remoteBatData, batEdits, localRows]);
 
+  // Auto-migration for obsolete ACAMA remote data
+  useEffect(() => {
+    if (remoteBatData && remoteBatData.length > 0 && !isGreenInvest && !isEnrCourtage) {
+      let needsUpdate = false;
+      const patched = remoteBatData.map(row => {
+        let newRow = { ...row };
+        if (newRow.type === 'TYPE 9 MINI' && newRow.kwc !== 260.82) { needsUpdate = true; newRow.kwc = 260.82; newRow.cout_bat = 133488.49; }
+        if (newRow.type === 'TYPE 9 MID' && newRow.kwc !== 360.18) { needsUpdate = true; newRow.kwc = 360.18; newRow.cout_bat = 168081.00; }
+        if (newRow.type === 'TYPE 9 MAXI' && newRow.kwc !== 521.64) { needsUpdate = true; newRow.kwc = 521.64; newRow.cout_bat = 250983.71; }
+        if (newRow.type === 'TYPE 1 MINI' && newRow.kwc !== 266.00) { needsUpdate = true; newRow.kwc = 266.00; }
+        if ((newRow.type === 'EQUESTRE 60m' || newRow.type === 'EQUESTRE 64') && newRow.kwc !== 513.36) { needsUpdate = true; newRow.type = 'EQUESTRE 64m'; newRow.kwc = 513.36; newRow.cout_bat = 252314.71; }
+        if (newRow.type === 'EQUESTRE 64m' && newRow.kwc !== 513.36) { needsUpdate = true; newRow.kwc = 513.36; }
+        return newRow;
+      });
+      // Filter out mapped IDs to save back cleanly
+      if (needsUpdate) {
+        const dataToSave = patched.map(({ id, ...rest }) => rest);
+        apiService.updateSuiviBatData('acama', dataToSave).catch(console.error);
+      }
+    }
+  }, [remoteBatData, isGreenInvest, isEnrCourtage]);
+
   const saveSuiviBatData = async () => {
     setIsSavingBat(true);
     try {
