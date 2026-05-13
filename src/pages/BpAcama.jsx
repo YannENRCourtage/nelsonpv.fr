@@ -4575,14 +4575,26 @@ export default function BpAcama() {
       let needsUpdate = false;
       const patched = remoteBatData.map(row => {
         let newRow = { ...row };
-        if (newRow.type === 'TYPE 9 MINI' && newRow.kwc !== 260.82) { needsUpdate = true; newRow.kwc = 260.82; newRow.cout_bat = 133488.49; }
-        if (newRow.type === 'TYPE 9 MID' && newRow.kwc !== 360.18) { needsUpdate = true; newRow.kwc = 360.18; newRow.cout_bat = 168081.00; }
-        if (newRow.type === 'TYPE 9 MAXI' && newRow.kwc !== 521.64) { needsUpdate = true; newRow.kwc = 521.64; newRow.cout_bat = 250983.71; }
-        if (newRow.type === 'TYPE 1 MINI' && newRow.kwc !== 266.00) { needsUpdate = true; newRow.kwc = 266.00; }
-        if ((newRow.type === 'EQUESTRE 60m' || newRow.type === 'EQUESTRE 64') && newRow.kwc !== 513.36) { needsUpdate = true; newRow.type = 'EQUESTRE 64m'; newRow.kwc = 513.36; newRow.cout_bat = 252314.71; }
-        if (newRow.type === 'EQUESTRE 64m' && newRow.kwc !== 513.36) { needsUpdate = true; newRow.kwc = 513.36; }
+        
+        // Handling renaming
+        if (newRow.type === 'EQUESTRE 60m' || newRow.type === 'EQUESTRE 64') {
+          newRow.type = 'EQUESTRE 64m';
+          needsUpdate = true;
+        }
+
+        // Sync kwc and cout_bat with the local source of truth
+        const truth = SUIVI_BAT_DATA_ACAMA.find(t => t.type === newRow.type);
+        if (truth) {
+          if (Math.abs((newRow.kwc || 0) - truth.kwc) > 0.01 || Math.abs((newRow.cout_bat || 0) - truth.cout_bat) > 0.01) {
+            newRow.kwc = truth.kwc;
+            newRow.cout_bat = truth.cout_bat;
+            needsUpdate = true;
+          }
+        }
+        
         return newRow;
       });
+      
       // Filter out mapped IDs to save back cleanly
       if (needsUpdate) {
         const dataToSave = patched.map(({ id, ...rest }) => rest);
