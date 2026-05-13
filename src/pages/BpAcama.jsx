@@ -33,7 +33,7 @@ const TABS = [
 ];
 
 const SUIVI_BAT_DATA_ACAMA = [
-  { type:'TYPE 1 MINI', spv:'ACAMA SPV1', kwc:266.80, cout_bat:137939.59, massifs:16, longueur:42.7, largeur:24.44, travees:7, hSud:4, hNord:4, faitage:6.89, surfSud:643, surfNord:644, surfTot:1288, penteSud:11.19, penteNord:14.48, modH:10, modL:20, totalMod:300, puissMax:266.8, prodMoyen:1100 },
+  { type:'TYPE 1 MINI', spv:'ACAMA SPV1', kwc:266.00, cout_bat:137939.59, massifs:16, longueur:42.7, largeur:24.44, travees:7, hSud:4, hNord:4, faitage:6.89, surfSud:643, surfNord:644, surfTot:1288, penteSud:11.19, penteNord:14.48, modH:10, modL:20, totalMod:300, puissMax:266.8, prodMoyen:1100 },
   { type:'TYPE 1 MID', spv:'ACAMA SPV1', kwc:303.60, cout_bat:157935.39, massifs:18, longueur:50.2, largeur:24.44, travees:7, hSud:4, hNord:4, faitage:6.89, surfSud:736, surfNord:736, surfTot:1471, penteSud:11.19, penteNord:14.48, modH:10, modL:23, totalMod:342, puissMax:303.6, prodMoyen:1100 },
   { type:'TYPE 1 MAXI', spv:'ACAMA SPV1', kwc:340.40, cout_bat:177790.51, massifs:20, longueur:57.5, largeur:24.44, travees:9, hSud:4, hNord:4, faitage:6.89, surfSud:824.85, surfNord:824.85, surfTot:1650, penteSud:11.19, penteNord:14.48, modH:10, modL:26, totalMod:384, puissMax:340.4, prodMoyen:1100 },
   { type:'TYPE 2 MINI', spv:'ACAMA SPV1', kwc:184.00, cout_bat:123563.08, massifs:21, longueur:31.4, largeur:24, travees:6, hSud:4.3, hNord:4.3, faitage:0, surfSud:0, surfNord:0, surfTot:874, penteSud:0, penteNord:0, modH:9, modL:30, totalMod:270, puissMax:184, prodMoyen:1254 },
@@ -60,7 +60,7 @@ const SUIVI_BAT_DATA_ACAMA = [
   { type:'TYPE 9 MINI', spv:'ACAMA SPV1', kwc:260.82, cout_bat:133488.49, massifs:21, longueur:37.5, largeur:31.5, travees:5, hSud:7.5, hNord:7.5, faitage:0, surfSud:836, surfNord:319, surfTot:1155, penteSud:0, penteNord:0, modH:10, modL:37, totalMod:370, puissMax:260.82, prodMoyen:0 },
   { type:'TYPE 9 MID', spv:'ACAMA SPV1', kwc:360.18, cout_bat:168081.00, massifs:24, longueur:52.5, largeur:31.5, travees:7, hSud:7.5, hNord:7.5, faitage:0, surfSud:1171, surfNord:446, surfTot:1617, penteSud:0, penteNord:0, modH:13, modL:52, totalMod:676, puissMax:360.18, prodMoyen:0 },
   { type:'TYPE 9 MAXI', spv:'ACAMA SPV1', kwc:521.64, cout_bat:250983.71, massifs:36, longueur:75, largeur:31.5, travees:10, hSud:7.5, hNord:7.5, faitage:0, surfSud:1673, surfNord:638, surfTot:2310, penteSud:0, penteNord:0, modH:18, modL:75, totalMod:1350, puissMax:521.64, prodMoyen:0 },
-  { type:'EQUESTRE 64', spv:'ACAMA SPV1', kwc:513.36, cout_bat:252314.71, massifs:30, longueur:65, largeur:29.5, travees:9, hSud:0, hNord:0, faitage:0, surfSud:1978, surfNord:1021, surfTot:2999, penteSud:0, penteNord:0, modH:15, modL:65, totalMod:975, puissMax:513.36, prodMoyen:0 },
+  { type:'EQUESTRE 64m', spv:'ACAMA SPV1', kwc:513.36, cout_bat:252314.71, massifs:30, longueur:65, largeur:29.5, travees:9, hSud:0, hNord:0, faitage:0, surfSud:1978, surfNord:1021, surfTot:2999, penteSud:0, penteNord:0, modH:15, modL:65, totalMod:975, puissMax:513.36, prodMoyen:0 },
   { type:'EQUESTRE 44m', spv:'ACAMA SPV1', kwc:356.50, cout_bat:197097.99, massifs:25, longueur:45, largeur:29.5, travees:6, hSud:0, hNord:0, faitage:0, surfSud:954, surfNord:707, surfTot:1661, penteSud:0, penteNord:0, modH:12, modL:45, totalMod:540, puissMax:356.5, prodMoyen:0 },
   { type:'SOL 1MW/c', spv:'ACAMA SPV1', kwc:1000.00, cout_bat:299140, massifs:0, longueur:0, largeur:0, travees:0, hSud:0, hNord:0, faitage:0, surfSud:4910, surfNord:0, surfTot:4910, penteSud:0, penteNord:0, modH:0, modL:0, totalMod:2175, puissMax:1000.0, prodMoyen:0 },
   { type:'OMB TYPE 1', spv:'ACAMA SPV1', kwc:9.20, cout_bat:5264, massifs:2, longueur:7.5, largeur:5.76, travees:1, hSud:0, hNord:0, faitage:6.1, surfSud:46, surfNord:0, surfTot:46, penteSud:0, penteNord:0, modH:2, modL:10, totalMod:20, puissMax:9.2, prodMoyen:0 },
@@ -84,8 +84,8 @@ const normalizeBatType = (t) => {
     'T7 MINI': 'TYPE 7 MINI', 'T7 MID': 'TYPE 7 MID', 'T7 MAXI': 'TYPE 7 MAXI',
     'T8 MINI': 'TYPE 8 MINI', 'T8 MID': 'TYPE 8 MID', 'T8 MAXI': 'TYPE 8 MAXI',
     'T9 MINI': 'TYPE 9 MINI', 'T9 MID': 'TYPE 9 MID', 'T9 MAXI': 'TYPE 9 MAXI',
-    'EQUESTRE 64M': 'EQUESTRE 64',
-    'EQUESTRE 64': 'EQUESTRE 64',
+    'EQUESTRE 64M': 'EQUESTRE 64m',
+    'EQUESTRE 64': 'EQUESTRE 64m',
     'EQUESTRE 44M': 'EQUESTRE 44m'
   };
 
@@ -1643,12 +1643,9 @@ function TabBpProjets({
         return b;
       });
       // Re-calculate automated fields
-      const totalKwc = newBuildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0), 0);
-      const maxDistHta = Math.max(...newBuildings.map(b => parseFloat(b.distHta) || 0));
-      const totalDistPriv = newBuildings.reduce((sum, b) => sum + (parseFloat(b.distPriv) || 0), 0);
-      
-      const totalRaccordement = getHtaCost(totalKwc, maxDistHta) + (totalDistPriv * 20);
-      const totalCoutTechnique = newBuildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0), 0);
+      const newBuildingsArray = newBuildings;
+      const totalRaccordement = newBuildingsArray.reduce((sum, b) => sum + getHtaCost(parseFloat(b.kwc) || 0, parseFloat(b.distHta) || 0), 0);
+      const totalCoutTechnique = newBuildingsArray.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0), 0);
       const totalFrais = totalCoutTechnique * 0.01;
 
       return { 
@@ -1763,11 +1760,7 @@ function TabBpProjets({
   useEffect(() => {
     if (!params.buildings || params.buildings.length === 0) return;
     
-    const totalKwc = params.buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0), 0);
-    const maxDistHta = Math.max(...params.buildings.map(b => parseFloat(b.distHta) || 0));
-    const totalDistPriv = params.buildings.reduce((sum, b) => sum + (parseFloat(b.distPriv) || 0), 0);
-    
-    const newRaccordement = getHtaCost(totalKwc, maxDistHta) + (totalDistPriv * 20);
+    const newRaccordement = params.buildings.reduce((sum, b) => sum + getHtaCost(parseFloat(b.kwc) || 0, parseFloat(b.distHta) || 0), 0);
     
     const totalCoutTechnique = params.buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0), 0);
     const newFrais = totalCoutTechnique * 0.01;
@@ -1929,7 +1922,7 @@ function TabBpProjets({
         }
       }
       
-      const totalRaccordement = initialBuildings.reduce((sum, b) => sum + getHtaCost(b.kwc, b.distHta) + (parseFloat(b.distPriv) || 0) * 20, 0);
+      const totalRaccordement = initialBuildings.reduce((sum, b) => sum + getHtaCost(parseFloat(b.kwc) || 0, parseFloat(b.distHta) || 0), 0);
       const totalCoutTechnique = initialBuildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0), 0);
       const totalFrais = totalCoutTechnique * 0.01;
 
