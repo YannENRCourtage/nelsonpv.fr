@@ -34,34 +34,34 @@ const TABS = [
 
 const SUIVI_BAT_DATA_ACAMA = [
   { type:'TYPE 1 MINI', spv:'ACAMA SPV1', kwc:266.80, cout_bat:137939.59, massifs:16, longueur:42.7, largeur:24.44, travees:7, hSud:4, hNord:4, faitage:6.89, surfSud:643, surfNord:644, surfTot:1288, penteSud:11.19, penteNord:14.48, modH:10, modL:20, totalMod:300, puissMax:266.8, prodMoyen:1100 },
-  { type:'TYPE 1 MID', spv:'ACAMA SPV1', kwc:303.60, cout_bat:157435.34, massifs:18, longueur:50.2, largeur:24.44, travees:7, hSud:4, hNord:4, faitage:6.89, surfSud:736, surfNord:736, surfTot:1471, penteSud:11.19, penteNord:14.48, modH:10, modL:23, totalMod:342, puissMax:303.6, prodMoyen:1100 },
-  { type:'TYPE 1 MAXI', spv:'ACAMA SPV1', kwc:340.40, cout_bat:177710.51, massifs:20, longueur:57.5, largeur:24.44, travees:9, hSud:4, hNord:4, faitage:6.89, surfSud:824.85, surfNord:824.85, surfTot:1650, penteSud:11.19, penteNord:14.48, modH:10, modL:26, totalMod:384, puissMax:340.4, prodMoyen:1100 },
-  { type:'TYPE 2 MINI', spv:'ACAMA SPV1', kwc:184.00, cout_bat:123583.08, massifs:21, longueur:31.4, largeur:24, travees:6, hSud:4.3, hNord:4.3, faitage:0, surfSud:0, surfNord:0, surfTot:874, penteSud:0, penteNord:0, modH:9, modL:30, totalMod:270, puissMax:184, prodMoyen:1254 },
-  { type:'TYPE 2 MID', spv:'ACAMA SPV1', kwc:312.80, cout_bat:205845.56, massifs:33, longueur:52, largeur:24, travees:10, hSud:4.3, hNord:4.3, faitage:0, surfSud:1450.8, surfNord:0, surfTot:1451, penteSud:0, penteNord:0, modH:9, modL:50, totalMod:450, puissMax:312.8, prodMoyen:0 },
+  { type:'TYPE 1 MID', spv:'ACAMA SPV1', kwc:303.60, cout_bat:157935.39, massifs:18, longueur:50.2, largeur:24.44, travees:7, hSud:4, hNord:4, faitage:6.89, surfSud:736, surfNord:736, surfTot:1471, penteSud:11.19, penteNord:14.48, modH:10, modL:23, totalMod:342, puissMax:303.6, prodMoyen:1100 },
+  { type:'TYPE 1 MAXI', spv:'ACAMA SPV1', kwc:340.40, cout_bat:177790.51, massifs:20, longueur:57.5, largeur:24.44, travees:9, hSud:4, hNord:4, faitage:6.89, surfSud:824.85, surfNord:824.85, surfTot:1650, penteSud:11.19, penteNord:14.48, modH:10, modL:26, totalMod:384, puissMax:340.4, prodMoyen:1100 },
+  { type:'TYPE 2 MINI', spv:'ACAMA SPV1', kwc:184.00, cout_bat:123563.08, massifs:21, longueur:31.4, largeur:24, travees:6, hSud:4.3, hNord:4.3, faitage:0, surfSud:0, surfNord:0, surfTot:874, penteSud:0, penteNord:0, modH:9, modL:30, totalMod:270, puissMax:184, prodMoyen:1254 },
+  { type:'TYPE 2 MID', spv:'ACAMA SPV1', kwc:312.80, cout_bat:206845.56, massifs:33, longueur:52, largeur:24, travees:10, hSud:4.3, hNord:4.3, faitage:0, surfSud:1450.8, surfNord:0, surfTot:1451, penteSud:0, penteNord:0, modH:9, modL:50, totalMod:450, puissMax:312.8, prodMoyen:0 },
   { type:'TYPE 2 MAXI', spv:'ACAMA SPV1', kwc:349.60, cout_bat:226074.45, massifs:36, longueur:62, largeur:24, travees:11, hSud:4.3, hNord:4.3, faitage:0, surfSud:1595.88, surfNord:0, surfTot:1596, penteSud:0, penteNord:0, modH:9, modL:56, totalMod:504, puissMax:349.6, prodMoyen:0 },
-  { type:'TYPE 3 MINI', spv:'ACAMA SPV1', kwc:240.12, cout_bat:108542.95, massifs:14, longueur:52.7, largeur:21.5, travees:9, hSud:2.5, hNord:2.5, faitage:4.7, surfSud:565.49, surfNord:565.49, surfTot:1131, penteSud:18.49, penteNord:18.49, modH:7.2, modL:18, totalMod:259, puissMax:240.1, prodMoyen:0 },
+  { type:'TYPE 3 MINI', spv:'ACAMA SPV1', kwc:240.12, cout_bat:108342.95, massifs:14, longueur:52.7, largeur:21.5, travees:9, hSud:2.5, hNord:2.5, faitage:4.7, surfSud:565.49, surfNord:565.49, surfTot:1131, penteSud:18.49, penteNord:18.49, modH:7.2, modL:18, totalMod:259, puissMax:240.1, prodMoyen:0 },
   { type:'TYPE 3 MID', spv:'ACAMA SPV1', kwc:314.64, cout_bat:146965.62, massifs:24, longueur:68, largeur:21.5, travees:9, hSud:2.5, hNord:2.5, faitage:4.7, surfSud:727.6, surfNord:727.6, surfTot:1455, penteSud:18.49, penteNord:18.49, modH:10, modL:24, totalMod:342, puissMax:314.6, prodMoyen:0 },
   { type:'TYPE 3 MAXI', spv:'ACAMA SPV1', kwc:414.00, cout_bat:182192.88, massifs:36, longueur:90.2, largeur:21.5, travees:12, hSud:2.5, hNord:2.5, faitage:4.7, surfSud:955.14, surfNord:955.14, surfTot:1910, penteSud:0, penteNord:0, modH:12.5, modL:32, totalMod:450, puissMax:414, prodMoyen:0 },
-  { type:'TYPE 4 MINI', spv:'ACAMA SPV1', kwc:309.12, cout_bat:158178.74, massifs:24, longueur:37.5, largeur:37.72, travees:5, hSud:3.89, hNord:3.89, faitage:4.7, surfSud:707.25, surfNord:707.25, surfTot:1415, penteSud:0, penteNord:0, modH:9, modL:50, totalMod:150, puissMax:309.1, prodMoyen:0 },
-  { type:'TYPE 4 MID', spv:'ACAMA SPV1', kwc:388.00, cout_bat:191445.01, massifs:28, longueur:45, largeur:37.72, travees:6, hSud:3.89, hNord:3.89, faitage:6.05, surfSud:848.7, surfNord:848.7, surfTot:1697, penteSud:0, penteNord:0, modH:12, modL:60, totalMod:720, puissMax:388, prodMoyen:0 },
-  { type:'TYPE 4 MAXI', spv:'ACAMA SPV1', kwc:500.00, cout_bat:241242.54, massifs:36, longueur:63.2, largeur:37.72, travees:8, hSud:3.89, hNord:3.89, faitage:6.05, surfSud:1191.052, surfNord:1191.052, surfTot:2384, penteSud:0, penteNord:0, modH:15, modL:84, totalMod:1120, puissMax:500, prodMoyen:0 },
-  { type:'TYPE 5 MINI', spv:'ACAMA SPV1', kwc:179.86, cout_bat:105611.99, massifs:18, longueur:31, largeur:27.95, travees:6, hSud:3.31, hNord:3.31, faitage:8.1, surfSud:733.77, surfNord:132.58, surfTot:866, penteSud:0, penteNord:0, modH:8, modL:24, totalMod:192, puissMax:179.9, prodMoyen:1357.39 },
-  { type:'TYPE 5 MID', spv:'ACAMA SPV1', kwc:236.24, cout_bat:166814.50, massifs:27, longueur:50, largeur:27.95, travees:8, hSud:3.31, hNord:3.31, faitage:8.1, surfSud:1191.22, surfNord:221.58, surfTot:1414, penteSud:0, penteNord:0, modH:10, modL:40, totalMod:400, puissMax:236.24, prodMoyen:1357.39 },
-  { type:'TYPE 5 MAXI', spv:'ACAMA SPV1', kwc:349.14, cout_bat:199644.67, massifs:33, longueur:60, largeur:27.95, travees:10, hSud:3.31, hNord:3.31, faitage:8.1, surfSud:1420.2, surfNord:256.8, surfTot:1677, penteSud:0, penteNord:0, modH:12, modL:50, totalMod:600, puissMax:349.1, prodMoyen:1357.39 },
-  { type:'TYPE 6 MINI', spv:'ACAMA SPV1', kwc:161.92, cout_bat:91580.18, massifs:14, longueur:38.4, largeur:17.44, travees:6, hSud:3.8, hNord:3.8, faitage:5.7, surfSud:604.386, surfNord:165.48, surfTot:770, penteSud:0, penteNord:0, modH:9, modL:38, totalMod:342, puissMax:161.9, prodMoyen:0 },
-  { type:'TYPE 6 MID', spv:'ACAMA SPV1', kwc:264.96, cout_bat:149821.56, massifs:22, longueur:64.5, largeur:17.44, travees:10, hSud:3.8, hNord:3.8, faitage:5.7, surfSud:989.43, surfNord:270.9, surfTot:1260, penteSud:0, penteNord:0, modH:13, modL:64, totalMod:832, puissMax:264.9, prodMoyen:0 },
-  { type:'TYPE 6 MAXI', spv:'ACAMA SPV1', kwc:338.56, cout_bat:185198.57, massifs:28, longueur:83.2, largeur:17.44, travees:13, hSud:3.8, hNord:3.8, faitage:5.7, surfSud:1276.288, surfNord:349.44, surfTot:1626, penteSud:0, penteNord:0, modH:15, modL:83, totalMod:1245, puissMax:338.6, prodMoyen:0 },
-  { type:'TYPE 7 MINI', spv:'ACAMA SPV1', kwc:156.40, cout_bat:91158.02, massifs:14, longueur:36, largeur:19.84, travees:6, hSud:3.39, hNord:3.39, faitage:7.23, surfSud:741.6, surfNord:0, surfTot:742, penteSud:12.7, penteNord:-14.95, modH:6, modL:34, totalMod:204, puissMax:156.4, prodMoyen:0 },
-  { type:'TYPE 7 MID', spv:'ACAMA SPV1', kwc:253.00, cout_bat:152094.75, massifs:22, longueur:60, largeur:19.84, travees:10, hSud:3.39, hNord:3.39, faitage:7.23, surfSud:1236, surfNord:0, surfTot:1236, penteSud:0, penteNord:0, modH:10, modL:56, totalMod:560, puissMax:253, prodMoyen:0 },
-  { type:'TYPE 7 MAXI', spv:'ACAMA SPV1', kwc:336.26, cout_bat:190249.08, massifs:28, longueur:80, largeur:19.84, travees:13, hSud:3.39, hNord:3.39, faitage:7.23, surfSud:1606.8, surfNord:0, surfTot:1607, penteSud:0, penteNord:0, modH:13, modL:74, totalMod:962, puissMax:336.3, prodMoyen:0 },
-  { type:'TYPE 8 MINI', spv:'ACAMA SPV1', kwc:242.88, cout_bat:127331.73, massifs:18, longueur:43.2, largeur:27.32, travees:6, hSud:4, hNord:4, faitage:7, surfSud:786.24, surfNord:364.176, surfTot:1150, penteSud:0, penteNord:0, modH:9, modL:43, totalMod:387, puissMax:242.9, prodMoyen:0 },
-  { type:'TYPE 8 MID', spv:'ACAMA SPV1', kwc:323.84, cout_bat:168025.86, massifs:27, longueur:57.6, largeur:27.32, travees:9, hSud:4, hNord:4, faitage:7, surfSud:1048, surfNord:486, surfTot:1534, penteSud:0, penteNord:0, modH:12, modL:57, totalMod:684, puissMax:323.8, prodMoyen:0 },
-  { type:'TYPE 8 MAXI', spv:'ACAMA SPV1', kwc:485.76, cout_bat:238749.80, massifs:39, longueur:86.4, largeur:27.32, travees:12, hSud:4, hNord:4, faitage:7, surfSud:1576, surfNord:730, surfTot:2306, penteSud:0, penteNord:0, modH:18, modL:86, totalMod:1548, puissMax:485.8, prodMoyen:0 },
-  { type:'TYPE 9 MINI', spv:'ACAMA SPV1', kwc:251.16, cout_bat:133488.49, massifs:21, longueur:37.5, largeur:31.5, travees:5, hSud:7.5, hNord:7.5, faitage:0, surfSud:836, surfNord:319, surfTot:1155, penteSud:0, penteNord:0, modH:10, modL:37, totalMod:370, puissMax:251.2, prodMoyen:0 },
-  { type:'TYPE 9 MID', spv:'ACAMA SPV1', kwc:346.84, cout_bat:168081.00, massifs:24, longueur:52.5, largeur:31.5, travees:7, hSud:7.5, hNord:7.5, faitage:0, surfSud:1171, surfNord:446, surfTot:1617, penteSud:0, penteNord:0, modH:13, modL:52, totalMod:676, puissMax:346.8, prodMoyen:0 },
-  { type:'TYPE 9 MAXI', spv:'ACAMA SPV1', kwc:500.00, cout_bat:230960.71, massifs:36, longueur:75, largeur:31.5, travees:10, hSud:7.5, hNord:7.5, faitage:0, surfSud:1673, surfNord:638, surfTot:2310, penteSud:0, penteNord:0, modH:18, modL:75, totalMod:1350, puissMax:500.0, prodMoyen:0 },
-  { type:'EQUESTRE 60m', spv:'ACAMA SPV1', kwc:514.74, cout_bat:252314.71, massifs:30, longueur:65, largeur:29.5, travees:9, hSud:0, hNord:0, faitage:0, surfSud:1978, surfNord:1021, surfTot:2999, penteSud:0, penteNord:0, modH:15, modL:65, totalMod:975, puissMax:514.7, prodMoyen:0 },
-  { type:'EQUESTRE 44m', spv:'ACAMA SPV1', kwc:356.50, cout_bat:197037.99, massifs:25, longueur:45, largeur:29.5, travees:6, hSud:0, hNord:0, faitage:0, surfSud:954, surfNord:707, surfTot:1661, penteSud:0, penteNord:0, modH:12, modL:45, totalMod:540, puissMax:356.5, prodMoyen:0 },
+  { type:'TYPE 4 MINI', spv:'ACAMA SPV1', kwc:309.12, cout_bat:156178.74, massifs:24, longueur:37.5, largeur:37.72, travees:5, hSud:3.89, hNord:3.89, faitage:4.7, surfSud:707.25, surfNord:707.25, surfTot:1415, penteSud:0, penteNord:0, modH:9, modL:50, totalMod:150, puissMax:309.1, prodMoyen:0 },
+  { type:'TYPE 4 MID', spv:'ACAMA SPV1', kwc:368.00, cout_bat:181445.01, massifs:28, longueur:45, largeur:37.72, travees:6, hSud:3.89, hNord:3.89, faitage:6.05, surfSud:848.7, surfNord:848.7, surfTot:1697, penteSud:0, penteNord:0, modH:12, modL:60, totalMod:720, puissMax:368, prodMoyen:0 },
+  { type:'TYPE 4 MAXI', spv:'ACAMA SPV1', kwc:515.20, cout_bat:241242.54, massifs:36, longueur:63.2, largeur:37.72, travees:8, hSud:3.89, hNord:3.89, faitage:6.05, surfSud:1191.052, surfNord:1191.052, surfTot:2384, penteSud:0, penteNord:0, modH:15, modL:84, totalMod:1120, puissMax:515.2, prodMoyen:0 },
+  { type:'TYPE 5 MINI', spv:'ACAMA SPV1', kwc:179.86, cout_bat:105611.99, massifs:18, longueur:31, largeur:27.95, travees:6, hSud:3.31, hNord:3.31, faitage:8.1, surfSud:733.77, surfNord:132.58, surfTot:866, penteSud:0, penteNord:0, modH:8, modL:24, totalMod:192, puissMax:179.86, prodMoyen:1357.39 },
+  { type:'TYPE 5 MID', spv:'ACAMA SPV1', kwc:296.24, cout_bat:166814.50, massifs:27, longueur:50, largeur:27.95, travees:8, hSud:3.31, hNord:3.31, faitage:8.1, surfSud:1191.22, surfNord:221.58, surfTot:1414, penteSud:0, penteNord:0, modH:10, modL:40, totalMod:400, puissMax:296.24, prodMoyen:1357.39 },
+  { type:'TYPE 5 MAXI', spv:'ACAMA SPV1', kwc:349.14, cout_bat:199644.67, massifs:33, longueur:60, largeur:27.95, travees:10, hSud:3.31, hNord:3.31, faitage:8.1, surfSud:1420.2, surfNord:256.8, surfTot:1677, penteSud:0, penteNord:0, modH:12, modL:50, totalMod:600, puissMax:349.14, prodMoyen:1357.39 },
+  { type:'TYPE 6 MINI', spv:'ACAMA SPV1', kwc:161.92, cout_bat:91590.18, massifs:14, longueur:38.4, largeur:17.44, travees:6, hSud:3.8, hNord:3.8, faitage:5.7, surfSud:604.386, surfNord:165.48, surfTot:770, penteSud:0, penteNord:0, modH:9, modL:38, totalMod:342, puissMax:161.92, prodMoyen:0 },
+  { type:'TYPE 6 MID', spv:'ACAMA SPV1', kwc:264.96, cout_bat:149821.56, massifs:22, longueur:64.5, largeur:17.44, travees:10, hSud:3.8, hNord:3.8, faitage:5.7, surfSud:989.43, surfNord:270.9, surfTot:1260, penteSud:0, penteNord:0, modH:13, modL:64, totalMod:832, puissMax:264.96, prodMoyen:0 },
+  { type:'TYPE 6 MAXI', spv:'ACAMA SPV1', kwc:338.56, cout_bat:185598.57, massifs:28, longueur:83.2, largeur:17.44, travees:13, hSud:3.8, hNord:3.8, faitage:5.7, surfSud:1276.288, surfNord:349.44, surfTot:1626, penteSud:0, penteNord:0, modH:15, modL:83, totalMod:1245, puissMax:338.56, prodMoyen:0 },
+  { type:'TYPE 7 MINI', spv:'ACAMA SPV1', kwc:156.40, cout_bat:92158.02, massifs:14, longueur:36, largeur:19.84, travees:6, hSud:3.39, hNord:3.39, faitage:7.23, surfSud:741.6, surfNord:0, surfTot:742, penteSud:12.7, penteNord:-14.95, modH:6, modL:34, totalMod:204, puissMax:156.4, prodMoyen:0 },
+  { type:'TYPE 7 MID', spv:'ACAMA SPV1', kwc:258.06, cout_bat:152004.75, massifs:22, longueur:60, largeur:19.84, travees:10, hSud:3.39, hNord:3.39, faitage:7.23, surfSud:1236, surfNord:0, surfTot:1236, penteSud:0, penteNord:0, modH:10, modL:56, totalMod:560, puissMax:258.06, prodMoyen:0 },
+  { type:'TYPE 7 MAXI', spv:'ACAMA SPV1', kwc:336.26, cout_bat:190245.96, massifs:28, longueur:80, largeur:19.84, travees:13, hSud:3.39, hNord:3.39, faitage:7.23, surfSud:1606.8, surfNord:0, surfTot:1607, penteSud:0, penteNord:0, modH:13, modL:74, totalMod:962, puissMax:336.26, prodMoyen:0 },
+  { type:'TYPE 8 MINI', spv:'ACAMA SPV1', kwc:242.88, cout_bat:127331.73, massifs:18, longueur:43.2, largeur:27.32, travees:6, hSud:4, hNord:4, faitage:7, surfSud:786.24, surfNord:364.176, surfTot:1150, penteSud:0, penteNord:0, modH:9, modL:43, totalMod:387, puissMax:242.88, prodMoyen:0 },
+  { type:'TYPE 8 MID', spv:'ACAMA SPV1', kwc:323.84, cout_bat:166023.88, massifs:27, longueur:57.6, largeur:27.32, travees:9, hSud:4, hNord:4, faitage:7, surfSud:1048, surfNord:486, surfTot:1534, penteSud:0, penteNord:0, modH:12, modL:57, totalMod:684, puissMax:323.84, prodMoyen:0 },
+  { type:'TYPE 8 MAXI', spv:'ACAMA SPV1', kwc:485.76, cout_bat:238749.80, massifs:39, longueur:86.4, largeur:27.32, travees:12, hSud:4, hNord:4, faitage:7, surfSud:1576, surfNord:730, surfTot:2306, penteSud:0, penteNord:0, modH:18, modL:86, totalMod:1548, puissMax:485.76, prodMoyen:0 },
+  { type:'TYPE 9 MINI', spv:'ACAMA SPV1', kwc:260.82, cout_bat:133488.49, massifs:21, longueur:37.5, largeur:31.5, travees:5, hSud:7.5, hNord:7.5, faitage:0, surfSud:836, surfNord:319, surfTot:1155, penteSud:0, penteNord:0, modH:10, modL:37, totalMod:370, puissMax:260.82, prodMoyen:0 },
+  { type:'TYPE 9 MID', spv:'ACAMA SPV1', kwc:360.18, cout_bat:168081.00, massifs:24, longueur:52.5, largeur:31.5, travees:7, hSud:7.5, hNord:7.5, faitage:0, surfSud:1171, surfNord:446, surfTot:1617, penteSud:0, penteNord:0, modH:13, modL:52, totalMod:676, puissMax:360.18, prodMoyen:0 },
+  { type:'TYPE 9 MAXI', spv:'ACAMA SPV1', kwc:521.64, cout_bat:250983.71, massifs:36, longueur:75, largeur:31.5, travees:10, hSud:7.5, hNord:7.5, faitage:0, surfSud:1673, surfNord:638, surfTot:2310, penteSud:0, penteNord:0, modH:18, modL:75, totalMod:1350, puissMax:521.64, prodMoyen:0 },
+  { type:'EQUESTRE 64m', spv:'ACAMA SPV1', kwc:513.36, cout_bat:252314.71, massifs:30, longueur:65, largeur:29.5, travees:9, hSud:0, hNord:0, faitage:0, surfSud:1978, surfNord:1021, surfTot:2999, penteSud:0, penteNord:0, modH:15, modL:65, totalMod:975, puissMax:513.36, prodMoyen:0 },
+  { type:'EQUESTRE 44m', spv:'ACAMA SPV1', kwc:356.50, cout_bat:197097.99, massifs:25, longueur:45, largeur:29.5, travees:6, hSud:0, hNord:0, faitage:0, surfSud:954, surfNord:707, surfTot:1661, penteSud:0, penteNord:0, modH:12, modL:45, totalMod:540, puissMax:356.5, prodMoyen:0 },
   { type:'SOL 1MW/c', spv:'ACAMA SPV1', kwc:1000.00, cout_bat:299140, massifs:0, longueur:0, largeur:0, travees:0, hSud:0, hNord:0, faitage:0, surfSud:4910, surfNord:0, surfTot:4910, penteSud:0, penteNord:0, modH:0, modL:0, totalMod:2175, puissMax:1000.0, prodMoyen:0 },
   { type:'OMB TYPE 1', spv:'ACAMA SPV1', kwc:9.20, cout_bat:5264, massifs:2, longueur:7.5, largeur:5.76, travees:1, hSud:0, hNord:0, faitage:6.1, surfSud:46, surfNord:0, surfTot:46, penteSud:0, penteNord:0, modH:2, modL:10, totalMod:20, puissMax:9.2, prodMoyen:0 },
   { type:'OMB TYPE 2', spv:'ACAMA SPV1', kwc:20.24, cout_bat:9996, massifs:2, longueur:7.5, largeur:12.65, travees:1, hSud:0, hNord:0, faitage:11, surfSud:98, surfNord:0, surfTot:98, penteSud:0, penteNord:0, modH:2, modL:22, totalMod:44, puissMax:20.2, prodMoyen:0 },
@@ -84,7 +84,7 @@ const normalizeBatType = (t) => {
     'T7 MINI': 'TYPE 7 MINI', 'T7 MID': 'TYPE 7 MID', 'T7 MAXI': 'TYPE 7 MAXI',
     'T8 MINI': 'TYPE 8 MINI', 'T8 MID': 'TYPE 8 MID', 'T8 MAXI': 'TYPE 8 MAXI',
     'T9 MINI': 'TYPE 9 MINI', 'T9 MID': 'TYPE 9 MID', 'T9 MAXI': 'TYPE 9 MAXI',
-    'EQUESTRE 64M': 'EQUESTRE 60m',
+    'EQUESTRE 64M': 'EQUESTRE 64m',
     'EQUESTRE 44M': 'EQUESTRE 44m'
   };
 
@@ -411,62 +411,51 @@ const getModuleDims = (power) => {
 
 const getHtaCost = (kwc, hl) => {
   if (!kwc || kwc <= 0) return 0;
-  if (kwc < 100) {
-    if (hl < 10) return 5000;
-    if (hl < 50) return 8000;
-    if (hl < 100) return 10000;
-    if (hl < 150) return 12000;
-    if (hl < 200) return 14000;
-    if (hl < 250) return 16000;
-    return 16000;
+  
+  // Power ranges based on Image 4
+  let pIdx = -1;
+  if (kwc >= 750) pIdx = 5;
+  else if (kwc >= 499.89) pIdx = 4;
+  else if (kwc >= 400) pIdx = 3;
+  else if (kwc >= 300) pIdx = 2;
+  else if (kwc >= 200) pIdx = 1;
+  else if (kwc >= 100) pIdx = 0;
+  else {
+      // Small power logic (preserved from original)
+      if (hl < 10) return 5000;
+      if (hl < 50) return 8000;
+      if (hl < 100) return 10000;
+      if (hl < 150) return 12000;
+      if (hl < 200) return 14000;
+      if (hl < 250) return 16000;
+      return 16000;
   }
-  if (kwc < 200) {
-    if (hl < 50) return 14400;
-    if (hl < 100) return 16100;
-    if (hl < 150) return 17900;
-    if (hl < 200) return 19600;
-    if (hl < 250) return 21300;
-    if (hl < 300) return 23000;
-    if (hl < 350) return 24800;
-    if (hl < 400) return 26500;
-    if (hl < 450) return 27900;
-    return 27900;
+
+  // Distance intervals based on Image 4
+  const dists = [50, 100, 150, 200, 250, 300, 350, 400, 450, 600, 800];
+  let dIdx = 0;
+  while (dIdx < dists.length && hl >= dists[dIdx]) {
+    dIdx++;
   }
-  if (kwc < 300) {
-    if (hl < 50) return 18300;
-    if (hl < 100) return 20100;
-    if (hl < 150) return 21800;
-    if (hl < 200) return 23500;
-    if (hl < 250) return 25300;
-    if (hl < 300) return 27000;
-    if (hl < 350) return 28700;
-    if (hl < 400) return 30500;
-    if (hl < 450) return 31900;
-    return 31900;
-  }
-  if (kwc < 400) {
-    if (hl < 350) return 28700;
-    if (hl < 400) return 30500;
-    if (hl < 450) return 31900;
-    return 31900;
-  }
-  if (kwc < 600) {
-    if (hl < 50) return 32600;
-    if (hl < 100) return 35300;
-    if (hl < 150) return 37100;
-    if (hl < 200) return 38700;
-    if (hl < 250) return 39100;
-    if (hl < 300) return 40400;
-    if (hl < 350) return 42200;
-    if (hl < 400) return 43900;
-    if (hl < 450) return 45300;
-    return 45300;
-  }
-  if (kwc < 1200) {
-    if (hl < 650) return 45300;
-    return 45300;
-  }
-  return 0;
+
+  const table = [
+    // 100-200 kWc
+    [14400, 16100, 17900, 19600, 21300, 23000, 24800, 26500, 27900, 34900, 41900],
+    // 200-300 kWc
+    [18300, 20100, 21800, 23500, 25300, 27000, 28700, 30500, 31900, 40900, 49900],
+    // 300-400 kWc
+    [18300, 20100, 21800, 23500, 25300, 27000, 28700, 30500, 31900, 40900, 49900],
+    // 400-500 kWc
+    [32600, 35300, 37100, 38700, 39100, 40400, 42200, 43900, 45300, 58300, 71300],
+    // 500-750 kWc
+    [40900, 52650, 55650, 58050, 58650, 60600, 63300, 65850, 67950, 87450, 106950],
+    // 750-999 kWc
+    [65200, 70200, 74200, 77400, 78200, 80800, 84400, 87800, 90600, 116600, 142600]
+  ];
+
+  const row = table[pIdx];
+  // Use the value corresponding to the distance, or the last one if beyond 800m
+  return row[Math.min(dIdx, row.length - 1)];
 };
 
 // Helper for PMT
