@@ -2893,89 +2893,121 @@ function BanPlusLegend({ layersRef }) {
 // MANAGER PROPRIÉTAIRES PERSONNES MORALES
 // ====================================================================
 function OwnerDetailsPanel({ data, onClose, copyToClipboard }) {
-  if (!data || !data.owners || data.owners.length === 0) return null;
+  if (!data) return null;
+  const hasOwners = data.owners && data.owners.length > 0;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="p-4 border-b bg-indigo-50/50">
+      <div className="p-4 border-b bg-amber-50/60">
         <div className="flex justify-between items-start mb-2">
           <div>
-            <h3 className="text-sm font-bold text-indigo-900 uppercase tracking-tight">Données de Propriété</h3>
-            <p className="text-[10px] text-indigo-600 font-semibold mt-0.5 flex items-center gap-1">
-              <ShieldCheck size={12} /> Source : DGFiP (MAJIC)
+            <h3 className="text-sm font-bold text-amber-900 uppercase tracking-tight">Propriétaires Fonciers</h3>
+            <p className="text-[10px] text-amber-600 font-semibold mt-0.5 flex items-center gap-1">
+              <ShieldCheck size={12} /> Source : DGFiP MAJIC (Koumoul / data.gouv.fr)
             </p>
           </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-white/80 rounded-full transition-colors text-indigo-400">
+          <button onClick={onClose} className="p-1.5 hover:bg-white/80 rounded-full transition-colors text-amber-400">
             <XIcon size={16} />
           </button>
         </div>
-        <div className="flex items-center gap-2 mt-3 p-2 bg-white rounded-lg border border-indigo-100 shadow-sm">
-          <MapPin size={14} className="text-indigo-500" />
+        <div className="flex items-center gap-2 mt-3 p-2 bg-white rounded-lg border border-amber-100 shadow-sm">
+          <MapPin size={14} className="text-amber-500" />
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] text-indigo-400 font-bold uppercase">Parcelle</p>
-            <p className="text-xs font-bold text-indigo-900 truncate">{data.code || 'N/A'}</p>
+            <p className="text-[10px] text-amber-400 font-bold uppercase">Parcelle</p>
+            <p className="text-xs font-bold text-amber-900 truncate">{data.code || 'N/A'}</p>
           </div>
-          <button onClick={() => copyToClipboard(data.code)} className="p-1 hover:bg-indigo-50 rounded text-indigo-400">
+          {data.address && (
+            <span className="text-[10px] text-gray-500 italic truncate max-w-[120px]">{data.address}</span>
+          )}
+          <button onClick={() => copyToClipboard(data.code)} className="p-1 hover:bg-amber-50 rounded text-amber-400">
             <Copy size={14} />
           </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {data.owners.map((owner, idx) => (
-          <div key={idx} className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden group hover:border-indigo-200 transition-colors">
-            <div className="p-3 bg-gray-50 border-b flex justify-between items-center">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Propriétaire {data.owners.length > 1 ? idx + 1 : ''}</span>
-              <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">
-                {owner.nature || 'PM'}
-              </span>
-            </div>
-            <div className="p-3 space-y-3">
-              <div>
-                <p className="text-sm font-black text-gray-900 leading-tight mb-1">{owner.name || 'Dénomination Inconnue'}</p>
-                <div className="flex items-center gap-2 group/siren cursor-pointer" onClick={() => copyToClipboard(owner.siren)}>
-                  <span className="text-[10px] text-gray-400 font-medium">SIREN</span>
-                  <span className="text-[11px] font-bold text-gray-600 flex items-center gap-1">
-                    {owner.siren || 'N/A'} 
-                    <Copy size={10} className="opacity-0 group-hover/siren:opacity-100 text-indigo-400" />
-                  </span>
+        {hasOwners ? data.owners.map((owner, idx) => {
+          const siren = owner.siren?.startsWith('U') ? null : owner.siren;
+          return (
+            <div key={idx} className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden group hover:border-amber-200 transition-colors">
+              <div className="p-3 bg-amber-50 border-b flex justify-between items-center">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Propriétaire {data.owners.length > 1 ? idx + 1 : ''}</span>
+                <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">
+                  {owner.nature || 'PM'}
+                </span>
+              </div>
+              <div className="p-3 space-y-2">
+                <p className="text-sm font-black text-gray-900 leading-tight">{owner.name || 'Dénomination Inconnue'}</p>
+                {owner.address && (
+                  <p className="text-[10px] text-gray-500 italic">{owner.address}</p>
+                )}
+                {siren ? (
+                  <div className="flex items-center gap-2 cursor-pointer" onClick={() => copyToClipboard(siren)}>
+                    <span className="text-[10px] text-gray-400 font-medium">SIREN</span>
+                    <span className="text-[11px] font-bold text-gray-600 flex items-center gap-1 group/siren">
+                      {siren}
+                      <Copy size={10} className="opacity-0 group-hover/siren:opacity-100 text-amber-400" />
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-gray-400 italic">Entité publique (sans SIREN commercial)</p>
+                )}
+
+                {/* Liens externes - 2x2 grid */}
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  {siren && (
+                    <>
+                      <button
+                        className="h-7 px-2 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 flex items-center justify-center transition-colors"
+                        onClick={() => window.open(`https://www.pappers.fr/entreprise/${owner.name?.toLowerCase().replace(/\s+/g,'-')}-${siren}`, '_blank')}
+                      >
+                        <ExternalLink size={9} /> Pappers
+                      </button>
+                      <button
+                        className="h-7 px-2 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 flex items-center justify-center transition-colors"
+                        onClick={() => window.open(`https://www.societe.com/societe/${owner.name?.toLowerCase().replace(/\s+/g,'-')}-${siren}.html`, '_blank')}
+                      >
+                        <ExternalLink size={9} /> Société.com
+                      </button>
+                      <button
+                        className="h-7 px-2 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-center transition-colors"
+                        onClick={() => window.open(`https://annuaire-entreprises.data.gouv.fr/entreprise/${siren}`, '_blank')}
+                      >
+                        <ExternalLink size={9} /> Annuaire
+                      </button>
+                      <button
+                        className="h-7 px-2 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-gray-300 hover:bg-gray-50 flex items-center justify-center transition-colors"
+                        onClick={() => window.open(`https://www.infogreffe.fr/recherche-entreprise-dirigeants/resultat-de-recherche-multi-critere?siren=${siren}`, '_blank')}
+                      >
+                        <ExternalLink size={9} /> Infogreffe
+                      </button>
+                    </>
+                  )}
+                  {!siren && (
+                    <button
+                      className="col-span-2 h-7 px-2 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-center transition-colors"
+                      onClick={() => window.open(`https://annuaire-entreprises.data.gouv.fr/rechercher?terme=${encodeURIComponent(owner.name || '')}`, '_blank')}
+                    >
+                      <ExternalLink size={9} /> Rechercher sur l'Annuaire
+                    </button>
+                  )}
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="h-7 text-[9px] font-bold uppercase tracking-tight gap-1.5 border-gray-200 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
-                  onClick={() => window.open(`https://annuaire-entreprises.data.gouv.fr/entreprise/${owner.siren}`, '_blank')}
-                >
-                  <ExternalLink size={10} /> Annuaire Ent.
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="h-7 text-[9px] font-bold uppercase tracking-tight gap-1.5 border-gray-200 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
-                  onClick={() => window.open(`https://www.infogreffe.fr/recherche-entreprise-dirigeants/resultat-de-recherche-multi-critere?siren=${owner.siren}`, '_blank')}
-                >
-                  <ExternalLink size={10} /> Infogreffe
-                </Button>
-              </div>
             </div>
-          </div>
-        ))}
-
-        {data.owners.length === 0 && (
+          );
+        }) : (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
               <AlertCircle size={24} className="text-gray-300" />
             </div>
-            <p className="text-xs text-gray-500 font-medium px-4">Aucun propriétaire personne morale identifié sur cette parcelle en open data.</p>
+            <p className="text-xs text-gray-500 font-medium px-4">Aucun propriétaire personne morale identifié sur cette parcelle.</p>
+            <p className="text-[10px] text-gray-400 mt-2 px-4">Seules les sociétés, collectivités et organismes publics sont dans l'open data DGFiP.</p>
           </div>
         )}
       </div>
-      
+
       <div className="p-3 bg-gray-50 border-t flex justify-center italic">
-        <span className="text-[9px] text-gray-400 font-medium">Nelson Property Insights • Beta v1.0</span>
+        <span className="text-[9px] text-gray-400 font-medium">Nelson Property Insights • Source : DGFiP MAJIC Open Data</span>
       </div>
     </div>
   );
@@ -2984,8 +3016,9 @@ function OwnerDetailsPanel({ data, onClose, copyToClipboard }) {
 function OwnersMoralLayerManager({ layersRef, activeLayers, activeTab, onSelectOwners }) {
   const map = useMap();
   const active = activeLayers?.has('ownersMoral') || activeTab === 'owners';
-  const loadedIds = useRef(new Set());
+  const loadedParcelsRef = useRef(new Map()); // code_parcelle -> owners[]
   const layerGroupRef = useRef(L.featureGroup());
+  const isFetchingRef = useRef(false);
 
   useEffect(() => {
     if (!layersRef.current) return;
@@ -2993,70 +3026,104 @@ function OwnersMoralLayerManager({ layersRef, activeLayers, activeTab, onSelectO
   }, [layersRef]);
 
   const fetchData = async () => {
-    if (!active || !map || map.getZoom() < 15) {
-       if (map.getZoom() < 15) {
-         layerGroupRef.current.clearLayers();
-         loadedIds.current.clear();
-       }
-       return;
+    if (!active || !map || map.getZoom() < 13) {
+      if (map.getZoom() < 13) {
+        layerGroupRef.current.clearLayers();
+        loadedParcelsRef.current.clear();
+      }
+      return;
     }
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
     const bounds = map.getBounds();
-    const latMax = bounds.getNorth();
     const lonMin = bounds.getWest();
     const latMin = bounds.getSouth();
     const lonMax = bounds.getEast();
-
-    const whereClause = `within_box(geo_shape, ${latMax}, ${lonMin}, ${latMin}, ${lonMax})`;
-    const url = `/api/melodi?action=owners&where=${encodeURIComponent(whereClause)}`;
+    const latMax = bounds.getNorth();
 
     try {
-      const response = await fetch(url);
-      const data = await response.json();
-      if (!data.results) return;
+      // ---------------------------------------------------------------
+      // 1. Récupérer les propriétaires PM via Koumoul (MAJIC open data)
+      // API: opendata.koumoul.com - bbox format: min_lon,min_lat,max_lon,max_lat
+      // ---------------------------------------------------------------
+      const koumoulUrl = `https://opendata.koumoul.com/data-fair/api/v1/datasets/parcelles-des-personnes-morales/lines?bbox=${lonMin},${latMin},${lonMax},${latMax}&size=200`;
+      const koumoulRes = await fetch(koumoulUrl);
+      if (!koumoulRes.ok) { isFetchingRef.current = false; return; }
+      const koumoulData = await koumoulRes.json();
+      const pmResults = koumoulData.results || [];
 
-      // Group owners by parcel
-      const grouped = data.results.reduce((acc, item) => {
+      if (pmResults.length === 0) { isFetchingRef.current = false; return; }
+
+      // 2. Grouper par code_parcelle
+      const grouped = pmResults.reduce((acc, item) => {
         const code = item.code_parcelle;
-        if (!acc[code]) acc[code] = { 
-          code, 
-          geo_shape: item.geo_shape, 
-          geo_point_2d: item.geo_point_2d,
-          owners: [] 
+        if (!code) return acc;
+        if (!acc[code]) acc[code] = {
+          code,
+          address: item.adresse,
+          owners: []
         };
         acc[code].owners.push({
-          name: item.denomination_ou_raison_sociale,
-          nature: item.nature_juridique_abregee,
-          siren: item.siren
+          name: item.denomination,
+          nature: item.forme_juridique_abregee,
+          siren: item.numero_siren,
+          address: item.adresse
         });
         return acc;
       }, {});
 
-      Object.values(grouped).forEach(item => {
-        const id = item.code;
-        if (loadedIds.current.has(id)) return;
-        loadedIds.current.add(id);
+      // 3. Pour chaque parcelle PM nouvelle, récupérer sa géométrie via API Carto IGN
+      const newCodes = Object.keys(grouped).filter(code => !loadedParcelsRef.current.has(code));
 
-        if (item.geo_shape) {
-          L.geoJSON(item.geo_shape, {
+      // Récupérer les géométries en batch via API IGN WFS (parcelle by idu)
+      // On utilise le code_parcelle (14 caractères) comme idu
+      for (const code of newCodes) {
+        loadedParcelsRef.current.set(code, grouped[code]);
+
+        // Requête API Carto IGN pour la géométrie de cette parcelle
+        try {
+          const ignUrl = `https://apicarto.ign.fr/api/cadastre/parcelle?code_insee=${code.substring(0,5)}&section=${code.substring(10,12).trim()}&numero=${code.substring(12,16)}&_limit=1`;
+          const ignRes = await fetch(ignUrl);
+          if (!ignRes.ok) continue;
+          const ignData = await ignRes.json();
+          const feature = ignData.features?.[0];
+          if (!feature?.geometry) continue;
+
+          const parcelItem = grouped[code];
+
+          // Afficher la géométrie en jaune semi-transparent
+          L.geoJSON(feature.geometry, {
             style: {
-              color: '#4f46e5', // Indigo
-              weight: 2.5,
-              opacity: 0.8,
-              fillOpacity: 0.25,
-              fillColor: '#818cf8',
-              dashArray: '5, 5'
+              color: '#d97706',       // Amber-600 (bordure orange-ambré)
+              weight: 2,
+              opacity: 0.9,
+              fillColor: '#fbbf24',  // Amber-400 (jaune doré)
+              fillOpacity: 0.30,     // Semi-transparent
+              dashArray: null
             }
           }).on('click', (e) => {
             L.DomEvent.stopPropagation(e);
-            onSelectOwners(item);
+            onSelectOwners(parcelItem);
           }).on('mouseover', (e) => {
-            e.target.setStyle({ fillOpacity: 0.5, weight: 4 });
+            e.target.setStyle({ fillOpacity: 0.55, weight: 3, color: '#b45309' });
           }).on('mouseout', (e) => {
-            e.target.setStyle({ fillOpacity: 0.25, weight: 2.5 });
-          }).addTo(layerGroupRef.current);
+            e.target.setStyle({ fillOpacity: 0.30, weight: 2, color: '#d97706' });
+          }).bindTooltip(
+            parcelItem.owners.map(o => o.name).join(' / '),
+            { sticky: true, direction: 'top', className: 'text-[10px] font-bold bg-white border-amber-300 shadow' }
+          ).addTo(layerGroupRef.current);
+
+        } catch (err) {
+          // Parcelle sans géo disponible : on ignore silencieusement
         }
-      });
-    } catch (err) { console.error("Error fetching Owners data", err); }
+      }
+
+    } catch (err) {
+      console.error('[OwnersMoral] Error fetching data:', err);
+    } finally {
+      isFetchingRef.current = false;
+    }
   };
 
   useEffect(() => {
@@ -3065,7 +3132,11 @@ function OwnersMoralLayerManager({ layersRef, activeLayers, activeTab, onSelectO
       fetchData();
       const onMoveEnd = () => fetchData();
       map.on('moveend', onMoveEnd);
-      return () => { map.off('moveend', onMoveEnd); };
+      map.on('zoomend', onMoveEnd);
+      return () => {
+        map.off('moveend', onMoveEnd);
+        map.off('zoomend', onMoveEnd);
+      };
     } else {
       if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
     }
