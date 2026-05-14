@@ -4746,6 +4746,12 @@ export default function MapElements({
   const [selectedRoutingData, setSelectedRoutingData] = useState(null);
   const [forceHideFeatures, setForceHideFeatures] = useState(false);
 
+  const copyToClipboard = useCallback((text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copié !", description: text });
+  }, []);
+
 
   const [mode, setMode] = useState(null);
   const [temp, setTemp] = useState([]);
