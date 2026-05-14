@@ -370,29 +370,21 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
   const configuratorState = useConfiguratorStore();
 
   const customBuilding = useMemo(() => {
-    const isCustomMode = configuratorState.configMode === 'custom';
-    const params = isCustomMode ? configuratorState.customParams : configuratorState;
+    // ALWAYS use customParams for the "SUR-MESURE" option
+    const params = configuratorState.customParams;
     
-    const length = isCustomMode 
-      ? (params.bayCount * params.baySpacing)
-      : (configuratorState.fixedLength || (params.baySpacing * params.bayCount));
+    const length = params.bayCount * params.baySpacing;
+    let totalWidth = params.width;
     
-    let baseWidth = params.width;
-    let totalWidth = baseWidth;
-    
-    if (isCustomMode) {
-      if (params.leftExtension !== 'none') totalWidth += params.leftExtWidth;
-      if (params.rightExtension !== 'none') totalWidth += params.rightExtWidth;
-    } else {
-      if (configuratorState.leftSide === 'auvent') totalWidth += 4;
-      else if (configuratorState.leftSide === 'appentis') totalWidth += configuratorState.leftWidth;
-      
-      if (configuratorState.rightSide === 'auvent') totalWidth += 4;
-      else if (configuratorState.rightSide === 'appentis') totalWidth += configuratorState.rightWidth;
-    }
+    if (params.leftExtension !== 'none') totalWidth += params.leftExtWidth;
+    if (params.rightExtension !== 'none') totalWidth += params.rightExtWidth;
 
     const surface = length * totalWidth;
-    const power = configuratorValues.solarStats.power;
+    
+    // Get power from configuratorValues ONLY if we are in custom mode,
+    // otherwise it might represent a predefined building's power.
+    const isCustomModeActive = configuratorState.configMode === 'custom';
+    const power = isCustomModeActive ? configuratorValues.solarStats.power : 0;
     const ratio = isAcama ? 0.55 : 0.5;
 
     return {
@@ -404,11 +396,11 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
       power: parseFloat(power.toFixed(2)),
       ratio: ratio,
       isCustom: true,
-      angle: isCustomMode ? params.leftPitch : configuratorState.roofPitch,
-      roofWeighting: isCustomMode ? 100 : 50,
+      angle: params.leftPitch,
+      roofWeighting: 100,
       isPredefinedAcama: false
     };
-  }, [configuratorState, configuratorValues, isAcama]);
+  }, [configuratorState.customParams, configuratorState.configMode, configuratorValues.solarStats.power, isAcama]);
 
   // Reset counters and selection when tenant changes
   useEffect(() => {

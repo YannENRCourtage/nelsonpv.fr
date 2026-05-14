@@ -668,23 +668,14 @@ export default function ProjectEditor() {
 
   useEffect(() => {
     if (searchParams.get('insertCustomBuilding') === 'true' && project?.id) {
-      const isCustomMode = configuratorState.configMode === 'custom';
-      const params = isCustomMode ? configuratorState.customParams : configuratorState;
+      // ALWAYS use customParams for auto-insertion from configurator
+      const params = configuratorState.customParams;
       
-      const length = isCustomMode 
-        ? (params.bayCount * params.baySpacing)
-        : (configuratorState.fixedLength || (params.baySpacing * params.bayCount));
-      
+      const length = params.bayCount * params.baySpacing;
       let totalWidth = params.width;
-      if (isCustomMode) {
-        if (params.leftExtension !== 'none') totalWidth += params.leftExtWidth;
-        if (params.rightExtension !== 'none') totalWidth += params.rightExtWidth;
-      } else {
-        if (configuratorState.leftSide === 'auvent') totalWidth += 4;
-        else if (configuratorState.leftSide === 'appentis') totalWidth += configuratorState.leftWidth;
-        if (configuratorState.rightSide === 'auvent') totalWidth += 4;
-        else if (configuratorState.rightSide === 'appentis') totalWidth += configuratorState.rightWidth;
-      }
+      
+      if (params.leftExtension !== 'none') totalWidth += params.leftExtWidth;
+      if (params.rightExtension !== 'none') totalWidth += params.rightExtWidth;
 
       const customBldg = {
         code: 'SUR-MESURE',
@@ -692,8 +683,8 @@ export default function ProjectEditor() {
         width: parseFloat(totalWidth.toFixed(2)),
         surface: parseFloat((length * totalWidth).toFixed(2)),
         power: parseFloat(configuratorValues.solarStats.power.toFixed(2)),
-        angle: isCustomMode ? params.leftPitch : configuratorState.roofPitch,
-        roofWeighting: isCustomMode ? 100 : 50,
+        angle: params.leftPitch,
+        roofWeighting: 100,
         isCustom: true
       };
 
@@ -704,7 +695,7 @@ export default function ProjectEditor() {
       newParams.delete('insertCustomBuilding');
       setSearchParams(newParams, { replace: true });
     }
-  }, [searchParams, project?.id, configuratorState, configuratorValues, setSearchParams]);
+  }, [searchParams, project?.id, configuratorState.customParams, configuratorValues, setSearchParams]);
 
   const goToProjectAddress = () => {
     window.dispatchEvent(new CustomEvent("map:goto-project-address"));
