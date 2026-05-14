@@ -332,7 +332,7 @@ export default function Configurateur() {
 
             {/* ========== CONTROL PANEL (LEFT) ========== */}
             <div className="relative lg:absolute top-0 lg:top-4 left-0 lg:left-4 z-20 w-full lg:w-[420px] max-h-[40vh] lg:max-h-[calc(100vh-2rem)] overflow-y-auto p-4 lg:p-0">
-                <ControlPanel isAcama={isAcama} />
+                <ControlPanel isAcama={isAcama} selectedProject={selectedProject} />
             </div>
 
             {/* ========== VISUALISATION BÂTIMENT (CENTER) ========== */}

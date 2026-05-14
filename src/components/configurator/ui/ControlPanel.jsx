@@ -1,7 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useConfiguratorValues, useConfiguratorActions, EPONA_MODELS, TALIAN_MODELS, TALIAN_1_MODELS, TALIAN_3_MODELS, TALIAN_5_MODELS } from '@/stores/useConfiguratorStore.js';
 
-export function ControlPanel({ isAcama = false }) {
+export function ControlPanel({ isAcama = false, selectedProject = null }) {
+    const navigate = useNavigate();
     // NEW: Split hooks with destructuring to maintain variable scope compatibility
     const {
         width,
@@ -721,6 +723,24 @@ export function ControlPanel({ isAcama = false }) {
                 </div>
             )}
 
+            {/* ========== ACTIONS ========== */}
+            {selectedProject && (
+                <div className="mt-8 pt-6 border-t border-slate-200">
+                    <button
+                        onClick={() => navigate(`/project/${selectedProject.id}/edit?insertCustomBuilding=true`)}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3"
+                    >
+                        <span className="text-xl">🗺️</span>
+                        <div className="text-left">
+                            <div className="text-xs opacity-80 uppercase font-black">Éditeur de projet</div>
+                            <div className="text-sm">Insérer sur la carte</div>
+                        </div>
+                    </button>
+                    <p className="text-[10px] text-slate-400 text-center mt-3 italic">
+                        Le bâtiment sera inséré avec les dimensions actuelles sur le projet {selectedProject.name}.
+                    </p>
+                </div>
+            )}
         </div>
     );
 }

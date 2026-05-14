@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
+import { useConfiguratorStore, useConfiguratorValues } from '@/stores/useConfiguratorStore';
 import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Building, X, FolderHeart as HomeIcon, Map as MapIcon, ExternalLink, RotateCcw, RotateCw, Type, MessageCircle, Box, Layout, Search, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import MapEditor from "../components/MapEditor";
@@ -580,8 +581,8 @@ export default function ProjectEditor() {
       let newAngle = null;
       const firstLetter = code.charAt(0).toUpperCase();
 
-      if (building.angle !== undefined && building.angle !== null && activeTenantId === 'acama') {
-        newAngle = String(building.angle);
+      if (building.angle !== undefined && building.angle !== null && (activeTenantId === 'acama' || building.isCustom)) {
+        newAngle = String(Math.round(building.angle));
       } else if (['O', 'C', 'A'].includes(firstLetter)) {
         newAngle = "15";
       } else if (['K', 'H', 'Y', 'S'].includes(firstLetter)) {
@@ -613,9 +614,9 @@ export default function ProjectEditor() {
         }
       }
 
-      // ACAMA uniquement : forcer la surface (col E) et la puissance (col J) depuis les données du bâtiment
+      // ACAMA uniquement ou mode Sur-mesure : forcer la surface et la puissance
       // Ainsi que la longueur et la largeur
-      if (activeTenantId === 'acama' && building.isPredefinedAcama !== false) {
+      if ((activeTenantId === 'acama' && building.isPredefinedAcama !== false) || building.isCustom) {
         if (building.length !== undefined && building.length !== null) {
           if (isNextBuildingSecond) updates.longueur2 = String(building.length);
           else updates.longueur = String(building.length);
@@ -660,6 +661,50 @@ export default function ProjectEditor() {
       }
     }, 100);
   };
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const configuratorValues = useConfiguratorValues();
+  const configuratorState = useConfiguratorStore();
+
+  useEffect(() => {
+    if (searchParams.get('insertCustomBuilding') === 'true' && project?.id) {
+      const isCustomMode = configuratorState.configMode === 'custom';
+      const params = isCustomMode ? configuratorState.customParams : configuratorState;
+      
+      const length = isCustomMode 
+        ? (params.bayCount * params.baySpacing)
+        : (configuratorState.fixedLength || (params.baySpacing * params.bayCount));
+      
+      let totalWidth = params.width;
+      if (isCustomMode) {
+        if (params.leftExtension !== 'none') totalWidth += params.leftExtWidth;
+        if (params.rightExtension !== 'none') totalWidth += params.rightExtWidth;
+      } else {
+        if (configuratorState.leftSide === 'auvent') totalWidth += 4;
+        else if (configuratorState.leftSide === 'appentis') totalWidth += configuratorState.leftWidth;
+        if (configuratorState.rightSide === 'auvent') totalWidth += 4;
+        else if (configuratorState.rightSide === 'appentis') totalWidth += configuratorState.rightWidth;
+      }
+
+      const customBldg = {
+        code: 'SUR-MESURE',
+        length: parseFloat(length.toFixed(2)),
+        width: parseFloat(totalWidth.toFixed(2)),
+        surface: parseFloat((length * totalWidth).toFixed(2)),
+        power: parseFloat(configuratorValues.solarStats.power.toFixed(2)),
+        angle: isCustomMode ? params.leftPitch : configuratorState.roofPitch,
+        roofWeighting: isCustomMode ? 100 : 50,
+        isCustom: true
+      };
+
+      handleBuildingSelect(customBldg);
+      
+      // Clear param
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('insertCustomBuilding');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, project?.id, configuratorState, configuratorValues, setSearchParams]);
 
   const goToProjectAddress = () => {
     window.dispatchEvent(new CustomEvent("map:goto-project-address"));

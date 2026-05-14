@@ -8,7 +8,8 @@ import {
 } from '@/components/ui/select';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Building2 } from 'lucide-react';
+import { Building2, Ruler } from 'lucide-react';
+import { useConfiguratorStore, useConfiguratorValues } from '@/stores/useConfiguratorStore';
 
 // ─── GREEN INVEST ────────────────────────────────────────────────────────────
 const buildingsData = [
@@ -364,6 +365,51 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
   const [auventCount, setAuventCount] = useState(0);
   const [appentisCount, setAppentisCount] = useState(0);
 
+  // --- CONFIGURATOR DATA ---
+  const configuratorValues = useConfiguratorValues();
+  const configuratorState = useConfiguratorStore();
+
+  const customBuilding = useMemo(() => {
+    const isCustomMode = configuratorState.configMode === 'custom';
+    const params = isCustomMode ? configuratorState.customParams : configuratorState;
+    
+    const length = isCustomMode 
+      ? (params.bayCount * params.baySpacing)
+      : (configuratorState.fixedLength || (params.baySpacing * params.bayCount));
+    
+    let baseWidth = params.width;
+    let totalWidth = baseWidth;
+    
+    if (isCustomMode) {
+      if (params.leftExtension !== 'none') totalWidth += params.leftExtWidth;
+      if (params.rightExtension !== 'none') totalWidth += params.rightExtWidth;
+    } else {
+      if (configuratorState.leftSide === 'auvent') totalWidth += 4;
+      else if (configuratorState.leftSide === 'appentis') totalWidth += configuratorState.leftWidth;
+      
+      if (configuratorState.rightSide === 'auvent') totalWidth += 4;
+      else if (configuratorState.rightSide === 'appentis') totalWidth += configuratorState.rightWidth;
+    }
+
+    const surface = length * totalWidth;
+    const power = configuratorValues.solarStats.power;
+    const ratio = isAcama ? 0.55 : 0.5;
+
+    return {
+      code: 'SUR-MESURE',
+      gamme: 'Configurateur',
+      length: parseFloat(length.toFixed(2)),
+      width: parseFloat(totalWidth.toFixed(2)),
+      surface: parseFloat(surface.toFixed(2)),
+      power: parseFloat(power.toFixed(2)),
+      ratio: ratio,
+      isCustom: true,
+      angle: isCustomMode ? params.leftPitch : configuratorState.roofPitch,
+      roofWeighting: isCustomMode ? 100 : 50,
+      isPredefinedAcama: false
+    };
+  }, [configuratorState, configuratorValues, isAcama]);
+
   // Reset counters and selection when tenant changes
   useEffect(() => {
     setSelectedCode(null);
@@ -379,6 +425,7 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
 
   const selectedBuildingData = useMemo(() => {
     if (!selectedCode) return null;
+    if (selectedCode === 'SUR-MESURE') return customBuilding;
     const building = activeData.find(b => b.code === selectedCode);
     if (!building) return null;
 
@@ -445,8 +492,8 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-semibold">Bâtiments prédéfinis</CardTitle>
         <div className="flex gap-2">
-          {/* Auvent & Appentis buttons: hidden for ACAMA */}
-          {!isAcama && (
+          {/* Auvent & Appentis buttons: hidden for ACAMA and Custom */}
+          {!isAcama && selectedCode !== 'SUR-MESURE' && (
             <>
               <Button
                 variant={auventCount > 0 ? "default" : "outline"}
@@ -497,6 +544,11 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
                       <div className="px-2 py-1 text-xs font-bold text-gray-500 uppercase tracking-wide bg-gray-50 border-b">
                         {gamme}
                       </div>
+                      {gamme === Object.keys(acamaGroups)[0] && (
+                        <SelectItem value="SUR-MESURE" className="font-bold text-blue-600">
+                          ✨ Sur-mesure (Configurateur)
+                        </SelectItem>
+                      )}
                       {buildings.map(b => (
                         <SelectItem key={b.code} value={b.code}>
                           {b.code}
@@ -506,11 +558,16 @@ const PredefinedBuildingsPanel = ({ onBuildingSelect, onConfigChange, tenantId }
                   ))
                 ) : (
                   // GREEN INVEST: flat list
-                  buildingsData.map((building) => (
-                    <SelectItem key={building.code} value={building.code}>
-                      {building.code}
+                  <>
+                    <SelectItem value="SUR-MESURE" className="font-bold text-blue-600">
+                      ✨ Sur-mesure (Configurateur)
                     </SelectItem>
-                  ))
+                    {buildingsData.map((building) => (
+                      <SelectItem key={building.code} value={building.code}>
+                        {building.code}
+                      </SelectItem>
+                    ))}
+                  </>
                 )}
               </SelectContent>
             </Select>
