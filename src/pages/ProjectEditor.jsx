@@ -190,6 +190,22 @@ export default function ProjectEditor() {
     return () => window.removeEventListener('map:show-owners', handleShowOwners);
   }, []);
 
+  // Activation automatique du calque Propriétaires Personnes Morales à l'entrée de l'onglet
+  useEffect(() => {
+    if (activeTab === 'owners') {
+      const newActiveLayers = new Set(activeLayers);
+      if (!newActiveLayers.has('ownersMoral')) {
+        newActiveLayers.add('ownersMoral');
+        setActiveLayers(newActiveLayers);
+      }
+      if (!newActiveLayers.has('cadastre')) {
+        newActiveLayers.add('cadastre');
+        setActiveLayers(prev => { const s = new Set(prev); s.add('cadastre'); return s; });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
 
 
   useEffect(() => {
@@ -1761,6 +1777,19 @@ export default function ProjectEditor() {
 
                 {/* Layer Toggle Buttons - Desktop: always visible */}
                 <div className="hidden lg:flex p-3 bg-gray-50 border-t flex-wrap gap-2">
+                  {/* Badge mode Propriétaires */}
+                  {activeTab === 'owners' && (
+                    <div className="w-full flex items-center gap-2 mb-1.5 pb-1.5 border-b border-indigo-200">
+                      <div className="flex items-center gap-1.5 bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-full text-xs font-bold">
+                        <span>🏠</span>
+                        <span>Mode Propriétaires — Calques Personnes Morales activés • Cliquez sur une parcelle en violet</span>
+                      </div>
+                      <div className="ml-auto flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded bg-indigo-400 border-2 border-indigo-600" style={{borderStyle:'dashed'}}></div>
+                        <span className="text-xs text-indigo-600 font-medium">Parcelle avec propriétaire PM identifié</span>
+                      </div>
+                    </div>
+                  )}
                   {[
                     { key: 'cadastre', label: 'Cadastre' },
                     { key: 'zoneInondable', label: 'Zone Inondable' },
@@ -1822,7 +1851,7 @@ export default function ProjectEditor() {
                     className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 border-t text-sm font-medium text-gray-700"
                     onClick={() => setIsLayersOpen(v => !v)}
                   >
-                    <span>🗺️ Calques</span>
+                    <span>{activeTab === 'owners' ? '🏠 Propriétaires — Calques' : '🗺️ Calques'}</span>
                     <span>{isLayersOpen ? '▲' : '▼'}</span>
                   </button>
                   {isLayersOpen && (
@@ -1881,6 +1910,19 @@ export default function ProjectEditor() {
                       ))}
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Overlay d'information - Mode Propriétaires */}
+            {activeTab === 'owners' && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur shadow-lg border border-indigo-200 px-4 py-2.5 rounded-xl flex items-center gap-3 pointer-events-none">
+                <div className="bg-indigo-100 p-2 rounded-full">
+                  <span className="text-indigo-600 text-base">🏠</span>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-800">Mode Propriétaires Fonciers</p>
+                  <p className="text-[11px] text-slate-500 italic">Parcelles violet = propriétaire (PM) identifié • Cliquez pour voir les données • Zoom ≥ 15 requis</p>
                 </div>
               </div>
             )}

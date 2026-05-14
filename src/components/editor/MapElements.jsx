@@ -4548,10 +4548,11 @@ function MapInternalController({ layersRef, activeLayers, setSelectedCompany, se
       let shouldBeVisible = activeLayers.has(key);
 
       // Logique de vue dédiée pour l'onglet Propriétaires
+      // On force toujours ownersMoral et cadastre visibles, mais on respecte les autres calques actifs
       if (activeTab === 'owners') {
         if (key === 'ownersMoral') shouldBeVisible = true;
         else if (key === 'cadastre') shouldBeVisible = true;
-        else shouldBeVisible = false; // Cache les autres pour la vue dédiée
+        // Les autres calques restent selon le choix de l'utilisateur (shouldBeVisible déjà calculé)
       }
 
       const isVisible = map.hasLayer(layer);
