@@ -657,7 +657,7 @@ export const useConfiguratorStore = create(
             showDimensions: state.showDimensions
         };
     }
-), {
+}), {
     name: 'nelson-configurator-storage',
     storage: createJSONStorage(() => localStorage),
 }));
