@@ -365,14 +365,14 @@ export default function Configurateur() {
                     <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-lg shadow border border-slate-200">
                         <span className="text-slate-800 font-bold text-lg whitespace-nowrap">
                             {config.length.toFixed(2)}m x {(config.width
-                                + (config.leftSide === 'appentis' ? 9.3 : (config.leftSide === 'auvent' ? 4.0 : 0))
-                                + (config.rightSide === 'appentis' ? 9.3 : (config.rightSide === 'auvent' ? 4.0 : 0))
+                                + (config.leftSide !== 'none' ? (config.leftWidth || 0) : 0)
+                                + (config.rightSide !== 'none' ? (config.rightWidth || 0) : 0)
                             ).toFixed(2)}m - {
                                 (isAcama && config.buildingType === 'epona' && Math.abs(config.width - 27.3) < 0.1)
                                     ? 846
                                     : ((config.width
-                                        + (config.leftSide === 'appentis' ? 9.3 : (config.leftSide === 'auvent' ? 4.0 : 0))
-                                        + (config.rightSide === 'appentis' ? 9.3 : (config.rightSide === 'auvent' ? 4.0 : 0))
+                                        + (config.leftSide !== 'none' ? (config.leftWidth || 0) : 0)
+                                        + (config.rightSide !== 'none' ? (config.rightWidth || 0) : 0)
                                     ) * config.length).toFixed(0)
                             }m²
                         </span>

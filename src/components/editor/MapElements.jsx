@@ -3801,7 +3801,8 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
         // Determine target azimuth based on index
         let targetAzimuth = undefined;
         if (bldgIndex === 0) targetAzimuth = project?.panelAspect;
-        else if (bldgIndex === 1) targetAzimuth = project?.panelAspect2;
+        // Logic for Building 2 (panelAspect2) is removed to prevent automatic rotation
+        // as requested by user ("La rotation de l'angle du bâtiment 2 se fait automatiquement. Elle ne doit pas se faire")
 
         if (targetAzimuth === undefined || targetAzimuth === null) return f;
 
@@ -4868,28 +4869,16 @@ export default function MapElements({
         const rects = sanitizedFeatures.filter(f => f.type === 'rectangle' && f.isPredefinedBuilding === true && !f.isBattery);
         let newUpdates = { ...prev, features: sanitizedFeatures };
 
-        // Iterate over all predefined buildings to sync their azimuths
-        // This handles B1 (index 0) -> panelAspect AND B2 (index 1) -> panelAspect2
-        rects.forEach((rect, index) => {
-          // Identify building index based on its position in the list of PREDEFINED buildings
-          // This prevents manual rectangles from shifting the B1/B2 indices.
-          const buildingIndex = index;
-
+        // Only sync primary building (Building 1) with panelAspect
+        if (rects.length > 0) {
+          const rect = rects[0];
           const newAzimuth = calculateAzimuthFromAngle(rect.angle || 0);
 
-          if (buildingIndex === 0) {
-            // Building 1 -> panelAspect
-            if (prev.panelAspect === undefined || Math.abs(Number(prev.panelAspect) - newAzimuth) >= 1) {
-              newUpdates.panelAspect = newAzimuth;
-              if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
-            }
-          } else if (buildingIndex === 1) {
-            // Building 2 -> panelAspect2
-            if (prev.panelAspect2 === undefined || Math.abs(Number(prev.panelAspect2) - newAzimuth) >= 1) {
-              newUpdates.panelAspect2 = newAzimuth;
-            }
+          if (prev.panelAspect === undefined || Math.abs(Number(prev.panelAspect) - newAzimuth) >= 1) {
+            newUpdates.panelAspect = newAzimuth;
+            if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
           }
-        });
+        }
 
         // Deep comparison to avoid infinite loops
         // Check features AND azimuths
