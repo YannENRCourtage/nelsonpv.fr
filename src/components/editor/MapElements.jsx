@@ -2928,14 +2928,14 @@ function OwnerDetailsPanel({ data, onClose, copyToClipboard }) {
                   <p className="text-sm font-black text-gray-900 leading-tight">{owner.name || 'Dénomination Inconnue'}</p>
                   
                   {/* Adresse complète sous le nom avec copie */}
-                  <div className="flex items-center justify-between gap-2 border-l-2 border-sky-200 pl-2">
-                    <span className="text-[10px] text-gray-500 italic uppercase truncate">
+                  <div className="flex items-start justify-between gap-2 border-l-2 border-sky-200 pl-2">
+                    <span className="text-[10px] text-gray-500 italic uppercase leading-tight break-words flex-1">
                       {owner.address ? `${owner.address} ${owner.postalCode || ''} ${owner.city || ''}`.trim() : 'Adresse non renseignée'}
                     </span>
                     {owner.address && (
                       <button 
                         onClick={() => copyToClipboard(`${owner.address} ${owner.postalCode || ''} ${owner.city || ''}`.trim())} 
-                        className="p-1 hover:bg-sky-50 rounded text-sky-400 transition-colors flex-shrink-0"
+                        className="p-1 hover:bg-sky-50 rounded text-sky-400 transition-colors flex-shrink-0 mt-[-4px]"
                         title="Copier l'adresse complète"
                       >
                         <Copy size={12} />
