@@ -1,5 +1,6 @@
 import React from 'react';
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 /**
  * Mapping of Building Types to Allowed Widths
@@ -307,7 +308,9 @@ export const TALIAN_5_MODELS = {
     }
 };
 
-export const useConfiguratorStore = create((set, get) => ({
+export const useConfiguratorStore = create(
+    persist(
+        (set, get) => ({
     // ... (existing constants and params)
     roofPitch: 10,
     eaveHeight: 5.5,
@@ -654,6 +657,9 @@ export const useConfiguratorStore = create((set, get) => ({
             showDimensions: state.showDimensions
         };
     }
+), {
+    name: 'nelson-configurator-storage',
+    storage: createJSONStorage(() => localStorage),
 }));
 
 export const useConfiguratorValues = () => {

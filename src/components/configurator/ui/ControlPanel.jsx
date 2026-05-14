@@ -497,7 +497,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                         <div className="param-group">
                             <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Longueur (m)</label>
                             <div className="w-full px-3 py-2 border rounded-lg bg-slate-50 text-sm font-bold text-slate-600">
-                                {(customParams.bayCount * customParams.baySpacing).toFixed(1)}m
+                                {(customParams.bayCount * customParams.baySpacing).toFixed(2)}m
                             </div>
                         </div>
                     </div>
@@ -571,12 +571,12 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                                     <input
                                         type="number"
                                         step="0.1"
-                                        value={parseFloat(customParams.leftPitch.toFixed(1))}
+                                        value={parseFloat(customParams.leftPitch.toFixed(2))}
                                         onChange={(e) => updateCustomParams({ leftPitch: Number(e.target.value) })}
                                         className="w-16 px-2 py-1.5 border rounded-md text-sm font-medium"
                                     />
                                     <span className="text-xs font-bold text-slate-500">°</span>
-                                    <span className="text-[10px] text-slate-400">≈ {(Math.tan(customParams.leftPitch * Math.PI / 180) * 100).toFixed(1)}%</span>
+                                    <span className="text-[10px] text-slate-400">≈ {(Math.tan(customParams.leftPitch * Math.PI / 180) * 100).toFixed(2)}%</span>
                                 </div>
                             </div>
 
@@ -587,12 +587,12 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                                         <input
                                             type="number"
                                             step="0.1"
-                                            value={parseFloat(customParams.rightPitch.toFixed(1))}
+                                            value={parseFloat(customParams.rightPitch.toFixed(2))}
                                             onChange={(e) => updateCustomParams({ rightPitch: Number(e.target.value) })}
                                             className="w-16 px-2 py-1.5 border rounded-md text-sm font-medium"
                                         />
                                         <span className="text-xs font-bold text-slate-500">°</span>
-                                        <span className="text-[10px] text-slate-400">≈ {(Math.tan(customParams.rightPitch * Math.PI / 180) * 100).toFixed(1)}%</span>
+                                        <span className="text-[10px] text-slate-400">≈ {(Math.tan(customParams.rightPitch * Math.PI / 180) * 100).toFixed(2)}%</span>
                                     </div>
                                 </div>
                             )}
