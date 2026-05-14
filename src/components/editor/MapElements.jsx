@@ -2899,7 +2899,7 @@ function OwnerDetailsPanel({ data, onClose, copyToClipboard }) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="p-4 border-b bg-sky-50/60">
-        <div className="flex justify-between items-start mb-2">
+        <div className="flex justify-between items-start">
           <div>
             <h3 className="text-sm font-bold text-sky-900 uppercase tracking-tight">Propriétaires Fonciers</h3>
             <p className="text-[10px] text-sky-600 font-semibold mt-0.5 flex items-center gap-1">
@@ -2909,33 +2909,6 @@ function OwnerDetailsPanel({ data, onClose, copyToClipboard }) {
           <button onClick={onClose} className="p-1.5 hover:bg-white/80 rounded-full transition-colors text-sky-400">
             <XIcon size={16} />
           </button>
-        </div>
-        <div className="flex items-center gap-2 mt-3 p-2 bg-white rounded-lg border border-sky-100 shadow-sm">
-          <MapPin size={14} className="text-sky-500 flex-shrink-0" />
-          <div className="flex-1 min-w-0 flex items-center justify-between">
-            <div className="flex flex-col">
-              <p className="text-[10px] text-sky-400 font-bold uppercase">Parcelle</p>
-              <p className="text-xs font-bold text-sky-900 whitespace-nowrap">
-                {data.code && data.code.length >= 14 
-                  ? `${data.code.substring(8, 10)} ${data.code.substring(10, 14).replace(/^0+/, '') || '0'}`
-                  : (data.code || 'N/A')}
-              </p>
-            </div>
-            {data.address && (
-              <div className="flex items-center gap-1 ml-2 min-w-0">
-                <span className="text-[10px] text-gray-500 italic text-right truncate uppercase flex-1">
-                  {data.address}
-                </span>
-                <button 
-                  onClick={() => copyToClipboard(data.address)} 
-                  className="p-1 hover:bg-sky-50 rounded text-sky-400 transition-colors flex-shrink-0"
-                  title="Copier l'adresse"
-                >
-                  <Copy size={14} />
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
@@ -2950,56 +2923,81 @@ function OwnerDetailsPanel({ data, onClose, copyToClipboard }) {
                   {owner.nature || 'PM'}
                 </span>
               </div>
-              <div className="p-3 space-y-2">
-                <p className="text-sm font-black text-gray-900 leading-tight">{owner.name || 'Dénomination Inconnue'}</p>
-                {owner.address && (
-                  <p className="text-[10px] text-gray-500 italic">{owner.address}</p>
-                )}
-                {siren ? (
-                  <div className="flex items-center gap-2 cursor-pointer" onClick={() => copyToClipboard(siren)}>
-                    <span className="text-[10px] text-gray-400 font-medium">SIREN</span>
-                    <span className="text-[11px] font-bold text-gray-600 flex items-center gap-1 group/siren">
-                      {siren}
-                      <Copy size={10} className="opacity-0 group-hover/siren:opacity-100 text-sky-400" />
+              <div className="p-3 space-y-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-black text-gray-900 leading-tight">{owner.name || 'Dénomination Inconnue'}</p>
+                  
+                  {/* Adresse complète sous le nom avec copie */}
+                  <div className="flex items-center justify-between gap-2 border-l-2 border-sky-200 pl-2">
+                    <span className="text-[10px] text-gray-500 italic uppercase truncate">
+                      {owner.address ? `${owner.address} ${owner.postalCode || ''} ${owner.city || ''}`.trim() : 'Adresse non renseignée'}
+                    </span>
+                    {owner.address && (
+                      <button 
+                        onClick={() => copyToClipboard(`${owner.address} ${owner.postalCode || ''} ${owner.city || ''}`.trim())} 
+                        className="p-1 hover:bg-sky-50 rounded text-sky-400 transition-colors flex-shrink-0"
+                        title="Copier l'adresse complète"
+                      >
+                        <Copy size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Parcelle et SIREN sur la même ligne */}
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Parcelle</span>
+                    <span className="text-xs font-bold text-gray-700">
+                      {data.code && data.code.length >= 14 
+                        ? `${data.code.substring(8, 10)} ${data.code.substring(10, 14).replace(/^0+/, '') || '0'}`
+                        : (data.code || 'N/A')}
                     </span>
                   </div>
-                ) : (
-                  <p className="text-[10px] text-gray-400 italic">Entité publique (sans SIREN commercial)</p>
-                )}
 
-                {/* Liens externes - 2x2 grid */}
-                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  {siren ? (
+                    <div className="flex flex-col items-end cursor-pointer group" onClick={() => copyToClipboard(siren)}>
+                      <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">SIREN</span>
+                      <span className="text-xs font-bold text-gray-700 flex items-center gap-1">
+                        {siren}
+                        <Copy size={10} className="opacity-0 group-hover:opacity-100 text-sky-400 transition-opacity" />
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-end">
+                      <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">SIREN</span>
+                      <span className="text-[10px] text-gray-400 italic">Entité publique</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Liens externes - 3 buttons inline */}
+                <div className="grid grid-cols-3 gap-1 pt-1">
                   {siren && (
                     <>
                       <button
-                        className="h-7 px-2 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 flex items-center justify-center transition-colors"
+                        className="h-7 px-1 text-[8px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 flex items-center justify-center transition-colors"
                         onClick={() => window.open(`https://www.pappers.fr/entreprise/${owner.name?.toLowerCase().replace(/\s+/g,'-')}-${siren}`, '_blank')}
                       >
-                        <ExternalLink size={9} /> Pappers
+                        <ExternalLink size={8} /> Pappers
                       </button>
                       <button
-                        className="h-7 px-2 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 flex items-center justify-center transition-colors"
+                        className="h-7 px-1 text-[8px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 flex items-center justify-center transition-colors"
                         onClick={() => window.open(`https://www.societe.com/societe/${owner.name?.toLowerCase().replace(/\s+/g,'-')}-${siren}.html`, '_blank')}
                       >
-                        <ExternalLink size={9} /> Société.com
+                        <ExternalLink size={8} /> Societe.com
                       </button>
                       <button
-                        className="h-7 px-2 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-center transition-colors"
+                        className="h-7 px-1 text-[8px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-center transition-colors"
                         onClick={() => window.open(`https://annuaire-entreprises.data.gouv.fr/entreprise/${siren}`, '_blank')}
                       >
-                        <ExternalLink size={9} /> Annuaire
-                      </button>
-                      <button
-                        className="h-7 px-2 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-gray-300 hover:bg-gray-50 flex items-center justify-center transition-colors"
-                        onClick={() => window.open(`https://www.infogreffe.fr/recherche-entreprise-dirigeants/resultat-de-recherche-multi-critere?siren=${siren}`, '_blank')}
-                      >
-                        <ExternalLink size={9} /> Infogreffe
+                        <ExternalLink size={8} /> Annuaire
                       </button>
                     </>
                   )}
                   {!siren && (
                     <button
-                      className="col-span-2 h-7 px-2 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-center transition-colors"
+                      className="col-span-3 h-7 px-2 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-center transition-colors"
                       onClick={() => window.open(`https://annuaire-entreprises.data.gouv.fr/rechercher?terme=${encodeURIComponent(owner.name || '')}`, '_blank')}
                     >
                       <ExternalLink size={9} /> Rechercher sur l'Annuaire
@@ -3082,7 +3080,9 @@ function OwnersMoralLayerManager({ layersRef, activeLayers, activeTab, onSelectO
           name: item.denomination,
           nature: item.forme_juridique_abregee,
           siren: item.numero_siren,
-          address: item.adresse
+          address: item.adresse,
+          postalCode: item.code_commune || item['_infos_commune.code_commune'],
+          city: item.nom_commune || item['_infos_commune.nom_commune']
         });
         return acc;
       }, {});
