@@ -2898,28 +2898,28 @@ function OwnerDetailsPanel({ data, onClose, copyToClipboard }) {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="p-4 border-b bg-amber-50/60">
+      <div className="p-4 border-b bg-sky-50/60">
         <div className="flex justify-between items-start mb-2">
           <div>
-            <h3 className="text-sm font-bold text-amber-900 uppercase tracking-tight">Propriétaires Fonciers</h3>
-            <p className="text-[10px] text-amber-600 font-semibold mt-0.5 flex items-center gap-1">
+            <h3 className="text-sm font-bold text-sky-900 uppercase tracking-tight">Propriétaires Fonciers</h3>
+            <p className="text-[10px] text-sky-600 font-semibold mt-0.5 flex items-center gap-1">
               <ShieldCheck size={12} /> Source : DGFiP MAJIC (Koumoul / data.gouv.fr)
             </p>
           </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-white/80 rounded-full transition-colors text-amber-400">
+          <button onClick={onClose} className="p-1.5 hover:bg-white/80 rounded-full transition-colors text-sky-400">
             <XIcon size={16} />
           </button>
         </div>
-        <div className="flex items-center gap-2 mt-3 p-2 bg-white rounded-lg border border-amber-100 shadow-sm">
-          <MapPin size={14} className="text-amber-500" />
+        <div className="flex items-center gap-2 mt-3 p-2 bg-white rounded-lg border border-sky-100 shadow-sm">
+          <MapPin size={14} className="text-sky-500" />
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] text-amber-400 font-bold uppercase">Parcelle</p>
-            <p className="text-xs font-bold text-amber-900 truncate">{data.code || 'N/A'}</p>
+            <p className="text-[10px] text-sky-400 font-bold uppercase">Parcelle</p>
+            <p className="text-xs font-bold text-sky-900 truncate">{data.code || 'N/A'}</p>
           </div>
           {data.address && (
             <span className="text-[10px] text-gray-500 italic truncate max-w-[120px]">{data.address}</span>
           )}
-          <button onClick={() => copyToClipboard(data.code)} className="p-1 hover:bg-amber-50 rounded text-amber-400">
+          <button onClick={() => copyToClipboard(data.code)} className="p-1 hover:bg-sky-50 rounded text-sky-400">
             <Copy size={14} />
           </button>
         </div>
@@ -2929,10 +2929,10 @@ function OwnerDetailsPanel({ data, onClose, copyToClipboard }) {
         {hasOwners ? data.owners.map((owner, idx) => {
           const siren = owner.siren?.startsWith('U') ? null : owner.siren;
           return (
-            <div key={idx} className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden group hover:border-amber-200 transition-colors">
-              <div className="p-3 bg-amber-50 border-b flex justify-between items-center">
+            <div key={idx} className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden group hover:border-sky-200 transition-colors">
+              <div className="p-3 bg-sky-50 border-b flex justify-between items-center">
                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Propriétaire {data.owners.length > 1 ? idx + 1 : ''}</span>
-                <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">
+                <span className="text-[9px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter">
                   {owner.nature || 'PM'}
                 </span>
               </div>
@@ -2946,7 +2946,7 @@ function OwnerDetailsPanel({ data, onClose, copyToClipboard }) {
                     <span className="text-[10px] text-gray-400 font-medium">SIREN</span>
                     <span className="text-[11px] font-bold text-gray-600 flex items-center gap-1 group/siren">
                       {siren}
-                      <Copy size={10} className="opacity-0 group-hover/siren:opacity-100 text-amber-400" />
+                      <Copy size={10} className="opacity-0 group-hover/siren:opacity-100 text-sky-400" />
                     </span>
                   </div>
                 ) : (
@@ -2958,13 +2958,13 @@ function OwnerDetailsPanel({ data, onClose, copyToClipboard }) {
                   {siren && (
                     <>
                       <button
-                        className="h-7 px-2 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 flex items-center justify-center transition-colors"
+                        className="h-7 px-2 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 flex items-center justify-center transition-colors"
                         onClick={() => window.open(`https://www.pappers.fr/entreprise/${owner.name?.toLowerCase().replace(/\s+/g,'-')}-${siren}`, '_blank')}
                       >
                         <ExternalLink size={9} /> Pappers
                       </button>
                       <button
-                        className="h-7 px-2 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 flex items-center justify-center transition-colors"
+                        className="h-7 px-2 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 flex items-center justify-center transition-colors"
                         onClick={() => window.open(`https://www.societe.com/societe/${owner.name?.toLowerCase().replace(/\s+/g,'-')}-${siren}.html`, '_blank')}
                       >
                         <ExternalLink size={9} /> Société.com
@@ -3083,7 +3083,9 @@ function OwnersMoralLayerManager({ layersRef, activeLayers, activeTab, onSelectO
 
         // Requête API Carto IGN pour la géométrie de cette parcelle
         try {
-          const ignUrl = `https://apicarto.ign.fr/api/cadastre/parcelle?code_insee=${code.substring(0,5)}&section=${code.substring(10,12).trim()}&numero=${code.substring(12,16)}&_limit=1`;
+          const section = code.substring(8, 10).trim();
+          const numero = code.substring(10, 14);
+          const ignUrl = `https://apicarto.ign.fr/api/cadastre/parcelle?code_insee=${code.substring(0,5)}&section=${section}&numero=${numero}&_limit=1`;
           const ignRes = await fetch(ignUrl);
           if (!ignRes.ok) continue;
           const ignData = await ignRes.json();
@@ -3092,26 +3094,26 @@ function OwnersMoralLayerManager({ layersRef, activeLayers, activeTab, onSelectO
 
           const parcelItem = grouped[code];
 
-          // Afficher la géométrie en jaune semi-transparent
+          // Afficher la géométrie en bleu ciel semi-transparent
           L.geoJSON(feature.geometry, {
             style: {
-              color: '#d97706',       // Amber-600 (bordure orange-ambré)
+              color: '#0284c7',       // Sky-600 (bordure)
               weight: 2,
               opacity: 0.9,
-              fillColor: '#fbbf24',  // Amber-400 (jaune doré)
-              fillOpacity: 0.30,     // Semi-transparent
+              fillColor: '#38bdf8',  // Sky-400 (bleu ciel)
+              fillOpacity: 0.40,     // Semi-transparent
               dashArray: null
             }
           }).on('click', (e) => {
             L.DomEvent.stopPropagation(e);
             onSelectOwners(parcelItem);
           }).on('mouseover', (e) => {
-            e.target.setStyle({ fillOpacity: 0.55, weight: 3, color: '#b45309' });
+            e.target.setStyle({ fillOpacity: 0.65, weight: 3, color: '#0369a1' }); // Sky-700
           }).on('mouseout', (e) => {
-            e.target.setStyle({ fillOpacity: 0.30, weight: 2, color: '#d97706' });
+            e.target.setStyle({ fillOpacity: 0.40, weight: 2, color: '#0284c7' });
           }).bindTooltip(
             parcelItem.owners.map(o => o.name).join(' / '),
-            { sticky: true, direction: 'top', className: 'text-[10px] font-bold bg-white border-amber-300 shadow' }
+            { sticky: true, direction: 'top', className: 'text-[10px] font-bold bg-white border-sky-300 shadow' }
           ).addTo(layerGroupRef.current);
 
         } catch (err) {
