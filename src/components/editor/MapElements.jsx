@@ -1888,7 +1888,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
               {/* DEBUG: Visualizer for Corner 0 */}
 
               {rotatedCenter && (() => {
-                const predefinedBuildings = features.filter(item => item.type === 'rectangle' && item.isPredefinedBuilding);
+                const predefinedBuildings = features.filter(item => item.type === 'rectangle' && item.isPredefinedBuilding && !item.isBattery);
                 const buildingIndex = predefinedBuildings.findIndex(b => b.id === f.id);
                 // Only show "1/", "2/" if there are multiple predefined buildings
                 const prefix = (predefinedBuildings.length > 1 && buildingIndex !== -1) ? `${buildingIndex + 1}/ ` : '';
@@ -3789,7 +3789,7 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
 
     setFeatures(prev => {
       // Find all predefined buildings
-      const predefinedBuildings = prev.filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding === true || f.buildingName));
+      const predefinedBuildings = prev.filter(f => f.type === 'rectangle' && f.isPredefinedBuilding === true && !f.isBattery);
       if (predefinedBuildings.length === 0) return prev;
 
       // Check if any building needs update
@@ -3903,7 +3903,7 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
 
       // FIX: Use local features state to check for existence of predefined buildings
       // 'features' prop contains the state BEFORE this update (so it contains B1 if we are adding B2)
-      const existingPredefined = features.filter(f => f.type === 'rectangle' && f.isPredefinedBuilding);
+      const existingPredefined = features.filter(f => f.type === 'rectangle' && f.isPredefinedBuilding && !f.isBattery);
       const isSecondBuilding = existingPredefined.length >= 1;
 
       if (isSecondBuilding) {
@@ -3924,7 +3924,7 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
 
       setFeatures(prev => {
         // Find last PREDEFINED BUILDING only (not manual rectangles)
-        const predefinedBuildings = prev.filter(f => f.type === 'rectangle' && f.isPredefinedBuilding === true);
+        const predefinedBuildings = prev.filter(f => f.type === 'rectangle' && f.isPredefinedBuilding === true && !f.isBattery);
         if (predefinedBuildings.length === 0) {
           console.log('[UPDATE BLDG] No predefined buildings found');
           return prev;
@@ -4865,7 +4865,7 @@ export default function MapElements({
         const prevFeatures = prev?.features || [];
 
         // Bidirectional Sync: Check if azimuth needs update
-        const rects = sanitizedFeatures.filter(f => f.type === 'rectangle');
+        const rects = sanitizedFeatures.filter(f => f.type === 'rectangle' && f.isPredefinedBuilding === true && !f.isBattery);
         let newUpdates = { ...prev, features: sanitizedFeatures };
 
         // Iterate over all predefined buildings to sync their azimuths
