@@ -2911,17 +2911,31 @@ function OwnerDetailsPanel({ data, onClose, copyToClipboard }) {
           </button>
         </div>
         <div className="flex items-center gap-2 mt-3 p-2 bg-white rounded-lg border border-sky-100 shadow-sm">
-          <MapPin size={14} className="text-sky-500" />
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] text-sky-400 font-bold uppercase">Parcelle</p>
-            <p className="text-xs font-bold text-sky-900 truncate">{data.code || 'N/A'}</p>
+          <MapPin size={14} className="text-sky-500 flex-shrink-0" />
+          <div className="flex-1 min-w-0 flex items-center justify-between">
+            <div className="flex flex-col">
+              <p className="text-[10px] text-sky-400 font-bold uppercase">Parcelle</p>
+              <p className="text-xs font-bold text-sky-900 whitespace-nowrap">
+                {data.code && data.code.length >= 14 
+                  ? `${data.code.substring(8, 10)} ${data.code.substring(10, 14).replace(/^0+/, '') || '0'}`
+                  : (data.code || 'N/A')}
+              </p>
+            </div>
+            {data.address && (
+              <div className="flex items-center gap-1 ml-2 min-w-0">
+                <span className="text-[10px] text-gray-500 italic text-right truncate uppercase flex-1">
+                  {data.address}
+                </span>
+                <button 
+                  onClick={() => copyToClipboard(data.address)} 
+                  className="p-1 hover:bg-sky-50 rounded text-sky-400 transition-colors flex-shrink-0"
+                  title="Copier l'adresse"
+                >
+                  <Copy size={14} />
+                </button>
+              </div>
+            )}
           </div>
-          {data.address && (
-            <span className="text-[10px] text-gray-500 italic truncate max-w-[120px]">{data.address}</span>
-          )}
-          <button onClick={() => copyToClipboard(data.code)} className="p-1 hover:bg-sky-50 rounded text-sky-400">
-            <Copy size={14} />
-          </button>
         </div>
       </div>
 
