@@ -2976,22 +2976,22 @@ function OwnerDetailsPanel({ data, onClose, copyToClipboard }) {
                   {siren && (
                     <>
                       <button
-                        className="h-7 px-1 text-[8px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 flex items-center justify-center transition-colors"
+                        className="h-7 px-1 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 flex items-center justify-center transition-colors"
                         onClick={() => window.open(`https://www.pappers.fr/entreprise/${owner.name?.toLowerCase().replace(/\s+/g,'-')}-${siren}`, '_blank')}
                       >
-                        <ExternalLink size={8} /> Pappers
+                        Pappers
                       </button>
                       <button
-                        className="h-7 px-1 text-[8px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 flex items-center justify-center transition-colors"
+                        className="h-7 px-1 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 flex items-center justify-center transition-colors"
                         onClick={() => window.open(`https://www.societe.com/societe/${owner.name?.toLowerCase().replace(/\s+/g,'-')}-${siren}.html`, '_blank')}
                       >
-                        <ExternalLink size={8} /> Societe.com
+                        Societe.com
                       </button>
                       <button
-                        className="h-7 px-1 text-[8px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-center transition-colors"
+                        className="h-7 px-1 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-center transition-colors"
                         onClick={() => window.open(`https://annuaire-entreprises.data.gouv.fr/entreprise/${siren}`, '_blank')}
                       >
-                        <ExternalLink size={8} /> Annuaire
+                        Annuaire
                       </button>
                     </>
                   )}
@@ -3000,7 +3000,7 @@ function OwnerDetailsPanel({ data, onClose, copyToClipboard }) {
                       className="col-span-3 h-7 px-2 text-[9px] font-bold uppercase tracking-tight gap-1 border border-gray-200 rounded hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-center transition-colors"
                       onClick={() => window.open(`https://annuaire-entreprises.data.gouv.fr/rechercher?terme=${encodeURIComponent(owner.name || '')}`, '_blank')}
                     >
-                      <ExternalLink size={9} /> Rechercher sur l'Annuaire
+                      Rechercher sur l'Annuaire
                     </button>
                   )}
                 </div>
