@@ -471,7 +471,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
             )}
             */}
 
-            {(activeTenantId === 'green-invest') && (user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessOdoo) && (
+            {(activeTenantId === 'green-invest' || activeTenantId === 'enr-courtage-energie') && (user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessOdoo) && (
               <NavLink to="/odoo" className={({ isActive }) => isActive ? 'nav-link active odoo' : 'nav-link odoo'}>
                 ODOO
               </NavLink>
@@ -741,7 +741,7 @@ export default function AppLayout() {
             )}
             */}
 
-            {(activeTenantId === 'green-invest') && (user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessOdoo) && (
+            {(activeTenantId === 'green-invest' || activeTenantId === 'enr-courtage-energie') && (user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessOdoo) && (
               <NavLink
                 to="/odoo"
                 className={({ isActive }) => isActive ? 'mobile-nav-link active odoo' : 'mobile-nav-link odoo'}

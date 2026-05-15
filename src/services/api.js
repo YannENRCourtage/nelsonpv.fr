@@ -826,9 +826,10 @@ class ApiService {
     // ODOO STAGES (Shared Configuration)
     // ============================================================================
 
-    async subscribeToOdooStages(callback) {
+    async subscribeToOdooStages(tenantId, callback) {
         try {
-            const odooStagesRef = doc(db, 'config', 'odooStages');
+            const docId = tenantId === 'enr-courtage-energie' ? 'odooStages_enr' : 'odooStages';
+            const odooStagesRef = doc(db, 'config', docId);
 
             return onSnapshot(odooStagesRef, (snapshot) => {
                 if (snapshot.exists()) {
@@ -848,9 +849,10 @@ class ApiService {
         }
     }
 
-    async updateOdooStages(stages) {
+    async updateOdooStages(stages, tenantId) {
         try {
-            const odooStagesRef = doc(db, 'config', 'odooStages');
+            const docId = tenantId === 'enr-courtage-energie' ? 'odooStages_enr' : 'odooStages';
+            const odooStagesRef = doc(db, 'config', docId);
             await setDoc(odooStagesRef, {
                 stages: stages,
                 updatedAt: serverTimestamp()

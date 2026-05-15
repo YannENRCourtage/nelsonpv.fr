@@ -32,8 +32,7 @@ import ContactModal from '@/components/crm/ContactModal.jsx';
 import UserAvatar from '@/components/UserAvatar.jsx';
 import { createProjectAssignmentNotification } from '@/services/firebase/comments.service.js';
 
-// --- CONSTANTS ---
-const DEFAULT_STAGES = [
+const GREEN_INVEST_STAGES = [
     "Montage Administratif",
     "Réaliser la DP/PC",
     "Récupérer l'ARE",
@@ -45,6 +44,20 @@ const DEFAULT_STAGES = [
     "Mandater le Notaire"
 ];
 
+const ENR_STAGES = [
+    "Montage Administratif",
+    "Dossier complet",
+    "DP envoyée",
+    "Accord DP récupéré",
+    "Demande de raccordement à réaliser",
+    "Accord ou Refus ENEDIS",
+    "Mandater le Géomètre",
+    "Signer le contrat",
+    "Planifier les travaux"
+];
+
+const DEFAULT_STAGES = GREEN_INVEST_STAGES;
+
 // Define colors for stages
 const STAGE_COLORS = {
     "Montage Administratif": "bg-pink-100 text-pink-800 border-pink-200",
@@ -55,7 +68,14 @@ const STAGE_COLORS = {
     "Récupérer l'accord ou refus ENEDIS": "bg-emerald-100 text-emerald-800 border-emerald-200",
     "Mandater l'huissier": "bg-orange-100 text-orange-800 border-orange-200",
     "Mandater le Géomètre": "bg-amber-100 text-amber-800 border-amber-200",
-    "Mandater le Notaire": "bg-red-100 text-red-800 border-red-200"
+    "Mandater le Notaire": "bg-red-100 text-red-800 border-red-200",
+    // New ones for ENR
+    "Dossier complet": "bg-cyan-100 text-cyan-800 border-cyan-200",
+    "DP envoyée": "bg-blue-100 text-blue-800 border-blue-200",
+    "Accord DP récupéré": "bg-teal-100 text-teal-800 border-teal-200",
+    "Demande de raccordement à réaliser": "bg-lime-100 text-lime-800 border-lime-200",
+    "Signer le contrat": "bg-rose-100 text-rose-800 border-rose-200",
+    "Planifier les travaux": "bg-violet-100 text-violet-800 border-violet-200"
 };
 
 const EXCLUDED_PROJECTS = [
@@ -92,7 +112,7 @@ const DraggableCard = ({ project, onClick, getUserName, className }) => {
         <div
             ref={ref}
             onClick={() => onClick(project)}
-            className={`bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all ${className || 'mb-2 h-max'} ${isDragging ? 'opacity-50' : 'opacity-100'}`}
+            className={`DraggableCard bg-white p-3 rounded-md shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all ${className || 'mb-2 h-max'} ${isDragging ? 'opacity-50' : 'opacity-100'}`}
         >
             <div className="flex justify-between items-start mb-2">
                 <h4 className="text-sm font-semibold text-gray-800 line-clamp-2" title={project.name}>
@@ -831,27 +851,92 @@ const ProjectDetail = ({ project, onBack, onUpdate, stages, resolveUser }) => {
 // --- MAIN PAGE ---
 export default function Odoo() {
     const { projects, setProjects } = useProjects();
-    const { user } = useAuth();
+    const { user, activeTenantId } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
     const [filterAssigned, setFilterAssigned] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
 
+    // Determine default stages based on tenant
+    const currentDefaultStages = useMemo(() => {
+        return activeTenantId === 'enr-courtage-energie' ? ENR_STAGES : GREEN_INVEST_STAGES;
+    }, [activeTenantId]);
+
     // Stages State (Synced with Firestore)
-    const [stages, setStages] = useState(DEFAULT_STAGES);
+    const [stages, setStages] = useState(currentDefaultStages);
     const [stagesLoaded, setStagesLoaded] = useState(false);
 
     const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
     const [newStageName, setNewStageName] = useState("");
     const [isAddingStage, setIsAddingStage] = useState(false);
 
+    // Board Ref for horizontal drag-scroll
+    const boardRef = React.useRef(null);
+
+    useEffect(() => {
+        const board = boardRef.current;
+        if (!board || viewMode === 'list') return;
+
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+
+        const onMouseDown = (e) => {
+            if (e.target.closest('.DraggableCard') || e.target.closest('button') || e.target.closest('input') || e.target.closest('select')) return;
+            
+            isDown = true;
+            board.classList.add('cursor-grabbing');
+            board.classList.remove('cursor-grab');
+            startX = e.pageX - board.offsetLeft;
+            scrollLeft = board.scrollLeft;
+        };
+
+        const onMouseLeave = () => {
+            isDown = false;
+            board.classList.remove('cursor-grabbing');
+            board.classList.add('cursor-grab');
+        };
+
+        const onMouseUp = () => {
+            isDown = false;
+            board.classList.remove('cursor-grabbing');
+            board.classList.add('cursor-grab');
+        };
+
+        const onMouseMove = (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - board.offsetLeft;
+            const walk = (x - startX) * 2;
+            board.scrollLeft = scrollLeft - walk;
+        };
+
+        board.addEventListener('mousedown', onMouseDown);
+        board.addEventListener('mouseleave', onMouseLeave);
+        board.addEventListener('mouseup', onMouseUp);
+        board.addEventListener('mousemove', onMouseMove);
+        board.classList.add('cursor-grab');
+
+        return () => {
+            board.removeEventListener('mousedown', onMouseDown);
+            board.removeEventListener('mouseleave', onMouseLeave);
+            board.removeEventListener('mouseup', onMouseUp);
+            board.removeEventListener('mousemove', onMouseMove);
+            board.classList.remove('cursor-grab');
+            board.classList.remove('cursor-grabbing');
+        };
+    }, [viewMode]);
+
     // Load and sync stages from Firestore
     useEffect(() => {
         const loadStages = async () => {
             try {
                 // Subscribe to the global odooStages document
-                const unsubscribe = await apiService.subscribeToOdooStages((firestoreStages) => {
+                const unsubscribe = await apiService.subscribeToOdooStages(activeTenantId, (firestoreStages) => {
                     if (firestoreStages && firestoreStages.length > 0) {
                         setStages(firestoreStages);
+                    } else {
+                        // If no stages in Firestore, use tenant defaults
+                        setStages(currentDefaultStages);
                     }
                     setStagesLoaded(true);
                 });
@@ -868,7 +953,7 @@ export default function Odoo() {
         return () => {
             unsubPromise.then(unsub => unsub && unsub());
         };
-    }, []);
+    }, [activeTenantId, currentDefaultStages]);
 
     // Save stages to Firestore when changed
     useEffect(() => {
@@ -876,14 +961,14 @@ export default function Odoo() {
             // Debounce to avoid too many writes
             const timer = setTimeout(async () => {
                 try {
-                    await apiService.updateOdooStages(stages);
+                    await apiService.updateOdooStages(stages, activeTenantId);
                 } catch (error) {
                     console.error('Failed to save ODOO stages:', error);
                 }
             }, 500);
             return () => clearTimeout(timer);
         }
-    }, [stages, stagesLoaded]);
+    }, [stages, stagesLoaded, activeTenantId]);
 
     // Auto-migration: Ensure "Montage Administratif" exists (for Admins only, to trigger the sync)
     useEffect(() => {
@@ -982,6 +1067,11 @@ export default function Odoo() {
     const filteredProjects = useMemo(() => {
         let list = projects || [];
 
+        // ENR Filtering: Exclude abandoned projects
+        if (activeTenantId === 'enr-courtage-energie') {
+            list = list.filter(p => (p.status || '').toLowerCase() !== 'abandonné');
+        }
+
         // 1. Valid Projects Only (Default Filtering)
         list = list.filter(p => {
             // If searched, show everything matching
@@ -1010,7 +1100,7 @@ export default function Odoo() {
         }
 
         return list;
-    }, [projects, searchQuery, stages, filterAssigned, user]);
+    }, [projects, searchQuery, stages, filterAssigned, user, activeTenantId]);
 
 
     const updateProjectList = (updatedProject) => {
@@ -1157,6 +1247,10 @@ export default function Odoo() {
     // Default stage for new project dialog from column context
     const [defaultStage, setDefaultStage] = useState(stages[0]);
 
+    useEffect(() => {
+        if (stages.length > 0) setDefaultStage(stages[0]);
+    }, [stages]);
+
     const handleNewProject = (stage) => {
         if (stage) setDefaultStage(stage);
         else setDefaultStage(stages[0]);
@@ -1219,10 +1313,13 @@ export default function Odoo() {
             </div>
 
             {/* Board Content */}
-            <div className={`flex-1 p-6 ${viewMode === 'list' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-x-auto overflow-y-auto min-h-0'}`}>
+            <div 
+                ref={boardRef}
+                className={`flex-1 p-6 ${viewMode === 'list' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-x-auto overflow-y-auto min-h-0 select-none'}`}
+            >
                 <div className={`${viewMode === 'list' ? 'flex flex-col pb-10 space-y-4' : 'flex min-h-full pb-10 gap-4 relative'}`}>
                     {stages.map((stage, index) => {
-                        const stageProjects = filteredProjects.filter(p => (p.odooStage || DEFAULT_STAGES[0]) === stage);
+                        const stageProjects = filteredProjects.filter(p => (p.odooStage || stages[0]) === stage);
                         const stageColor = getStageColor(stage, index);
 
                         return (
