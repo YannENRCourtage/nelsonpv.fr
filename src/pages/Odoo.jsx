@@ -872,60 +872,6 @@ export default function Odoo() {
     // Board Ref for horizontal drag-scroll
     const boardRef = React.useRef(null);
 
-    useEffect(() => {
-        const board = boardRef.current;
-        if (!board || viewMode === 'list') return;
-
-        let isDown = false;
-        let startX;
-        let scrollLeft;
-
-        const onMouseDown = (e) => {
-            if (e.target.closest('.DraggableCard') || e.target.closest('button') || e.target.closest('input') || e.target.closest('select')) return;
-            
-            isDown = true;
-            board.classList.add('cursor-grabbing');
-            board.classList.remove('cursor-grab');
-            startX = e.pageX - board.offsetLeft;
-            scrollLeft = board.scrollLeft;
-        };
-
-        const onMouseLeave = () => {
-            isDown = false;
-            board.classList.remove('cursor-grabbing');
-            board.classList.add('cursor-grab');
-        };
-
-        const onMouseUp = () => {
-            isDown = false;
-            board.classList.remove('cursor-grabbing');
-            board.classList.add('cursor-grab');
-        };
-
-        const onMouseMove = (e) => {
-            if (!isDown) return;
-            e.preventDefault();
-            const x = e.pageX - board.offsetLeft;
-            const walk = (x - startX) * 2;
-            board.scrollLeft = scrollLeft - walk;
-        };
-
-        board.addEventListener('mousedown', onMouseDown);
-        board.addEventListener('mouseleave', onMouseLeave);
-        board.addEventListener('mouseup', onMouseUp);
-        board.addEventListener('mousemove', onMouseMove);
-        board.classList.add('cursor-grab');
-
-        return () => {
-            board.removeEventListener('mousedown', onMouseDown);
-            board.removeEventListener('mouseleave', onMouseLeave);
-            board.removeEventListener('mouseup', onMouseUp);
-            board.removeEventListener('mousemove', onMouseMove);
-            board.classList.remove('cursor-grab');
-            board.classList.remove('cursor-grabbing');
-        };
-    }, [viewMode]);
-
     // Load and sync stages from Firestore
     useEffect(() => {
         const loadStages = async () => {
@@ -1243,6 +1189,60 @@ export default function Odoo() {
 
     // View Mode State: 'kanban' or 'list'
     const [viewMode, setViewMode] = useState('kanban');
+
+    useEffect(() => {
+        const board = boardRef.current;
+        if (!board || viewMode === 'list') return;
+
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+
+        const onMouseDown = (e) => {
+            if (e.target.closest('.DraggableCard') || e.target.closest('button') || e.target.closest('input') || e.target.closest('select')) return;
+            
+            isDown = true;
+            board.classList.add('cursor-grabbing');
+            board.classList.remove('cursor-grab');
+            startX = e.pageX - board.offsetLeft;
+            scrollLeft = board.scrollLeft;
+        };
+
+        const onMouseLeave = () => {
+            isDown = false;
+            board.classList.remove('cursor-grabbing');
+            board.classList.add('cursor-grab');
+        };
+
+        const onMouseUp = () => {
+            isDown = false;
+            board.classList.remove('cursor-grabbing');
+            board.classList.add('cursor-grab');
+        };
+
+        const onMouseMove = (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - board.offsetLeft;
+            const walk = (x - startX) * 2;
+            board.scrollLeft = scrollLeft - walk;
+        };
+
+        board.addEventListener('mousedown', onMouseDown);
+        board.addEventListener('mouseleave', onMouseLeave);
+        board.addEventListener('mouseup', onMouseUp);
+        board.addEventListener('mousemove', onMouseMove);
+        board.classList.add('cursor-grab');
+
+        return () => {
+            board.removeEventListener('mousedown', onMouseDown);
+            board.removeEventListener('mouseleave', onMouseLeave);
+            board.removeEventListener('mouseup', onMouseUp);
+            board.removeEventListener('mousemove', onMouseMove);
+            board.classList.remove('cursor-grab');
+            board.classList.remove('cursor-grabbing');
+        };
+    }, [viewMode]);
 
     // Default stage for new project dialog from column context
     const [defaultStage, setDefaultStage] = useState(stages[0]);
