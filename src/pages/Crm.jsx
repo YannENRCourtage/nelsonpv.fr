@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { useProjects } from '@/contexts/ProjectContext.jsx';
+import * as XLSX from 'xlsx';
 import { generatePdfForProject } from '@/components/AppLayout.jsx';
 import { apiService } from '@/services/api.js';
 import { toast } from '@/components/ui/use-toast.js';
@@ -123,6 +124,8 @@ export default function Crm() {
   // États principaux
   const [activeTab, setActiveTab] = useState('dashboard');
   const [viewMode, setViewMode] = useState('list');
+  const [selectedProjects, setSelectedProjects] = useState([]);
+  const [selectedContacts, setSelectedContacts] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [opportunities, setOpportunities] = useState([]); // Ajout pour éviter le crash
@@ -240,6 +243,12 @@ export default function Crm() {
       fetchData();
     }
   }, [user, activeTenantId]);
+
+  // Réinitialiser la sélection au changement d'onglet
+  useEffect(() => {
+    setSelectedProjects([]);
+    setSelectedContacts([]);
+  }, [activeTab]);
 
   // Helpers
   const formatTime = (timestamp) => {
@@ -665,6 +674,114 @@ export default function Crm() {
     return false;
   };
 
+  // --- EXPORT EXCEL ---
+  const exportProjectsToExcel = (projectsToExport) => {
+    try {
+      const data = projectsToExport.map(p => ({
+        'Nom Projet': [p.name, p.zip, p.city].filter(Boolean).join(' ').toUpperCase() || 'Sans nom',
+        'Client': `${p.name || ''} ${p.firstName || ''}`.trim() || 'Sans nom',
+        'Commercial': p.commercial || '-',
+        'Chef de projet': p.assignedUser || '-',
+        'Adresse': p.address || '-',
+        'Code Postal': p.zip || '-',
+        'Ville': p.city || '-',
+        'GPS': p.gps || '-',
+        'Type': p.type || 'Construction',
+        'Statut': p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau')
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Projets');
+
+      worksheet['!cols'] = [
+        { wch: 30 }, { wch: 25 }, { wch: 20 }, { wch: 20 }, { wch: 35 }, 
+        { wch: 12 }, { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 15 }
+      ];
+
+      XLSX.writeFile(workbook, `Nelson_Projets_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast({ title: "Export réussi", description: "Le fichier Excel a été téléchargé." });
+    } catch (error) {
+      console.error("Export projects error:", error);
+      toast({ title: "Erreur d'export", description: "Impossible d'exporter les projets.", variant: "destructive" });
+    }
+  };
+
+  const exportContactsToExcel = (contactsToExport) => {
+    try {
+      const data = contactsToExport.map(c => {
+        const associatedProjects = projects.filter(p =>
+          (p.email && c.email && p.email.toLowerCase() === c.email.toLowerCase()) ||
+          (p.name && c.name && p.name.toLowerCase() === c.name.toLowerCase()) ||
+          (p.id === c.projectId)
+        );
+        const projectCommercial = associatedProjects.find(p => p.commercial)?.commercial;
+        const commercial = projectCommercial || c.createdByFirstName || c.user || 'Utilisateur';
+
+        return {
+          'Nom Complet': c.name || '-',
+          'Commercial': commercial,
+          'Email': c.email || '-',
+          'Téléphone': c.phone || '-',
+          'Adresse': c.address || '-',
+          'Code Postal': c.zipCode || '-',
+          'Ville': c.city || '-',
+          'Statut': c.status === 'draft' ? 'Nouveau' : (c.status || 'Nouveau'),
+          'Nombre de Projets': associatedProjects.length
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Contacts');
+
+      worksheet['!cols'] = [
+        { wch: 25 }, { wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 35 }, 
+        { wch: 12 }, { wch: 20 }, { wch: 15 }, { wch: 18 }
+      ];
+
+      XLSX.writeFile(workbook, `Nelson_Contacts_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast({ title: "Export réussi", description: "Le fichier Excel a été téléchargé." });
+    } catch (error) {
+      console.error("Export contacts error:", error);
+      toast({ title: "Erreur d'export", description: "Impossible d'exporter les contacts.", variant: "destructive" });
+    }
+  };
+
+  // --- SELECTION PROJECTS ---
+  const handleSelectProject = (projectId) => {
+    setSelectedProjects(prev =>
+      prev.includes(projectId)
+        ? prev.filter(id => id !== projectId)
+        : [...prev, projectId]
+    );
+  };
+
+  const handleSelectAllProjects = () => {
+    if (selectedProjects.length === filteredProjects.length) {
+      setSelectedProjects([]);
+    } else {
+      setSelectedProjects(filteredProjects.map(p => p.id));
+    }
+  };
+
+  // --- SELECTION CONTACTS ---
+  const handleSelectContact = (contactId) => {
+    setSelectedContacts(prev =>
+      prev.includes(contactId)
+        ? prev.filter(id => id !== contactId)
+        : [...prev, contactId]
+    );
+  };
+
+  const handleSelectAllContacts = () => {
+    if (selectedContacts.length === filteredContacts.length) {
+      setSelectedContacts([]);
+    } else {
+      setSelectedContacts(filteredContacts.map(c => c.id));
+    }
+  };
+
 
   const handleAddTask = () => {
     setEditingTask({ id: Date.now(), title: '', contact: '', dueDate: new Date().toISOString().split('T')[0], priority: 'Moyenne', completed: false, color: 'bg-orange-500' });
@@ -856,7 +973,28 @@ export default function Crm() {
             </button>
           </div>
 
-          {/* Bouton dédupliquer - supprimé pour automatisation */}
+          {selectedContacts.length > 0 ? (
+            <Button
+              onClick={() => {
+                const toExport = contacts.filter(c => selectedContacts.includes(c.id));
+                exportContactsToExcel(toExport);
+              }}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md flex items-center gap-2"
+            >
+              <FileDown className="w-4 h-4" />
+              Exporter la sélection ({selectedContacts.length})
+            </Button>
+          ) : (
+            <Button
+              onClick={() => exportContactsToExcel(filteredContacts)}
+              variant="outline"
+              className="border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-2 shadow-sm"
+              disabled={filteredContacts.length === 0}
+            >
+              <FileDown className="w-4 h-4 text-emerald-600" />
+              Exporter Excel ({filteredContacts.length})
+            </Button>
+          )}
 
           <Button
             onClick={handleAddContact}
@@ -871,8 +1009,16 @@ export default function Crm() {
       {viewMode === 'card' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredContacts.map((contact) => (
-            <div key={contact.id} id={`contact-${contact.id}`} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-lg transition-all duration-300">
-              <div className="flex items-start justify-between mb-4">
+            <div key={contact.id} id={`contact-${contact.id}`} className={`bg-white rounded-2xl shadow-sm border p-6 hover:shadow-lg transition-all duration-300 relative ${selectedContacts.includes(contact.id) ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50/5' : 'border-slate-200'}`}>
+              <div className="absolute top-4 left-4 z-10">
+                <input
+                  type="checkbox"
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                  checked={selectedContacts.includes(contact.id)}
+                  onChange={() => handleSelectContact(contact.id)}
+                />
+              </div>
+              <div className="flex items-start justify-between mb-4 pl-6">
                 <div className="flex items-center gap-3">
                   <div className={`${contact.color} w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg`}>
                     {contact.name.split(' ').map(n => n[0]).join('')}
@@ -972,6 +1118,14 @@ export default function Crm() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase w-10">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                      checked={filteredContacts.length > 0 && selectedContacts.length === filteredContacts.length}
+                      onChange={handleSelectAllContacts}
+                    />
+                  </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Contact</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Commercial</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Email</th>
@@ -986,7 +1140,15 @@ export default function Crm() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredContacts.map((contact) => (
-                  <tr key={contact.id} id={`contact-${contact.id}`} className="hover:bg-slate-50 transition-colors">
+                  <tr key={contact.id} id={`contact-${contact.id}`} className={`hover:bg-slate-50 transition-colors ${selectedContacts.includes(contact.id) ? 'bg-blue-50/20' : ''}`}>
+                    <td className="px-6 py-4 w-10">
+                      <input
+                        type="checkbox"
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                        checked={selectedContacts.includes(contact.id)}
+                        onChange={() => handleSelectContact(contact.id)}
+                      />
+                    </td>
                     <td className="px-6 py-4 font-medium text-slate-900">{contact.name}</td>
                     <td className="px-6 py-4">
                       {(() => {
@@ -1525,6 +1687,29 @@ export default function Crm() {
             </button>
           </div>
 
+          {selectedProjects.length > 0 ? (
+            <Button
+              onClick={() => {
+                const toExport = projects.filter(p => selectedProjects.includes(p.id));
+                exportProjectsToExcel(toExport);
+              }}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md flex items-center gap-2"
+            >
+              <FileDown className="w-4 h-4" />
+              Exporter la sélection ({selectedProjects.length})
+            </Button>
+          ) : (
+            <Button
+              onClick={() => exportProjectsToExcel(filteredProjects)}
+              variant="outline"
+              className="border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center gap-2 shadow-sm"
+              disabled={filteredProjects.length === 0}
+            >
+              <FileDown className="w-4 h-4 text-emerald-600" />
+              Exporter Excel ({filteredProjects.length})
+            </Button>
+          )}
+
           <Button
             onClick={() => navigate('/project/new/edit')}
             className="hidden lg:flex bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
@@ -1547,6 +1732,14 @@ export default function Crm() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase w-10">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                      checked={filteredProjects.length > 0 && selectedProjects.length === filteredProjects.length}
+                      onChange={handleSelectAllProjects}
+                    />
+                  </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Nom Projet</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Client</th>
                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Commercial</th>
@@ -1562,7 +1755,15 @@ export default function Crm() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredProjects.map((project) => (
-                  <tr key={project.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={project.id} className={`hover:bg-slate-50 transition-colors ${selectedProjects.includes(project.id) ? 'bg-blue-50/20' : ''}`}>
+                    <td className="px-6 py-4 w-10">
+                      <input
+                        type="checkbox"
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                        checked={selectedProjects.includes(project.id)}
+                        onChange={() => handleSelectProject(project.id)}
+                      />
+                    </td>
                     <td className="px-6 py-4 font-medium text-slate-900">
                       {[project.name, project.zip, project.city].filter(Boolean).join(' ').toUpperCase() || 'Sans nom'}
                     </td>
@@ -1700,8 +1901,16 @@ export default function Crm() {
         ) : (
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects.map((project) => (
-              <div key={project.id} className="bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-start mb-2">
+              <div key={project.id} className={`bg-white border rounded-xl p-4 hover:shadow-md transition-shadow relative ${selectedProjects.includes(project.id) ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50/5' : 'border-slate-200'}`}>
+                <div className="absolute top-4 left-4 z-10">
+                  <input
+                    type="checkbox"
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                    checked={selectedProjects.includes(project.id)}
+                    onChange={() => handleSelectProject(project.id)}
+                  />
+                </div>
+                <div className="flex justify-between items-start mb-2 pl-6">
                   <div className="font-bold text-lg text-slate-800">{project.projectSize || project.name || 'Projet'}</div>
                   <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
                     {project.type || 'Standard'}
