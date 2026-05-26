@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 
 // Dimensions A4 Paysage : 297 x 210 mm
 const PAGE_STYLE = {
@@ -18,7 +18,7 @@ const HEADER_STYLE = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottom: '2px solid #10b981', // Green theme for PC
+    borderBottom: '2px solid #10b981',
     paddingBottom: '5mm',
     marginBottom: '5mm'
 };
@@ -54,6 +54,71 @@ const Footer = ({ project }) => (
         <div>Date : {new Date().toLocaleDateString('fr-FR')}</div>
     </div>
 );
+
+// Composant réutilisable pour uploader une image au clic
+const ImageUploadZone = ({ isInteractive, label, photo, onUpload, defaultText }) => {
+    const fileInputRef = useRef(null);
+
+    const handleClick = () => {
+        if (isInteractive && fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => onUpload(event.target.result);
+            reader.readAsDataURL(file);
+        }
+    };
+
+    return (
+        <div 
+            onClick={handleClick}
+            style={{ 
+                width: '100%', height: '100%', position: 'relative', 
+                cursor: isInteractive ? 'pointer' : 'default',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backgroundColor: isInteractive && !photo ? 'rgba(16,185,129,0.05)' : 'transparent',
+                transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+                if (isInteractive && !photo) e.currentTarget.style.backgroundColor = 'rgba(16,185,129,0.1)';
+            }}
+            onMouseLeave={(e) => {
+                if (isInteractive && !photo) e.currentTarget.style.backgroundColor = 'rgba(16,185,129,0.05)';
+            }}
+        >
+            {isInteractive && (
+                <input 
+                    type="file" 
+                    accept="image/*" 
+                    ref={fileInputRef} 
+                    style={{ display: 'none' }} 
+                    onChange={handleFileChange} 
+                />
+            )}
+            {photo ? (
+                <img src={photo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#64748b' }}>
+                    {isInteractive ? (
+                        <>
+                            <div style={{ padding: '8px 16px', background: '#10b981', color: 'white', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', pointerEvents: 'none' }}>
+                                + Charger une image
+                            </div>
+                            <span style={{ fontSize: '11px', pointerEvents: 'none' }}>{label || defaultText}</span>
+                        </>
+                    ) : (
+                        <span style={{ fontSize: '12pt', fontWeight: 'bold' }}>{defaultText}</span>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
 
 export const PlateCover = ({ project }) => (
     <div style={PAGE_STYLE} id="pc-plate-cover">
@@ -92,7 +157,7 @@ export const PlateCover = ({ project }) => (
     </div>
 );
 
-export const PlateSituation = ({ project, captures }) => {
+export const PlateSituation = ({ project, captures, isInteractive, onUpload }) => {
     return (
         <div style={PAGE_STYLE} id="pc-plate-situation">
             <PlateHeader title="PC1 : PLAN DE SITUATION" project={project} />
@@ -102,11 +167,13 @@ export const PlateSituation = ({ project, captures }) => {
                         Vue Cartographique (IGN / OpenStreetMap)
                     </div>
                     <div style={{ flex: 1, background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {captures?.cadastre || captures?.ign ? (
-                            <img src={captures?.cadastre || captures?.ign} alt="Plan IGN/Cadastre" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                            <span style={{ color: '#64748b' }}>Plan de situation non défini</span>
-                        )}
+                        <ImageUploadZone 
+                            isInteractive={isInteractive} 
+                            photo={captures?.ign || captures?.cadastre} 
+                            onUpload={(data) => onUpload('ign', data)} 
+                            defaultText="Plan de situation non défini" 
+                            label="Plan IGN"
+                        />
                     </div>
                 </div>
                 <div style={{ flex: 1, border: '1px solid #ccc', borderRadius: '2mm', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -114,11 +181,13 @@ export const PlateSituation = ({ project, captures }) => {
                         Vue Aérienne (Géoportail)
                     </div>
                     <div style={{ flex: 1, background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {captures?.satellite ? (
-                            <img src={captures.satellite} alt="Vue Aérienne" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                            <span style={{ color: '#64748b' }}>Vue aérienne non définie</span>
-                        )}
+                        <ImageUploadZone 
+                            isInteractive={isInteractive} 
+                            photo={captures?.satellite} 
+                            onUpload={(data) => onUpload('satellite', data)} 
+                            defaultText="Vue aérienne non définie" 
+                            label="Vue Aérienne"
+                        />
                     </div>
                 </div>
             </div>
@@ -127,17 +196,19 @@ export const PlateSituation = ({ project, captures }) => {
     );
 };
 
-export const PlateMasse = ({ project, captures }) => {
+export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
     return (
         <div style={PAGE_STYLE} id="pc-plate-masse">
             <PlateHeader title="PC2 : PLAN DE MASSE" project={project} />
             <div style={{ flex: 1, display: 'flex', gap: '5mm', flexDirection: 'column' }}>
                  <div style={{ flex: 1, background: '#e2e8f0', border: '1px solid #ccc', borderRadius: '2mm', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                    {captures?.masse_projet ? (
-                        <img src={captures.masse_projet} alt="Plan de Masse" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                    ) : (
-                        <span style={{ color: '#64748b' }}>Plan de masse non défini (capturez depuis l'éditeur)</span>
-                    )}
+                    <ImageUploadZone 
+                        isInteractive={isInteractive} 
+                        photo={captures?.masse_projet} 
+                        onUpload={(data) => onUpload('masse_projet', data)} 
+                        defaultText="Plan de masse à charger" 
+                        label="Plan de Masse"
+                    />
                 </div>
             </div>
             <Footer project={project} />
@@ -145,31 +216,39 @@ export const PlateMasse = ({ project, captures }) => {
     );
 };
 
-export const PlateSection = ({ project }) => {
+export const PlateSection = ({ project, captures, isInteractive, onUpload }) => {
     return (
         <div style={PAGE_STYLE} id="pc-plate-section">
             <PlateHeader title="PC3 : PLAN EN COUPE" project={project} />
-            <div style={{ flex: 1, border: '1px solid #ccc', borderRadius: '2mm', padding: '5mm', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
-                <div style={{ textAlign: 'center', color: '#64748b' }}>
-                    <p style={{ fontSize: '12pt', fontWeight: 'bold' }}>Plan en coupe à insérer</p>
-                    <p style={{ fontSize: '10pt' }}>(Schéma type de structure ou coupe terrain depuis l'éditeur 3D)</p>
-                </div>
+            <div style={{ flex: 1, border: '1px solid #ccc', borderRadius: '2mm', padding: '5mm', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', overflow: 'hidden' }}>
+                <ImageUploadZone 
+                    isInteractive={isInteractive} 
+                    photo={captures?.coupe_projet} 
+                    onUpload={(data) => onUpload('coupe_projet', data)} 
+                    defaultText="Plan en coupe à insérer" 
+                    label="Plan en coupe"
+                />
             </div>
             <Footer project={project} />
         </div>
     );
 };
 
-export const PlateNotice = ({ project, noticeText }) => {
+export const PlateNotice = ({ project, noticeText, onNoticeChange, isInteractive }) => {
     return (
         <div style={PAGE_STYLE} id="pc-plate-notice">
             <PlateHeader title="PC4 : NOTICE DESCRIPTIVE (NOTICE AGRICOLE)" project={project} showBranding={true} />
             <div style={{ flex: 1, padding: '5mm', overflowY: 'hidden', fontSize: '10pt', lineHeight: '1.5', color: '#1e293b', border: '1px solid #ccc', borderRadius: '2mm', background: '#fff' }}>
-                {noticeText ? (
-                    <div style={{ whiteSpace: 'pre-wrap' }}>{noticeText}</div>
+                {isInteractive ? (
+                    <textarea 
+                        style={{ width: '100%', height: '100%', border: 'none', resize: 'none', outline: 'none', fontSize: '10pt', fontFamily: 'Arial, sans-serif' }}
+                        value={noticeText}
+                        onChange={(e) => onNoticeChange && onNoticeChange(e.target.value)}
+                        placeholder="Saisissez ou collez la notice descriptive / notice agricole du projet ici..."
+                    />
                 ) : (
-                    <div style={{ color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', marginTop: '20mm' }}>
-                        Aucune notice descriptive saisie. Veuillez la compléter dans l'interface.
+                    <div style={{ whiteSpace: 'pre-wrap' }}>
+                        {noticeText || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Aucune notice descriptive saisie.</span>}
                     </div>
                 )}
             </div>
@@ -178,73 +257,84 @@ export const PlateNotice = ({ project, noticeText }) => {
     );
 };
 
-export const PlateFacades = ({ project }) => {
+export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => {
     return (
         <div style={PAGE_STYLE} id="pc-plate-facades">
             <PlateHeader title="PC5 : PLAN DES FAÇADES ET TOITURES" project={project} />
-            <div style={{ flex: 1, border: '1px solid #ccc', borderRadius: '2mm', padding: '5mm', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
-                <div style={{ textAlign: 'center', color: '#64748b' }}>
-                    <p style={{ fontSize: '12pt', fontWeight: 'bold' }}>Plan des façades à insérer</p>
-                    <p style={{ fontSize: '10pt' }}>(Généré par le configurateur 3D)</p>
-                </div>
+            <div style={{ flex: 1, border: '1px solid #ccc', borderRadius: '2mm', padding: '5mm', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', overflow: 'hidden' }}>
+                <ImageUploadZone 
+                    isInteractive={isInteractive} 
+                    photo={captures?.facades_projet} 
+                    onUpload={(data) => onUpload('facades_projet', data)} 
+                    defaultText="Plan des façades à insérer" 
+                    label="Plan des façades"
+                />
             </div>
             <Footer project={project} />
         </div>
     );
 };
 
-export const PlateInsertion = ({ project, photos }) => (
+export const PlateInsertion = ({ project, photos, isInteractive, onUpload }) => (
     <div style={PAGE_STYLE} id="pc-plate-insertion">
         <PlateHeader title="PC6 : DOCUMENT GRAPHIQUE D'INSERTION PAYSAGÈRE" project={project} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5mm' }}>
             <div style={{ height: '75mm', border: '1px solid #ccc', borderRadius: '2mm', position: 'relative', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(255,255,255,0.9)', padding: '1mm 3mm', borderRadius: '1mm', fontSize: '9pt', fontWeight: 'bold' }}>
+                <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(255,255,255,0.9)', padding: '1mm 3mm', borderRadius: '1mm', fontSize: '9pt', fontWeight: 'bold', zIndex: 10 }}>
                     AVANT PROJET
                 </div>
-                {photos?.avant ? (
-                    <img src={photos.avant} alt="Avant projet" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                    <span style={{ color: '#64748b' }}>Photo avant projet manquante</span>
-                )}
+                <ImageUploadZone 
+                    isInteractive={isInteractive} 
+                    photo={photos?.avant} 
+                    onUpload={(data) => onUpload('avant', data)} 
+                    defaultText="Photo avant projet manquante" 
+                    label="Photo Avant"
+                />
             </div>
             <div style={{ height: '75mm', border: '1px solid #ccc', borderRadius: '2mm', position: 'relative', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(255,255,255,0.9)', padding: '1mm 3mm', borderRadius: '1mm', fontSize: '9pt', fontWeight: 'bold' }}>
+                <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(255,255,255,0.9)', padding: '1mm 3mm', borderRadius: '1mm', fontSize: '9pt', fontWeight: 'bold', zIndex: 10 }}>
                     APRÈS PROJET (Simulation)
                 </div>
-                {photos?.apres ? (
-                    <img src={photos.apres} alt="Après projet" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                    <span style={{ color: '#64748b' }}>Simulation d'insertion manquante</span>
-                )}
+                <ImageUploadZone 
+                    isInteractive={isInteractive} 
+                    photo={photos?.apres} 
+                    onUpload={(data) => onUpload('apres', data)} 
+                    defaultText="Simulation d'insertion manquante" 
+                    label="Simulation Après"
+                />
             </div>
         </div>
         <Footer project={project} />
     </div>
 );
 
-export const PlateEnvProcheLointain = ({ project, photos }) => (
+export const PlateEnvProcheLointain = ({ project, photos, isInteractive, onUpload }) => (
     <div style={PAGE_STYLE} id="pc-plate-env">
         <PlateHeader title="PC7 / PC8 : ENVIRONNEMENT PROCHE ET LOINTAIN" project={project} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5mm' }}>
             <div style={{ height: '75mm', border: '1px solid #ccc', borderRadius: '2mm', position: 'relative', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(255,255,255,0.9)', padding: '1mm 3mm', borderRadius: '1mm', fontSize: '9pt', fontWeight: 'bold' }}>
+                <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(255,255,255,0.9)', padding: '1mm 3mm', borderRadius: '1mm', fontSize: '9pt', fontWeight: 'bold', zIndex: 10 }}>
                     PC7 - ENVIRONNEMENT PROCHE
                 </div>
-                {photos?.proche ? (
-                    <img src={photos.proche} alt="Environnement Proche" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                    <span style={{ color: '#64748b' }}>Photo de l'environnement proche manquante</span>
-                )}
+                <ImageUploadZone 
+                    isInteractive={isInteractive} 
+                    photo={photos?.proche} 
+                    onUpload={(data) => onUpload('proche', data)} 
+                    defaultText="Photo de l'environnement proche manquante" 
+                    label="Photo Proche"
+                />
             </div>
             <div style={{ height: '75mm', border: '1px solid #ccc', borderRadius: '2mm', position: 'relative', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(255,255,255,0.9)', padding: '1mm 3mm', borderRadius: '1mm', fontSize: '9pt', fontWeight: 'bold' }}>
+                <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(255,255,255,0.9)', padding: '1mm 3mm', borderRadius: '1mm', fontSize: '9pt', fontWeight: 'bold', zIndex: 10 }}>
                     PC8 - ENVIRONNEMENT LOINTAIN
                 </div>
-                {photos?.lointain ? (
-                    <img src={photos.lointain} alt="Environnement Lointain" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                    <span style={{ color: '#64748b' }}>Photo de l'environnement lointain manquante</span>
-                )}
+                <ImageUploadZone 
+                    isInteractive={isInteractive} 
+                    photo={photos?.lointain} 
+                    onUpload={(data) => onUpload('lointain', data)} 
+                    defaultText="Photo de l'environnement lointain manquante" 
+                    label="Photo Lointain"
+                />
             </div>
         </div>
         <Footer project={project} />

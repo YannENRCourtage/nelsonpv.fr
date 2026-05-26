@@ -17,6 +17,33 @@ import {
     PlateEnvProcheLointain
 } from '@/components/editor/PCPlates';
 
+const DEFAULT_NOTICE_TEXT = `1. DONNÉES GÉNÉRALES DE L'ACTIVITÉ DE L'UTILISATEUR
+- Statut de l'exploitation : 
+- N° SIREN : 
+- N° Pacage : 
+- Adresse du siège d'exploitation : 
+- Surface agricole utilisée (SAU) : 
+
+2. VOS ACTIVITÉS ACTUELLES
+- Nature des cultures : 
+- Activité d'élevage (type et effectifs) : 
+- Autres activités : 
+
+3. VOTRE PROJET CONCERNE
+[X] La construction d'un bâtiment agricole
+- Surface du bâtiment : ... m²
+- Type de toiture : Bi-pente / Mono-pente
+- Est-il prévu un équipement photovoltaïque ? Oui
+
+4. DESTINATIONS DU NOUVEAU BÂTIMENT
+- Stockage matériel : ... m²
+- Stockage fourrage / paille : ... m²
+- Logement des animaux : ... m²
+
+5. ÉLÉMENTS COMPLÉMENTAIRES
+...
+`;
+
 export default function PCBatimentTab({
     projects,
     loadingProjects,
@@ -27,7 +54,7 @@ export default function PCBatimentTab({
     const [captureStep, setCaptureStep] = useState('');
     
     // User inputs for PC
-    const [noticeText, setNoticeText] = useState(selectedProject?.noticeAgricole || '');
+    const [noticeText, setNoticeText] = useState(selectedProject?.noticeAgricole || DEFAULT_NOTICE_TEXT);
     const [pcPhotos, setPcPhotos] = useState({
         avant: null,
         apres: null,
@@ -38,30 +65,30 @@ export default function PCBatimentTab({
     // Sync state when project changes
     React.useEffect(() => {
         if (selectedProject) {
-            setNoticeText(selectedProject.noticeAgricole || '');
+            setNoticeText(selectedProject.noticeAgricole || DEFAULT_NOTICE_TEXT);
             setPcPhotos(selectedProject.pcPhotos || { avant: null, apres: null, proche: null, lointain: null });
         }
-    }, [selectedProject]);
+    }, [selectedProject?.id]);
 
-    const handlePhotoUpload = (key, e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const newPhotos = { ...pcPhotos, [key]: event.target.result };
-                setPcPhotos(newPhotos);
-                if (selectedProject) {
-                    selectedProject.pcPhotos = newPhotos;
-                }
-            };
-            reader.readAsDataURL(file);
+    const handleUpload = (key, dataUrl) => {
+        if (['avant', 'apres', 'proche', 'lointain'].includes(key)) {
+            const newPhotos = { ...pcPhotos, [key]: dataUrl };
+            setPcPhotos(newPhotos);
+            if (selectedProject) selectedProject.pcPhotos = newPhotos;
+        } else {
+            const currentCaptures = selectedProject?.urbanisme_captures || {};
+            const newCaptures = { ...currentCaptures, [key]: dataUrl };
+            if (selectedProject) {
+                const updated = { ...selectedProject, urbanisme_captures: newCaptures };
+                setSelectedProject(updated);
+            }
         }
     };
 
-    const handleNoticeChange = (e) => {
-        setNoticeText(e.target.value);
+    const handleNoticeChange = (value) => {
+        setNoticeText(value);
         if (selectedProject) {
-            selectedProject.noticeAgricole = e.target.value;
+            selectedProject.noticeAgricole = value;
         }
     };
 
@@ -223,43 +250,7 @@ export default function PCBatimentTab({
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-                        {/* SAISIE UTILISATEUR */}
-                        <div style={{ background: 'white', padding: 24, borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-                            <h3 style={{ fontWeight: 800, marginBottom: 16, color: '#1e293b' }}>Complétez le dossier PC</h3>
-                            
-                            <div style={{ marginBottom: 24 }}>
-                                <label style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>Notice Agricole / Notice Descriptive (PC04)</label>
-                                <Textarea 
-                                    value={noticeText} 
-                                    onChange={handleNoticeChange} 
-                                    placeholder="Saisissez ou collez la notice descriptive du projet..."
-                                    rows={6}
-                                />
-                            </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                                <div>
-                                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>Photo Avant Projet (PC06)</label>
-                                    <Input type="file" accept="image/*" onChange={(e) => handlePhotoUpload('avant', e)} />
-                                    {pcPhotos.avant && <img src={pcPhotos.avant} alt="Avant" style={{ marginTop: 8, height: 100, objectFit: 'cover', borderRadius: 8 }} />}
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>Insertion Paysagère (Après Projet) (PC06)</label>
-                                    <Input type="file" accept="image/*" onChange={(e) => handlePhotoUpload('apres', e)} />
-                                    {pcPhotos.apres && <img src={pcPhotos.apres} alt="Après" style={{ marginTop: 8, height: 100, objectFit: 'cover', borderRadius: 8 }} />}
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>Photo Environnement Proche (PC07)</label>
-                                    <Input type="file" accept="image/*" onChange={(e) => handlePhotoUpload('proche', e)} />
-                                    {pcPhotos.proche && <img src={pcPhotos.proche} alt="Proche" style={{ marginTop: 8, height: 100, objectFit: 'cover', borderRadius: 8 }} />}
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>Photo Environnement Lointain (PC08)</label>
-                                    <Input type="file" accept="image/*" onChange={(e) => handlePhotoUpload('lointain', e)} />
-                                    {pcPhotos.lointain && <img src={pcPhotos.lointain} alt="Lointain" style={{ marginTop: 8, height: 100, objectFit: 'cover', borderRadius: 8 }} />}
-                                </div>
-                            </div>
-                        </div>
 
                         {/* PLANCHES PREVIEWS */}
                         <PCPlatePreview id="pc-plate-cover" label="Page de garde" clientLinked>
@@ -267,31 +258,31 @@ export default function PCBatimentTab({
                         </PCPlatePreview>
 
                         <PCPlatePreview id="pc-plate-situation" label="PC01 — Plan de situation" clientLinked>
-                            <PlateSituation project={selectedProject} captures={selectedProject.urbanisme_captures || {}} />
+                            <PlateSituation project={selectedProject} captures={selectedProject.urbanisme_captures || {}} isInteractive={true} onUpload={handleUpload} />
                         </PCPlatePreview>
 
                         <PCPlatePreview id="pc-plate-masse" label="PC02 — Plan de masse" clientLinked>
-                            <PlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} />
+                            <PlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} isInteractive={true} onUpload={handleUpload} />
                         </PCPlatePreview>
 
                         <PCPlatePreview id="pc-plate-section" label="PC03 — Plan en coupe">
-                            <PlateSection project={selectedProject} />
+                            <PlateSection project={selectedProject} captures={selectedProject.urbanisme_captures || {}} isInteractive={true} onUpload={handleUpload} />
                         </PCPlatePreview>
 
                         <PCPlatePreview id="pc-plate-notice" label="PC04 — Notice descriptive" clientLinked>
-                            <PlateNotice project={selectedProject} noticeText={noticeText} />
+                            <PlateNotice project={selectedProject} noticeText={noticeText} onNoticeChange={handleNoticeChange} isInteractive={true} />
                         </PCPlatePreview>
 
                         <PCPlatePreview id="pc-plate-facades" label="PC05 — Façades et toitures">
-                            <PlateFacades project={selectedProject} />
+                            <PlateFacades project={selectedProject} captures={selectedProject.urbanisme_captures || {}} isInteractive={true} onUpload={handleUpload} />
                         </PCPlatePreview>
 
                         <PCPlatePreview id="pc-plate-insertion" label="PC06 — Insertion paysagère" clientLinked>
-                            <PlateInsertion project={selectedProject} photos={pcPhotos} />
+                            <PlateInsertion project={selectedProject} photos={pcPhotos} isInteractive={true} onUpload={handleUpload} />
                         </PCPlatePreview>
 
                         <PCPlatePreview id="pc-plate-env" label="PC07/08 — Environnement proche et lointain" clientLinked>
-                            <PlateEnvProcheLointain project={selectedProject} photos={pcPhotos} />
+                            <PlateEnvProcheLointain project={selectedProject} photos={pcPhotos} isInteractive={true} onUpload={handleUpload} />
                         </PCPlatePreview>
                     </div>
                 )}
@@ -300,13 +291,13 @@ export default function PCBatimentTab({
             {selectedProject && (
                 <div style={{ position: 'fixed', left: '-9999px', top: 0, pointerEvents: 'none' }}>
                     <div id="pc-plate-cover"><PlateCover project={selectedProject} /></div>
-                    <div id="pc-plate-situation"><PlateSituation project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
-                    <div id="pc-plate-masse"><PlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
-                    <div id="pc-plate-section"><PlateSection project={selectedProject} /></div>
-                    <div id="pc-plate-notice"><PlateNotice project={selectedProject} noticeText={noticeText} /></div>
-                    <div id="pc-plate-facades"><PlateFacades project={selectedProject} /></div>
-                    <div id="pc-plate-insertion"><PlateInsertion project={selectedProject} photos={pcPhotos} /></div>
-                    <div id="pc-plate-env"><PlateEnvProcheLointain project={selectedProject} photos={pcPhotos} /></div>
+                    <div id="pc-plate-situation"><PlateSituation project={selectedProject} captures={selectedProject.urbanisme_captures || {}} isInteractive={false} /></div>
+                    <div id="pc-plate-masse"><PlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} isInteractive={false} /></div>
+                    <div id="pc-plate-section"><PlateSection project={selectedProject} captures={selectedProject.urbanisme_captures || {}} isInteractive={false} /></div>
+                    <div id="pc-plate-notice"><PlateNotice project={selectedProject} noticeText={noticeText} isInteractive={false} /></div>
+                    <div id="pc-plate-facades"><PlateFacades project={selectedProject} captures={selectedProject.urbanisme_captures || {}} isInteractive={false} /></div>
+                    <div id="pc-plate-insertion"><PlateInsertion project={selectedProject} photos={pcPhotos} isInteractive={false} /></div>
+                    <div id="pc-plate-env"><PlateEnvProcheLointain project={selectedProject} photos={pcPhotos} isInteractive={false} /></div>
                 </div>
             )}
         </div>
