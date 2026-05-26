@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { apiService } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, Download, FileText, Zap, ChevronRight, User, Search, X, Battery, Cable } from 'lucide-react';
+import { Loader2, Download, FileText, Zap, ChevronRight, User, Search, X, Battery, Cable, Building } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import html2canvas from 'html2canvas';
@@ -16,10 +16,12 @@ import {
     PlateEnvProche,
 } from '@/components/editor/DPPlates';
 import RaccordementBatterie from '@/components/developpement/RaccordementBatterie';
+import PCBatimentTab from '@/components/developpement/PCBatimentTab';
 import { cadastreService } from '@/services/CadastreService';
 
 const TABS = [
     { id: 'dp-batterie', label: 'DP Batterie', icon: Battery },
+    { id: 'pc-batiment', label: 'PC Bâtiment', icon: Building },
     { id: 'raccordement', label: 'Raccordement Batterie', icon: Cable },
 ];
 
@@ -267,6 +269,14 @@ export default function Developpement() {
                         isGenerating={isGenerating}
                         captureStep={captureStep}
                         onGenerateDP={handleGenerateDP}
+                    />
+                )}
+                {activeTab === 'pc-batiment' && (
+                    <PCBatimentTab
+                        projects={filteredProjects}
+                        loadingProjects={loadingProjects}
+                        selectedProject={selectedProject}
+                        setSelectedProject={setSelectedProject}
                     />
                 )}
                 {activeTab === 'raccordement' && (
