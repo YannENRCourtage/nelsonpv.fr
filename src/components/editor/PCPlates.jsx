@@ -58,7 +58,6 @@ const Footer = ({ project }) => (
 export const PlateCover = ({ project }) => (
     <div style={PAGE_STYLE} id="pc-plate-cover">
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <img src={LOGO_NELSON} alt="Nelson" style={{ height: '40mm', marginBottom: '20mm' }} />
             <h1 style={{ fontSize: '32pt', color: '#10b981', textAlign: 'center', marginBottom: '10mm', textTransform: 'uppercase' }}>
                 Dossier de Permis de Construire
             </h1>
@@ -103,8 +102,8 @@ export const PlateSituation = ({ project, captures }) => {
                         Vue Cartographique (IGN / OpenStreetMap)
                     </div>
                     <div style={{ flex: 1, background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {captures?.situation_map ? (
-                            <img src={captures.situation_map} alt="Plan IGN" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        {captures?.cadastre || captures?.ign ? (
+                            <img src={captures?.cadastre || captures?.ign} alt="Plan IGN/Cadastre" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
                             <span style={{ color: '#64748b' }}>Plan de situation non défini</span>
                         )}
@@ -115,8 +114,8 @@ export const PlateSituation = ({ project, captures }) => {
                         Vue Aérienne (Géoportail)
                     </div>
                     <div style={{ flex: 1, background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {captures?.situation_sat ? (
-                            <img src={captures.situation_sat} alt="Vue Aérienne" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        {captures?.satellite ? (
+                            <img src={captures.satellite} alt="Vue Aérienne" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
                             <span style={{ color: '#64748b' }}>Vue aérienne non définie</span>
                         )}
@@ -134,8 +133,8 @@ export const PlateMasse = ({ project, captures }) => {
             <PlateHeader title="PC2 : PLAN DE MASSE" project={project} />
             <div style={{ flex: 1, display: 'flex', gap: '5mm', flexDirection: 'column' }}>
                  <div style={{ flex: 1, background: '#e2e8f0', border: '1px solid #ccc', borderRadius: '2mm', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                    {captures?.masse_sat ? (
-                        <img src={captures.masse_sat} alt="Plan de Masse" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    {captures?.masse_projet ? (
+                        <img src={captures.masse_projet} alt="Plan de Masse" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     ) : (
                         <span style={{ color: '#64748b' }}>Plan de masse non défini (capturez depuis l'éditeur)</span>
                     )}
@@ -198,7 +197,7 @@ export const PlateInsertion = ({ project, photos }) => (
     <div style={PAGE_STYLE} id="pc-plate-insertion">
         <PlateHeader title="PC6 : DOCUMENT GRAPHIQUE D'INSERTION PAYSAGÈRE" project={project} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5mm' }}>
-            <div style={{ flex: 1, border: '1px solid #ccc', borderRadius: '2mm', position: 'relative', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            <div style={{ height: '75mm', border: '1px solid #ccc', borderRadius: '2mm', position: 'relative', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(255,255,255,0.9)', padding: '1mm 3mm', borderRadius: '1mm', fontSize: '9pt', fontWeight: 'bold' }}>
                     AVANT PROJET
                 </div>
@@ -208,7 +207,7 @@ export const PlateInsertion = ({ project, photos }) => (
                     <span style={{ color: '#64748b' }}>Photo avant projet manquante</span>
                 )}
             </div>
-            <div style={{ flex: 1, border: '1px solid #ccc', borderRadius: '2mm', position: 'relative', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            <div style={{ height: '75mm', border: '1px solid #ccc', borderRadius: '2mm', position: 'relative', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(255,255,255,0.9)', padding: '1mm 3mm', borderRadius: '1mm', fontSize: '9pt', fontWeight: 'bold' }}>
                     APRÈS PROJET (Simulation)
                 </div>
@@ -227,7 +226,7 @@ export const PlateEnvProcheLointain = ({ project, photos }) => (
     <div style={PAGE_STYLE} id="pc-plate-env">
         <PlateHeader title="PC7 / PC8 : ENVIRONNEMENT PROCHE ET LOINTAIN" project={project} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5mm' }}>
-            <div style={{ flex: 1, border: '1px solid #ccc', borderRadius: '2mm', position: 'relative', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            <div style={{ height: '75mm', border: '1px solid #ccc', borderRadius: '2mm', position: 'relative', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(255,255,255,0.9)', padding: '1mm 3mm', borderRadius: '1mm', fontSize: '9pt', fontWeight: 'bold' }}>
                     PC7 - ENVIRONNEMENT PROCHE
                 </div>
@@ -237,7 +236,7 @@ export const PlateEnvProcheLointain = ({ project, photos }) => (
                     <span style={{ color: '#64748b' }}>Photo de l'environnement proche manquante</span>
                 )}
             </div>
-            <div style={{ flex: 1, border: '1px solid #ccc', borderRadius: '2mm', position: 'relative', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            <div style={{ height: '75mm', border: '1px solid #ccc', borderRadius: '2mm', position: 'relative', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', top: '2mm', left: '2mm', background: 'rgba(255,255,255,0.9)', padding: '1mm 3mm', borderRadius: '1mm', fontSize: '9pt', fontWeight: 'bold' }}>
                     PC8 - ENVIRONNEMENT LOINTAIN
                 </div>
