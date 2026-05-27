@@ -3656,8 +3656,6 @@ function SDISLayerManager({ layersRef }) {
                   const props = feature.properties;
                   let popupContent = '<div style="font-family: sans-serif;">';
                   popupContent += '<h4 style="margin: 0 0 8px 0; color: #DC143C; font-size: 16px; font-weight: bold;">🚒 Point d\'Eau Incendie</h4>';
-                  popupContent += `<p style="margin: 4px 0;"><strong>Commune:</strong> ${props.commune || 'N/A'}</p>`;
-                  popupContent += `<p style="margin: 4px 0;"><strong>Numéro:</strong> ${props.numero_long || props.nom || 'N/A'}</p>`;
                   popupContent += `<p style="margin: 4px 0;"><strong>Type:</strong> ${props.famille_pei || props.type_start || props.type_hydrant || 'N/A'}</p>`;
                   popupContent += `<p style="margin: 4px 0;"><strong>État:</strong> ${props.etat || props.etat_start || 'Inconnu'}</p>`;
                   if (props.adresse) popupContent += `<p style="margin: 4px 0;"><strong>Adresse:</strong> ${props.adresse}</p>`;
