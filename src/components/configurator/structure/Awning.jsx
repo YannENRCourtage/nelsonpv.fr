@@ -159,7 +159,7 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
 
         // 1. COLUMN (At the low end)
         // USER REQUEST Phase 14: Diminuer la longueur des poteaux verticaux
-        const finalColHeight = isAcama && buildingType === 'epona' ? endHeight + 0.2 : endHeight; // EPONA: remonté de 40cm (-0.2+0.4=+0.2)
+        const finalColHeight = isAcama && buildingType === 'epona' ? endHeight + 0.4 : endHeight; // EPONA: remonté de 60cm (-0.2+0.6=+0.4)
         frames.push(
             <mesh
                 key={`col-${i}`}
@@ -175,7 +175,7 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
             <mesh
                 key={`rafter-${i}`}
                 material={structureMaterial}
-                position={[awningWidth / 2, -(awningWidth / 2) * Math.tan(angleRad) + (isEpona ? 0.4 : 0), zPos]}
+                position={[awningWidth / 2, -(awningWidth / 2) * Math.tan(angleRad) + (isEpona ? 0.6 : 0), zPos]}
                 rotation={[0, 0, -angleRad]}
             >
                 <boxGeometry args={[awningWidth, 0.2, 0.1]} />

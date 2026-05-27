@@ -476,7 +476,7 @@ export function PortalFrame({
                 <mesh geometry={rightColumnGeo} material={steelMaterial} position={[rightColumnX_EP, 0, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} scale={[scaleFactor, scaleFactor, 1]} castShadow receiveShadow />
 
                 {/* Gusset at Apex */}
-                <group position={[apexX, effectiveRidgeHeight, 0]}>
+                <group position={[apexX, effectiveRidgeHeight - 0.3, 0]}>
                     {createApexHaunchAssemblySCREB(leftSectionAngle, middleSectionAngle)}
                 </group>
 
