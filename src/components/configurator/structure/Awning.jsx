@@ -47,7 +47,7 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
         // ACAMA EPONA: Appentis droit 7.8m (Connecté à la toiture)
         awningWidth = 7.8;
         angleRad = (roofPitch * Math.PI) / 180;
-        startHeight = eaveHeight + 0.1;
+        startHeight = eaveHeight + 0.3; // Remonté de 20cm
         endHeight = startHeight - (awningWidth * Math.tan(angleRad));
     } else if (isTalian) {
         awningWidth = isTalian4 ? 11.2 : (isTalian1 ? 2.3 : 1.8);

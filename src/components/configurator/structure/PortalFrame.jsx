@@ -99,7 +99,7 @@ export function PortalFrame({
             // EPONA
             const mainPitch = 17 * (Math.PI / 180);
             leftEaveHeight = 5.0;
-            rightEaveHeight = 2.3; // Abaissé de 30cm (2.6 -> 2.3)
+            rightEaveHeight = 2.0; // Abaissé de 60cm (2.6 -> 2.0)
             leftSpan = 11.8;
             rightSpan = 19.65;
             apexX = 0;
@@ -107,7 +107,7 @@ export function PortalFrame({
             middleColumnX = 11.8;
             lAngle = mainPitch;
             rAngle = mainPitch;
-            middleColumnHeight = (effectiveRidgeHeight - (11.8 * Math.tan(mainPitch))) - 0.3; // Abaissé de 30cm
+            middleColumnHeight = (effectiveRidgeHeight - (11.8 * Math.tan(mainPitch))) - 0.6; // Abaissé de 60cm
             leftSectionSpan = leftSpan;
             leftSectionAngle = lAngle;
             middleSectionSpan = 11.8;
