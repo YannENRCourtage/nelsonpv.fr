@@ -158,11 +158,44 @@ async function processSDIS04() {
   }
 }
 
+async function processSDIS64() {
+  console.log('Processing SDIS 64 (Pyrénées-Atlantiques)...');
+  const url = 'https://www.data.gouv.fr/api/1/datasets/r/d16499f8-4c7d-4066-ac43-da24ccf31aa5';
+  
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    
+    // Normalize features
+    const features = data.features.map(f => {
+      const props = f.properties;
+      return {
+        type: "Feature",
+        geometry: f.geometry,
+        properties: {
+          commune: props.commune || props.COMMUNE || 'Inconnue',
+          numero: props.numero || props.NUMERO || props.id || 'N/A',
+          type_hydrant: props.type || props.TYPE || props.nature || 'PI',
+          etat: props.etat || props.ETAT || 'Opérationnel'
+        }
+      };
+    });
+    
+    const finalGeojson = { type: "FeatureCollection", features };
+    fs.writeFileSync(path.join(OUT_DIR, 'sdis64.geojson'), JSON.stringify(finalGeojson));
+    console.log(`SDIS 64 saved: ${features.length} points.`);
+  } catch (err) {
+    console.error('Error fetching SDIS 64:', err.message);
+  }
+}
+
 async function main() {
   try {
     await processSDIS34();
     await processSDIS30();
     await processSDIS04();
+    await processSDIS64();
     console.log('All SDIS datasets processed successfully.');
   } catch (e) {
     console.error('Error:', e);

@@ -2474,14 +2474,15 @@ const LAYERS = {
     name: "SDIS",
     type: 'custom',
     apis: [
-      '/data/sdis/sdis34.geojson',
-      '/data/sdis/sdis30.geojson',
-      '/data/sdis/sdis04.geojson',
+      'https://raw.githubusercontent.com/YannENRCourtage/nelsonpv.fr/main/public/data/sdis/sdis34.geojson',
+      'https://raw.githubusercontent.com/YannENRCourtage/nelsonpv.fr/main/public/data/sdis/sdis30.geojson',
+      'https://raw.githubusercontent.com/YannENRCourtage/nelsonpv.fr/main/public/data/sdis/sdis04.geojson',
+      'https://raw.githubusercontent.com/YannENRCourtage/nelsonpv.fr/main/public/data/sdis/sdis64.geojson',
       'https://api.deci.sdis17.fr/api/v1/peis?format=geojson',
       'https://api.deci.sdis84.fr/api/v1/peis?format=geojson',
       'https://api.deci.sdis81.fr/api/v1/peis?format=geojson'
     ],
-    attribution: 'SDIS (17, 81, 84, 34, 30, 04) / Datakode',
+    attribution: 'SDIS (17, 81, 84, 34, 30, 04, 64) / Datakode',
     isOverlay: true,
     zIndex: 100
   },
