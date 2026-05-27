@@ -1861,6 +1861,7 @@ export default function ProjectEditor() {
                     { key: 'loiLittoral', label: 'Loi littoral' },
                     { key: 'banPlus', label: 'BAN PLUS' },
                     { key: 'postesSourcesRTE', label: 'Postes Sources RTE' },
+                    { key: 'prixCarburant', label: 'Prix carburant' },
                   ].map(layer => (
                     <button
                       key={layer.key}
@@ -1929,6 +1930,7 @@ export default function ProjectEditor() {
                         { key: 'loiLittoral', label: 'Loi lit.' },
                         { key: 'banPlus', label: 'BAN PLUS' },
                         { key: 'postesSourcesRTE', label: 'P. Sources RTE' },
+                        { key: 'prixCarburant', label: 'Prix carb.' },
                       ].map(layer => (
                         <button
                           key={layer.key}
@@ -1960,7 +1962,7 @@ export default function ProjectEditor() {
 
             {/* Overlay d'information - Mode Propriétaires */}
             {activeLayers.has('ownersMoral') && (
-              <div className="absolute bottom-[100px] left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur shadow-xl border border-sky-200 px-5 py-3 rounded-2xl flex items-center gap-3 pointer-events-none">
+              <div className="absolute bottom-[130px] left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur shadow-xl border border-sky-200 px-5 py-3 rounded-2xl flex items-center gap-3 pointer-events-none">
                 <div className="bg-sky-100 p-2 rounded-full">
                   <span className="text-sky-600 text-base">🏠</span>
                 </div>
@@ -1973,7 +1975,7 @@ export default function ProjectEditor() {
 
             {/* Overlay d'information - Mode Filiation Parcelle */}
             {activeLayers.has('filiationParcelle') && (
-              <div className="absolute bottom-[100px] left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur shadow-xl border border-violet-200 px-5 py-3 rounded-2xl flex items-center gap-3 pointer-events-none">
+              <div className="absolute bottom-[130px] left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur shadow-xl border border-violet-200 px-5 py-3 rounded-2xl flex items-center gap-3 pointer-events-none">
                 <div className="bg-violet-100 p-2 rounded-full">
                   <span className="text-violet-600 text-base">🧬</span>
                 </div>
