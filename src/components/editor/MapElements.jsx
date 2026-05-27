@@ -816,8 +816,9 @@ function PrixCarburantLayerManager({ layersRef, activeLayers }) {
   const fetchData = async () => {
     if (!active || !map) return;
     const bounds = map.getBounds();
-    // OpenDataSoft API endpoint for live fuel prices
-    const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=100&where=within_distance(geom, geom'POINT(${map.getCenter().lng} ${map.getCenter().lat})', 20km)`;
+    const center = map.getCenter();
+    const whereClause = `within_distance(geom, geom'POINT(${center.lng} ${center.lat})', 20km)`;
+    const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=100&where=${encodeURIComponent(whereClause)}`;
     
     try {
       const response = await fetch(url);
@@ -835,11 +836,11 @@ function PrixCarburantLayerManager({ layersRef, activeLayers }) {
           const marker = L.marker(latlng, {
             icon: L.divIcon({
               className: 'carburant-icon',
-              html: `<div style="background: #1d4ed8; width: 24px; height: 24px; border-radius: 4px; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;">
-                       <svg viewBox="0 0 24 24" width="14" height="14" stroke="white" stroke-width="2" fill="none"><path d="M3 22h12M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5M8 6h4"/></svg>
+              html: `<div style="background: #ef4444; width: 26px; height: 26px; border-radius: 4px; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;">
+                       <svg viewBox="0 0 24 24" width="16" height="16" stroke="white" stroke-width="2" fill="none"><path d="M3 22h12M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5M8 6h4"/></svg>
                      </div>`,
-              iconSize: [24, 24],
-              iconAnchor: [12, 12]
+              iconSize: [26, 26],
+              iconAnchor: [13, 13]
             })
           });
 
