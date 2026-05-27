@@ -817,7 +817,7 @@ function PrixCarburantLayerManager({ layersRef, activeLayers }) {
     if (!active || !map) return;
     const bounds = map.getBounds();
     // OpenDataSoft API endpoint for live fuel prices
-    const url = \`https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=100&where=within_distance(geom, geom'POINT(\${map.getCenter().lng} \${map.getCenter().lat})', 20km)\`;
+    const url = `https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=100&where=within_distance(geom, geom'POINT(${map.getCenter().lng} ${map.getCenter().lat})', 20km)`;
     
     try {
       const response = await fetch(url);
@@ -835,9 +835,9 @@ function PrixCarburantLayerManager({ layersRef, activeLayers }) {
           const marker = L.marker(latlng, {
             icon: L.divIcon({
               className: 'carburant-icon',
-              html: \`<div style="background: #1d4ed8; width: 24px; height: 24px; border-radius: 4px; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;">
+              html: `<div style="background: #1d4ed8; width: 24px; height: 24px; border-radius: 4px; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;">
                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="white" stroke-width="2" fill="none"><path d="M3 22h12M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5M8 6h4"/></svg>
-                     </div>\`,
+                     </div>`,
               iconSize: [24, 24],
               iconAnchor: [12, 12]
             })
@@ -857,22 +857,22 @@ function PrixCarburantLayerManager({ layersRef, activeLayers }) {
             if (c.prix) {
               const dateObj = new Date(c.maj);
               const dateStr = !isNaN(dateObj) ? dateObj.toLocaleDateString('fr-FR') + ' ' + dateObj.getHours() + ':' + String(dateObj.getMinutes()).padStart(2, '0') : 'N/A';
-              pricesHtml += \`<li style="margin-bottom: 4px; display: flex; justify-content: space-between;"><span style="font-weight: 600;">\${c.label}</span> <span><b style="color: #1d4ed8;">\${c.prix} €</b> <span style="font-size: 9px; color: #888;">(\${dateStr})</span></span></li>\`;
+              pricesHtml += `<li style="margin-bottom: 4px; display: flex; justify-content: space-between;"><span style="font-weight: 600;">${c.label}</span> <span><b style="color: #1d4ed8;">${c.prix} €</b> <span style="font-size: 9px; color: #888;">(${dateStr})</span></span></li>`;
             }
           });
 
-          let popup = \`
+          let popup = `
             <div style="font-family: sans-serif; min-width: 240px; padding: 4px;">
-              <h4 style="margin: 0 0 4px 0; color: #1d4ed8; font-size: 15px; font-weight: bold;">\${item.adresse || 'Station Service'}</h4>
-              <p style="margin: 0 0 10px 0; font-size: 12px; color: #555;">\${item.cp || ''} \${item.ville || ''}</p>
+              <h4 style="margin: 0 0 4px 0; color: #1d4ed8; font-size: 15px; font-weight: bold;">${item.adresse || 'Station Service'}</h4>
+              <p style="margin: 0 0 10px 0; font-size: 12px; color: #555;">${item.cp || ''} ${item.ville || ''}</p>
               
               <h5 style="margin: 8px 0 4px 0; color: #333; font-size: 13px; font-weight: 600; border-bottom: 1px solid #ddd; padding-bottom: 2px;">PRIX DES CARBURANTS</h5>
               <ul style="margin: 4px 0; padding-left: 0; list-style-type: none; font-size: 12px; color: #444;">
-                \${pricesHtml || '<li style="color: #888; font-style: italic;">Aucun prix disponible</li>'}
+                ${pricesHtml || '<li style="color: #888; font-style: italic;">Aucun prix disponible</li>'}
               </ul>
               <p style="font-size: 10px; color: #999; margin-top: 8px;">Source: DGCCRF / data.economie.gouv.fr</p>
             </div>
-          \`;
+          `;
           marker.bindPopup(popup, { maxWidth: 300 });
           layerGroupRef.current.addLayer(marker);
         });
