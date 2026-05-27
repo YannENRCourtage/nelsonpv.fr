@@ -1861,7 +1861,6 @@ export default function ProjectEditor() {
                     { key: 'loiLittoral', label: 'Loi littoral' },
                     { key: 'banPlus', label: 'BAN PLUS' },
                     { key: 'postesSourcesRTE', label: 'Postes Sources RTE' },
-                    { key: 'prixCarburant', label: 'Prix carburant' },
                   ].map(layer => (
                     <button
                       key={layer.key}
@@ -1930,7 +1929,6 @@ export default function ProjectEditor() {
                         { key: 'loiLittoral', label: 'Loi lit.' },
                         { key: 'banPlus', label: 'BAN PLUS' },
                         { key: 'postesSourcesRTE', label: 'P. Sources RTE' },
-                        { key: 'prixCarburant', label: 'Prix carb.' },
                       ].map(layer => (
                         <button
                           key={layer.key}
