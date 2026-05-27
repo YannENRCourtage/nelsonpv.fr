@@ -47,7 +47,7 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
         // ACAMA EPONA: Appentis droit 7.8m (Connecté à la toiture)
         awningWidth = 7.8;
         angleRad = (roofPitch * Math.PI) / 180;
-        startHeight = eaveHeight + 0.3; // Remonté de 20cm
+        startHeight = eaveHeight + 0.4; // Remonté de 30cm total (couverture appentis)
         endHeight = startHeight - (awningWidth * Math.tan(angleRad));
     } else if (isTalian) {
         awningWidth = isTalian4 ? 11.2 : (isTalian1 ? 2.3 : 1.8);
@@ -159,7 +159,7 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
 
         // 1. COLUMN (At the low end)
         // USER REQUEST Phase 14: Diminuer la longueur des poteaux verticaux
-        const finalColHeight = isAcama && buildingType === 'epona' ? endHeight - 0.2 : endHeight;
+        const finalColHeight = isAcama && buildingType === 'epona' ? endHeight + 0.2 : endHeight; // EPONA: remonté de 40cm (-0.2+0.4=+0.2)
         frames.push(
             <mesh
                 key={`col-${i}`}
@@ -175,7 +175,7 @@ export function Awning({ length, eaveHeight, roofPitch, buildingWidth, bayCount,
             <mesh
                 key={`rafter-${i}`}
                 material={structureMaterial}
-                position={[awningWidth / 2, -(awningWidth / 2) * Math.tan(angleRad), zPos]}
+                position={[awningWidth / 2, -(awningWidth / 2) * Math.tan(angleRad) + (isEpona ? 0.4 : 0), zPos]}
                 rotation={[0, 0, -angleRad]}
             >
                 <boxGeometry args={[awningWidth, 0.2, 0.1]} />

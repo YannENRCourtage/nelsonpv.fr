@@ -575,8 +575,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const lAwningPoints = buildingType === 'epona_talian5' ? [] : [[lAwningStart, new THREE.Vector3(lAwningMid.x - 1.0, eponaBaseY, zFront)], [new THREE.Vector3(lAwningMid.x + 1.0, eponaBaseY, zFront), lAwningEnd]];
 
         const rHeightVal = buildingType === 'epona_talian5' ? 4.3 : 3.8;
+        const rHeightTopY = buildingType === 'epona_talian5' ? 4.3 : 3.0; // Haut du trait au niveau du bas de la couverture appentis
         const rHeightX = rightPostX + 2.0;
-        const rHeightPoints = [[new THREE.Vector3(rHeightX, 0, markerZ), new THREE.Vector3(rHeightX, rHeightVal / 2 - 0.6, markerZ)], [new THREE.Vector3(rHeightX, rHeightVal / 2 + 0.6, markerZ), new THREE.Vector3(rHeightX, rHeightVal, markerZ)]];
+        const rHeightPoints = [[new THREE.Vector3(rHeightX, 0, markerZ), new THREE.Vector3(rHeightX, rHeightVal / 2 - 0.6, markerZ)], [new THREE.Vector3(rHeightX, rHeightVal / 2 + 0.6, markerZ), new THREE.Vector3(rHeightX, rHeightTopY, markerZ)]];
 
         const mHeightPoints = [];
         if (buildingType === 'epona_talian5') {
