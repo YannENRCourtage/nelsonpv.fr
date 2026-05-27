@@ -2393,7 +2393,7 @@ const ENEDIS_HTA_SLD = `
 // ====================================================================
 const LAYERS = {
   // ========== FONDS DE CARTE ==========
-  geoportailSat: { name: "Géoportail", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0, maxNativeZoom: 19, maxZoom: 22 },
+  geoportailSat: { name: "Géoportail", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0, maxNativeZoom: 18, maxZoom: 22, updateWhenIdle: true, updateWhenZooming: false, keepBuffer: 8 },
   googleSat: { name: "Google Satellite", url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0, maxZoom: 22 },
   google: { name: "Google", url: "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", attrib: 'Google', subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], zIndex: 0, maxZoom: 22 },
   ignPlan: { name: "IGN - Plan IGN", url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", attrib: '© IGN', zIndex: 0, maxNativeZoom: 18, maxZoom: 22 },
@@ -3924,7 +3924,10 @@ function LayersBootstrap({ layersRef }) {
           zIndex: layerDef.zIndex || 0,
           opacity: layerDef.opacity || 1.0,
           pane: layerDef.isOverlay ? 'overlayPane' : 'tilePane',
-          interactive: layerDef.isOverlay ? false : true
+          interactive: layerDef.isOverlay ? false : true,
+          keepBuffer: layerDef.keepBuffer !== undefined ? layerDef.keepBuffer : 2,
+          updateWhenIdle: layerDef.updateWhenIdle !== undefined ? layerDef.updateWhenIdle : false,
+          updateWhenZooming: layerDef.updateWhenZooming !== undefined ? layerDef.updateWhenZooming : true
         });
       }
     });
