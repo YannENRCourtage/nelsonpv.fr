@@ -49,7 +49,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             if (side === 'left') return cp.leftExtHeight || 3.0;
             if (side === 'right') return cp.rightExtHeight || 3.0;
         }
-        if (isEpona) return side === 'left' ? 5.0 : 3.8;
+        if (isEpona) return side === 'left' ? 5.0 : 3.5;
         if (isTalian4) return 4.5;
         if (isTalian1) return 3.8; 
         if (isTalian3) return 2.5; 
@@ -574,7 +574,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         const lAwningMid = new THREE.Vector3(leftPostX - 1.25, eponaBaseY, zFront);
         const lAwningPoints = buildingType === 'epona_talian5' ? [] : [[lAwningStart, new THREE.Vector3(lAwningMid.x - 1.0, eponaBaseY, zFront)], [new THREE.Vector3(lAwningMid.x + 1.0, eponaBaseY, zFront), lAwningEnd]];
 
-        const rHeightVal = buildingType === 'epona_talian5' ? 4.3 : 3.8;
+        const rHeightVal = buildingType === 'epona_talian5' ? 4.3 : 3.5;
         const rHeightX = rightPostX + 2.0;
         const rHeightPoints = [[new THREE.Vector3(rHeightX, 0, markerZ), new THREE.Vector3(rHeightX, rHeightVal / 2 - 0.6, markerZ)], [new THREE.Vector3(rHeightX, rHeightVal / 2 + 0.6, markerZ), new THREE.Vector3(rHeightX, rHeightVal, markerZ)]];
 
@@ -928,7 +928,7 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
             <Text
                 position={[
                     buildingType === 'epona_talian5' ? -11.27 : (isCustom ? (-width / 2 + spans.left) : 0),
-                    isCustom ? (cp.ridgeHeight + 0.52 + 1.0) : (Math.min(eaveHeight, ridgeHeight) + (buildingType === 'epona_talian5' ? 1.5 : 4)),
+                    isCustom ? (cp.ridgeHeight + 0.52 + 1.0) : (Math.min(eaveHeight, ridgeHeight) + (buildingType === 'epona_talian5' ? 1.5 : 3)),
                     -length / 2
                 ]}
                 rotation={[-Math.PI / 2, 0, Math.PI / 2]} 

@@ -174,7 +174,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                             <span>Pente : <strong>{isAcamaEpona ? '17°' : '10°'}</strong></span>
                             <span>Faîtage : <strong>{isAcamaEpona ? '9.4m' : '8.1m'}</strong></span>
                             <span>Sablière G : <strong>{isAcamaEpona ? '5m' : '7.9m'}</strong></span>
-                            <span>Sablière D : <strong>{isAcamaEpona ? '3.8m' : '4.3m'}</strong></span>
+                            <span>Sablière D : <strong>{isAcamaEpona ? '3.5m' : '4.3m'}</strong></span>
                             {!isAcamaEpona && !isAcamaTalian5 && <span>Appentis D : 9.3m</span>}
                             {isAcamaEpona && <span>Auvent D : <strong>2.5m</strong></span>}
                         </div>

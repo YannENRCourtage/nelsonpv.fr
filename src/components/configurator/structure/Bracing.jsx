@@ -96,6 +96,8 @@ export function Bracing({
         } else if (buildingType === 'epona_talian5') {
             yTopMainLeft = 7.9; // Reach exactly the eave
             yTopMainRight = 4.3; // Reach exactly the eave
+        } else if (buildingType === 'epona') {
+            yTopMainLeft = 5.0; // Reach exactly the eave (sablière G à 5m)
         }
 
 

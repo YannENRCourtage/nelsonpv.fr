@@ -322,12 +322,12 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
 
                 {/* Right Panel */}
                 <mesh geometry={rightGeo} material={roofMaterial}
-                    position={[rFinalX, rFinalY, -length - 0.5]}
+                    position={[rFinalX, rFinalY - 0.3, -length - 0.5]}
                     rotation={[0, 0, -mainSlope]}
                     scale={[-1, 1, 1]}
                     castShadow receiveShadow />
 
-                <group position={[rFinalX, rFinalY, -length / 2]} rotation={[0, 0, -mainSlope]} scale={[-1, 1, 1]}>
+                <group position={[rFinalX, rFinalY - 0.3, -length / 2]} rotation={[0, 0, -mainSlope]} scale={[-1, 1, 1]}>
                     <SolarPanels surfaceWidth={rightRoofLength} surfaceLength={length + 1.0} />
                 </group>
             </group>
