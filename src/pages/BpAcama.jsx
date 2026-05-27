@@ -4711,8 +4711,8 @@ export default function BpAcama() {
               <h1 className="text-sm font-bold text-white uppercase">{isEnrCourtage ? 'BP ENR COURTAGE' : 'BP'}</h1>
             ) : (
               <>
-                <h1 className="text-sm font-bold text-white uppercase">BP ACAMA</h1>
-                <p className="text-[12px] text-slate-400">Business Plan ACAMA</p>
+                <h1 className="text-sm font-bold text-white uppercase">BP</h1>
+                <p className="text-[12px] text-slate-400">Business Plan</p>
               </>
             )}
           </div>

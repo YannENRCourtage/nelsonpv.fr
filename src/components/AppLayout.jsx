@@ -495,7 +495,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
                 }}
               >
                 <TrendingUp className="w-4 h-4 mr-1 inline-block" />
-                { (activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest' || activeTenantId === 'enr-courtage-energie') ? 'BP' : 'BP ACAMA' }
+                BP
               </NavLink>
             )}
 
@@ -770,7 +770,7 @@ export default function AppLayout() {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <TrendingUp className="w-4 h-4 mr-2 inline-block" />
-                {(activeTenantId === 'green-invest' || user?.activeTenantId === 'green-invest' || user?.tenantId === 'green-invest' || user?.tenant === 'greeninvest' || activeTenantId === 'enr-courtage-energie') ? 'BP' : 'BP ACAMA'}
+                BP
               </NavLink>
             )}
 

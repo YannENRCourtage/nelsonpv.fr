@@ -28,7 +28,7 @@ import { ToggleSwitch } from '@/components/ui/toggle-switch';
 import { migrateCollectionToTenant, TENANTS, cleanupProjectActivities } from '@/services/firebase/firestore.service';
 
 const TENANT_OPTIONS = [
-  { value: 'green-invest', label: 'GREEN INVEST (BARCONNIERE)' },
+  { value: 'green-invest', label: 'GREEN INVEST' },
   { value: 'acama', label: 'ACAMA' },
   { value: 'enr-courtage-energie', label: 'ENR COURTAGE ENERGIE' }
 ];

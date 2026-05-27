@@ -994,6 +994,30 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
         XLSX.writeFile(wb, `${data.name}_selection.xlsx`);
     };
 
+    // Duplicate Selected
+    const handleDuplicateSelected = async () => {
+        if (selectedRowIds.size !== 1) return;
+        
+        const rowIdToDuplicate = Array.from(selectedRowIds)[0];
+        const rowToDuplicate = rows.find(r => r.id === rowIdToDuplicate);
+        if (!rowToDuplicate) return;
+
+        // Create new row data based on the duplicated row
+        const newRowData = { data: { ...rowToDuplicate.data } };
+        const createdRow = await apiService.addMondayRow(data.id, newRowData);
+        
+        // Add to top of the order
+        const newOrder = [createdRow.id, ...rowOrder];
+        setRowOrder(newOrder);
+        saveMetadata(columns, newOrder, columnWidths);
+        
+        // Select the new duplicated row
+        setSelectedRowIds(new Set([createdRow.id]));
+        
+        // Scroll to top or reset page to see it
+        setCurrentPage(1);
+    };
+
     // Drag & Drop
     const moveColumn = (dragIndex, hoverIndex) => {
         const newCols = [...columns];
@@ -1156,6 +1180,11 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                                 <Button size="sm" variant="ghost" onClick={handleBulkDelete} title="Supprimer la sélection" className="h-7 w-7 p-0 hover:bg-red-50 text-red-500">
                                     <Trash2 className="w-3.5 h-3.5" />
                                 </Button>
+                                {selectedRowIds.size === 1 && (
+                                    <Button size="sm" variant="ghost" onClick={handleDuplicateSelected} title="Dupliquer la sélection" className="h-7 w-7 p-0 hover:bg-blue-100 text-blue-600 ml-1">
+                                        <Copy className="w-3.5 h-3.5" />
+                                    </Button>
+                                )}
                             </div>
                         )}
                     </div>

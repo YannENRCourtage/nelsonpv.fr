@@ -184,28 +184,31 @@ export default function ProjectEditor() {
   const [selectedBatteryId, setSelectedBatteryId] = useState(BATTERY_MODELS[0].id);
   const [batteryQuantity, setBatteryQuantity] = useState(4);
   
-  // Ecouteur pour basculer vers l'onglet propriétaires depuis la carte
+  // Ecouteur pour basculer vers le calque propriétaires depuis la carte
   useEffect(() => {
-    const handleShowOwners = () => setActiveTab('owners');
+    const handleShowOwners = () => {
+      setActiveTab('map');
+      setActiveLayers(prev => {
+        const next = new Set(prev);
+        next.add('ownersMoral');
+        next.add('cadastre');
+        return next;
+      });
+    };
     window.addEventListener('map:show-owners', handleShowOwners);
     return () => window.removeEventListener('map:show-owners', handleShowOwners);
   }, []);
 
-  // Activation automatique du calque Propriétaires Personnes Morales à l'entrée de l'onglet
+  // Activation automatique du calque Cadastre si Propriétaires est activé
   useEffect(() => {
-    if (activeTab === 'owners') {
-      const newActiveLayers = new Set(activeLayers);
-      if (!newActiveLayers.has('ownersMoral')) {
-        newActiveLayers.add('ownersMoral');
-        setActiveLayers(newActiveLayers);
-      }
-      if (!newActiveLayers.has('cadastre')) {
-        newActiveLayers.add('cadastre');
-        setActiveLayers(prev => { const s = new Set(prev); s.add('cadastre'); return s; });
-      }
+    if (activeLayers.has('ownersMoral') && !activeLayers.has('cadastre')) {
+      setActiveLayers(prev => {
+        const next = new Set(prev);
+        next.add('cadastre');
+        return next;
+      });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeLayers]);
 
 
 
@@ -391,7 +394,7 @@ export default function ProjectEditor() {
     }
 
     // Liste des onglets utilisant des iframes externes
-    const iframeTabs = ['owners', 'capareseau', 'terravisu', 'geoportail', 'dvf', 'windy'];
+    const iframeTabs = ['capareseau', 'terravisu', 'geoportail', 'dvf', 'windy'];
     if (iframeTabs.includes(activeTab)) {
       await captureWithDisplayMedia(slotIndex);
       return;
@@ -1686,17 +1689,7 @@ export default function ProjectEditor() {
               Géoportail Urbanisme
             </button>
 
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('owners'); }}
-              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'owners'
-                ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
-                }`}
-              tabIndex={-1}
-            >
-              Propriétaires
-            </button>
+
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('terravisu'); }}
@@ -1785,9 +1778,9 @@ export default function ProjectEditor() {
             </div>
           </div>
           <div className="rounded-2xl bg-white shadow-sm overflow-hidden flex-1 min-h-[60vh] lg:h-[750px] relative">
-            {/* Onglet Carte - On le garde monté si l'onglet DP ou Propriétaires est actif pour permettre les captures et la persistance du zoom */}
-            {(activeTab === 'map' || activeTab === 'urbanisme_dp' || activeTab === 'owners') && (
-              <div className={`w-full h-full flex flex-col ${(activeTab !== 'map' && activeTab !== 'owners') ? 'absolute inset-0 pointer-events-none opacity-0' : ''}`}>
+            {/* Onglet Carte - On le garde monté si l'onglet DP est actif pour permettre les captures et la persistance du zoom */}
+            {(activeTab === 'map' || activeTab === 'urbanisme_dp') && (
+              <div className={`w-full h-full flex flex-col ${activeTab !== 'map' ? 'absolute inset-0 pointer-events-none opacity-0' : ''}`}>
                 <div className="flex-1 min-h-[55vh] lg:min-h-0">
                   <MapEditor
                     key={`${projectId}-${remountKey}`}
@@ -1814,7 +1807,7 @@ export default function ProjectEditor() {
                 {/* Layer Toggle Buttons - Desktop: always visible */}
                 <div className="hidden lg:flex p-3 bg-gray-50 border-t flex-wrap gap-2">
                   {/* Badge mode Propriétaires */}
-                  {activeTab === 'owners' && (
+                  {activeLayers.has('ownersMoral') && (
                     <div className="w-full flex items-center gap-2 mb-1.5 pb-1.5 border-b border-sky-200">
                       <div className="flex items-center gap-1.5 bg-sky-100 text-sky-800 px-2.5 py-1 rounded-full text-xs font-bold">
                         <span>🏠</span>
@@ -1826,8 +1819,21 @@ export default function ProjectEditor() {
                       </div>
                     </div>
                   )}
+                  {activeLayers.has('filiationParcelle') && (
+                    <div className="w-full flex items-center gap-2 mb-1.5 pb-1.5 border-b border-violet-200">
+                      <div className="flex items-center gap-1.5 bg-violet-100 text-violet-800 px-2.5 py-1 rounded-full text-xs font-bold">
+                        <span>🧬</span>
+                        <span>Mode Filiation — Historique parcellaire actif</span>
+                      </div>
+                      <div className="ml-auto flex items-center gap-1.5">
+                        <span className="text-xs text-violet-600 font-medium">Cliquez sur une parcelle pour voir son histoire</span>
+                      </div>
+                    </div>
+                  )}
                   {[
                     { key: 'cadastre', label: 'Cadastre' },
+                    { key: 'ownersMoral', label: 'Propriétaires' },
+                    { key: 'filiationParcelle', label: 'Filiation parcelle' },
                     { key: 'zoneInondable', label: 'Zone Inondable' },
                     { key: 'courbesNiveau', label: 'Courbes de niveau' },
                     { key: 'batiments', label: 'Bâtiments' },
@@ -1887,13 +1893,15 @@ export default function ProjectEditor() {
                     className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 border-t text-sm font-medium text-gray-700"
                     onClick={() => setIsLayersOpen(v => !v)}
                   >
-                    <span>{activeTab === 'owners' ? '🏠 Propriétaires — Calques' : '🗺️ Calques'}</span>
+                    <span>{activeLayers.has('ownersMoral') ? '🏠 Propriétaires — Calques' : (activeLayers.has('filiationParcelle') ? '🧬 Filiation — Calques' : '🗺️ Calques')}</span>
                     <span>{isLayersOpen ? '▲' : '▼'}</span>
                   </button>
                   {isLayersOpen && (
                     <div className="p-2 bg-gray-50 flex flex-wrap gap-1.5">
                       {[
                         { key: 'cadastre', label: 'Cadastre' },
+                        { key: 'ownersMoral', label: 'Propriétaires' },
+                        { key: 'filiationParcelle', label: 'Filiation' },
                         { key: 'zoneInondable', label: 'Z. Inond.' },
                         { key: 'courbesNiveau', label: 'Courbes niv.' },
                         { key: 'batiments', label: 'Bâtiments' },
@@ -1951,7 +1959,7 @@ export default function ProjectEditor() {
             )}
 
             {/* Overlay d'information - Mode Propriétaires */}
-            {activeTab === 'owners' && (
+            {activeLayers.has('ownersMoral') && (
               <div className="absolute bottom-[100px] left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur shadow-xl border border-sky-200 px-5 py-3 rounded-2xl flex items-center gap-3 pointer-events-none">
                 <div className="bg-sky-100 p-2 rounded-full">
                   <span className="text-sky-600 text-base">🏠</span>
@@ -1959,6 +1967,19 @@ export default function ProjectEditor() {
                 <div>
                   <p className="text-sm font-bold text-slate-800">Mode Propriétaires Fonciers</p>
                   <p className="text-[11px] text-slate-500 font-medium">Parcelles <span className="text-sky-600 font-bold">bleu ciel</span> = propriétaire (PM) identifié • Cliquez pour voir les données • Zoom ≥ 13 requis</p>
+                </div>
+              </div>
+            )}
+
+            {/* Overlay d'information - Mode Filiation Parcelle */}
+            {activeLayers.has('filiationParcelle') && (
+              <div className="absolute bottom-[100px] left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur shadow-xl border border-violet-200 px-5 py-3 rounded-2xl flex items-center gap-3 pointer-events-none">
+                <div className="bg-violet-100 p-2 rounded-full">
+                  <span className="text-violet-600 text-base">🧬</span>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-800">Mode Filiation Parcelle</p>
+                  <p className="text-[11px] text-slate-500 font-medium">Cliquez sur une parcelle cadastrale sur la carte pour consulter son historique de filiation (divisions / fusions).</p>
                 </div>
               </div>
             )}

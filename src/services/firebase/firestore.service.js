@@ -20,7 +20,7 @@ import { db } from '@/config/firebase.js';
 // TENANTS
 // ============================================================================
 export const TENANTS = {
-    'green-invest': { label: 'GREEN INVEST (BARCONNIERE)', color: '#16a34a' },
+    'green-invest': { label: 'GREEN INVEST', color: '#16a34a' },
     'acama': { label: 'ACAMA', color: '#2563eb' },
     'enr-courtage-energie': { label: 'ENR COURTAGE ENERGIE', color: '#f59e0b' }
 };

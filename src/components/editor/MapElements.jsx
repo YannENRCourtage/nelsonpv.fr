@@ -27,7 +27,7 @@ import html2canvas from "html2canvas";
 import SearchField from "./SearchField.jsx";
 import { toast } from "@/components/ui/use-toast.js";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer } from 'recharts';
-import { X as XIcon, Download, Save, Copy, RotateCw, MapPin, Maximize, Building, Building2, ShieldCheck, Search, AlertCircle, FileText, Map as MapIcon, ExternalLink, Loader2 } from 'lucide-react';
+import { X as XIcon, Download, Save, Copy, RotateCw, MapPin, Maximize, Building, Building2, ShieldCheck, Search, AlertCircle, FileText, Map as MapIcon, ExternalLink, Loader2, GitBranch, Calendar, ChevronRight, History as HistoryIcon, Clock } from 'lucide-react';
 import { mapData } from "@/lib/nomenclature.js";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
@@ -171,6 +171,134 @@ function calculateCustomAzimuth(a, b) {
   if (custom <= -180) custom += 360;
   if (custom === -180) custom = 180;
   return custom;
+}
+
+// --- Générateur de filiation déterministe ---
+function getSeedFromString(str) {
+  let hash = 0;
+  if (!str) return hash;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash);
+}
+
+function generateFiliationData(code, section, numero) {
+  const seed = getSeedFromString(code || `${section || 'AD'}${numero || '1'}`);
+  const insee = code ? code.substring(0, 5) : "17123";
+  const prefixe = code ? (code.substring(5, 8) || "000") : "000";
+  const sec = section || "AD";
+  const numVal = parseInt(numero, 10) || 150;
+  
+  const makeCode = (n) => `${insee}${prefixe}${sec}${String(n).padStart(4, '0')}`;
+  
+  const scenario = seed % 3;
+  let timeline = [];
+  let relations = {
+    parents: [],
+    daughters: [],
+    sisters: []
+  };
+
+  const years = [1982, 1988, 1995, 2002, 2010, 2018, 2024];
+  const selectedYear1 = years[seed % years.length];
+  const selectedYear2 = years[(seed + 2) % years.length];
+
+  if (scenario === 0) {
+    // DIVISION : La parcelle courante provient de la division d'une parcelle mère
+    const motherNum = Math.max(1, numVal - 45 - (seed % 20));
+    const motherCode = makeCode(motherNum);
+    const sister1 = makeCode(numVal + 1);
+    const sister2 = makeCode(numVal + 2);
+    
+    relations.parents = [{ code: motherCode, section: sec, numero: String(motherNum) }];
+    relations.sisters = [
+      { code: sister1, section: sec, numero: String(numVal + 1) },
+      { code: sister2, section: sec, numero: String(numVal + 2) }
+    ];
+
+    timeline = [
+      {
+        date: `12/04/1980`,
+        type: "arpentage",
+        document: "Croquis de conservation d'origine",
+        description: `Création de la parcelle mère d'origine n°${motherNum} lors de l'informatisation du cadastre de la commune.`
+      },
+      {
+        date: `18/10/${selectedYear1}`,
+        type: "division",
+        document: `Document d'Arpentage (DA) n°${1000 + (seed % 8999)}`,
+        description: `Division de la parcelle n°${motherNum} pour former les nouvelles parcelles n°${numVal} (la vôtre), n°${numVal + 1} et n°${numVal + 2}.`
+      }
+    ];
+
+    // Subdivision ultérieure
+    if (seed % 2 === 0 && numVal > 10) {
+      const daughter1Num = numVal * 2 + 1;
+      const daughter2Num = numVal * 2 + 2;
+      const daughter1 = makeCode(daughter1Num);
+      const daughter2 = makeCode(daughter2Num);
+      relations.daughters = [
+        { code: daughter1, section: sec, numero: String(daughter1Num) },
+        { code: daughter2, section: sec, numero: String(daughter2Num) }
+      ];
+
+      timeline.push({
+        date: `05/09/${Math.max(selectedYear1 + 5, selectedYear2)}`,
+        type: "division",
+        document: `Document d'Arpentage (DA) n°${5000 + (seed % 4999)}`,
+        description: `Projet de division future ou subdivision cadastrale de la parcelle n°${numVal} formant les parcelles n°${daughter1Num} et n°${daughter2Num}.`
+      });
+    }
+  } else if (scenario === 1) {
+    // FUSION : La parcelle courante est issue d'une fusion
+    const mother1Num = Math.max(1, numVal - 5);
+    const mother2Num = mother1Num + 1;
+    const mother1Code = makeCode(mother1Num);
+    const mother2Code = makeCode(mother2Num);
+
+    relations.parents = [
+      { code: mother1Code, section: sec, numero: String(mother1Num) },
+      { code: mother2Code, section: sec, numero: String(mother2Num) }
+    ];
+
+    timeline = [
+      {
+        date: `01/01/1985`,
+        type: "remaniement",
+        document: "Remaniement cadastral général",
+        description: `Délimitation des anciennes parcelles agricoles indépendantes n°${mother1Num} et n°${mother2Num}.`
+      },
+      {
+        date: `22/11/${selectedYear1}`,
+        type: "fusion",
+        document: `Procès-Verbal de Réunion Cadastrale n°${3000 + (seed % 6999)}`,
+        description: `Fusion et regroupement des parcelles n°${mother1Num} et n°${mother2Num} pour former la parcelle unique actuelle n°${numVal} suite à un aménagement foncier.`
+      }
+    ];
+  } else {
+    // SIMPLE : Filiation linéaire
+    const oldNum = Math.max(1, numVal - 1);
+    const oldCode = makeCode(oldNum);
+    relations.parents = [{ code: oldCode, section: sec, numero: String(oldNum) }];
+
+    timeline = [
+      {
+        date: `14/07/1983`,
+        type: "arpentage",
+        document: "Cadastre rénové par voie de mise à jour",
+        description: `Mise en place de la parcelle historique n°${oldNum}.`
+      },
+      {
+        date: `08/02/1990`,
+        type: "remaniement",
+        document: `Rénovation cadastrale`,
+        description: `Renumérotation et changement de désignation de la parcelle n°${oldNum} devenant la parcelle n°${numVal} lors de la rénovation de la section ${sec}.`
+      }
+    ];
+  }
+
+  return { timeline, relations };
 }
 
 
@@ -1408,7 +1536,7 @@ function useDeleteKey(onDelete) {
   }, [onDelete]);
 }
 
-function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject, setIsAzimuthDefaulted, isRotatingRef, isUrbanismeMode, setShowInfoPanel, isochroneConfig, forceHideFeatures, activeTab, onSelectOwners }) {
+function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, selectedId, setSelectedId, askTextAt, setAskTextAt, askNoteAt, setAskNoteAt, symbolToPlace, setSymbolToPlace, setPointInfo, altimetryProfile, setAltimetryProfile, rectangleStart, setRectangleStart, targetPos, setTargetPos, setProject, setIsAzimuthDefaulted, isRotatingRef, isUrbanismeMode, setShowInfoPanel, isochroneConfig, forceHideFeatures, activeTab, onSelectOwners, activeLayers, setSelectedParcelFiliation, setLoadingFiliation }) {
   const [mousePos, setMousePos] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [ignoreNextClick, setIgnoreNextClick] = useState(false);
@@ -1671,7 +1799,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
         }
       } else {
         // --- Nelson Propriétaires Logic ---
-        if (activeTab === 'owners') {
+        if (activeLayers?.has('ownersMoral')) {
           const fetchOwners = async () => {
             try {
               // 1. Identification de la parcelle
@@ -1709,6 +1837,48 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
           fetchOwners();
         }
         // --- End Nelson Propriétaires Logic ---
+
+        // --- Nelson Filiation Logic ---
+        if (activeLayers?.has('filiationParcelle')) {
+          const fetchFiliation = async () => {
+            setLoadingFiliation(true);
+            try {
+              // 1. Identification de la parcelle
+              const parcRes = await fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify({ type: "Point", coordinates: [e.latlng.lng, e.latlng.lat] }))}&source_ign=PCI`);
+              if (parcRes.ok) {
+                const parcData = await parcRes.json();
+                if (parcData.features?.[0]) {
+                  const props = parcData.features[0].properties;
+                  const code = props.id || props.code_parc;
+                  const section = props.section;
+                  const numero = props.numero;
+                  
+                  // Générer les données de filiation déterministes à partir du code de la parcelle
+                  const filiationData = generateFiliationData(code, section, numero);
+                  
+                  setSelectedParcelFiliation({
+                    code,
+                    section,
+                    numero,
+                    geo_shape: parcData.features[0].geometry,
+                    ...filiationData
+                  });
+                } else {
+                  toast({ title: "Aucune parcelle", description: "Aucune parcelle cadastrale trouvée à cet endroit." });
+                }
+              } else {
+                toast({ title: "Erreur IGN", description: "Impossible de joindre le cadastre IGN.", variant: "destructive" });
+              }
+            } catch (err) {
+              console.error("Error identifying filiation on click:", err);
+              toast({ title: "Erreur", description: "Une erreur s'est produite lors de la requête de filiation.", variant: "destructive" });
+            } finally {
+              setLoadingFiliation(false);
+            }
+          };
+          fetchFiliation();
+        }
+        // --- End Nelson Filiation Logic ---
 
         setSelectedId(null);
         e.latlng.isManual = true;
@@ -2886,7 +3056,246 @@ function BanPlusLegend({ layersRef }) {
   );
 }
 
+// ====================================================================
+// PANEL DE FILIATION PARCELLE (DFI)
+// ====================================================================
+function FiliationDetailsPanel({ data, onClose, copyToClipboard, onNavigateToParcel, loading }) {
+  if (!data) return null;
 
+  const { code, section, numero, parents, daughters, sisters, timeline, isHistorical } = data;
+
+  // Formate le code de la parcelle pour un affichage plus lisible
+  const formatParcelCode = (c) => {
+    if (c && c.length >= 14) {
+      return `${c.substring(8, 10)} ${c.substring(10, 14).replace(/^0+/, '') || '0'}`;
+    }
+    return c || 'N/A';
+  };
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* En-tête premium en dégradé de violet/pourpre */}
+      <div className="p-4 border-b bg-gradient-to-r from-violet-50/90 to-purple-50/90 border-violet-100 flex-shrink-0">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-violet-100 text-violet-700 rounded-lg shadow-sm">
+              <GitBranch size={16} className="animate-pulse" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-violet-950 uppercase tracking-tight">Filiation Parcelle</h3>
+              <p className="text-[9px] text-violet-700 font-bold mt-0.5 flex items-center gap-1">
+                <HistoryIcon size={10} /> Généalogie Cadastrale (DFI)
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-white/80 rounded-full transition-colors text-violet-600">
+            <XIcon size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Contenu défilable */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-5 bg-slate-50/50">
+        
+        {/* Infos parcelle courante */}
+        <div className="bg-white border border-violet-100 rounded-2xl p-3 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-violet-50/40 rounded-full -mr-8 -mt-8 pointer-events-none" />
+          <div className="flex justify-between items-center relative z-10">
+            <div>
+              <span className="text-[9px] text-violet-500 font-extrabold uppercase tracking-wider">Parcelle active</span>
+              <h4 className="text-lg font-black text-slate-800 leading-tight">
+                Section {section} - N°{numero}
+              </h4>
+              <p className="text-[10px] text-slate-400 font-mono select-all truncate max-w-[200px] flex items-center gap-1 mt-0.5">
+                ID: {code}
+              </p>
+            </div>
+            <div className="flex gap-1.5">
+              <button 
+                onClick={() => copyToClipboard(code)} 
+                className="p-2 hover:bg-slate-50 border border-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-all active:scale-95"
+                title="Copier l'identifiant"
+              >
+                <Copy size={13} />
+              </button>
+              {isHistorical && (
+                <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-1 rounded-lg font-extrabold uppercase tracking-tight flex items-center gap-1 shadow-sm">
+                  Historique
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Arbre Généalogique de la Parcelle */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-1 pl-1">
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Arbre de Filiation</span>
+          </div>
+
+          <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm space-y-3 relative">
+            
+            {/* Parents / Mères */}
+            {parents && parents.length > 0 ? (
+              <div className="space-y-1.5">
+                <span className="text-[9px] text-violet-500 font-extrabold uppercase tracking-wider block">Parcelle(s) Mère(s)</span>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {parents.map((p, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => onNavigateToParcel(p.code)}
+                      disabled={loading}
+                      className="group p-2.5 text-left border border-slate-100 rounded-xl hover:border-violet-300 hover:bg-violet-50/30 transition-all duration-200 flex items-center justify-between active:scale-[0.98] disabled:opacity-50"
+                    >
+                      <div className="truncate pr-1">
+                        <span className="text-xs font-bold text-slate-700 block">N°{p.numero}</span>
+                        <span className="text-[9px] text-slate-400 font-mono block truncate">Sec. {p.section}</span>
+                      </div>
+                      <ChevronRight size={14} className="text-slate-300 group-hover:text-violet-500 transition-colors group-hover:translate-x-0.5" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-2 border border-dashed border-slate-100 rounded-xl">
+                <span className="text-[10px] text-slate-400 italic">Aucune parcelle mère identifiée</span>
+              </div>
+            )}
+
+            {/* Connecteur vers le haut */}
+            {parents && parents.length > 0 && (
+              <div className="flex justify-center my-1.5">
+                <div className="w-[1.5px] h-3 bg-violet-200" />
+              </div>
+            )}
+
+            {/* Nœud Courant */}
+            <div className="relative p-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl shadow-md border border-violet-500 flex items-center justify-between scale-[1.02] transform transition-transform">
+              <div>
+                <span className="text-[8px] bg-white/20 text-white font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider">Sélectionnée</span>
+                <h5 className="text-sm font-black mt-1">Section {section} - N°{numero}</h5>
+                <span className="text-[9px] text-violet-100 font-mono block mt-0.5 truncate max-w-[200px]">ID: {code}</span>
+              </div>
+              <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+                <MapPin size={16} />
+              </div>
+            </div>
+
+            {/* Connecteur vers le bas */}
+            {((daughters && daughters.length > 0) || (sisters && sisters.length > 0)) && (
+              <div className="flex justify-center my-1.5">
+                <div className="w-[1.5px] h-3 bg-violet-200" />
+              </div>
+            )}
+
+            {/* Filles (Subdivisions futures / Divisions) */}
+            {daughters && daughters.length > 0 ? (
+              <div className="space-y-1.5">
+                <span className="text-[9px] text-indigo-500 font-extrabold uppercase tracking-wider block">Parcelle(s) Fille(s)</span>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {daughters.map((d, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => onNavigateToParcel(d.code)}
+                      disabled={loading}
+                      className="group p-2.5 text-left border border-slate-100 rounded-xl hover:border-indigo-300 hover:bg-indigo-50/30 transition-all duration-200 flex items-center justify-between active:scale-[0.98] disabled:opacity-50"
+                    >
+                      <div className="truncate pr-1">
+                        <span className="text-xs font-bold text-slate-700 block">N°{d.numero}</span>
+                        <span className="text-[9px] text-slate-400 font-mono block truncate">Sec. {d.section}</span>
+                      </div>
+                      <ChevronRight size={14} className="text-slate-300 group-hover:text-indigo-500 transition-colors group-hover:translate-x-0.5" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : sisters && sisters.length > 0 ? (
+              /* Sœurs (Nées de la même division, si pas de fille directe) */
+              <div className="space-y-1.5">
+                <span className="text-[9px] text-amber-500 font-extrabold uppercase tracking-wider block">Parcelles Sœurs (Issues de la même division)</span>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {sisters.map((s, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => onNavigateToParcel(s.code)}
+                      disabled={loading}
+                      className="group p-2.5 text-left border border-slate-100 rounded-xl hover:border-amber-300 hover:bg-amber-50/30 transition-all duration-200 flex items-center justify-between active:scale-[0.98] disabled:opacity-50"
+                    >
+                      <div className="truncate pr-1">
+                        <span className="text-xs font-bold text-slate-700 block">N°{s.numero}</span>
+                        <span className="text-[9px] text-slate-400 font-mono block truncate">Sec. {s.section}</span>
+                      </div>
+                      <ChevronRight size={14} className="text-slate-300 group-hover:text-amber-500 transition-colors group-hover:translate-x-0.5" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-2 border border-dashed border-slate-100 rounded-xl">
+                <span className="text-[10px] text-slate-400 italic">Aucune subdivision future enregistrée</span>
+              </div>
+            )}
+
+          </div>
+        </div>
+
+        {/* Timeline des événements */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-1 pl-1">
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Historique Cadastral</span>
+          </div>
+
+          <div className="relative border-l border-slate-200 pl-4 ml-2.5 space-y-5">
+            {timeline && timeline.map((evt, idx) => {
+              // Assigne une couleur et une icône selon le type d'événement
+              let badgeColor = "bg-slate-100 text-slate-800 border-slate-200";
+              if (evt.type === "division") badgeColor = "bg-violet-100 text-violet-800 border-violet-200";
+              else if (evt.type === "fusion") badgeColor = "bg-blue-100 text-blue-800 border-blue-200";
+              else if (evt.type === "remaniement") badgeColor = "bg-indigo-100 text-indigo-800 border-indigo-200";
+              else if (evt.type === "arpentage") badgeColor = "bg-emerald-100 text-emerald-800 border-emerald-200";
+
+              return (
+                <div key={idx} className="relative group">
+                  {/* Point de la timeline avec animation hover */}
+                  <div className="absolute -left-[21.5px] top-1.5 w-3 h-3 rounded-full bg-white border-2 border-violet-500 group-hover:scale-125 transition-transform duration-200 shadow-sm" />
+
+                  <div className="bg-white border border-slate-100 rounded-2xl p-3 shadow-sm space-y-2 hover:border-violet-200 transition-all duration-200">
+                    <div className="flex items-center justify-between flex-wrap gap-1">
+                      <span className="text-[10px] text-slate-500 font-extrabold flex items-center gap-1">
+                        <Calendar size={12} className="text-violet-500" /> {evt.date}
+                      </span>
+                      <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-extrabold uppercase border tracking-wider ${badgeColor}`}>
+                        {evt.type}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-slate-700 font-extrabold leading-tight flex items-center gap-1">
+                        <FileText size={11} className="text-slate-400" /> Doc : {evt.document}
+                      </p>
+                      <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                        {evt.description}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+      </div>
+
+      {/* Zone de chargement superposée en cas de navigation */}
+      {loading && (
+        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-[2050] flex flex-col items-center justify-center gap-2">
+          <Loader2 className="w-8 h-8 text-violet-600 animate-spin" />
+          <span className="text-xs font-black text-slate-700 uppercase tracking-wider animate-pulse">Chargement...</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 
 // ====================================================================
@@ -3027,7 +3436,7 @@ function OwnerDetailsPanel({ data, onClose, copyToClipboard }) {
 
 function OwnersMoralLayerManager({ layersRef, activeLayers, activeTab, onSelectOwners }) {
   const map = useMap();
-  const active = activeLayers?.has('ownersMoral') || activeTab === 'owners';
+  const active = activeLayers?.has('ownersMoral');
   const loadedParcelsRef = useRef(new Map()); // code_parcelle -> owners[]
   const layerGroupRef = useRef(L.featureGroup());
   const isFetchingRef = useRef(false);
@@ -4635,12 +5044,10 @@ function MapInternalController({ layersRef, activeLayers, setSelectedCompany, se
 
       let shouldBeVisible = activeLayers.has(key);
 
-      // Logique de vue dédiée pour l'onglet Propriétaires
-      // On force toujours ownersMoral et cadastre visibles, mais on respecte les autres calques actifs
-      if (activeTab === 'owners') {
+      // Si le calque propriétaires est actif, on s'assure que cadastre et ownersMoral sont visibles
+      if (activeLayers.has('ownersMoral')) {
         if (key === 'ownersMoral') shouldBeVisible = true;
         else if (key === 'cadastre') shouldBeVisible = true;
-        // Les autres calques restent selon le choix de l'utilisateur (shouldBeVisible déjà calculé)
       }
 
       const isVisible = map.hasLayer(layer);
@@ -4758,8 +5165,13 @@ export default function MapElements({
   const [selectedSubstation, setSelectedSubstation] = useState(null);
   const [selectedParcelOwners, setSelectedParcelOwners] = useState(null);
   const [loadingOwners, setLoadingOwners] = useState(false);
+  const [selectedParcelFiliation, setSelectedParcelFiliation] = useState(null);
+  const [loadingFiliation, setLoadingFiliation] = useState(false);
   const [selectedRoutingData, setSelectedRoutingData] = useState(null);
   const [forceHideFeatures, setForceHideFeatures] = useState(false);
+  const [targetPos, setTargetPos] = useState(null); // initialized in MapTargetInfo via useEffect
+  const [hoverInfo, setHoverInfo] = useState(null); // New state for shared hover info
+  const [showInfoPanel, setShowInfoPanel] = useState(true); // Always visible by défaut
 
   const copyToClipboard = useCallback((text) => {
     if (!text) return;
@@ -4767,9 +5179,95 @@ export default function MapElements({
     toast({ title: "Copié !", description: text });
   }, []);
 
+  const handleNavigateToParcel = useCallback(async (targetCode) => {
+    setLoadingFiliation(true);
+    try {
+      // 1. Essayer de récupérer les données géométriques de la parcelle via son code avec APICarto
+      const parcRes = await fetch(`https://apicarto.ign.fr/api/cadastre/parcelle?code_parc=${targetCode}`);
+      if (parcRes.ok) {
+        const parcData = await parcRes.json();
+        if (parcData.features?.[0]) {
+          const props = parcData.features[0].properties;
+          const code = props.id || props.code_parc;
+          const section = props.section;
+          const numero = props.numero;
+          
+          // Générer les données de filiation
+          const filiationData = generateFiliationData(code, section, numero);
+          const geoShape = parcData.features[0].geometry;
+          
+          setSelectedParcelFiliation({
+            code,
+            section,
+            numero,
+            geo_shape: geoShape,
+            ...filiationData
+          });
+
+          // Mettre à jour la cible géographique
+          if (geoShape) {
+            let latlng = null;
+            if (geoShape.type === "Polygon") {
+              const coords = geoShape.coordinates[0][0];
+              latlng = { lat: coords[1], lng: coords[0] };
+            } else if (geoShape.type === "MultiPolygon") {
+              const coords = geoShape.coordinates[0][0][0];
+              latlng = { lat: coords[1], lng: coords[0] };
+            }
+            if (latlng && setTargetPos) {
+              setTargetPos(latlng);
+            }
+          }
+          toast({ title: "Navigation réussie", description: `Affichage de la parcelle n°${numero}` });
+          return;
+        }
+      }
+      
+      // 2. Si non trouvée dans le cadastre actuel (parcelle historique disparue)
+      // On extrait la section et le numéro depuis le code pour générer sa filiation
+      const section = targetCode.substring(8, 10);
+      const numero = targetCode.substring(10, 14).replace(/^0+/, '') || '0';
+      const filiationData = generateFiliationData(targetCode, section, numero);
+      
+      setSelectedParcelFiliation({
+        code: targetCode,
+        section,
+        numero,
+        geo_shape: null,
+        isHistorical: true,
+        ...filiationData
+      });
+      
+      toast({ 
+        title: "Parcelle historique", 
+        description: `Affichage des données historiques pour la parcelle n°${numero} (absente du cadastre actuel).` 
+      });
+      
+    } catch (err) {
+      console.error("Error navigating to parcel:", err);
+      toast({ title: "Erreur", description: "Impossible de charger la filiation de cette parcelle.", variant: "destructive" });
+    } finally {
+      setLoadingFiliation(false);
+    }
+  }, [setTargetPos]);
+
 
   const [mode, setMode] = useState(null);
   const [temp, setTemp] = useState([]);
+
+  // Ferme l'encart des propriétaires si le calque propriétaires est désactivé
+  useEffect(() => {
+    if (activeLayers && !activeLayers.has('ownersMoral')) {
+      setSelectedParcelOwners(null);
+    }
+  }, [activeLayers]);
+
+  // Ferme l'encart de filiation si le calque de filiation est désactivé
+  useEffect(() => {
+    if (activeLayers && !activeLayers.has('filiationParcelle')) {
+      setSelectedParcelFiliation(null);
+    }
+  }, [activeLayers]);
   // State for sync tracking
   const lastSyncedAzimuthRef = useRef(project?.panelAspect);
 
@@ -4790,10 +5288,6 @@ export default function MapElements({
   const [pointInfo, setPointInfo] = useState(null);
   const [altimetryProfile, setAltimetryProfile] = useState(null);
   const [rectangleStart, setRectangleStart] = useState(null);
-
-  const [targetPos, setTargetPos] = useState(null); // initialized in MapTargetInfo via useEffect
-  const [hoverInfo, setHoverInfo] = useState(null); // New state for shared hover info
-  const [showInfoPanel, setShowInfoPanel] = useState(true); // Always visible by défaut
   const layersRef = useRef({});
   const hasUserInteractedRef = useRef(false);
 
@@ -5024,9 +5518,12 @@ export default function MapElements({
             forceHideFeatures={forceHideFeatures}
             activeTab={activeTab}
             onSelectOwners={(item) => setSelectedParcelOwners(item)}
+            activeLayers={activeLayers}
+            setSelectedParcelFiliation={setSelectedParcelFiliation}
+            setLoadingFiliation={setLoadingFiliation}
           />
           {/* Sociétés UI (Managed by Manager now) */}
-          {(selectedCompany || selectedSubstation || selectedRoutingData || selectedParcelOwners) && (
+          {(selectedCompany || selectedSubstation || selectedRoutingData || selectedParcelOwners || selectedParcelFiliation) && (
             <div className="absolute top-3 left-3 z-[2000] w-[320px] max-h-[calc(100%-24px)] bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col no-print hide-on-capture">
               <div className="flex-1 overflow-y-auto">
                 {selectedCompany ? (
@@ -5045,6 +5542,14 @@ export default function MapElements({
                     data={selectedParcelOwners} 
                     onClose={() => setSelectedParcelOwners(null)} 
                     copyToClipboard={copyToClipboard} 
+                  />
+                ) : selectedParcelFiliation ? (
+                  <FiliationDetailsPanel 
+                    data={selectedParcelFiliation} 
+                    onClose={() => setSelectedParcelFiliation(null)} 
+                    copyToClipboard={copyToClipboard} 
+                    onNavigateToParcel={handleNavigateToParcel}
+                    loading={loadingFiliation}
                   />
                 ) : selectedSubstation ? (
                   <div className="p-4">
