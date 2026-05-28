@@ -1312,50 +1312,7 @@ export default function ProjectEditor() {
                                       solarYieldRoof1: weightedYield.toFixed(2)
                                     });
 
-                                    // CALCUL AUTO RESTE A CHARGE (ACAMA UNIQUEMENT)
-                                    if (activeTenantId === 'acama') {
-                                      try {
-                                        // 1. Trouver le bâtiment sélectionné pour avoir son coût
-                                        const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding || f.buildingName) && !f.isBattery);
-                                        const firstBuilding = predefinedBuildings[0];
-                                        const buildingInfo = firstBuilding ? ACAMA_PREDEFINED_BUILDINGS.find(b => b.label === firstBuilding.buildingName) : null;
-                                        const power = p.puissance || (buildingInfo?.power) || 0;
-                                        const buildingCost = buildingInfo?.cost || 0;
-
-                                        if (power > 0) {
-                                          const simParams = {
-                                            power: power,
-                                            production: power * weightedYield,
-                                            tarifTH: 0.085,
-                                            tarifACC: 0,
-                                            turpe: 0.012,
-                                            prixAchatACC: 0,
-                                            partACC: 0,
-                                            interestRate: 3.9,
-                                            withPrime: false
-                                          };
-
-                                          const simCosts = {
-                                            installationRate: 0.50,
-                                            installation: power * 0.50 * 1000,
-                                            charpente: buildingCost,
-                                            couverture: 0,
-                                            fondations: 0,
-                                            agregateur: 2500,
-                                            raccordement: 15000,
-                                            developpement: 5000,
-                                            fraisCommerciaux: power * 30,
-                                            maintenance: 10,
-                                            resteACharge: 0
-                                          };
-
-                                          const optimalReste = calculateRequiredResteACharge(simParams, simCosts, 1.17);
-                                          updateProject({ resteACharge: optimalReste });
-                                        }
-                                      } catch (err) {
-                                        console.error("[Reste à Charge Error]", err);
-                                      }
-                                    }
+                                    // CALCUL AUTO RESTE A CHARGE SUPPRIME - Se base desormais sur le BP Acama
 
                                     toast({
                                       title: "Succès Ligne 1",
@@ -1551,49 +1508,7 @@ export default function ProjectEditor() {
                                     solarYieldRoof2: weightedYield.toFixed(2)
                                   });
 
-                                  // CALCUL AUTO RESTE A CHARGE LIGNE 2 (ACAMA UNIQUEMENT)
-                                  if (activeTenantId === 'acama') {
-                                    try {
-                                      const predefinedBuildings = (p.features || []).filter(f => f.type === 'rectangle' && (f.isPredefinedBuilding || f.buildingName) && !f.isBattery);
-                                      const secondBuilding = predefinedBuildings[1];
-                                      const buildingInfo = secondBuilding ? ACAMA_PREDEFINED_BUILDINGS.find(b => b.label === secondBuilding.buildingName) : null;
-                                      const power = p.puissance2 || (buildingInfo?.power) || 0;
-                                      const buildingCost = buildingInfo?.cost || 0;
-
-                                      if (power > 0) {
-                                        const simParams = {
-                                          power: power,
-                                          production: power * weightedYield,
-                                          tarifTH: 0.085,
-                                          tarifACC: 0,
-                                          turpe: 0.012,
-                                          prixAchatACC: 0,
-                                          partACC: 0,
-                                          interestRate: 3.9,
-                                          withPrime: false
-                                        };
-
-                                        const simCosts = {
-                                          installationRate: 0.50,
-                                          installation: power * 0.50 * 1000,
-                                          charpente: buildingCost,
-                                          couverture: 0,
-                                          fondations: 0,
-                                          agregateur: 2500,
-                                          raccordement: 15000,
-                                          developpement: 5000,
-                                          fraisCommerciaux: power * 30,
-                                          maintenance: 10,
-                                          resteACharge: 0
-                                        };
-
-                                        const optimalReste = calculateRequiredResteACharge(simParams, simCosts, 1.17);
-                                        updateProject({ resteACharge2: optimalReste });
-                                      }
-                                    } catch (err) {
-                                      console.error("[Reste à Charge L2 Error]", err);
-                                    }
-                                  }
+                                  // CALCUL AUTO RESTE A CHARGE LIGNE 2 SUPPRIME - Se base desormais sur le BP Acama
 
                                   toast({
                                     title: "Succès Ligne 2",

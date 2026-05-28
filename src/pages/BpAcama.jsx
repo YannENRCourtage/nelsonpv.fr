@@ -4305,7 +4305,7 @@ export default function BpAcama() {
           
           const defaultProdLocal = parseFloat(selectedProject.solarYieldRoof1 || selectedProject.productible) || 1123.08;
           const specificProd = parseFloat(selectedProject[`solarYieldRoof${idx+1}`]) || defaultProdLocal;
-          const newProd = (!b.productible || b.productible === defaultProdLocal) ? specificProd : b.productible;
+          const newProd = specificProd; // Toujours recuperer depuis le projet
           
           const featPower = parseFloat(feat?.power || feat?.kwc || feat?.puissance) || 0;
           const newKwc = (b.kwc === 100 && featPower > 0 && featPower !== 100) ? featPower : b.kwc;
