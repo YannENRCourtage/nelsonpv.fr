@@ -1868,7 +1868,7 @@ function TabBpProjets({
             projectType: f.projectType || 'BAC',
             surfaceToiture: f.surface || 0,
             kwc: autoKwc,
-            productible: batData?.prodMoyen || specificProd,
+            productible: specificProd,
             coutCentrale: autoKwc * 490,
             coutCharpente: autoCoutCharpente,
             distHta: 100,
@@ -1894,7 +1894,7 @@ function TabBpProjets({
             typeBat: normalizedType,
             projectType: 'BAC',
             kwc: initialKwc,
-            productible: batData?.prodMoyen || parseFloat(p.solarYieldRoof1 || p.productible) || defaultProd,
+            productible: parseFloat(p.solarYieldRoof1 || p.productible) || defaultProd,
             coutCentrale: initialKwc * 490,
             coutCharpente: initialCoutCharpente,
             distHta: 100,
@@ -1906,19 +1906,19 @@ function TabBpProjets({
           const norm2 = normalizeBatType(p.type_bat2 || '');
           const data2 = (localBatData || []).find(d => d.type.toUpperCase() === norm2.toUpperCase());
           const kwc2 = (data2 && (!b2 || b2 === 100)) ? data2.kwc : b2;
-          initialBuildings.push({ id: 2, typeBat: norm2, projectType: 'BAC', kwc: kwc2, productible: data2?.prodMoyen || parseFloat(p.solarYieldRoof2 || p.productible) || defaultProd, coutCentrale: kwc2 * 490, coutCharpente: data2?.cout_bat || 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc2 * 1000 / (params.puissanceUnitaire || 460)) });
+          initialBuildings.push({ id: 2, typeBat: norm2, projectType: 'BAC', kwc: kwc2, productible: parseFloat(p.solarYieldRoof2 || p.productible) || defaultProd, coutCentrale: kwc2 * 490, coutCharpente: data2?.cout_bat || 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc2 * 1000 / (params.puissanceUnitaire || 460)) });
         }
         if (b3 > 0) {
           const norm3 = normalizeBatType(p.type_bat3 || '');
           const data3 = (localBatData || []).find(d => d.type.toUpperCase() === norm3.toUpperCase());
           const kwc3 = (data3 && (!b3 || b3 === 100)) ? data3.kwc : b3;
-          initialBuildings.push({ id: 3, typeBat: norm3, projectType: 'BAC', kwc: kwc3, productible: data3?.prodMoyen || parseFloat(p.solarYieldRoof3 || p.productible) || defaultProd, coutCentrale: kwc3 * 490, coutCharpente: data3?.cout_bat || 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc3 * 1000 / (params.puissanceUnitaire || 460)) });
+          initialBuildings.push({ id: 3, typeBat: norm3, projectType: 'BAC', kwc: kwc3, productible: parseFloat(p.solarYieldRoof3 || p.productible) || defaultProd, coutCentrale: kwc3 * 490, coutCharpente: data3?.cout_bat || 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc3 * 1000 / (params.puissanceUnitaire || 460)) });
         }
         if (b4 > 0) {
           const norm4 = normalizeBatType(p.type_bat4 || '');
           const data4 = (localBatData || []).find(d => d.type.toUpperCase() === norm4.toUpperCase());
           const kwc4 = (data4 && (!b4 || b4 === 100)) ? data4.kwc : b4;
-          initialBuildings.push({ id: 4, typeBat: norm4, projectType: 'BAC', kwc: kwc4, productible: data4?.prodMoyen || parseFloat(p.solarYieldRoof4 || p.productible) || defaultProd, coutCentrale: kwc4 * 490, coutCharpente: data4?.cout_bat || 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc4 * 1000 / (params.puissanceUnitaire || 460)) });
+          initialBuildings.push({ id: 4, typeBat: norm4, projectType: 'BAC', kwc: kwc4, productible: parseFloat(p.solarYieldRoof4 || p.productible) || defaultProd, coutCentrale: kwc4 * 490, coutCharpente: data4?.cout_bat || 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc4 * 1000 / (params.puissanceUnitaire || 460)) });
         }
       }
       
