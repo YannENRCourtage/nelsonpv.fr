@@ -1645,7 +1645,8 @@ function TabBpProjets({
       // Re-calculate automated fields
       const newBuildingsArray = newBuildings;
       const totalRaccordement = newBuildingsArray.reduce((sum, b) => sum + getHtaCost(parseFloat(b.kwc) || 0, parseFloat(b.distHta) || 0), 0);
-      const totalCoutTechnique = newBuildingsArray.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0), 0);
+      const studyCost = !isGreenInvest ? (newBuildingsArray.length * 3300) : 0;
+      const totalCoutTechnique = newBuildingsArray.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0), 0) + studyCost;
       const totalFrais = totalCoutTechnique * 0.01;
 
       return { 
@@ -1689,7 +1690,8 @@ function TabBpProjets({
     const totalProdKwh = buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0) * (parseFloat(b.productible) || 0), 0);
     const averageProd = totalKwc > 0 ? totalProdKwh / totalKwc : 0;
 
-    const totalConst = totalCentrale + totalCharpente + totalRaccordement + totalFrais + developpement;
+    const studyCost = !isGreenInvest ? (buildings.length * 3300) : 0;
+    const totalConst = totalCentrale + totalCharpente + studyCost + totalRaccordement + totalFrais + developpement;
 
     return {
       ...params,
@@ -1762,7 +1764,8 @@ function TabBpProjets({
     
     const newRaccordement = params.buildings.reduce((sum, b) => sum + getHtaCost(parseFloat(b.kwc) || 0, parseFloat(b.distHta) || 0), 0);
     
-    const totalCoutTechnique = params.buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0), 0);
+    const studyCost = !isGreenInvest ? (params.buildings.length * 3300) : 0;
+    const totalCoutTechnique = params.buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0), 0) + studyCost;
     const newFrais = totalCoutTechnique * 0.01;
 
     if (Math.abs((params.raccordement || 0) - newRaccordement) > 0.1 || Math.abs((params.frais || 0) - newFrais) > 0.1) {
@@ -1923,7 +1926,8 @@ function TabBpProjets({
       }
       
       const totalRaccordement = initialBuildings.reduce((sum, b) => sum + getHtaCost(parseFloat(b.kwc) || 0, parseFloat(b.distHta) || 0), 0);
-      const totalCoutTechnique = initialBuildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0), 0);
+      const studyCost = !isGreenInvest ? (initialBuildings.length * 3300) : 0;
+      const totalCoutTechnique = initialBuildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0), 0) + studyCost;
       const totalFrais = totalCoutTechnique * 0.01;
 
       setParams(prev => ({
@@ -2304,11 +2308,26 @@ function TabBpProjets({
                         </td>
                       ))}
                     </tr>
+                    {!isGreenInvest && (
+                      <tr>
+                        <td className="text-[12px] text-slate-500 font-medium pt-1">Etude Structure/Béton</td>
+                        {(params.buildings || []).map(b => (
+                          <td key={b.id} className="pt-1">
+                            <input 
+                              readOnly
+                              disabled
+                              className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none text-right font-bold text-slate-500 shadow-sm"
+                              value="3300 €" 
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    )}
                     <tr className="bg-slate-50 font-bold italic">
                       <td className="text-[13px] text-slate-400 py-1">Sous-total technique</td>
                       {(params.buildings || []).map(b => (
                         <td key={b.id} className="text-right text-[13px] pr-2">
-                          {fmtEur((parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0))}
+                          {fmtEur((parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0) + (!isGreenInvest ? 3300 : 0))}
                         </td>
                       ))}
                     </tr>
@@ -3565,7 +3584,8 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
         const totalSoulte = parseFloat(state.soulte) || 0;
         const totalProdKwh = buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0) * (parseFloat(b.productible) || 0), 0);
         const averageProd = kwcTotal > 0 ? totalProdKwh / kwcTotal : 0;
-        const totalConst = totalCentrale + totalCharpente + totalRaccordement + totalFrais;
+        const studyCost = !isGreenInvest ? (buildings.length * 3300) : 0;
+        const totalConst = totalCentrale + totalCharpente + studyCost + totalRaccordement + totalFrais;
           
         const collapsedForSaved = {
           ...state,
@@ -4407,7 +4427,8 @@ export default function BpAcama() {
     const frais = parseFloat(params.frais) || 0;
     const soulte = parseFloat(params.soulte) || 0;
 
-    const totalConst = coutCentrale + coutCharpente + raccordement + frais + soulte + developpement;
+    const studyCost = !isGreenInvest ? (buildings.length * 3300) : 0;
+    const totalConst = coutCentrale + coutCharpente + studyCost + raccordement + frais + soulte + developpement;
 
     return {
       ...params,
