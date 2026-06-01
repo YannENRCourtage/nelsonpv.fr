@@ -48,37 +48,39 @@ function aggregateByMonth(readings) {
 // ─── Tooltip personnalisé ─────────────────────────────────────────────────────
 const TS = { borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px', fontWeight: 600 };
 
-// ─── Curseur en croix dynamique (Crosshair) ───────────────────────────────────
 const CrosshairCursor = (props) => {
-  const { x, y, width, height, stroke = '#cbd5e1', points } = props;
+  const { stroke = '#cbd5e1', points, activeCoordinate, offset, height, width } = props;
   
-  const cursorX = x;
-  let cursorY = y;
-  
-  if (points && points.length > 0) {
-    cursorY = points[0].y;
-  }
-  
+  // activeCoordinate gives us the exact x,y of the hovered data point
+  const cursorX = activeCoordinate?.x ?? (points && points.length > 0 ? points[0].x : undefined);
+  const cursorY = activeCoordinate?.y;
+
   if (cursorX === undefined) return null;
   
+  // Use offset to bound the lines within the chart area
+  const topY = offset?.top ?? 0;
+  const bottomY = topY + (offset?.height ?? height ?? 500);
+  const leftX = offset?.left ?? 0;
+  const rightX = leftX + (offset?.width ?? width ?? 800);
+
   return (
     <g>
       {/* Ligne verticale */}
       <line
         x1={cursorX}
-        y1={0}
+        y1={topY}
         x2={cursorX}
-        y2={height}
-        stroke="#cbd5e1"
+        y2={bottomY}
+        stroke={stroke}
         strokeWidth={1}
         strokeDasharray="3 3"
       />
       {/* Ligne horizontale */}
       {cursorY !== undefined && (
         <line
-          x1={0}
+          x1={leftX}
           y1={cursorY}
-          x2={width}
+          x2={rightX}
           y2={cursorY}
           stroke={stroke}
           strokeWidth={1}
