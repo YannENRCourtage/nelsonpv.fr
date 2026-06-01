@@ -48,6 +48,36 @@ function aggregateByMonth(readings) {
 // ─── Tooltip personnalisé ─────────────────────────────────────────────────────
 const TS = { borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px', fontWeight: 600 };
 
+// ─── Curseur en croix dynamique (Crosshair) ───────────────────────────────────
+const CrosshairCursor = (props) => {
+  const { x, y, width, height, stroke = '#cbd5e1' } = props;
+  if (x === undefined || y === undefined) return null;
+  return (
+    <g>
+      {/* Ligne verticale */}
+      <line
+        x1={x}
+        y1={0}
+        x2={x}
+        y2={height}
+        stroke="#cbd5e1"
+        strokeWidth={1}
+        strokeDasharray="3 3"
+      />
+      {/* Ligne horizontale */}
+      <line
+        x1={0}
+        y1={y}
+        x2={width}
+        y2={y}
+        stroke={stroke}
+        strokeWidth={1}
+        strokeDasharray="3 3"
+      />
+    </g>
+  );
+};
+
 // ─── Composant principal ──────────────────────────────────────────────────────
 const ConsumptionChart = ({ data, loading }) => {
   const [period, setPeriod] = useState('month');
@@ -290,7 +320,7 @@ const ConsumptionChart = ({ data, loading }) => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="time" fontSize={10} tick={{ fill: '#94a3b8' }} interval={Math.floor(loadData.length / 8)} />
                   <YAxis fontSize={11} tick={{ fill: '#94a3b8' }} unit=" kW" width={55} />
-                  <Tooltip formatter={v => [`${v} kW`, 'Puissance']} contentStyle={TS} />
+                  <Tooltip formatter={v => [`${v} kW`, 'Puissance']} contentStyle={TS} cursor={<CrosshairCursor stroke="#10b981" />} />
                   <Area type="monotone" dataKey="kW" stroke="#10b981" strokeWidth={2} fill="url(#greenGrad)" dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -320,7 +350,7 @@ const ConsumptionChart = ({ data, loading }) => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="date" fontSize={10} tick={{ fill: '#94a3b8' }} interval={Math.floor(maxPwrChart.length / 10)} />
                   <YAxis fontSize={11} tick={{ fill: '#94a3b8' }} unit=" kW" width={55} />
-                  <Tooltip formatter={v => [`${v} kW`, 'Puissance max']} contentStyle={TS} />
+                  <Tooltip formatter={v => [`${v} kW`, 'Puissance max']} contentStyle={TS} cursor={<CrosshairCursor stroke="#f59e0b" />} />
                   <Line type="monotone" dataKey="kW" stroke="#f59e0b" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>

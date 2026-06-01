@@ -55,10 +55,33 @@ const EnedisPrintLayout = ({ visible, prm, data, consent }) => {
   return (
     <>
       <style>{`
+        #enedis-print-layout {
+          display: none;
+        }
+        @media screen {
+          #enedis-print-layout {
+            position: fixed;
+            top: -9999px;
+            left: -9999px;
+            width: 277mm;
+            height: 190mm;
+            overflow: hidden;
+          }
+        }
         @media print {
           @page { size: A4 landscape; margin: 8mm; }
-          body > *:not(#enedis-print-layout) { display: none !important; }
-          #enedis-print-layout { display: block !important; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: white; z-index: 99999; }
+          body { visibility: hidden !important; }
+          #enedis-print-layout, #enedis-print-layout * { visibility: visible !important; }
+          #enedis-print-layout {
+            display: block !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 277mm !important;
+            height: 190mm !important;
+            background: white;
+            z-index: 99999;
+          }
         }
       `}</style>
 
