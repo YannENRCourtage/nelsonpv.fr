@@ -50,30 +50,41 @@ const TS = { borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px'
 
 // ─── Curseur en croix dynamique (Crosshair) ───────────────────────────────────
 const CrosshairCursor = (props) => {
-  const { x, y, width, height, stroke = '#cbd5e1' } = props;
-  if (x === undefined || y === undefined) return null;
+  const { x, y, width, height, stroke = '#cbd5e1', points } = props;
+  
+  const cursorX = x;
+  let cursorY = y;
+  
+  if (points && points.length > 0) {
+    cursorY = points[0].y;
+  }
+  
+  if (cursorX === undefined) return null;
+  
   return (
     <g>
       {/* Ligne verticale */}
       <line
-        x1={x}
+        x1={cursorX}
         y1={0}
-        x2={x}
+        x2={cursorX}
         y2={height}
         stroke="#cbd5e1"
         strokeWidth={1}
         strokeDasharray="3 3"
       />
       {/* Ligne horizontale */}
-      <line
-        x1={0}
-        y1={y}
-        x2={width}
-        y2={y}
-        stroke={stroke}
-        strokeWidth={1}
-        strokeDasharray="3 3"
-      />
+      {cursorY !== undefined && (
+        <line
+          x1={0}
+          y1={cursorY}
+          x2={width}
+          y2={cursorY}
+          stroke={stroke}
+          strokeWidth={1}
+          strokeDasharray="3 3"
+        />
+      )}
     </g>
   );
 };
