@@ -1630,7 +1630,7 @@ function TabBpProjets({
               updated.coutCentrale = (updated.kwc || 0) * 490;
             }
           }
-          if (k === 'kwc' || k === 'coutCharpente' || k === 'coutCentrale' || k === 'distHta' || k === 'distPriv') {
+          if (k === 'kwc' || k === 'coutCharpente' || k === 'coutCentrale' || k === 'distHta' || k === 'distPriv' || k === 'etudeStructure') {
             const num = parseFloat(v) || 0;
             updated[k] = num;
             if (k === 'kwc') {
@@ -1645,8 +1645,10 @@ function TabBpProjets({
       // Re-calculate automated fields
       const newBuildingsArray = newBuildings;
       const totalRaccordement = newBuildingsArray.reduce((sum, b) => sum + getHtaCost(parseFloat(b.kwc) || 0, parseFloat(b.distHta) || 0), 0);
-      const studyCost = !isGreenInvest ? (newBuildingsArray.length * 3300) : 0;
-      const totalCoutTechnique = newBuildingsArray.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0), 0) + studyCost;
+      const totalCoutTechnique = newBuildingsArray.reduce((sum, b) => {
+        const etude = !isGreenInvest ? (b.etudeStructure !== undefined ? (parseFloat(b.etudeStructure) || 0) : 3300) : 0;
+        return sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0) + etude;
+      }, 0);
       const totalFrais = totalCoutTechnique * 0.01;
 
       return { 
@@ -1663,7 +1665,7 @@ function TabBpProjets({
     const newId = (params.buildings || []).length + 1;
     setParams(prev => ({
       ...prev,
-      buildings: [...(prev.buildings || []), { id: newId, typeBat: '', kwc: 100, productible: 1123.08, coutCentrale: 0, coutCharpente: 0, raccordement: 0, frais: 0, soulte: 0, distHta: 100, distPriv: 100 }]
+      buildings: [...(prev.buildings || []), { id: newId, typeBat: '', kwc: 100, productible: 1123.08, coutCentrale: 0, coutCharpente: 0, etudeStructure: 3300, raccordement: 0, frais: 0, soulte: 0, distHta: 100, distPriv: 100 }]
     }));
   };
 
@@ -1690,7 +1692,9 @@ function TabBpProjets({
     const totalProdKwh = buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0) * (parseFloat(b.productible) || 0), 0);
     const averageProd = totalKwc > 0 ? totalProdKwh / totalKwc : 0;
 
-    const studyCost = !isGreenInvest ? (buildings.length * 3300) : 0;
+    const studyCost = buildings.reduce((sum, b) => {
+      return sum + (!isGreenInvest ? (b.etudeStructure !== undefined ? (parseFloat(b.etudeStructure) || 0) : 3300) : 0);
+    }, 0);
     const totalConst = totalCentrale + totalCharpente + studyCost + totalRaccordement + totalFrais + developpement;
 
     return {
@@ -1764,7 +1768,9 @@ function TabBpProjets({
     
     const newRaccordement = params.buildings.reduce((sum, b) => sum + getHtaCost(parseFloat(b.kwc) || 0, parseFloat(b.distHta) || 0), 0);
     
-    const studyCost = !isGreenInvest ? (params.buildings.length * 3300) : 0;
+    const studyCost = params.buildings.reduce((sum, b) => {
+      return sum + (!isGreenInvest ? (b.etudeStructure !== undefined ? (parseFloat(b.etudeStructure) || 0) : 3300) : 0);
+    }, 0);
     const totalCoutTechnique = params.buildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0), 0) + studyCost;
     const newFrais = totalCoutTechnique * 0.01;
 
@@ -1874,6 +1880,7 @@ function TabBpProjets({
             productible: specificProd,
             coutCentrale: autoKwc * 490,
             coutCharpente: autoCoutCharpente,
+            etudeStructure: 3300,
             distHta: 100,
             distPriv: 100,
             numPanneaux: Math.round(autoKwc * 1000 / (params.puissanceUnitaire || 460))
@@ -1900,6 +1907,7 @@ function TabBpProjets({
             productible: parseFloat(p.solarYieldRoof1 || p.productible) || defaultProd,
             coutCentrale: initialKwc * 490,
             coutCharpente: initialCoutCharpente,
+            etudeStructure: 3300,
             distHta: 100,
             distPriv: 100,
             numPanneaux: Math.round(initialKwc * 1000 / (params.puissanceUnitaire || 460))
@@ -1909,25 +1917,27 @@ function TabBpProjets({
           const norm2 = normalizeBatType(p.type_bat2 || '');
           const data2 = (localBatData || []).find(d => d.type.toUpperCase() === norm2.toUpperCase());
           const kwc2 = (data2 && (!b2 || b2 === 100)) ? data2.kwc : b2;
-          initialBuildings.push({ id: 2, typeBat: norm2, projectType: 'BAC', kwc: kwc2, productible: parseFloat(p.solarYieldRoof2 || p.productible) || defaultProd, coutCentrale: kwc2 * 490, coutCharpente: data2?.cout_bat || 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc2 * 1000 / (params.puissanceUnitaire || 460)) });
+          initialBuildings.push({ id: 2, typeBat: norm2, projectType: 'BAC', kwc: kwc2, productible: parseFloat(p.solarYieldRoof2 || p.productible) || defaultProd, coutCentrale: kwc2 * 490, coutCharpente: data2?.cout_bat || 0, etudeStructure: 3300, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc2 * 1000 / (params.puissanceUnitaire || 460)) });
         }
         if (b3 > 0) {
           const norm3 = normalizeBatType(p.type_bat3 || '');
           const data3 = (localBatData || []).find(d => d.type.toUpperCase() === norm3.toUpperCase());
           const kwc3 = (data3 && (!b3 || b3 === 100)) ? data3.kwc : b3;
-          initialBuildings.push({ id: 3, typeBat: norm3, projectType: 'BAC', kwc: kwc3, productible: parseFloat(p.solarYieldRoof3 || p.productible) || defaultProd, coutCentrale: kwc3 * 490, coutCharpente: data3?.cout_bat || 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc3 * 1000 / (params.puissanceUnitaire || 460)) });
+          initialBuildings.push({ id: 3, typeBat: norm3, projectType: 'BAC', kwc: kwc3, productible: parseFloat(p.solarYieldRoof3 || p.productible) || defaultProd, coutCentrale: kwc3 * 490, coutCharpente: data3?.cout_bat || 0, etudeStructure: 3300, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc3 * 1000 / (params.puissanceUnitaire || 460)) });
         }
         if (b4 > 0) {
           const norm4 = normalizeBatType(p.type_bat4 || '');
           const data4 = (localBatData || []).find(d => d.type.toUpperCase() === norm4.toUpperCase());
           const kwc4 = (data4 && (!b4 || b4 === 100)) ? data4.kwc : b4;
-          initialBuildings.push({ id: 4, typeBat: norm4, projectType: 'BAC', kwc: kwc4, productible: parseFloat(p.solarYieldRoof4 || p.productible) || defaultProd, coutCentrale: kwc4 * 490, coutCharpente: data4?.cout_bat || 0, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc4 * 1000 / (params.puissanceUnitaire || 460)) });
+          initialBuildings.push({ id: 4, typeBat: norm4, projectType: 'BAC', kwc: kwc4, productible: parseFloat(p.solarYieldRoof4 || p.productible) || defaultProd, coutCentrale: kwc4 * 490, coutCharpente: data4?.cout_bat || 0, etudeStructure: 3300, distHta: 100, distPriv: 100, numPanneaux: Math.round(kwc4 * 1000 / (params.puissanceUnitaire || 460)) });
         }
       }
       
       const totalRaccordement = initialBuildings.reduce((sum, b) => sum + getHtaCost(parseFloat(b.kwc) || 0, parseFloat(b.distHta) || 0), 0);
-      const studyCost = !isGreenInvest ? (initialBuildings.length * 3300) : 0;
-      const totalCoutTechnique = initialBuildings.reduce((sum, b) => sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0), 0) + studyCost;
+      const totalCoutTechnique = initialBuildings.reduce((sum, b) => {
+        const etude = !isGreenInvest ? (b.etudeStructure !== undefined ? (parseFloat(b.etudeStructure) || 0) : 3300) : 0;
+        return sum + (parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0) + etude;
+      }, 0);
       const totalFrais = totalCoutTechnique * 0.01;
 
       setParams(prev => ({
@@ -2313,12 +2323,15 @@ function TabBpProjets({
                         <td className="text-[12px] text-slate-500 font-medium pt-1">Etude Structure/Béton</td>
                         {(params.buildings || []).map(b => (
                           <td key={b.id} className="pt-1">
-                            <input 
-                              readOnly
-                              disabled
-                              className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none text-right font-bold text-slate-500 shadow-sm"
-                              value="3300 €" 
-                            />
+                            <div className="flex items-center gap-1">
+                              <input 
+                                type="number"
+                                className="bg-white border border-slate-200 rounded px-2 py-1 text-sm w-full outline-none focus:ring-1 focus:ring-blue-400 text-right font-bold text-slate-700"
+                                value={b.etudeStructure !== undefined ? b.etudeStructure : 3300} 
+                                onChange={e => updateBuildingParam(b.id, 'etudeStructure', parseFloat(e.target.value) || 0)}
+                              />
+                              <span className="text-[12px] text-slate-400 w-4 font-bold">€</span>
+                            </div>
                           </td>
                         ))}
                       </tr>
@@ -2327,7 +2340,7 @@ function TabBpProjets({
                       <td className="text-[13px] text-slate-400 py-1">Sous-total technique</td>
                       {(params.buildings || []).map(b => (
                         <td key={b.id} className="text-right text-[13px] pr-2">
-                          {fmtEur((parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0) + (!isGreenInvest ? 3300 : 0))}
+                          {fmtEur((parseFloat(b.coutCentrale) || 0) + (parseFloat(b.coutCharpente) || 0) + (!isGreenInvest ? (b.etudeStructure !== undefined ? (parseFloat(b.etudeStructure) || 0) : 3300) : 0))}
                         </td>
                       ))}
                     </tr>
@@ -3584,7 +3597,9 @@ function TabBpSaved({ projects, onSelect, activeTab, setActiveTab, isGreenInvest
         const totalSoulte = parseFloat(state.soulte) || 0;
         const totalProdKwh = buildings.reduce((sum, b) => sum + (parseFloat(b.kwc) || 0) * (parseFloat(b.productible) || 0), 0);
         const averageProd = kwcTotal > 0 ? totalProdKwh / kwcTotal : 0;
-        const studyCost = !isGreenInvest ? (buildings.length * 3300) : 0;
+        const studyCost = buildings.reduce((sum, b) => {
+          return sum + (!isGreenInvest ? (b.etudeStructure !== undefined ? (parseFloat(b.etudeStructure) || 0) : 3300) : 0);
+        }, 0);
         const totalConst = totalCentrale + totalCharpente + studyCost + totalRaccordement + totalFrais;
           
         const collapsedForSaved = {
@@ -4427,7 +4442,9 @@ export default function BpAcama() {
     const frais = parseFloat(params.frais) || 0;
     const soulte = parseFloat(params.soulte) || 0;
 
-    const studyCost = !isGreenInvest ? (buildings.length * 3300) : 0;
+    const studyCost = buildings.reduce((sum, b) => {
+      return sum + (!isGreenInvest ? (b.etudeStructure !== undefined ? (parseFloat(b.etudeStructure) || 0) : 3300) : 0);
+    }, 0);
     const totalConst = coutCentrale + coutCharpente + studyCost + raccordement + frais + soulte + developpement;
 
     return {
