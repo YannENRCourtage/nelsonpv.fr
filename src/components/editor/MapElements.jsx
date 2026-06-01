@@ -14,6 +14,7 @@ import {
   ScaleControl,
   TileLayer,
   CircleMarker,
+  Circle,
   GeoJSON,
 } from "react-leaflet";
 import L from "leaflet";
@@ -1768,6 +1769,15 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
       } else if (mode === "text") {
         setAskTextAt(e.latlng);
         setMode(null);
+      } else if (mode === "circle") {
+        if (temp.length === 0) {
+          setTemp([e.latlng]);
+        } else {
+          const id = crypto.randomUUID();
+          const radius = haversine(temp[0], e.latlng);
+          setFeatures((arr) => [...arr, { id, type: "circle", center: temp[0], radius }]);
+          setTemp([]);
+        }
       } else if (mode === "rectangle") {
         if (!rectangleStart) {
           setRectangleStart(e.latlng);
@@ -1902,6 +1912,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
             const deltaLat = e.latlng.lat - startLatLng.lat;
             const deltaLng = e.latlng.lng - startLatLng.lng;
             if (f.type === 'line' || f.type === 'polygon' || f.type === 'rectangle') return { ...f, coords: f.coords.map(c => ({ lat: c.lat + deltaLat, lng: c.lng + deltaLng })) };
+            if (f.type === 'circle') return { ...f, center: { lat: f.center.lat + deltaLat, lng: f.center.lng + deltaLng } };
             if (f.type === 'symbol' || f.type === 'photo' || f.type === 'text') return { ...f, at: { lat: f.at.lat + deltaLat, lng: f.at.lng + deltaLng } };
           } else if (type === 'rotate') {
             // Safety check: ensure draggingRef still exists and has center
@@ -2010,6 +2021,8 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
         if (f.type === "line") return <Polyline key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#2563eb", weight: 3, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatDistance(polylineLength(f.coords))}</Tooltip></Polyline>;
 
         if (f.type === "polygon") return <Polygon key={f.id} positions={f.coords} pathOptions={{ color: isSelected ? "#0ea5e9" : "#16a34a", weight: 2, fillColor: "#16a34a", fillOpacity: 0.25, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatArea(polygonArea(f.coords))} | {calculateSolarPower(polygonArea(f.coords))}</Tooltip></Polygon>;
+
+        if (f.type === "circle") return <Circle key={f.id} center={f.center} radius={f.radius} pathOptions={{ color: isSelected ? "#0ea5e9" : "#2563eb", weight: 3, fillOpacity: 0, className: mode ? '' : 'cursor-grab' }} eventHandlers={shapeEventHandlers}><Tooltip permanent direction="center" className="measure-label">{formatDistance(f.radius)}</Tooltip></Circle>;
 
         if (f.type === "rectangle") {
           const center = centroid(f.coords);
@@ -2216,6 +2229,12 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
         <Fragment>
           <Polygon positions={tempPolyCoords} pathOptions={{ color: "#16a34a", weight: 2, fillColor: "#16a34a", fillOpacity: 0.2, dashArray: '5, 5' }} />
           {tempPolyCoords.length >= 3 && centroid(tempPolyCoords) && <Marker position={centroid(tempPolyCoords)} opacity={0}><Tooltip permanent direction="center" className="measure-label">{formatArea(polygonArea(tempPolyCoords))} | {calculateSolarPower(polygonArea(tempPolyCoords))}</Tooltip></Marker>}
+        </Fragment>
+      )}
+      {mode === "circle" && temp.length === 1 && mousePos && (
+        <Fragment>
+          <Circle center={temp[0]} radius={haversine(temp[0], mousePos)} pathOptions={{ color: "#0ea5e9", weight: 2, fillOpacity: 0, dashArray: '5, 5' }} />
+          <Marker position={mousePos} opacity={0}><Tooltip permanent direction="center" className="measure-label">{formatDistance(haversine(temp[0], mousePos))}</Tooltip></Marker>
         </Fragment>
       )}
       {mode === "rectangle" && tempRectBounds && (

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { Trash2, Mountain, Square, RotateCw, Ruler, Pentagon } from "lucide-react";
+import { Trash2, Mountain, Square, RotateCw, Ruler, Pentagon, CircleDashed } from "lucide-react";
 import L from "leaflet";
 
 // Desktop: full width with text; Mobile: icon-only compact button
@@ -36,6 +36,7 @@ export default function MapDrawingTools({ mode, setMode }) {
 
   const tools = [
     { key: "line", Icon: Ruler, label: "Distance", title: "Distance (L)", isDelete: false },
+    { key: "circle", Icon: CircleDashed, label: "Périmètre", title: "Périmètre (C)", isDelete: false },
     { key: "polygon", Icon: Pentagon, label: "Surface", title: "Surface (P)", isDelete: false },
     { key: "rectangle", Icon: Square, label: "Rectangle", title: "Rectangle / Bâtiment (B)", isDelete: false },
     { key: "altimetry", Icon: Mountain, label: "Profil Alti", title: "Profil altimétrique (A)", isDelete: false },

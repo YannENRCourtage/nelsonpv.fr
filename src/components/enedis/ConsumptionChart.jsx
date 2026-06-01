@@ -49,11 +49,20 @@ function aggregateByMonth(readings) {
 const TS = { borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px', fontWeight: 600 };
 
 const CrosshairCursor = (props) => {
-  const { stroke = '#cbd5e1', points, activeCoordinate, offset, height, width } = props;
+  const { stroke = '#cbd5e1', points, activeCoordinate, coordinate, offset, height, width } = props;
   
   // activeCoordinate gives us the exact x,y of the hovered data point
-  const cursorX = activeCoordinate?.x ?? (points && points.length > 0 ? points[0].x : undefined);
-  const cursorY = activeCoordinate?.y;
+  const cursorX = activeCoordinate?.x ?? coordinate?.x ?? (points && points.length > 0 ? points[0].x : undefined);
+  let cursorY = activeCoordinate?.y ?? coordinate?.y;
+
+  // DOM Fallback pour récupérer le Y exact du point actif si recharts ne le passe pas
+  if (cursorY === undefined) {
+    const activeDot = document.querySelector('.recharts-active-dot circle') || document.querySelector('.recharts-active-dot');
+    if (activeDot) {
+      const cy = activeDot.getAttribute('cy');
+      if (cy) cursorY = parseFloat(cy);
+    }
+  }
 
   if (cursorX === undefined) return null;
   
