@@ -5547,7 +5547,7 @@ export default function MapElements({
             setLoadingFiliation={setLoadingFiliation}
           />
           {/* Sociétés UI (Managed by Manager now) */}
-          {(selectedCompany || selectedSubstation || selectedRoutingData || selectedParcelOwners || selectedParcelFiliation) && (
+          {(selectedCompany || selectedSubstation || selectedParcelOwners || selectedParcelFiliation) && (
             <div className="absolute top-3 left-3 z-[2000] w-[320px] max-h-[calc(100%-24px)] bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col no-print hide-on-capture">
               <div className="flex-1 overflow-y-auto">
                 {selectedCompany ? (
@@ -5584,8 +5584,6 @@ export default function MapElements({
                     </div>
                     {/* ... other substation fields ... */}
                   </div>
-                ) : selectedRoutingData ? (
-                  <RoutingDetailsPanel data={selectedRoutingData} onClose={() => setSelectedRoutingData(null)} copyToClipboard={copyToClipboard} />
                 ) : null}
               </div>
             </div>
