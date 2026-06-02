@@ -2580,7 +2580,8 @@ const LAYERS = {
     opacity: 0.8,
     minZoom: 6,
     maxNativeZoom: 18,
-    maxZoom: 22
+    maxZoom: 22,
+    className: "zaer-layer"
   },
   loiLittoral: {
     name: "Loi littoral",
@@ -3927,7 +3928,8 @@ function LayersBootstrap({ layersRef }) {
           zIndex: layerDef.zIndex || 10,
           pane: layerDef.zIndex === 0 ? 'tilePane' : 'overlayPane',
           interactive: layerDef.zIndex === 0 ? true : false,
-          styles: layerDef.styles || ''
+          styles: layerDef.styles || '',
+          className: layerDef.className || ''
         };
 
         if (layerDef.sld_body) {
@@ -4911,7 +4913,16 @@ function ZoomIndicator() {
       const currentZoom = map.getZoom();
       setZoom(currentZoom);
       updateAttribution(currentZoom);
+      
+      const container = map.getContainer();
+      container.className = container.className.replace(/\bleaflet-zoom-\d+\b/g, '').trim();
+      container.classList.add(`leaflet-zoom-${currentZoom}`);
     };
+
+    // Initial class setup
+    const container = map.getContainer();
+    container.className = container.className.replace(/\bleaflet-zoom-\d+\b/g, '').trim();
+    container.classList.add(`leaflet-zoom-${zoom}`);
 
     map.on('zoom', onZoom);
     map.on('viewreset', onZoom);
