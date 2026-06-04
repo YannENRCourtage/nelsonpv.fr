@@ -641,7 +641,7 @@ function computeBusinessPlan(params) {
   const {
     kwc = 346.84,
     productible = 1123.08,
-    tarifBas = 0.0846,
+    tarifBas = 0.0836,
     tarifHaut = 0.04,
     seuilKwhKwc = 1100,
     maintenance = 1734.20,
@@ -3135,7 +3135,7 @@ function TabPropositionClientBAC({ projects, selectedProject, setSelectedProject
         superficie: selectedProject.surface || 'N/A',
         prodMoyen: params?.productible || selectedProject.productible || '',
         puissance: params?.kwc || selectedProject.puissance || '',
-        tarif: params?.tarifBas || '0,0846',
+        tarif: params?.tarifBas || '0,0836',
         ombrage: selectedProject.ombrage || 'NON',
         realiseBy: commFirstName,
         valideBy: '',
@@ -3273,7 +3273,7 @@ function TabPropositionBE({ projects, selectedProject, setSelectedProject, param
         superficie: selectedProject.surface || 'N/A',
         prodMoyen: params?.productible || selectedProject.productible || '',
         puissance: params?.kwc || selectedProject.puissance || '',
-        tarif: params?.tarifBas || '0,0846',
+        tarif: params?.tarifBas || '0,0836',
         ombrage: selectedProject.ombrage || 'NON',
         soulte: bpResults?.soulte || params?.soulte || '',
       }));
@@ -4191,7 +4191,7 @@ export default function BpAcama() {
       { id: 1, typeBat: '', projectType: 'BAC', surfaceToiture: 0, kwc: 242.88, productible: 1123.08, coutCentrale: 169951.60, coutCharpente: 171381.00, raccordement: 18300.00, frais: 3413.33, soulte: -9048.54, distHta: 100, distPriv: 100 }
     ],
     puissanceUnitaire: 460,
-    tarifBas: 0.0846,
+    tarifBas: 0.0836,
     tarifHaut: 0.04,
     seuilKwhKwc: 1100,
     maintenance: 1734.20,
