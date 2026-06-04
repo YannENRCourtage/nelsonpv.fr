@@ -5409,6 +5409,16 @@ export default function MapElements({
           }
         }
 
+        // Sync secondary building (Building 2) with panelAspect2
+        if (rects.length >= 2) {
+          const rect2 = rects[1];
+          const newAzimuth2 = calculateAzimuthFromAngle(rect2.angle || 0);
+
+          if (prev.panelAspect2 === undefined || Math.abs(Number(prev.panelAspect2) - newAzimuth2) >= 1) {
+            newUpdates.panelAspect2 = newAzimuth2;
+          }
+        }
+
         // Deep comparison to avoid infinite loops
         // Check features AND azimuths
         const featuresChanged = JSON.stringify(prevFeatures) !== JSON.stringify(sanitizedFeatures);

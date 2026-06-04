@@ -10,6 +10,7 @@ import SubstationProximityCards from "../components/editor/SubstationProximityCa
 import ShadowMapTab from "../components/ShadowMapTab.jsx";
 import ChatBox from "../components/editor/ChatBox.jsx";
 import UrbanismeTab from "../components/editor/UrbanismeTab.jsx";
+import BessStandaloneSection from "../components/editor/BessStandaloneSection.jsx";
 import { PlateSituation, PlateMasse, PlateNotice } from '../components/editor/DPPlates';
 import { Button } from "@/components/ui/button";
 import {
@@ -862,7 +863,33 @@ export default function ProjectEditor() {
                 <div className="flex-1 min-w-[80px]"><label className="text-xs font-medium">Nom*</label><Input value={p.name || ''} onChange={e => updateProject({ name: e.target.value })} className="mt-0.5 h-8" placeholder="Nom" /></div>
                 <div className="flex-1 min-w-[80px]"><label className="text-xs font-medium">Prénom</label><Input value={p.firstName || ''} onChange={e => updateProject({ firstName: e.target.value })} className="mt-0.5 h-8" placeholder="Prénom" /></div>
                 <div className="flex-1 min-w-[90px]"><label className="text-xs font-medium">Type</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-0.5 w-full rounded-lg border px-1 py-1 h-8 bg-background text-xs"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option><option>Sol 1Ha</option></select></div>
-                <div className="flex-1 min-w-[90px] ml-2"><label className="text-xs font-medium text-blue-600">Batterie SA</label><select value={p.isBatteryStandAlone || 'Non'} onChange={e => updateProject({ isBatteryStandAlone: e.target.value })} className="mt-0.5 w-full rounded-lg border px-1 py-1 h-8 bg-background text-xs text-blue-600 font-bold"><option>Non</option><option>Oui</option></select></div>
+                <div className="flex-1 min-w-[90px] ml-2">
+                  <label className="text-xs font-medium text-blue-600">Batterie SA</label>
+                  <div className="flex gap-1 mt-0.5 h-8">
+                    <button
+                      type="button"
+                      onClick={() => updateProject({ isBatteryStandAlone: 'Oui' })}
+                      className={`flex-1 rounded-lg text-[10px] font-bold transition-colors ${
+                        p.isBatteryStandAlone === 'Oui'
+                          ? 'bg-green-600 text-white shadow-sm'
+                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                      }`}
+                    >
+                      OUI
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateProject({ isBatteryStandAlone: 'Non' })}
+                      className={`flex-1 rounded-lg text-[10px] font-bold transition-colors ${
+                        p.isBatteryStandAlone !== 'Oui'
+                          ? 'bg-red-600 text-white shadow-sm'
+                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                      }`}
+                    >
+                      NON
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Tél + Email on same line */}
@@ -1112,7 +1139,33 @@ export default function ProjectEditor() {
                 </div>
               </div>
               <div className="col-span-2"><label className="text-sm font-medium">Type de projet</label><select value={p.type || 'Construction'} onChange={e => updateProject({ type: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background"><option>Construction</option><option>Rénovation</option><option>Construction &amp; Rénovation</option><option>Sol 1Ha</option></select></div>
-              <div className="col-span-1"><label className="text-sm font-medium text-blue-600">Batterie SA</label><select value={p.isBatteryStandAlone || 'Non'} onChange={e => updateProject({ isBatteryStandAlone: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 h-10 bg-background text-blue-600 font-bold"><option>Non</option><option>Oui</option></select></div>
+              <div className="col-span-1">
+                <label className="text-sm font-medium text-blue-600">Batterie SA</label>
+                <div className="flex gap-1 mt-1 h-10">
+                  <button
+                    type="button"
+                    onClick={() => updateProject({ isBatteryStandAlone: 'Oui' })}
+                    className={`flex-1 rounded-lg text-xs font-bold transition-colors ${
+                      p.isBatteryStandAlone === 'Oui'
+                        ? 'bg-green-600 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                    }`}
+                  >
+                    OUI
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateProject({ isBatteryStandAlone: 'Non' })}
+                    className={`flex-1 rounded-lg text-xs font-bold transition-colors ${
+                      p.isBatteryStandAlone !== 'Oui'
+                        ? 'bg-red-600 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                    }`}
+                  >
+                    NON
+                  </button>
+                </div>
+              </div>
               <div className="col-span-6"><label className="text-sm font-medium">Projet</label><Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} className="mt-1" placeholder="Ex: 150m² ou 9kWc" /></div>
 
               {/* Desktop: Technical Fields */}
@@ -1543,6 +1596,16 @@ export default function ProjectEditor() {
           <ChatBox className="h-full" />
         </aside>
       </div>
+
+      {/* ============================
+          BESS STANDALONE - Section préqualification
+          Visible uniquement si Batterie SA = Oui, pour ACAMA et ENR Courtage Énergie
+          ============================ */}
+      {(activeTenantId === 'acama' || activeTenantId === 'enr-courtage-energie') && p.isBatteryStandAlone === 'Oui' && (
+        <div className="w-full">
+          <BessStandaloneSection project={project} updateProject={updateProject} />
+        </div>
+      )}
 
       {/* Floating Chat Bubble - Mobile only */}
       <div className="lg:hidden">
