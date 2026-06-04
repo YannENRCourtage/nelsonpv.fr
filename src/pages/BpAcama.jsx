@@ -1610,11 +1610,13 @@ function TabBpProjets({
           if (k === 'typeBat' && v) {
             const normalized = normalizeBatType(v);
             updated.typeBat = normalized;
-            const batData = (activeSuiviBatData || []).find(d => d.type === normalized);
+            const batData = (activeSuiviBatData || []).find(d => 
+              d.type && normalizeBatType(d.type).trim().toUpperCase() === normalized.trim().toUpperCase()
+            );
             if (batData) {
-              updated.kwc = batData.kwc || updated.kwc;
-              updated.productible = batData.prodMoyen || updated.productible || 1100;
-              updated.coutCharpente = batData.cout_bat || updated.coutCharpente;
+              updated.kwc = parseFloat(batData.kwc) || updated.kwc;
+              updated.productible = parseFloat(batData.prodMoyen) || updated.productible || 1100;
+              updated.coutCharpente = parseFloat(batData.cout_bat) || updated.coutCharpente;
               updated.coutCentrale = (updated.kwc || 0) * 490;
             }
           }
@@ -1843,10 +1845,11 @@ function TabBpProjets({
           // Automate coutCharpente if missing or current type matches a batData
           let newCoutCharpente = b.coutCharpente || 0;
           const batData = (localBatData || []).find(d => {
-            return d.type.toUpperCase() === newTypeBat.toUpperCase();
+            if (!d.type) return false;
+            return normalizeBatType(d.type).trim().toUpperCase() === newTypeBat.trim().toUpperCase();
           });
           if (batData && (!newCoutCharpente || newCoutCharpente === 0)) {
-            newCoutCharpente = batData.cout_bat || 0;
+            newCoutCharpente = parseFloat(batData.cout_bat) || 0;
           }
 
           // Recompute costs if power changed
@@ -2759,7 +2762,9 @@ function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
       const fullRow = { ...row, ...edit };
       
       const typeBat = fullRow.type_bat;
-      const batData = DETAILED_SUIVI_DATA.find(d => d.type === typeBat);
+      const batData = DETAILED_SUIVI_DATA.find(d => 
+        d.type && d.type.trim().toUpperCase() === (typeBat || '').trim().toUpperCase()
+      );
       
       // Module Dims & Ratio
       const dims = getModuleDims(fullRow.dv || 460);
@@ -3468,7 +3473,9 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
                     value={params.typeBat || ''}
                     onChange={e => {
                       const selectedType = e.target.value;
-                      const bat = (activeSuiviBatData || []).find(b => b.type === selectedType);
+                      const bat = (activeSuiviBatData || []).find(b => 
+                        b.type && b.type.trim().toUpperCase() === selectedType.trim().toUpperCase()
+                      );
                       
                       if (selectedType === selectedProject?.bpAcamaState?.typeBat) {
                         setParams(p => ({ ...p, ...selectedProject.bpAcamaState }));
