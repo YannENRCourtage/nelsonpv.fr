@@ -575,14 +575,10 @@ function computeBatteryProfitability(config) {
       const dscr = serviceDette > 1 ? (cafds / serviceDette) : 9.99;
       
       if (y <= dureeEtude) {
-          const ebitUnlevered = ebe - (capexTotal / dureeEtude);
-          const taxUnlevered = ebitUnlevered > 0 ? ebitUnlevered * (tauxIS / 100) : 0;
-          const unleveredCF = ebe - taxUnlevered;
-          
-          if (dynamicPayback === null && runningUnleveredCF + unleveredCF >= 0) {
-              dynamicPayback = (y - 1) + (Math.abs(runningUnleveredCF) / unleveredCF);
+          if (dynamicPayback === null && runningUnleveredCF + cafds >= 0) {
+              dynamicPayback = (y - 1) + (Math.abs(runningUnleveredCF) / cafds);
           }
-          runningUnleveredCF += unleveredCF;
+          runningUnleveredCF += cafds;
 
           gainNetEtude += cashFlow;
           totalOpexStudy += (chargesFixes + chargesCom + coutRecyclage);
@@ -590,8 +586,8 @@ function computeBatteryProfitability(config) {
           totalDebtServiceStudy += serviceDette;
           totalInterestStudy += interest;
 
-          // Project Cash Flow (Unlevered)
-          cashFlowsProjet.push(unleveredCF);
+          // Project Cash Flow (with tax shield from financing)
+          cashFlowsProjet.push(cafds);
           // Equity Cash Flow (Levered)
           cashFlowsFP.push(cashFlow);
           
@@ -1355,16 +1351,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                <Field label="Total OPEX" value={fmtEur(totalOpexAn1)} type="text" disabled className="font-bold text-blue-700" />
             </div>
             <div className="pt-2 border-t border-slate-100 mt-2 space-y-3">
-               <div className="flex items-center justify-between">
-                 <label className="text-[13px] text-slate-500 font-bold uppercase">Durée d'étude</label>
-                 <select 
-                   className="border border-slate-200 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-500 h-[30px] w-24"
-                   value={config.dureeEtude || 12}
-                   onChange={e => update('dureeEtude', parseInt(e.target.value))}
-                 >
-                   {[10, 12, 15, 20, 25, 30].map(v => <option key={v} value={v}>{v} ans</option>)}
-                 </select>
-               </div>
+               <Field label="Durée d'étude" value={config.dureeEtude || 12} onChange={v => update('dureeEtude', v)} type="number" suffix="ans" step={1} />
                <div className="grid grid-cols-2 gap-4">
                   <Field label="Inflation annuelle" value={config.inflationAnnuelle ?? 2} onChange={v => update('inflationAnnuelle', v)} type="number" suffix="%" step={0.5} />
                   <Field label="Dégradation annuelle" value={config.degradationAnnuelle ?? 3} onChange={v => update('degradationAnnuelle', v)} type="number" suffix="%" step={0.5} />
