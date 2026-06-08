@@ -4409,6 +4409,8 @@ export default function BpAcama() {
 
       // Enrich saved state with missing building types, products & power from map
       if (saved.buildings && buildingFeatures.length > 0) {
+        const baseBatData = isEnrCourtage ? SUIVI_BAT_DATA_ENR_COURTAGE : (isGreenInvest ? SUIVI_BAT_DATA_GREEN_INVEST : SUIVI_BAT_DATA_ACAMA);
+        
         saved.buildings = saved.buildings.map((b, idx) => {
           const feat = buildingFeatures[idx];
           const newTypeBat = (!b.typeBat || b.typeBat === '') ? (feat?.buildingName || feat?.name || b.typeBat) : b.typeBat;
@@ -4421,7 +4423,16 @@ export default function BpAcama() {
           const newKwc = (b.kwc === 100 && featPower > 0 && featPower !== 100) ? featPower : b.kwc;
           const newCoutCentrale = (newKwc !== b.kwc) ? (newKwc * 490) : b.coutCentrale;
           
-          return { ...b, typeBat: newTypeBat, productible: newProd, kwc: newKwc, coutCentrale: newCoutCentrale };
+          let newCoutCharpente = b.coutCharpente;
+          if (newTypeBat && (!newCoutCharpente || newCoutCharpente === 0)) {
+             const normalized = normalizeBatType(newTypeBat);
+             const batData = baseBatData.find(d => d.type && normalizeBatType(d.type).trim().toUpperCase() === normalized.trim().toUpperCase());
+             if (batData && batData.cout_bat) {
+                 newCoutCharpente = parseFloat(batData.cout_bat);
+             }
+          }
+          
+          return { ...b, typeBat: newTypeBat, productible: newProd, kwc: newKwc, coutCentrale: newCoutCentrale, coutCharpente: newCoutCharpente };
         });
       }
 
