@@ -273,6 +273,13 @@ function calcSynthese(urbResult, raccResult) {
 export default function BessStandaloneSection({ project, updateProject }) {
 
   const [isPrinting, setIsPrinting] = useState(false);
+  const [offreSelected, setOffreSelected] = useState(() => project?.bess_offreSelected ?? null);
+
+  const handleSelectOffre = (type) => {
+    const newVal = offreSelected === type ? null : type;
+    setOffreSelected(newVal);
+    updateProject({ bess_offreSelected: newVal });
+  };
 
   const [urbData, setUrbData] = useState(() => ({
     surfaceFonciere: project?.bess_surfaceFonciere ?? '40',
@@ -544,7 +551,7 @@ export default function BessStandaloneSection({ project, updateProject }) {
             - Col 3 : conclusion (flexible, réduite)
             - Col 4 : jauge + décision (fixe 280px)
           */}
-          <div className="grid grid-cols-1 lg:grid-cols-[280px_600px_minmax(0,1fr)_minmax(0,1fr)_380px] gap-3 lg:gap-4 items-stretch">
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_600px_minmax(0,1.2fr)_minmax(0,0.8fr)_456px] gap-3 lg:gap-4 items-stretch">
 
             {/* ── Col 1 : Icônes scores (tuiles de largeur identique = 200px par la grille) ── */}
             <div className="flex flex-row lg:flex-col gap-2 flex-wrap lg:flex-nowrap h-full">
@@ -625,17 +632,36 @@ export default function BessStandaloneSection({ project, updateProject }) {
               const unites250 = capMWh / 500; // 1 unité = 500 MWh (250kWc)
               const soulte = Math.round(unites250 * 10000);
               const loyer = Math.round(unites250 * 900);
+
+              const isSoulte = offreSelected === 'soulte';
+              const isLoyer = offreSelected === 'loyer';
+
+              const cardStyle = (selected) => {
+                if (offreSelected === null) {
+                  return "rounded-lg border border-indigo-300 bg-white p-2 text-center cursor-pointer transition-all hover:border-indigo-400";
+                }
+                return selected
+                  ? "rounded-lg border border-green-500 bg-green-100 p-2 text-center cursor-pointer transition-all ring-1 ring-green-400 font-medium"
+                  : "rounded-lg border border-gray-200 bg-gray-50 opacity-40 p-2 text-center cursor-pointer transition-all hover:opacity-60";
+              };
+
               return (
                 <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 h-full flex flex-col gap-2">
-                  <div className="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-1">💰 Offres financières</div>
-                  <div className="text-[10px] text-indigo-400 mb-1">Base : 10 000€ / 250 kWc · Loyer : 900€ / 250 kWc</div>
+                  <div className="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-1 text-center">💰 Offres financières</div>
+                  <div className="text-[10px] text-indigo-400 mb-1 text-center">Base : 10k€ / 250 kWc · Loyer : 900€ / 250 kWc</div>
                   <div className="flex flex-col gap-2 flex-1 justify-center">
-                    <div className="rounded-lg border border-indigo-300 bg-white p-2">
+                    <div
+                      className={cardStyle(isSoulte)}
+                      onClick={() => handleSelectOffre('soulte')}
+                    >
                       <div className="text-[10px] font-semibold text-indigo-400 uppercase tracking-widest mb-0.5">Option Soulte</div>
                       <div className="text-xl font-extrabold text-indigo-700">{soulte.toLocaleString('fr-FR')} €</div>
                       <div className="text-[10px] text-gray-400">Versement unique</div>
                     </div>
-                    <div className="rounded-lg border border-violet-300 bg-white p-2">
+                    <div
+                      className={cardStyle(isLoyer)}
+                      onClick={() => handleSelectOffre('loyer')}
+                    >
                       <div className="text-[10px] font-semibold text-violet-400 uppercase tracking-widest mb-0.5">Option Loyer — 20 ans</div>
                       <div className="text-xl font-extrabold text-violet-700">{loyer.toLocaleString('fr-FR')} €<span className="text-sm font-semibold text-violet-400">/an</span></div>
                       <div className="text-[10px] text-gray-400">Durée : 20 ans</div>
@@ -672,3 +698,4 @@ export default function BessStandaloneSection({ project, updateProject }) {
     </div>
   );
 }
+
