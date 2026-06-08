@@ -575,10 +575,13 @@ function computeBatteryProfitability(config) {
       const dscr = serviceDette > 1 ? (cafds / serviceDette) : 9.99;
       
       if (y <= dureeEtude) {
-          if (dynamicPayback === null && runningUnleveredCF + cafds >= 0) {
-              dynamicPayback = (y - 1) + (Math.abs(runningUnleveredCF) / cafds);
+          // CF incluant le coût de la dette (intérêts) sans compter le principal pour ne pas double-compter le CAPEX initial
+          const cfWithInterest = ebe - interest - is;
+          
+          if (dynamicPayback === null && runningUnleveredCF + cfWithInterest >= 0) {
+              dynamicPayback = (y - 1) + (Math.abs(runningUnleveredCF) / cfWithInterest);
           }
-          runningUnleveredCF += cafds;
+          runningUnleveredCF += cfWithInterest;
 
           gainNetEtude += cashFlow;
           totalOpexStudy += (chargesFixes + chargesCom + coutRecyclage);
@@ -586,8 +589,8 @@ function computeBatteryProfitability(config) {
           totalDebtServiceStudy += serviceDette;
           totalInterestStudy += interest;
 
-          // Project Cash Flow (with tax shield from financing)
-          cashFlowsProjet.push(cafds);
+          // Project Cash Flow (intégrant l'impact des intérêts bancaires sur la renta)
+          cashFlowsProjet.push(cfWithInterest);
           // Equity Cash Flow (Levered)
           cashFlowsFP.push(cashFlow);
           
@@ -4272,7 +4275,7 @@ export default function BpAcama() {
     const features = selectedProject.features || selectedProject.map_state?.features || selectedProject.map_state?.projects || [];
     const buildingFeatures = features.filter(f => (f.type === 'rectangle' && !f.isBattery) || (f.type === 'polygon' && f.isPredefinedBuilding));
     
-    const pReq = selectedProject.bess_puissanceRaccordee ? Number(selectedProject.bess_puissanceRaccordee) : 125;
+    const pReq = selectedProject.bess_puissanceRaccordee ? Number(selectedProject.bess_puissanceRaccordee) : 250;
     const qty = Math.max(1, Math.round(pReq / 125));
     const tranches = pReq / 250;
     const tranches125 = pReq / 125;
