@@ -198,22 +198,23 @@ function calcUrbanisme(d) {
 //  CALCULS RACCORDEMENT
 // ============================================================
 function calcRaccordement(d) {
-  const puissSout = parseFloat(d.puissanceSoutirage) || 0;
+  const puissRacc = parseFloat(d.puissanceRaccordee) || 0;
   const cosPhi = parseFloat(d.cosPhi) || 1;
   const longueurTranchee = parseFloat(d.longueurTranchee) || 0;
 
-  const capaciteEnergie = puissSout * 2;
-  const puissanceRef = cosPhi > 0 ? puissSout / cosPhi : puissSout;
+  const capaciteEnergie = puissRacc * 2;
+  const nombrePDL = puissRacc <= 250 ? 1 : 2;
+  const puissanceRef = cosPhi > 0 ? puissRacc / cosPhi : puissRacc;
 
-  let domaineTension = !d.puissanceSoutirage ? 'A renseigner' : puissanceRef <= 250 ? 'BT triphasé' : 'HTA';
+  let domaineTension = !d.puissanceRaccordee ? 'A renseigner' : puissanceRef <= 250 ? 'BT triphasé' : 'HTA';
   const posteLivraisonHTA = puissanceRef > 250 ? 'Oui' : 'Non';
 
-  let resPuissanceDomaine = !d.puissanceSoutirage ? '' : puissanceRef <= 120 ? 'GO' : puissanceRef <= 250 ? 'ORANGE - BT lourd' : 'ORANGE - HTA';
+  let resPuissanceDomaine = !d.puissanceRaccordee ? '' : puissanceRef <= 120 ? 'GO' : puissanceRef <= 250 ? 'ORANGE - BT lourd' : 'ORANGE - HTA';
   let resDomaineTension = !domaineTension || domaineTension === 'A renseigner' ? '' : domaineTension === 'BT triphasé' ? 'GO' : 'ORANGE - projet alourdi';
   let resDistancePoste = !d.longueurTranchee ? '' : longueurTranchee <= 10 ? 'GO' : longueurTranchee <= 20 ? 'ORANGE - cout / délai' : 'NO-GO';
   let resTraverseeVoirie = !d.traverseeVoirie ? '' : d.traverseeVoirie === 'Oui' ? 'ORANGE - surcout' : 'GO';
   let resRenforcement = !d.renforcementPoste ? '' : d.renforcementPoste === 'Oui' ? 'NO-GO provisoire' : d.renforcementPoste === 'Probable' ? 'ORANGE - à sécuriser' : 'GO';
-  let resPosteHTA = !d.puissanceSoutirage ? '' : posteLivraisonHTA === 'Oui' ? 'ORANGE - CAPEX HTA' : 'GO';
+  let resPosteHTA = !d.puissanceRaccordee ? '' : posteLivraisonHTA === 'Oui' ? 'ORANGE - CAPEX HTA' : 'GO';
 
   const indicators = [
     { label: 'Puissance de référence / domaine', result: resPuissanceDomaine, lecture: 'Seuil 120 kVA : BT simple vs BT lourd ; >250 kVA = HTA' },
@@ -234,7 +235,7 @@ function calcRaccordement(d) {
   else if (scoreGO >= 6) verdict = 'GO';
   else if (scoreGO > 0 || scoreORANGE > 0) verdict = 'GO sous conditions - pré-étude Enedis requise';
 
-  return { capaciteEnergie, puissanceRef: Math.round(puissanceRef), domaineTension, posteLivraisonHTA, indicators, scoreGO, scoreORANGE, scoreNOGO, verdict };
+  return { capaciteEnergie, nombrePDL, puissanceRef: Math.round(puissanceRef), domaineTension, posteLivraisonHTA, indicators, scoreGO, scoreORANGE, scoreNOGO, verdict };
 }
 
 // ============================================================
@@ -274,10 +275,10 @@ export default function BessStandaloneSection({ project, updateProject }) {
   const [isPrinting, setIsPrinting] = useState(false);
 
   const [urbData, setUrbData] = useState(() => ({
-    surfaceFonciere: project?.bess_surfaceFonciere ?? '50',
+    surfaceFonciere: project?.bess_surfaceFonciere ?? '40',
     zonePLU: project?.bess_zonePLU ?? 'A',
     terrainArtificialise: project?.bess_terrainArtificialise ?? 'Non',
-    surfaceBatie: project?.bess_surfaceBatie ?? '50',
+    surfaceBatie: project?.bess_surfaceBatie ?? '20',
     hauteurBati: project?.bess_hauteurBati ?? '3',
     distanceHabitation: project?.bess_distanceHabitation ?? '100',
     distanceERP: project?.bess_distanceERP ?? '100',
@@ -287,8 +288,7 @@ export default function BessStandaloneSection({ project, updateProject }) {
   }));
 
   const [raccData, setRaccData] = useState(() => ({
-    puissanceInjection: project?.bess_puissanceInjection ?? '250',
-    puissanceSoutirage: project?.bess_puissanceSoutirage ?? '250',
+    puissanceRaccordee: project?.bess_puissanceRaccordee ?? '250',
     cosPhi: project?.bess_cosPhi ?? '1',
     distancePoste: project?.bess_distancePoste ?? '10',
     longueurTranchee: project?.bess_longueurTranchee ?? '10',
@@ -394,11 +394,11 @@ export default function BessStandaloneSection({ project, updateProject }) {
               {/* Ligne 2 : Surface bâtie + Surface foncière + Hauteur (3 cols) */}
               <div className="grid grid-cols-3 gap-2">
                 <div><FL>Surface bâtie (m²)</FL>
-                  <NumInput value={urbData.surfaceBatie} onChange={v => handleUrb('surfaceBatie', v)} placeholder="50" />
+                  <NumInput value={urbData.surfaceBatie} onChange={v => handleUrb('surfaceBatie', v)} placeholder="20" />
                   <span className="text-[10px] text-gray-400">Cumul conteneurs</span>
                 </div>
                 <div><FL>Surface foncière (m²)</FL>
-                  <NumInput value={urbData.surfaceFonciere} onChange={v => handleUrb('surfaceFonciere', v)} placeholder="50" />
+                  <NumInput value={urbData.surfaceFonciere} onChange={v => handleUrb('surfaceFonciere', v)} placeholder="40" />
                 </div>
                 <div><FL>Hauteur max bâti (m)</FL>
                   <NumInput value={urbData.hauteurBati} onChange={v => handleUrb('hauteurBati', v)} placeholder="3" />
@@ -414,7 +414,7 @@ export default function BessStandaloneSection({ project, updateProject }) {
                   <NumInput value={urbData.distanceERP} onChange={v => handleUrb('distanceERP', v)} placeholder="100" />
                 </div>
                 <div><FL>PEI à 100m</FL>
-                  <SelectInput value={urbData.pointEauIncendie} onChange={v => handleUrb('pointEauIncendie', v)} options={['Non', 'Oui', 'Inconnu']} />
+                  <SelectInput value={urbData.pointEauIncendie} onChange={v => handleUrb('pointEauIncendie', v)} options={['Non', 'Oui']} />
                 </div>
                 <div><FL>Accès pompiers</FL>
                   <SelectInput value={urbData.accesVoiePompiers} onChange={v => handleUrb('accesVoiePompiers', v)} options={['Oui', 'A aménager', 'Non']} />
@@ -455,13 +455,10 @@ export default function BessStandaloneSection({ project, updateProject }) {
             {/* ---- GAUCHE ---- */}
             <div className="space-y-2">
 
-              {/* Ligne 1 : Injection + Soutirage + Cos phi + Capacité énergie (4 cols) */}
+              {/* Ligne 1 : Puissance raccordée + Cos phi + Capacité énergie + Nombre PDL (4 cols) */}
               <div className="grid grid-cols-4 gap-2">
-                <div><FL>Injection max (kW)</FL>
-                  <SelectInput value={raccData.puissanceInjection} onChange={v => handleRacc('puissanceInjection', v)} options={['50', '100', '120', '150', '250', '500', '1000', '2000', '5000']} />
-                </div>
-                <div><FL>Soutirage max (kW)</FL>
-                  <SelectInput value={raccData.puissanceSoutirage} onChange={v => handleRacc('puissanceSoutirage', v)} options={['50', '100', '120', '150', '250', '500', '1000', '2000', '5000']} />
+                <div><FL>Puissance raccordée (kW)</FL>
+                  <SelectInput value={raccData.puissanceRaccordee} onChange={v => handleRacc('puissanceRaccordee', v)} options={['250', '500']} />
                 </div>
                 <div><FL>Cos phi retenu</FL>
                   <SelectInput value={raccData.cosPhi} onChange={v => handleRacc('cosPhi', v)} options={['1', '0.90', '0.95', '0.93', '0.9']} />
@@ -470,7 +467,13 @@ export default function BessStandaloneSection({ project, updateProject }) {
                   <div className="text-sm px-1.5 py-1 rounded border bg-blue-50 text-blue-700 border-blue-200 font-bold h-[30px] flex items-center">
                     {raccResult.capaciteEnergie} MWh
                   </div>
-                  <span className="text-xs text-gray-400">= Soutirage × 2</span>
+                  <span className="text-xs text-gray-400">= Puissance raccordée × 2</span>
+                </div>
+                <div><FL>Nombre PDL</FL>
+                  <div className="text-sm px-1.5 py-1 rounded border bg-purple-50 text-purple-700 border-purple-200 font-bold h-[30px] flex items-center">
+                    {raccResult.nombrePDL}
+                  </div>
+                  <span className="text-xs text-gray-400">PDL auto selon puissance</span>
                 </div>
               </div>
 
@@ -541,7 +544,7 @@ export default function BessStandaloneSection({ project, updateProject }) {
             - Col 3 : conclusion (flexible, réduite)
             - Col 4 : jauge + décision (fixe 280px)
           */}
-          <div className="grid grid-cols-1 lg:grid-cols-[280px_600px_minmax(0,1fr)_560px] gap-3 lg:gap-4 items-stretch">
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_600px_minmax(0,1fr)_minmax(0,1fr)_380px] gap-3 lg:gap-4 items-stretch">
 
             {/* ── Col 1 : Icônes scores (tuiles de largeur identique = 200px par la grille) ── */}
             <div className="flex flex-row lg:flex-col gap-2 flex-wrap lg:flex-nowrap h-full">
@@ -610,13 +613,39 @@ export default function BessStandaloneSection({ project, updateProject }) {
               </div>
             </div>
 
-            {/* ── Col 3 : Conclusion (réduite) ── */}
+            {/* ── Col 3 : Conclusion (réduite d'1/3) ── */}
             <div className="rounded-lg border border-gray-200 p-3 bg-gray-50 h-full">
               <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Conclusion</div>
-              <p className="text-sm lg:text-base text-gray-700 leading-relaxed">{syn.conclusion}</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{syn.conclusion}</p>
             </div>
 
-            {/* ── Col 4 : Jauge + Décision finale (560px) ── */}
+            {/* ── Col 4 : Offres Soulte / Loyer ── */}
+            {(() => {
+              const capMWh = raccResult.capaciteEnergie || 0;
+              const unites250 = capMWh / 500; // 1 unité = 500 MWh (250kWc)
+              const soulte = Math.round(unites250 * 10000);
+              const loyer = Math.round(unites250 * 900);
+              return (
+                <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 h-full flex flex-col gap-2">
+                  <div className="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-1">💰 Offres financières</div>
+                  <div className="text-[10px] text-indigo-400 mb-1">Base : 10 000€ / 250 kWc · Loyer : 900€ / 250 kWc</div>
+                  <div className="flex flex-col gap-2 flex-1 justify-center">
+                    <div className="rounded-lg border border-indigo-300 bg-white p-2">
+                      <div className="text-[10px] font-semibold text-indigo-400 uppercase tracking-widest mb-0.5">Option Soulte</div>
+                      <div className="text-xl font-extrabold text-indigo-700">{soulte.toLocaleString('fr-FR')} €</div>
+                      <div className="text-[10px] text-gray-400">Versement unique</div>
+                    </div>
+                    <div className="rounded-lg border border-violet-300 bg-white p-2">
+                      <div className="text-[10px] font-semibold text-violet-400 uppercase tracking-widest mb-0.5">Option Loyer — 20 ans</div>
+                      <div className="text-xl font-extrabold text-violet-700">{loyer.toLocaleString('fr-FR')} €<span className="text-sm font-semibold text-violet-400">/an</span></div>
+                      <div className="text-[10px] text-gray-400">Durée : 20 ans</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ── Col 5 : Jauge + Décision finale ── */}
             <div className="flex flex-col items-center justify-between gap-3 h-full py-1">
               <div className="w-full aspect-square max-w-[220px] flex-grow flex items-center justify-center">
                 <DonutGauge score={syn.scoreGlobal} />
