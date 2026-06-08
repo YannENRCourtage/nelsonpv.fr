@@ -489,7 +489,8 @@ function computeBatteryProfitability(config) {
   
   const {
     inflationAnnuelle = 2,
-    degradationAnnuelle = 1,
+    degradationAnnuelle = 3,
+    capaciteDoD = 80,
     batterieBms = 50209,
     genieCivil = 6000,
     raccordement = 19900,
@@ -503,12 +504,11 @@ function computeBatteryProfitability(config) {
     rendementRoundTrip = 88,
     maintenanceAn = 1500,
     revenuBailleurAn = 1250,
-    gestionChargeAn = 4562.5,
+    supervisionAn = 0,
     assuranceAn = 353,
-    retributionCommAn = 0,
+    recyclage = 0,
     commissionAgregateur = 18,
     turpeAn = 2500,
-    iferAn = 625,
     tauxEmprunt = 4,
     dureeEmprunt = 20,
     apport = 0,
@@ -521,7 +521,12 @@ function computeBatteryProfitability(config) {
   const effectiveFraisComm = isInvestPropre ? 0 : (fraisCommerciaux || 0);
 
   const capexTotal = batterieBms + genieCivil + raccordement + developpement + effectiveFraisComm;
-  const revenusBrutsAn1 = arbitrageEnergie + reserveFCR + mecanismeCapacite + effacement;
+  
+  const dodFactor = (capaciteDoD || 80) / 100;
+  const realArbitrage = arbitrageEnergie * dodFactor;
+  const realEffacement = effacement * dodFactor;
+  
+  const revenusBrutsAn1 = realArbitrage + reserveFCR + mecanismeCapacite + realEffacement;
   
   const emprunt = Math.max(0, capexTotal - apport);
   const annuite = emprunt > 0 ? -PMT(tauxEmprunt / 100, dureeEmprunt, emprunt) : 0;
@@ -532,7 +537,7 @@ function computeBatteryProfitability(config) {
   let gainNetEtude = 0;
   let gainNet20A = 0;
   let dynamicPayback = null;
-  let runningCashFlow = -apport;
+  let runningUnleveredCF = -capexTotal;
   let resY1 = {};
   let totalOpexStudy = 0;
   let totalRevenueStudy = 0;
@@ -540,82 +545,97 @@ function computeBatteryProfitability(config) {
   const rows = [];
   const maxYearsLoop = Math.max(20, dureeEtude);
 
-    let totalDebtServiceStudy = 0;
-    let totalInterestStudy = 0;
-    for (let y = 1; y <= maxYearsLoop; y++) {
-        const infl = Math.pow(1 + inflationAnnuelle / 100, y - 1);
-        const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
+  let totalDebtServiceStudy = 0;
+  let totalInterestStudy = 0;
+  let dscrs = [];
 
-        const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100);
-        const chargesFixesNoBailleur = (maintenanceAn + assuranceAn + turpeAn + iferAn + gestionChargeAn) * infl;
-        const chargesFixes = chargesFixesNoBailleur + (revenuBailleurAn || 0);
-        
-        const chargesCom = revNet * (commissionAgregateur / 100);
-        const ebe = revNet - (chargesFixes + chargesCom);
+  for (let y = 1; y <= maxYearsLoop; y++) {
+      const infl = Math.pow(1 + inflationAnnuelle / 100, y - 1);
+      const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
 
-        const interest = y <= dureeEmprunt ? remainingDebt * (tauxEmprunt / 100) : 0;
-        const principal = y <= dureeEmprunt ? annuite - interest : 0;
-        const serviceDette = y <= dureeEmprunt ? annuite : 0;
-        
-        const amortissement = capexTotal / dureeEtude;
-        const ebit = ebe - amortissement - interest;
-        const is = ebit > 0 ? ebit * (tauxIS / 100) : 0;
-        
-        const cashFlow = ebe - interest - principal - is;
-        
-        if (y <= dureeEtude) {
-            if (dynamicPayback === null && runningCashFlow + cashFlow >= 0) {
-                dynamicPayback = (y - 1) + (Math.abs(runningCashFlow) / cashFlow);
-            }
-            runningCashFlow += cashFlow;
-            gainNetEtude += cashFlow;
-            totalOpexStudy += (chargesFixes + chargesCom);
-            totalRevenueStudy += revNet;
-            totalDebtServiceStudy += serviceDette;
-            totalInterestStudy += interest;
+      const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100);
+      const chargesFixesNoBailleur = (maintenanceAn + assuranceAn + turpeAn + supervisionAn) * infl;
+      const chargesFixes = chargesFixesNoBailleur + (revenuBailleurAn || 0);
+      
+      const chargesCom = revNet * (commissionAgregateur / 100);
+      const coutRecyclage = y === dureeEtude ? (recyclage || 0) * infl : 0;
+      
+      const ebe = revNet - (chargesFixes + chargesCom + coutRecyclage);
 
-        // Project Cash Flow (Unlevered): EBE - Tax (without interest shield)
-        const ebitUnlevered = ebe - (capexTotal / dureeEtude);
-        const taxUnlevered = ebitUnlevered > 0 ? ebitUnlevered * (tauxIS / 100) : 0;
-        cashFlowsProjet.push(ebe - taxUnlevered);
-        
-        // Equity Cash Flow (Levered): EBE - Debt Service - Tax (with interest shield)
-        cashFlowsFP.push(cashFlow);
+      const interest = y <= dureeEmprunt ? remainingDebt * (tauxEmprunt / 100) : 0;
+      const principal = y <= dureeEmprunt ? annuite - interest : 0;
+      const serviceDette = y <= dureeEmprunt ? annuite : 0;
+      
+      const amortissement = capexTotal / dureeEtude;
+      const ebit = ebe - amortissement - interest;
+      const is = ebit > 0 ? ebit * (tauxIS / 100) : 0;
+      
+      const cashFlow = ebe - interest - principal - is;
+      const cafds = ebe - is;
+      const dscr = serviceDette > 1 ? (cafds / serviceDette) : 9.99;
+      
+      if (y <= dureeEtude) {
+          const ebitUnlevered = ebe - (capexTotal / dureeEtude);
+          const taxUnlevered = ebitUnlevered > 0 ? ebitUnlevered * (tauxIS / 100) : 0;
+          const unleveredCF = ebe - taxUnlevered;
+          
+          if (dynamicPayback === null && runningUnleveredCF + unleveredCF >= 0) {
+              dynamicPayback = (y - 1) + (Math.abs(runningUnleveredCF) / unleveredCF);
+          }
+          runningUnleveredCF += unleveredCF;
 
-        const yearLabel = 2026 + y - 1;
-        rows.push({
-          year: yearLabel,
-          arbitrage: arbitrageEnergie * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
-          reserve: reserveFCR * deg * infl * (disponibilite / 100),
-          capacite: mecanismeCapacite * deg * infl * (disponibilite / 100),
-          effacement: effacement * deg * infl * (disponibilite / 100),
-          caTotal: revNet,
-          opex: chargesFixes + chargesCom,
-          maint: maintenanceAn * infl,
-          revBailleur: revenuBailleurAn, // Fixed
-          gestionCharge: gestionChargeAn * infl,
-          assur: assuranceAn * infl,
-          turpe: turpeAn * infl,
-          ifer: iferAn * infl,
-          fraisAgregateur: chargesCom,
-          serviceDette: interest + principal,
-          ebe,
-          interest,
-          principal,
-          tresorerie: cashFlow
-        });
+          gainNetEtude += cashFlow;
+          totalOpexStudy += (chargesFixes + chargesCom + coutRecyclage);
+          totalRevenueStudy += revNet;
+          totalDebtServiceStudy += serviceDette;
+          totalInterestStudy += interest;
 
-        if (y === 1) {
-          resY1 = { revNet, ebe, dscr: annuite > 0 ? ebe / annuite : 9.99 };
-        }
-    }
+          // Project Cash Flow (Unlevered)
+          cashFlowsProjet.push(unleveredCF);
+          // Equity Cash Flow (Levered)
+          cashFlowsFP.push(cashFlow);
+          
+          if (serviceDette > 0) dscrs.push(dscr);
 
-    if (y <= 20) {
-        gainNet20A += cashFlow;
-    }
+          const yearLabel = 2026 + y - 1;
+          rows.push({
+            year: yearLabel,
+            arbitrage: realArbitrage * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
+            reserve: reserveFCR * deg * infl * (disponibilite / 100),
+            capacite: mecanismeCapacite * deg * infl * (disponibilite / 100),
+            effacement: realEffacement * deg * infl * (disponibilite / 100),
+            caTotal: revNet,
+            opex: chargesFixes + chargesCom + coutRecyclage,
+            maint: maintenanceAn * infl,
+            revBailleur: revenuBailleurAn, // Fixed
+            supervision: supervisionAn * infl,
+            assur: assuranceAn * infl,
+            turpe: turpeAn * infl,
+            recyclage: coutRecyclage,
+            fraisAgregateur: chargesCom,
+            serviceDette: interest + principal,
+            ebe,
+            interest,
+            principal,
+            dscr,
+            tresorerie: cashFlow
+          });
 
-    remainingDebt = Math.max(0, remainingDebt - principal);
+          if (y === 1) {
+            resY1 = { revNet, ebe, dscr };
+          }
+      }
+
+      if (y <= 20 && y > dureeEtude) {
+          gainNet20A += cashFlow;
+      } else if (y <= dureeEtude) {
+          gainNet20A += cashFlow;
+      }
+
+      remainingDebt = Math.max(0, remainingDebt - principal);
   }
+
+  const dscrMoyen = dscrs.length > 0 ? dscrs.reduce((a, b) => a + b, 0) / dscrs.length : resY1.dscr;
 
   return {
     capexTotal,
@@ -625,6 +645,7 @@ function computeBatteryProfitability(config) {
     triFP: IRR(cashFlowsFP, 0.1),
     payback: dynamicPayback || (resY1.ebe > 0 ? capexTotal / resY1.ebe : dureeEtude),
     dscrAn1: resY1.dscr,
+    dscrMoyen,
     gainNetEtude,
     gainNet20A,
     totalOpexStudy,
@@ -992,12 +1013,12 @@ function SignatureArea({ data, update }) {
 }
 
 function TableauPrevisionnelBatterie({ rows, detailed }) {
-  const DataRow = ({ label, propName, isCurrency, bold, className, indent }) => (
+  const DataRow = ({ label, propName, isCurrency, isNumber, bold, className, indent }) => (
     <tr className={`border-b border-slate-200 bg-white hover:bg-slate-50 ${className}`}>
       <td className={`px-2 py-1 font-medium bg-slate-50 text-[11px] border-r border-slate-200 w-[180px] ${bold ? 'font-bold' : ''} ${indent ? 'pl-4 italic text-slate-500' : ''}`}>{label}</td>
       {rows.map((r, i) => (
         <td key={i} className={`px-1 py-1 text-right border-r border-slate-200 text-[11px] min-w-[50px] ${bold ? 'font-bold' : ''}`}>
-          {isCurrency ? fmtEur(r[propName]) : fmt(r[propName], 0)}
+          {isCurrency ? fmtEur(r[propName]) : (isNumber ? fmt(r[propName], 2) : fmt(r[propName], 0))}
         </td>
       ))}
     </tr>
@@ -1035,18 +1056,18 @@ function TableauPrevisionnelBatterie({ rows, detailed }) {
               <>
                 <DataRow label="Maintenance" propName="maint" isCurrency indent />
                 <DataRow label="Revenu bailleur" propName="revBailleur" isCurrency indent />
-                <DataRow label="Gestion de la charge" propName="gestionCharge" isCurrency indent />
-                <DataRow label="Rétribution commerciale" propName="retribComm" isCurrency indent />
+                <DataRow label="Supervision" propName="supervision" isCurrency indent />
                 <DataRow label="Assurance" propName="assur" isCurrency indent />
                 <DataRow label="Commission Agrégateur" propName="fraisAgregateur" isCurrency indent />
                 <DataRow label="TURPE" propName="turpe" isCurrency indent />
-                <DataRow label="IFER" propName="ifer" isCurrency indent />
+                <DataRow label="Recyclage" propName="recyclage" isCurrency indent />
               </>
             ) : (
               <DataRow label="Charges d'Exploitation (OPEX)" propName="opex" isCurrency />
             )}
             
             <DataRow label="Service de la Dette" propName="serviceDette" isCurrency />
+            <DataRow label="DSCR" propName="dscr" isNumber />
             <DataRow label="EBITDA (EBE)" propName="ebe" isCurrency bold className="bg-blue-50 text-blue-800" />
             
             <tr className="bg-amber-400 font-black text-slate-900 text-[11px]">
@@ -1076,11 +1097,10 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
   
   const totalOpexAn1 = (config.maintenanceAn || 0) + 
                        (config.revenuBailleurAn || 0) + 
-                       (config.gestionChargeAn || 0) + 
+                       (config.supervisionAn || 0) + 
                        (config.assuranceAn || 0) + 
                        commAgregateurMontant + 
-                       (config.turpeAn || 0) + 
-                       (config.iferAn || 0);
+                       (config.turpeAn || 0);
   
   const currentModelKey = config.batteryModelKey || 'cesc_mercury_261';
   const selectedModel = BATTERY_MODELS.find(m => m.id === currentModelKey) || BATTERY_MODELS[0];
@@ -1094,55 +1114,58 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
     const qty = quantity;
     const p = qty * model.power;
     const batteryBms = qty * model.price;
+    const tranches = p / 250;
     
-    const rHT = config.raccordementHT || 100;
-    const dPriv = config.distancePriv || 100;
+    const rHT = config.raccordementHT || 10;
+    const dPriv = config.distancePriv || 10;
     const newRaccordement = getHtaCost(p, rHT) + (dPriv * 20);
     const newGenieCivil = 6000 + (qty - 1) * 1300;
     const newDeveloppement = 6000 + (qty - 1) * 500;
-    const fraisComm = 40 * p;
+    const fraisComm = 25 * p;
     
-    const capexPlusRacc = batteryBms + newGenieCivil + newRaccordement + newDeveloppement + fraisComm;
-    
-    const revBruts = (30 * p) + (150 * p) + (20 * p) + (20 * p);
-
-    setParams(prev => ({
-      ...prev,
-      batteryConfig: {
-        ...prev.batteryConfig,
-        batteryModelKey: modelId,
-        nbBricks: qty,
-        puissanceDemandee: p,
-        batterieBms: batteryBms,
-        genieCivil: newGenieCivil,
-        developpement: newDeveloppement,
-        fraisCommerciaux: fraisComm,
-        raccordement: newRaccordement,
-        arbitrageEnergie: 30 * p,
-        reserveFCR: 150 * p,
-        mecanismeCapacite: 20 * p,
-        effacement: 20 * p,
-        maintenanceAn: 6 * p,
-        revenuBailleurAn: 1250 * qty,
-        gestionChargeAn: 4562.5 * qty,
-        turpeAn: 20 * p,
-        iferAn: 5 * p,
-        onduleurPcs: 0,
-        assuranceAn: Math.round(capexPlusRacc * 0.004)
-      }
-    }));
+    setParams(prev => {
+      const capaciteDoD = prev.batteryConfig?.capaciteDoD ?? 80;
+      return {
+        ...prev,
+        batteryConfig: {
+          ...prev.batteryConfig,
+          batteryModelKey: modelId,
+          nbBricks: qty,
+          puissanceDemandee: p,
+          batterieBms: batteryBms,
+          genieCivil: newGenieCivil,
+          developpement: newDeveloppement,
+          fraisCommerciaux: fraisComm,
+          raccordement: newRaccordement,
+          arbitrageEnergie: 30 * p * (capaciteDoD / 100),
+          reserveFCR: 130 * p,
+          mecanismeCapacite: 20 * p,
+          effacement: 20 * p * (capaciteDoD / 100),
+          maintenanceAn: 6 * p,
+          revenuBailleurAn: 900 * tranches,
+          supervisionAn: 2000 * tranches,
+          recyclage: 10000 * tranches,
+          turpeAn: 20 * p,
+          onduleurPcs: 0,
+          assuranceAn: 1000 * tranches
+        }
+      };
+    });
   };
 
   const update = (k, v) => {
     setParams(prev => {
       const newConfig = { ...(prev.batteryConfig || {}), [k]: v };
+      const pReq = newConfig.puissanceDemandee || 125;
       if (k === 'raccordementHT' || k === 'distancePriv') {
-        const pReq = newConfig.puissanceDemandee || 125;
-        const rHT = newConfig.raccordementHT || 100;
-        const dPriv = newConfig.distancePriv || 100;
+        const rHT = newConfig.raccordementHT || 10;
+        const dPriv = newConfig.distancePriv || 10;
         newConfig.raccordement = getHtaCost(pReq, rHT) + (dPriv * 20);
-        const totalCapex = (newConfig.batterieBms || 0) + (newConfig.genieCivil || 0) + newConfig.raccordement + (newConfig.developpement || 0) + (newConfig.fraisCommerciaux || 0);
-        newConfig.assuranceAn = Math.round(totalCapex * 0.004);
+      }
+      if (k === 'capaciteDoD') {
+        const dodFactor = (v || 80) / 100;
+        newConfig.arbitrageEnergie = 30 * pReq * dodFactor;
+        newConfig.effacement = 20 * pReq * dodFactor;
       }
       return { ...prev, batteryConfig: newConfig };
     });
@@ -1281,6 +1304,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             <div className="pt-2 border-t border-slate-100 mt-2">
                <Field label="Disponibilité" value={config.disponibilite} onChange={v => update('disponibilite', v)} type="number" suffix="%" />
                <Field label="Rendement R-T" value={config.rendementRoundTrip} onChange={v => update('rendementRoundTrip', v)} type="number" suffix="%" />
+               <Field label="Capacité utilisée DoD" value={config.capaciteDoD ?? 80} onChange={v => update('capaciteDoD', v)} type="number" suffix="%" />
             </div>
           </div>
 
@@ -1298,7 +1322,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           <div className="grid grid-cols-1 gap-2">
             <Field label="Maintenance /an" value={config.maintenanceAn} onChange={v => update('maintenanceAn', v)} type="number" suffix="€" />
             <Field label="Revenu bailleur" value={config.revenuBailleurAn} onChange={v => update('revenuBailleurAn', v)} type="number" suffix="€" />
-            <Field label="Gestion de la charge" value={config.gestionChargeAn} onChange={v => update('gestionChargeAn', v)} type="number" suffix="€" />
+            <Field label="Supervision /an" value={config.supervisionAn} onChange={v => update('supervisionAn', v)} type="number" suffix="€" />
             <Field label="Assurance /an" value={config.assuranceAn} onChange={v => update('assuranceAn', v)} type="number" suffix="€" />
             <div className="flex items-center gap-2">
               <label className="text-[13px] text-slate-500 w-32 shrink-0">Comm. Agrégateur</label>
@@ -1325,7 +1349,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             </div>
             <div className="grid grid-cols-2 gap-4">
               <Field label="TURPE /an" value={config.turpeAn} onChange={v => update('turpeAn', v)} type="number" suffix="€" />
-              <Field label="IFER /an" value={config.iferAn} onChange={v => update('iferAn', v)} type="number" suffix="€" />
+              <Field label="Recyclage" value={config.recyclage} onChange={v => update('recyclage', v)} type="number" suffix="€" />
             </div>
             <div className="pt-1 mt-1 border-t border-slate-100">
                <Field label="Total OPEX" value={fmtEur(totalOpexAn1)} type="text" disabled className="font-bold text-blue-700" />
@@ -1361,15 +1385,15 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                 <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/20">
                    <div className="text-center">
                       <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">TRI Projet</div>
-                      <div className="text-lg font-black text-blue-400">{fmtPct(results.triProjet)}</div>
+                      <div className="text-lg font-black text-blue-400">{fmtPct(results.triFP)}</div>
                    </div>
                    <div className="text-center border-x border-white/10 px-1">
                       <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Temps de Retour</div>
                       <div className="text-lg font-black text-amber-400">{fmt(results.payback, 1)} ans</div>
                    </div>
                    <div className="text-center">
-                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">DSCR Prêt An 1</div>
-                      <div className="text-lg font-black text-green-400">{fmt(results.dscrAn1, 2)}</div>
+                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">DSCR Moyen</div>
+                      <div className="text-lg font-black text-green-400">{fmt(results.dscrMoyen, 2)}</div>
                    </div>
                  </div>
 
@@ -4261,34 +4285,48 @@ export default function BpAcama() {
     const features = selectedProject.features || selectedProject.map_state?.features || selectedProject.map_state?.projects || [];
     const buildingFeatures = features.filter(f => (f.type === 'rectangle' && !f.isBattery) || (f.type === 'polygon' && f.isPredefinedBuilding));
     
+    const pReq = selectedProject.bess_puissanceRaccordee ? Number(selectedProject.bess_puissanceRaccordee) : 125;
+    const qty = Math.max(1, Math.round(pReq / 125));
+    const tranches = pReq / 250;
+    
+    const rHT = 10;
+    const dPriv = 10;
+    const newRaccordement = getHtaCost(pReq, rHT) + (dPriv * 20);
+    const newGenieCivil = 6000 + (qty - 1) * 1300;
+    const newDeveloppement = 6000 + (qty - 1) * 500;
+    const fraisComm = 25 * pReq;
+
     const defaultBatteryConfig = {
       enabled: false,
       isGlobal: false,
       inflationAnnuelle: 2,
-      degradationAnnuelle: 1,
+      degradationAnnuelle: 3,
+      capaciteDoD: 80,
       batteryModelKey: 'cesc_mercury_261',
-      nbBricks: 1,
-      batterieBms: 34625,
+      nbBricks: qty,
+      batterieBms: 34625 * qty,
       onduleurPcs: 0,
-      genieCivil: 6000,
-      puissanceDemandee: 125,
+      genieCivil: newGenieCivil,
+      puissanceDemandee: pReq,
       dureeDecharge: 2,
-      raccordement: 19900,
-      developpement: 6000,
-      fraisCommerciaux: 5000,
-      arbitrageEnergie: 3750,
-      reserveFCR: 18750,
-      mecanismeCapacite: 2500,
-      effacement: 2500,
+      raccordementHT: 10,
+      distancePriv: 10,
+      raccordement: newRaccordement,
+      developpement: newDeveloppement,
+      fraisCommerciaux: fraisComm,
+      arbitrageEnergie: 30 * pReq * 0.8,
+      reserveFCR: 130 * pReq,
+      mecanismeCapacite: 20 * pReq,
+      effacement: 20 * pReq * 0.8,
       disponibilite: 98,
       rendementRoundTrip: 88,
-      maintenanceAn: 750,
-      revenuBailleurAn: 1250,
-      gestionChargeAn: 4562.5,
-      assuranceAn: 286, // Updated for 34625 base (71525 total * 0.4%)
+      maintenanceAn: 6 * pReq,
+      revenuBailleurAn: 900 * tranches,
+      supervisionAn: 2000 * tranches,
+      recyclage: 10000 * tranches,
+      assuranceAn: 1000 * tranches,
       commissionAgregateur: 18,
-      turpeAn: 2500,
-      iferAn: 625,
+      turpeAn: 20 * pReq,
       tauxEmprunt: 3.9,
       dureeEmprunt: 12,
       apport: 0,
@@ -4310,32 +4348,29 @@ export default function BpAcama() {
         if (saved.batteryConfig.batterieBms === 33625) saved.batteryConfig.batterieBms = 50209;
         if (saved.batteryConfig.raccordement === 9000) saved.batteryConfig.raccordement = 19900;
         if (saved.batteryConfig.developpement === 5000) saved.batteryConfig.developpement = 6000;
-        if (saved.batteryConfig.assuranceAn === 240 || saved.batteryConfig.assuranceAn === 390) saved.batteryConfig.assuranceAn = 353;
-        if (saved.batteryConfig.turpeAn === 5000) saved.batteryConfig.turpeAn = 2500;
-        if (saved.batteryConfig.iferAn === 1250) saved.batteryConfig.iferAn = 625;
         
-        // RECENT UPDATES: revenuBailleur (1250) and commissionAgregateur (18)
-        const nbB = saved.batteryConfig.nbBricks || 1;
-        if (saved.batteryConfig.revenuBailleurAn === 2500 * nbB || saved.batteryConfig.revenuBailleurAn === 2000 * nbB) {
-          saved.batteryConfig.revenuBailleurAn = 1250 * nbB;
-        }
+        // RECENT UPDATES: revenuBailleur (900) and commissionAgregateur (18)
+        const pR = saved.batteryConfig.puissanceDemandee || 125;
+        const currentTranches = pR / 250;
+        
         if (saved.batteryConfig.commissionAgregateur === 20 || saved.batteryConfig.commissionAgregateur === undefined) {
           saved.batteryConfig.commissionAgregateur = 18;
         }
-        if (saved.batteryConfig.gestionChargeAn === undefined) {
-          saved.batteryConfig.gestionChargeAn = 4562.5 * nbB;
-        }
+        
+        // Fix for removed properties
+        if (saved.batteryConfig.gestionChargeAn !== undefined) delete saved.batteryConfig.gestionChargeAn;
+        if (saved.batteryConfig.iferAn !== undefined) delete saved.batteryConfig.iferAn;
 
-        // UPDATED STANDARDS: fraisCommerciaux (40€/kW) and degradationAnnuelle (1)
-        if (saved.batteryConfig.fraisCommerciaux === 2500 || saved.batteryConfig.fraisCommerciaux === 6250 || saved.batteryConfig.fraisCommerciaux === 12500) {
-          saved.batteryConfig.fraisCommerciaux = 40 * (saved.batteryConfig.puissanceDemandee || 125);
+        // UPDATED STANDARDS: fraisCommerciaux (25€/kW), degradationAnnuelle (3)
+        if (saved.batteryConfig.fraisCommerciaux === 5000 || saved.batteryConfig.fraisCommerciaux === 10000) {
+          saved.batteryConfig.fraisCommerciaux = 25 * pR;
         }
         // Always clear retribution if present
         if (saved.batteryConfig.retributionCommAn !== undefined) {
           delete saved.batteryConfig.retributionCommAn;
         }
-        if (saved.batteryConfig.degradationAnnuelle === 2 || saved.batteryConfig.degradationAnnuelle === undefined) {
-          saved.batteryConfig.degradationAnnuelle = 1;
+        if (saved.batteryConfig.degradationAnnuelle === 1 || saved.batteryConfig.degradationAnnuelle === undefined) {
+          saved.batteryConfig.degradationAnnuelle = 3;
         }
       }
 
