@@ -1258,8 +1258,8 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
             <GroupTitle title="DONNEES DU PROJET" />
             <div className="grid grid-cols-1 gap-2">
-              <Field label="Raccordement HT" value={config.raccordementHT || 100} onChange={v => update('raccordementHT', v)} type="number" suffix="m" />
-              <Field label="Distance privée" value={config.distancePriv || 100} onChange={v => update('distancePriv', v)} type="number" suffix="m" />
+              <Field label="Raccordement HT" value={config.raccordementHT ?? 10} onChange={v => update('raccordementHT', v)} type="number" suffix="m" />
+              <Field label="Distance privée" value={config.distancePriv ?? 10} onChange={v => update('distancePriv', v)} type="number" suffix="m" />
             </div>
           </div>
 
@@ -1311,7 +1311,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           <div className="pt-2">
             <GroupTitle title="Financement" />
             <div className="grid grid-cols-1 gap-2">
-              <Field label="Durée" value={config.dureeEmprunt || 20} onChange={v => update('dureeEmprunt', v)} type="number" suffix="ans" />
+              <Field label="Durée" value={config.dureeEmprunt || 8} onChange={v => update('dureeEmprunt', v)} type="number" suffix="ans" />
               <Field label="Taux" value={config.tauxEmprunt || 4} onChange={v => update('tauxEmprunt', v)} type="number" suffix="%" step={0.1} />
             </div>
           </div>
@@ -1366,8 +1366,8 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                  </select>
                </div>
                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Inflation ann." value={config.inflationAnnuelle ?? 2} onChange={v => update('inflationAnnuelle', v)} type="number" suffix="%" step={0.5} />
-                  <Field label="Dégradation ann." value={config.degradationAnnuelle ?? 1} onChange={v => update('degradationAnnuelle', v)} type="number" suffix="%" step={0.5} />
+                  <Field label="Inflation annuelle" value={config.inflationAnnuelle ?? 2} onChange={v => update('inflationAnnuelle', v)} type="number" suffix="%" step={0.5} />
+                  <Field label="Dégradation annuelle" value={config.degradationAnnuelle ?? 3} onChange={v => update('degradationAnnuelle', v)} type="number" suffix="%" step={0.5} />
                </div>
             </div>
           </div>
@@ -1385,7 +1385,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                 <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/20">
                    <div className="text-center">
                       <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">TRI Projet</div>
-                      <div className="text-lg font-black text-blue-400">{fmtPct(results.triFP)}</div>
+                      <div className="text-lg font-black text-blue-400">{fmtPct(results.triProjet)}</div>
                    </div>
                    <div className="text-center border-x border-white/10 px-1">
                       <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">Temps de Retour</div>
@@ -4288,6 +4288,7 @@ export default function BpAcama() {
     const pReq = selectedProject.bess_puissanceRaccordee ? Number(selectedProject.bess_puissanceRaccordee) : 125;
     const qty = Math.max(1, Math.round(pReq / 125));
     const tranches = pReq / 250;
+    const tranches125 = pReq / 125;
     
     const rHT = 10;
     const dPriv = 10;
@@ -4322,13 +4323,13 @@ export default function BpAcama() {
       rendementRoundTrip: 88,
       maintenanceAn: 6 * pReq,
       revenuBailleurAn: 900 * tranches,
-      supervisionAn: 2000 * tranches,
-      recyclage: 10000 * tranches,
+      supervisionAn: 1000 * tranches125,
+      recyclage: 5000 * tranches125,
       assuranceAn: 1000 * tranches,
       commissionAgregateur: 18,
       turpeAn: 20 * pReq,
       tauxEmprunt: 3.9,
-      dureeEmprunt: 12,
+      dureeEmprunt: 8,
       apport: 0,
       tauxIS: 25
     };
@@ -4352,6 +4353,7 @@ export default function BpAcama() {
         // RECENT UPDATES: revenuBailleur (900) and commissionAgregateur (18)
         const pR = saved.batteryConfig.puissanceDemandee || 125;
         const currentTranches = pR / 250;
+        const currentTranches125 = pR / 125;
         
         if (saved.batteryConfig.commissionAgregateur === 20 || saved.batteryConfig.commissionAgregateur === undefined) {
           saved.batteryConfig.commissionAgregateur = 18;
@@ -4360,6 +4362,23 @@ export default function BpAcama() {
         // Fix for removed properties
         if (saved.batteryConfig.gestionChargeAn !== undefined) delete saved.batteryConfig.gestionChargeAn;
         if (saved.batteryConfig.iferAn !== undefined) delete saved.batteryConfig.iferAn;
+
+        // Migrations relatives to Supervision, Recyclage, Emprunt, Raccordement
+        if (saved.batteryConfig.supervisionAn === undefined || saved.batteryConfig.supervisionAn === 2000 * currentTranches) {
+          saved.batteryConfig.supervisionAn = 1000 * currentTranches125;
+        }
+        if (saved.batteryConfig.recyclage === undefined || saved.batteryConfig.recyclage === 10000 * currentTranches) {
+          saved.batteryConfig.recyclage = 5000 * currentTranches125;
+        }
+        if (saved.batteryConfig.dureeEmprunt === 12 || saved.batteryConfig.dureeEmprunt === 20) {
+          saved.batteryConfig.dureeEmprunt = 8;
+        }
+        if (saved.batteryConfig.raccordementHT === undefined || saved.batteryConfig.raccordementHT === 100) {
+          saved.batteryConfig.raccordementHT = 10;
+        }
+        if (saved.batteryConfig.distancePriv === undefined || saved.batteryConfig.distancePriv === 100) {
+          saved.batteryConfig.distancePriv = 10;
+        }
 
         // UPDATED STANDARDS: fraisCommerciaux (25€/kW), degradationAnnuelle (3)
         if (saved.batteryConfig.fraisCommerciaux === 5000 || saved.batteryConfig.fraisCommerciaux === 10000) {
