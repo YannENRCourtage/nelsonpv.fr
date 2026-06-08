@@ -575,10 +575,14 @@ function computeBatteryProfitability(config) {
       const dscr = serviceDette > 1 ? (cafds / serviceDette) : 9.99;
       
       if (y <= dureeEtude) {
-          if (dynamicPayback === null && runningUnleveredCF + cashFlow >= 0) {
-              dynamicPayback = (y - 1) + (Math.abs(runningUnleveredCF) / cashFlow);
+          const ebitUnlevered = ebe - (capexTotal / dureeEtude);
+          const taxUnlevered = ebitUnlevered > 0 ? ebitUnlevered * (tauxIS / 100) : 0;
+          const unleveredCF = ebe - taxUnlevered;
+          
+          if (dynamicPayback === null && runningUnleveredCF + unleveredCF >= 0) {
+              dynamicPayback = (y - 1) + (Math.abs(runningUnleveredCF) / unleveredCF);
           }
-          runningUnleveredCF += cashFlow;
+          runningUnleveredCF += unleveredCF;
 
           gainNetEtude += cashFlow;
           totalOpexStudy += (chargesFixes + chargesCom + coutRecyclage);
@@ -586,8 +590,8 @@ function computeBatteryProfitability(config) {
           totalDebtServiceStudy += serviceDette;
           totalInterestStudy += interest;
 
-          // Project Cash Flow (Unlevered but user wants it to take bank financing into account)
-          cashFlowsProjet.push(cashFlow);
+          // Project Cash Flow (Unlevered)
+          cashFlowsProjet.push(unleveredCF);
           // Equity Cash Flow (Levered)
           cashFlowsFP.push(cashFlow);
           
