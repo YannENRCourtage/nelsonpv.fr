@@ -575,14 +575,10 @@ function computeBatteryProfitability(config) {
       const dscr = serviceDette > 1 ? (cafds / serviceDette) : 9.99;
       
       if (y <= dureeEtude) {
-          const ebitUnlevered = ebe - (capexTotal / dureeEtude);
-          const taxUnlevered = ebitUnlevered > 0 ? ebitUnlevered * (tauxIS / 100) : 0;
-          const unleveredCF = ebe - taxUnlevered;
-          
-          if (dynamicPayback === null && runningUnleveredCF + unleveredCF >= 0) {
-              dynamicPayback = (y - 1) + (Math.abs(runningUnleveredCF) / unleveredCF);
+          if (dynamicPayback === null && runningUnleveredCF + cashFlow >= 0) {
+              dynamicPayback = (y - 1) + (Math.abs(runningUnleveredCF) / cashFlow);
           }
-          runningUnleveredCF += unleveredCF;
+          runningUnleveredCF += cashFlow;
 
           gainNetEtude += cashFlow;
           totalOpexStudy += (chargesFixes + chargesCom + coutRecyclage);
@@ -590,8 +586,8 @@ function computeBatteryProfitability(config) {
           totalDebtServiceStudy += serviceDette;
           totalInterestStudy += interest;
 
-          // Project Cash Flow (Unlevered)
-          cashFlowsProjet.push(unleveredCF);
+          // Project Cash Flow (Unlevered but user wants it to take bank financing into account)
+          cashFlowsProjet.push(cashFlow);
           // Equity Cash Flow (Levered)
           cashFlowsFP.push(cashFlow);
           
@@ -1143,8 +1139,8 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           effacement: 20 * p * (capaciteDoD / 100),
           maintenanceAn: 6 * p,
           revenuBailleurAn: 900 * tranches,
-          supervisionAn: 2000 * tranches,
-          recyclage: 10000 * tranches,
+          supervisionAn: 1000 * (p / 125),
+          recyclage: 5000 * (p / 125),
           turpeAn: 20 * p,
           onduleurPcs: 0,
           assuranceAn: 1000 * tranches
@@ -4344,6 +4340,33 @@ export default function BpAcama() {
       } else {
         // Also merge any missing properties just in case
         saved.batteryConfig = { ...defaultBatteryConfig, ...saved.batteryConfig };
+
+        // SYNC WITH PROJECT POWER: If project power differs from saved power, update
+        const projectReq = selectedProject.bess_puissanceRaccordee ? Number(selectedProject.bess_puissanceRaccordee) : null;
+        if (projectReq !== null && saved.batteryConfig.puissanceDemandee !== projectReq) {
+           const pR = projectReq;
+           const qty = Math.max(1, Math.round(pR / 125));
+           const currentTranches = pR / 250;
+           const currentTranches125 = pR / 125;
+           const capaciteDoD = saved.batteryConfig.capaciteDoD ?? 80;
+
+           saved.batteryConfig.puissanceDemandee = pR;
+           saved.batteryConfig.nbBricks = qty;
+           saved.batteryConfig.batterieBms = 34625 * qty;
+           saved.batteryConfig.fraisCommerciaux = 25 * pR;
+           saved.batteryConfig.supervisionAn = 1000 * currentTranches125;
+           saved.batteryConfig.recyclage = 5000 * currentTranches125;
+           saved.batteryConfig.revenuBailleurAn = 900 * currentTranches;
+           saved.batteryConfig.assuranceAn = 1000 * currentTranches;
+           saved.batteryConfig.reserveFCR = 130 * pR;
+           saved.batteryConfig.mecanismeCapacite = 20 * pR;
+           saved.batteryConfig.turpeAn = 20 * pR;
+           saved.batteryConfig.maintenanceAn = 6 * pR;
+           saved.batteryConfig.arbitrageEnergie = 30 * pR * (capaciteDoD / 100);
+           saved.batteryConfig.effacement = 20 * pR * (capaciteDoD / 100);
+           saved.batteryConfig.genieCivil = 6000 + (qty - 1) * 1300;
+           saved.batteryConfig.developpement = 6000 + (qty - 1) * 500;
+        }
         
         // AUTO-MIGRATION: If project has old defaults, update to new standards
         if (saved.batteryConfig.batterieBms === 33625) saved.batteryConfig.batterieBms = 50209;
