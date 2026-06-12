@@ -504,9 +504,9 @@ function computeBatteryProfitability(config) {
     rendementRoundTrip = 88,
     maintenanceAn = 1500,
     revenuBailleurAn = 1250,
-    supervisionAn = 0,
+    supervisionAn = 2000,
     assuranceAn = 353,
-    recyclage = 0,
+    recyclage = 10000,
     commissionAgregateur = 18,
     turpeAn = 2500,
     taxeLocaleAn = 900,
@@ -1098,7 +1098,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
   
   const totalOpexAn1 = (config.maintenanceAn || 0) + 
                        (config.revenuBailleurAn || 0) + 
-                       (config.supervisionAn || 0) + 
+                       (config.supervisionAn ?? 2000) + 
                        (config.assuranceAn || 0) + 
                        commAgregateurMontant + 
                        (config.turpeAn || 0) +
@@ -1325,7 +1325,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           <div className="grid grid-cols-1 gap-2">
             <Field label="Maintenance /an" value={config.maintenanceAn} onChange={v => update('maintenanceAn', v)} type="number" suffix="€" />
             <Field label="Revenu bailleur" value={config.revenuBailleurAn} onChange={v => update('revenuBailleurAn', v)} type="number" suffix="€" />
-            <Field label="Supervision /an" value={config.supervisionAn} onChange={v => update('supervisionAn', v)} type="number" suffix="€" />
+            <Field label="Supervision /an" value={config.supervisionAn ?? 2000} onChange={v => update('supervisionAn', v)} type="number" suffix="€" />
             <Field label="Assurance /an" value={config.assuranceAn} onChange={v => update('assuranceAn', v)} type="number" suffix="€" />
             <div className="flex items-center gap-2">
               <label className="text-[13px] text-slate-500 w-32 shrink-0">Comm. Agrégateur</label>
@@ -1352,7 +1352,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             </div>
             <div className="grid grid-cols-2 gap-4">
               <Field label="TURPE /an" value={config.turpeAn} onChange={v => update('turpeAn', v)} type="number" suffix="€" />
-              <Field label="Recyclage" value={config.recyclage} onChange={v => update('recyclage', v)} type="number" suffix="€" />
+              <Field label="Recyclage" value={config.recyclage ?? 10000} onChange={v => update('recyclage', v)} type="number" suffix="€" />
             </div>
             <div className="grid grid-cols-2 gap-4 mt-2">
               <Field label="Taxe locale" value={config.taxeLocaleAn ?? 900} onChange={v => update('taxeLocaleAn', v)} type="number" suffix="€" />
