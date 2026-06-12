@@ -509,8 +509,6 @@ function computeBatteryProfitability(config) {
     recyclage = 10000,
     commissionAgregateur = 18,
     turpeAn = 2500,
-    taxeLocaleAn = 900,
-    gestionAdminAn = 396,
     tauxEmprunt = 4,
     dureeEmprunt = 20,
     apport = 0,
@@ -556,7 +554,7 @@ function computeBatteryProfitability(config) {
       const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
 
       const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100);
-      const chargesFixesNoBailleur = (maintenanceAn + assuranceAn + turpeAn + supervisionAn + taxeLocaleAn + gestionAdminAn) * infl;
+      const chargesFixesNoBailleur = (maintenanceAn + assuranceAn + turpeAn + supervisionAn) * infl;
       const chargesFixes = chargesFixesNoBailleur + (revenuBailleurAn || 0);
       
       const chargesCom = revNet * (commissionAgregateur / 100);
@@ -669,8 +667,8 @@ function computeBusinessPlan(params) {
     maintenance = 1734.20,
     locationCompteur = 660,
     assurance = 867.10,
-    taxesLocales = 0,
-    gestionAdmin = 0,
+    taxesLocales = 900,
+    gestionAdmin = 396,
     totalInvestissement = 435655.12,
     coutCentrale = 0,
     coutCharpente = 0,
@@ -1101,9 +1099,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                        (config.supervisionAn ?? 2000) + 
                        (config.assuranceAn || 0) + 
                        commAgregateurMontant + 
-                       (config.turpeAn || 0) +
-                       (config.taxeLocaleAn ?? 900) +
-                       (config.gestionAdminAn ?? 396);
+                       (config.turpeAn || 0);
   
   const currentModelKey = config.batteryModelKey || 'cesc_mercury_261';
   const selectedModel = BATTERY_MODELS.find(m => m.id === currentModelKey) || BATTERY_MODELS[0];
@@ -1353,10 +1349,6 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             <div className="grid grid-cols-2 gap-4">
               <Field label="TURPE /an" value={config.turpeAn} onChange={v => update('turpeAn', v)} type="number" suffix="€" />
               <Field label="Recyclage" value={config.recyclage ?? 10000} onChange={v => update('recyclage', v)} type="number" suffix="€" />
-            </div>
-            <div className="grid grid-cols-2 gap-4 mt-2">
-              <Field label="Taxe locale" value={config.taxeLocaleAn ?? 900} onChange={v => update('taxeLocaleAn', v)} type="number" suffix="€" />
-              <Field label="Gestion administrative" value={config.gestionAdminAn ?? 396} onChange={v => update('gestionAdminAn', v)} type="number" suffix="€" />
             </div>
             <div className="pt-1 mt-1 border-t border-slate-100">
                <Field label="Total OPEX" value={fmtEur(totalOpexAn1)} type="text" disabled className="font-bold text-blue-700" />
@@ -2461,8 +2453,8 @@ function TabBpProjets({
             <SectionCard title="OPEX ANNUELS" id="pdf-section-opex" className="grid grid-cols-1 gap-y-1 py-2 border-t-4 border-t-purple-500">
               <Field label="Maintenance" value={params.maintenance} onChange={v => setParams(p => ({ ...p, maintenance: v }))} type="number" suffix="€" className="h-7" />
               <Field label="Assurance" value={params.assurance} onChange={v => setParams(p => ({ ...p, assurance: v }))} type="number" suffix="€" className="h-7" />
-              <Field label="Taxes locales" value={params.taxesLocales} onChange={v => setParams(p => ({ ...p, taxesLocales: v }))} type="number" suffix="€" className="h-7" />
-              <Field label="Gestion" value={params.gestionAdmin} onChange={v => setParams(p => ({ ...p, gestionAdmin: v }))} type="number" suffix="€" className="h-7" />
+              <Field label="Taxes locales" value={params.taxesLocales ?? 900} onChange={v => setParams(p => ({ ...p, taxesLocales: v }))} type="number" suffix="€" className="h-7" />
+              <Field label="Gestion administrative" value={params.gestionAdmin ?? 396} onChange={v => setParams(p => ({ ...p, gestionAdmin: v }))} type="number" suffix="€" className="h-7" />
             </SectionCard>
 
             <SectionCard title="BANQUE" id="pdf-section-banque" className="bg-white border-slate-200 border-t-4 border-t-amber-500">
@@ -4226,8 +4218,8 @@ export default function BpAcama() {
     maintenance: 1734.20,
     locationCompteur: 660,
     assurance: 867.10,
-    taxesLocales: 0,
-    gestionAdmin: 0,
+    taxesLocales: 900,
+    gestionAdmin: 396,
     dureeEmprunt: 20,
     tauxCredit: 4,
     indexationTarif: 0.006,
