@@ -1,0 +1,50 @@
+                <DataRow label="Assurance" propName="assur" isCurrency indent />
+                <DataRow label="Commission Agrégateur" propName="fraisAgregateur" isCurrency indent />
+                <DataRow label="TURPE" propName="turpe" isCurrency indent />
+                <DataRow label="IFER" propName="ifer" isCurrency indent />
+              </>
+            ) : (
+              <DataRow label="Charges d'Exploitation (OPEX)" propName="opex" isCurrency />
+            )}
+            
+            <DataRow label="Service de la Dette" propName="serviceDette" isCurrency />
+            <DataRow label="EBITDA (EBE)" propName="ebe" isCurrency bold className="bg-blue-50 text-blue-800" />
+            
+            <tr className="bg-amber-400 font-black text-slate-900 text-[11px]">
+              <td className="px-2 py-1 uppercase border-r border-slate-300">Trésorerie nette annuelle</td>
+              {rows.map((r, i) => (
+                <td key={i} className="px-1 py-1 text-right border-r border-slate-300">
+                  {fmtEur(r.tresorerie)}
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isGreenInvest }) {
+  const [viewDetailed, setViewDetailed] = useState(false);
+  if (!config.enabled) return null;
+
+  const results = computeBatteryProfitability(config);
+  
+  const revenusBruts = (config.arbitrageEnergie || 0) + (config.reserveFCR || 0) + (config.mecanismeCapacite || 0) + (config.effacement || 0);
+  const revNetY1 = revenusBruts * (config.disponibilite || 98) / 100;
+  const commAgregateurMontant = revNetY1 * (config.commissionAgregateur || 0) / 100;
+  
+  const totalOpexAn1 = (config.maintenanceAn || 0) + 
+                       (config.revenuBailleurAn || 0) + 
+                       (config.gestionChargeAn || 0) + 
+                       (config.assuranceAn || 0) + 
+                       commAgregateurMontant + 
+                       (config.turpeAn || 0) + 
+                       (config.iferAn || 0);
+  
+  const currentModelKey = config.batteryModelKey || 'cesc_mercury_261';
+  const selectedModel = BATTERY_MODELS.find(m => m.id === currentModelKey) || BATTERY_MODELS[0];
+  const nbBricks = config.nbBricks || 1;
+
+  const realPower = nbBricks * selectedModel.power;

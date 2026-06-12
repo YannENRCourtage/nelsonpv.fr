@@ -1,0 +1,50 @@
+      if (!saved.batteryConfig) {
+        saved.batteryConfig = defaultBatteryConfig;
+      } else {
+        // Also merge any missing properties just in case
+        saved.batteryConfig = { ...defaultBatteryConfig, ...saved.batteryConfig };
+        
+        // AUTO-MIGRATION: If project has old defaults, update to new standards
+        if (saved.batteryConfig.batterieBms === 33625) saved.batteryConfig.batterieBms = 50209;
+        if (saved.batteryConfig.raccordement === 9000) saved.batteryConfig.raccordement = 19900;
+        if (saved.batteryConfig.developpement === 5000) saved.batteryConfig.developpement = 6000;
+        
+        // RECENT UPDATES: revenuBailleur (900) and commissionAgregateur (18)
+        const pR = saved.batteryConfig.puissanceDemandee || 125;
+        const currentTranches = pR / 250;
+        
+        if (saved.batteryConfig.commissionAgregateur === 20 || saved.batteryConfig.commissionAgregateur === undefined) {
+          saved.batteryConfig.commissionAgregateur = 18;
+        }
+        
+        // Fix for removed properties
+        if (saved.batteryConfig.gestionChargeAn !== undefined) delete saved.batteryConfig.gestionChargeAn;
+        if (saved.batteryConfig.iferAn !== undefined) delete saved.batteryConfig.iferAn;
+
+        // UPDATED STANDARDS: fraisCommerciaux (25€/kW), degradationAnnuelle (3)
+        if (saved.batteryConfig.fraisCommerciaux === 5000 || saved.batteryConfig.fraisCommerciaux === 10000) {
+          saved.batteryConfig.fraisCommerciaux = 25 * pR;
+        }
+        // Always clear retribution if present
+        if (saved.batteryConfig.retributionCommAn !== undefined) {
+          delete saved.batteryConfig.retributionCommAn;
+        }
+        if (saved.batteryConfig.degradationAnnuelle === 1 || saved.batteryConfig.degradationAnnuelle === undefined) {
+          saved.batteryConfig.degradationAnnuelle = 3;
+        }
+      }
+
+      // Enrich saved state with missing building types, products & power from map
+      if (saved.buildings && buildingFeatures.length > 0) {
+        saved.buildings = saved.buildings.map((b, idx) => {
+          const feat = buildingFeatures[idx];
+          const newTypeBat = (!b.typeBat || b.typeBat === '') ? (feat?.buildingName || feat?.name || b.typeBat) : b.typeBat;
+          
+          const defaultProdLocal = parseFloat(selectedProject.solarYieldRoof1 || selectedProject.productible) || 1123.08;
+          const specificProd = parseFloat(selectedProject[`solarYieldRoof${idx+1}`]) || defaultProdLocal;
+          const newProd = specificProd; // Toujours recuperer depuis le projet
+          
+          const featPower = parseFloat(feat?.power || feat?.kwc || feat?.puissance) || 0;
+          const newKwc = (b.kwc === 100 && featPower > 0 && featPower !== 100) ? featPower : b.kwc;
+          const newCoutCentrale = (newKwc !== b.kwc) ? (newKwc * 490) : b.coutCentrale;
+          

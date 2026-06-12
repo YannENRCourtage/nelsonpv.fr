@@ -1,0 +1,30 @@
+        onduleurPcs: 0,
+        assuranceAn: Math.round(capexPlusRacc * 0.004)
+      }
+    }));
+  };
+
+  const update = (k, v) => {
+    setParams(prev => {
+      const newConfig = { ...(prev.batteryConfig || {}), [k]: v };
+      if (k === 'raccordementHT' || k === 'distancePriv') {
+        const pReq = newConfig.puissanceDemandee || 125;
+        const rHT = newConfig.raccordementHT || 100;
+        const dPriv = newConfig.distancePriv || 100;
+        newConfig.raccordement = getHtaCost(pReq, rHT) + (dPriv * 20);
+        const totalCapex = (newConfig.batterieBms || 0) + (newConfig.genieCivil || 0) + newConfig.raccordement + (newConfig.developpement || 0) + (newConfig.fraisCommerciaux || 0);
+        newConfig.assuranceAn = Math.round(totalCapex * 0.004);
+      }
+      return { ...prev, batteryConfig: newConfig };
+    });
+  };
+
+  const GroupTitle = ({ title }) => <h4 className="text-[11px] font-black text-blue-600 uppercase mb-2 border-b border-blue-100 pb-1">{title}</h4>;
+
+  const PDFHeader = () => (
+    <div className="pdf-header hidden flex flex-col items-center w-full mb-6 pb-2 border-b-2 border-slate-100">
+      <div className="flex flex-row items-start w-full mb-2">
+        <div className="flex-1">
+          <img src="/logo-nelson.png" alt="Logo" className="h-16 w-auto object-contain" />
+        </div>
+        <div className="flex-1 text-center self-center">

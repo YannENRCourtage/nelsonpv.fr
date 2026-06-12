@@ -1,0 +1,60 @@
+          
+          if (dynamicPayback === null && runningUnleveredCF + unleveredCF >= 0) {
+              dynamicPayback = (y - 1) + (Math.abs(runningUnleveredCF) / unleveredCF);
+          }
+          runningUnleveredCF += unleveredCF;
+
+          gainNetEtude += cashFlow;
+          totalOpexStudy += (chargesFixes + chargesCom + coutRecyclage);
+          totalRevenueStudy += revNet;
+          totalDebtServiceStudy += serviceDette;
+          totalInterestStudy += interest;
+
+          // Project Cash Flow (Unlevered)
+          cashFlowsProjet.push(unleveredCF);
+          // Equity Cash Flow (Levered)
+          cashFlowsFP.push(cashFlow);
+          
+          if (serviceDette > 0) dscrs.push(dscr);
+
+          const yearLabel = 2026 + y - 1;
+          rows.push({
+            year: yearLabel,
+            arbitrage: realArbitrage * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
+            reserve: reserveFCR * deg * infl * (disponibilite / 100),
+            capacite: mecanismeCapacite * deg * infl * (disponibilite / 100),
+            effacement: realEffacement * deg * infl * (disponibilite / 100),
+            caTotal: revNet,
+            opex: chargesFixes + chargesCom + coutRecyclage,
+            maint: maintenanceAn * infl,
+            revBailleur: revenuBailleurAn, // Fixed
+            supervision: supervisionAn * infl,
+            assur: assuranceAn * infl,
+            turpe: turpeAn * infl,
+            recyclage: coutRecyclage,
+            fraisAgregateur: chargesCom,
+            serviceDette: interest + principal,
+            ebe,
+            interest,
+            principal,
+            dscr,
+            tresorerie: cashFlow
+          });
+
+          if (y === 1) {
+            resY1 = { revNet, ebe, dscr };
+          }
+      }
+
+      if (y <= 20 && y > dureeEtude) {
+          gainNet20A += cashFlow;
+      } else if (y <= dureeEtude) {
+          gainNet20A += cashFlow;
+      }
+
+      remainingDebt = Math.max(0, remainingDebt - principal);
+  }
+
+  const dscrMoyen = dscrs.length > 0 ? dscrs.reduce((a, b) => a + b, 0) / dscrs.length : resY1.dscr;
+
+  return {

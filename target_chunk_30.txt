@@ -1,0 +1,30 @@
+          assuranceAn: 1000 * tranches
+        }
+      };
+    });
+  };
+
+  const update = (k, v) => {
+    setParams(prev => {
+      const newConfig = { ...(prev.batteryConfig || {}), [k]: v };
+      const pReq = newConfig.puissanceDemandee || 125;
+      if (k === 'raccordementHT' || k === 'distancePriv') {
+        const rHT = newConfig.raccordementHT || 10;
+        const dPriv = newConfig.distancePriv || 10;
+        newConfig.raccordement = getHtaCost(pReq, rHT) + (dPriv * 20);
+      }
+      if (k === 'capaciteDoD') {
+        const dodFactor = (v || 80) / 100;
+        newConfig.arbitrageEnergie = 30 * pReq * dodFactor;
+        newConfig.effacement = 20 * pReq * dodFactor;
+      }
+      return { ...prev, batteryConfig: newConfig };
+    });
+  };
+
+  const GroupTitle = ({ title }) => <h4 className="text-[11px] font-black text-blue-600 uppercase mb-2 border-b border-blue-100 pb-1">{title}</h4>;
+
+  const PDFHeader = () => (
+    <div className="pdf-header hidden flex flex-col items-center w-full mb-6 pb-2 border-b-2 border-slate-100">
+      <div className="flex flex-row items-start w-full mb-2">
+        <div className="flex-1">

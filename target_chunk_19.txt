@@ -1,0 +1,40 @@
+              <div className="text-lg font-bold text-slate-900">{fmt(realPower, 0)} kW</div>
+           </div>
+        </div>
+      </div>
+
+      <div className={`grid grid-cols-1 ${config.isGlobal ? 'xl:grid-cols-3' : 'xl:grid-cols-4'} gap-6`}>
+        <div className="space-y-4">
+          <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+            <GroupTitle title="DONNEES DU PROJET" />
+            <div className="grid grid-cols-1 gap-2">
+              <Field label="Raccordement HT" value={config.raccordementHT || 100} onChange={v => update('raccordementHT', v)} type="number" suffix="m" />
+              <Field label="Distance privée" value={config.distancePriv || 100} onChange={v => update('distancePriv', v)} type="number" suffix="m" />
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <GroupTitle title="Investissement Initial - CAPEX" />
+            <div className="grid grid-cols-1 gap-2">
+              <Field label="Batterie + BMS" value={config.batterieBms} onChange={v => update('batterieBms', v)} type="number" suffix="€" />
+              <Field label="Génie civil" value={config.genieCivil} onChange={v => update('genieCivil', v)} type="number" suffix="€" readOnly />
+              <Field label="Raccordement" value={config.raccordement} onChange={v => update('raccordement', v)} type="number" suffix="€" readOnly />
+              <Field label="Développement" value={config.developpement} onChange={v => update('developpement', v)} type="number" suffix="€" readOnly />
+              <Field label="Frais comm." value={config.fraisCommerciaux} onChange={v => update('fraisCommerciaux', v)} type="number" suffix="€" />
+              {isEnrCourtage && (
+                <div className="flex items-center gap-2 px-1 mb-2">
+                   <input 
+                     type="checkbox" 
+                     id="investPropre"
+                     checked={config.isInvestPropre || false}
+                     onChange={e => update('isInvestPropre', e.target.checked)}
+                     className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                   />
+                   <label htmlFor="investPropre" className="text-[11px] font-bold text-slate-700 uppercase cursor-pointer">Investissement Propre</label>
+                 </div>
+              )}
+               <div className="pt-2 border-t border-slate-200 mt-1">
+                 <Field label="Invest. Total" value={fmt(results.capexTotal, 0)} type="text" suffix="€" disabled className="font-bold" />
+               </div>
+            </div>
+          </div>

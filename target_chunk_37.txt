@@ -1,0 +1,15 @@
+    
+    const features = selectedProject.features || selectedProject.map_state?.features || selectedProject.map_state?.projects || [];
+    const buildingFeatures = features.filter(f => (f.type === 'rectangle' && !f.isBattery) || (f.type === 'polygon' && f.isPredefinedBuilding));
+    
+    const pReq = selectedProject.bess_puissanceRaccordee ? Number(selectedProject.bess_puissanceRaccordee) : 125;
+    const qty = Math.max(1, Math.round(pReq / 125));
+    const tranches = pReq / 250;
+    const tranches125 = pReq / 125;
+    
+    const rHT = 10;
+    const dPriv = 10;
+    const newRaccordement = getHtaCost(pReq, rHT) + (dPriv * 20);
+    const newGenieCivil = 6000 + (qty - 1) * 1300;
+    const newDeveloppement = 6000 + (qty - 1) * 500;
+    const fraisComm = 25 * pReq;

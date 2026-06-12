@@ -1,0 +1,30 @@
+        <p className="text-[10px] font-bold text-slate-500 mt-1">{new Date().toLocaleDateString('fr-FR')}</p>
+      </div>
+    </div>
+  );
+
+  const updateBuildingParam = (id, k, v) => {
+    setParams(prev => {
+      const newBuildings = (prev.buildings || []).map(b => {
+        if (b.id === id) {
+          let updated = { ...b, [k]: v };
+          if (k === 'typeBat' && v) {
+            const normalized = normalizeBatType(v);
+            updated.typeBat = normalized;
+            const batData = (activeSuiviBatData || []).find(d => 
+              d.type && normalizeBatType(d.type).trim().toUpperCase() === normalized.trim().toUpperCase()
+            );
+            if (batData) {
+              updated.kwc = parseFloat(batData.kwc) || updated.kwc;
+              updated.productible = parseFloat(batData.prodMoyen) || updated.productible || 1100;
+              updated.coutCharpente = parseFloat(batData.cout_bat) || updated.coutCharpente;
+              updated.coutCentrale = (updated.kwc || 0) * 490;
+            }
+          }
+          if (k === 'projectType' && v === 'BE') {
+             updated.coutCharpente = 10000;
+          }
+          if (k === 'surfaceToiture' || (k === 'projectType' && v === 'BE')) {
+            const surf = k === 'surfaceToiture' ? parseFloat(v) || 0 : b.surfaceToiture || 0;
+            if (updated.projectType === 'BE' && surf > 0) {
+              const dims = getModuleDims(prev.puissanceUnitaire || 460);

@@ -1,0 +1,30 @@
+        if (saved.batteryConfig.supervisionAn === undefined || saved.batteryConfig.supervisionAn === 2000 * currentTranches) {
+          saved.batteryConfig.supervisionAn = 1000 * currentTranches125;
+        }
+        if (saved.batteryConfig.recyclage === undefined || saved.batteryConfig.recyclage === 10000 * currentTranches) {
+          saved.batteryConfig.recyclage = 5000 * currentTranches125;
+        }
+        if (saved.batteryConfig.dureeEmprunt === 12 || saved.batteryConfig.dureeEmprunt === 20) {
+          saved.batteryConfig.dureeEmprunt = 8;
+        }
+        if (saved.batteryConfig.raccordementHT === undefined || saved.batteryConfig.raccordementHT === 100) {
+          saved.batteryConfig.raccordementHT = 10;
+        }
+        if (saved.batteryConfig.distancePriv === undefined || saved.batteryConfig.distancePriv === 100) {
+          saved.batteryConfig.distancePriv = 10;
+        }
+
+        // UPDATED STANDARDS: fraisCommerciaux (25€/kW), degradationAnnuelle (3)
+        if (saved.batteryConfig.fraisCommerciaux === 5000 || saved.batteryConfig.fraisCommerciaux === 10000) {
+          saved.batteryConfig.fraisCommerciaux = 25 * pR;
+        }
+        // Always clear retribution if present
+        if (saved.batteryConfig.retributionCommAn !== undefined) {
+          delete saved.batteryConfig.retributionCommAn;
+        }
+        if (saved.batteryConfig.degradationAnnuelle === 1 || saved.batteryConfig.degradationAnnuelle === undefined) {
+          saved.batteryConfig.degradationAnnuelle = 3;
+        }
+      }
+
+      // Enrich saved state with missing building types, products & power from map

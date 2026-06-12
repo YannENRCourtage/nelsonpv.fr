@@ -1,0 +1,30 @@
+    const dPriv = 10;
+    const newRaccordement = getHtaCost(pReq, rHT) + (dPriv * 20);
+    const newGenieCivil = 6000 + (qty - 1) * 1300;
+    const newDeveloppement = 6000 + (qty - 1) * 500;
+    const fraisComm = 25 * pReq;
+
+    const defaultBatteryConfig = {
+      enabled: false,
+      isGlobal: false,
+      inflationAnnuelle: 2,
+      degradationAnnuelle: 3,
+      capaciteDoD: 80,
+      batteryModelKey: 'cesc_mercury_261',
+      nbBricks: qty,
+      batterieBms: 34625 * qty,
+      onduleurPcs: 0,
+      genieCivil: newGenieCivil,
+      puissanceDemandee: pReq,
+      dureeDecharge: 2,
+      raccordementHT: 10,
+      distancePriv: 10,
+      raccordement: newRaccordement,
+      developpement: newDeveloppement,
+      fraisCommerciaux: fraisComm,
+      arbitrageEnergie: 30 * pReq * 0.8,
+      reserveFCR: 130 * pReq,
+      mecanismeCapacite: 20 * pReq,
+      effacement: 20 * pReq * 0.8,
+      disponibilite: 98,
+      rendementRoundTrip: 88,

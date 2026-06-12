@@ -1,0 +1,30 @@
+      const is = ebit > 0 ? ebit * (tauxIS / 100) : 0;
+      
+      const cashFlow = ebe - interest - principal - is;
+      const cafds = ebe - is;
+      const dscr = serviceDette > 1 ? (cafds / serviceDette) : 9.99;
+      
+      if (y <= dureeEtude) {
+          if (dynamicPayback === null && runningUnleveredCF + cafds >= 0) {
+              dynamicPayback = (y - 1) + (Math.abs(runningUnleveredCF) / cafds);
+          }
+          runningUnleveredCF += cafds;
+
+          gainNetEtude += cashFlow;
+          totalOpexStudy += (chargesFixes + chargesCom + coutRecyclage);
+          totalRevenueStudy += revNet;
+          totalDebtServiceStudy += serviceDette;
+          totalInterestStudy += interest;
+
+          // Project Cash Flow (with tax shield from financing)
+          cashFlowsProjet.push(cafds);
+          // Equity Cash Flow (Levered)
+          cashFlowsFP.push(cashFlow);
+          
+          if (serviceDette > 0) dscrs.push(dscr);
+
+          const yearLabel = 2026 + y - 1;
+          rows.push({
+            year: yearLabel,
+            arbitrage: realArbitrage * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
+            reserve: reserveFCR * deg * infl * (disponibilite / 100),

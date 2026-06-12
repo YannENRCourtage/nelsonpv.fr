@@ -509,6 +509,8 @@ function computeBatteryProfitability(config) {
     recyclage = 0,
     commissionAgregateur = 18,
     turpeAn = 2500,
+    taxeLocaleAn = 900,
+    gestionAdminAn = 396,
     tauxEmprunt = 4,
     dureeEmprunt = 20,
     apport = 0,
@@ -554,7 +556,7 @@ function computeBatteryProfitability(config) {
       const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
 
       const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100);
-      const chargesFixesNoBailleur = (maintenanceAn + assuranceAn + turpeAn + supervisionAn) * infl;
+      const chargesFixesNoBailleur = (maintenanceAn + assuranceAn + turpeAn + supervisionAn + taxeLocaleAn + gestionAdminAn) * infl;
       const chargesFixes = chargesFixesNoBailleur + (revenuBailleurAn || 0);
       
       const chargesCom = revNet * (commissionAgregateur / 100);
@@ -1099,11 +1101,13 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                        (config.supervisionAn || 0) + 
                        (config.assuranceAn || 0) + 
                        commAgregateurMontant + 
-                       (config.turpeAn || 0);
+                       (config.turpeAn || 0) +
+                       (config.taxeLocaleAn ?? 900) +
+                       (config.gestionAdminAn ?? 396);
   
   const currentModelKey = config.batteryModelKey || 'cesc_mercury_261';
   const selectedModel = BATTERY_MODELS.find(m => m.id === currentModelKey) || BATTERY_MODELS[0];
-  const nbBricks = config.nbBricks || 1;
+  const nbBricks = config.nbBricks || 2;
 
   const realPower = nbBricks * selectedModel.power;
   const realEnergy = nbBricks * selectedModel.capacity;
@@ -1237,7 +1241,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                 min="1"
                 className="border border-slate-200 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-500 h-[30px]"
                 value={nbBricks}
-                onChange={e => updateBatterySpecs(currentModelKey, parseInt(e.target.value) || 1)}
+                onChange={e => updateBatterySpecs(currentModelKey, parseInt(e.target.value) || 2)}
               />
            </div>
            
@@ -1349,6 +1353,10 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             <div className="grid grid-cols-2 gap-4">
               <Field label="TURPE /an" value={config.turpeAn} onChange={v => update('turpeAn', v)} type="number" suffix="€" />
               <Field label="Recyclage" value={config.recyclage} onChange={v => update('recyclage', v)} type="number" suffix="€" />
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <Field label="Taxe locale" value={config.taxeLocaleAn ?? 900} onChange={v => update('taxeLocaleAn', v)} type="number" suffix="€" />
+              <Field label="Gestion administrative" value={config.gestionAdminAn ?? 396} onChange={v => update('gestionAdminAn', v)} type="number" suffix="€" />
             </div>
             <div className="pt-1 mt-1 border-t border-slate-100">
                <Field label="Total OPEX" value={fmtEur(totalOpexAn1)} type="text" disabled className="font-bold text-blue-700" />
