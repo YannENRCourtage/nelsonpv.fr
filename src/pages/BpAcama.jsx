@@ -3492,7 +3492,10 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
                       );
                       
                       if (selectedType === selectedProject?.bpAcamaState?.typeBat) {
-                        setParams(p => ({ ...p, ...selectedProject.bpAcamaState }));
+                        const saved = { ...selectedProject.bpAcamaState };
+                        if (!saved.taxesLocales) saved.taxesLocales = 900;
+                        if (!saved.gestionAdmin) saved.gestionAdmin = 396;
+                        setParams(p => ({ ...p, ...saved }));
                         return;
                       }
 
@@ -4327,6 +4330,8 @@ export default function BpAcama() {
     // 1. If saved state exists, we use it but check if building count matches map
     if (selectedProject.bpAcamaState) {
       const saved = { ...selectedProject.bpAcamaState };
+      if (!saved.taxesLocales) saved.taxesLocales = 900;
+      if (!saved.gestionAdmin) saved.gestionAdmin = 396;
       
       // Ensure batteryConfig is initialized if missing in saved state
       if (!saved.batteryConfig) {
