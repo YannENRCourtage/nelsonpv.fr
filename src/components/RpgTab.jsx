@@ -15,7 +15,7 @@ const RPG_CULTURE_CODES = {
   'BTH': 'Blé tendre',
   'BDH': 'Blé dur',
   'DUR': 'Blé dur',
-  'ORH': 'Orge',
+  'ORH': "Orge d'hiver",
   'OH':  "Orge d'hiver",
   'OP':  'Orge de printemps',
   'ORP': 'Orge de printemps',
@@ -29,6 +29,7 @@ const RPG_CULTURE_CODES = {
   'SOG': 'Sorgho grain',
   'SEI': 'Seigle',
   'AVO': 'Avoine',
+  'AVP': 'Avoine de printemps',
   'ESC': 'Escourgeon',
   'EPE': 'Épeautre',
   'ANC': 'Autres céréales',
@@ -41,6 +42,7 @@ const RPG_CULTURE_CODES = {
 
   // ── OLÉAGINEUX ────────────────────────────────────────────────────────────
   'COL': 'Colza',
+  'CPL': 'Colza de printemps',
   'TOU': 'Tournesol',
   'LIN': 'Lin oléagineux',
   'SOJ': 'Soja',
@@ -52,11 +54,14 @@ const RPG_CULTURE_CODES = {
 
   // ── PROTÉAGINEUX ──────────────────────────────────────────────────────────
   'POI': 'Pois protéagineux',
+  'PHI': "Pois d'hiver",
   'FXL': 'Féverole',
+  'FVL': 'Féverole',
   'LUP': 'Lupin doux',
   'PPR': 'Autres protéagineux',
   'LEN': 'Lentille',
   'PTC': 'Pois chiche',
+  'PCH': 'Pois chiche',
 
   // ── PRAIRIES PERMANENTES ──────────────────────────────────────────────────
   'PPH': 'Prairies permanentes herbacées',
@@ -86,6 +91,7 @@ const RPG_CULTURE_CODES = {
   'MLL': 'Mélange de légumineuses',
   'MLC': 'Mélange de cultures (couvert)',
   'MC6': 'Mélange de cultures',
+  'MPC': 'Mélange de protéagineux et céréales',
   'MH5': 'Mélange herbacé (5 ans ou plus)',
 
   // ── GRAMINÉES FOURRAGÈRES (cultures principales et dérobées) ─────────────
@@ -108,6 +114,8 @@ const RPG_CULTURE_CODES = {
 
   // ── LÉGUMINEUSES FOURRAGÈRES (cultures principales et dérobées) ───────────
   'LUZ': 'Luzerne',
+  'LUS': 'Luzerne',
+  'LU6': 'Luzerne (6 ans ou plus)',
   'TRF': 'Trèfle',
   'TRE': 'Trèfle (autre)',
   'DTR': 'Trèfle (culture dérobée)',
