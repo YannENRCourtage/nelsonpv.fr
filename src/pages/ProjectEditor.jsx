@@ -5,6 +5,7 @@ import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Bui
 import html2canvas from 'html2canvas';
 import MapEditor from "../components/MapEditor";
 import StreetViewTab from "../components/StreetViewTab";
+import RpgTab from "../components/RpgTab";
 import SubstationProximityCards from "../components/editor/SubstationProximityCards.jsx";
 
 import ShadowMapTab from "../components/ShadowMapTab.jsx";
@@ -1645,6 +1646,18 @@ export default function ProjectEditor() {
 
             <button
               type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('rpg'); }}
+              className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'rpg'
+                ? 'bg-green-100 text-green-700 border-b-0 z-10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-b border-b-gray-700'
+                }`}
+              tabIndex={-1}
+            >
+              🌾 RPG
+            </button>
+
+            <button
+              type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveTab('streetview'); }}
               className={`hidden lg:block px-4 py-2 rounded-t-lg font-medium transition-colors border-t border-l border-r border-gray-700 whitespace-nowrap ${activeTab === 'streetview'
                 ? 'bg-blue-100 text-blue-700 border-b-0 z-10'
@@ -2011,6 +2024,13 @@ export default function ProjectEditor() {
                     Ouvrir direct
                   </Button>
                 </div>
+              </div>
+            )}
+
+            {/* Onglet RPG */}
+            {activeTab === 'rpg' && (
+              <div className='w-full h-full'>
+                <RpgTab project={project} activeTab={activeTab} />
               </div>
             )}
 
