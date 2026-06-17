@@ -4,22 +4,25 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // ---------------------------------------------------------------------------
-// Dictionnaire COMPLET des codes de cultures RPG → libellés français
+// Dictionnaire EXHAUSTIF des codes de cultures RPG → libellés français
 // Source : ASP / Notices techniques cultures PAC (millésimes 2010-2024)
+// Inclut les cultures principales, cultures dérobées et mélanges fourragers
 // ---------------------------------------------------------------------------
 const RPG_CULTURE_CODES = {
-  // ── CÉRÉALES ──────────────────────────────────────────────────────────────
+
+  // ── CÉRÉALES PRINCIPALES ──────────────────────────────────────────────────
   'BLE': 'Blé tendre',
   'BTH': 'Blé tendre',
   'BDH': 'Blé dur',
   'DUR': 'Blé dur',
   'ORH': 'Orge',
-  'OH':  'Orge d\'hiver',
+  'OH':  "Orge d'hiver",
   'OP':  'Orge de printemps',
   'MID': 'Maïs grain et ensilage',
   'MIS': 'Maïs semence',
   'MIG': 'Maïs grain',
   'MIE': 'Maïs ensilage',
+  'MIC': 'Maïs doux',
   'TRN': 'Triticale',
   'SOR': 'Sorgho',
   'SEI': 'Seigle',
@@ -28,6 +31,10 @@ const RPG_CULTURE_CODES = {
   'EPE': 'Épeautre',
   'ANC': 'Autres céréales',
   'CER': 'Autres céréales',
+  'CZH': 'Céréales (autre)',
+  'SNB': 'Sarrasin',
+  'MIL': 'Millet',
+  'SBL': 'Sorgho blanc',
 
   // ── OLÉAGINEUX ────────────────────────────────────────────────────────────
   'COL': 'Colza',
@@ -36,12 +43,17 @@ const RPG_CULTURE_CODES = {
   'SOJ': 'Soja',
   'LIO': 'Lin oléagineux',
   'POL': 'Autres oléagineux',
+  'CAM': 'Cameline',
+  'SES': 'Sésame',
+  'RIC': 'Ricin',
 
   // ── PROTÉAGINEUX ──────────────────────────────────────────────────────────
   'POI': 'Pois protéagineux',
   'FXL': 'Féverole',
   'LUP': 'Lupin doux',
   'PPR': 'Autres protéagineux',
+  'LEN': 'Lentille',
+  'PTC': 'Pois chiche',
 
   // ── PRAIRIES PERMANENTES ──────────────────────────────────────────────────
   'PPH': 'Prairies permanentes herbacées',
@@ -50,38 +62,95 @@ const RPG_CULTURE_CODES = {
   'PRL': 'Prairie permanente à flore variée',
   'PRG': 'Prairie permanente riche en espèces',
   'STH': 'Surfaces toujours en herbe',
+  'PPD': 'Prairie permanente',
 
-  // ── SURFACES PASTORALES (codes récents PAC 2023-2024) ────────────────────
+  // ── SURFACES PASTORALES ───────────────────────────────────────────────────
   'SPH': 'Surface pastorale herbacée',
   'SPL': 'Surface pastorale ligneuse',
   'SPA': 'Surface pastorale',
   'APH': 'Autres prairies permanentes herbacées',
   'APL': 'Autres surfaces pastorales ligneuses',
 
-  // ── PRAIRIES TEMPORAIRES ──────────────────────────────────────────────────
+  // ── PRAIRIES TEMPORAIRES (cultures principales) ───────────────────────────
   'PTH': 'Prairies temporaires',
   'PTE': 'Prairies temporaires',
   'PTR': 'Prairies temporaires (autre)',
-  'RAY': 'Ray-grass (prairie temporaire)',
-  'LUZ': 'Luzerne',
-  'TRF': 'Trèfle',
+  'TTH': 'Terres labourables en herbe',
   'FOU': 'Fourrage',
   'PTV': 'Pâturage temporaire des zones humides',
+  'MLG': 'Mélange légumineuses et graminées fourragères',
+  'MLL': 'Mélange de légumineuses',
+  'MLC': 'Mélange de cultures (couvert)',
+
+  // ── GRAMINÉES FOURRAGÈRES (cultures principales et dérobées) ─────────────
+  'RAY': 'Ray-grass',
+  'RGA': 'Ray-grass anglais',
+  'RGH': 'Ray-grass hybride',
+  'RGI': 'Ray-grass italien',
+  'DRG': 'Ray-grass (culture dérobée)',
+  'DAC': 'Dactyle',
+  'DTY': 'Dactyle (prairie temporaire)',
+  'FES': 'Fétuque',
+  'FET': 'Fétuque des prés',
+  'FEE': 'Fétuque élevée',
+  'FLE': 'Fléole des prés',
+  'FLO': 'Fléole (prairie temporaire)',
+  'BRO': 'Brome',
+  'PAT': 'Pâturin commun',
+  'AGR': 'Agrostis',
+  'FLV': 'Fléole et fétuque mélange',
+
+  // ── LÉGUMINEUSES FOURRAGÈRES (cultures principales et dérobées) ───────────
+  'LUZ': 'Luzerne',
+  'TRF': 'Trèfle',
+  'TRE': 'Trèfle (autre)',
+  'DTR': 'Trèfle (culture dérobée)',
+  'SAI': 'Sainfoin',
+  'TRB': 'Trèfle blanc',
+  'TRV': 'Trèfle violet',
+  'TRI': 'Trèfle incarnat',
+  'TRA': 'Trèfle alexandrie',
+  'VCI': 'Vesce',
+  'DVS': 'Vesce (culture dérobée)',
+  'VSS': 'Vesce sativa',
+  'PHL': 'Phacélie',
+  'PHA': 'Phacélie',
+
+  // ── CULTURES DÉROBÉES / COUVERTS VÉGÉTAUX ────────────────────────────────
+  // (champs culture_d1 et culture_d2 dans les données RPG V2)
+  'DVN': 'Avoine (culture dérobée)',
+  'DSG': 'Sorgho (culture dérobée)',
+  'DSR': 'Sarrasin (culture dérobée)',
+  'DMI': 'Moutarde (culture dérobée)',
+  'DRA': 'Radis (culture dérobée)',
+  'DNV': 'Navette (culture dérobée)',
+  'DLN': 'Lin (culture dérobée)',
+  'DCH': 'Chanvre (culture dérobée)',
+  'DPS': 'Pois (culture dérobée)',
+  'DFX': 'Féverole (culture dérobée)',
+  'DGR': 'Graminée (culture dérobée)',
+  'DLE': 'Légumineuse (culture dérobée)',
+  'JNN': 'Jachère spontanée',
+  'J5M': 'Jachère de 5 ans ou plus',
+  'J6S': 'Jachère apicole / mellifère',
+  'JAC': 'Jachère',
+  'GEL': 'Gel (surfaces non productives)',
 
   // ── TERRES LABOURABLES DIVERSES ───────────────────────────────────────────
-  'TTH': 'Terres labourables en herbe',
   'INN': 'Estives et landes',
-  'GEL': 'Gel (surfaces non productives)',
-  'JAC': 'Jachère',
   'SNE': 'Surface non exploitée',
   'SNA': 'Surface non agricole',
+  'IGL': 'Surface en eau',
 
-  // ── LÉGUMES / HORTICULTURE ────────────────────────────────────────────────
-  'LEG': 'Légumes ou fleurs',
-  'LGU': 'Légumes ou fleurs',
-  'PMT': 'Pommes de terre',
+  // ── BETTERAVES / LÉGUMES INDUSTRIELS ──────────────────────────────────────
   'BTR': 'Betterave industrielle',
   'BTP': 'Betterave potagère',
+  'PMT': 'Pommes de terre',
+  'PMA': 'Pommes de terre amidon',
+
+  // ── LÉGUMES ET HORTICULTURE ───────────────────────────────────────────────
+  'LEG': 'Légumes ou fleurs',
+  'LGU': 'Légumes ou fleurs',
   'CHX': 'Choux',
   'CLC': 'Cultures légumières de conservation',
   'MEL': 'Melons',
@@ -90,6 +159,14 @@ const RPG_CULTURE_CODES = {
   'ASS': 'Ail, oignon, échalote',
   'EPI': 'Épices, aromatiques',
   'FLA': 'Fleurs et plantes ornementales',
+  'ARO': 'Plantes aromatiques et médicinales',
+  'CAR': 'Carottes',
+  'LTU': 'Laitue, salade',
+  'HAR': 'Haricots',
+  'POR': 'Poireaux',
+  'CEL': 'Céleri',
+  'EPG': 'Épinards',
+  'PTT': 'Petits pois',
 
   // ── CULTURES INDUSTRIELLES ────────────────────────────────────────────────
   'CAN': 'Canne à sucre',
@@ -102,36 +179,51 @@ const RPG_CULTURE_CODES = {
   'TCR': 'Taillis courte rotation',
   'AUT': 'Autres cultures industrielles',
 
-  // ── VIGNES / VERGERS ──────────────────────────────────────────────────────
+  // ── VIGNES / VERGERS / CULTURES PÉRENNES ──────────────────────────────────
   'VRG': 'Vignes',
   'VIG': 'Vignes',
   'VER': 'Vergers',
   'ARB': 'Arboriculture',
-  'OLI': 'Olivier',
+  'OLI': 'Oliviers',
   'NOI': 'Noyers',
   'CAS': 'Châtaigniers',
-  'AVO_': 'Avocatier',
+  'POM': 'Pommiers',
+  'POI_': 'Poiriers',
+  'PEC': 'Pêchers, nectariniers',
+  'CER_': 'Cerisiers',
+  'PRU': 'Pruniers',
+  'ABR': 'Abricotiers',
+  'KIW': 'Kiwis',
 
   // ── BOIS / FORÊT ──────────────────────────────────────────────────────────
   'BOI': 'Bois et forêts',
   'FOR': 'Forêt',
+  'TCF': 'Taillis de châtaignier',
 
   // ── DIVERS ────────────────────────────────────────────────────────────────
   'DIV': 'Divers',
+  'DVN': 'Avoine (culture dérobée)',
+  'DVS': 'Vesce (culture dérobée)',
   'MAR': 'Marais',
   'SEL': 'Sel',
   'AQU': 'Aquaculture',
-  'PPD': 'Prairie permanente',
 };
 
 /**
  * Retourne le libellé complet d'un code culture RPG.
- * Si le code n'est pas dans le dictionnaire, retourne le code brut.
+ * - Si le code est dans le dictionnaire → libellé français
+ * - Sinon → affiche le code brut tel quel (sans cache les acronymes)
  */
 function getCultureLabel(code) {
   if (!code) return null;
-  const upper = code.trim().toUpperCase();
-  return RPG_CULTURE_CODES[upper] || code;
+  const trimmed = code.trim();
+  if (!trimmed) return null;
+  const upper = trimmed.toUpperCase();
+  // Cherche dans le dictionnaire
+  if (RPG_CULTURE_CODES[upper]) return RPG_CULTURE_CODES[upper];
+  // Fallback : retourne le code brut pour ne jamais masquer une information
+  // (et l'entoure de parenthèses pour signaler que c'est un code inconnu)
+  return `[${upper}]`;
 }
 
 /**
