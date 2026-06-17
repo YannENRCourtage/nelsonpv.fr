@@ -330,7 +330,7 @@ export default function RpgTab({ project, activeTab }) {
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         
         {/* Colonne gauche : Carte */}
-        <div className="lg:w-1/2 h-64 lg:h-full relative border-b lg:border-b-0 lg:border-r border-gray-200">
+        <div className="lg:w-2/3 h-64 lg:h-full relative border-b lg:border-b-0 lg:border-r border-gray-200">
           {activeTab === 'rpg' && (
             <MapContainer
               center={defaultCenter}
@@ -338,16 +338,17 @@ export default function RpgTab({ project, activeTab }) {
               style={{ height: '100%', width: '100%' }}
               zoomControl={true}
             >
+              {/* Fond satellite IGN Orthophotos */}
               <TileLayer
-                url="https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
-                attribution='© IGN'
+                url="https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
+                attribution='© IGN Orthophotos'
                 maxZoom={20}
               />
               {/* Couche RPG pour visualisation */}
               <TileLayer
                 url="https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=LANDUSE.AGRICULTURE.LATEST&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}"
                 attribution='© IGN RPG'
-                opacity={0.6}
+                opacity={0.5}
               />
               <ClickHandler onMapClick={handleMapClick} />
               {markerPos && (
@@ -371,7 +372,7 @@ export default function RpgTab({ project, activeTab }) {
         </div>
 
         {/* Colonne droite : Résultats */}
-        <div className="lg:w-1/2 flex flex-col overflow-hidden">
+        <div className="lg:w-1/3 flex flex-col overflow-hidden">
           {!hasSearched ? (
             <div className="flex-1 flex items-center justify-center p-6">
               <div className="text-center text-gray-400">
