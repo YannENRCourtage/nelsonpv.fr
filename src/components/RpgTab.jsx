@@ -202,28 +202,66 @@ const RPG_CULTURE_CODES = {
 
   // ── DIVERS ────────────────────────────────────────────────────────────────
   'DIV': 'Divers',
-  'DVN': 'Avoine (culture dérobée)',
-  'DVS': 'Vesce (culture dérobée)',
   'MAR': 'Marais',
   'SEL': 'Sel',
   'AQU': 'Aquaculture',
+
+  // ── CODES NUMÉRIQUES RPG V1 (code_cultu dans l'API v1, années 2010-2014) ────────────
+  // Correspondent aux groupes de cultures de l'ancienne nomenclature ASP
+  '1':  'Blé tendre',
+  '01': 'Blé tendre',
+  '2':  'Maïs grain et ensilage',
+  '02': 'Maïs grain et ensilage',
+  '3':  'Orge',
+  '03': 'Orge',
+  '4':  'Autres céréales',
+  '04': 'Autres céréales',
+  '5':  'Colza',
+  '05': 'Colza',
+  '6':  'Tournesol',
+  '06': 'Tournesol',
+  '7':  'Autres oléagineux',
+  '07': 'Autres oléagineux',
+  '8':  'Protéagineux',
+  '08': 'Protéagineux',
+  '9':  'Plantes à fibres',
+  '09': 'Plantes à fibres',
+  '10': 'Semences',
+  '11': 'Gel (surfaces non productives)',
+  '12': 'Légumes ou fleurs',
+  '13': 'Prairies permanentes',
+  '14': 'Estives et landes',
+  '15': 'Surfaces toujours en herbe',
+  '16': 'Canne à sucre',
+  '17': 'Soja',
+  '18': 'Prairies permanentes herbacées',
+  '19': 'Surfaces en herbe temporaires',
+  '20': 'Vergers',
+  '21': 'Vignes',
+  '22': 'Fruits à coque',
+  '23': 'Oliviers',
+  '24': 'Divers',
 };
 
 /**
  * Retourne le libellé complet d'un code culture RPG.
- * - Si le code est dans le dictionnaire → libellé français
- * - Sinon → affiche le code brut tel quel (sans cache les acronymes)
+ * Retourne null si le code n'est pas connu (l'appelant gère le fallback).
  */
 function getCultureLabel(code) {
   if (!code) return null;
   const trimmed = code.trim();
   if (!trimmed) return null;
   const upper = trimmed.toUpperCase();
-  // Cherche dans le dictionnaire
-  if (RPG_CULTURE_CODES[upper]) return RPG_CULTURE_CODES[upper];
-  // Fallback : retourne le code brut pour ne jamais masquer une information
-  // (et l'entoure de parenthèses pour signaler que c'est un code inconnu)
-  return `[${upper}]`;
+  return RPG_CULTURE_CODES[upper] || null;
+}
+
+/**
+ * Formate le texte nom_cultu (V1) en casse Titre lisible
+ * ex: "PRAIRIES PERMANENTES" → "Prairies permanentes"
+ */
+function titleCase(str) {
+  if (!str) return str;
+  return str.trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 }
 
 /**
@@ -233,28 +271,28 @@ function formatCultures(feature) {
   const props = feature.properties || {};
   const results = [];
 
-  // V1 (2010-2014): nom_cultu disponible directement
+  // ── RPG V1 (2010-2014) : nom_cultu contient le texte, code_cultu est numérique ──
   if (props.nom_cultu && props.nom_cultu.trim()) {
-    // nom_cultu peut être en majuscules — on le met en forme "Titre"
-    const label = props.nom_cultu.trim();
-    // On essaie d'abord le code pour avoir un libellé normalisé
+    // Essayer d'abord le dictionnaire (pour un libellé normalisé)
     const fromCode = props.code_cultu ? getCultureLabel(props.code_cultu) : null;
-    results.push(fromCode && fromCode !== props.code_cultu ? fromCode : label);
+    // Préférer le dictionnaire si trouvé, sinon formatter nom_cultu en casse lisible
+    results.push(fromCode || titleCase(props.nom_cultu));
   }
 
-  // V2 (2015+): culture_d1 / culture_d2 (contiennent les codes)
+  // ── RPG V2 (2015+) : culture_d1 / culture_d2 contiennent les codes lettre ─────────
   if (props.culture_d1 && props.culture_d1.trim()) {
-    const c1 = getCultureLabel(props.culture_d1);
-    if (!results.includes(c1)) results.push(c1);
+    const c1 = getCultureLabel(props.culture_d1) || titleCase(props.culture_d1);
+    if (c1 && !results.includes(c1)) results.push(c1);
   }
   if (props.culture_d2 && props.culture_d2.trim()) {
-    const c2 = getCultureLabel(props.culture_d2);
-    if (!results.includes(c2)) results.push(c2);
+    const c2 = getCultureLabel(props.culture_d2) || titleCase(props.culture_d2);
+    if (c2 && !results.includes(c2)) results.push(c2);
   }
 
-  // Fallback : code_cultu si rien d'autre trouvé
+  // ── Fallback : code_cultu si rien d'autre ──────────────────────────────────────────
   if (!results.length && props.code_cultu) {
-    results.push(getCultureLabel(props.code_cultu));
+    const fallback = getCultureLabel(props.code_cultu);
+    results.push(fallback || props.code_cultu);
   }
 
   return results.length ? results.join(' ; ') : 'Non déclaré';
