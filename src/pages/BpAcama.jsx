@@ -722,7 +722,7 @@ function computeBusinessPlan(params) {
 
   const totalConstruction = (coutCentrale || 0) + (coutCharpente || 0) + (raccordement || 0) + (frais || 0) + (developpement || 0) + actualSoulteCapitalized;
   const apport10 = totalConstruction * (apportPercent / 100);
-  const emprunt = Math.max(0, totalConstruction - apport10);
+  const emprunt = Math.max(0, totalConstruction - apport10 - (params.apport || 0));
   const serviceDette = emprunt > 0 ? -PMT(tauxCredit / 100, dureeEmprunt, emprunt) : 0;
 
   const rows = [];
@@ -4575,12 +4575,11 @@ export default function BpAcama() {
   const bpBuilding = useMemo(() => {
     const bpParams = { 
         ...collapsedParams, 
-        apport: resteACharge,
         loyerCoeff: isGreenInvest ? autoCoeffs.loyer : (params.loyerCoeff || 0),
         soulteCoeff: isGreenInvest ? autoCoeffs.soulte : (params.soulteCoeff || 0)
     };
     return computeBusinessPlan(bpParams);
-  }, [collapsedParams, resteACharge, autoCoeffs, params.loyerCoeff, params.soulteCoeff, isGreenInvest]);
+  }, [collapsedParams, autoCoeffs, params.loyerCoeff, params.soulteCoeff, isGreenInvest]);
 
   const bpBattery = useMemo(() => {
     if (params.batteryConfig?.enabled) {
