@@ -680,6 +680,7 @@ function computeBusinessPlan(params) {
     soulteCoeff = 0,
     dureeEmprunt = 20,
     tauxCredit = 4,
+    apportPercent = 10,
     indexationTarif = 0.006,
     indexationOpex = 0.02,
     degradation = 0.004,
@@ -720,8 +721,8 @@ function computeBusinessPlan(params) {
   const actualSoulteCapitalized = params.renteType === 'soulte' ? calculatedSoulte : (params.renteType === 'none' ? 0 : (params.soulte || 0));
 
   const totalConstruction = (coutCentrale || 0) + (coutCharpente || 0) + (raccordement || 0) + (frais || 0) + (developpement || 0) + actualSoulteCapitalized;
-  const apport10 = totalConstruction * 0.1;
-  const emprunt = Math.max(0, totalConstruction - apport10 - (params.apport || 0));
+  const apport10 = totalConstruction * (apportPercent / 100);
+  const emprunt = Math.max(0, totalConstruction - apport10);
   const serviceDette = emprunt > 0 ? -PMT(tauxCredit / 100, dureeEmprunt, emprunt) : 0;
 
   const rows = [];
@@ -2462,6 +2463,7 @@ function TabBpProjets({
                 <div className="grid grid-cols-1 gap-y-1">
                   <Field label="Durée" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" className="h-7" />
                   <Field label="Taux" value={params.tauxCredit} onChange={v => setParams(p => ({ ...p, tauxCredit: v }))} type="number" suffix="%" step="0.1" className="h-7" />
+                  <Field label="Apport (%)" value={params.apportPercent ?? 10} onChange={v => setParams(p => ({ ...p, apportPercent: v }))} type="number" suffix="%" step="1" className="h-7" />
                 </div>
                 
                 <div className="pt-2 border-t border-slate-200 mt-2 space-y-1">
