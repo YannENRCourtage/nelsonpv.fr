@@ -228,6 +228,10 @@ const RPG_CULTURE_CODES = {
   'DRD': 'Radis (culture dérobée)',
   'LAV': 'Lavande / Lavandin',
   'CBT': 'Cerise bigarreau (transformation)',
+  'VES': 'Vesce',
+  'MOH': 'Moha',
+  'FSG': 'Autre plante fourragère sarclée',
+  'FLP': 'Autre légume ou fruit pérenne',
 
   // ── CODES NUMÉRIQUES RPG V1 (code_cultu dans l'API v1, années 2010-2014) ────────────
   // Correspondent aux groupes de cultures de l'ancienne nomenclature ASP
