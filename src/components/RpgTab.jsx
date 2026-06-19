@@ -232,6 +232,13 @@ const RPG_CULTURE_CODES = {
   'MOH': 'Moha',
   'FSG': 'Autre plante fourragère sarclée',
   'FLP': 'Autre légume ou fruit pérenne',
+  'CCN': 'Concombre / Cornichon',
+  'MLO': 'Melon',
+  'CMB': 'Courge musquée / Butternut',
+  'PVT': 'Pêche Pavie (transformation)',
+  'TRU': 'Truffière',
+  'LU8': 'Luzerne',
+  'CCT': 'Courgette / Citrouille',
 
   // ── CODES NUMÉRIQUES RPG V1 (code_cultu dans l'API v1, années 2010-2014) ────────────
   // Correspondent aux groupes de cultures de l'ancienne nomenclature ASP
