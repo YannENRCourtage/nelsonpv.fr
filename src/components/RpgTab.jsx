@@ -221,6 +221,14 @@ const RPG_CULTURE_CODES = {
   'SEL': 'Sel',
   'AQU': 'Aquaculture',
 
+  // ── CODES AJOUTÉS SPÉCIFIQUES ─────────────────────────────────────────────
+  'VRC': 'Vignes à raisin de cuve',
+  'BFS': 'Bordure le long des forêts sans production',
+  'DMD': 'Moutarde (culture dérobée)',
+  'DRD': 'Radis (culture dérobée)',
+  'LAV': 'Lavande / Lavandin',
+  'CBT': 'Cerise bigarreau (transformation)',
+
   // ── CODES NUMÉRIQUES RPG V1 (code_cultu dans l'API v1, années 2010-2014) ────────────
   // Correspondent aux groupes de cultures de l'ancienne nomenclature ASP
   '1':  'Blé tendre',
