@@ -1,5 +1,6 @@
 
 import React, { useRef, useState, useEffect, Fragment, useCallback, useMemo } from "react";
+import ReactDOM from "react-dom";
 import {
   MapContainer,
   LayerGroup,
@@ -3143,6 +3144,131 @@ function ConsoElecLegend({ layersRef }) {
 }
 
 // ====================================================================
+// TOOLTIP AU SURVOL — CONSO. ÉLEC. PAR COMMUNE
+// ====================================================================
+function ConsoElecHoverTooltip({ layersRef }) {
+  const map = useMap();
+  const [tooltip, setTooltip] = useState(null); // { x, y, nom, conso }
+  const debounceRef = useRef(null);
+  const abortRef = useRef(null);
+  const activeRef = useRef(false);
+
+  useEffect(() => {
+    const checkActive = () => {
+      const layer = layersRef.current['consoElecCommune'];
+      activeRef.current = !!(layer && map.hasLayer(layer));
+      if (!activeRef.current) setTooltip(null);
+    };
+    checkActive();
+    const interval = setInterval(checkActive, 500);
+    return () => clearInterval(interval);
+  }, [map, layersRef]);
+
+  useEffect(() => {
+    const onMouseMove = (e) => {
+      if (!activeRef.current) return;
+
+      // Annuler le debounce précédent
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (abortRef.current) abortRef.current.abort();
+
+      // Position de la souris en pixels dans le conteneur carte
+      const containerPoint = e.containerPoint;
+
+      debounceRef.current = setTimeout(async () => {
+        try {
+          const controller = new AbortController();
+          abortRef.current = controller;
+
+          const size = map.getSize();
+          const bounds = map.getBounds();
+          const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
+          const url = [
+            'https://data.geopf.fr/wms-v/ows',
+            '?service=WMS&version=1.3.0&request=GetFeatureInfo',
+            '&layers=CONSO.ELEC.COMMUNE&query_layers=CONSO.ELEC.COMMUNE',
+            `&bbox=${bbox}&crs=EPSG:4326`,
+            `&width=${size.x}&height=${size.y}`,
+            `&i=${Math.round(containerPoint.x)}&j=${Math.round(containerPoint.y)}`,
+            '&info_format=application/json'
+          ].join('');
+
+          const res = await fetch(url, { signal: controller.signal });
+          const data = await res.json();
+
+          if (data.features && data.features.length > 0) {
+            const props = data.features[0].properties;
+            const nom = props.nom || props.nom_commune || 'Commune';
+            const conso = props.consos_tot !== undefined ? props.consos_tot : props.conso_tot;
+            setTooltip({
+              x: e.originalEvent.clientX,
+              y: e.originalEvent.clientY,
+              nom,
+              conso: conso !== null && conso !== undefined ? parseFloat(conso) : null
+            });
+          } else {
+            setTooltip(null);
+          }
+        } catch (err) {
+          if (err.name !== 'AbortError') setTooltip(null);
+        }
+      }, 150);
+    };
+
+    const onMouseOut = () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (abortRef.current) abortRef.current.abort();
+      setTooltip(null);
+    };
+
+    map.on('mousemove', onMouseMove);
+    map.on('mouseout', onMouseOut);
+    return () => {
+      map.off('mousemove', onMouseMove);
+      map.off('mouseout', onMouseOut);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (abortRef.current) abortRef.current.abort();
+    };
+  }, [map]);
+
+  if (!tooltip) return null;
+
+  return ReactDOM.createPortal(
+    <div
+      style={{
+        position: 'fixed',
+        left: tooltip.x + 14,
+        top: tooltip.y - 10,
+        zIndex: 9999,
+        pointerEvents: 'none',
+        background: 'rgba(15,23,42,0.92)',
+        backdropFilter: 'blur(6px)',
+        color: '#fff',
+        borderRadius: '8px',
+        padding: '7px 12px',
+        fontSize: '12px',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+        minWidth: '140px',
+        border: '1px solid rgba(255,255,255,0.1)',
+        lineHeight: 1.5
+      }}
+    >
+      <div style={{ fontWeight: 700, fontSize: '12px', color: '#93c5fd', marginBottom: '2px' }}>
+        {tooltip.nom}
+      </div>
+      <div style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>
+        {tooltip.conso !== null
+          ? <>{tooltip.conso.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} <span style={{ color: '#94a3b8', fontWeight: 400, fontSize: '11px' }}>GWh/an</span></>
+          : <span style={{ color: '#64748b', fontStyle: 'italic' }}>Donnée non disponible</span>
+        }
+      </div>
+      <div style={{ fontSize: '10px', color: '#475569', marginTop: '3px' }}>⚡ Conso. annuelle élec.</div>
+    </div>,
+    document.body
+  );
+}
+
+// ====================================================================
 // PANEL DE FILIATION PARCELLE (DFI)
 // ====================================================================
 function FiliationDetailsPanel({ data, onClose, copyToClipboard, onNavigateToParcel, loading }) {
@@ -5578,6 +5704,7 @@ export default function MapElements({
           <BanPlusLegend layersRef={layersRef} />
           <ZAERLegend layersRef={layersRef} />
           <ConsoElecLegend layersRef={layersRef} />
+          <ConsoElecHoverTooltip layersRef={layersRef} />
 
           {window.innerWidth > 1024 && (
             <div className="hidden lg:block">
