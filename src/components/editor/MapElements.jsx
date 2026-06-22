@@ -2714,6 +2714,20 @@ const LAYERS = {
     maxNativeZoom: 18,
     maxZoom: 22
   },
+  distanceReglRoutes: {
+    name: "Distance règl. routes",
+    url: "https://data.geopf.fr/wms-v/ows",
+    layers: "ENR.PERIMETRE.ROUTE",
+    format: "image/png",
+    transparent: true,
+    attribution: "IGN",
+    isOverlay: true,
+    zIndex: 112,
+    opacity: 0.7,
+    minZoom: 6,
+    maxNativeZoom: 18,
+    maxZoom: 22
+  },
   banPlus: {
     name: "BAN PLUS",
     url: "https://data.geopf.fr/wms-v/ows",
@@ -3129,6 +3143,48 @@ function ZAERLegend({ layersRef }) {
           className="max-w-full h-auto"
         />
         <p className="text-[10px] text-gray-500 italic mt-1">Zones d'Accélération des Énergies Renouvelables</p>
+      </div>
+    </div>
+  );
+}
+
+// ====================================================================
+// LÉGENDE DISTANCE RÉGL. ROUTES
+// ====================================================================
+function DistanceReglRoutesLegend({ layersRef }) {
+  const map = useMap();
+  const [showLegend, setShowLegend] = useState(false);
+
+  useEffect(() => {
+    const checkLayer = () => {
+      const layer = layersRef.current['distanceReglRoutes'];
+      setShowLegend(layer && map.hasLayer(layer));
+    };
+    checkLayer();
+    const interval = setInterval(checkLayer, 500);
+    return () => clearInterval(interval);
+  }, [map, layersRef]);
+
+  if (!showLegend) return null;
+
+  return (
+    <div
+      className="absolute bottom-[360px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[210px]"
+      style={{ userSelect: 'none' }}
+    >
+      <div className="flex justify-between items-center mb-2">
+        <h4 className="font-bold text-xs text-gray-900">Distance règl. routes</h4>
+        <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded">
+          <XIcon className="h-3 w-3" />
+        </button>
+      </div>
+      <div className="space-y-1">
+        <img 
+          src="https://data.geopf.fr/wms-v/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&FORMAT=image/png&LAYER=ENR.PERIMETRE.ROUTE" 
+          alt="Légende Distance réglementaire routes"
+          className="max-w-full h-auto"
+        />
+        <p className="text-[10px] text-gray-500 italic mt-1">Marges de recul réglementaires : 75m (départementales) et 100m (autoroutes/voies rapides).</p>
       </div>
     </div>
   );
@@ -5820,6 +5876,7 @@ export default function MapElements({
           <LoiLittoralLegend layersRef={layersRef} />
           <BanPlusLegend layersRef={layersRef} />
           <ZAERLegend layersRef={layersRef} />
+          <DistanceReglRoutesLegend layersRef={layersRef} />
           <ConsoElecLegend layersRef={layersRef} />
           <ConsoElecHoverTooltip layersRef={layersRef} />
 

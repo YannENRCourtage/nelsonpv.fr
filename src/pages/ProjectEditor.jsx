@@ -1854,6 +1854,7 @@ export default function ProjectEditor() {
                     { key: 'postesSourcesRTE', label: 'Postes Sources RTE' },
                     { key: 'consoElecCommune', label: 'Conso. élec.' },
                     { key: 'dpe', label: 'DPE' },
+                    { key: 'distanceReglRoutes', label: 'Distance règl. routes' },
                   ].map(layer => (
                     <button
                       key={layer.key}
@@ -1924,6 +1925,7 @@ export default function ProjectEditor() {
                         { key: 'postesSourcesRTE', label: 'P. Sources RTE' },
                         { key: 'consoElecCommune', label: 'Conso. élec.' },
                         { key: 'dpe', label: 'DPE' },
+                        { key: 'distanceReglRoutes', label: 'Dist. règl. routes' },
                       ].map(layer => (
                         <button
                           key={layer.key}
