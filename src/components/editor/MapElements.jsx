@@ -2524,6 +2524,52 @@ const ENEDIS_HTA_SLD = `
   </NamedLayer>
 </StyledLayerDescriptor>`.trim();
 
+const ROUTES_RECUL_SLD = `
+<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld" xmlns:gml="http://www.opengis.net/gml" xmlns:ogc="http://www.opengis.net/ogc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/sld http://schemas.opengis.net/sld/1.0.0/StyledLayerDescriptor.xsd">
+  <NamedLayer>
+    <Name>ENR.PERIMETRE.ROUTE</Name>
+    <UserStyle>
+      <FeatureTypeStyle>
+        <Rule>
+          <Name>100</Name>
+          <ogc:Filter>
+            <ogc:PropertyIsEqualTo>
+              <ogc:PropertyName>nom</ogc:PropertyName>
+              <ogc:Literal>100</ogc:Literal>
+            </ogc:PropertyIsEqualTo>
+          </ogc:Filter>
+          <PolygonSymbolizer>
+            <Fill>
+              <CssParameter name="fill">#ef4444</CssParameter>
+              <CssParameter name="fill-opacity">0.6</CssParameter>
+            </Fill>
+          </PolygonSymbolizer>
+        </Rule>
+        <Rule>
+          <Name>75</Name>
+          <ogc:Filter>
+            <ogc:PropertyIsEqualTo>
+              <ogc:PropertyName>nom</ogc:PropertyName>
+              <ogc:Literal>75</ogc:Literal>
+            </ogc:PropertyIsEqualTo>
+          </ogc:Filter>
+          <PolygonSymbolizer>
+            <Fill>
+              <CssParameter name="fill">#ff9900</CssParameter>
+              <CssParameter name="fill-opacity">0.6</CssParameter>
+            </Fill>
+            <Stroke>
+              <CssParameter name="stroke">#ff9900</CssParameter>
+              <CssParameter name="stroke-width">1</CssParameter>
+              <CssParameter name="stroke-opacity">0.8</CssParameter>
+            </Stroke>
+          </PolygonSymbolizer>
+        </Rule>
+      </FeatureTypeStyle>
+    </UserStyle>
+  </NamedLayer>
+</StyledLayerDescriptor>`.trim();
+
 // ====================================================================
 // LISTE DES CALQUES
 // ====================================================================
@@ -2715,7 +2761,7 @@ const LAYERS = {
     maxZoom: 22
   },
   distanceReglRoutes: {
-    name: "Distance règl. routes",
+    name: "Distances règl. routes",
     url: "https://data.geopf.fr/wms-v/ows",
     layers: "ENR.PERIMETRE.ROUTE",
     format: "image/png",
@@ -2726,7 +2772,8 @@ const LAYERS = {
     opacity: 0.7,
     minZoom: 6,
     maxNativeZoom: 18,
-    maxZoom: 22
+    maxZoom: 22,
+    sld_body: ROUTES_RECUL_SLD
   },
   banPlus: {
     name: "BAN PLUS",
@@ -3169,22 +3216,27 @@ function DistanceReglRoutesLegend({ layersRef }) {
 
   return (
     <div
-      className="absolute bottom-[360px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[210px]"
+      className="absolute bottom-[360px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[220px]"
       style={{ userSelect: 'none' }}
     >
       <div className="flex justify-between items-center mb-2">
-        <h4 className="font-bold text-xs text-gray-900">Distance règl. routes</h4>
+        <h4 className="font-bold text-xs text-gray-900">Distances règl. routes</h4>
         <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded">
           <XIcon className="h-3 w-3" />
         </button>
       </div>
-      <div className="space-y-1">
-        <img 
-          src="https://data.geopf.fr/wms-v/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetLegendGraphic&FORMAT=image/png&LAYER=ENR.PERIMETRE.ROUTE" 
-          alt="Légende Distance réglementaire routes"
-          className="max-w-full h-auto"
-        />
-        <p className="text-[10px] text-gray-500 italic mt-1">Marges de recul réglementaires : 75m (départementales) et 100m (autoroutes/voies rapides).</p>
+      <div className="space-y-2 text-[11px] text-gray-700">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-[#ef4444] rounded-sm opacity-80"></div>
+          <span><strong>100 m</strong> (autoroutes/voies rapides)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-[#ff9900] rounded-sm opacity-80"></div>
+          <span><strong>75 m</strong> (départementales d'imp. 3)</span>
+        </div>
+        <p className="text-[10px] text-gray-500 italic mt-2 pt-2 border-t border-gray-100">
+          Marges de recul réglementaires par rapport à l'infrastructure.
+        </p>
       </div>
     </div>
   );
