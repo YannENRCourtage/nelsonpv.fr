@@ -2611,6 +2611,20 @@ const LAYERS = {
     maxNativeZoom: 18,
     maxZoom: 22
   },
+  consoElecCommune: {
+    name: "Conso. élec. commune",
+    url: "https://data.geopf.fr/wms-v/ows",
+    layers: "CONSO.ELEC.COMMUNE",
+    format: "image/png",
+    transparent: true,
+    attribution: "Agence ORE / IGN",
+    isOverlay: true,
+    zIndex: 112,
+    opacity: 0.85,
+    minZoom: 6,
+    maxNativeZoom: 18,
+    maxZoom: 22
+  },
   courbesNiveau: {
     name: "Courbes de niveau",
     url: "https://data.geopf.fr/wms-v/ows",
@@ -3081,6 +3095,48 @@ function BanPlusLegend({ layersRef }) {
         <p className="text-[10px] text-gray-500 italic mt-1 pt-1 border-t border-gray-100">
           Base Adresse Nationale et composantes
         </p>
+      </div>
+    </div>
+  );
+}
+
+// ====================================================================
+// LÉGENDE CONSO. ÉLEC. PAR COMMUNE
+// ====================================================================
+function ConsoElecLegend({ layersRef }) {
+  const map = useMap();
+  const [showLegend, setShowLegend] = useState(false);
+
+  useEffect(() => {
+    const checkLayer = () => {
+      const layer = layersRef.current['consoElecCommune'];
+      setShowLegend(layer && map.hasLayer(layer));
+    };
+    checkLayer();
+    const interval = setInterval(checkLayer, 500);
+    return () => clearInterval(interval);
+  }, [map, layersRef]);
+
+  if (!showLegend) return null;
+
+  return (
+    <div
+      className="absolute bottom-[560px] right-[10px] z-[995] bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-300 max-w-[220px]"
+      style={{ userSelect: 'none' }}
+    >
+      <div className="flex justify-between items-center mb-2">
+        <h4 className="font-bold text-xs text-gray-900">Conso. élec. / commune</h4>
+        <button onClick={() => setShowLegend(false)} className="p-1 hover:bg-gray-200 rounded">
+          <XIcon className="h-3 w-3" />
+        </button>
+      </div>
+      <div className="space-y-1">
+        <img
+          src="https://data.geopf.fr/wms-v/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=CONSO.ELEC.COMMUNE"
+          alt="Légende consommation électricité par commune"
+          className="max-w-full h-auto"
+        />
+        <p className="text-[10px] text-gray-500 italic mt-1">Consommation annuelle d'électricité par commune (GWh) — Source : Agence ORE</p>
       </div>
     </div>
   );
@@ -5521,6 +5577,7 @@ export default function MapElements({
           <LoiLittoralLegend layersRef={layersRef} />
           <BanPlusLegend layersRef={layersRef} />
           <ZAERLegend layersRef={layersRef} />
+          <ConsoElecLegend layersRef={layersRef} />
 
           {window.innerWidth > 1024 && (
             <div className="hidden lg:block">

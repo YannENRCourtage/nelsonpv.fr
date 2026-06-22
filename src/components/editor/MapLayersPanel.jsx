@@ -361,6 +361,15 @@ const overlayCategories = {
                 type: 'wms',
                 version: '1.3.0'
             },
+            'Conso. élec. commune': {
+                url: 'https://data.geopf.fr/wms-v/ows',
+                layers: 'CONSO.ELEC.COMMUNE',
+                format: 'image/png',
+                transparent: true,
+                attribution: 'Agence ORE / IGN',
+                type: 'wms',
+                version: '1.3.0'
+            },
             'ZNIEFF 1': {
                 url: 'https://data.geopf.fr/wms-v/ows',
                 layers: 'Patrinat_ZNIEFF1_France',
