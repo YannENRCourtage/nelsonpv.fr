@@ -2557,10 +2557,10 @@ const LAYERS = {
   parkingSup500: {
     name: "Parking >500m²",
     url: "https://data.geopf.fr/wms-v/ows",
-    layers: "PARKING.SUP.500",
+    layers: "PARKING.SUP.500,POTENTIEL.SOLAIRE.PARKING500",
     format: "image/png",
     transparent: true,
-    attribution: "Cerema / IGN",
+    attribution: "Cerema / IGN / MTE",
     isOverlay: true,
     zIndex: 108,
     opacity: 0.8,
@@ -2949,7 +2949,12 @@ function ParkingLegend({ layersRef }) {
           alt="Légende Parkings >500m²"
           className="max-w-full h-auto"
         />
-        <p className="text-[10px] text-gray-500 italic mt-1">Recensement des parkings de plus de 500m²</p>
+        <img 
+          src="https://data.geopf.fr/wms-v/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=POTENTIEL.SOLAIRE.PARKING500" 
+          alt="Légende Potentiel solaire Parkings >500m²"
+          className="max-w-full h-auto mt-1"
+        />
+        <p className="text-[10px] text-gray-500 italic mt-1">Unités foncières avec surfaces de stationnement &gt;500m² (données fiscales Cerema + potentiel solaire MTE)</p>
       </div>
     </div>
   );

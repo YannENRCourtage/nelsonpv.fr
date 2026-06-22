@@ -336,10 +336,10 @@ const overlayCategories = {
             },
             'Parking >500m²': {
                 url: 'https://data.geopf.fr/wms-v/ows',
-                layers: 'PARKING.SUP.500',
+                layers: 'PARKING.SUP.500,POTENTIEL.SOLAIRE.PARKING500',
                 format: 'image/png',
                 transparent: true,
-                attribution: 'Cerema / IGN',
+                attribution: 'Cerema / IGN / MTE',
                 type: 'wms',
                 version: '1.3.0'
             },
