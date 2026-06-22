@@ -2949,12 +2949,13 @@ function ParkingLegend({ layersRef }) {
           alt="Légende Parkings >500m²"
           className="max-w-full h-auto"
         />
+        <p className="text-[10px] font-semibold text-gray-700 mt-1 border-t border-gray-200 pt-1">UF à fort potentiel de stationnement</p>
         <img 
           src="https://data.geopf.fr/wms-v/ows?service=WMS&version=1.3.0&request=GetLegendGraphic&format=image/png&layer=POTENTIEL.SOLAIRE.PARKING500" 
           alt="Légende Potentiel solaire Parkings >500m²"
           className="max-w-full h-auto mt-1"
         />
-        <p className="text-[10px] text-gray-500 italic mt-1">Unités foncières avec surfaces de stationnement &gt;500m² (données fiscales Cerema + potentiel solaire MTE)</p>
+        <p className="text-[10px] text-gray-500 italic mt-1">(données fiscales Cerema + potentiel solaire MTE)</p>
       </div>
     </div>
   );
