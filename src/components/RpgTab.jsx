@@ -30,6 +30,7 @@ const RPG_CULTURE_CODES = {
   'SEI': 'Seigle',
   'AVO': 'Avoine',
   'AVP': 'Avoine de printemps',
+  'AVH': "Avoine d'hiver",
   'ESC': 'Escourgeon',
   'EPE': 'Épeautre',
   'ANC': 'Autres céréales',
@@ -37,6 +38,7 @@ const RPG_CULTURE_CODES = {
   'CZH': 'Céréales (autre)',
   'MCR': 'Mélange de céréales',
   'SNB': 'Sarrasin',
+  'SRS': 'Sarrasin',
   'MIL': 'Millet',
   'SBL': 'Sorgho blanc',
 
@@ -47,6 +49,7 @@ const RPG_CULTURE_CODES = {
   'LIN': 'Lin oléagineux',
   'SOJ': 'Soja',
   'LIO': 'Lin oléagineux',
+  'LIP': 'Lin non textile de printemps',
   'POL': 'Autres oléagineux',
   'CAM': 'Cameline',
   'SES': 'Sésame',
@@ -91,6 +94,8 @@ const RPG_CULTURE_CODES = {
   'MLL': 'Mélange de légumineuses',
   'MLC': 'Mélange de cultures (couvert)',
   'MC6': 'Mélange de cultures',
+  'MC5': 'Mélange de cultures',
+  'MC7': 'Mélange de cultures',
   'MPC': 'Mélange de protéagineux et céréales',
   'MH5': 'Mélange herbacé (5 ans ou plus)',
 
@@ -115,6 +120,7 @@ const RPG_CULTURE_CODES = {
   // ── LÉGUMINEUSES FOURRAGÈRES (cultures principales et dérobées) ───────────
   'LUZ': 'Luzerne',
   'LUS': 'Luzerne',
+  'LU5': 'Luzerne',
   'LU6': 'Luzerne (6 ans ou plus)',
   'TRF': 'Trèfle',
   'TRE': 'Trèfle (autre)',
@@ -144,12 +150,17 @@ const RPG_CULTURE_CODES = {
   'DFX': 'Féverole (culture dérobée)',
   'DGR': 'Graminée (culture dérobée)',
   'DLE': 'Légumineuse (culture dérobée)',
+  'DCZ': 'Ray-grass (culture dérobée)',
+  'DMH': 'Moha (culture dérobée)',
+  'DPH': 'Phacélie (culture dérobée)',
   'JNN': 'Jachère spontanée',
   'J5M': 'Jachère de 5 ans ou plus',
   'JP6': 'Jachère (6 ans ou plus)',
+  'J6P': 'Jachère de 6 ans ou plus',
   'J6S': 'Jachère apicole / mellifère',
   'JAC': 'Jachère',
   'GEL': 'Gel (surfaces non productives)',
+  'GFP': 'Autre graminée fourragère pure de 5 ans ou moins',
 
   // ── TERRES LABOURABLES DIVERSES ───────────────────────────────────────────
   'INN': 'Estives et landes',
@@ -159,6 +170,7 @@ const RPG_CULTURE_CODES = {
 
   // ── BETTERAVES / LÉGUMES INDUSTRIELS ──────────────────────────────────────
   'BTR': 'Betterave industrielle',
+  'BTN': 'Betterave',
   'BTP': 'Betterave potagère',
   'PMT': 'Pommes de terre',
   'PMA': 'Pommes de terre amidon',

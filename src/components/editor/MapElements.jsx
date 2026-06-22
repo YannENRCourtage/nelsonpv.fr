@@ -582,6 +582,122 @@ function CompanyDetailsPanel({ data, onClose, copyToClipboard }) {
   );
 }
 
+const getDpeColor = (label) => {
+  switch (label?.toUpperCase()) {
+    case 'A': return '#339966';
+    case 'B': return '#33cc33';
+    case 'C': return '#ccff33';
+    case 'D': return '#ffff00';
+    case 'E': return '#ffcc00';
+    case 'F': return '#ff9900';
+    case 'G': return '#ff0000';
+    default: return '#999999';
+  }
+};
+
+function DPELayerManager({ layersRef, activeLayers }) {
+  const map = useMap();
+  const active = activeLayers?.has('dpe');
+  const layerGroupRef = useRef(L.featureGroup());
+  const abortControllerRef = useRef(null);
+
+  useEffect(() => {
+    if (!layersRef.current) return;
+    layersRef.current['dpe'] = layerGroupRef.current;
+  }, [layersRef]);
+
+  const fetchData = async () => {
+    if (!active || !map) return;
+    
+    if (map.getZoom() < 15) {
+      layerGroupRef.current.clearLayers();
+      return;
+    }
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    const bounds = map.getBounds();
+    const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+    const url = `https://data.ademe.fr/data-fair/api/v1/datasets/meg-83tjwtg8dyz4vv7h1dqe/lines?size=250&bbox=${bbox}`;
+
+    try {
+      const response = await fetch(url, { signal: abortControllerRef.current.signal });
+      if (!response.ok) throw new Error('API error');
+      const data = await response.json();
+      
+      layerGroupRef.current.clearLayers();
+
+      if (data.results) {
+        data.results.forEach(item => {
+          if (!item._geopoint) return;
+          const [lat, lon] = item._geopoint.split(',').map(Number);
+          if (isNaN(lat) || isNaN(lon)) return;
+
+          const color = getDpeColor(item.etiquette_dpe);
+          const marker = L.circleMarker([lat, lon], {
+            radius: 8,
+            fillColor: color,
+            color: '#fff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.9
+          });
+
+          const address = item.adresse_ban || item.adresse_brut || item.adresse_complete_brut || 'N/A';
+          const surface = item.surface_habitable_logement || item.surface_habitable_immeuble || 'N/A';
+          const annee = item.annee_construction || item.periode_construction || 'N/A';
+          const isDarkText = ['A', 'B', 'C', 'D'].includes(item.etiquette_dpe?.toUpperCase());
+
+          const content = `
+            <div style="font-family: sans-serif; min-width: 240px; padding: 4px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="background-color: ${color}; color: ${isDarkText ? '#000' : '#fff'}; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+                    ${item.etiquette_dpe || '?'}
+                  </span>
+                  <h3 style="margin: 0; font-size: 15px; font-weight: 700; color: #1e293b;">DPE</h3>
+                </div>
+                <span style="font-size: 11px; color: #64748b; font-weight: 500;">${item.date_etablissement_dpe || 'N/A'}</span>
+              </div>
+              <div style="font-size: 12px; line-height: 1.6; color: #334155;">
+                <p style="margin: 0 0 6px 0;"><strong>📍 </strong> ${address}</p>
+                <p style="margin: 0 0 6px 0;"><strong>📏 Surface:</strong> ${surface} m²</p>
+                <p style="margin: 0 0 6px 0;"><strong>🏗️ Construction:</strong> ${annee}</p>
+                <p style="margin: 0 0 6px 0;"><strong>🌍 GES:</strong> ${item.etiquette_ges || 'N/A'}</p>
+                <p style="margin: 0 0 6px 0;"><strong>📝 N° DPE:</strong> ${item.numero_dpe || 'N/A'}</p>
+                <p style="margin: 0;"><strong>👁️ Visite:</strong> ${item.date_visite_diagnostiqueur || 'N/A'}</p>
+              </div>
+            </div>
+          `;
+          marker.bindPopup(content, { maxWidth: 320, className: 'dpe-popup' });
+          marker.addTo(layerGroupRef.current);
+        });
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error("Error fetching DPE data:", err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (active) {
+      if (!map.hasLayer(layerGroupRef.current)) layerGroupRef.current.addTo(map);
+      fetchData();
+      const onMoveEnd = () => fetchData();
+      map.on('moveend', onMoveEnd);
+      return () => { map.off('moveend', onMoveEnd); };
+    } else {
+      if (map.hasLayer(layerGroupRef.current)) map.removeLayer(layerGroupRef.current);
+    }
+  }, [active, map]);
+
+  return null;
+}
+
 function CompaniesLayerManager({ layersRef, activeLayers, onCompaniesUpdate, setSelectedCompany, setLoadingCompanies }) {
   const map = useMap();
   const active = activeLayers?.has('companies');
@@ -5691,6 +5807,7 @@ export default function MapElements({
           <PostesSourcesRTELayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <DemographicLayerManager layersRef={layersRef} activeLayers={activeLayers} />
           <OwnersMoralLayerManager layersRef={layersRef} activeLayers={activeLayers} activeTab={activeTab} onSelectOwners={(item) => setSelectedParcelOwners(item)} />
+          <DPELayerManager layersRef={layersRef} activeLayers={activeLayers} />
           
           <AltiMouseIndicator activeLayers={activeLayers} layersRef={layersRef} />
 

@@ -1853,6 +1853,7 @@ export default function ProjectEditor() {
                     { key: 'banPlus', label: 'BAN PLUS' },
                     { key: 'postesSourcesRTE', label: 'Postes Sources RTE' },
                     { key: 'consoElecCommune', label: 'Conso. élec.' },
+                    { key: 'dpe', label: 'DPE' },
                   ].map(layer => (
                     <button
                       key={layer.key}
@@ -1922,6 +1923,7 @@ export default function ProjectEditor() {
                         { key: 'banPlus', label: 'BAN PLUS' },
                         { key: 'postesSourcesRTE', label: 'P. Sources RTE' },
                         { key: 'consoElecCommune', label: 'Conso. élec.' },
+                        { key: 'dpe', label: 'DPE' },
                       ].map(layer => (
                         <button
                           key={layer.key}
