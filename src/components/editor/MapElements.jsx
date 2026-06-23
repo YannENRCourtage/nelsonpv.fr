@@ -4965,6 +4965,8 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
       const { lat, lng } = e.detail;
       if (lat && lng) {
         map.setView([lat, lng], 18);
+        if (setTargetPos) setTargetPos({ lat, lng });
+        if (setShowInfoPanel) setShowInfoPanel(true);
       }
     };
 
