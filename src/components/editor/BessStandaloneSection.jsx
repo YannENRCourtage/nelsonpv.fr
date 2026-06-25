@@ -158,11 +158,14 @@ function calcUrbanisme(d) {
     else resPLU = 'ORANGE - à confirmer';
   }
 
+  const enjeuxNOGO = ['ZNIEFF I', 'Natura 2000', 'Zones humides', 'Espaces protégés', 'Zone rouge PPR/PPRN'];
+  const enjeuxORANGE = ['ZNIEFF II', 'Friche industrielle'];
+  const enjeuxGO = ['Terrain artificialisé', 'Non'];
   let resEnjeuxEnv = '';
-  if (d.zoneProtegee) {
-    if (d.zoneProtegee === 'Non') resEnjeuxEnv = 'GO';
-    else if (d.zoneProtegee === 'Inconnu') resEnjeuxEnv = 'ORANGE - GO sous condition - vigilance environnementale';
-    else resEnjeuxEnv = 'ORANGE - GO sous condition - vigilance environnementale';
+  if (d.enjeuxEnvironnementaux) {
+    if (enjeuxNOGO.includes(d.enjeuxEnvironnementaux)) resEnjeuxEnv = 'NO-GO - sensibilité environnementale';
+    else if (enjeuxORANGE.includes(d.enjeuxEnvironnementaux)) resEnjeuxEnv = 'ORANGE - GO sous condition - vigilance environnementale';
+    else if (enjeuxGO.includes(d.enjeuxEnvironnementaux)) resEnjeuxEnv = 'GO';
   }
 
   let resRegime = '';
@@ -292,6 +295,7 @@ export default function BessStandaloneSection({ project, updateProject }) {
   const [urbData, setUrbData] = useState(() => ({
     surfaceFonciere: project?.bess_surfaceFonciere ?? '40',
     zonePLU: project?.bess_zonePLU ?? 'A',
+    enjeuxEnvironnementaux: project?.bess_enjeuxEnvironnementaux ?? 'Non',
     terrainArtificialise: project?.bess_terrainArtificialise ?? 'Non',
     surfaceBatie: project?.bess_surfaceBatie ?? '20',
     hauteurBati: project?.bess_hauteurBati ?? '3',
@@ -393,10 +397,13 @@ export default function BessStandaloneSection({ project, updateProject }) {
             {/* ---- GAUCHE ---- */}
             <div className="space-y-2">
 
-              {/* Ligne 1 : Zone PLU + Terrain artif + Zone protégée (3 cols) */}
-              <div className="grid grid-cols-3 gap-2">
+              {/* Ligne 1 : Zone PLU + Enjeux env + Terrain artif + Zone protégée (4 cols) */}
+              <div className="grid grid-cols-4 gap-2">
                 <div><FL>Zone PLU du terrain</FL>
                   <SelectInput value={urbData.zonePLU} onChange={v => handleUrb('zonePLU', v)} options={['U', 'UX', 'UY', 'UE', 'AU', 'A', 'N', 'F']} />
+                </div>
+                <div><FL>Enjeux environnementaux</FL>
+                  <SelectInput value={urbData.enjeuxEnvironnementaux} onChange={v => handleUrb('enjeuxEnvironnementaux', v)} options={['Non', 'Terrain artificialisé', 'ZNIEFF II', 'Friche industrielle', 'ZNIEFF I', 'Natura 2000', 'Zones humides', 'Espaces protégés', 'Zone rouge PPR/PPRN']} />
                 </div>
                 <div><FL>Terrain artificialisé</FL>
                   <SelectInput value={urbData.terrainArtificialise} onChange={v => handleUrb('terrainArtificialise', v)} options={['Non', 'Oui']} />
