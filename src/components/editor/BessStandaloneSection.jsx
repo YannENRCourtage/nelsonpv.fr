@@ -158,6 +158,13 @@ function calcUrbanisme(d) {
     else resPLU = 'ORANGE - à confirmer';
   }
 
+  let resEnjeuxEnv = '';
+  if (d.zoneProtegee) {
+    if (d.zoneProtegee === 'Non') resEnjeuxEnv = 'GO';
+    else if (d.zoneProtegee === 'Inconnu') resEnjeuxEnv = 'ORANGE - GO sous condition - vigilance environnementale';
+    else resEnjeuxEnv = 'ORANGE - GO sous condition - vigilance environnementale';
+  }
+
   let resRegime = '';
   if (regimeUrbanisme) {
     if (regimeUrbanisme.startsWith('Aucune') || regimeUrbanisme.startsWith('Déclaration')) resRegime = 'GO';
@@ -173,6 +180,7 @@ function calcUrbanisme(d) {
 
   const indicators = [
     { label: 'Zone PLU', result: resPLU, lecture: 'U/UX/UY/UE = favorable ; AU = vérif PLU ; A/N/F = sensibilité forte' },
+    { label: 'Enjeux environnementaux', result: resEnjeuxEnv, lecture: 'ORANGE – GO sous condition – vigilance environnementale' },
     { label: 'Régime urbanisme estimé', result: resRegime, lecture: 'DP = chemin court ; PC = cycle long' },
     { label: 'Distance habitation (m)', result: resDistHab, lecture: '< 25m = forte sensibilité acoustique/SDIS' },
     { label: 'Distance ERP / site sensible (m)', result: resDistERP, lecture: '< 100m = exposition sensible' },
