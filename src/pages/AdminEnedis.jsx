@@ -1,13 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp, FileText, Copy } from 'lucide-react';
+import {
+  Info, CheckCircle2, RotateCw, Search, Activity, Database, Key,
+  History, LayoutDashboard, ExternalLink, Calendar, ChevronDown,
+  ChevronUp, FileText, Copy, Smartphone, Mail, QrCode, Clock,
+  X, Zap, Share2
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
+import { cn } from '@/lib/utils';
 import enedisService from '@/services/enedis';
 import ConsumptionChart from '@/components/enedis/ConsumptionChart';
 import EnedisPrintLayout from '@/components/enedis/EnedisPrintLayout';
+import { useEnedisPolling } from '@/hooks/useEnedisPolling';
 
 export default function AdminEnedis() {
   const [prm, setPrm] = useState('');
@@ -19,9 +26,25 @@ export default function AdminEnedis() {
   const [activeTab, setActiveTab] = useState('interrogation');
   const [jsonOpen, setJsonOpen] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+
+  // Partage / consentement
+  const [shareMode, setShareMode] = useState('present'); // 'present' | 'absent'
+  const [isPolling, setIsPolling] = useState(false);
+  const [pollingSeconds, setPollingSeconds] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+
   const { toast } = useToast();
 
-  // Charger les consentements via API Admin (contourne les règles Firestore)
+  const consentUrl = prm?.length === 14
+    ? `${window.location.origin}${enedisService.getAuthorizeUrl('admin_test', prm)}`
+    : null;
+
+  const qrUrl = consentUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(consentUrl)}`
+    : null;
+
+  // ─── Charger les consentements ───
   const loadConsents = useCallback(async () => {
     try {
       const res = await fetch('/api/enedis/fetch?action=list_consents');
@@ -36,143 +59,123 @@ export default function AdminEnedis() {
 
   useEffect(() => {
     loadConsents();
-    // Rafraîchir toutes les 30 secondes
     const interval = setInterval(loadConsents, 30000);
     return () => clearInterval(interval);
   }, [loadConsents]);
 
-  // Auto-fetch si redirigé avec succès depuis le callback Enedis
+  // ─── Auto-fetch si redirigé depuis callback Enedis ───
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const successPrm = params.get('prm');
     const enedisStatus = params.get('enedis');
     const msg = params.get('message');
-
     if (successPrm) {
       setPrm(successPrm);
       if (enedisStatus === 'success') {
         window.history.replaceState({}, document.title, window.location.pathname);
-        // Recharger l'historique puis récupérer les données
         setTimeout(() => { loadConsents(); handleFetch(successPrm); }, 800);
       }
     } else if (enedisStatus === 'error' && msg) {
-      toast({ 
-        title: "Erreur Enedis", 
-        description: decodeURIComponent(msg), 
-        variant: "destructive" 
-      });
+      toast({ title: 'Erreur Enedis', description: decodeURIComponent(msg), variant: 'destructive' });
     }
   }, []);
 
+  // ─── Compteur polling ───
+  useEffect(() => {
+    if (!isPolling) { setPollingSeconds(0); return; }
+    const t = setInterval(() => setPollingSeconds(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [isPolling]);
+
+  // ─── Polling auto-détection consentement ───
+  const handleConsentDetected = useCallback(async (consentInfo) => {
+    setIsPolling(false);
+    setShowQR(false);
+    toast({
+      title: '🎉 Consentement reçu !',
+      description: `Le client a validé pour le PRM ${consentInfo.prm}. Récupération des données…`
+    });
+    await loadConsents();
+    handleFetch(consentInfo.prm);
+  }, [loadConsents]);
+
+  const { resetPolling } = useEnedisPolling({
+    prm,
+    active: isPolling,
+    onConsentDetected: handleConsentDetected,
+    intervalMs: 8000,
+  });
+
+  // ─── Récupérer les données ───
   const handleFetch = async (prmToFetch, projectIdToFetch) => {
-    // Si prmToFetch n'est pas fourni (clic depuis l'onglet Interrogation), on utilise l'état 'prm'
     const targetPrm = (prmToFetch && typeof prmToFetch === 'string' ? prmToFetch : prm).trim();
     const targetProjectId = projectIdToFetch || 'admin_test';
-
     if (!targetPrm || targetPrm.length !== 14) {
-      toast({ 
-        title: "PRM Invalide", 
-        description: "Veuillez saisir un PRM de 14 chiffres.", 
-        variant: "destructive" 
-      });
+      toast({ title: 'PRM Invalide', description: 'Veuillez saisir un PRM de 14 chiffres.', variant: 'destructive' });
       return;
     }
-
     setFetchingPrm(targetPrm);
     setLoading(true);
     try {
-      const result = await enedisService.fetchData({ 
-        prm: targetPrm, 
-        projectId: targetProjectId 
-      });
-      
-      if (result && result.data) {
+      const result = await enedisService.fetchData({ prm: targetPrm, projectId: targetProjectId });
+      if (result?.data) {
         setData(result.data);
         setStatus('connected');
         setPrm(targetPrm);
         setActiveTab('interrogation');
-        loadConsents(); // Rafraîchir l'historique après récupération
-        toast({ 
-          title: "Succès", 
-          description: "Données récupérées pour le PRM " + targetPrm 
-        });
+        loadConsents();
+        toast({ title: 'Succès', description: `Données récupérées pour le PRM ${targetPrm}` });
       } else {
         setStatus('disconnected');
-        toast({ 
-          title: "Données introuvables", 
-          description: "Aucun consentement trouvé pour ce PRM.", 
-          variant: "destructive" 
-        });
+        toast({ title: 'Données introuvables', description: 'Aucun consentement trouvé pour ce PRM.', variant: 'destructive' });
       }
     } catch (err) {
       console.error(err);
       setStatus('disconnected');
-      toast({ 
-        title: "Erreur", 
-        description: err.message || "Erreur lors de la récupération", 
-        variant: "destructive" 
-      });
+      toast({ title: 'Erreur', description: err.message || 'Erreur lors de la récupération', variant: 'destructive' });
     } finally {
       setLoading(false);
       setFetchingPrm(null);
     }
   };
 
-  const handleInitAuth = () => {
-    if (!prm || prm.length !== 14) {
-      toast({ 
-        title: "PRM Invalide", 
-        description: "Veuillez saisir un PRM pour initier l'autorisation.", 
-        variant: "destructive" 
-      });
-      return;
+  const handleCopyLink = async () => {
+    if (!consentUrl) return;
+    try {
+      await navigator.clipboard.writeText(consentUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+      // Démarrer le polling après copie
+      if (!isPolling) { resetPolling(prm); setIsPolling(true); }
+      toast({ title: 'Lien copié !', description: 'Envoyez ce lien au client. Vous serez averti automatiquement dès son consentement.' });
+    } catch {
+      toast({ title: 'Erreur', description: 'Impossible de copier le lien.', variant: 'destructive' });
     }
-    // Redirige vers Enedis
-    enedisService.initiateAuth('admin_test', prm);
   };
 
-  const handleCopyLink = async () => {
-    if (!prm || prm.length !== 14) {
-      toast({ 
-        title: "PRM Invalide", 
-        description: "Veuillez saisir un PRM pour générer le lien.", 
-        variant: "destructive" 
-      });
-      return;
-    }
-    const authUrl = enedisService.getAuthorizeUrl('admin_test', prm);
-    const fullUrl = window.location.origin + authUrl;
-    try {
-      await navigator.clipboard.writeText(fullUrl);
-      toast({ 
-        title: "Lien copié !", 
-        description: "Vous pouvez l'envoyer au client (par e-mail ou SMS). Il pourra utiliser FranceConnect sans créer de compte Enedis." 
-      });
-    } catch (e) {
-      toast({ 
-        title: "Erreur", 
-        description: "Impossible de copier le lien.", 
-        variant: "destructive" 
-      });
-    }
+  const handleShowQR = () => {
+    resetPolling(prm);
+    setIsPolling(true);
+    setShowQR(true);
+  };
+
+  const handleStopPolling = () => {
+    setIsPolling(false);
+    setShowQR(false);
+    setPollingSeconds(0);
   };
 
   const handlePdf = useCallback(() => {
     if (!data) { toast({ title: 'Aucune donnée', description: `Récupérez d'abord les données.`, variant: 'destructive' }); return; }
     setIsPrinting(true);
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => setIsPrinting(false), 500);
-    }, 400);
+    setTimeout(() => { window.print(); setTimeout(() => setIsPrinting(false), 500); }, 400);
   }, [data, toast]);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
     try {
-      return new Date(dateStr).toLocaleDateString('fr-FR', {
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-      });
-    } catch (e) { return 'Date invalide'; }
+      return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch { return 'Date invalide'; }
   };
 
   const formatConso = (conso) => {
@@ -180,10 +183,13 @@ export default function AdminEnedis() {
     return new Intl.NumberFormat('fr-FR').format(conso) + ' kWh';
   };
 
+  const isPrmValid = prm.length === 14;
+
   return (
     <div className="min-h-screen bg-slate-50/50">
       <div className="container mx-auto py-8 px-6 max-w-[1600px]">
-        {/* Header de la page */}
+
+        {/* ── Header ── */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div className="flex items-center gap-4">
             <div className="p-4 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white shadow-xl shadow-blue-200">
@@ -191,19 +197,12 @@ export default function AdminEnedis() {
             </div>
             <div>
               <div className="flex items-center gap-3">
-                <img
-                  src="/images/enedis/enedis-logo-couleur.png"
-                  alt="Logo Enedis"
-                  className="h-7 object-contain"
-                />
+                <img src="/images/enedis/enedis-logo-couleur.png" alt="Logo Enedis" className="h-7 object-contain" />
                 <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">Data Connect</h1>
               </div>
-              <p className="text-slate-500 text-base mt-1 font-medium">
-                Administration & Monitoring des flux Production v5
-              </p>
+              <p className="text-slate-500 text-base mt-1 font-medium">Administration & Monitoring des flux Production v5</p>
             </div>
           </div>
-
           <div className="flex items-center gap-3">
             {status === 'connected' && (
               <div className="flex items-center gap-2 text-sm font-bold text-green-700 bg-green-100 border-2 border-green-200 rounded-2xl px-6 py-2.5 shadow-sm animate-in fade-in zoom-in duration-300">
@@ -211,23 +210,22 @@ export default function AdminEnedis() {
                 PRM ACTIF : {prm}
               </div>
             )}
+            {isPolling && (
+              <div className="flex items-center gap-2 text-sm font-bold text-amber-700 bg-amber-100 border-2 border-amber-200 rounded-2xl px-6 py-2.5 shadow-sm animate-pulse">
+                <Clock size={18} />
+                En attente du consentement… {pollingSeconds}s
+              </div>
+            )}
             {data && (
-              <Button
-                variant="outline"
-                className="rounded-2xl h-12 px-5 border-blue-200 bg-blue-50 text-blue-700 shadow-sm hover:bg-blue-100 font-bold"
-                onClick={handlePdf}
-              >
+              <Button variant="outline" className="rounded-2xl h-12 px-5 border-blue-200 bg-blue-50 text-blue-700 shadow-sm hover:bg-blue-100 font-bold" onClick={handlePdf}>
                 <FileText size={18} className="mr-2" />
                 PDF
               </Button>
             )}
-            <Button
-                variant="outline"
-                className="rounded-2xl h-12 px-6 border-slate-200 bg-white shadow-sm hover:bg-slate-50"
-                onClick={() => { setData(null); setStatus('idle'); setPrm(''); }}
-            >
-                <RotateCw size={18} className="mr-2 text-slate-400" />
-                Réinitialiser
+            <Button variant="outline" className="rounded-2xl h-12 px-6 border-slate-200 bg-white shadow-sm hover:bg-slate-50"
+              onClick={() => { setData(null); setStatus('idle'); setPrm(''); handleStopPolling(); }}>
+              <RotateCw size={18} className="mr-2 text-slate-400" />
+              Réinitialiser
             </Button>
           </div>
         </div>
@@ -249,48 +247,50 @@ export default function AdminEnedis() {
             </TabsTrigger>
           </TabsList>
 
+          {/* ── Onglet Interrogation ── */}
           <TabsContent value="interrogation" className="m-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8" style={{ alignItems: 'stretch' }}>
-              {/* Colonne gauche (3/12) — flex pour aligner Détails techniques en bas */}
-              <div className="lg:col-span-3 flex flex-col gap-6">
+
+              {/* ─── Colonne gauche ─── */}
+              <div className="lg:col-span-4 flex flex-col gap-6">
                 <Card className="flex-1 border-none shadow-xl shadow-slate-200/50 rounded-3xl overflow-hidden bg-white">
                   <CardHeader className="bg-slate-50/80 border-b p-6">
                     <CardTitle className="text-xl flex items-center gap-3 text-slate-800">
-                      <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
-                        <Key size={20} />
-                      </div>
+                      <div className="p-2 bg-blue-100 rounded-lg text-blue-600"><Key size={20} /></div>
                       Accès aux données
                     </CardTitle>
-                    <CardDescription>Saisissez un PRM pour interroger les serveurs Enedis</CardDescription>
+                    <CardDescription>Saisissez le PRM pour interroger ou demander le consentement</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-6 p-8">
-                    {/* Phrases obligatoires Enedis */}
-                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-5 space-y-3">
+                  <CardContent className="space-y-5 p-6">
+
+                    {/* Notice légale */}
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 space-y-2">
                       <div className="flex items-center gap-2">
-                        <Info size={16} className="text-blue-600 shrink-0" />
-                        <p className="text-[11px] font-extrabold text-blue-800 uppercase tracking-widest">
-                          Service Public de Distribution
-                        </p>
+                        <Info size={14} className="text-blue-600 shrink-0" />
+                        <p className="text-[11px] font-extrabold text-blue-800 uppercase tracking-widest">Service Public de Distribution</p>
                       </div>
-                      <p className="text-xs text-blue-900 leading-relaxed italic border-b border-blue-200/50 pb-3">
-                        Enedis est le gestionnaire du réseau public de distribution d’électricité sur 95% du territoire français continental.
+                      <p className="text-xs text-blue-900 leading-relaxed italic border-b border-blue-200/50 pb-2">
+                        Enedis est le gestionnaire du réseau public de distribution d'électricité sur 95% du territoire français continental.
                       </p>
-                      <div className="space-y-1.5">
-                        <p className="text-xs text-blue-900 leading-relaxed">
-                          <span className="font-bold">Finalité :</span> Ce service permet de visualiser la courbe de charge et la consommation journalière pour dimensionner l'installation photovoltaïque.
-                        </p>
-                        <p className="text-xs text-blue-900 leading-relaxed">
-                          <span className="font-bold">Durée :</span> Consentement de 3 ans maximum, révocable à tout moment.
-                        </p>
-                      </div>
+                      <p className="text-xs text-blue-900 leading-relaxed">
+                        <span className="font-bold">Finalité :</span> Visualiser la consommation pour dimensionner l'installation PV.
+                      </p>
+                      <p className="text-xs text-blue-900 leading-relaxed">
+                        <span className="font-bold">Durée :</span> Consentement 3 ans max, révocable à tout moment.
+                      </p>
                     </div>
 
-                    <div className="space-y-3">
+                    {/* Saisie PRM */}
+                    <div className="space-y-2">
                       <label className="text-xs font-bold uppercase text-slate-500 tracking-widest ml-1">Numéro PRM (14 chiffres)</label>
                       <div className="relative">
-                        <Input 
+                        <Input
                           value={prm}
-                          onChange={e => setPrm(e.target.value.replace(/\D/g, '').slice(0, 14))}
+                          onChange={e => {
+                            const v = e.target.value.replace(/\D/g, '').slice(0, 14);
+                            setPrm(v);
+                            if (v !== prm) { setData(null); setStatus('idle'); handleStopPolling(); }
+                          }}
                           placeholder="Ex: 16138350177475"
                           className="font-mono text-2xl h-16 border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 pl-14 transition-all"
                         />
@@ -298,109 +298,203 @@ export default function AdminEnedis() {
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-4 pt-2">
-                      <Button 
-                        onClick={() => handleFetch()} 
-                        disabled={loading || prm.length !== 14}
-                        className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-lg shadow-lg shadow-slate-200 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                      >
-                        {loading ? <RotateCw className="mr-3 h-5 w-5 animate-spin" /> : <Activity className="mr-3 h-5 w-5" />}
-                        Récupérer les données
-                      </Button>
-                      
-                      <div className="relative py-4">
-                        <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-100"></span></div>
-                        <div className="relative flex justify-center text-[11px] uppercase tracking-[0.2em]"><span className="bg-white px-4 text-slate-400 font-bold">Ou obtenir l'accès</span></div>
-                      </div>
+                    {/* ── Bouton : Récupérer si consentement existe ── */}
+                    <Button
+                      onClick={() => handleFetch()}
+                      disabled={loading || !isPrmValid}
+                      className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-lg shadow-lg shadow-slate-200 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      {loading ? <RotateCw className="mr-3 h-5 w-5 animate-spin" /> : <Zap className="mr-3 h-5 w-5" />}
+                      Récupérer les données
+                    </Button>
 
-                      <button 
-                        onClick={handleInitAuth}
-                        disabled={loading || prm.length !== 14}
-                        className="w-full transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed group"
-                      >
-                        <div className="relative overflow-hidden rounded-2xl border-2 border-transparent group-hover:border-blue-400 transition-all">
-                          <img 
-                            src="/images/enedis/enedis-bouton-bleu.png" 
-                            alt="J'accède à mon espace client Enedis"
-                            className="h-14 w-full object-contain pointer-events-none"
-                          />
-                        </div>
-                      </button>
-
-                      <Button 
-                        onClick={handleCopyLink} 
-                        disabled={loading || prm.length !== 14}
-                        variant="outline"
-                        className="w-full h-12 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-2xl font-bold transition-all mt-2"
-                      >
-                        <Copy className="mr-2 h-4 w-4" />
-                        Copier le lien pour le client
-                      </Button>
-
-                      {/* Guide d'aide au consentement */}
-                      <div className="mt-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Info size={14} className="text-amber-600 shrink-0" />
-                          <p className="text-[11px] font-extrabold text-amber-800 uppercase tracking-widest">
-                            Simplifiez le consentement client
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-xs text-amber-900 leading-relaxed">
-                            Si vous êtes déjà connecté à votre compte Enedis ou si le client n'est pas avec vous, utilisez le bouton <span className="font-bold">"Copier le lien pour le client"</span>.
-                          </p>
-                          <ul className="list-disc list-inside space-y-1.5 text-xs text-amber-900 leading-relaxed pl-1 mt-2">
-                            <li>Envoyez ce lien au client par e-mail ou SMS.</li>
-                            <li>Le client clique sur le lien depuis son appareil.</li>
-                            <li>Il s'identifie avec <span className="font-bold">FranceConnect</span> (pas besoin de créer de compte Enedis).</li>
-                            <li>Dès qu'il valide, les données remontent automatiquement ici (rafraîchissement automatique).</li>
-                          </ul>
-                        </div>
-                        <div className="flex flex-col gap-2 pt-1">
-                          <a
-                            href="https://mon-compte-particulier.enedis.fr/creation-de-compte"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 hover:bg-blue-100 transition-colors w-fit"
-                          >
-                            <ExternalLink size={12} />
-                            Créer un compte Enedis (pour le client)
-                          </a>
-                          <p className="text-[10px] text-amber-700 italic leading-snug">
-                            💡 Astuce : Ouvrez ce lien sur le téléphone/tablette du client en sa présence pour qu'il puisse se connecter et donner son consentement en quelques clics.
-                          </p>
-                        </div>
+                    <div className="relative py-2">
+                      <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-100" /></div>
+                      <div className="relative flex justify-center text-[11px] uppercase tracking-[0.2em]">
+                        <span className="bg-white px-4 text-slate-400 font-bold">ou demander le consentement</span>
                       </div>
                     </div>
+
+                    {/* ── Choix du mode de partage ── */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShareMode('present')}
+                        className={cn(
+                          "p-3 rounded-xl border-2 text-left transition-all",
+                          shareMode === 'present'
+                            ? "border-blue-500 bg-blue-50 text-blue-800"
+                            : "border-slate-200 bg-slate-50 text-slate-600 hover:border-blue-300"
+                        )}
+                      >
+                        <Smartphone size={16} className="mb-1" />
+                        <p className="text-xs font-bold">Client présent</p>
+                        <p className="text-[10px] opacity-70">QR code à scanner</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShareMode('absent')}
+                        className={cn(
+                          "p-3 rounded-xl border-2 text-left transition-all",
+                          shareMode === 'absent'
+                            ? "border-blue-500 bg-blue-50 text-blue-800"
+                            : "border-slate-200 bg-slate-50 text-slate-600 hover:border-blue-300"
+                        )}
+                      >
+                        <Mail size={16} className="mb-1" />
+                        <p className="text-xs font-bold">Client absent</p>
+                        <p className="text-[10px] opacity-70">Lien à envoyer</p>
+                      </button>
+                    </div>
+
+                    {/* ── Mode Client Présent ── */}
+                    {shareMode === 'present' && (
+                      <div className="space-y-3">
+                        {!showQR ? (
+                          <button
+                            onClick={handleShowQR}
+                            disabled={!isPrmValid}
+                            className="w-full transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed group"
+                          >
+                            <div className="relative overflow-hidden rounded-2xl border-2 border-transparent group-hover:border-blue-400 transition-all">
+                              <div className="flex items-center justify-center gap-3 h-14 bg-[#008ECE] text-white font-bold text-sm rounded-2xl">
+                                <QrCode size={20} />
+                                Afficher le QR Code
+                              </div>
+                            </div>
+                          </button>
+                        ) : (
+                          <div className="bg-white rounded-2xl border-2 border-blue-200 p-5 text-center space-y-3 shadow-lg">
+                            <p className="text-sm font-bold text-slate-700">📱 Faites scanner par le client</p>
+                            <p className="text-xs text-slate-500">
+                              Il peut utiliser <span className="font-bold text-blue-600">FranceConnect</span> —
+                              <span className="text-green-700 font-semibold"> pas besoin de créer un compte Enedis</span>
+                            </p>
+                            {qrUrl && (
+                              <div className="flex justify-center">
+                                <img src={qrUrl} alt="QR code consentement Enedis" className="w-48 h-48 rounded-xl shadow-md border border-slate-100" />
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                              <Clock size={14} className="text-amber-600 shrink-0 animate-pulse" />
+                              <p className="text-[11px] text-amber-800">
+                                Détection automatique active ({pollingSeconds}s)
+                              </p>
+                            </div>
+                            <button onClick={handleStopPolling} className="text-[10px] text-slate-400 hover:text-slate-600 underline">
+                              Annuler
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── Mode Client Absent ── */}
+                    {shareMode === 'absent' && (
+                      <div className="space-y-3">
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
+                          <p className="text-xs font-bold text-slate-700 mb-2">Comment ça marche :</p>
+                          <ol className="space-y-1.5 text-xs text-slate-600">
+                            <li className="flex gap-2 items-start">
+                              <span className="font-bold text-blue-600 shrink-0">1.</span>
+                              Copiez le lien ci-dessous
+                            </li>
+                            <li className="flex gap-2 items-start">
+                              <span className="font-bold text-blue-600 shrink-0">2.</span>
+                              Envoyez-le par email ou SMS au client
+                            </li>
+                            <li className="flex gap-2 items-start">
+                              <span className="font-bold text-blue-600 shrink-0">3.</span>
+                              Le client clique et s'identifie avec <span className="font-bold text-blue-600 ml-1">FranceConnect</span>
+                              <em className="text-slate-500 ml-1">(sans créer de compte Enedis)</em>
+                            </li>
+                            <li className="flex gap-2 items-start">
+                              <span className="font-bold text-blue-600 shrink-0">4.</span>
+                              Les données apparaissent ici automatiquement
+                            </li>
+                          </ol>
+                        </div>
+
+                        <Button
+                          onClick={handleCopyLink}
+                          disabled={!isPrmValid}
+                          className={cn(
+                            "w-full h-14 rounded-2xl font-bold text-base transition-all hover:scale-[1.02] active:scale-[0.98]",
+                            copied
+                              ? "bg-green-600 hover:bg-green-700 text-white"
+                              : "bg-blue-600 hover:bg-blue-700 text-white"
+                          )}
+                        >
+                          {copied ? <CheckCircle2 className="mr-2 h-5 w-5" /> : <Copy className="mr-2 h-5 w-5" />}
+                          {copied ? 'Lien copié !' : 'Copier le lien de consentement'}
+                        </Button>
+
+                        {isPolling && (
+                          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                            <Clock size={16} className="text-amber-600 shrink-0 animate-pulse" />
+                            <div className="flex-1">
+                              <p className="text-xs font-bold text-amber-800">Détection automatique active</p>
+                              <p className="text-[10px] text-amber-700">
+                                Vous serez averti dès que le client aura consenti ({pollingSeconds}s)
+                              </p>
+                            </div>
+                            <button onClick={handleStopPolling} className="text-amber-600 hover:text-amber-800 p-1">
+                              <X size={16} />
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2">
+                          <a
+                            href={consentUrl || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn(
+                              "flex-1 flex items-center justify-center gap-2 h-10 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 font-medium text-xs rounded-xl transition-colors",
+                              !isPrmValid && "pointer-events-none opacity-50"
+                            )}
+                          >
+                            <ExternalLink size={14} />
+                            Ouvrir le lien
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
                   </CardContent>
                 </Card>
 
+                {/* Détails techniques */}
                 <Card className="bg-gradient-to-br from-slate-800 to-slate-900 text-white border-none rounded-3xl overflow-hidden shadow-xl">
                   <CardHeader className="py-4 px-6 border-b border-white/10">
                     <CardTitle className="text-xs uppercase tracking-[0.2em] text-slate-400 font-bold">Détails techniques</CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm space-y-4 p-6">
                     <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                        <span className="text-slate-400">Endpoint API</span>
-                        <span className="font-bold">Production v5.0</span>
+                      <span className="text-slate-400">Endpoint API</span>
+                      <span className="font-bold">Production v5.0</span>
                     </div>
                     <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                        <span className="text-slate-400">Authentification</span>
-                        <span className="font-bold">OAuth 2.0 (m2m)</span>
+                      <span className="text-slate-400">Authentification</span>
+                      <span className="font-bold">OAuth 2.0 (m2m)</span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                      <span className="text-slate-400">Identité client</span>
+                      <span className="font-bold text-green-400">FranceConnect</span>
                     </div>
                     <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Status Gateway</span>
-                        <span className="flex items-center gap-1.5 font-bold text-emerald-400">
-                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-                            Opérationnel
-                        </span>
+                      <span className="text-slate-400">Status Gateway</span>
+                      <span className="flex items-center gap-1.5 font-bold text-emerald-400">
+                        <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        Opérationnel
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Colonne droite (9/12) — flex pour aligner JSON avec Détails techniques */}
-              <div className="lg:col-span-9 flex flex-col gap-4">
+              {/* ─── Colonne droite ─── */}
+              <div className="lg:col-span-8 flex flex-col gap-4">
                 {!data ? (
                   <div className="h-full min-h-[600px] border-4 border-dashed border-slate-200 rounded-[2.5rem] flex flex-col items-center justify-center text-muted-foreground p-12 text-center bg-white shadow-inner transition-all">
                     <div className="w-32 h-32 bg-slate-50 rounded-full flex items-center justify-center mb-8 border border-slate-100 shadow-sm animate-bounce duration-[3000ms]">
@@ -408,8 +502,17 @@ export default function AdminEnedis() {
                     </div>
                     <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Prêt à visualiser</h3>
                     <p className="max-w-md text-lg text-slate-500 leading-relaxed">
-                      Utilisez le panneau de gauche pour interroger un point de livraison. Les graphiques de consommation et de puissance s'afficheront ici.
+                      Utilisez le panneau de gauche pour interroger un point de livraison ou demander le consentement au client.
                     </p>
+                    {isPolling && (
+                      <div className="mt-8 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-6 py-4 animate-pulse">
+                        <Clock size={20} className="text-amber-600" />
+                        <div className="text-left">
+                          <p className="text-sm font-bold text-amber-800">En attente du consentement client…</p>
+                          <p className="text-xs text-amber-700">Les données apparaîtront automatiquement ici ({pollingSeconds}s)</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex-1 animate-in fade-in slide-in-from-right-8 duration-700 flex flex-col gap-4">
@@ -417,7 +520,7 @@ export default function AdminEnedis() {
                       <ConsumptionChart data={data} loading={loading} />
                     </div>
 
-                    {/* JSON Panel — collapsible */}
+                    {/* JSON Panel */}
                     <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-950">
                       <button
                         onClick={() => setJsonOpen(o => !o)}
@@ -446,6 +549,7 @@ export default function AdminEnedis() {
             </div>
           </TabsContent>
 
+          {/* ── Onglet Historique ── */}
           <TabsContent value="history" className="m-0 animate-in fade-in slide-in-from-top-4 duration-500">
             <Card className="border-none shadow-xl rounded-3xl overflow-hidden bg-white">
               <CardHeader className="p-8 border-b bg-slate-50/50">
@@ -476,7 +580,7 @@ export default function AdminEnedis() {
                     <tbody className="divide-y">
                       {consents.length === 0 ? (
                         <tr>
-                          <td colSpan="5" className="px-8 py-20 text-center text-slate-400">
+                          <td colSpan="6" className="px-8 py-20 text-center text-slate-400">
                             <Database size={48} className="mx-auto mb-4 opacity-10" />
                             <p className="text-lg font-medium">Aucun consentement enregistré pour le moment</p>
                           </td>
@@ -493,11 +597,11 @@ export default function AdminEnedis() {
                                   <span className="font-mono text-lg font-bold text-slate-700">{item.prm}</span>
                                 </div>
                                 {item.projectId && item.projectId !== 'admin_test' && (
-                                  <a 
-                                      href={`/project/${item.projectId}/edit`} 
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="ml-11 inline-flex items-center gap-1.5 text-blue-500 hover:text-blue-700 text-[10px] font-bold transition-colors"
+                                  <a
+                                    href={`/project/${item.projectId}/edit`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="ml-11 inline-flex items-center gap-1.5 text-blue-500 hover:text-blue-700 text-[10px] font-bold transition-colors"
                                   >
                                     LIÉ AU PROJET #{item.projectId.slice(-6)}
                                     <ExternalLink size={10} />
@@ -539,7 +643,7 @@ export default function AdminEnedis() {
                               </div>
                             </td>
                             <td className="px-8 py-6 text-right">
-                              <Button 
+                              <Button
                                 onClick={() => handleFetch(item.prm, item.projectId)}
                                 disabled={loading}
                                 className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-6 font-bold shadow-lg shadow-blue-100 transition-all hover:scale-105 active:scale-95 min-w-[100px]"
