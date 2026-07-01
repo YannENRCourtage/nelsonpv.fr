@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FileDown, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
 import { useLocation } from 'react-router-dom';
+import { safeLocalStorage } from '../lib/storage.js';
 import ParametersSection from '../components/simulator/ParametersSection';
 import ProjectCostsSection from '../components/simulator/ProjectCostsSection';
 import ProfitabilitySection from '../components/simulator/ProfitabilitySection';
@@ -106,15 +107,15 @@ export default function ProfitabilitySimulator() {
 
     // Load saved defaults
     useEffect(() => {
-        const savedCosts = localStorage.getItem('simulator_default_costs_v4');
-        if (savedCosts && !isAcama) {
-            try {
+        try {
+            const savedCosts = safeLocalStorage.getItem('simulator_default_costs_v4');
+            if (savedCosts && !isAcama) {
                 // Merge saved defaults with structure to ensure installationRate exists
                 const parsed = JSON.parse(savedCosts);
                 setCosts(prev => ({ ...prev, ...parsed }));
-            } catch (e) {
-                console.error('Error loading saved costs:', e);
             }
+        } catch (e) {
+            console.error('Error loading saved costs:', e);
         }
     }, [isAcama]);
 

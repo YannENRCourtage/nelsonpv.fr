@@ -1473,11 +1473,19 @@ const pegmanIcon = L.divIcon({
 function TextInputPopup({ at, onCancel, onSubmit, initialValue = "" }) {
   const [value, setValue] = useState(initialValue);
   const markerRef = useRef(null);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     // Open popup immediately on mount
     if (markerRef.current) {
       markerRef.current.openPopup();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      L.DomEvent.disableClickPropagation(containerRef.current);
+      L.DomEvent.disableScrollPropagation(containerRef.current);
     }
   }, []);
 
@@ -1488,10 +1496,23 @@ function TextInputPopup({ at, onCancel, onSubmit, initialValue = "" }) {
     }
   };
 
+  const handleContainerEvent = (e) => {
+    e.stopPropagation();
+    if (e.nativeEvent) {
+      e.nativeEvent.stopPropagation();
+    }
+  };
+
   return (
     <Marker ref={markerRef} position={at} opacity={0}>
       <Popup autoClose={false} closeOnClick={false} closeButton={false} autoPan={false} className="text-input-popup" minWidth={150}>
-        <div className="min-w-[260px] space-y-2 bg-white p-3 rounded-lg shadow-lg">
+        <div
+          ref={containerRef}
+          className="min-w-[260px] space-y-2 bg-white p-3 rounded-lg shadow-lg"
+          onClick={handleContainerEvent}
+          onMouseDown={handleContainerEvent}
+          onDoubleClick={handleContainerEvent}
+        >
           <label className="text-sm font-semibold text-gray-700">Ajouter un texte</label>
           <textarea
             autoFocus
@@ -1505,11 +1526,21 @@ function TextInputPopup({ at, onCancel, onSubmit, initialValue = "" }) {
             <button
               type="button"
               className="rounded bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-white text-sm font-medium transition-colors"
-              onClick={() => { if (value.trim()) onSubmit(value.trim()); }}
+              onClick={(e) => {
+                handleContainerEvent(e);
+                if (value.trim()) onSubmit(value.trim());
+              }}
             >
               Valider
             </button>
-            <button type="button" className="rounded bg-gray-200 hover:bg-gray-300 px-3 py-1.5 text-sm text-gray-700 font-medium transition-colors" onClick={onCancel}>
+            <button
+              type="button"
+              className="rounded bg-gray-200 hover:bg-gray-300 px-3 py-1.5 text-sm text-gray-700 font-medium transition-colors"
+              onClick={(e) => {
+                handleContainerEvent(e);
+                onCancel();
+              }}
+            >
               Annuler
             </button>
           </div>

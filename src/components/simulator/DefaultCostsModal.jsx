@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button.jsx';
+import { safeLocalStorage } from '@/lib/storage.js';
 
 const DEFAULT_COSTS_KEY = 'simulator_default_costs_v4';
 
@@ -9,7 +10,7 @@ export default function DefaultCostsModal({ costs, onSave, onClose }) {
 
     useEffect(() => {
         // Load saved defaults from localStorage
-        const saved = localStorage.getItem(DEFAULT_COSTS_KEY);
+        const saved = safeLocalStorage.getItem(DEFAULT_COSTS_KEY);
         if (saved) {
             try {
                 setLocalCosts(JSON.parse(saved));
@@ -24,7 +25,7 @@ export default function DefaultCostsModal({ costs, onSave, onClose }) {
     };
 
     const handleSave = () => {
-        localStorage.setItem(DEFAULT_COSTS_KEY, JSON.stringify(localCosts));
+        safeLocalStorage.setItem(DEFAULT_COSTS_KEY, JSON.stringify(localCosts));
         onSave(localCosts);
         onClose();
     };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from '../ui/use-toast.js';
 import { Button } from '../ui/button.jsx';
+import { safeLocalStorage } from '../../lib/storage.js';
 
 const LS_BUILDING_PRESETS = 'nelson:building_presets:v1';
 
@@ -12,14 +13,14 @@ const getDefaultPresets = () => [
 
 export const loadPresets = () => {
     try {
-        const stored = localStorage.getItem(LS_BUILDING_PRESETS);
+        const stored = safeLocalStorage.getItem(LS_BUILDING_PRESETS);
         if (stored) return JSON.parse(stored);
     } catch {}
     return getDefaultPresets();
 };
 
 export const savePresets = (presets) => {
-    localStorage.setItem(LS_BUILDING_PRESETS, JSON.stringify(presets));
+    safeLocalStorage.setItem(LS_BUILDING_PRESETS, JSON.stringify(presets));
 };
 
 export default function BuildingForm() {

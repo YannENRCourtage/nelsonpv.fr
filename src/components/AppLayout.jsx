@@ -483,7 +483,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
               user?.permissions?.canAccessBP ||
               user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr' || isLaurentGuyon) && (
               <NavLink 
-                to="/bp-acama" 
+                to="/bp" 
                 className={({ isActive }) => {
                   const baseClass = isActive ? 'nav-link active bp-acama' : 'nav-link bp-acama';
                   const isEnrCourtage = activeTenantId === 'enr-courtage-energie' || user?.activeTenantId === 'enr-courtage-energie' || user?.tenantId === 'enr-courtage-energie';
@@ -757,7 +757,7 @@ export default function AppLayout() {
               user?.permissions?.canAccessBP ||
               user?.email?.toLowerCase() === 'a.mihailov@acama-energies.fr' || isLaurentGuyon) && (
               <NavLink
-                to="/bp-acama"
+                to="/bp"
                 className={({ isActive }) => {
                   const baseClass = isActive ? 'mobile-nav-link active bp-acama' : 'mobile-nav-link bp-acama';
                   const isEnrCourtage = activeTenantId === 'enr-courtage-energie' || user?.activeTenantId === 'enr-courtage-energie' || user?.tenantId === 'enr-courtage-energie';

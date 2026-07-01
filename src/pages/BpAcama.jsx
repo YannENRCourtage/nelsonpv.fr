@@ -4653,10 +4653,9 @@ export default function BpAcama() {
   }, [isAdmin, activeTab, isGreenInvest]);
 
 
-  // Access Control: 
-  // GREEN INVEST: Admins + Laurent Guyon
-  // ACAMA: Admins + Alexandru
-  const hasAccess = isGreenInvest ? (isAdmin || isLaurentGuyon) : (isAdmin || isAlexandru);
+  // GREEN INVEST: Admins + Laurent Guyon + canAccessBP
+  // ACAMA: Admins + Alexandru + canAccessBP
+  const hasAccess = isAdmin || user?.permissions?.canAccessBP || (isGreenInvest ? isLaurentGuyon : isAlexandru);
 
   if (!hasAccess) {
     return (

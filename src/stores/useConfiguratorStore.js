@@ -1,6 +1,7 @@
 import React from 'react';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { safeLocalStorage } from '../lib/storage.js';
 
 /**
  * Mapping of Building Types to Allowed Widths
@@ -659,7 +660,7 @@ export const useConfiguratorStore = create(
     }
 }), {
     name: 'nelson-configurator-storage',
-    storage: createJSONStorage(() => localStorage),
+    storage: createJSONStorage(() => safeLocalStorage),
 }));
 
 export const useConfiguratorValues = () => {

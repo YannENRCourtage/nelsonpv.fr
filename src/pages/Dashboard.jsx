@@ -18,14 +18,21 @@ import { useDrag, useDrop } from 'react-dnd';
 import { cn } from "@/lib/utils.js";
 import { generatePdfForProject } from "@/components/AppLayout.jsx";
 import { useProjects } from "@/contexts/ProjectContext.jsx";
+import { safeLocalStorage } from '../lib/storage.js';
 
 const LS_CRM_KEY = "nelson:crm:v1";
 const LS_COLUMNS_KEY = "nelson:projects:columns:v1";
 
 function loadData(key, defaultValue = []) {
-  try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(defaultValue)); } catch { return defaultValue; }
+  try { return JSON.parse(safeLocalStorage.getItem(key) || JSON.stringify(defaultValue)); } catch { return defaultValue; }
 }
-function saveData(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+function saveData(key, data) {
+  try {
+    safeLocalStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    console.error("Failed to save CRM data:", e);
+  }
+}
 
 const DEFAULT_COLUMNS = [
     { id: 'name', title: 'Nom Projet', width: 250 }, { id: 'client', title: 'Client', width: 150 },

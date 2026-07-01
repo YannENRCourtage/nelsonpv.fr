@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { X, Upload, Download, Plus, FileText, Search, User, MapPin, Ruler, Image as ImageIcon, ChevronDown, ChevronRight, Phone, Mail } from 'lucide-react';
 import { useProjects } from '@/contexts/ProjectContext';
+import { safeLocalStorage } from '@/lib/storage.js';
 
 const STORAGE_KEY = 'configurator_offer_template';
 
@@ -123,7 +124,7 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
     // --- INITIALIZATON ---
     useEffect(() => {
         if (isOpen) {
-            const saved = localStorage.getItem(STORAGE_KEY);
+            const saved = safeLocalStorage.getItem(STORAGE_KEY);
             if (saved) {
                 try {
                     setTemplateData(JSON.parse(saved));
@@ -215,7 +216,7 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
         const newData = { ...templateData, tags: updatedTags };
         setTemplateData(newData);
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+            safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
         } catch (e) {
             console.warn("Storage update failed on move via drag");
             // Non-critical, just won't save if reload
@@ -231,7 +232,7 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
             const newData = { pdfData: ev.target.result, tags: [] };
             setTemplateData(newData);
             try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+                safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
             } catch (error) {
                 console.error("LocalStorage Error:", error);
                 alert("Le fichier PDF est trop volumineux pour être sauvegardé dans le navigateur. Il sera utilisable pour cette session, mais devra être rechargé la prochaine fois.");
@@ -246,7 +247,7 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
         const newData = { ...templateData, tags: updatedTags };
         setTemplateData(newData);
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+            safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
         } catch (e) {
             console.warn("Storage update failed on place");
         }
@@ -259,7 +260,7 @@ export function OfferGenerationModal({ isOpen, onClose, config, generatedImages 
         const newData = { ...templateData, tags: updatedTags };
         setTemplateData(newData);
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+            safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
         } catch (e) {
             console.warn("Storage update failed on remove");
         }

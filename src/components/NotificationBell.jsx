@@ -7,6 +7,7 @@ import {
     subscribeToNotifications,
     markNotificationAsRead
 } from '@/services/firebase/comments.service.js';
+import { safeLocalStorage } from '@/lib/storage.js';
 
 export default function NotificationBell() {
     const { user } = useAuth();
@@ -23,7 +24,7 @@ export default function NotificationBell() {
             setNotifications(notifs);
 
             // Check last seen time to calculate red badge count
-            const lastSeenRaw = localStorage.getItem(`notifs_seen_${user.uid}`);
+            const lastSeenRaw = safeLocalStorage.getItem(`notifs_seen_${user.uid}`);
             const lastSeenTime = lastSeenRaw ? parseInt(lastSeenRaw, 10) : 0;
 
             const count = notifs.filter(n => {
@@ -46,7 +47,7 @@ export default function NotificationBell() {
 
         if (willShow) {
             // Dismiss the red notification badge
-            localStorage.setItem(`notifs_seen_${user.uid}`, Date.now().toString());
+            safeLocalStorage.setItem(`notifs_seen_${user.uid}`, Date.now().toString());
             setUnreadCount(0);
 
             // Mark all current unread notifications as read so they are no longer bold

@@ -3,6 +3,7 @@ import { apiService } from "../services/api";
 import { uploadProjectCapture, uploadProjectPhoto } from "../services/firebase/storage.service";
 import { createProjectAssignmentNotification } from "../services/firebase/comments.service";
 import { useAuth } from "./AuthContext";
+import { safeLocalStorage } from "../lib/storage.js";
 
 /** Clef LS commune (liste projets) */
 const LS_KEY = "nelson:projects:v1";
@@ -10,7 +11,7 @@ const LS_KEY = "nelson:projects:v1";
 /* Utils LS */
 function loadAllProjectsFromLS() {
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = safeLocalStorage.getItem(LS_KEY);
     return raw ? JSON.parse(raw) : [];
   } catch (e) {
     console.warn('localStorage access blocked or unavailable:', e);
@@ -20,7 +21,7 @@ function loadAllProjectsFromLS() {
 
 function saveAllProjectsToLS(list) {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(list));
+    safeLocalStorage.setItem(LS_KEY, JSON.stringify(list));
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new Event('projectsUpdated'));
   } catch (e) {

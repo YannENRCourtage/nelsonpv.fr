@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Cookie, X, Check, ShieldCheck } from 'lucide-react';
 import { Button } from './ui/button';
+import { safeLocalStorage } from '../lib/storage.js';
 
 export default function CookieBanner() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const consent = localStorage.getItem('nelson:cookieConsent');
+    const consent = safeLocalStorage.getItem('nelson:cookieConsent');
     if (!consent) {
       const timer = setTimeout(() => setIsVisible(true), 1500);
       return () => clearTimeout(timer);
@@ -14,12 +15,12 @@ export default function CookieBanner() {
   }, []);
 
   const handleAccept = () => {
-    localStorage.setItem('nelson:cookieConsent', 'accepted');
+    safeLocalStorage.setItem('nelson:cookieConsent', 'accepted');
     setIsVisible(false);
   };
 
   const handleDecline = () => {
-    localStorage.setItem('nelson:cookieConsent', 'declined');
+    safeLocalStorage.setItem('nelson:cookieConsent', 'declined');
     setIsVisible(false);
   };
 

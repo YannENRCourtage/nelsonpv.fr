@@ -157,7 +157,7 @@ function AppContent() {
             }
           />
           <Route
-            path="bp-acama"
+            path="bp"
             element={
               <ProtectedRoute>
                 <BpAcama />

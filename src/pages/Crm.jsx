@@ -1181,16 +1181,10 @@ export default function Crm() {
                           if (userWithPhoto) photoURL = userWithPhoto.photoURL;
                         }
 
-                        const avatarSrc = photoURL ||
-                          (contactCreator?.toLowerCase().trim().includes('jack') ? '/assets/avatars/jack.jpg' : null);
-
                         return (
                           <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full ${getUserColor(contactCreator)} w-fit pr-5 text-left`}>
                             <div className="w-8 h-8 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
-                              {avatarSrc ?
-                                <img src={avatarSrc} className="w-full h-full object-cover" alt={contactCreator} /> :
-                                <span className="flex items-center justify-center w-full h-full text-xs font-bold">{contactCreator?.[0]}</span>
-                              }
+                              <UserAvatar name={contactCreator} photoURL={photoURL} size="w-full h-full" showName={false} />
                             </div>
                             <span className="text-sm font-semibold truncate max-w-[120px]">{contactCreator || 'Utilisateur'}</span>
                           </div>
@@ -2209,12 +2203,8 @@ export default function Crm() {
         {/* User Profile */}
         < div className="p-4 border-t border-slate-700" >
           <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-700/50">
-            <div className={`${currentUser.color} w-20 h-20 rounded-full flex items-center justify-center text-white font-bold overflow-hidden`}>
-              {currentUser.photoURL ? (
-                <img src={currentUser.photoURL} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                currentUser.avatar
-              )}
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
+              <UserAvatar name={currentUser.name} photoURL={currentUser.photoURL} size="w-full h-full" showName={false} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-white text-sm truncate">{currentUser.name}</p>
