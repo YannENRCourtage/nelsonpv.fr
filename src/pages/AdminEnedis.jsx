@@ -3,7 +3,7 @@ import {
   Info, CheckCircle2, RotateCw, Search, Activity, Database, Key,
   History, LayoutDashboard, ExternalLink, Calendar, ChevronDown,
   ChevronUp, FileText, Copy, Smartphone, Mail, QrCode, Clock,
-  X, Zap, Share2
+  X, Zap, Share2, MessageCircle, Send, Phone, User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,14 @@ export default function AdminEnedis() {
   const [pollingSeconds, setPollingSeconds] = useState(0);
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
+
+  // Formulaire consentement direct (SMS/WhatsApp/Email)
+  const [clientName, setClientName] = useState('');
+  const [clientContact, setClientContact] = useState('');
+  const [sendingConsent, setSendingConsent] = useState(false);
+  const [consentSent, setConsentSent] = useState(false);
+  const [consentToken, setConsentToken] = useState(null);
+  const [nelsonQrUrl, setNelsonQrUrl] = useState(null);
 
   const { toast } = useToast();
 
@@ -153,7 +161,29 @@ export default function AdminEnedis() {
     }
   };
 
-  const handleShowQR = () => {
+  const handleShowQR = async () => {
+    // Créer une demande de consentement pour le QR code Nelson
+    try {
+      const res = await fetch('/api/enedis/consent-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prm,
+          clientName: clientName.trim() || 'Client (QR Code)',
+          clientContact: 'qr-code',
+          contactMethod: 'sms',
+          projectId: 'admin_test'
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const fullUrl = `${window.location.origin}/consent/${data.token}`;
+        setNelsonQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(fullUrl)}`);
+        setConsentToken(data.token);
+      }
+    } catch (e) {
+      console.warn('Fallback to ENEDIS QR code:', e.message);
+    }
     resetPolling(prm);
     setIsPolling(true);
     setShowQR(true);
@@ -163,6 +193,66 @@ export default function AdminEnedis() {
     setIsPolling(false);
     setShowQR(false);
     setPollingSeconds(0);
+  };
+
+  // ─── Envoi de demande de consentement par SMS/WhatsApp/Email ───
+  const handleSendConsent = async (method) => {
+    if (!isPrmValid || !clientContact.trim()) {
+      toast({ title: 'Informations manquantes', description: 'Veuillez saisir le PRM et les coordonnées du client.', variant: 'destructive' });
+      return;
+    }
+    setSendingConsent(true);
+    try {
+      // Créer la demande de consentement côté serveur
+      const res = await fetch('/api/enedis/consent-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prm,
+          clientName: clientName.trim() || 'Client',
+          clientContact: clientContact.trim(),
+          contactMethod: method,
+          projectId: 'admin_test'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Erreur lors de la création de la demande');
+      }
+
+      const fullConsentUrl = `${window.location.origin}/consent/${data.token}`;
+      setConsentToken(data.token);
+      setConsentSent(true);
+
+      // Ouvrir l'app native selon la méthode
+      const message = `Bonjour ${clientName.trim() || ''},\n\nVotre installateur vous invite à autoriser l'accès à vos données de consommation électrique pour dimensionner votre installation solaire.\n\nCliquez ici pour donner votre accord :\n${fullConsentUrl}\n\n— Nelson PV`;
+
+      if (method === 'sms') {
+        const smsBody = encodeURIComponent(message);
+        const phone = clientContact.trim().replace(/\s/g, '');
+        window.open(`sms:${phone}?body=${smsBody}`, '_blank');
+        toast({ title: '📱 SMS préparé', description: 'L\'app SMS s\'est ouverte avec le message pré-rempli. Envoyez-le au client.' });
+      } else if (method === 'whatsapp') {
+        const waText = encodeURIComponent(message);
+        const phone = clientContact.trim().replace(/\s/g, '').replace(/^0/, '33');
+        window.open(`https://wa.me/${phone}?text=${waText}`, '_blank');
+        toast({ title: '💬 WhatsApp ouvert', description: 'Envoyez le message au client via WhatsApp.' });
+      } else if (method === 'email') {
+        const subject = encodeURIComponent('Autorisation d\'accès à vos données Enedis — Nelson PV');
+        const body = encodeURIComponent(message);
+        window.open(`mailto:${clientContact.trim()}?subject=${subject}&body=${body}`, '_blank');
+        toast({ title: '✉️ Email préparé', description: 'Votre client de messagerie s\'est ouvert avec le message pré-rempli.' });
+      }
+
+      // Démarrer le polling pour détecter le consentement
+      resetPolling(prm);
+      setIsPolling(true);
+
+    } catch (err) {
+      toast({ title: 'Erreur', description: err.message, variant: 'destructive' });
+    } finally {
+      setSendingConsent(false);
+    }
   };
 
   const handlePdf = useCallback(() => {
@@ -347,42 +437,149 @@ export default function AdminEnedis() {
                       </button>
                     </div>
 
-                    {/* ── Mode Client Présent ── */}
+                    {/* ── Mode Client Présent : SMS / WhatsApp / Email ── */}
                     {shareMode === 'present' && (
                       <div className="space-y-3">
-                        {!showQR ? (
-                          <button
-                            onClick={handleShowQR}
-                            disabled={!isPrmValid}
-                            className="w-full transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed group"
-                          >
-                            <div className="relative overflow-hidden rounded-2xl border-2 border-transparent group-hover:border-blue-400 transition-all">
-                              <div className="flex items-center justify-center gap-3 h-14 bg-[#008ECE] text-white font-bold text-sm rounded-2xl">
-                                <QrCode size={20} />
-                                Afficher le QR Code
+                        {!consentSent ? (
+                          <>
+                            {/* Nom du client */}
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-bold uppercase text-slate-500 tracking-widest ml-1">Nom du client (optionnel)</label>
+                              <div className="relative">
+                                <Input
+                                  value={clientName}
+                                  onChange={e => setClientName(e.target.value)}
+                                  placeholder="Ex: Jean Dupont"
+                                  className="h-11 border-slate-200 rounded-xl pl-10 text-sm"
+                                />
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
                               </div>
                             </div>
-                          </button>
-                        ) : (
-                          <div className="bg-white rounded-2xl border-2 border-blue-200 p-5 text-center space-y-3 shadow-lg">
-                            <p className="text-sm font-bold text-slate-700">📱 Faites scanner par le client</p>
-                            <p className="text-xs text-slate-500">
-                              Il peut utiliser <span className="font-bold text-blue-600">FranceConnect</span> —
-                              <span className="text-green-700 font-semibold"> pas besoin de créer un compte Enedis</span>
-                            </p>
-                            {qrUrl && (
-                              <div className="flex justify-center">
-                                <img src={qrUrl} alt="QR code consentement Enedis" className="w-48 h-48 rounded-xl shadow-md border border-slate-100" />
+
+                            {/* Contact du client */}
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-bold uppercase text-slate-500 tracking-widest ml-1">Téléphone ou email du client</label>
+                              <div className="relative">
+                                <Input
+                                  value={clientContact}
+                                  onChange={e => setClientContact(e.target.value)}
+                                  placeholder="06 XX XX XX XX ou email@client.fr"
+                                  className="h-11 border-slate-200 rounded-xl pl-10 text-sm"
+                                />
+                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                              </div>
+                            </div>
+
+                            {/* Boutons d'envoi */}
+                            <div className="grid grid-cols-3 gap-2">
+                              <button
+                                onClick={() => handleSendConsent('sms')}
+                                disabled={!isPrmValid || !clientContact.trim() || sendingConsent}
+                                className="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 transition-all hover:scale-[1.03] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                <Smartphone size={20} />
+                                <span className="text-[11px] font-bold">SMS</span>
+                              </button>
+                              <button
+                                onClick={() => handleSendConsent('whatsapp')}
+                                disabled={!isPrmValid || !clientContact.trim() || sendingConsent}
+                                className="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-green-200 bg-green-50 hover:bg-green-100 text-green-700 transition-all hover:scale-[1.03] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                <MessageCircle size={20} />
+                                <span className="text-[11px] font-bold">WhatsApp</span>
+                              </button>
+                              <button
+                                onClick={() => handleSendConsent('email')}
+                                disabled={!isPrmValid || !clientContact.trim() || sendingConsent}
+                                className="flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 transition-all hover:scale-[1.03] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                <Mail size={20} />
+                                <span className="text-[11px] font-bold">Email</span>
+                              </button>
+                            </div>
+
+                            {sendingConsent && (
+                              <div className="flex items-center justify-center gap-2 py-2">
+                                <RotateCw size={14} className="animate-spin text-blue-500" />
+                                <span className="text-xs text-slate-500">Préparation de l'envoi…</span>
                               </div>
                             )}
-                            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-                              <Clock size={14} className="text-amber-600 shrink-0 animate-pulse" />
-                              <p className="text-[11px] text-amber-800">
-                                Détection automatique active ({pollingSeconds}s)
-                              </p>
+
+                            {/* QR Code option */}
+                            <div className="relative py-1">
+                              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-100" /></div>
+                              <div className="relative flex justify-center text-[9px] uppercase tracking-[0.2em]">
+                                <span className="bg-white px-3 text-slate-400 font-bold">ou scanner un QR code</span>
+                              </div>
                             </div>
-                            <button onClick={handleStopPolling} className="text-[10px] text-slate-400 hover:text-slate-600 underline">
-                              Annuler
+
+                            {!showQR ? (
+                              <button
+                                onClick={handleShowQR}
+                                disabled={!isPrmValid}
+                                className="w-full transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed group"
+                              >
+                                <div className="relative overflow-hidden rounded-2xl border-2 border-transparent group-hover:border-blue-400 transition-all">
+                                  <div className="flex items-center justify-center gap-3 h-12 bg-[#008ECE] text-white font-bold text-sm rounded-2xl">
+                                    <QrCode size={18} />
+                                    Afficher le QR Code
+                                  </div>
+                                </div>
+                              </button>
+                            ) : (
+                              <div className="bg-white rounded-2xl border-2 border-blue-200 p-5 text-center space-y-3 shadow-lg">
+                                <p className="text-sm font-bold text-slate-700">📱 Faites scanner par le client</p>
+                                <p className="text-xs text-slate-500">
+                                  Le client donnera son accord directement sur <span className="font-bold text-blue-600">Nelsonpv.fr</span>
+                                </p>
+                                {(nelsonQrUrl || qrUrl) && (
+                                  <div className="flex justify-center">
+                                    <img src={nelsonQrUrl || qrUrl} alt="QR code consentement Nelson" className="w-48 h-48 rounded-xl shadow-md border border-slate-100" />
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                                  <Clock size={14} className="text-amber-600 shrink-0 animate-pulse" />
+                                  <p className="text-[11px] text-amber-800">
+                                    Détection automatique active ({pollingSeconds}s)
+                                  </p>
+                                </div>
+                                <button onClick={handleStopPolling} className="text-[10px] text-slate-400 hover:text-slate-600 underline">
+                                  Annuler
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          /* Après envoi : confirmation + polling */
+                          <div className="bg-green-50 rounded-2xl border-2 border-green-200 p-5 space-y-3 animate-in fade-in zoom-in-95 duration-300">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-green-100 rounded-xl">
+                                <Send size={18} className="text-green-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-green-800">Demande envoyée !</p>
+                                <p className="text-xs text-green-600">Le lien de consentement a été préparé pour {clientContact}</p>
+                              </div>
+                            </div>
+
+                            {isPolling && (
+                              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                                <Clock size={14} className="text-amber-600 shrink-0 animate-pulse" />
+                                <div className="flex-1">
+                                  <p className="text-xs font-bold text-amber-800">Détection automatique active</p>
+                                  <p className="text-[10px] text-amber-700">Vous serez averti dès la validation ({pollingSeconds}s)</p>
+                                </div>
+                                <button onClick={handleStopPolling} className="text-amber-600 hover:text-amber-800 p-1">
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            )}
+
+                            <button
+                              onClick={() => { setConsentSent(false); setConsentToken(null); }}
+                              className="w-full text-xs text-slate-500 hover:text-slate-700 underline py-1"
+                            >
+                              Envoyer une nouvelle demande
                             </button>
                           </div>
                         )}
