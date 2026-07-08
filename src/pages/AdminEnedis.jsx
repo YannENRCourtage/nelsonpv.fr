@@ -164,7 +164,7 @@ export default function AdminEnedis() {
   const handleShowQR = async () => {
     // Créer une demande de consentement pour le QR code Nelson
     try {
-      const res = await fetch('/api/enedis/consent-request', {
+      const res = await fetch('/api/enedis/consent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -204,7 +204,7 @@ export default function AdminEnedis() {
     setSendingConsent(true);
     try {
       // Créer la demande de consentement côté serveur
-      const res = await fetch('/api/enedis/consent-request', {
+      const res = await fetch('/api/enedis/consent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

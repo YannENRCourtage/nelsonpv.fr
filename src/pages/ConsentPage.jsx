@@ -20,7 +20,7 @@ export default function ConsentPage() {
 
     const loadConsent = async () => {
       try {
-        const res = await fetch(`/api/enedis/consent-validate?token=${token}`);
+        const res = await fetch(`/api/enedis/consent?action=get_info&token=${token}`);
         const data = await res.json();
         if (!res.ok) {
           setStatus(data.status === 'expired' ? 'expired' : 'error');
@@ -42,7 +42,7 @@ export default function ConsentPage() {
   const handleValidate = async () => {
     setValidating(true);
     try {
-      const res = await fetch('/api/enedis/consent-validate', {
+      const res = await fetch('/api/enedis/consent?action=validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
