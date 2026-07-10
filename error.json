@@ -1,0 +1,21 @@
+﻿{
+    "prm":  "17526049155783",
+    "period":  {
+                   "start":  "2025-07-08",
+                   "end":  "2026-07-08"
+               },
+    "data":  {
+                 "daily":  {
+                               "error":  "Request failed with status code 500",
+                               "status":  500
+                           },
+                 "loadCurve":  {
+                                   "error":  "Request failed with status code 500",
+                                   "status":  500
+                               },
+                 "maxPower":  {
+                                  "error":  "Request failed with status code 500",
+                                  "status":  500
+                              }
+             }
+}

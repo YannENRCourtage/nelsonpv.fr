@@ -124,7 +124,7 @@ export function Roof({ width, length, roofPitch, eaveHeight, ridgeHeight, buildi
         if (isOmbriereDouble) centerHeight -= 0.70;
         if (isOmbriereSimple) centerHeight += 0.55;
 
-        let lift = 0.25;
+        let lift = 0.25 + 0.15; // USER REQUEST 08/07/2026: Remonter la couverture de 15cm
         if (isOmbriereDouble) {
             // Previous logic added +0.60 relative to structure. 
             // We keep this because the structure moved down, so the relative cover position is same.

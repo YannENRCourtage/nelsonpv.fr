@@ -421,6 +421,9 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
 
     // Handle cell click - capture cursor position and switch to editing mode
     const handleCellClick = (col, e) => {
+        if (editingCell === col) {
+            return; // Permet de sélectionner du texte sans forcer la position du curseur
+        }
         const input = e.target;
         const clickPosition = input.selectionStart || 0;
         const formattedValue = getDisplayValue(col, row.data[col]) || '';
@@ -507,21 +510,32 @@ const DraggableRow = ({ row, index, columns, columnWidths, moveRow, updateCell, 
                             {/* Span invisible pour forcer la largeur sur mobile en fonction du contenu */}
                             <span className="invisible whitespace-nowrap px-2 py-2 pr-8 text-sm lg:hidden">{displayValue}</span>
                             <input
-                                ref={(el) => inputRefs.current[col] = el}
-                                className="w-full h-full px-2 py-2 pr-8 bg-transparent focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-inset focus:ring-blue-500 transition-colors text-sm lg:truncate cursor-text lg:static absolute inset-0"
-                                value={displayValue}
-                                onChange={(e) => updateCell(row.id, col, e.target.value)}
-                                onFocus={() => handleCellFocus(col)}
-                                onBlur={() => handleCellBlur(col)}
-                                onMouseDown={(e) => {
-                                    e.stopPropagation(); // Empêche le drag de démarrer sur l'input
-                                }}
-                                onClick={(e) => {
-                                    e.stopPropagation(); // Empêche toute interférence avec le clic
-                                    handleCellClick(col, e); // Capture cursor position when clicking
-                                }}
-                                title={row.data[col]}
-                            />
+                                    ref={(el) => inputRefs.current[col] = el}
+                                    className={`w-full h-full px-2 py-2 pr-8 bg-transparent focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-inset focus:ring-blue-500 transition-colors text-sm lg:truncate cursor-text lg:static absolute inset-0 ${isEditing ? '' : 'pointer-events-auto'}`}
+                                    value={isEditing ? getRawValue(col, row.data[col]) : getDisplayValue(col, row.data[col])}
+                                    readOnly={!isEditing}
+                                    onChange={(e) => isEditing && updateCell(row.id, col, e.target.value)}
+                                    onFocus={() => {
+                                        setEditingCell(col);
+                                        const rawValue = getRawValue(col, row.data[col]) || '';
+                                        setCursorPosition({ col, position: rawValue.length, timestamp: Date.now() });
+                                    }}
+                                    onBlur={() => handleCellBlur(col)}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!isEditing) {
+                                            setEditingCell(col);
+                                            const rawValue = getRawValue(col, row.data[col]) || '';
+                                            setCursorPosition({ col, position: rawValue.length, timestamp: Date.now() });
+                                        }
+                                    }}
+                                    onDoubleClick={(e) => {
+                                        e.stopPropagation();
+                                        e.target.select(); // Sélectionne tout le texte de la cellule
+                                    }}
+                                    title={row.data[col]}
+                                />
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -586,13 +600,13 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
 
     const handleTablePointerDown = useCallback((e) => {
         if (e.button !== 0) return; // Bouton gauche uniquement
-        const isInteractive = e.target.closest('button, input, select, [role="button"], a, th');
+        // Exclure les éléments interactifs ET les cellules td pour permettre la saisie
+        const isInteractive = e.target.closest('button, input, select, [role="button"], a, th, td');
         if (isInteractive) return;
         isDraggingScroll.current = true;
         dragStartX.current = e.clientX;
         dragScrollLeft.current = tableContainerRef.current.scrollLeft;
         document.body.style.cursor = 'grabbing';
-        // Capture du pointer pour recevoir les événements même pendant un drag HTML5 natif
         try { tableContainerRef.current.setPointerCapture(e.pointerId); } catch (_) {}
     }, []);
 
@@ -763,6 +777,15 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
     };
 
     // --- Computed Data: Order + Filter + Search ---
+    const getTimestampMs = (createdAt) => {
+        if (!createdAt) return 0;
+        if (typeof createdAt.toMillis === 'function') return createdAt.toMillis();
+        if (typeof createdAt.seconds === 'number') return createdAt.seconds * 1000 + (createdAt.nanoseconds || 0) / 1000000;
+        if (createdAt instanceof Date) return createdAt.getTime();
+        const parsed = new Date(createdAt).getTime();
+        return isNaN(parsed) ? 0 : parsed;
+    };
+
     const displayedRows = useMemo(() => {
         // 1. Order
         let ordered = [];
@@ -770,14 +793,14 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
             ordered = [];
         } else if (!rowOrder || rowOrder.length === 0) {
             // Newest first by default
-            ordered = [...rows].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            ordered = [...rows].sort((a, b) => getTimestampMs(b.createdAt) - getTimestampMs(a.createdAt));
         } else {
             const rowMap = new Map(rows.map(r => [r.id, r]));
             ordered = rowOrder.map(id => rowMap.get(id)).filter(r => r !== undefined);
             
             // Any rows not in the explicit order (new ones from others) go to the TOP
             const inOrderIds = new Set(rowOrder);
-            const others = rows.filter(r => !inOrderIds.has(r.id)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            const others = rows.filter(r => !inOrderIds.has(r.id)).sort((a, b) => getTimestampMs(b.createdAt) - getTimestampMs(a.createdAt));
             ordered = [...others, ...ordered];
         }
 
@@ -901,14 +924,31 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
         return () => clearTimeout(timer);
     }, [columnWidths]);
 
-    // Rows
     const addRow = async () => {
         const newRowData = { data: {} };
         columns.forEach(c => newRowData.data[c] = '');
         const createdRow = await apiService.addMondayRow(data.id, newRowData);
-        const newOrder = [createdRow.id, ...rowOrder]; // Add to top usually better? Monday adds to bottom.
-        // Let's add to bottom to match previous logic
-        // const newOrder = [...rowOrder, createdRow.id];
+        
+        let newOrder = [...rowOrder];
+        if (rowOrder && rowOrder.length > 0) {
+            newOrder = [createdRow.id, ...rowOrder];
+        } else {
+            // Si rowOrder est vide, on force la création d'un ordre complet avec la nouvelle ligne en premier
+            const getTimestampMsLocal = (createdAt) => {
+                if (!createdAt) return 0;
+                if (typeof createdAt.toMillis === 'function') return createdAt.toMillis();
+                if (typeof createdAt.seconds === 'number') return createdAt.seconds * 1000 + (createdAt.nanoseconds || 0) / 1000000;
+                if (createdAt instanceof Date) return createdAt.getTime();
+                const parsed = new Date(createdAt).getTime();
+                return isNaN(parsed) ? 0 : parsed;
+            };
+            const existingIds = rows
+                .filter(r => r.id !== createdRow.id)
+                .sort((a, b) => getTimestampMsLocal(b.createdAt) - getTimestampMsLocal(a.createdAt))
+                .map(r => r.id);
+            newOrder = [createdRow.id, ...existingIds];
+        }
+        
         setRowOrder(newOrder);
         saveMetadata(columns, newOrder, columnWidths);
     };

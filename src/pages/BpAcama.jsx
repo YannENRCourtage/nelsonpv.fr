@@ -489,8 +489,7 @@ function computeBatteryProfitability(config) {
   
   const {
     inflationAnnuelle = 2,
-    degradationAnnuelle = 3,
-    capaciteDoD = 80,
+    degradationAnnuelle = 1,
     batterieBms = 50209,
     genieCivil = 6000,
     raccordement = 19900,
@@ -504,11 +503,12 @@ function computeBatteryProfitability(config) {
     rendementRoundTrip = 88,
     maintenanceAn = 1500,
     revenuBailleurAn = 1250,
-    supervisionAn = 2000,
+    gestionChargeAn = 4562.5,
     assuranceAn = 353,
-    recyclage = 10000,
+    retributionCommAn = 0,
     commissionAgregateur = 18,
     turpeAn = 2500,
+    iferAn = 625,
     tauxEmprunt = 4,
     dureeEmprunt = 20,
     apport = 0,
@@ -521,12 +521,7 @@ function computeBatteryProfitability(config) {
   const effectiveFraisComm = isInvestPropre ? 0 : (fraisCommerciaux || 0);
 
   const capexTotal = batterieBms + genieCivil + raccordement + developpement + effectiveFraisComm;
-  
-  const dodFactor = (capaciteDoD || 80) / 100;
-  const realArbitrage = arbitrageEnergie * dodFactor;
-  const realEffacement = effacement * dodFactor;
-  
-  const revenusBrutsAn1 = realArbitrage + reserveFCR + mecanismeCapacite + realEffacement;
+  const revenusBrutsAn1 = arbitrageEnergie + reserveFCR + mecanismeCapacite + effacement;
   
   const emprunt = Math.max(0, capexTotal - apport);
   const annuite = emprunt > 0 ? -PMT(tauxEmprunt / 100, dureeEmprunt, emprunt) : 0;
@@ -537,7 +532,7 @@ function computeBatteryProfitability(config) {
   let gainNetEtude = 0;
   let gainNet20A = 0;
   let dynamicPayback = null;
-  let runningUnleveredCF = -capexTotal;
+  let runningCashFlow = -apport;
   let resY1 = {};
   let totalOpexStudy = 0;
   let totalRevenueStudy = 0;
@@ -545,96 +540,82 @@ function computeBatteryProfitability(config) {
   const rows = [];
   const maxYearsLoop = Math.max(20, dureeEtude);
 
-  let totalDebtServiceStudy = 0;
-  let totalInterestStudy = 0;
-  let dscrs = [];
+    let totalDebtServiceStudy = 0;
+    let totalInterestStudy = 0;
+    for (let y = 1; y <= maxYearsLoop; y++) {
+        const infl = Math.pow(1 + inflationAnnuelle / 100, y - 1);
+        const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
 
-  for (let y = 1; y <= maxYearsLoop; y++) {
-      const infl = Math.pow(1 + inflationAnnuelle / 100, y - 1);
-      const deg = Math.pow(1 - degradationAnnuelle / 100, y - 1);
+        const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100);
+        const chargesFixesNoBailleur = (maintenanceAn + assuranceAn + turpeAn + iferAn + gestionChargeAn) * infl;
+        const chargesFixes = chargesFixesNoBailleur + (revenuBailleurAn || 0);
+        
+        const chargesCom = revNet * (commissionAgregateur / 100);
+        const ebe = revNet - (chargesFixes + chargesCom);
 
-      const revNet = revenusBrutsAn1 * deg * infl * (disponibilite / 100);
-      const chargesFixesNoBailleur = (maintenanceAn + assuranceAn + turpeAn + supervisionAn) * infl;
-      const chargesFixes = chargesFixesNoBailleur + (revenuBailleurAn || 0);
-      
-      const chargesCom = revNet * (commissionAgregateur / 100);
-      const coutRecyclage = y === dureeEtude ? (recyclage || 0) * infl : 0;
-      
-      const ebe = revNet - (chargesFixes + chargesCom + coutRecyclage);
+        const interest = y <= dureeEmprunt ? remainingDebt * (tauxEmprunt / 100) : 0;
+        const principal = y <= dureeEmprunt ? annuite - interest : 0;
+        const serviceDette = y <= dureeEmprunt ? annuite : 0;
+        
+        const amortissement = capexTotal / dureeEtude;
+        const ebit = ebe - amortissement - interest;
+        const is = ebit > 0 ? ebit * (tauxIS / 100) : 0;
+        
+        const cashFlow = ebe - interest - principal - is;
+        
+        if (y <= dureeEtude) {
+            if (dynamicPayback === null && runningCashFlow + cashFlow >= 0) {
+                dynamicPayback = (y - 1) + (Math.abs(runningCashFlow) / cashFlow);
+            }
+            runningCashFlow += cashFlow;
+            gainNetEtude += cashFlow;
+            totalOpexStudy += (chargesFixes + chargesCom);
+            totalRevenueStudy += revNet;
+            totalDebtServiceStudy += serviceDette;
+            totalInterestStudy += interest;
 
-      const interest = y <= dureeEmprunt ? remainingDebt * (tauxEmprunt / 100) : 0;
-      const principal = y <= dureeEmprunt ? annuite - interest : 0;
-      const serviceDette = y <= dureeEmprunt ? annuite : 0;
-      
-      const amortissement = capexTotal / dureeEtude;
-      const ebit = ebe - amortissement - interest;
-      const is = ebit > 0 ? ebit * (tauxIS / 100) : 0;
-      
-      const cashFlow = ebe - interest - principal - is;
-      const cafds = ebe - is;
-      const dscr = serviceDette > 1 ? (cafds / serviceDette) : 9.99;
-      
-      if (y <= dureeEtude) {
-          // CF incluant le coût de la dette (intérêts) sans compter le principal pour ne pas double-compter le CAPEX initial
-          const cfWithInterest = ebe - interest - is;
-          
-          if (dynamicPayback === null && runningUnleveredCF + cfWithInterest >= 0) {
-              dynamicPayback = (y - 1) + (Math.abs(runningUnleveredCF) / cfWithInterest);
-          }
-          runningUnleveredCF += cfWithInterest;
+        // Project Cash Flow (Unlevered): EBE - Tax (without interest shield)
+        const ebitUnlevered = ebe - (capexTotal / dureeEtude);
+        const taxUnlevered = ebitUnlevered > 0 ? ebitUnlevered * (tauxIS / 100) : 0;
+        cashFlowsProjet.push(ebe - taxUnlevered);
+        
+        // Equity Cash Flow (Levered): EBE - Debt Service - Tax (with interest shield)
+        cashFlowsFP.push(cashFlow);
 
-          gainNetEtude += cashFlow;
-          totalOpexStudy += (chargesFixes + chargesCom + coutRecyclage);
-          totalRevenueStudy += revNet;
-          totalDebtServiceStudy += serviceDette;
-          totalInterestStudy += interest;
+        const yearLabel = 2026 + y - 1;
+        rows.push({
+          year: yearLabel,
+          arbitrage: arbitrageEnergie * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
+          reserve: reserveFCR * deg * infl * (disponibilite / 100),
+          capacite: mecanismeCapacite * deg * infl * (disponibilite / 100),
+          effacement: effacement * deg * infl * (disponibilite / 100),
+          caTotal: revNet,
+          opex: chargesFixes + chargesCom,
+          maint: maintenanceAn * infl,
+          revBailleur: revenuBailleurAn, // Fixed
+          gestionCharge: gestionChargeAn * infl,
+          assur: assuranceAn * infl,
+          turpe: turpeAn * infl,
+          ifer: iferAn * infl,
+          fraisAgregateur: chargesCom,
+          serviceDette: interest + principal,
+          ebe,
+          interest,
+          principal,
+          tresorerie: cashFlow
+        });
 
-          // Project Cash Flow (intégrant l'impact des intérêts bancaires sur la renta)
-          cashFlowsProjet.push(cfWithInterest);
-          // Equity Cash Flow (Levered)
-          cashFlowsFP.push(cashFlow);
-          
-          if (serviceDette > 0) dscrs.push(dscr);
+        if (y === 1) {
+          resY1 = { revNet, ebe, dscr: annuite > 0 ? ebe / annuite : 9.99 };
+        }
+    }
 
-          const yearLabel = 2026 + y - 1;
-          rows.push({
-            year: yearLabel,
-            arbitrage: realArbitrage * deg * infl * (disponibilite / 100) * (rendementRoundTrip / 100),
-            reserve: reserveFCR * deg * infl * (disponibilite / 100),
-            capacite: mecanismeCapacite * deg * infl * (disponibilite / 100),
-            effacement: realEffacement * deg * infl * (disponibilite / 100),
-            caTotal: revNet,
-            opex: chargesFixes + chargesCom + coutRecyclage,
-            maint: maintenanceAn * infl,
-            revBailleur: revenuBailleurAn, // Fixed
-            supervision: supervisionAn * infl,
-            assur: assuranceAn * infl,
-            turpe: turpeAn * infl,
-            recyclage: coutRecyclage,
-            fraisAgregateur: chargesCom,
-            serviceDette: interest + principal,
-            ebe,
-            interest,
-            principal,
-            dscr,
-            tresorerie: cashFlow
-          });
+    if (y <= 20) {
+        gainNet20A += cashFlow;
+    }
 
-          if (y === 1) {
-            resY1 = { revNet, ebe, dscr };
-          }
-      }
-
-      if (y <= 20 && y > dureeEtude) {
-          gainNet20A += cashFlow;
-      } else if (y <= dureeEtude) {
-          gainNet20A += cashFlow;
-      }
-
-      remainingDebt = Math.max(0, remainingDebt - principal);
+    remainingDebt = Math.max(0, remainingDebt - principal);
   }
-
-  const dscrMoyen = dscrs.length > 0 ? dscrs.reduce((a, b) => a + b, 0) / dscrs.length : resY1.dscr;
 
   return {
     capexTotal,
@@ -644,7 +625,6 @@ function computeBatteryProfitability(config) {
     triFP: IRR(cashFlowsFP, 0.1),
     payback: dynamicPayback || (resY1.ebe > 0 ? capexTotal / resY1.ebe : dureeEtude),
     dscrAn1: resY1.dscr,
-    dscrMoyen,
     gainNetEtude,
     gainNet20A,
     totalOpexStudy,
@@ -661,14 +641,14 @@ function computeBusinessPlan(params) {
   const {
     kwc = 346.84,
     productible = 1123.08,
-    tarifBas = 0.0836,
+    tarifBas = 0.0846,
     tarifHaut = 0.04,
     seuilKwhKwc = 1100,
     maintenance = 1734.20,
     locationCompteur = 660,
     assurance = 867.10,
-    taxesLocales = 900,
-    gestionAdmin = 396,
+    taxesLocales = 0,
+    gestionAdmin = 0,
     totalInvestissement = 435655.12,
     coutCentrale = 0,
     coutCharpente = 0,
@@ -680,7 +660,6 @@ function computeBusinessPlan(params) {
     soulteCoeff = 0,
     dureeEmprunt = 20,
     tauxCredit = 4,
-    apportPercent = 10,
     indexationTarif = 0.006,
     indexationOpex = 0.02,
     degradation = 0.004,
@@ -721,7 +700,7 @@ function computeBusinessPlan(params) {
   const actualSoulteCapitalized = params.renteType === 'soulte' ? calculatedSoulte : (params.renteType === 'none' ? 0 : (params.soulte || 0));
 
   const totalConstruction = (coutCentrale || 0) + (coutCharpente || 0) + (raccordement || 0) + (frais || 0) + (developpement || 0) + actualSoulteCapitalized;
-  const apport10 = totalConstruction * (apportPercent / 100);
+  const apport10 = totalConstruction * 0.1;
   const emprunt = Math.max(0, totalConstruction - apport10 - (params.apport || 0));
   const serviceDette = emprunt > 0 ? -PMT(tauxCredit / 100, dureeEmprunt, emprunt) : 0;
 
@@ -1013,12 +992,12 @@ function SignatureArea({ data, update }) {
 }
 
 function TableauPrevisionnelBatterie({ rows, detailed }) {
-  const DataRow = ({ label, propName, isCurrency, isNumber, bold, className, indent }) => (
+  const DataRow = ({ label, propName, isCurrency, bold, className, indent }) => (
     <tr className={`border-b border-slate-200 bg-white hover:bg-slate-50 ${className}`}>
       <td className={`px-2 py-1 font-medium bg-slate-50 text-[11px] border-r border-slate-200 w-[180px] ${bold ? 'font-bold' : ''} ${indent ? 'pl-4 italic text-slate-500' : ''}`}>{label}</td>
       {rows.map((r, i) => (
         <td key={i} className={`px-1 py-1 text-right border-r border-slate-200 text-[11px] min-w-[50px] ${bold ? 'font-bold' : ''}`}>
-          {isCurrency ? fmtEur(r[propName]) : (isNumber ? fmt(r[propName], 2) : fmt(r[propName], 0))}
+          {isCurrency ? fmtEur(r[propName]) : fmt(r[propName], 0)}
         </td>
       ))}
     </tr>
@@ -1056,18 +1035,18 @@ function TableauPrevisionnelBatterie({ rows, detailed }) {
               <>
                 <DataRow label="Maintenance" propName="maint" isCurrency indent />
                 <DataRow label="Revenu bailleur" propName="revBailleur" isCurrency indent />
-                <DataRow label="Supervision" propName="supervision" isCurrency indent />
+                <DataRow label="Gestion de la charge" propName="gestionCharge" isCurrency indent />
+                <DataRow label="Rétribution commerciale" propName="retribComm" isCurrency indent />
                 <DataRow label="Assurance" propName="assur" isCurrency indent />
                 <DataRow label="Commission Agrégateur" propName="fraisAgregateur" isCurrency indent />
                 <DataRow label="TURPE" propName="turpe" isCurrency indent />
-                <DataRow label="Recyclage" propName="recyclage" isCurrency indent />
+                <DataRow label="IFER" propName="ifer" isCurrency indent />
               </>
             ) : (
               <DataRow label="Charges d'Exploitation (OPEX)" propName="opex" isCurrency />
             )}
             
             <DataRow label="Service de la Dette" propName="serviceDette" isCurrency />
-            <DataRow label="DSCR" propName="dscr" isNumber />
             <DataRow label="EBITDA (EBE)" propName="ebe" isCurrency bold className="bg-blue-50 text-blue-800" />
             
             <tr className="bg-amber-400 font-black text-slate-900 text-[11px]">
@@ -1097,14 +1076,15 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
   
   const totalOpexAn1 = (config.maintenanceAn || 0) + 
                        (config.revenuBailleurAn || 0) + 
-                       (config.supervisionAn ?? 2000) + 
+                       (config.gestionChargeAn || 0) + 
                        (config.assuranceAn || 0) + 
                        commAgregateurMontant + 
-                       (config.turpeAn || 0);
+                       (config.turpeAn || 0) + 
+                       (config.iferAn || 0);
   
   const currentModelKey = config.batteryModelKey || 'cesc_mercury_261';
   const selectedModel = BATTERY_MODELS.find(m => m.id === currentModelKey) || BATTERY_MODELS[0];
-  const nbBricks = config.nbBricks || 2;
+  const nbBricks = config.nbBricks || 1;
 
   const realPower = nbBricks * selectedModel.power;
   const realEnergy = nbBricks * selectedModel.capacity;
@@ -1114,58 +1094,55 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
     const qty = quantity;
     const p = qty * model.power;
     const batteryBms = qty * model.price;
-    const tranches = p / 250;
     
-    const rHT = config.raccordementHT || 10;
-    const dPriv = config.distancePriv || 10;
+    const rHT = config.raccordementHT || 100;
+    const dPriv = config.distancePriv || 100;
     const newRaccordement = getHtaCost(p, rHT) + (dPriv * 20);
     const newGenieCivil = 6000 + (qty - 1) * 1300;
     const newDeveloppement = 6000 + (qty - 1) * 500;
-    const fraisComm = 25 * p;
+    const fraisComm = 40 * p;
     
-    setParams(prev => {
-      const capaciteDoD = prev.batteryConfig?.capaciteDoD ?? 80;
-      return {
-        ...prev,
-        batteryConfig: {
-          ...prev.batteryConfig,
-          batteryModelKey: modelId,
-          nbBricks: qty,
-          puissanceDemandee: p,
-          batterieBms: batteryBms,
-          genieCivil: newGenieCivil,
-          developpement: newDeveloppement,
-          fraisCommerciaux: fraisComm,
-          raccordement: newRaccordement,
-          arbitrageEnergie: 30 * p * (capaciteDoD / 100),
-          reserveFCR: 130 * p,
-          mecanismeCapacite: 20 * p,
-          effacement: 20 * p * (capaciteDoD / 100),
-          maintenanceAn: 6 * p,
-          revenuBailleurAn: 900 * tranches,
-          supervisionAn: 1000 * (p / 125),
-          recyclage: 5000 * (p / 125),
-          turpeAn: 20 * p,
-          onduleurPcs: 0,
-          assuranceAn: 1000 * tranches
-        }
-      };
-    });
+    const capexPlusRacc = batteryBms + newGenieCivil + newRaccordement + newDeveloppement + fraisComm;
+    
+    const revBruts = (30 * p) + (150 * p) + (20 * p) + (20 * p);
+
+    setParams(prev => ({
+      ...prev,
+      batteryConfig: {
+        ...prev.batteryConfig,
+        batteryModelKey: modelId,
+        nbBricks: qty,
+        puissanceDemandee: p,
+        batterieBms: batteryBms,
+        genieCivil: newGenieCivil,
+        developpement: newDeveloppement,
+        fraisCommerciaux: fraisComm,
+        raccordement: newRaccordement,
+        arbitrageEnergie: 30 * p,
+        reserveFCR: 150 * p,
+        mecanismeCapacite: 20 * p,
+        effacement: 20 * p,
+        maintenanceAn: 6 * p,
+        revenuBailleurAn: 1250 * qty,
+        gestionChargeAn: 4562.5 * qty,
+        turpeAn: 20 * p,
+        iferAn: 5 * p,
+        onduleurPcs: 0,
+        assuranceAn: Math.round(capexPlusRacc * 0.004)
+      }
+    }));
   };
 
   const update = (k, v) => {
     setParams(prev => {
       const newConfig = { ...(prev.batteryConfig || {}), [k]: v };
-      const pReq = newConfig.puissanceDemandee || 125;
       if (k === 'raccordementHT' || k === 'distancePriv') {
-        const rHT = newConfig.raccordementHT || 10;
-        const dPriv = newConfig.distancePriv || 10;
+        const pReq = newConfig.puissanceDemandee || 125;
+        const rHT = newConfig.raccordementHT || 100;
+        const dPriv = newConfig.distancePriv || 100;
         newConfig.raccordement = getHtaCost(pReq, rHT) + (dPriv * 20);
-      }
-      if (k === 'capaciteDoD') {
-        const dodFactor = (v || 80) / 100;
-        newConfig.arbitrageEnergie = 30 * pReq * dodFactor;
-        newConfig.effacement = 20 * pReq * dodFactor;
+        const totalCapex = (newConfig.batterieBms || 0) + (newConfig.genieCivil || 0) + newConfig.raccordement + (newConfig.developpement || 0) + (newConfig.fraisCommerciaux || 0);
+        newConfig.assuranceAn = Math.round(totalCapex * 0.004);
       }
       return { ...prev, batteryConfig: newConfig };
     });
@@ -1238,7 +1215,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                 min="1"
                 className="border border-slate-200 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-500 h-[30px]"
                 value={nbBricks}
-                onChange={e => updateBatterySpecs(currentModelKey, parseInt(e.target.value) || 2)}
+                onChange={e => updateBatterySpecs(currentModelKey, parseInt(e.target.value) || 1)}
               />
            </div>
            
@@ -1258,8 +1235,8 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100">
             <GroupTitle title="DONNEES DU PROJET" />
             <div className="grid grid-cols-1 gap-2">
-              <Field label="Raccordement HT" value={config.raccordementHT ?? 10} onChange={v => update('raccordementHT', v)} type="number" suffix="m" />
-              <Field label="Distance privée" value={config.distancePriv ?? 10} onChange={v => update('distancePriv', v)} type="number" suffix="m" />
+              <Field label="Raccordement HT" value={config.raccordementHT || 100} onChange={v => update('raccordementHT', v)} type="number" suffix="m" />
+              <Field label="Distance privée" value={config.distancePriv || 100} onChange={v => update('distancePriv', v)} type="number" suffix="m" />
             </div>
           </div>
 
@@ -1304,14 +1281,13 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             <div className="pt-2 border-t border-slate-100 mt-2">
                <Field label="Disponibilité" value={config.disponibilite} onChange={v => update('disponibilite', v)} type="number" suffix="%" />
                <Field label="Rendement R-T" value={config.rendementRoundTrip} onChange={v => update('rendementRoundTrip', v)} type="number" suffix="%" />
-               <Field label="Capacité utilisée DoD" value={config.capaciteDoD ?? 80} onChange={v => update('capaciteDoD', v)} type="number" suffix="%" />
             </div>
           </div>
 
           <div className="pt-2">
             <GroupTitle title="Financement" />
             <div className="grid grid-cols-1 gap-2">
-              <Field label="Durée" value={config.dureeEmprunt || 8} onChange={v => update('dureeEmprunt', v)} type="number" suffix="ans" />
+              <Field label="Durée" value={config.dureeEmprunt || 20} onChange={v => update('dureeEmprunt', v)} type="number" suffix="ans" />
               <Field label="Taux" value={config.tauxEmprunt || 4} onChange={v => update('tauxEmprunt', v)} type="number" suffix="%" step={0.1} />
             </div>
           </div>
@@ -1322,7 +1298,7 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
           <div className="grid grid-cols-1 gap-2">
             <Field label="Maintenance /an" value={config.maintenanceAn} onChange={v => update('maintenanceAn', v)} type="number" suffix="€" />
             <Field label="Revenu bailleur" value={config.revenuBailleurAn} onChange={v => update('revenuBailleurAn', v)} type="number" suffix="€" />
-            <Field label="Supervision /an" value={config.supervisionAn ?? 2000} onChange={v => update('supervisionAn', v)} type="number" suffix="€" />
+            <Field label="Gestion de la charge" value={config.gestionChargeAn} onChange={v => update('gestionChargeAn', v)} type="number" suffix="€" />
             <Field label="Assurance /an" value={config.assuranceAn} onChange={v => update('assuranceAn', v)} type="number" suffix="€" />
             <div className="flex items-center gap-2">
               <label className="text-[13px] text-slate-500 w-32 shrink-0">Comm. Agrégateur</label>
@@ -1349,16 +1325,25 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
             </div>
             <div className="grid grid-cols-2 gap-4">
               <Field label="TURPE /an" value={config.turpeAn} onChange={v => update('turpeAn', v)} type="number" suffix="€" />
-              <Field label="Recyclage" value={config.recyclage ?? 10000} onChange={v => update('recyclage', v)} type="number" suffix="€" />
+              <Field label="IFER /an" value={config.iferAn} onChange={v => update('iferAn', v)} type="number" suffix="€" />
             </div>
             <div className="pt-1 mt-1 border-t border-slate-100">
                <Field label="Total OPEX" value={fmtEur(totalOpexAn1)} type="text" disabled className="font-bold text-blue-700" />
             </div>
             <div className="pt-2 border-t border-slate-100 mt-2 space-y-3">
-               <Field label="Durée d'étude" value={config.dureeEtude || 12} onChange={v => update('dureeEtude', v)} type="number" suffix="ans" step={1} />
+               <div className="flex items-center justify-between">
+                 <label className="text-[13px] text-slate-500 font-bold uppercase">Durée d'étude</label>
+                 <select 
+                   className="border border-slate-200 rounded px-2 py-1 text-sm bg-white outline-none focus:ring-1 focus:ring-blue-500 h-[30px] w-24"
+                   value={config.dureeEtude || 12}
+                   onChange={e => update('dureeEtude', parseInt(e.target.value))}
+                 >
+                   {[10, 12, 15, 20, 25, 30].map(v => <option key={v} value={v}>{v} ans</option>)}
+                 </select>
+               </div>
                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Inflation annuelle" value={config.inflationAnnuelle ?? 2} onChange={v => update('inflationAnnuelle', v)} type="number" suffix="%" step={0.5} />
-                  <Field label="Dégradation annuelle" value={config.degradationAnnuelle ?? 3} onChange={v => update('degradationAnnuelle', v)} type="number" suffix="%" step={0.5} />
+                  <Field label="Inflation ann." value={config.inflationAnnuelle ?? 2} onChange={v => update('inflationAnnuelle', v)} type="number" suffix="%" step={0.5} />
+                  <Field label="Dégradation ann." value={config.degradationAnnuelle ?? 1} onChange={v => update('degradationAnnuelle', v)} type="number" suffix="%" step={0.5} />
                </div>
             </div>
           </div>
@@ -1383,8 +1368,8 @@ function BatterySection({ config, setParams, isEnrCourtage, selectedProject, isG
                       <div className="text-lg font-black text-amber-400">{fmt(results.payback, 1)} ans</div>
                    </div>
                    <div className="text-center">
-                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">DSCR Moyen</div>
-                      <div className="text-lg font-black text-green-400">{fmt(results.dscrMoyen, 2)}</div>
+                      <div className="text-[10px] opacity-50 uppercase leading-tight mb-1 font-bold">DSCR Prêt An 1</div>
+                      <div className="text-lg font-black text-green-400">{fmt(results.dscrAn1, 2)}</div>
                    </div>
                  </div>
 
@@ -1625,13 +1610,11 @@ function TabBpProjets({
           if (k === 'typeBat' && v) {
             const normalized = normalizeBatType(v);
             updated.typeBat = normalized;
-            const batData = (activeSuiviBatData || []).find(d => 
-              d.type && normalizeBatType(d.type).trim().toUpperCase() === normalized.trim().toUpperCase()
-            );
+            const batData = (activeSuiviBatData || []).find(d => d.type === normalized);
             if (batData) {
-              updated.kwc = parseFloat(batData.kwc) || updated.kwc;
-              updated.productible = parseFloat(batData.prodMoyen) || updated.productible || 1100;
-              updated.coutCharpente = parseFloat(batData.cout_bat) || updated.coutCharpente;
+              updated.kwc = batData.kwc || updated.kwc;
+              updated.productible = batData.prodMoyen || updated.productible || 1100;
+              updated.coutCharpente = batData.cout_bat || updated.coutCharpente;
               updated.coutCentrale = (updated.kwc || 0) * 490;
             }
           }
@@ -1860,11 +1843,10 @@ function TabBpProjets({
           // Automate coutCharpente if missing or current type matches a batData
           let newCoutCharpente = b.coutCharpente || 0;
           const batData = (localBatData || []).find(d => {
-            if (!d.type) return false;
-            return normalizeBatType(d.type).trim().toUpperCase() === newTypeBat.trim().toUpperCase();
+            return d.type.toUpperCase() === newTypeBat.toUpperCase();
           });
           if (batData && (!newCoutCharpente || newCoutCharpente === 0)) {
-            newCoutCharpente = parseFloat(batData.cout_bat) || 0;
+            newCoutCharpente = batData.cout_bat || 0;
           }
 
           // Recompute costs if power changed
@@ -2454,8 +2436,8 @@ function TabBpProjets({
             <SectionCard title="OPEX ANNUELS" id="pdf-section-opex" className="grid grid-cols-1 gap-y-1 py-2 border-t-4 border-t-purple-500">
               <Field label="Maintenance" value={params.maintenance} onChange={v => setParams(p => ({ ...p, maintenance: v }))} type="number" suffix="€" className="h-7" />
               <Field label="Assurance" value={params.assurance} onChange={v => setParams(p => ({ ...p, assurance: v }))} type="number" suffix="€" className="h-7" />
-              <Field label="Taxes locales" value={params.taxesLocales ?? 900} onChange={v => setParams(p => ({ ...p, taxesLocales: v }))} type="number" suffix="€" className="h-7" />
-              <Field label="Gestion administrative" value={params.gestionAdmin ?? 396} onChange={v => setParams(p => ({ ...p, gestionAdmin: v }))} type="number" suffix="€" className="h-7" />
+              <Field label="Taxes locales" value={params.taxesLocales} onChange={v => setParams(p => ({ ...p, taxesLocales: v }))} type="number" suffix="€" className="h-7" />
+              <Field label="Gestion" value={params.gestionAdmin} onChange={v => setParams(p => ({ ...p, gestionAdmin: v }))} type="number" suffix="€" className="h-7" />
             </SectionCard>
 
             <SectionCard title="BANQUE" id="pdf-section-banque" className="bg-white border-slate-200 border-t-4 border-t-amber-500">
@@ -2463,7 +2445,6 @@ function TabBpProjets({
                 <div className="grid grid-cols-1 gap-y-1">
                   <Field label="Durée" value={params.dureeEmprunt} onChange={v => setParams(p => ({ ...p, dureeEmprunt: v }))} type="number" suffix="ans" className="h-7" />
                   <Field label="Taux" value={params.tauxCredit} onChange={v => setParams(p => ({ ...p, tauxCredit: v }))} type="number" suffix="%" step="0.1" className="h-7" />
-                  <Field label="Apport (%)" value={params.apportPercent ?? 10} onChange={v => setParams(p => ({ ...p, apportPercent: v }))} type="number" suffix="%" step="1" className="h-7" />
                 </div>
                 
                 <div className="pt-2 border-t border-slate-200 mt-2 space-y-1">
@@ -2778,9 +2759,7 @@ function TabSuivi({ projects, projectEdits, updateProjectEdit }) {
       const fullRow = { ...row, ...edit };
       
       const typeBat = fullRow.type_bat;
-      const batData = DETAILED_SUIVI_DATA.find(d => 
-        d.type && d.type.trim().toUpperCase() === (typeBat || '').trim().toUpperCase()
-      );
+      const batData = DETAILED_SUIVI_DATA.find(d => d.type === typeBat);
       
       // Module Dims & Ratio
       const dims = getModuleDims(fullRow.dv || 460);
@@ -3156,7 +3135,7 @@ function TabPropositionClientBAC({ projects, selectedProject, setSelectedProject
         superficie: selectedProject.surface || 'N/A',
         prodMoyen: params?.productible || selectedProject.productible || '',
         puissance: params?.kwc || selectedProject.puissance || '',
-        tarif: params?.tarifBas || '0,0836',
+        tarif: params?.tarifBas || '0,0846',
         ombrage: selectedProject.ombrage || 'NON',
         realiseBy: commFirstName,
         valideBy: '',
@@ -3294,7 +3273,7 @@ function TabPropositionBE({ projects, selectedProject, setSelectedProject, param
         superficie: selectedProject.surface || 'N/A',
         prodMoyen: params?.productible || selectedProject.productible || '',
         puissance: params?.kwc || selectedProject.puissance || '',
-        tarif: params?.tarifBas || '0,0836',
+        tarif: params?.tarifBas || '0,0846',
         ombrage: selectedProject.ombrage || 'NON',
         soulte: bpResults?.soulte || params?.soulte || '',
       }));
@@ -3489,15 +3468,10 @@ function TabDevis({ projects, selectedProject, setSelectedProject, params, setPa
                     value={params.typeBat || ''}
                     onChange={e => {
                       const selectedType = e.target.value;
-                      const bat = (activeSuiviBatData || []).find(b => 
-                        b.type && b.type.trim().toUpperCase() === selectedType.trim().toUpperCase()
-                      );
+                      const bat = (activeSuiviBatData || []).find(b => b.type === selectedType);
                       
                       if (selectedType === selectedProject?.bpAcamaState?.typeBat) {
-                        const saved = { ...selectedProject.bpAcamaState };
-                        if (!saved.taxesLocales) saved.taxesLocales = 900;
-                        if (!saved.gestionAdmin) saved.gestionAdmin = 396;
-                        setParams(p => ({ ...p, ...saved }));
+                        setParams(p => ({ ...p, ...selectedProject.bpAcamaState }));
                         return;
                       }
 
@@ -4217,14 +4191,14 @@ export default function BpAcama() {
       { id: 1, typeBat: '', projectType: 'BAC', surfaceToiture: 0, kwc: 242.88, productible: 1123.08, coutCentrale: 169951.60, coutCharpente: 171381.00, raccordement: 18300.00, frais: 3413.33, soulte: -9048.54, distHta: 100, distPriv: 100 }
     ],
     puissanceUnitaire: 460,
-    tarifBas: 0.0836,
+    tarifBas: 0.0846,
     tarifHaut: 0.04,
     seuilKwhKwc: 1100,
     maintenance: 1734.20,
     locationCompteur: 660,
     assurance: 867.10,
-    taxesLocales: 900,
-    gestionAdmin: 396,
+    taxesLocales: 0,
+    gestionAdmin: 0,
     dureeEmprunt: 20,
     tauxCredit: 4,
     indexationTarif: 0.006,
@@ -4280,51 +4254,36 @@ export default function BpAcama() {
     const features = selectedProject.features || selectedProject.map_state?.features || selectedProject.map_state?.projects || [];
     const buildingFeatures = features.filter(f => (f.type === 'rectangle' && !f.isBattery) || (f.type === 'polygon' && f.isPredefinedBuilding));
     
-    const pReq = selectedProject.bess_puissanceRaccordee ? Number(selectedProject.bess_puissanceRaccordee) : 250;
-    const qty = Math.max(1, Math.round(pReq / 125));
-    const tranches = pReq / 250;
-    const tranches125 = pReq / 125;
-    
-    const rHT = 10;
-    const dPriv = 10;
-    const newRaccordement = getHtaCost(pReq, rHT) + (dPriv * 20);
-    const newGenieCivil = 6000 + (qty - 1) * 1300;
-    const newDeveloppement = 6000 + (qty - 1) * 500;
-    const fraisComm = 25 * pReq;
-
     const defaultBatteryConfig = {
       enabled: false,
       isGlobal: false,
       inflationAnnuelle: 2,
-      degradationAnnuelle: 3,
-      capaciteDoD: 80,
+      degradationAnnuelle: 1,
       batteryModelKey: 'cesc_mercury_261',
-      nbBricks: qty,
-      batterieBms: 34625 * qty,
+      nbBricks: 1,
+      batterieBms: 34625,
       onduleurPcs: 0,
-      genieCivil: newGenieCivil,
-      puissanceDemandee: pReq,
+      genieCivil: 6000,
+      puissanceDemandee: 125,
       dureeDecharge: 2,
-      raccordementHT: 10,
-      distancePriv: 10,
-      raccordement: newRaccordement,
-      developpement: newDeveloppement,
-      fraisCommerciaux: fraisComm,
-      arbitrageEnergie: 30 * pReq * 0.8,
-      reserveFCR: 130 * pReq,
-      mecanismeCapacite: 20 * pReq,
-      effacement: 20 * pReq * 0.8,
+      raccordement: 19900,
+      developpement: 6000,
+      fraisCommerciaux: 5000,
+      arbitrageEnergie: 3750,
+      reserveFCR: 18750,
+      mecanismeCapacite: 2500,
+      effacement: 2500,
       disponibilite: 98,
       rendementRoundTrip: 88,
-      maintenanceAn: 6 * pReq,
-      revenuBailleurAn: 900 * tranches,
-      supervisionAn: 1000 * tranches125,
-      recyclage: 5000 * tranches125,
-      assuranceAn: 1000 * tranches,
+      maintenanceAn: 750,
+      revenuBailleurAn: 1250,
+      gestionChargeAn: 4562.5,
+      assuranceAn: 286, // Updated for 34625 base (71525 total * 0.4%)
       commissionAgregateur: 18,
-      turpeAn: 20 * pReq,
+      turpeAn: 2500,
+      iferAn: 625,
       tauxEmprunt: 3.9,
-      dureeEmprunt: 8,
+      dureeEmprunt: 12,
       apport: 0,
       tauxIS: 25
     };
@@ -4332,8 +4291,6 @@ export default function BpAcama() {
     // 1. If saved state exists, we use it but check if building count matches map
     if (selectedProject.bpAcamaState) {
       const saved = { ...selectedProject.bpAcamaState };
-      if (!saved.taxesLocales) saved.taxesLocales = 900;
-      if (!saved.gestionAdmin) saved.gestionAdmin = 396;
       
       // Ensure batteryConfig is initialized if missing in saved state
       if (!saved.batteryConfig) {
@@ -4341,86 +4298,42 @@ export default function BpAcama() {
       } else {
         // Also merge any missing properties just in case
         saved.batteryConfig = { ...defaultBatteryConfig, ...saved.batteryConfig };
-
-        // SYNC WITH PROJECT POWER: If project power differs from saved power, update
-        const projectReq = selectedProject.bess_puissanceRaccordee ? Number(selectedProject.bess_puissanceRaccordee) : null;
-        if (projectReq !== null && saved.batteryConfig.puissanceDemandee !== projectReq) {
-           const pR = projectReq;
-           const qty = Math.max(1, Math.round(pR / 125));
-           const currentTranches = pR / 250;
-           const currentTranches125 = pR / 125;
-           const capaciteDoD = saved.batteryConfig.capaciteDoD ?? 80;
-
-           saved.batteryConfig.puissanceDemandee = pR;
-           saved.batteryConfig.nbBricks = qty;
-           saved.batteryConfig.batterieBms = 34625 * qty;
-           saved.batteryConfig.fraisCommerciaux = 25 * pR;
-           saved.batteryConfig.supervisionAn = 1000 * currentTranches125;
-           saved.batteryConfig.recyclage = 5000 * currentTranches125;
-           saved.batteryConfig.revenuBailleurAn = 900 * currentTranches;
-           saved.batteryConfig.assuranceAn = 1000 * currentTranches;
-           saved.batteryConfig.reserveFCR = 130 * pR;
-           saved.batteryConfig.mecanismeCapacite = 20 * pR;
-           saved.batteryConfig.turpeAn = 20 * pR;
-           saved.batteryConfig.maintenanceAn = 6 * pR;
-           saved.batteryConfig.arbitrageEnergie = 30 * pR * (capaciteDoD / 100);
-           saved.batteryConfig.effacement = 20 * pR * (capaciteDoD / 100);
-           saved.batteryConfig.genieCivil = 6000 + (qty - 1) * 1300;
-           saved.batteryConfig.developpement = 6000 + (qty - 1) * 500;
-        }
         
         // AUTO-MIGRATION: If project has old defaults, update to new standards
         if (saved.batteryConfig.batterieBms === 33625) saved.batteryConfig.batterieBms = 50209;
         if (saved.batteryConfig.raccordement === 9000) saved.batteryConfig.raccordement = 19900;
         if (saved.batteryConfig.developpement === 5000) saved.batteryConfig.developpement = 6000;
+        if (saved.batteryConfig.assuranceAn === 240 || saved.batteryConfig.assuranceAn === 390) saved.batteryConfig.assuranceAn = 353;
+        if (saved.batteryConfig.turpeAn === 5000) saved.batteryConfig.turpeAn = 2500;
+        if (saved.batteryConfig.iferAn === 1250) saved.batteryConfig.iferAn = 625;
         
-        // RECENT UPDATES: revenuBailleur (900) and commissionAgregateur (18)
-        const pR = saved.batteryConfig.puissanceDemandee || 125;
-        const currentTranches = pR / 250;
-        const currentTranches125 = pR / 125;
-        
+        // RECENT UPDATES: revenuBailleur (1250) and commissionAgregateur (18)
+        const nbB = saved.batteryConfig.nbBricks || 1;
+        if (saved.batteryConfig.revenuBailleurAn === 2500 * nbB || saved.batteryConfig.revenuBailleurAn === 2000 * nbB) {
+          saved.batteryConfig.revenuBailleurAn = 1250 * nbB;
+        }
         if (saved.batteryConfig.commissionAgregateur === 20 || saved.batteryConfig.commissionAgregateur === undefined) {
           saved.batteryConfig.commissionAgregateur = 18;
         }
-        
-        // Fix for removed properties
-        if (saved.batteryConfig.gestionChargeAn !== undefined) delete saved.batteryConfig.gestionChargeAn;
-        if (saved.batteryConfig.iferAn !== undefined) delete saved.batteryConfig.iferAn;
-
-        // Migrations relatives to Supervision, Recyclage, Emprunt, Raccordement
-        if (saved.batteryConfig.supervisionAn === undefined || saved.batteryConfig.supervisionAn === 2000 * currentTranches) {
-          saved.batteryConfig.supervisionAn = 1000 * currentTranches125;
-        }
-        if (saved.batteryConfig.recyclage === undefined || saved.batteryConfig.recyclage === 10000 * currentTranches) {
-          saved.batteryConfig.recyclage = 5000 * currentTranches125;
-        }
-        if (saved.batteryConfig.dureeEmprunt === 12 || saved.batteryConfig.dureeEmprunt === 20) {
-          saved.batteryConfig.dureeEmprunt = 8;
-        }
-        if (saved.batteryConfig.raccordementHT === undefined || saved.batteryConfig.raccordementHT === 100) {
-          saved.batteryConfig.raccordementHT = 10;
-        }
-        if (saved.batteryConfig.distancePriv === undefined || saved.batteryConfig.distancePriv === 100) {
-          saved.batteryConfig.distancePriv = 10;
+        if (saved.batteryConfig.gestionChargeAn === undefined) {
+          saved.batteryConfig.gestionChargeAn = 4562.5 * nbB;
         }
 
-        // UPDATED STANDARDS: fraisCommerciaux (25€/kW), degradationAnnuelle (3)
-        if (saved.batteryConfig.fraisCommerciaux === 5000 || saved.batteryConfig.fraisCommerciaux === 10000) {
-          saved.batteryConfig.fraisCommerciaux = 25 * pR;
+        // UPDATED STANDARDS: fraisCommerciaux (40€/kW) and degradationAnnuelle (1)
+        if (saved.batteryConfig.fraisCommerciaux === 2500 || saved.batteryConfig.fraisCommerciaux === 6250 || saved.batteryConfig.fraisCommerciaux === 12500) {
+          saved.batteryConfig.fraisCommerciaux = 40 * (saved.batteryConfig.puissanceDemandee || 125);
         }
         // Always clear retribution if present
         if (saved.batteryConfig.retributionCommAn !== undefined) {
           delete saved.batteryConfig.retributionCommAn;
         }
-        if (saved.batteryConfig.degradationAnnuelle === 1 || saved.batteryConfig.degradationAnnuelle === undefined) {
-          saved.batteryConfig.degradationAnnuelle = 3;
+        if (saved.batteryConfig.degradationAnnuelle === 2 || saved.batteryConfig.degradationAnnuelle === undefined) {
+          saved.batteryConfig.degradationAnnuelle = 1;
         }
       }
 
       // Enrich saved state with missing building types, products & power from map
       if (saved.buildings && buildingFeatures.length > 0) {
-        const baseBatData = isEnrCourtage ? SUIVI_BAT_DATA_ENR_COURTAGE : (isGreenInvest ? SUIVI_BAT_DATA_GREEN_INVEST : SUIVI_BAT_DATA_ACAMA);
-        
         saved.buildings = saved.buildings.map((b, idx) => {
           const feat = buildingFeatures[idx];
           const newTypeBat = (!b.typeBat || b.typeBat === '') ? (feat?.buildingName || feat?.name || b.typeBat) : b.typeBat;
@@ -4433,16 +4346,7 @@ export default function BpAcama() {
           const newKwc = (b.kwc === 100 && featPower > 0 && featPower !== 100) ? featPower : b.kwc;
           const newCoutCentrale = (newKwc !== b.kwc) ? (newKwc * 490) : b.coutCentrale;
           
-          let newCoutCharpente = b.coutCharpente;
-          if (newTypeBat && (!newCoutCharpente || newCoutCharpente === 0)) {
-             const normalized = normalizeBatType(newTypeBat);
-             const batData = baseBatData.find(d => d.type && normalizeBatType(d.type).trim().toUpperCase() === normalized.trim().toUpperCase());
-             if (batData && batData.cout_bat) {
-                 newCoutCharpente = parseFloat(batData.cout_bat);
-             }
-          }
-          
-          return { ...b, typeBat: newTypeBat, productible: newProd, kwc: newKwc, coutCentrale: newCoutCentrale, coutCharpente: newCoutCharpente };
+          return { ...b, typeBat: newTypeBat, productible: newProd, kwc: newKwc, coutCentrale: newCoutCentrale };
         });
       }
 
@@ -4575,11 +4479,12 @@ export default function BpAcama() {
   const bpBuilding = useMemo(() => {
     const bpParams = { 
         ...collapsedParams, 
+        apport: resteACharge,
         loyerCoeff: isGreenInvest ? autoCoeffs.loyer : (params.loyerCoeff || 0),
         soulteCoeff: isGreenInvest ? autoCoeffs.soulte : (params.soulteCoeff || 0)
     };
     return computeBusinessPlan(bpParams);
-  }, [collapsedParams, autoCoeffs, params.loyerCoeff, params.soulteCoeff, isGreenInvest]);
+  }, [collapsedParams, resteACharge, autoCoeffs, params.loyerCoeff, params.soulteCoeff, isGreenInvest]);
 
   const bpBattery = useMemo(() => {
     if (params.batteryConfig?.enabled) {
@@ -4653,9 +4558,10 @@ export default function BpAcama() {
   }, [isAdmin, activeTab, isGreenInvest]);
 
 
-  // GREEN INVEST: Admins + Laurent Guyon + canAccessBP
-  // ACAMA: Admins + Alexandru + canAccessBP
-  const hasAccess = isAdmin || user?.permissions?.canAccessBP || (isGreenInvest ? isLaurentGuyon : isAlexandru);
+  // Access Control: 
+  // GREEN INVEST: Admins + Laurent Guyon
+  // ACAMA: Admins + Alexandru
+  const hasAccess = isGreenInvest ? (isAdmin || isLaurentGuyon) : (isAdmin || isAlexandru);
 
   if (!hasAccess) {
     return (

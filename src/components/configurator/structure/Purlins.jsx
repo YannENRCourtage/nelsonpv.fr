@@ -364,7 +364,7 @@ export function Purlins({ width, length, bayCount, baySpacing, roofPitch, eaveHe
                 // Note: using width range or explicit building type check context if available, 
                 // but here we are in 'ombriere' block.
                 // Re-check buildingType prop available in scope? Yes.
-                const appliedOffset = (buildingType === 'ombriere_vl_double') ? 0.96 : perpOffset;
+                const appliedOffset = ((buildingType === 'ombriere_vl_double') ? 0.96 : perpOffset) - 0.25; // Abaissement de 25cm demandé par l'utilisateur
 
                 const nx = -Math.sin(effectiveAngle) * appliedOffset;
                 const ny = Math.cos(effectiveAngle) * appliedOffset;

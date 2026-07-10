@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useProjects } from '../contexts/ProjectContext';
-import { safeLocalStorage } from '../lib/storage.js';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { User, FileText, Send, Search, CheckCircle2, Download, Upload, Save, X, Edit } from 'lucide-react';
@@ -25,13 +24,8 @@ export default function CDP() {
 
     // Documents chargés avec balises positionnées
     const [uploadedTemplates, setUploadedTemplates] = useState(() => {
-        try {
-            const saved = safeLocalStorage.getItem('cdp_uploaded_templates');
-            return saved ? JSON.parse(saved) : {};
-        } catch (e) {
-            console.error("Failed to load cdp_uploaded_templates:", e);
-            return {};
-        }
+        const saved = localStorage.getItem('cdp_uploaded_templates');
+        return saved ? JSON.parse(saved) : {};
     });
 
     // Modal éditeur de balises avec PDFViewer
@@ -317,11 +311,7 @@ export default function CDP() {
         };
 
         setUploadedTemplates(newTemplates);
-        try {
-            safeLocalStorage.setItem('cdp_uploaded_templates', JSON.stringify(newTemplates));
-        } catch (e) {
-            console.error("Failed to save cdp_uploaded_templates:", e);
-        }
+        localStorage.setItem('cdp_uploaded_templates', JSON.stringify(newTemplates));
 
         toast({
             title: "Configuration sauvegardée",

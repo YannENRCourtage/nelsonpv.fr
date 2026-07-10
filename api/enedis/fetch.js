@@ -150,9 +150,11 @@ async function handler(req, res) {
         }
 
         // Plage de dates : 365 jours pour daily/maxPower, 30 jours pour load_curve (perf)
-        const defaultEndDate = new Date().toISOString().split('T')[0];
-        const defaultStartDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        const loadCurveStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        // L'API Enedis (Data Connect v5) renvoie souvent 400 ou 500 si on demande la date d'aujourd'hui.
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const defaultEndDate = yesterday.toISOString().split('T')[0];
+        const defaultStartDate = new Date(yesterday.getTime() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const loadCurveStart = new Date(yesterday.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
         const start = req.query.startDate || defaultStartDate;
         const end = req.query.endDate || defaultEndDate;
@@ -185,9 +187,9 @@ async function handler(req, res) {
         ]);
 
         const results = {
-            daily: dailyRes.status === 'fulfilled' ? dailyRes.value : { error: dailyRes.reason?.message, status: dailyRes.reason?.response?.status },
-            loadCurve: loadRes.status === 'fulfilled' ? loadRes.value : { error: loadRes.reason?.message, status: loadRes.reason?.response?.status },
-            maxPower: maxRes.status === 'fulfilled' ? maxRes.value : { error: maxRes.reason?.message, status: maxRes.reason?.response?.status },
+            daily: dailyRes.status === 'fulfilled' ? dailyRes.value : { error: dailyRes.reason?.message, status: dailyRes.reason?.response?.status, details: dailyRes.reason?.response?.data },
+            loadCurve: loadRes.status === 'fulfilled' ? loadRes.value : { error: loadRes.reason?.message, status: loadRes.reason?.response?.status, details: loadRes.reason?.response?.data },
+            maxPower: maxRes.status === 'fulfilled' ? maxRes.value : { error: maxRes.reason?.message, status: maxRes.reason?.response?.status, details: maxRes.reason?.response?.data },
         };
 
         console.log(`[Enedis Fetch] daily:${dailyRes.status} load_curve:${loadRes.status} maxPower:${maxRes.status} identity:${identityRes.status}`);

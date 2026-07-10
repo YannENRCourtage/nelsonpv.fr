@@ -1,6 +1,6 @@
 import { prisma } from '../../src/lib/prisma.js'
 import bcrypt from 'bcryptjs'
-import { withAdmin } from '../common/_authMiddleware.js'
+import { withAdmin } from '../common/authMiddleware.js'
 
 async function handler(req, res) {
     // CORS headers

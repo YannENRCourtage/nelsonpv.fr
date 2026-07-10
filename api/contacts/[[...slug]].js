@@ -1,5 +1,5 @@
 import { prisma } from '../../src/lib/prisma.js'
-import { withAuth } from '../common/_authMiddleware.js'
+import { withAuth } from '../common/authMiddleware.js'
 
 async function handler(req, res) {
     // CORS headers

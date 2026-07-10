@@ -336,10 +336,10 @@ const overlayCategories = {
             },
             'Parking >500m²': {
                 url: 'https://data.geopf.fr/wms-v/ows',
-                layers: 'PARKING.SUP.500,POTENTIEL.SOLAIRE.PARKING500',
+                layers: 'PARKING.SUP.500',
                 format: 'image/png',
                 transparent: true,
-                attribution: 'Cerema / IGN / MTE',
+                attribution: 'Cerema / IGN',
                 type: 'wms',
                 version: '1.3.0'
             },
@@ -358,15 +358,6 @@ const overlayCategories = {
                 format: 'image/png',
                 transparent: true,
                 attribution: 'Cerema / IGN',
-                type: 'wms',
-                version: '1.3.0'
-            },
-            'Conso. élec. commune': {
-                url: 'https://data.geopf.fr/wms-v/ows',
-                layers: 'CONSO.ELEC.COMMUNE',
-                format: 'image/png',
-                transparent: true,
-                attribution: 'Agence ORE / IGN',
                 type: 'wms',
                 version: '1.3.0'
             },

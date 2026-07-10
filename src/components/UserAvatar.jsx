@@ -20,16 +20,7 @@ const UserAvatar = ({ name, email, showName = true, photoURL = null, size = "w-8
         'Elodie': '/avatars/elodie.jpg',
         'Jack': '/avatars/jack.jpg',
         'Laurent': '/avatars/laurent.jpg',
-        'Philippe': '/avatars/philippe.jpg',
-        'Julien': '/avatars/julien.png',
-        'Julien DELAGE': '/avatars/julien.png',
-        'julien': '/avatars/julien.png',
-        'Malick TOURE': '/avatars/malick.png',
-        'malick toure': '/avatars/malick.png',
-        'Malick': '/avatars/malick.png',
-        'malick': '/avatars/malick.png',
-        'Malick T.': '/avatars/malick.png',
-        'malick t.': '/avatars/malick.png'
+        'Philippe': '/avatars/philippe.jpg'
     };
 
     // Si photoURL est fourni, l'utiliser en priorité. SINON vérifier local override.

@@ -238,20 +238,6 @@ const fromInputDate = (dateStr) => {
     return `${d}/${m}/${y.slice(-2)}`;
 };
 
-// Helper to parse numeric values from formatted strings like "2 000" or "1 348"
-const parseNumericValue = (val) => {
-    if (val === null || val === undefined || val === '') return 0;
-    const cleaned = String(val).replace(/\s/g, '').replace(',', '.');
-    const num = parseFloat(cleaned);
-    return isNaN(num) ? 0 : num;
-};
-
-// Helper to format a number back to French-style with spaces
-const formatNumericValue = (num) => {
-    if (num === 0) return '0';
-    return num.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-};
-
 // --- Dropdown pour Conditions Règlement ---
 const ConditionReglementCell = ({ value, onChange, onClose }) => {
     const [inputVal, setInputVal] = useState(value);
@@ -644,30 +630,6 @@ export default function DossierTracking() {
         return sorted;
     }, [rows, sortConfig, searchQuery, paymentFilter, advancedFilters]);
 
-    // Colonnes numériques pour les totaux
-    const NUMERIC_TOTAL_COLUMNS = ['total_ht', 'tva', 'total_ttc', 'kwc'];
-
-    // Totaux globaux (basés sur les lignes filtrées/triées visibles)
-    const globalTotals = useMemo(() => {
-        const totals = {};
-        NUMERIC_TOTAL_COLUMNS.forEach(colKey => {
-            totals[colKey] = sortedRows.reduce((sum, row) => sum + parseNumericValue(row[colKey]), 0);
-        });
-        return totals;
-    }, [sortedRows]);
-
-    // Totaux des lignes sélectionnées
-    const selectionTotals = useMemo(() => {
-        if (selectedRows.size === 0) return null;
-        const selectedData = sortedRows.filter(r => selectedRows.has(r.id));
-        if (selectedData.length === 0) return null;
-        const totals = {};
-        NUMERIC_TOTAL_COLUMNS.forEach(colKey => {
-            totals[colKey] = selectedData.reduce((sum, row) => sum + parseNumericValue(row[colKey]), 0);
-        });
-        return totals;
-    }, [sortedRows, selectedRows]);
-
     const handleCopy = (value) => {
         navigator.clipboard.writeText(String(value || ''));
     };
@@ -1053,66 +1015,6 @@ export default function DossierTracking() {
                             </tr>
                         ))}
                     </tbody>
-                    <tfoot className="sticky bottom-0 z-20">
-                        {/* Ligne total sélection (dynamique, affichée seulement si des lignes sont cochées) */}
-                        {selectionTotals && (
-                            <tr className="bg-blue-50 border-t-2 border-blue-300">
-                                <td className="border-b border-r sticky left-0 bg-blue-50 z-10">
-                                    <div className="flex items-center justify-center h-9">
-                                        <CheckSquare className="w-3.5 h-3.5 text-blue-500" />
-                                    </div>
-                                </td>
-                                <td className="border-b border-r bg-blue-50 text-center">
-                                    <span className="text-[10px] font-bold text-blue-600">{selectedRows.size}</span>
-                                </td>
-                                {COLUMNS.map(col => (
-                                    <td
-                                        key={`sel-total-${col.key}`}
-                                        className="border-b border-r p-0 bg-blue-50"
-                                    >
-                                        <div className="flex items-center h-9 px-3">
-                                            {col.key === 'ref_projet' ? (
-                                                <span className="text-xs font-bold text-blue-700 uppercase tracking-wider whitespace-nowrap">
-                                                    Total sélection
-                                                </span>
-                                            ) : NUMERIC_TOTAL_COLUMNS.includes(col.key) ? (
-                                                <span className="text-xs font-bold text-blue-700 whitespace-nowrap">
-                                                    {formatNumericValue(selectionTotals[col.key])}
-                                                </span>
-                                            ) : null}
-                                        </div>
-                                    </td>
-                                ))}
-                            </tr>
-                        )}
-                        {/* Ligne total global */}
-                        <tr className="bg-slate-100 border-t-2 border-slate-300">
-                            <td className="border-b border-r sticky left-0 bg-slate-100 z-10">
-                                <div className="flex items-center justify-center h-9" />
-                            </td>
-                            <td className="border-b border-r bg-slate-100 text-center">
-                                <span className="text-[10px] font-bold text-slate-500">{sortedRows.length}</span>
-                            </td>
-                            {COLUMNS.map(col => (
-                                <td
-                                    key={`global-total-${col.key}`}
-                                    className="border-b border-r p-0 bg-slate-100"
-                                >
-                                    <div className="flex items-center h-9 px-3">
-                                        {col.key === 'ref_projet' ? (
-                                            <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider whitespace-nowrap">
-                                                TOTAL
-                                            </span>
-                                        ) : NUMERIC_TOTAL_COLUMNS.includes(col.key) ? (
-                                            <span className="text-xs font-extrabold text-slate-800 whitespace-nowrap">
-                                                {formatNumericValue(globalTotals[col.key])}
-                                            </span>
-                                        ) : null}
-                                    </div>
-                                </td>
-                            ))}
-                        </tr>
-                    </tfoot>
                 </table>
             </div>
         </div>
