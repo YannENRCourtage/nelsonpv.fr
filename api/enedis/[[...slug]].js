@@ -7,6 +7,8 @@
 //   POST /api/enedis/send-consent → envoie le lien par email
 
 import axios from 'axios';
+import { getAdminDb } from '../../src/lib/firebase-admin.js';
+
 
 // ─── URLs API Enedis Production v5 ───────────────────────────────────────────
 const ENEDIS_TOKEN_URL        = 'https://gw.ext.prod.api.enedis.fr/oauth2/v3/token';
@@ -95,7 +97,6 @@ async function handleCallback(req, res) {
         const { access_token, refresh_token, expires_in } = tokenResponse.data;
         const expiresAt = new Date(Date.now() + (expires_in || 3600) * 1000).toISOString();
 
-        const { getAdminDb } = await import('../../src/lib/firebase-admin.js');
         const db = getAdminDb();
 
         // Récupérer la consommation annuelle
@@ -140,8 +141,7 @@ async function handleFetch(req, res) {
     // Lister les consentements
     if (action === 'list_consents') {
         try {
-            const fbAdmin  = await import('../../src/lib/firebase-admin.js');
-            const db       = fbAdmin.getAdminDb();
+            const db       = getAdminDb();
             const snapshot = await db.collection('enedis_consents').orderBy('updatedAt', 'desc').get();
             const consents = snapshot.docs.map(doc => {
                 const d = doc.data();
@@ -149,6 +149,7 @@ async function handleFetch(req, res) {
             });
             return res.status(200).json({ consents });
         } catch (e) {
+            console.error('[Enedis list_consents] Error:', e.message);
             return res.status(500).json({ error: e.message });
         }
     }
@@ -156,8 +157,7 @@ async function handleFetch(req, res) {
     if (!projectId && !prm) return res.status(400).json({ error: 'Missing projectId or prm' });
 
     try {
-        const fbAdmin = await import('../../src/lib/firebase-admin.js');
-        const adminDb = fbAdmin.getAdminDb();
+        const adminDb = getAdminDb();
         let consentDoc;
 
         if (prm) {

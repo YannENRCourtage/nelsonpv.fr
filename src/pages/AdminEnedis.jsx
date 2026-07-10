@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp, FileText, Copy, Mail, MessageCircle, X, Send, Phone, User, Link2, Check } from 'lucide-react';
+import { Info, CheckCircle2, RotateCw, Search, Activity, Database, Key, History, LayoutDashboard, ExternalLink, Calendar, ChevronDown, ChevronUp, FileText, Copy, Mail, X, Send, User, Link2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -20,11 +20,9 @@ export default function AdminEnedis() {
   const [jsonOpen, setJsonOpen] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
-  // État du modal de consentement
+  // État du modal de consentement (email uniquement)
   const [consentModal, setConsentModal] = useState(false);
-  const [consentMethod, setConsentMethod] = useState('email'); // 'email' | 'whatsapp'
-  const [consentForm, setConsentForm] = useState({ name: '', email: '', phone: '' });
-  const [sendingConsent, setSendingConsent] = useState(false);
+  const [consentForm, setConsentForm] = useState({ name: '', email: '' });
   const [consentSent, setConsentSent] = useState(false);
 
   const { toast } = useToast();
@@ -170,8 +168,7 @@ export default function AdminEnedis() {
     }
     if (prmOverride) setPrm(prmOverride);
     setConsentSent(false);
-    setConsentForm({ name: '', email: '', phone: '' });
-    setConsentMethod('email');
+    setConsentForm({ name: '', email: '' });
     setConsentModal(true);
   };
 
@@ -193,74 +190,28 @@ export default function AdminEnedis() {
     }
   };
 
-  // Envoyer le consentement par email
-  const handleSendEmail = async () => {
+  // Envoyer le consentement par email via mailto: (client mail local — Outlook, etc.)
+  const handleSendEmail = () => {
     const targetPrm = prm.trim();
     if (!consentForm.email || !consentForm.email.includes('@')) {
       toast({ title: "Email invalide", description: "Veuillez saisir une adresse email valide.", variant: "destructive" });
       return;
     }
-    setSendingConsent(true);
-    try {
-      const res = await fetch('/api/enedis/send-consent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          prm: targetPrm, 
-          projectId: 'admin_test',
-          email: consentForm.email, 
-          name: consentForm.name || 'Client'
-        })
-      });
-      const json = await res.json();
-      if (res.ok && json.success) {
-        if (json.method === 'link_only') {
-          // Pas de Resend — copier le lien et ouvrir mailto
-          const url = json.consentUrl || getConsentUrl(targetPrm);
-          await navigator.clipboard.writeText(url).catch(() => {});
-          const subject = encodeURIComponent(`Autorisation Enedis Data Connect — PRM ${targetPrm}`);
-          const body = encodeURIComponent(`Bonjour ${consentForm.name || 'Client'},\n\nVeuillez cliquer sur ce lien pour autoriser l'accès à vos données de consommation électrique :\n\n${url}\n\nVous pouvez vous identifier avec FranceConnect (aucun compte Enedis requis).\n\nCordialement,\nENR Courtage Énergie`);
-          window.open(`mailto:${consentForm.email}?subject=${subject}&body=${body}`, '_blank');
-          toast({ title: "Votre client mail s'ouvre", description: "L'email est pré-rempli avec le lien de consentement." });
-        } else {
-          setConsentSent(true);
-          toast({ title: "Email envoyé ✓", description: `Lien de consentement envoyé à ${consentForm.email}` });
-        }
-      } else {
-        throw new Error(json.error || 'Erreur lors de l\'envoi');
-      }
-    } catch (err) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    } finally {
-      setSendingConsent(false);
-    }
-  };
-
-  // Envoyer via WhatsApp
-  const handleSendWhatsApp = () => {
-    const targetPrm = prm.trim();
     const url = getConsentUrl(targetPrm);
-    const clientName = consentForm.name ? `Bonjour ${consentForm.name},` : 'Bonjour,';
-    const message = `${clientName}
-
-Dans le cadre de votre projet photovoltaïque, merci de cliquer sur ce lien pour autoriser l'accès à vos données de consommation Enedis 🔆
-
-${url}
-
-✅ Vous pouvez vous identifier avec FranceConnect (impôts, Ameli...) — aucun compte Enedis nécessaire.
-
-Cordialement, ENR Courtage Énergie`;
-
-    const encodedMsg = encodeURIComponent(message);
-    // Nettoyer le numéro (garder uniquement les chiffres et le +)
-    const cleanPhone = consentForm.phone.replace(/[\s\-\.\(\)]/g, '');
-    const waUrl = cleanPhone
-      ? `https://wa.me/${cleanPhone.startsWith('+') ? cleanPhone.slice(1) : cleanPhone}?text=${encodedMsg}`
-      : `https://wa.me/?text=${encodedMsg}`;
-    
-    window.open(waUrl, '_blank', 'noopener,noreferrer');
+    const clientName = consentForm.name || 'Client';
+    const subject = encodeURIComponent(`Autorisation Enedis Data Connect — PRM ${targetPrm}`);
+    const body = encodeURIComponent(
+      `Bonjour ${clientName},\r\n\r\n` +
+      `Dans le cadre de votre projet photovoltaïque, nous souhaitons accéder à vos données de consommation électrique via Enedis Data Connect.\r\n\r\n` +
+      `Cliquez sur le lien ci-dessous pour donner votre accord (consentement de 3 ans maximum, révocable à tout moment) :\r\n\r\n` +
+      `${url}\r\n\r\n` +
+      `✅ Vous pouvez vous identifier avec FranceConnect (Impôts, Ameli, France Identité…) — aucun compte Enedis n'est nécessaire.\r\n\r\n` +
+      `Cordialement,\r\nENR Courtage Énergie`
+    );
+    const mailto = `mailto:${encodeURIComponent(consentForm.email)}?subject=${subject}&body=${body}`;
+    window.location.href = mailto;
     setConsentSent(true);
-    toast({ title: "WhatsApp ouvert ✓", description: "Le message est pré-rempli, il ne reste qu'à l'envoyer." });
+    toast({ title: "Client mail ouvert ✓", description: `L'email est pré-rempli pour ${consentForm.email}` });
   };
 
   const handlePdf = useCallback(() => {
@@ -683,109 +634,57 @@ Cordialement, ENR Courtage Énergie`;
         consent={consents.find(c => c.prm === prm) || {}}
       />
 
-      {/* ===== MODAL DE CONSENTEMENT EMAIL / WHATSAPP ===== */}
+      {/* ===== MODAL DE CONSENTEMENT PAR EMAIL ===== */}
       {consentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-            onClick={closeConsentModal}
-          />
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={closeConsentModal} />
 
-          {/* Modal panel */}
-          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl shadow-slate-900/20 overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+          {/* Modal */}
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl shadow-slate-900/20 overflow-hidden animate-in fade-in zoom-in-95 duration-300">
             
             {/* Header */}
-            <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-8 py-6">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-7 py-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-emerald-100 text-xs font-bold uppercase tracking-widest mb-1">Enedis Data Connect</p>
-                  <h2 className="text-white text-xl font-extrabold">Envoyer le consentement</h2>
+                  <p className="text-blue-200 text-xs font-bold uppercase tracking-widest mb-0.5">Enedis Data Connect</p>
+                  <h2 className="text-white text-lg font-extrabold">Envoyer le consentement</h2>
                 </div>
-                <button
-                  onClick={closeConsentModal}
-                  className="p-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors"
-                >
-                  <X size={20} />
+                <button onClick={closeConsentModal} className="p-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors">
+                  <X size={18} />
                 </button>
               </div>
-              {/* PRM badge */}
-              <div className="mt-4 inline-flex items-center gap-2 bg-white/20 rounded-xl px-4 py-2">
-                <Database size={14} className="text-emerald-100" />
+              <div className="mt-3 inline-flex items-center gap-2 bg-white/20 rounded-xl px-3 py-1.5">
+                <Database size={13} className="text-blue-200" />
                 <span className="text-white font-mono font-bold text-sm tracking-wider">{prm}</span>
               </div>
             </div>
 
-            {/* Contenu */}
+            {/* Corps */}
             {consentSent ? (
-              /* ---- État : envoyé avec succès ---- */
-              <div className="p-8 flex flex-col items-center text-center">
-                <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-5 animate-in zoom-in duration-500">
-                  <Check size={36} className="text-emerald-600" />
+              <div className="p-7 flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+                  <Check size={30} className="text-emerald-600" />
                 </div>
-                <h3 className="text-xl font-extrabold text-slate-900 mb-2">
-                  {consentMethod === 'whatsapp' ? 'WhatsApp ouvert !' : 'Email envoyé !'}
-                </h3>
-                <p className="text-slate-500 text-sm leading-relaxed mb-6">
-                  {consentMethod === 'whatsapp'
-                    ? 'Le message WhatsApp est pré-rempli. Sélectionnez votre client et appuyez sur Envoyer.'
-                    : `Le lien de consentement a été envoyé à ${consentForm.email}`
-                  }
+                <h3 className="text-lg font-extrabold text-slate-900 mb-1">Client mail ouvert !</h3>
+                <p className="text-slate-500 text-sm leading-relaxed mb-5">
+                  L'email est pré-rempli avec le lien de consentement pour <strong>{consentForm.email}</strong>. Vérifiez et envoyez depuis votre messagerie.
                 </p>
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 w-full text-left mb-6">
-                  <p className="text-amber-800 text-xs font-bold uppercase tracking-wider mb-2">Prochaine étape</p>
-                  <p className="text-amber-900 text-sm leading-relaxed">
-                    Une fois que votre client a cliqué sur le lien et validé avec FranceConnect, les données apparaîtront automatiquement dans l'onglet <strong>Historique</strong> (rafraîchissement toutes les 30 secondes).
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 w-full text-left mb-5">
+                  <p className="text-amber-900 text-xs leading-relaxed">
+                    📌 Une fois que le client a cliqué sur le lien et validé avec <strong>FranceConnect</strong>, les données apparaîtront automatiquement dans l'onglet <strong>Historique</strong>.
                   </p>
                 </div>
                 <div className="flex gap-3 w-full">
-                  <Button
-                    variant="outline"
-                    onClick={() => setConsentSent(false)}
-                    className="flex-1 rounded-2xl h-11 font-bold border-slate-200"
-                  >
-                    Renvoyer
-                  </Button>
-                  <Button
-                    onClick={closeConsentModal}
-                    className="flex-1 rounded-2xl h-11 font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    Fermer
-                  </Button>
+                  <Button variant="outline" onClick={() => setConsentSent(false)} className="flex-1 rounded-xl h-10 font-bold border-slate-200">Renvoyer</Button>
+                  <Button onClick={closeConsentModal} className="flex-1 rounded-xl h-10 font-bold bg-blue-600 hover:bg-blue-700 text-white">Fermer</Button>
                 </div>
               </div>
             ) : (
-              /* ---- Formulaire ---- */
-              <div className="p-8">
-                {/* Tabs Email / WhatsApp */}
-                <div className="flex gap-2 bg-slate-100 p-1.5 rounded-2xl mb-6">
-                  <button
-                    onClick={() => setConsentMethod('email')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all ${
-                      consentMethod === 'email'
-                        ? 'bg-white shadow-sm text-slate-900'
-                        : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    <Mail size={16} className={consentMethod === 'email' ? 'text-blue-600' : ''} />
-                    Email
-                  </button>
-                  <button
-                    onClick={() => setConsentMethod('whatsapp')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all ${
-                      consentMethod === 'whatsapp'
-                        ? 'bg-white shadow-sm text-slate-900'
-                        : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    <MessageCircle size={16} className={consentMethod === 'whatsapp' ? 'text-green-600' : ''} />
-                    WhatsApp
-                  </button>
-                </div>
-
-                {/* Champ Nom (commun) */}
-                <div className="space-y-2 mb-4">
-                  <label className="text-xs font-bold uppercase text-slate-500 tracking-widest ml-1">
+              <div className="p-7 space-y-5">
+                {/* Nom (optionnel) */}
+                <div>
+                  <label className="text-xs font-bold uppercase text-slate-500 tracking-widest mb-1.5 block">
                     Nom du client <span className="text-slate-400 normal-case font-normal">(optionnel)</span>
                   </label>
                   <div className="relative">
@@ -793,105 +692,54 @@ Cordialement, ENR Courtage Énergie`;
                       value={consentForm.name}
                       onChange={e => setConsentForm(f => ({ ...f, name: e.target.value }))}
                       placeholder="Ex: Jean Dupont"
-                      className="pl-10 rounded-xl h-12 border-slate-200 focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400"
+                      className="pl-9 rounded-xl h-11 border-slate-200"
                     />
-                    <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   </div>
                 </div>
 
-                {/* Champ Email */}
-                {consentMethod === 'email' && (
-                  <div className="space-y-2 mb-6">
-                    <label className="text-xs font-bold uppercase text-slate-500 tracking-widest ml-1">
-                      Adresse email du client <span className="text-red-400">*</span>
-                    </label>
-                    <div className="relative">
-                      <Input
-                        type="email"
-                        value={consentForm.email}
-                        onChange={e => setConsentForm(f => ({ ...f, email: e.target.value }))}
-                        placeholder="Ex: client@exemple.fr"
-                        className="pl-10 rounded-xl h-12 border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
-                      />
-                      <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    </div>
-                    <p className="text-[11px] text-slate-400 ml-1">
-                      Un email avec le lien de consentement sera envoyé à cette adresse.
-                    </p>
-                  </div>
-                )}
-
-                {/* Champ Téléphone WhatsApp */}
-                {consentMethod === 'whatsapp' && (
-                  <div className="space-y-2 mb-6">
-                    <label className="text-xs font-bold uppercase text-slate-500 tracking-widest ml-1">
-                      Numéro WhatsApp <span className="text-slate-400 normal-case font-normal">(optionnel)</span>
-                    </label>
-                    <div className="relative">
-                      <Input
-                        type="tel"
-                        value={consentForm.phone}
-                        onChange={e => setConsentForm(f => ({ ...f, phone: e.target.value }))}
-                        placeholder="Ex: +33 6 12 34 56 78"
-                        className="pl-10 rounded-xl h-12 border-slate-200 focus:ring-2 focus:ring-green-100 focus:border-green-400"
-                      />
-                      <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    </div>
-                    <p className="text-[11px] text-slate-400 ml-1">
-                      Si vide, WhatsApp s'ouvre sans destinataire pré-sélectionné (vous choisissez le contact manuellement).
-                    </p>
-                  </div>
-                )}
-
-                {/* Info box */}
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-6">
-                  <div className="flex items-start gap-3">
-                    <Info size={14} className="text-slate-400 shrink-0 mt-0.5" />
-                    <div>
-                      {consentMethod === 'email' ? (
-                        <p className="text-xs text-slate-600 leading-relaxed">
-                          L'email inclut le bouton de consentement officiel Enedis. Le client peut s'identifier via <strong>FranceConnect</strong> (Impôts, Ameli, France Identité…) — <strong>aucun compte Enedis nécessaire</strong>.
-                        </p>
-                      ) : (
-                        <p className="text-xs text-slate-600 leading-relaxed">
-                          WhatsApp Web s'ouvre avec le message pré-rempli. Sélectionnez votre client et appuyez sur Envoyer. Le lien fonctionne sur <strong>mobile et ordinateur</strong>.
-                        </p>
-                      )}
-                    </div>
+                {/* Email (obligatoire) */}
+                <div>
+                  <label className="text-xs font-bold uppercase text-slate-500 tracking-widest mb-1.5 block">
+                    Email du client <span className="text-red-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type="email"
+                      value={consentForm.email}
+                      onChange={e => setConsentForm(f => ({ ...f, email: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && consentForm.email && handleSendEmail()}
+                      placeholder="client@exemple.fr"
+                      className="pl-9 rounded-xl h-11 border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+                      autoFocus
+                    />
+                    <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   </div>
                 </div>
 
-                {/* Boutons d'action */}
-                <div className="flex flex-col gap-3">
-                  {consentMethod === 'email' ? (
-                    <Button
-                      onClick={handleSendEmail}
-                      disabled={sendingConsent || !consentForm.email}
-                      className="w-full h-13 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-2xl font-bold text-base shadow-lg shadow-blue-200 transition-all hover:scale-[1.02]"
-                    >
-                      {sendingConsent ? (
-                        <><RotateCw className="mr-2 h-4 w-4 animate-spin" /> Envoi en cours…</>
-                      ) : (
-                        <><Mail className="mr-2 h-4 w-4" /> Envoyer l'email</>
-                      )}
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={handleSendWhatsApp}
-                      className="w-full h-13 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-200 transition-all hover:scale-[1.02]"
-                    >
-                      <MessageCircle className="mr-2 h-4 w-4" />
-                      Ouvrir WhatsApp
-                    </Button>
-                  )}
+                {/* Info */}
+                <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                  <p className="text-xs text-blue-700 leading-relaxed">
+                    ✅ Le client s'identifie via <strong>FranceConnect</strong> (Impôts, Ameli…) — <strong>aucun compte Enedis nécessaire</strong>.
+                  </p>
+                </div>
 
-                  {/* Lien de copie secondaire */}
+                {/* Actions */}
+                <div className="flex flex-col gap-2 pt-1">
+                  <Button
+                    onClick={handleSendEmail}
+                    disabled={!consentForm.email || !consentForm.email.includes('@')}
+                    className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] active:scale-95"
+                  >
+                    <Mail className="mr-2 h-4 w-4" />
+                    Ouvrir mon client mail
+                  </Button>
                   <button
                     onClick={handleCopyLink}
-                    className="w-full h-10 flex items-center justify-center gap-2 text-slate-500 hover:text-slate-700 text-xs font-bold transition-colors rounded-xl hover:bg-slate-50"
+                    className="w-full h-9 flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-700 text-xs font-semibold transition-colors rounded-xl hover:bg-slate-50"
                   >
-                    <Link2 size={13} />
-                    Copier le lien manuellement
+                    <Link2 size={12} />
+                    Copier le lien uniquement
                   </button>
                 </div>
               </div>
