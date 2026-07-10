@@ -5,13 +5,13 @@ import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Bui
 import html2canvas from 'html2canvas';
 import MapEditor from "../components/MapEditor";
 import StreetViewTab from "../components/StreetViewTab";
-import RpgTab from "../components/RpgTab";
+
 import SubstationProximityCards from "../components/editor/SubstationProximityCards.jsx";
 
 import ShadowMapTab from "../components/ShadowMapTab.jsx";
 import ChatBox from "../components/editor/ChatBox.jsx";
 import UrbanismeTab from "../components/editor/UrbanismeTab.jsx";
-import BessStandaloneSection from "../components/editor/BessStandaloneSection.jsx";
+
 import { PlateSituation, PlateMasse, PlateNotice } from '../components/editor/DPPlates';
 import { Button } from "@/components/ui/button";
 import {
@@ -1602,11 +1602,7 @@ export default function ProjectEditor() {
           BESS STANDALONE - Section préqualification
           Visible uniquement si Batterie SA = Oui, pour ACAMA et ENR Courtage Énergie
           ============================ */}
-      {(activeTenantId === 'acama' || activeTenantId === 'enr-courtage-energie') && p.isBatteryStandAlone === 'Oui' && (
-        <div className="w-full">
-          <BessStandaloneSection project={project} updateProject={updateProject} />
-        </div>
-      )}
+
 
       {/* Floating Chat Bubble - Mobile only */}
       <div className="lg:hidden">
@@ -2033,12 +2029,7 @@ export default function ProjectEditor() {
               </div>
             )}
 
-            {/* Onglet RPG */}
-            {activeTab === 'rpg' && (
-              <div className='w-full h-full'>
-                <RpgTab project={project} activeTab={activeTab} />
-              </div>
-            )}
+            {/* Onglet RPG — désactivé (composant supprimé) */}
 
             {/* Onglet Street View */}
             {activeTab === 'streetview' && (
