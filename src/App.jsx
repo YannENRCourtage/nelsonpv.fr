@@ -18,7 +18,7 @@ import DossierTracking from './pages/DossierTracking.jsx';
 import BpAcama from './pages/BpAcama.jsx';
 import Developpement from './pages/Developpement.jsx';
 import AdminEnedis from './pages/AdminEnedis.jsx';
-import ConsentPage from './pages/ConsentPage.jsx';
+
 import MentionsLegales from './pages/Legal/MentionsLegales.jsx';
 import PrivacyPolicy from './pages/Legal/PrivacyPolicy.jsx';
 import { Toaster } from './components/ui/toaster.jsx';
@@ -184,7 +184,7 @@ function AppContent() {
         </Route>
 
         {/* Routes Légales (Accessibles sans login) */}
-        <Route path="/consent/:token" element={<ConsentPage />} />
+
         <Route path="/mentions-legales" element={<MentionsLegales />} />
         <Route path="/politique-confidentialite" element={<PrivacyPolicy />} />
 
