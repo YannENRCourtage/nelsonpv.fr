@@ -399,11 +399,7 @@ export default function AdminEnedis() {
                         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg shadow-emerald-200 group-hover:shadow-emerald-300 group-hover:scale-[1.02] active:scale-[0.98] h-12 flex items-center justify-center gap-3">
                           <Send size={18} className="text-white" />
                           <span className="text-white font-bold text-sm">Envoyer le consentement</span>
-                          <div className="flex gap-1 ml-1">
                             <Mail size={13} className="text-emerald-200" />
-                            <span className="text-emerald-200 text-xs font-bold">/</span>
-                            <MessageCircle size={13} className="text-emerald-200" />
-                          </div>
                         </div>
                       </button>
 
