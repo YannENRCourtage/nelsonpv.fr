@@ -54,16 +54,13 @@
     ],
     "functions": {
         "api/pvgis.js": {
-            "maxDuration": 60,
-            "memory": 1024
+            "maxDuration": 60
         },
         "api/proxies/[[...slug]].js": {
-            "maxDuration": 60,
-            "memory": 1024
+            "maxDuration": 60
         },
         "api/admin/change-password.js": {
-            "maxDuration": 30,
-            "memory": 512
+            "maxDuration": 30
         }
     }
 }
