@@ -3,10 +3,7 @@ import './Footer.css';
 
 const siteLinks = {
   "enr-courtage.fr": "https://www.enr-courtage.fr/",
-  "enr-courtage-energie.fr": "https://www.enr-courtage-energie.fr/",
-  "monelectricitelocale.fr": "https://www.monelectricitelocale.fr/",
-  "batimentneufgratuit.fr": "https://www.batimentneufgratuit.fr/",
-  "mapartdesoleil.fr": "https://www.mapartdesoleil.fr/"
+  "enr-courtage-energie.fr": "https://www.enr-courtage-energie.fr/"
 };
 
 export default function Footer() {
