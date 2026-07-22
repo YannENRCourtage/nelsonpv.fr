@@ -28,13 +28,16 @@ export default function IrveSimulator() {
 
   // Variables du simulateur
   const [quantity, setQuantity] = useState(1);
-  const [usageType, setUsageType] = useState('Public'); // Public, Privé
+  const [usageType, setUsageType] = useState('NonEligible');
+  const [installFeePerPoint, setInstallFeePerPoint] = useState(1000);
   const [selectedPower, setSelectedPower] = useState(22);
   const [marginPerRecharge, setMarginPerRecharge] = useState(4);
   const [rechargesPerMonth, setRechargesPerMonth] = useState(205);
 
   const currentProduct = products.find(p => p.power === selectedPower) || products[0];
-  const installCost = currentProduct.price * quantity;
+  const hardwareCost = currentProduct.price * quantity;
+  const installCostTotal = installFeePerPoint * quantity;
+  const totalInvestment = hardwareCost + installCostTotal;
   const [targetTypology, setTargetTypology] = useState('personnalise');
 
   const typologies = {
@@ -61,18 +64,19 @@ export default function IrveSimulator() {
 
   // Calculs financiers
   const calculateSubvention = () => {
-    // Calcul simplifié basé sur Advenir (approximatif pour la démo)
-    if (usageType === 'Privé') {
-      return 0; // Fin des aides pour TPE privé flottes 
-    } else {
-      // Hôtels/Restaurants/Public -> max 30% plafonné
-      const sub = installCost * 0.3;
-      return Math.min(sub, 1980);
+    switch(usageType) {
+      case 'Copro': return Math.min(totalInvestment * 0.5, 1660 * quantity);
+      case 'PL': return Math.min(totalInvestment * 0.5, 15000 * quantity);
+      case 'Voirie': return Math.min(totalInvestment * 0.3, 9000 * quantity);
+      case 'Salariés': return Math.min(totalInvestment * 0.2, 600 * quantity);
+      case 'NonEligible': 
+      default: 
+        return 0;
     }
   };
 
   const subvention = calculateSubvention();
-  const resteACharge = installCost - subvention;
+  const resteACharge = totalInvestment - subvention;
   
   const monthlyRevenue = marginPerRecharge * rechargesPerMonth;
   
@@ -105,17 +109,25 @@ export default function IrveSimulator() {
     try {
       const pdf = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
       const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
       
-      const canvas1 = await html2canvas(page1Ref.current, { scale: 2, useCORS: true });
-      const imgData1 = canvas1.toDataURL('image/png');
-      const imgHeight1 = (canvas1.height * pdfWidth) / canvas1.width;
-      pdf.addImage(imgData1, 'PNG', 0, 0, pdfWidth, imgHeight1);
-      
-      pdf.addPage();
-      const canvas2 = await html2canvas(page2Ref.current, { scale: 2, useCORS: true });
-      const imgData2 = canvas2.toDataURL('image/png');
-      const imgHeight2 = (canvas2.height * pdfWidth) / canvas2.width;
-      pdf.addImage(imgData2, 'PNG', 0, 0, pdfWidth, imgHeight2);
+      const addScaledCanvas = async (ref, isFirstPage) => {
+        if (!isFirstPage) pdf.addPage();
+        const canvas = await html2canvas(ref, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL('image/png');
+        let imgHeight = (canvas.height * pdfWidth) / canvas.width;
+        let finalWidth = pdfWidth;
+        
+        if (imgHeight > pdfHeight - 10) {
+          imgHeight = pdfHeight - 10;
+          finalWidth = (canvas.width * imgHeight) / canvas.height;
+        }
+        
+        pdf.addImage(imgData, 'PNG', (pdfWidth - finalWidth) / 2, 5, finalWidth, imgHeight);
+      };
+
+      await addScaledCanvas(page1Ref.current, true);
+      await addScaledCanvas(page2Ref.current, false);
       
       pdf.save(`Etude_IRVE_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
@@ -139,11 +151,15 @@ export default function IrveSimulator() {
       <div className="space-y-8">
         
         {/* --- PAGE 1 DU PDF --- */}
-        <div ref={page1Ref} className="space-y-8 bg-slate-50 p-8 rounded-2xl border border-slate-200 shadow-sm">
+        <div ref={page1Ref} className="space-y-6 bg-slate-50 p-8 rounded-2xl border border-slate-200 shadow-sm">
           {/* En-tête pour le PDF */}
-          <div className="text-center mb-8 pb-6 border-b border-slate-200">
+          <div className="text-center mb-6 pb-6 border-b border-slate-200">
             <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">Étude de Rentabilité : Projet IRVE</h2>
             <p className="text-slate-500 mt-3 text-lg">Démontrez l'intérêt d'investir dans une infrastructure de recharge</p>
+          </div>
+
+          <div className="bg-amber-50 border-l-4 border-amber-500 text-amber-800 p-4 rounded-lg text-sm shadow-sm">
+            <strong>⚠️ Important - Éligibilité aux aides 2026 :</strong> La prime ADVENIR n'est plus applicable pour la majorité des projets hôteliers et de restauration classiques. Les aides (Régionales, CEE, Amortissement) dépendent de votre situation. Cette simulation vous permet d'estimer votre rentabilité globale.
           </div>
 
           {/* 1. Gamme de produits */}
@@ -251,38 +267,44 @@ export default function IrveSimulator() {
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     {/* Panneau de Contrôle */}
                     <div className="lg:col-span-4 space-y-7 bg-slate-50 p-6 rounded-xl border border-slate-200">
-                      <div>
-                        <Label className="text-sm font-semibold mb-3 block text-slate-700">Quantité de bornes</Label>
-                        <div className="flex items-center gap-4">
-                          <Slider 
-                            value={[quantity]} 
-                            onValueChange={(val) => setQuantity(val[0])} 
-                            max={50} 
-                            step={1}
-                            className="flex-1 cursor-pointer"
-                          />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-semibold mb-3 block text-slate-700">Quantité</Label>
                           <Input 
                             type="number" 
                             value={quantity} 
                             onChange={(e) => setQuantity(Number(e.target.value))}
-                            className="w-24 bg-white border-slate-300 focus:ring-emerald-500 font-semibold text-center"
+                            className="w-full bg-white border-slate-300 focus:ring-emerald-500 font-semibold text-center"
                             style={{ paddingTop: 0, paddingBottom: 0, lineHeight: '2.5rem' }}
                           />
                         </div>
-                        <p className="text-xs text-slate-500 mt-2">
-                          Prix de l'installation HT estimé : <span className="font-bold">{installCost} €</span>
-                        </p>
+                        <div>
+                          <Label className="text-sm font-semibold mb-3 block text-slate-700">Frais install./borne HT</Label>
+                          <Input 
+                            type="number" 
+                            value={installFeePerPoint} 
+                            onChange={(e) => setInstallFeePerPoint(Number(e.target.value))}
+                            className="w-full bg-white border-slate-300 focus:ring-emerald-500 font-semibold text-center"
+                            style={{ paddingTop: 0, paddingBottom: 0, lineHeight: '2.5rem' }}
+                          />
+                        </div>
                       </div>
-
-                      <div>
+                      <p className="text-xs text-slate-500 mt-2">
+                        Investissement total estimé : <span className="font-bold">{totalInvestment} € HT</span>
+                      </p>
+                      
+                      <div className="pt-2">
                         <Label className="text-sm font-semibold mb-3 block text-slate-700">Type d'usage (Éligibilité Aides)</Label>
                         <Select value={usageType} onValueChange={setUsageType}>
                           <SelectTrigger className="bg-white border-slate-300 focus:ring-emerald-500" style={{ paddingTop: 0, paddingBottom: 0, lineHeight: '2.5rem' }}>
                             <SelectValue placeholder="Sélectionnez l'usage" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Public">Public (Hôtel, Restaurant, etc.)</SelectItem>
-                            <SelectItem value="Privé">Privé (Flotte privée, Salariés)</SelectItem>
+                            <SelectItem value="NonEligible">Non éligible (Hôtels, Restaurants...)</SelectItem>
+                            <SelectItem value="Copro">Copropriété / Résidence hôtelière</SelectItem>
+                            <SelectItem value="PL">Poids lourds / Logistique</SelectItem>
+                            <SelectItem value="Voirie">Collectivité / Voirie publique</SelectItem>
+                            <SelectItem value="Salariés">Entreprise - Salariés uniquement</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
