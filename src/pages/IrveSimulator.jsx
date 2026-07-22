@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from 'recharts';
-import { FileDown, Calculator } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FileDown, Calculator, ShieldCheck, Lightbulb } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -24,11 +25,14 @@ export default function IrveSimulator() {
   ]);
 
   // Variables du simulateur
-  const [installCost, setInstallCost] = useState(6600);
+  const [quantity, setQuantity] = useState(1);
   const [usageType, setUsageType] = useState('Public'); // Public, Privé
   const [selectedPower, setSelectedPower] = useState(22);
   const [marginPerRecharge, setMarginPerRecharge] = useState(4);
   const [rechargesPerMonth, setRechargesPerMonth] = useState(205);
+
+  const currentProduct = products.find(p => p.power === selectedPower) || products[0];
+  const installCost = currentProduct.price * quantity;
   const [targetTypology, setTargetTypology] = useState('personnalise');
 
   const typologies = {
@@ -187,22 +191,25 @@ export default function IrveSimulator() {
               {/* Panneau de Contrôle */}
               <div className="lg:col-span-4 space-y-7 bg-slate-50 p-6 rounded-xl border border-slate-200">
                 <div>
-                  <Label className="text-sm font-semibold mb-3 block text-slate-700">Prix d'installation HT (€)</Label>
+                  <Label className="text-sm font-semibold mb-3 block text-slate-700">Quantité de bornes</Label>
                   <div className="flex items-center gap-4">
                     <Slider 
-                      value={[installCost]} 
-                      onValueChange={(val) => setInstallCost(val[0])} 
-                      max={50000} 
-                      step={100}
+                      value={[quantity]} 
+                      onValueChange={(val) => setQuantity(val[0])} 
+                      max={50} 
+                      step={1}
                       className="flex-1 cursor-pointer"
                     />
                     <Input 
                       type="number" 
-                      value={installCost} 
-                      onChange={(e) => setInstallCost(Number(e.target.value))}
+                      value={quantity} 
+                      onChange={(e) => setQuantity(Number(e.target.value))}
                       className="w-24 bg-white border-slate-300 focus:ring-emerald-500 font-semibold"
                     />
                   </div>
+                  <p className="text-xs text-slate-500 mt-2">
+                    Prix de l'installation HT estimé : <span className="font-bold">{installCost} €</span>
+                  </p>
                 </div>
 
                 <div>
@@ -221,7 +228,7 @@ export default function IrveSimulator() {
                 <div>
                   <Label className="text-sm font-semibold mb-3 block text-slate-700">Puissance de la borne (kW)</Label>
                   <Select value={selectedPower.toString()} onValueChange={(v) => setSelectedPower(Number(v))}>
-                    <SelectTrigger className="bg-white border-slate-300 focus:ring-emerald-500">
+                    <SelectTrigger className="bg-white border-slate-300 focus:ring-emerald-500 mb-2">
                       <SelectValue placeholder="Puissance" />
                     </SelectTrigger>
                     <SelectContent>
@@ -230,6 +237,9 @@ export default function IrveSimulator() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-slate-500">
+                    Temps de recharge (0-80% pour 60kWh) : <span className="font-bold text-slate-700">{selectedPower > 0 ? (48 / selectedPower).toFixed(1) : 0} heures</span>
+                  </p>
                 </div>
 
                 <div className="pt-5 border-t border-slate-200">
@@ -307,50 +317,60 @@ export default function IrveSimulator() {
                   </div>
                 </div>
 
-                {/* Graphique */}
-                <div className="h-96 w-full bg-[#1e293b] rounded-2xl p-6 shadow-xl border border-slate-800">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                      <XAxis 
-                        dataKey="month" 
-                        stroke="#94a3b8" 
-                        tick={{fill: '#94a3b8', fontSize: 12}}
-                        tickLine={false}
-                        axisLine={{stroke: '#475569'}}
-                        label={{ value: 'Mois', position: 'insideBottomRight', offset: -5, fill: '#94a3b8', fontSize: 12 }}
-                      />
-                      <YAxis 
-                        stroke="#94a3b8" 
-                        tick={{fill: '#94a3b8', fontSize: 12}}
-                        tickLine={false}
-                        axisLine={{stroke: '#475569'}}
-                        tickFormatter={(val) => `${val/1000}k`}
-                      />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#f8fafc', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                        itemStyle={{ color: '#34d399', fontWeight: 'bold' }}
-                        formatter={(value) => [`${value} €`, 'Profit Cumulé']}
-                        labelFormatter={(label) => `Mois ${label}`}
-                        cursor={{fill: '#334155', opacity: 0.4}}
-                      />
-                      <ReferenceLine y={0} stroke="#64748b" strokeWidth={1} />
-                      {roiMonth && (
-                        <ReferenceLine 
-                          x={roiMonth} 
-                          stroke="#3b82f6" 
-                          strokeWidth={2}
-                          strokeDasharray="4 4"
-                          label={{ position: 'top', value: 'ROI', fill: '#60a5fa', fontWeight: 'bold', fontSize: 14 }} 
-                        />
-                      )}
-                      <Bar dataKey="profit" radius={[4, 4, 0, 0]} maxBarSize={40}>
-                        {chartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.isPositive ? '#34d399' : '#60a5fa'} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                {/* Visualisation (Graphique / Tableau) */}
+                <div className="h-[450px] w-full bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                  <Tabs defaultValue="graph" className="w-full h-full flex flex-col">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-bold text-slate-800">Évolution de la rentabilité</h3>
+                      <TabsList>
+                        <TabsTrigger value="graph">Graphique</TabsTrigger>
+                        <TabsTrigger value="table">Tableau détaillé</TabsTrigger>
+                      </TabsList>
+                    </div>
+                    
+                    <TabsContent value="graph" className="flex-1 bg-[#1e293b] rounded-xl p-4 mt-0 min-h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                          <XAxis dataKey="month" stroke="#94a3b8" tick={{fill: '#94a3b8', fontSize: 12}} tickLine={false} axisLine={{stroke: '#475569'}} label={{ value: 'Mois', position: 'insideBottomRight', offset: -5, fill: '#94a3b8', fontSize: 12 }} />
+                          <YAxis stroke="#94a3b8" tick={{fill: '#94a3b8', fontSize: 12}} tickLine={false} axisLine={{stroke: '#475569'}} tickFormatter={(val) => `${val/1000}k`} />
+                          <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#f8fafc', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} itemStyle={{ color: '#34d399', fontWeight: 'bold' }} formatter={(value) => [`${value} €`, 'Profit Cumulé']} labelFormatter={(label) => `Mois ${label}`} cursor={{fill: '#334155', opacity: 0.4}} />
+                          <ReferenceLine y={0} stroke="#64748b" strokeWidth={1} />
+                          {roiMonth && <ReferenceLine x={roiMonth} stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" label={{ position: 'top', value: 'ROI', fill: '#60a5fa', fontWeight: 'bold', fontSize: 14 }} />}
+                          <Bar dataKey="profit" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                            {chartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.isPositive ? '#34d399' : '#60a5fa'} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </TabsContent>
+                    
+                    <TabsContent value="table" className="flex-1 mt-0 overflow-y-auto">
+                      <div className="border border-slate-200 rounded-lg">
+                        <Table>
+                          <TableHeader className="bg-slate-50 sticky top-0">
+                            <TableRow>
+                              <TableHead>Mois</TableHead>
+                              <TableHead>Revenus cumulés</TableHead>
+                              <TableHead>Profit net</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {chartData.map((row) => (
+                              <TableRow key={row.month} className={row.profit >= 0 ? "bg-emerald-50/30" : ""}>
+                                <TableCell className="font-medium text-slate-700">Mois {row.month}</TableCell>
+                                <TableCell className="text-slate-600">{Math.round(row.month * monthlyRevenue).toLocaleString('fr-FR')} €</TableCell>
+                                <TableCell className={row.profit >= 0 ? "text-emerald-600 font-bold" : "text-red-500 font-bold"}>
+                                  {row.profit.toLocaleString('fr-FR')} €
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </div>
                 
                 {/* Tableau Gain Financier */}
@@ -381,6 +401,42 @@ export default function IrveSimulator() {
             </div>
           </CardContent>
         </Card>
+        
+        {/* 3. Arguments Commerciaux & LOM */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="border-t-4 border-t-amber-500 shadow-lg border-x-0 border-b-0 rounded-xl bg-white">
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
+              <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-amber-500" />
+                Conformité & Loi LOM
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-5 space-y-3">
+              <p className="text-slate-700 text-sm">
+                <span className="font-bold text-amber-700">Obligation réglementaire :</span> Depuis le 1er janvier 2025, les bâtiments non résidentiels avec un parking de plus de 20 places doivent s'équiper (1 borne par tranche de 20 places).
+              </p>
+              <p className="text-slate-700 text-sm">
+                Évitez les sanctions et valorisez votre patrimoine immobilier en vous mettant en conformité avec la Loi d'Orientation des Mobilités (LOM).
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-t-4 border-t-blue-500 shadow-lg border-x-0 border-b-0 rounded-xl bg-white">
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
+              <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Lightbulb className="h-5 w-5 text-blue-500" />
+                Intérêts Commerciaux
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-5 space-y-3">
+              <ul className="list-disc pl-5 space-y-2 text-slate-700 text-sm">
+                <li><span className="font-semibold text-slate-900">Visibilité accrue :</span> Soyez visible sur <strong>Booking.com</strong>, <strong>Google Maps</strong> et <strong>Chargemap</strong> en tant qu'établissement équipé.</li>
+                <li><span className="font-semibold text-slate-900">Nouveaux revenus :</span> Transformez votre parking en centre de profit.</li>
+                <li><span className="font-semibold text-slate-900">Fidélisation :</span> Attirez une nouvelle clientèle au fort pouvoir d'achat (utilisateurs de véhicules électriques).</li>
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
         
         {/* Footer PDF */}
         <div className="text-xs text-slate-400 text-center mt-12 pt-6 border-t border-slate-200">
