@@ -29,6 +29,23 @@ export default function IrveSimulator() {
   const [selectedPower, setSelectedPower] = useState(22);
   const [marginPerRecharge, setMarginPerRecharge] = useState(4);
   const [rechargesPerMonth, setRechargesPerMonth] = useState(205);
+  const [targetTypology, setTargetTypology] = useState('personnalise');
+
+  const typologies = {
+    'personnalise': { label: 'Personnalisé', estimate: null },
+    'tpe': { label: 'TPE / Bureaux', estimate: 30 },
+    'restaurant': { label: 'Restaurant', estimate: 150 },
+    'hotel': { label: 'Hôtel', estimate: 300 },
+    'parking': { label: 'Parking public', estimate: 500 },
+    'flotte': { label: 'Flotte entreprise', estimate: 100 },
+  };
+
+  const handleTypologyChange = (value) => {
+    setTargetTypology(value);
+    if (typologies[value].estimate !== null) {
+      setRechargesPerMonth(typologies[value].estimate);
+    }
+  };
 
   const handleProductChange = (id, field, value) => {
     setProducts(products.map(p => 
@@ -216,6 +233,20 @@ export default function IrveSimulator() {
                 </div>
 
                 <div className="pt-5 border-t border-slate-200">
+                  <Label className="text-sm font-semibold mb-3 block text-slate-700">Cible (Typologie d'établissement)</Label>
+                  <Select value={targetTypology} onValueChange={handleTypologyChange}>
+                    <SelectTrigger className="bg-white border-slate-300 focus:ring-emerald-500 mb-4">
+                      <SelectValue placeholder="Sélectionnez une cible" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(typologies).map(([key, config]) => (
+                        <SelectItem key={key} value={key}>
+                          {config.label} {config.estimate ? `(~${config.estimate} recharges/mois)` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
                   <Label className="text-sm font-semibold mb-3 block text-slate-700">Marge par recharge (€)</Label>
                   <div className="flex items-center gap-4">
                     <Slider 
@@ -247,7 +278,10 @@ export default function IrveSimulator() {
                     <Input 
                       type="number" 
                       value={rechargesPerMonth} 
-                      onChange={(e) => setRechargesPerMonth(Number(e.target.value))}
+                      onChange={(e) => {
+                        setRechargesPerMonth(Number(e.target.value));
+                        setTargetTypology('personnalise');
+                      }}
                       className="w-24 bg-white border-slate-300 focus:ring-emerald-500 font-semibold"
                     />
                   </div>
@@ -268,7 +302,7 @@ export default function IrveSimulator() {
                     <p className="text-3xl font-extrabold text-slate-800">{Math.round(resteACharge)} €</p>
                   </div>
                   <div className="bg-emerald-50 p-5 rounded-xl border border-emerald-200 shadow-sm flex flex-col items-center justify-center">
-                    <p className="text-xs text-emerald-600 font-bold uppercase tracking-wider mb-2">Break-Even (Mois)</p>
+                    <p className="text-xs text-emerald-600 font-bold uppercase tracking-wider mb-2">Point mort (Mois)</p>
                     <p className="text-3xl font-extrabold text-emerald-600">{breakEvenDisplay}</p>
                   </div>
                 </div>
@@ -318,6 +352,30 @@ export default function IrveSimulator() {
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
+                
+                {/* Tableau Gain Financier */}
+                <div className="mt-8 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                  <h3 className="text-lg font-bold text-slate-800 mb-4">Gain financier estimé</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                      <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Mensuel</p>
+                      <p className="text-xl font-bold text-slate-800">{Math.round(monthlyRevenue).toLocaleString('fr-FR')} €</p>
+                    </div>
+                    <div className="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                      <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Annuel</p>
+                      <p className="text-xl font-bold text-emerald-600">{Math.round(monthlyRevenue * 12).toLocaleString('fr-FR')} €</p>
+                    </div>
+                    <div className="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                      <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Sur 3 ans</p>
+                      <p className="text-xl font-bold text-emerald-700">{Math.round(monthlyRevenue * 36).toLocaleString('fr-FR')} €</p>
+                    </div>
+                    <div className="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                      <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Sur 5 ans</p>
+                      <p className="text-xl font-bold text-emerald-800">{Math.round(monthlyRevenue * 60).toLocaleString('fr-FR')} €</p>
+                    </div>
+                  </div>
+                </div>
+
               </div>
 
             </div>
@@ -326,7 +384,8 @@ export default function IrveSimulator() {
         
         {/* Footer PDF */}
         <div className="text-xs text-slate-400 text-center mt-12 pt-6 border-t border-slate-200">
-          Document généré par ENR Courtage Énergie - Ces simulations sont données à titre indicatif et ne constituent pas une offre contractuelle. Les subventions dépendent des enveloppes gouvernementales en vigueur.
+          Document généré par ENR Courtage Énergie<br />
+          Ces simulations sont données à titre indicatif et ne constituent pas une offre contractuelle. Les subventions dépendent des enveloppes gouvernementales en vigueur.
         </div>
       </div>
     </div>
