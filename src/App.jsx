@@ -18,6 +18,7 @@ import DossierTracking from './pages/DossierTracking.jsx';
 import BpAcama from './pages/BpAcama.jsx';
 import Developpement from './pages/Developpement.jsx';
 import AdminEnedis from './pages/AdminEnedis.jsx';
+import IrveSimulator from './pages/IrveSimulator.jsx';
 
 import MentionsLegales from './pages/Legal/MentionsLegales.jsx';
 import PrivacyPolicy from './pages/Legal/PrivacyPolicy.jsx';
@@ -158,7 +159,7 @@ function AppContent() {
             }
           />
           <Route
-            path="bp"
+            path="bp-acama"
             element={
               <ProtectedRoute>
                 <BpAcama />
@@ -178,6 +179,14 @@ function AppContent() {
             element={
               <ProtectedRoute requiredPermission="canAccessEnedis">
                 <AdminEnedis />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="irve"
+            element={
+              <ProtectedRoute>
+                <IrveSimulator />
               </ProtectedRoute>
             }
           />

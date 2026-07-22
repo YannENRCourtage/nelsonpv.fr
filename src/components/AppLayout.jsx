@@ -454,6 +454,13 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
             )}
             */}
 
+            {/* Nouveau Simulateur IRVE (exclusif ENR COURTAGE ENERGIE) */}
+            {activeTenantId === 'enr-courtage-energie' && (
+              <NavLink to="/irve" className={({ isActive }) => isActive ? 'nav-link active simulateur' : 'nav-link simulateur'}>
+                Simulateur IRVE
+              </NavLink>
+            )}
+
             {/* Finance masqué pour tout le monde
             {!isRestrictedUser && (user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessFinance) && (
               <NavLink to="/finance" className={({ isActive }) => isActive ? 'nav-link active finance' : 'nav-link finance'}>
@@ -715,6 +722,17 @@ export default function AppLayout() {
               </NavLink>
             )}
             */}
+
+            {/* Nouveau Simulateur IRVE (exclusif ENR COURTAGE ENERGIE) */}
+            {activeTenantId === 'enr-courtage-energie' && (
+              <NavLink
+                to="/irve"
+                className={({ isActive }) => isActive ? 'mobile-nav-link active simulateur' : 'mobile-nav-link simulateur'}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Simulateur IRVE
+              </NavLink>
+            )}
 
             {/* Finance masqué (Mobile)
             {!isRestrictedUser && (user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessFinance) && (

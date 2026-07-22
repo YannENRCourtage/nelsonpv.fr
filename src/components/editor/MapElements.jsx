@@ -803,6 +803,7 @@ function PostesHTALayerManager({ layersRef, activeLayers }) {
   return null;
 }
 
+
 function PostesSourcesRTELayerManager({ layersRef, activeLayers }) {
   const map = useMap();
   const active = activeLayers?.has('postesSourcesRTE');
@@ -2317,7 +2318,7 @@ function EditLayer({ mode, setMode, features, setFeatures, temp, setTemp, select
           }}
         />
       )}
-      {askNoteAt && <TextInputPopup at={askNoteAt} onCancel={() => { setAskNoteAt(null); setMode(null); }} onSubmit={(val) => { const id = crypto.randomUUID(); setFeatures((arr) => [...arr, { id, type: "note", at: askNoteAt, value: val }]); setAskNoteAt(null); setMode(null); }} />}
+{askNoteAt && <TextInputPopup at={askNoteAt} onCancel={() => { setAskNoteAt(null); setMode(null); }} onSubmit={(val) => { const id = crypto.randomUUID(); setFeatures((arr) => [...arr, { id, type: "note", at: askNoteAt, value: val }]); setAskNoteAt(null); setMode(null); }} />}
       {urbanismeInfo && <UrbanismePopup info={urbanismeInfo} onClose={() => setUrbanismeInfo(null)} />}
       {contextMenu && <ContextMenu
         position={contextMenu.position}
@@ -5794,3 +5795,7 @@ function MapSidePanel({ type, data, onClose }) {
     </div>
   );
 }
+
+
+
+
