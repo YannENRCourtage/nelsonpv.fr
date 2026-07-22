@@ -7,14 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from 'recharts';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileDown, Calculator, ShieldCheck, Lightbulb } from 'lucide-react';
+import { FileDown, Calculator, ShieldCheck, Lightbulb, CheckCircle2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 export default function IrveSimulator() {
   const page1Ref = useRef(null);
   const page2Ref = useRef(null);
+  const page3Ref = useRef(null);
   const [projectionMonths, setProjectionMonths] = useState(36);
 
   // Gamme de produits par défaut (modifiables par l'utilisateur)
@@ -33,6 +33,11 @@ export default function IrveSimulator() {
   const [selectedPower, setSelectedPower] = useState(22);
   const [marginPerRecharge, setMarginPerRecharge] = useState(4);
   const [rechargesPerMonth, setRechargesPerMonth] = useState(205);
+
+  // Simulation de financement
+  const [customFinanceAmount, setCustomFinanceAmount] = useState('');
+  const [financeYears, setFinanceYears] = useState(5);
+  const [clientDeposit, setClientDeposit] = useState(0);
 
   const currentProduct = products.find(p => p.power === selectedPower) || products[0];
   const hardwareCost = currentProduct.price * quantity;
@@ -83,6 +88,13 @@ export default function IrveSimulator() {
   const breakEvenMonths = monthlyRevenue > 0 ? (resteACharge / monthlyRevenue) : 0;
   const breakEvenDisplay = breakEvenMonths > 0 ? breakEvenMonths.toFixed(1) : '-';
 
+  // Calcul Financement SunLib
+  const displayFinanceAmount = customFinanceAmount !== '' ? Number(customFinanceAmount) : resteACharge;
+  const actualFinanced = Math.max(0, displayFinanceAmount - clientDeposit);
+  const financeRate = 0.08 / 12; // 8% annuel approximatif
+  const financeMonths = financeYears * 12;
+  const monthlyLease = actualFinanced > 0 ? (actualFinanced * financeRate) / (1 - Math.pow(1 + financeRate, -financeMonths)) : 0;
+
   // Génération des données du graphique
   const generateChartData = () => {
     const data = [];
@@ -128,6 +140,7 @@ export default function IrveSimulator() {
 
       await addScaledCanvas(page1Ref.current, true);
       await addScaledCanvas(page2Ref.current, false);
+      if (page3Ref.current) await addScaledCanvas(page3Ref.current, false);
       
       pdf.save(`Etude_IRVE_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
@@ -136,7 +149,7 @@ export default function IrveSimulator() {
   };
 
   return (
-    <div className="container mx-auto p-4 max-w-7xl overflow-y-auto h-full pb-20">
+    <div className="container mx-auto p-4 max-w-[95rem] overflow-y-auto h-full pb-20">
       <div className="flex justify-between items-center mb-6 mt-4 px-2">
         <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
           <Calculator className="h-8 w-8 text-blue-600" />
@@ -255,15 +268,6 @@ export default function IrveSimulator() {
             </CardHeader>
             <CardContent className="pt-6">
               
-              <Tabs defaultValue="simulateur" className="w-full">
-                <div className="flex justify-center mb-6">
-                  <TabsList className="bg-slate-100 p-1">
-                    <TabsTrigger value="simulateur" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Simulateur</TabsTrigger>
-                    <TabsTrigger value="tableau" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">Tableau</TabsTrigger>
-                  </TabsList>
-                </div>
-
-                <TabsContent value="simulateur">
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     {/* Panneau de Contrôle */}
                     <div className="lg:col-span-4 space-y-7 bg-slate-50 p-6 rounded-xl border border-slate-200">
@@ -322,7 +326,7 @@ export default function IrveSimulator() {
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-slate-500">
-                          Temps de recharge (0-80% pour 60kWh) : <span className="font-bold text-slate-700">{selectedPower > 0 ? (48 / selectedPower).toFixed(1) : 0} heures</span>
+                          Temps de recharge (0-80% pour Tesla Model 3) : <span className="font-bold text-slate-700">{selectedPower > 0 ? (48 / selectedPower).toFixed(1) : 0} heures</span>
                         </p>
                       </div>
 
@@ -342,22 +346,26 @@ export default function IrveSimulator() {
                         </Select>
 
                         <Label className="text-sm font-semibold mb-3 block text-slate-700">Marge par recharge (€)</Label>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 mb-2">
                           <Slider 
                             value={[marginPerRecharge]} 
                             onValueChange={(val) => setMarginPerRecharge(val[0])} 
                             max={20} 
-                            step={0.5}
+                            step={0.1}
                             className="flex-1 cursor-pointer"
                           />
                           <Input 
                             type="number" 
+                            step="0.1"
                             value={marginPerRecharge} 
                             onChange={(e) => setMarginPerRecharge(Number(e.target.value))}
                             className="w-24 bg-white border-slate-300 focus:ring-emerald-500 font-semibold text-center"
                             style={{ paddingTop: 0, paddingBottom: 0, lineHeight: '2.5rem' }}
                           />
                         </div>
+                        <p className="text-xs text-emerald-600 font-semibold bg-emerald-50 p-2 rounded-md border border-emerald-100">
+                          Gains mensuels estimés : {Math.round(monthlyRevenue)} € / mois
+                        </p>
                       </div>
 
                       <div>
@@ -445,67 +453,140 @@ export default function IrveSimulator() {
                       </div>
                     </div>
                   </div>
-                </TabsContent>
-
-                <TabsContent value="tableau">
-                  <div className="flex items-center justify-between mb-6 mt-4">
-                    <h3 className="font-bold text-slate-800 text-lg">Évolution des profits détaillés</h3>
-                    <div className="flex items-center gap-4">
-                      <Label className="font-semibold text-slate-700">Période d'affichage :</Label>
-                      <Select value={projectionMonths.toString()} onValueChange={v => setProjectionMonths(Number(v))}>
-                        <SelectTrigger className="w-48 bg-white border-slate-300 focus:ring-blue-500" style={{ paddingTop: 0, paddingBottom: 0, lineHeight: '2.5rem' }}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="12">12 mois (1 an)</SelectItem>
-                          <SelectItem value="24">24 mois (2 ans)</SelectItem>
-                          <SelectItem value="36">36 mois (3 ans)</SelectItem>
-                          <SelectItem value="48">48 mois (4 ans)</SelectItem>
-                          <SelectItem value="60">60 mois (5 ans)</SelectItem>
-                          <SelectItem value="120">120 mois (10 ans)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  
-                  <div className="border border-slate-200 rounded-lg bg-white overflow-hidden shadow-sm h-[600px] overflow-y-auto">
-                    <Table>
-                      <TableHeader className="bg-slate-100 sticky top-0 shadow-sm z-10">
-                        <TableRow>
-                          <TableHead className="font-bold text-slate-700">Mois (Année)</TableHead>
-                          <TableHead className="font-bold text-slate-700 text-right">Revenus Mensuels</TableHead>
-                          <TableHead className="font-bold text-slate-700 text-right">Revenus Cumulés</TableHead>
-                          <TableHead className="font-bold text-slate-700 text-right">Profit Net</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {chartData.map((row) => (
-                          <TableRow key={row.month} className={row.profit >= 0 ? "bg-emerald-50/40" : "bg-white"}>
-                            <TableCell className="font-medium text-slate-700">
-                              Mois {row.month} <span className="text-slate-400 text-xs ml-1">({(row.month / 12).toFixed(1)} ans)</span>
-                            </TableCell>
-                            <TableCell className="text-slate-600 text-right">{Math.round(monthlyRevenue).toLocaleString('fr-FR')} €</TableCell>
-                            <TableCell className="text-slate-600 text-right">{Math.round(row.month * monthlyRevenue).toLocaleString('fr-FR')} €</TableCell>
-                            <TableCell className={row.profit >= 0 ? "text-emerald-600 font-bold text-right" : "text-red-500 font-bold text-right"}>
-                              {row.profit.toLocaleString('fr-FR')} €
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </TabsContent>
-              </Tabs>
 
             </CardContent>
           </Card>
-          
-          {/* Footer PDF */}
+        </div>
+
+        {/* --- PAGE 3 DU PDF : FINANCEMENT --- */}
+        <div ref={page3Ref} className="space-y-8 bg-slate-50 p-8 rounded-2xl border border-slate-200 shadow-sm">
+          <Card className="border-t-4 border-t-indigo-500 shadow-lg border-x-0 border-b-0 rounded-xl bg-white overflow-hidden">
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
+              <CardTitle className="text-xl font-bold text-slate-800">3. Simulation de Financement SunLib</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                {/* Paramètres de financement */}
+                <div className="lg:col-span-8 space-y-8">
+                  <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-8">
+                    <div>
+                      <Label className="text-sm font-semibold mb-3 block text-slate-700">Montant de l'installation (€)</Label>
+                      <Input 
+                        type="number" 
+                        value={customFinanceAmount !== '' ? customFinanceAmount : Math.round(resteACharge)} 
+                        onChange={(e) => setCustomFinanceAmount(e.target.value)}
+                        placeholder={`Par défaut : ${Math.round(resteACharge)}`}
+                        className="w-1/2 bg-white border-slate-300 focus:ring-indigo-500 font-semibold"
+                        style={{ lineHeight: '2.5rem' }}
+                      />
+                      <p className="text-xs text-slate-500 mt-2">Laissez vide pour utiliser le Reste à Charge calculé ci-dessus.</p>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between items-center mb-3">
+                        <Label className="text-sm font-semibold text-slate-700">Durée de financement</Label>
+                        <span className="font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">{financeYears} ans</span>
+                      </div>
+                      <Slider 
+                        value={[financeYears]} 
+                        onValueChange={(val) => setFinanceYears(val[0])} 
+                        min={1}
+                        max={10} 
+                        step={1}
+                        className="cursor-pointer"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-semibold mb-3 block text-slate-700">Apport du client (en €)</Label>
+                      <Input 
+                        type="number" 
+                        value={clientDeposit} 
+                        onChange={(e) => setClientDeposit(Number(e.target.value))}
+                        className="w-1/2 bg-white border-slate-300 focus:ring-indigo-500 font-semibold"
+                        style={{ lineHeight: '2.5rem' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                    <h4 className="font-bold text-slate-800 mb-4">Informations sur la simulation</h4>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between border-b border-slate-200 pb-2">
+                        <span className="text-slate-500">Objectif du projet</span>
+                        <span className="font-semibold text-slate-700">Infrastructures de Recharge (IRVE)</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-200 pb-2">
+                        <span className="text-slate-500">Type de financement</span>
+                        <span className="font-semibold text-slate-700">Location Longue Durée / Crédit-Bail</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-200 pb-2">
+                        <span className="text-slate-500">Montant financé</span>
+                        <span className="font-semibold text-slate-700">{Math.round(actualFinanced).toLocaleString('fr-FR')} €</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Durée de financement</span>
+                        <span className="font-semibold text-slate-700">{financeYears} ans ({financeMonths} mois)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Résultat (Loyer) */}
+                <div className="lg:col-span-4 space-y-6">
+                  <div className="bg-[#2D3748] rounded-xl p-6 text-white shadow-xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-10 -mt-10 blur-xl"></div>
+                    <div className="flex justify-between items-center mb-4 relative z-10">
+                      <h4 className="font-bold text-lg">Mensualité</h4>
+                      <span className="bg-white/20 text-xs px-2 py-1 rounded text-white font-medium">estimation</span>
+                    </div>
+                    <div className="relative z-10 mb-4">
+                      <div className="text-4xl font-extrabold flex items-baseline gap-1">
+                        <span className="text-3xl font-medium opacity-80">~</span>
+                        {Math.round(monthlyLease).toLocaleString('fr-FR')}
+                        <span className="text-lg font-medium opacity-80">€ / mois</span>
+                      </div>
+                    </div>
+                    <div className="border-t border-slate-600 pt-4 relative z-10">
+                      <p className="font-bold text-sm">Soit {Math.round(monthlyLease * 12).toLocaleString('fr-FR')} € par an</p>
+                      <p className="text-[10px] text-slate-400 mt-2 leading-tight">Ce loyer est indicatif. Il pourra varier de ±10% selon l'analyse financière de l'entreprise.</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <h4 className="font-bold text-slate-800 mb-4">Détails de l'offre</h4>
+                    
+                    <div className="mb-6">
+                      <h5 className="text-xs uppercase font-bold text-slate-500 mb-3">Inclus dans votre devis</h5>
+                      <ul className="space-y-2 text-sm text-slate-700">
+                        <li className="flex gap-2 items-start"><CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> <span>Installation infrastructure de recharge</span></li>
+                        <li className="flex gap-2 items-start"><CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> <span>Raccordement et conformité</span></li>
+                        <li className="flex gap-2 items-start"><CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" /> <span>Mise en service</span></li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h5 className="text-xs uppercase font-bold text-slate-500 mb-3">Coût déjà inclus par SunLib</h5>
+                      <ul className="space-y-2 text-sm text-slate-700">
+                        <li className="flex gap-2 items-start"><CheckCircle2 className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" /> <span>Frais bancaires et financiers</span></li>
+                        <li className="flex gap-2 items-start"><CheckCircle2 className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" /> <span>Accompagnement administratif</span></li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Footer PDF (Déplacé ici) */}
           <div className="text-xs text-slate-400 text-center mt-12 pt-6 border-t border-slate-200">
             Document généré par ENR Courtage Énergie<br />
             Ces simulations sont données à titre indicatif et ne constituent pas une offre contractuelle. Les subventions dépendent des enveloppes gouvernementales en vigueur.
           </div>
         </div>
+
       </div>
     </div>
   );
