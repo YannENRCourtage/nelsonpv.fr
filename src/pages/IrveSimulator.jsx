@@ -48,6 +48,7 @@ export default function IrveSimulator() {
   const typologies = {
     'personnalise': { label: 'Personnalisé', estimate: null },
     'tpe': { label: 'TPE / Bureaux', estimate: 30 },
+    'copro': { label: 'Copropriété', estimate: 60 },
     'restaurant': { label: 'Restaurant', estimate: 150 },
     'hotel': { label: 'Hôtel', estimate: 300 },
     'parking': { label: 'Parking public', estimate: 500 },
@@ -100,7 +101,10 @@ export default function IrveSimulator() {
     const data = [];
     let currentProfit = -resteACharge;
     
-    for (let month = 1; month <= projectionMonths; month++) {
+    // Le graphique s'adapte pour toujours montrer le point mort + 12 mois
+    const dynamicMonths = Math.max(36, Math.ceil((breakEvenMonths + 12) / 12) * 12);
+    
+    for (let month = 1; month <= dynamicMonths; month++) {
       currentProfit += monthlyRevenue;
       data.push({
         month: month.toString(),
@@ -404,9 +408,15 @@ export default function IrveSimulator() {
                           <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2">Reste à charge HT</p>
                           <p className="text-3xl font-extrabold text-slate-800">{Math.round(resteACharge)} €</p>
                         </div>
-                        <div className="bg-emerald-50 p-5 rounded-xl border border-emerald-200 shadow-sm flex flex-col items-center justify-center">
-                          <p className="text-xs text-emerald-600 font-bold uppercase tracking-wider mb-2">Point mort (Mois)</p>
-                          <p className="text-3xl font-extrabold text-emerald-600">{breakEvenDisplay}</p>
+                        <div className="bg-emerald-50 p-5 rounded-xl border border-emerald-200 shadow-sm flex flex-col items-center justify-center text-center">
+                          <p className="text-xs text-emerald-600 font-bold uppercase tracking-wider mb-2">Point mort</p>
+                          <div className="flex items-baseline gap-2">
+                            <p className="text-3xl font-extrabold text-emerald-600">{breakEvenDisplay}</p>
+                            {breakEvenMonths > 0 && <p className="text-sm font-bold text-emerald-600">mois</p>}
+                          </div>
+                          {breakEvenMonths > 0 && (
+                            <p className="text-xs font-semibold text-emerald-700 mt-1">({(breakEvenMonths / 12).toFixed(1)} ans)</p>
+                          )}
                         </div>
                       </div>
 
@@ -478,7 +488,7 @@ export default function IrveSimulator() {
                         onChange={(e) => setCustomFinanceAmount(e.target.value)}
                         placeholder={`Par défaut : ${Math.round(resteACharge)}`}
                         className="w-1/2 bg-white border-slate-300 focus:ring-indigo-500 font-semibold"
-                        style={{ lineHeight: '2.5rem' }}
+                        style={{ paddingTop: 0, paddingBottom: 0, lineHeight: '2.5rem' }}
                       />
                       <p className="text-xs text-slate-500 mt-2">Laissez vide pour utiliser le Reste à Charge calculé ci-dessus.</p>
                     </div>
@@ -505,7 +515,7 @@ export default function IrveSimulator() {
                         value={clientDeposit} 
                         onChange={(e) => setClientDeposit(Number(e.target.value))}
                         className="w-1/2 bg-white border-slate-300 focus:ring-indigo-500 font-semibold"
-                        style={{ lineHeight: '2.5rem' }}
+                        style={{ paddingTop: 0, paddingBottom: 0, lineHeight: '2.5rem' }}
                       />
                     </div>
                   </div>
