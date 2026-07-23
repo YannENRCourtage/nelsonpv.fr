@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from 'recharts';
 import { FileDown, Calculator, ShieldCheck, Lightbulb, CheckCircle2 } from 'lucide-react';
@@ -16,6 +17,7 @@ export default function IrveSimulator() {
   const page2Ref = useRef(null);
   const page3Ref = useRef(null);
   const [projectionMonths, setProjectionMonths] = useState(36);
+  const [includeFinancing, setIncludeFinancing] = useState(false);
 
   // Gamme de produits par défaut (modifiables par l'utilisateur)
   const [products, setProducts] = useState([
@@ -99,13 +101,40 @@ export default function IrveSimulator() {
   // Génération des données du graphique
   const generateChartData = () => {
     const data = [];
-    let currentProfit = -resteACharge;
+    let currentProfit = includeFinancing ? -clientDeposit : -resteACharge;
     
-    // Le graphique s'adapte pour toujours montrer le point mort + 12 mois
-    const dynamicMonths = Math.max(36, Math.ceil((breakEvenMonths + 12) / 12) * 12);
+    let calculatedBreakEven = breakEvenMonths;
+    if (includeFinancing) {
+        let tempProfit = -clientDeposit;
+        let bMonth = 0;
+        for (let m = 1; m <= 120; m++) {
+            const year = Math.floor((m - 1) / 12);
+            const rev = monthlyRevenue * Math.pow(1.02, year);
+            const cost = (m <= financeMonths ? monthlyLease : 0) + (200 * quantity) / 12;
+            tempProfit += (rev - cost);
+            if (tempProfit >= 0) {
+                bMonth = m;
+                break;
+            }
+        }
+        calculatedBreakEven = bMonth > 0 ? bMonth : 120;
+    }
+
+    const dynamicMonths = Math.max(60, Math.ceil((calculatedBreakEven + 12) / 12) * 12);
     
     for (let month = 1; month <= dynamicMonths; month++) {
-      currentProfit += monthlyRevenue;
+      let currentMonthlyRevenue = monthlyRevenue;
+      let currentMonthlyCost = 0;
+
+      if (includeFinancing) {
+        const year = Math.floor((month - 1) / 12);
+        currentMonthlyRevenue = monthlyRevenue * Math.pow(1.02, year);
+        const maintenanceCost = (200 * quantity) / 12;
+        const leaseCost = month <= financeMonths ? monthlyLease : 0;
+        currentMonthlyCost = leaseCost + maintenanceCost;
+      }
+      
+      currentProfit += (currentMonthlyRevenue - currentMonthlyCost);
       data.push({
         month: month.toString(),
         profit: Math.round(currentProfit),
@@ -114,6 +143,21 @@ export default function IrveSimulator() {
     }
     return data;
   };
+
+  const getPeriodStats = (months) => {
+    let totalRev = 0;
+    let totalCost = 0;
+    for (let m = 1; m <= months; m++) {
+      const year = Math.floor((m - 1) / 12);
+      totalRev += monthlyRevenue * Math.pow(1.02, year);
+      totalCost += (m <= financeMonths ? monthlyLease : 0) + (200 * quantity) / 12;
+    }
+    return { rev: totalRev, cost: totalCost, net: totalRev - totalCost };
+  };
+
+  const stats1yr = getPeriodStats(12);
+  const stats3yr = getPeriodStats(36);
+  const stats5yr = getPeriodStats(60);
 
   const chartData = generateChartData();
   const roiMonth = chartData.find(d => d.profit >= 0)?.month || null;
@@ -421,6 +465,20 @@ export default function IrveSimulator() {
                       </div>
 
                       {/* Visualisation (Graphique) */}
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-slate-800">Évolution de la rentabilité</h3>
+                        <div className="flex items-center space-x-2 bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100">
+                          <Switch 
+                            id="financing-mode" 
+                            checked={includeFinancing} 
+                            onCheckedChange={setIncludeFinancing} 
+                            className="data-[state=checked]:bg-indigo-600"
+                          />
+                          <Label htmlFor="financing-mode" className="text-sm font-semibold text-indigo-900 cursor-pointer">
+                            Mode Avancé (Financement, 2% inflation, maintenance)
+                          </Label>
+                        </div>
+                      </div>
                       <div className="h-96 w-full bg-[#1e293b] rounded-2xl p-6 shadow-xl border border-slate-800">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
@@ -441,25 +499,53 @@ export default function IrveSimulator() {
                       
                       {/* Tableau Gain Financier */}
                       <div className="mt-8 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h3 className="text-lg font-bold text-slate-800 mb-4">Gain financier estimé</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <div className="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                            <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Mensuel</p>
-                            <p className="text-xl font-bold text-slate-800">{Math.round(monthlyRevenue).toLocaleString('fr-FR')} €</p>
+                        <h3 className="text-lg font-bold text-slate-800 mb-4">{includeFinancing ? "Bilan Financier (Moyenne Mensuelle A1)" : "Gain financier brut estimé"}</h3>
+                        {includeFinancing ? (
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="col-span-1 md:col-span-4 grid grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                              <div className="text-center">
+                                <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Recettes (Mois)</p>
+                                <p className="text-xl font-bold text-emerald-600">+{Math.round(stats1yr.rev / 12).toLocaleString('fr-FR')} €</p>
+                              </div>
+                              <div className="text-center border-l border-r border-slate-200">
+                                <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Coûts (Mois)</p>
+                                <p className="text-xl font-bold text-red-500">-{Math.round(stats1yr.cost / 12).toLocaleString('fr-FR')} €</p>
+                                <p className="text-[10px] text-slate-400 mt-1">Loyer + Maint.</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Net (Mois)</p>
+                                <p className="text-xl font-bold text-slate-800">{Math.round((stats1yr.rev - stats1yr.cost) / 12).toLocaleString('fr-FR')} €</p>
+                              </div>
+                            </div>
+                            <div className="text-center p-3 bg-slate-50 rounded-lg border border-slate-100 mt-4 md:col-span-2">
+                              <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Net sur 3 ans</p>
+                              <p className="text-xl font-bold text-emerald-700">{Math.round(stats3yr.net).toLocaleString('fr-FR')} €</p>
+                            </div>
+                            <div className="text-center p-3 bg-slate-50 rounded-lg border border-slate-100 mt-4 md:col-span-2">
+                              <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Net sur 5 ans</p>
+                              <p className="text-xl font-bold text-emerald-800">{Math.round(stats5yr.net).toLocaleString('fr-FR')} €</p>
+                            </div>
                           </div>
-                          <div className="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                            <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Annuel</p>
-                            <p className="text-xl font-bold text-emerald-600">{Math.round(monthlyRevenue * 12).toLocaleString('fr-FR')} €</p>
+                        ) : (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                              <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Mensuel</p>
+                              <p className="text-xl font-bold text-slate-800">{Math.round(monthlyRevenue).toLocaleString('fr-FR')} €</p>
+                            </div>
+                            <div className="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                              <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Annuel</p>
+                              <p className="text-xl font-bold text-emerald-600">{Math.round(monthlyRevenue * 12).toLocaleString('fr-FR')} €</p>
+                            </div>
+                            <div className="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                              <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Sur 3 ans</p>
+                              <p className="text-xl font-bold text-emerald-700">{Math.round(monthlyRevenue * 36).toLocaleString('fr-FR')} €</p>
+                            </div>
+                            <div className="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                              <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Sur 5 ans</p>
+                              <p className="text-xl font-bold text-emerald-800">{Math.round(monthlyRevenue * 60).toLocaleString('fr-FR')} €</p>
+                            </div>
                           </div>
-                          <div className="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                            <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Sur 3 ans</p>
-                            <p className="text-xl font-bold text-emerald-700">{Math.round(monthlyRevenue * 36).toLocaleString('fr-FR')} €</p>
-                          </div>
-                          <div className="text-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                            <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Sur 5 ans</p>
-                            <p className="text-xl font-bold text-emerald-800">{Math.round(monthlyRevenue * 60).toLocaleString('fr-FR')} €</p>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   </div>
