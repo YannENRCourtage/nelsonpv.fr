@@ -86,7 +86,7 @@ export default function IrveSimulator() {
   const subvention = calculateSubvention();
   const resteACharge = totalInvestment - subvention;
   
-  const monthlyRevenue = marginPerRecharge * rechargesPerMonth;
+  const monthlyRevenue = quantity * marginPerRecharge * rechargesPerMonth;
   
   const breakEvenMonths = monthlyRevenue > 0 ? (resteACharge / monthlyRevenue) : 0;
   const breakEvenDisplay = breakEvenMonths > 0 ? breakEvenMonths.toFixed(1) : '-';
@@ -101,11 +101,11 @@ export default function IrveSimulator() {
   // Génération des données du graphique
   const generateChartData = () => {
     const data = [];
-    let currentProfit = includeFinancing ? -clientDeposit : -resteACharge;
+    let currentProfit = includeFinancing ? -(Number(clientDeposit) || 0) : -resteACharge;
     
     let calculatedBreakEven = breakEvenMonths;
     if (includeFinancing) {
-        let tempProfit = -clientDeposit;
+        let tempProfit = -(Number(clientDeposit) || 0);
         let bMonth = 0;
         for (let m = 1; m <= 120; m++) {
             const year = Math.floor((m - 1) / 12);
