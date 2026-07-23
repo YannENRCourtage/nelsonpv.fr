@@ -167,6 +167,15 @@ export default function IrveSimulator() {
   const handleExportPDF = async () => {
     if (!page1Ref.current || !page2Ref.current) return;
     
+    // Ajout temporaire du titre pour le PDF
+    const titleDiv = document.createElement('div');
+    titleDiv.className = "text-center mb-4 pb-4 border-b border-slate-200";
+    titleDiv.innerHTML = `
+      <h2 class="text-3xl font-extrabold text-slate-800 tracking-tight" style="font-family: inherit; margin-top: 0; margin-bottom: 0;">Étude de Rentabilité : Projet IRVE</h2>
+      <p class="text-slate-500 mt-2 text-lg" style="font-family: inherit; margin-bottom: 0;">Démontrez l'intérêt d'investir dans une infrastructure de recharge</p>
+    `;
+    page2Ref.current.insertBefore(titleDiv, page2Ref.current.firstChild);
+
     try {
       const pdf = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -193,6 +202,10 @@ export default function IrveSimulator() {
         pdf.save(`Etude_IRVE_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
       console.error("Erreur lors de la génération du PDF :", error);
+    } finally {
+      if (page2Ref.current && titleDiv.parentNode === page2Ref.current) {
+        page2Ref.current.removeChild(titleDiv);
+      }
     }
   };
 
@@ -272,10 +285,10 @@ export default function IrveSimulator() {
         </div>
 
         {/* --- PAGE 2 DU PDF --- */}
-        <div ref={page2Ref} className="space-y-8 bg-slate-50 p-8 rounded-2xl border border-slate-200 shadow-sm">
+        <div ref={page2Ref} className="space-y-6 bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm">
           {/* 2. Simulateur de ROI */}
           <Card className="border-t-4 border-t-emerald-500 shadow-lg border-x-0 border-b-0 rounded-xl bg-white overflow-hidden">
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-3">
               <CardTitle className="text-xl font-bold text-slate-800">2. Simulateur Interactif de ROI</CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
@@ -443,7 +456,7 @@ export default function IrveSimulator() {
                           </Label>
                         </div>
                       </div>
-                      <div className="h-96 w-full bg-[#1e293b] rounded-2xl p-6 shadow-xl border border-slate-800">
+                      <div className="h-80 w-full bg-[#1e293b] rounded-2xl p-6 shadow-xl border border-slate-800">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
@@ -462,7 +475,7 @@ export default function IrveSimulator() {
                       </div>
                       
                       {/* Tableau Gain Financier */}
-                      <div className="mt-8 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                      <div className="mt-6 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                         <h3 className="text-lg font-bold text-slate-800 mb-4">{includeFinancing ? "Bilan Financier (Moyenne Mensuelle A1)" : "Gain financier brut estimé"}</h3>
                         {includeFinancing ? (
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
