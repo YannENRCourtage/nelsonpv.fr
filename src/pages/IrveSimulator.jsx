@@ -18,6 +18,7 @@ export default function IrveSimulator() {
   const page3Ref = useRef(null);
   const [projectionMonths, setProjectionMonths] = useState(36);
   const [includeFinancing, setIncludeFinancing] = useState(false);
+  const [showSunlibFinancing, setShowSunlibFinancing] = useState(true);
 
   // Gamme de produits par défaut (modifiables par l'utilisateur)
   const [products, setProducts] = useState([
@@ -186,11 +187,10 @@ export default function IrveSimulator() {
         pdf.addImage(imgData, 'PNG', (pdfWidth - finalWidth) / 2, 5, finalWidth, imgHeight);
       };
 
-      await addScaledCanvas(page1Ref.current, true);
-      await addScaledCanvas(page2Ref.current, false);
-      if (page3Ref.current) await addScaledCanvas(page3Ref.current, false);
-      
-      pdf.save(`Etude_IRVE_${new Date().toISOString().split('T')[0]}.pdf`);
+        await addScaledCanvas(page2Ref.current, true);
+        if (page3Ref.current) await addScaledCanvas(page3Ref.current, false);
+        
+        pdf.save(`Etude_IRVE_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
       console.error("Erreur lors de la génération du PDF :", error);
     }
@@ -269,42 +269,6 @@ export default function IrveSimulator() {
               </div>
             </CardContent>
           </Card>
-
-          {/* 3. Arguments Commerciaux & LOM (Déplacé sur la page 1) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="border-t-4 border-t-amber-500 shadow-lg border-x-0 border-b-0 rounded-xl bg-white">
-              <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
-                <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                  <ShieldCheck className="h-5 w-5 text-amber-500" />
-                  Conformité & Loi LOM
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-5 space-y-3">
-                <p className="text-slate-700 text-sm">
-                  <span className="font-bold text-amber-700">Obligation réglementaire :</span> Depuis le 1er janvier 2025, les bâtiments non résidentiels avec un parking de plus de 20 places doivent s'équiper (1 borne par tranche de 20 places).
-                </p>
-                <p className="text-slate-700 text-sm">
-                  Évitez les sanctions et valorisez votre patrimoine immobilier en vous mettant en conformité avec la Loi d'Orientation des Mobilités (LOM).
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-t-4 border-t-blue-500 shadow-lg border-x-0 border-b-0 rounded-xl bg-white">
-              <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
-                <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                  <Lightbulb className="h-5 w-5 text-blue-500" />
-                  Intérêts Commerciaux
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-5 space-y-3">
-                <ul className="list-disc pl-5 space-y-2 text-slate-700 text-sm">
-                  <li><span className="font-semibold text-slate-900">Visibilité accrue :</span> Soyez visible sur <strong>Booking.com</strong>, <strong>Google Maps</strong> et <strong>Chargemap</strong> en tant qu'établissement équipé.</li>
-                  <li><span className="font-semibold text-slate-900">Nouveaux revenus :</span> Transformez votre parking en centre de profit.</li>
-                  <li><span className="font-semibold text-slate-900">Fidélisation :</span> Attirez une nouvelle clientèle au fort pouvoir d'achat (utilisateurs de véhicules électriques).</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
         </div>
 
         {/* --- PAGE 2 DU PDF --- */}
@@ -554,8 +518,24 @@ export default function IrveSimulator() {
           </Card>
         </div>
 
+        {/* Toggle Financement */}
+        <div className="flex justify-end mb-4">
+          <div className="flex items-center space-x-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+            <Switch 
+              id="toggle-sunlib" 
+              checked={showSunlibFinancing} 
+              onCheckedChange={setShowSunlibFinancing} 
+              className="data-[state=checked]:bg-indigo-600"
+            />
+            <Label htmlFor="toggle-sunlib" className="text-sm font-semibold text-slate-700 cursor-pointer">
+              Afficher l'offre de financement SunLib
+            </Label>
+          </div>
+        </div>
+
         {/* --- PAGE 3 DU PDF : FINANCEMENT --- */}
         <div ref={page3Ref} className="space-y-8 bg-slate-50 p-8 rounded-2xl border border-slate-200 shadow-sm">
+          {showSunlibFinancing && (
           <Card className="border-t-4 border-t-indigo-500 shadow-lg border-x-0 border-b-0 rounded-xl bg-white overflow-hidden">
             <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
               <CardTitle className="text-xl font-bold text-slate-800">3. Simulation de Financement SunLib</CardTitle>
@@ -675,6 +655,43 @@ export default function IrveSimulator() {
               </div>
             </CardContent>
           </Card>
+          )}
+
+          {/* Arguments Commerciaux & LOM */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="border-t-4 border-t-amber-500 shadow-lg border-x-0 border-b-0 rounded-xl bg-white">
+              <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
+                <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5 text-amber-500" />
+                  Conformité & Loi LOM
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-5 space-y-3">
+                <p className="text-slate-700 text-sm">
+                  <span className="font-bold text-amber-700">Obligation réglementaire :</span> Depuis le 1er janvier 2025, les bâtiments non résidentiels avec un parking de plus de 20 places doivent s'équiper (1 borne par tranche de 20 places).
+                </p>
+                <p className="text-slate-700 text-sm">
+                  Évitez les sanctions et valorisez votre patrimoine immobilier en vous mettant en conformité avec la Loi d'Orientation des Mobilités (LOM).
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-t-4 border-t-blue-500 shadow-lg border-x-0 border-b-0 rounded-xl bg-white">
+              <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
+                <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                  <Lightbulb className="h-5 w-5 text-blue-500" />
+                  Intérêts Commerciaux
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-5 space-y-3">
+                <ul className="list-disc pl-5 space-y-2 text-slate-700 text-sm">
+                  <li><span className="font-semibold text-slate-900">Visibilité accrue :</span> Soyez visible sur <strong>Booking.com</strong>, <strong>Google Maps</strong> et <strong>Chargemap</strong> en tant qu'établissement équipé.</li>
+                  <li><span className="font-semibold text-slate-900">Nouveaux revenus :</span> Transformez votre parking en centre de profit.</li>
+                  <li><span className="font-semibold text-slate-900">Fidélisation :</span> Attirez une nouvelle clientèle au fort pouvoir d'achat (utilisateurs de véhicules électriques).</li>
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Footer PDF (Déplacé ici) */}
           <div className="text-xs text-slate-400 text-center mt-12 pt-6 border-t border-slate-200">
