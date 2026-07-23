@@ -36,6 +36,8 @@ export default function IrveSimulator() {
   const [selectedPower, setSelectedPower] = useState(22);
   const [marginPerRecharge, setMarginPerRecharge] = useState(4);
   const [rechargesPerMonth, setRechargesPerMonth] = useState(205);
+  const [inflationRate, setInflationRate] = useState(2);
+  const [maintenancePerYear, setMaintenancePerYear] = useState(200);
 
   // Simulation de financement
   const [customFinanceAmount, setCustomFinanceAmount] = useState('');
@@ -89,9 +91,6 @@ export default function IrveSimulator() {
   
   const monthlyRevenue = quantity * marginPerRecharge * rechargesPerMonth;
   
-  const breakEvenMonths = monthlyRevenue > 0 ? (resteACharge / monthlyRevenue) : 0;
-  const breakEvenDisplay = breakEvenMonths > 0 ? breakEvenMonths.toFixed(1) : '-';
-
   // Calcul Financement SunLib
   const displayFinanceAmount = customFinanceAmount !== '' ? Number(customFinanceAmount) : resteACharge;
   const actualFinanced = Math.max(0, displayFinanceAmount - clientDeposit);
@@ -99,41 +98,37 @@ export default function IrveSimulator() {
   const financeMonths = financeYears * 12;
   const monthlyLease = actualFinanced > 0 ? (actualFinanced * financeRate) / (1 - Math.pow(1 + financeRate, -financeMonths)) : 0;
 
+  // Calcul Point Mort
+  let calculatedBreakEven = 0;
+  let tempProfit = includeFinancing ? -(Number(clientDeposit) || 0) : -resteACharge;
+  for (let m = 1; m <= 120; m++) {
+      const year = Math.floor((m - 1) / 12);
+      const rev = monthlyRevenue * Math.pow(1 + inflationRate / 100, year);
+      const cost = (includeFinancing && m <= financeMonths ? monthlyLease : 0) + (maintenancePerYear * quantity) / 12;
+      tempProfit += (rev - cost);
+      if (tempProfit >= 0) {
+          calculatedBreakEven = m;
+          break;
+      }
+  }
+  if (calculatedBreakEven === 0 && tempProfit < 0) calculatedBreakEven = 120;
+  
+  const breakEvenMonths = calculatedBreakEven;
+  const breakEvenDisplay = breakEvenMonths > 0 ? breakEvenMonths.toString() : '-';
+
   // Génération des données du graphique
   const generateChartData = () => {
     const data = [];
     let currentProfit = includeFinancing ? -(Number(clientDeposit) || 0) : -resteACharge;
     
-    let calculatedBreakEven = breakEvenMonths;
-    if (includeFinancing) {
-        let tempProfit = -(Number(clientDeposit) || 0);
-        let bMonth = 0;
-        for (let m = 1; m <= 120; m++) {
-            const year = Math.floor((m - 1) / 12);
-            const rev = monthlyRevenue * Math.pow(1.02, year);
-            const cost = (m <= financeMonths ? monthlyLease : 0) + (200 * quantity) / 12;
-            tempProfit += (rev - cost);
-            if (tempProfit >= 0) {
-                bMonth = m;
-                break;
-            }
-        }
-        calculatedBreakEven = bMonth > 0 ? bMonth : 120;
-    }
-
     const dynamicMonths = Math.max(60, Math.ceil((calculatedBreakEven + 12) / 12) * 12);
     
     for (let month = 1; month <= dynamicMonths; month++) {
-      let currentMonthlyRevenue = monthlyRevenue;
-      let currentMonthlyCost = 0;
-
-      if (includeFinancing) {
-        const year = Math.floor((month - 1) / 12);
-        currentMonthlyRevenue = monthlyRevenue * Math.pow(1.02, year);
-        const maintenanceCost = (200 * quantity) / 12;
-        const leaseCost = month <= financeMonths ? monthlyLease : 0;
-        currentMonthlyCost = leaseCost + maintenanceCost;
-      }
+      const year = Math.floor((month - 1) / 12);
+      let currentMonthlyRevenue = monthlyRevenue * Math.pow(1 + inflationRate / 100, year);
+      const maintenanceCost = (maintenancePerYear * quantity) / 12;
+      const leaseCost = (includeFinancing && month <= financeMonths) ? monthlyLease : 0;
+      let currentMonthlyCost = leaseCost + maintenanceCost;
       
       currentProfit += (currentMonthlyRevenue - currentMonthlyCost);
       data.push({
@@ -150,8 +145,8 @@ export default function IrveSimulator() {
     let totalCost = 0;
     for (let m = 1; m <= months; m++) {
       const year = Math.floor((m - 1) / 12);
-      totalRev += monthlyRevenue * Math.pow(1.02, year);
-      totalCost += (m <= financeMonths ? monthlyLease : 0) + (200 * quantity) / 12;
+      totalRev += monthlyRevenue * Math.pow(1 + inflationRate / 100, year);
+      totalCost += (includeFinancing && m <= financeMonths ? monthlyLease : 0) + (maintenancePerYear * quantity) / 12;
     }
     return { rev: totalRev, cost: totalCost, net: totalRev - totalCost };
   };
@@ -370,50 +365,60 @@ export default function IrveSimulator() {
                           </SelectContent>
                         </Select>
 
-                        <Label className="text-sm font-semibold mb-3 block text-slate-700">Marge par recharge (€)</Label>
-                        <div className="flex items-center gap-4 mb-2">
-                          <Slider 
-                            value={[marginPerRecharge]} 
-                            onValueChange={(val) => setMarginPerRecharge(val[0])} 
-                            max={20} 
-                            step={0.1}
-                            className="flex-1 cursor-pointer"
-                          />
-                          <Input 
-                            type="number" 
-                            step="0.1"
-                            value={marginPerRecharge} 
-                            onChange={(e) => setMarginPerRecharge(Number(e.target.value))}
-                            className="w-24 bg-white border-slate-300 focus:ring-emerald-500 font-semibold text-center"
-                            style={{ paddingTop: 0, paddingBottom: 0, lineHeight: '2.5rem' }}
-                          />
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                          <div>
+                            <Label className="text-sm font-semibold mb-3 block text-slate-700">Marge/recharge (€)</Label>
+                            <Input 
+                              type="number" 
+                              step="0.1"
+                              value={marginPerRecharge} 
+                              onChange={(e) => setMarginPerRecharge(Number(e.target.value))}
+                              className="w-full bg-white border-slate-300 focus:ring-emerald-500 font-semibold text-center"
+                              style={{ paddingTop: 0, paddingBottom: 0, lineHeight: '2.5rem' }}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm font-semibold mb-3 block text-slate-700">Recharges/mois</Label>
+                            <Input 
+                              type="number" 
+                              value={rechargesPerMonth} 
+                              onChange={(e) => {
+                                setRechargesPerMonth(Number(e.target.value));
+                                setTargetTypology('Personnalisé');
+                              }}
+                              className="w-full bg-white border-slate-300 focus:ring-emerald-500 font-semibold text-center"
+                              style={{ paddingTop: 0, paddingBottom: 0, lineHeight: '2.5rem' }}
+                            />
+                          </div>
                         </div>
-                        <p className="text-xs text-emerald-600 font-semibold bg-emerald-50 p-2 rounded-md border border-emerald-100">
+
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                          <div>
+                            <Label className="text-sm font-semibold mb-3 block text-slate-700">Inflation (%/an)</Label>
+                            <Input 
+                              type="number" 
+                              step="0.1"
+                              value={inflationRate} 
+                              onChange={(e) => setInflationRate(Number(e.target.value))}
+                              className="w-full bg-white border-slate-300 focus:ring-emerald-500 font-semibold text-center"
+                              style={{ paddingTop: 0, paddingBottom: 0, lineHeight: '2.5rem' }}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm font-semibold mb-3 block text-slate-700">Maintenance (€/an)</Label>
+                            <Input 
+                              type="number" 
+                              value={maintenancePerYear} 
+                              onChange={(e) => setMaintenancePerYear(Number(e.target.value))}
+                              className="w-full bg-white border-slate-300 focus:ring-emerald-500 font-semibold text-center"
+                              style={{ paddingTop: 0, paddingBottom: 0, lineHeight: '2.5rem' }}
+                            />
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-emerald-600 font-semibold bg-emerald-50 p-2 rounded-md border border-emerald-100 mt-5">
                           Gains mensuels estimés : {Math.round(monthlyRevenue)} € / mois
                         </p>
-                      </div>
-
-                      <div>
-                        <Label className="text-sm font-semibold mb-3 block text-slate-700">Recharges estimées / mois</Label>
-                        <div className="flex items-center gap-4">
-                          <Slider 
-                            value={[rechargesPerMonth]} 
-                            onValueChange={(val) => setRechargesPerMonth(val[0])} 
-                            max={1000} 
-                            step={5}
-                            className="flex-1 cursor-pointer"
-                          />
-                          <Input 
-                            type="number" 
-                            value={rechargesPerMonth} 
-                            onChange={(e) => {
-                              setRechargesPerMonth(Number(e.target.value));
-                              setTargetTypology('personnalise');
-                            }}
-                            className="w-24 bg-white border-slate-300 focus:ring-emerald-500 font-semibold text-center"
-                            style={{ paddingTop: 0, paddingBottom: 0, lineHeight: '2.5rem' }}
-                          />
-                        </div>
                       </div>
                     </div>
 
@@ -452,7 +457,7 @@ export default function IrveSimulator() {
                             className="data-[state=checked]:bg-indigo-600"
                           />
                           <Label htmlFor="financing-mode" className="text-sm font-semibold text-indigo-900 cursor-pointer">
-                            Mode Avancé (Financement, 2% inflation, maintenance)
+                            Mode Abonnement (Financement SunLib)
                           </Label>
                         </div>
                       </div>
