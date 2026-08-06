@@ -184,8 +184,8 @@ export default function IrveSimulator() {
   const [marginPerRecharge, setMarginPerRecharge] = useState(4);
   const [rechargesPerMonth, setRechargesPerMonth] = useState(205);
   const [pricingMode, setPricingMode] = useState('margin'); // 'margin' | 'price'
-  const [salePrice, setSalePrice] = useState(8); // tarif de vente €/recharge
-  const [electricityCostPerRecharge, setElectricityCostPerRecharge] = useState(4); // coût élec €/recharge
+  const [salePrice, setSalePrice] = useState(0.40); // tarif de vente €/kWh
+  const [electricityCostPerKwh, setElectricityCostPerKwh] = useState(0.20); // coût élec €/kWh
   const [targetTypology, setTargetTypology] = useState('personnalise');
   const [customFinanceAmount, setCustomFinanceAmount] = useState('');
   const [financeYears, setFinanceYears] = useState(5);
@@ -260,7 +260,7 @@ export default function IrveSimulator() {
 
   const subvention = calculateSubvention();
   const resteACharge = totalInvestment - subvention;
-  const effectiveMargin = pricingMode === 'price' ? Math.max(0, salePrice - electricityCostPerRecharge) : marginPerRecharge;
+  const effectiveMargin = pricingMode === 'price' ? Math.max(0, (salePrice - electricityCostPerKwh) * 48) : marginPerRecharge;
   const monthlyRevenue = effectiveMargin * rechargesPerMonth;
   const breakEvenMonths = monthlyRevenue > 0 ? resteACharge / monthlyRevenue : 0;
   const breakEvenDisplay = breakEvenMonths > 0 ? breakEvenMonths.toFixed(1) : '-';
@@ -329,7 +329,7 @@ export default function IrveSimulator() {
     projectType,
     createdAt: new Date().toISOString(),
     clientProjectId: selectedProjectId,
-    irve: { products, quantity, usageType, installFeePerPoint, selectedPower, marginPerRecharge, rechargesPerMonth, targetTypology, financeYears, clientDeposit, customFinanceAmount, inflationRate, maintenanceCost, pricingMode, salePrice, electricityCostPerRecharge },
+    irve: { products, quantity, usageType, installFeePerPoint, selectedPower, marginPerRecharge, rechargesPerMonth, targetTypology, financeYears, clientDeposit, customFinanceAmount, inflationRate, maintenanceCost, pricingMode, salePrice, electricityCostPerKwh },
     solar: { selectedKwc, solarPricePerWc, solarProductionFactor, solarElecPrice, solarAutoconsoRate, solarLandlordType, solarSunlibMode, solarSunlibYears, solarInflation },
   });
 
@@ -347,7 +347,8 @@ export default function IrveSimulator() {
       if (i.rechargesPerMonth !== undefined) setRechargesPerMonth(i.rechargesPerMonth);
       if (i.pricingMode) setPricingMode(i.pricingMode);
       if (i.salePrice !== undefined) setSalePrice(i.salePrice);
-      if (i.electricityCostPerRecharge !== undefined) setElectricityCostPerRecharge(i.electricityCostPerRecharge);
+      if (i.electricityCostPerKwh !== undefined) setElectricityCostPerKwh(i.electricityCostPerKwh);
+      else if (i.electricityCostPerRecharge !== undefined) setElectricityCostPerKwh(i.electricityCostPerRecharge / 48 || 0.20);
       if (i.targetTypology) setTargetTypology(i.targetTypology);
       if (i.financeYears !== undefined) setFinanceYears(i.financeYears);
       if (i.clientDeposit !== undefined) setClientDeposit(i.clientDeposit);
@@ -890,17 +891,17 @@ export default function IrveSimulator() {
                           </>
                         ) : (
                           <>
-                            <Label className="text-sm font-semibold mb-1 block text-slate-700">Tarif de vente (€ / recharge)</Label>
+                            <Label className="text-sm font-semibold mb-1 block text-slate-700">Tarif de vente (€ / kWh)</Label>
                             <div className="flex items-center gap-4 mb-2">
-                              <Slider value={[salePrice]} onValueChange={(val) => setSalePrice(val[0])} max={50} step={0.5} className="flex-1 cursor-pointer" />
-                              <CenteredInput type="number" step="0.5" value={salePrice} onChange={(e) => setSalePrice(Number(e.target.value))} className="w-24 bg-white border-slate-300" />
+                              <Slider value={[salePrice]} onValueChange={(val) => setSalePrice(val[0])} max={1} step={0.01} className="flex-1 cursor-pointer" />
+                              <CenteredInput type="number" step="0.01" value={salePrice} onChange={(e) => setSalePrice(Number(e.target.value))} className="w-24 bg-white border-slate-300" />
                             </div>
-                            <Label className="text-sm font-semibold mb-1 block text-slate-700">Coût électricité (€ / recharge)</Label>
+                            <Label className="text-sm font-semibold mb-1 block text-slate-700">Coût électricité (€ / kWh)</Label>
                             <div className="flex items-center gap-4 mb-2">
-                              <Slider value={[electricityCostPerRecharge]} onValueChange={(val) => setElectricityCostPerRecharge(val[0])} max={30} step={0.5} className="flex-1 cursor-pointer" />
-                              <CenteredInput type="number" step="0.5" value={electricityCostPerRecharge} onChange={(e) => setElectricityCostPerRecharge(Number(e.target.value))} className="w-24 bg-white border-slate-300" />
+                              <Slider value={[electricityCostPerKwh]} onValueChange={(val) => setElectricityCostPerKwh(val[0])} max={1} step={0.01} className="flex-1 cursor-pointer" />
+                              <CenteredInput type="number" step="0.01" value={electricityCostPerKwh} onChange={(e) => setElectricityCostPerKwh(Number(e.target.value))} className="w-24 bg-white border-slate-300" />
                             </div>
-                            <p className="text-xs text-slate-500 mb-2">Marge nette : <span className="font-bold text-emerald-700">{(salePrice - electricityCostPerRecharge).toFixed(2)} € / recharge</span></p>
+                            <p className="text-xs text-slate-500 mb-2">Marge nette : <span className="font-bold text-emerald-700">{((salePrice - electricityCostPerKwh) * 48).toFixed(2)} € / recharge</span> (base 48 kWh)</p>
                           </>
                         )}
                         <p className="text-xs text-emerald-600 font-semibold bg-emerald-50 p-2 rounded-md border border-emerald-100">
