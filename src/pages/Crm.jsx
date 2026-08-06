@@ -1140,7 +1140,9 @@ export default function Crm() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredContacts.map((contact) => (
-                  <tr key={contact.id} id={`contact-${contact.id}`} className={`hover:bg-slate-50 transition-colors ${selectedContacts.includes(contact.id) ? 'bg-blue-50/20' : ''}`}>
+                  <tr key={contact.id} id={`contact-${contact.id}`} className={`hover:bg-slate-50 transition-colors cursor-pointer ${selectedContacts.includes(contact.id) ? 'bg-blue-50/20' : ''}`}
+                    onClick={(e) => { if (!e.target.closest('button, input, a, select')) handleEditContact(contact); }}
+                  >
                     <td className="px-6 py-4 w-10">
                       <input
                         type="checkbox"
@@ -1379,7 +1381,9 @@ export default function Crm() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {tasks.map((task) => (
-                  <tr key={task.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={task.id} className="hover:bg-slate-50 transition-colors cursor-pointer"
+                    onClick={(e) => { if (!e.target.closest('button, input, a, select')) { setEditingTask(task); setShowTaskModal(true); } }}
+                  >
                     <td className="px-6 py-4 font-medium text-slate-900">{task.title}</td>
                     <td className="px-6 py-4 text-slate-600">{task.contact}</td>
                     <td className="px-6 py-4 text-slate-600 text-sm">{new Date(task.dueDate).toLocaleDateString('fr-FR')}</td>
@@ -1755,7 +1759,9 @@ export default function Crm() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredProjects.map((project) => (
-                  <tr key={project.id} className={`hover:bg-slate-50 transition-colors ${selectedProjects.includes(project.id) ? 'bg-blue-50/20' : ''}`}>
+                  <tr key={project.id} className={`hover:bg-slate-50 transition-colors cursor-pointer ${selectedProjects.includes(project.id) ? 'bg-blue-50/20' : ''}`}
+                    onClick={(e) => { if (!e.target.closest('button, input, a, select')) navigate(`/project/${project.id}/edit`); }}
+                  >
                     <td className="px-6 py-4 w-10">
                       <input
                         type="checkbox"

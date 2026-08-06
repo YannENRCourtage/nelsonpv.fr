@@ -454,10 +454,10 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
             )}
             */}
 
-            {/* Nouveau Simulateur IRVE (exclusif ENR COURTAGE ENERGIE) */}
+            {/* Simulateur (IRVE + Solaire) - exclusif ENR COURTAGE ENERGIE */}
             {activeTenantId === 'enr-courtage-energie' && (
               <NavLink to="/irve" className={({ isActive }) => isActive ? 'nav-link active simulateur' : 'nav-link simulateur'}>
-                Simulateur IRVE
+                Simulateur
               </NavLink>
             )}
 
