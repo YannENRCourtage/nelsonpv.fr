@@ -32,6 +32,14 @@ export default function Developpement() {
     const { user, activeTenantId } = useAuth();
     const [activeTab, setActiveTab] = useState('dp-batterie');
 
+    const currentUser = {
+        name: user?.firstName ? `${user.firstName} ${user.lastName || ''}` : (user?.displayName || 'Utilisateur'),
+        role: user?.title || (user?.role === 'admin' ? 'Administrateur' : ((user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) ? 'Président' : 'Conseiller')),
+        avatar: user?.photoURL ? user.photoURL : (user?.firstName?.[0] || user?.displayName?.[0] || 'U').toUpperCase(),
+        photoURL: user?.photoURL,
+        color: user?.role === 'admin' ? 'bg-indigo-600' : 'bg-blue-600'
+    };
+
     // ── Projets / Clients
     const [projects, setProjects] = useState([]);
     const [loadingProjects, setLoadingProjects] = useState(true);
@@ -243,14 +251,20 @@ export default function Developpement() {
                 </nav>
 
                 {/* Info utilisateur */}
-                <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(59,130,246,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <User size={14} color="#93c5fd" />
+                <div className="p-4 border-t border-slate-800">
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-700/50">
+                        <div className={`${currentUser.color} w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0`}>
+                            {currentUser.photoURL ? (
+                                <img src={currentUser.photoURL} alt="Avatar" className="w-full h-full object-cover" />
+                            ) : (
+                                currentUser.avatar
+                            )}
                         </div>
-                        <div>
-                            <div style={{ color: 'white', fontSize: 12, fontWeight: 600 }}>{user?.firstName || 'Utilisateur'}</div>
-                            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10 }}>{user?.role || ''}</div>
+                        <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-white text-sm truncate">{currentUser.name}</p>
+                            <p className="text-xs text-slate-400 truncate">
+                                {currentUser.name?.includes('Gysmo') ? 'Woaf ! Woaf !!' : currentUser.role}
+                            </p>
                         </div>
                     </div>
                 </div>
