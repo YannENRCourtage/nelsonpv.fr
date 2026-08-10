@@ -413,7 +413,6 @@ export default function Crm() {
     { id: 'dashboard', label: 'Mon tableau de bord', icon: LayoutDashboard },
     { id: 'contacts', label: 'Contacts', icon: Users },
     { id: 'projects', label: 'Projets', icon: FolderHeart },
-    { id: 'tasks', label: 'Tâches', icon: CheckSquare },
     { id: 'calendar', label: 'Calendrier', icon: Calendar },
     { id: 'reports', label: 'Rapports', icon: FileText },
   ];
@@ -2059,8 +2058,8 @@ export default function Crm() {
               <TrendingUp className="w-8 h-8 opacity-80" />
               <BarChart3 className="w-6 h-6 opacity-60" />
             </div>
-            <div className="text-3xl font-bold">{contactsClients}</div>
-            <div className="text-green-100 text-sm mt-1">Contacts clients</div>
+            <div className="text-3xl font-bold">{projectsCompleted}</div>
+            <div className="text-green-100 text-sm mt-1">Projets Terminés</div>
           </div>
 
           <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white">
@@ -2077,8 +2076,8 @@ export default function Crm() {
               <CheckSquare className="w-8 h-8 opacity-80" />
               <Activity className="w-6 h-6 opacity-60" />
             </div>
-            <div className="text-3xl font-bold">{contactConversionRate}%</div>
-            <div className="text-orange-100 text-sm mt-1">Taux transfo. contacts</div>
+            <div className="text-3xl font-bold">{projectConversionRate}%</div>
+            <div className="text-orange-100 text-sm mt-1">Taux de transformation</div>
           </div>
         </div>
 
@@ -2289,7 +2288,6 @@ export default function Crm() {
               {activeTab === 'dashboard' && 'Vue d\'ensemble de votre activité'}
               {activeTab === 'contacts' && 'Gérez vos contacts et leurs projets'}
               {activeTab === 'projects' && 'Gérer les projets de construction et de location de toitures'}
-              {activeTab === 'tasks' && 'Organisez vos tâches quotidiennes'}
               {activeTab === 'calendar' && 'Planifiez vos rendez-vous'}
               {activeTab === 'reports' && 'Analysez vos performances'}
             </p>
@@ -2300,7 +2298,6 @@ export default function Crm() {
           {activeTab === 'contacts' && renderContacts()}
           {activeTab === 'projects' && renderProjects()}
 
-          {activeTab === 'tasks' && renderTasks()}
           {activeTab === 'calendar' && renderCalendar()}
           {activeTab === 'reports' && renderReports()}
         </div>
