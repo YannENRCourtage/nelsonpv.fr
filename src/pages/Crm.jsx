@@ -1524,10 +1524,24 @@ export default function Crm() {
                           return (
                             <div
                               key={task.id}
-                              className={`text-xs px-1.5 py-0.5 rounded ${priorityColor} bg-opacity-20 ${textColor} truncate`}
+                              className={`group flex items-center justify-between text-xs px-1.5 py-0.5 rounded ${priorityColor} bg-opacity-20 ${textColor} transition-all hover:bg-opacity-35 cursor-pointer`}
                               title={task.title}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingTask(task);
+                                setShowTaskModal(true);
+                              }}
                             >
-                              {task.title.substring(0, 15)}
+                              <span className="truncate flex-1">{task.title}</span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteTask(task.id);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-red-100 rounded text-red-600 transition-opacity ml-1 flex-shrink-0"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           );
                         })}
