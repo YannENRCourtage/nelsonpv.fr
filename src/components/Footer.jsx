@@ -10,13 +10,33 @@ export default function Footer() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
   useEffect(() => {
-    const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
+    // 1. Vérifier si l'événement a déjà été capturé globalement avant le rendu du composant
+    if (window.deferredPwaPrompt) {
+      setDeferredPrompt(window.deferredPwaPrompt);
+      console.log("Bouton d'installation affiché");
+    }
+
+    // 2. Écouter si l'événement est capturé après le rendu du composant
+    const handlePromptCaptured = () => {
+      if (window.deferredPwaPrompt) {
+        setDeferredPrompt(window.deferredPwaPrompt);
+        console.log("Bouton d'installation affiché");
+      }
     };
 
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      window.deferredPwaPrompt = e;
+      console.log("Événement d'installation capturé");
+      setDeferredPrompt(e);
+      console.log("Bouton d'installation affiché");
+    };
+
+    window.addEventListener("pwa-prompt-captured", handlePromptCaptured);
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+
     return () => {
+      window.removeEventListener("pwa-prompt-captured", handlePromptCaptured);
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     };
   }, []);
