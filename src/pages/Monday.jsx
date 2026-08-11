@@ -255,10 +255,9 @@ const ResizableHeaderWithColor = ({ col, index, width, onResize, moveColumn, del
             ref={ref}
             style={{ width: width }}
             className={`px-2 py-3 border-b border-r group relative ${headerColor || 'bg-slate-50'} ${isDragging ? 'opacity-50' : ''}`}
-            onClick={() => !isEditingName && onSort && onSort(col)}
         >
             <div className="flex items-center justify-between h-full pointer-events-none">
-                <div className="flex items-center gap-1 overflow-hidden pointer-events-auto cursor-pointer select-none flex-1">
+                <div className="flex items-center gap-1 overflow-hidden pointer-events-auto select-none flex-1">
                     {isEditingName ? (
                         <input 
                             autoFocus
@@ -277,9 +276,9 @@ const ResizableHeaderWithColor = ({ col, index, width, onResize, moveColumn, del
                         />
                     ) : (
                         <span 
-                            className="font-semibold text-slate-700 truncate px-1 text-xs hover:bg-slate-200/50 rounded transition-colors" 
-                            title={col !== displayName ? `${displayName} (${col}) - Double clic pour renommer` : `${col} - Double clic pour renommer`}
-                            onDoubleClick={(e) => {
+                            className="font-semibold text-slate-700 truncate px-1 text-xs hover:bg-slate-200/50 rounded transition-colors cursor-text w-full block" 
+                            title={col !== displayName ? `${displayName} (${col}) - Clic pour renommer` : `${col} - Clic pour renommer`}
+                            onClick={(e) => {
                                 e.stopPropagation();
                                 setIsEditingName(true);
                                 setEditValue(displayName);
@@ -288,15 +287,23 @@ const ResizableHeaderWithColor = ({ col, index, width, onResize, moveColumn, del
                             {displayName}
                         </span>
                     )}
-                    {!isEditingName && sortDirection === 'asc' && <ArrowUp className="w-3 h-3 text-slate-500" />}
-                    {!isEditingName && sortDirection === 'desc' && <ArrowDown className="w-3 h-3 text-slate-500" />}
                 </div>
-                <button
-                    onClick={(e) => { e.stopPropagation(); deleteColumn(index); }}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded text-red-500 pointer-events-auto transition-opacity"
-                >
-                    <Trash2 className="w-3 h-3" />
-                </button>
+                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); if (onSort) onSort(col); }}
+                        className={`p-1 hover:bg-slate-200 rounded mr-1 ${sortDirection ? 'text-blue-600' : 'text-slate-400'}`}
+                        title="Trier"
+                    >
+                        {sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); deleteColumn(index); }}
+                        className="p-1 hover:bg-red-100 rounded text-red-500"
+                        title="Supprimer la colonne"
+                    >
+                        <Trash2 className="w-3 h-3" />
+                    </button>
+                </div>
             </div>
             <div
                 onMouseDown={handleMouseDown}
