@@ -184,7 +184,7 @@ const ResizableHeader = ({ col, index, width, onResize, moveColumn, deleteColumn
 };
 
 // --- Resizable Header avec couleur personnalisée ---
-const ResizableHeaderWithColor = ({ col, index, width, onResize, moveColumn, deleteColumn, isResizing, setIsResizing, headerColor, renameMap, onSort, sortDirection }) => {
+const ResizableHeaderWithColor = ({ col, index, width, onResize, moveColumn, deleteColumn, isResizing, setIsResizing, headerColor, renameMap, onSort, sortDirection, onRename }) => {
     const ref = useRef(null);
     const [{ isDragging }, drag] = useDrag({
         type: ItemTypes.COLUMN,
@@ -238,20 +238,58 @@ const ResizableHeaderWithColor = ({ col, index, width, onResize, moveColumn, del
         // else keep original
     }
 
+    const [isEditingName, setIsEditingName] = useState(false);
+    const [editValue, setEditValue] = useState(displayName);
+
+    const handleRenameSubmit = () => {
+        setIsEditingName(false);
+        if (editValue.trim() !== '' && editValue.trim() !== col) {
+            if (onRename) onRename(col, editValue.trim());
+        } else {
+            setEditValue(displayName);
+        }
+    };
+
     return (
         <th
             ref={ref}
             style={{ width: width }}
             className={`px-2 py-3 border-b border-r group relative ${headerColor || 'bg-slate-50'} ${isDragging ? 'opacity-50' : ''}`}
-            onClick={() => onSort && onSort(col)}
+            onClick={() => !isEditingName && onSort && onSort(col)}
         >
             <div className="flex items-center justify-between h-full pointer-events-none">
-                <div className="flex items-center gap-1 overflow-hidden pointer-events-auto cursor-pointer select-none">
-                    <span className="font-semibold text-slate-700 truncate px-1 text-xs" title={col !== displayName ? `${displayName} (${col})` : col}>
-                        {displayName}
-                    </span>
-                    {sortDirection === 'asc' && <ArrowUp className="w-3 h-3 text-slate-500" />}
-                    {sortDirection === 'desc' && <ArrowDown className="w-3 h-3 text-slate-500" />}
+                <div className="flex items-center gap-1 overflow-hidden pointer-events-auto cursor-pointer select-none flex-1">
+                    {isEditingName ? (
+                        <input 
+                            autoFocus
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={handleRenameSubmit}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleRenameSubmit();
+                                if (e.key === 'Escape') {
+                                    setIsEditingName(false);
+                                    setEditValue(displayName);
+                                }
+                            }}
+                            className="w-full text-xs font-semibold text-slate-700 bg-white border border-blue-400 rounded px-1 py-0.5 outline-none"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    ) : (
+                        <span 
+                            className="font-semibold text-slate-700 truncate px-1 text-xs hover:bg-slate-200/50 rounded transition-colors" 
+                            title={col !== displayName ? `${displayName} (${col}) - Double clic pour renommer` : `${col} - Double clic pour renommer`}
+                            onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                setIsEditingName(true);
+                                setEditValue(displayName);
+                            }}
+                        >
+                            {displayName}
+                        </span>
+                    )}
+                    {!isEditingName && sortDirection === 'asc' && <ArrowUp className="w-3 h-3 text-slate-500" />}
+                    {!isEditingName && sortDirection === 'desc' && <ArrowDown className="w-3 h-3 text-slate-500" />}
                 </div>
                 <button
                     onClick={(e) => { e.stopPropagation(); deleteColumn(index); }}
@@ -879,9 +917,10 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
 
     // Columns
     const addColumn = () => {
-        if (!newColName) return;
-        const newCols = [...columns, newColName];
-        const newWidths = { ...columnWidths, [newColName]: 150 };
+        if (!newColName || !newColName.trim() || columns.includes(newColName.trim())) return;
+        const trimmedName = newColName.trim();
+        const newCols = [...columns, trimmedName];
+        const newWidths = { ...columnWidths, [trimmedName]: 150 };
         setColumns(newCols);
         setColumnWidths(newWidths);
         setNewColName('');
@@ -897,6 +936,41 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
         setColumns(newCols);
         setColumnWidths(newWidths);
         saveMetadata(newCols, rowOrder, newWidths);
+    };
+
+    const renameColumn = async (oldName, newName) => {
+        if (!newName || newName === oldName || columns.includes(newName)) return;
+        
+        const newCols = columns.map(c => c === oldName ? newName : c);
+        const newWidths = { ...columnWidths };
+        if (newWidths[oldName]) {
+            newWidths[newName] = newWidths[oldName];
+            delete newWidths[oldName];
+        }
+        
+        // Update local rows
+        const newRows = rows.map(r => {
+            const newData = { ...r.data };
+            if (newData[oldName] !== undefined) {
+                newData[newName] = newData[oldName];
+                delete newData[oldName];
+            }
+            return { ...r, data: newData };
+        });
+        
+        setColumns(newCols);
+        setColumnWidths(newWidths);
+        setRows(newRows);
+        
+        saveMetadata(newCols, rowOrder, newWidths);
+        
+        // Update all rows in Firebase in background to persist the rename
+        try {
+            const updatePromises = newRows.map(r => apiService.updateMondayRow(data.id, r.id, { data: r.data }));
+            await Promise.all(updatePromises);
+        } catch (e) {
+            console.error("Error updating rows after column rename", e);
+        }
     };
 
     const handleResize = (col, width) => {
@@ -1208,6 +1282,20 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
+                        
+                        {/* Add Column Input */}
+                        <div className="flex items-center gap-1 ml-2">
+                            <Input
+                                placeholder="Nouv. colonne"
+                                className="h-9 w-32 text-sm"
+                                value={newColName}
+                                onChange={(e) => setNewColName(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && addColumn()}
+                            />
+                            <Button size="sm" variant="outline" onClick={addColumn} className="h-9 px-2" title="Ajouter la colonne">
+                                <Plus className="w-4 h-4" />
+                            </Button>
+                        </div>
 
                         {/* Selection Actions moved here, next to Search */}
                         {selectedRowIds.size > 0 && (
@@ -1310,6 +1398,7 @@ const EditableTable = ({ data, onUpdate, onRowCountChange, tabName }) => {
                                     renameMap={tabName && tabName.toLowerCase().includes('lead') ? COLUMN_RENAMES['leads'] : null}
                                     onSort={handleSort}
                                     sortDirection={sortConfig.key === col ? sortConfig.direction : null}
+                                    onRename={renameColumn}
                                 />
                             ))}
                             {/* Suppression du titre de la colonne de suppression */}
