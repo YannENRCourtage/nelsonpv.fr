@@ -174,9 +174,9 @@ export default function EtudeDossierView({
     }
   }, [project?.id]);
 
-  // Sauvegarde d'une étape
+  // Sauvegarde d'une étape avec synchronisation mutuelle DP / PC
   const updateStep = (stepId, updates) => {
-    const updated = {
+    let newStepsState = {
       ...stepsState,
       [stepId]: {
         ...(stepsState[stepId] || {}),
@@ -184,9 +184,21 @@ export default function EtudeDossierView({
         lastIntervention: '14/08/2026',
       }
     };
-    setStepsState(updated);
+
+    // Si DP validé -> PC passe automatiquement à 'ns' s'il était en attente (et vice-versa)
+    if (stepId === 'dp' && updates.status === 'validated') {
+      if (!newStepsState.pc || newStepsState.pc.status === 'pending') {
+        newStepsState.pc = { ...(newStepsState.pc || {}), status: 'ns', lastIntervention: '14/08/2026' };
+      }
+    } else if (stepId === 'pc' && updates.status === 'validated') {
+      if (!newStepsState.dp || newStepsState.dp.status === 'pending') {
+        newStepsState.dp = { ...(newStepsState.dp || {}), status: 'ns', lastIntervention: '14/08/2026' };
+      }
+    }
+
+    setStepsState(newStepsState);
     if (project?.id) {
-      localStorage.setItem(`nelson_workflow_${project.id}`, JSON.stringify(updated));
+      localStorage.setItem(`nelson_workflow_${project.id}`, JSON.stringify(newStepsState));
     }
   };
 
@@ -200,10 +212,27 @@ export default function EtudeDossierView({
     }
   };
 
-  // Calcul du % d'avancement strict (uniquement les étapes au statut 'validated')
-  const totalSteps = 9;
+  // Calcul du % d'avancement strict sur 7 étapes :
+  // Zone 1 : Urbanisme = 1 étape max (soit DP, soit PC. Le CUo n'est pas une étape d'avancement).
+  // Zone 2 : Mandatement = 3 étapes (Huissier, Géomètre, Notaire)
+  // Zone 3 : Action externe = 3 étapes (Raccordement, Dossier AOS/AO, Consuel)
+  const totalSteps = 7;
   const validatedCount = useMemo(() => {
-    return Object.values(stepsState).filter(s => s?.status === 'validated').length;
+    let count = 0;
+    // 1. Urbanisme (1 pt si DP ou PC validé)
+    if (stepsState.dp?.status === 'validated' || stepsState.pc?.status === 'validated') {
+      count += 1;
+    }
+    // 2. Mandatement (3 pts max)
+    if (stepsState.huissier?.status === 'validated') count += 1;
+    if (stepsState.geometre?.status === 'validated') count += 1;
+    if (stepsState.notaire?.status === 'validated') count += 1;
+    // 3. Action externe (3 pts max)
+    if (stepsState.raccordement?.status === 'validated') count += 1;
+    if (stepsState.aos_ao?.status === 'validated') count += 1;
+    if (stepsState.consuel?.status === 'validated') count += 1;
+
+    return count;
   }, [stepsState]);
 
   const progressPercent = Math.round((validatedCount / totalSteps) * 100);
@@ -213,7 +242,7 @@ export default function EtudeDossierView({
 
   const checkIsOverdue = (step) => {
     const s = stepsState[step.id];
-    if (!s?.deadline || s?.status === 'validated') return false;
+    if (!s?.deadline || s?.status === 'validated' || s?.status === 'ns') return false;
     return s.deadline <= todayStr;
   };
 
@@ -232,11 +261,12 @@ export default function EtudeDossierView({
     }
   };
 
-  // Statuts Monday.com
+  // Statuts Monday.com (avec statut NS "Non significatif")
   const STATUS_OPTIONS = [
     { id: 'pending', label: 'En attente', bg: 'bg-[#c4c4c4]', text: 'text-white' },
     { id: 'in_progress', label: 'En cours', bg: 'bg-[#fdab3d]', text: 'text-white' },
-    { id: 'validated', label: 'Validée', bg: 'bg-[#00c875]', text: 'text-white' },
+    { id: 'validated', label: 'Validée ✓', bg: 'bg-[#00c875]', text: 'text-white' },
+    { id: 'ns', label: 'NS', bg: 'bg-slate-400', text: 'text-white', description: 'Non significatif' },
   ];
 
   const renderStepCard = (step) => {
@@ -271,16 +301,17 @@ export default function EtudeDossierView({
               </div>
             </div>
 
-            {/* Sélecteur de statut Monday.com */}
+            {/* Sélecteur de statut Monday.com (avec NS) */}
             <div className="relative flex-shrink-0">
               <select
-                value={s.status}
+                value={s.status || 'pending'}
                 onChange={(e) => updateStep(step.id, { status: e.target.value })}
                 className={`px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer appearance-none border-none outline-none shadow-2xs transition-all ${currentStatusOpt.bg} ${currentStatusOpt.text}`}
               >
                 <option value="pending" className="bg-slate-700 text-white font-bold">En attente</option>
                 <option value="in_progress" className="bg-amber-600 text-white font-bold">En cours</option>
                 <option value="validated" className="bg-emerald-600 text-white font-bold">Validée ✓</option>
+                <option value="ns" className="bg-slate-500 text-white font-bold">NS</option>
               </select>
             </div>
           </div>
@@ -304,7 +335,7 @@ export default function EtudeDossierView({
             </div>
 
             <div>
-              <span className="text-slate-400 font-bold block mb-0.5">Date de fin (Deadline) :</span>
+              <span className="text-slate-400 font-bold block mb-0.5">Date de fin (Échéance) :</span>
               <input
                 type="date"
                 value={s.deadline || ''}
@@ -331,6 +362,18 @@ export default function EtudeDossierView({
     );
   };
 
+  // Formatage de la date de saisie / première sauvegarde
+  const formatSaisieDate = (dateVal) => {
+    if (!dateVal) return '14/08/2026';
+    try {
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return String(dateVal);
+      return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch {
+      return String(dateVal);
+    }
+  };
+
   // Nom complet du projet fidèle au CRM (ex: "DEVEAU 17210 ORIGNOLLES")
   const getFullProjectName = (p) => {
     if (!p) return 'Projet sans nom';
@@ -345,6 +388,14 @@ export default function EtudeDossierView({
   const powerDisplay = project?.kwc ? (project.kwc.toString().toLowerCase().includes('kwc') ? project.kwc : `${project.kwc} kWc`) : (project?.projectSize ? `${project.projectSize} kWc` : '-');
   const chefProjetName = project?.assignedUser || project?.chef_projet || project?.chefProjet || project?.project_manager || project?.manager || 'Yann';
   const commercialName = project?.commercial || project?.commercial_name || project?.salesRep || 'Yann';
+  const dateSaisie = formatSaisieDate(project?.created_at || project?.createdAt || project?.date_creation || project?.dateCreation || project?.creationDate || project?.date || '2026-08-14');
+
+  // Extraction propre des références cadastrales (section et numéro séparés)
+  const rawSection = project?.cadastre_section || project?.cadastreSection || (project?.cadastre ? project.cadastre.split(' ')[0] : '') || project?.section || '';
+  const rawNumero = project?.cadastre_numero || project?.cadastreNumero || project?.cadastre_parcel || project?.parcelle || project?.parcel || (project?.cadastre ? project.cadastre.split(' ').slice(1).join(' ') : '') || '';
+  const cadastreSection = rawSection ? rawSection.replace(/^Sec\.?\s*/i, '').trim() : '';
+  const cadastreNumero = rawNumero ? rawNumero.replace(/^n°?\s*/i, '').trim() : '';
+  const cadastreSurface = project?.cadastre_surface || project?.surface_terrain || project?.surfaceTerrain || project?.surface || '';
 
   return (
     <div className="w-full space-y-6">
@@ -379,11 +430,16 @@ export default function EtudeDossierView({
                     {powerDisplay}
                   </span>
                 </div>
-                {commercialName && (
-                  <span className={`px-3.5 py-1 ${getUserColor(commercialName)} text-xs font-extrabold rounded-full shadow-2xs`}>
-                    {commercialName}
+                <div className="flex flex-col items-end gap-0.5">
+                  {commercialName && (
+                    <span className={`px-3.5 py-1 ${getUserColor(commercialName)} text-xs font-extrabold rounded-full shadow-2xs`}>
+                      {commercialName}
+                    </span>
+                  )}
+                  <span className="text-[10px] font-semibold text-slate-400">
+                    Saisi le {dateSaisie}
                   </span>
-                )}
+                </div>
               </div>
               <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
                 <MapPin className="w-4 h-4 text-rose-500 flex-shrink-0" />
@@ -403,10 +459,10 @@ export default function EtudeDossierView({
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs">
                 <span className="text-[10px] font-bold text-slate-400 block mb-0.5">Cadastre</span>
                 <span className="font-extrabold text-slate-900 truncate block">
-                  Sec. {project?.cadastre_section || '-'} n° {project?.cadastre_numero || '-'}
+                  {cadastreSection ? `Sec. ${cadastreSection}` : 'Sec. —'} {cadastreNumero ? `n° ${cadastreNumero}` : 'n° —'}
                 </span>
-                {project?.cadastre_surface && (
-                  <span className="text-[10px] font-semibold text-slate-500 block">{project.cadastre_surface} m²</span>
+                {cadastreSurface && (
+                  <span className="text-[10px] font-semibold text-slate-500 block">{cadastreSurface} m²</span>
                 )}
               </div>
 

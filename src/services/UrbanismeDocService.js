@@ -223,6 +223,38 @@ async function captureplate(doc, elementId, landscape = true) {
     const dims = landscape ? [841.89, 595.28] : [595.28, 841.89];
     const page = doc.addPage(dims);
     page.drawImage(img, { x: 0, y: 0, width: dims[0], height: dims[1] });
+
+    // Rendre la zone notice descriptive interactive et modifiable dans le PDF généré
+    if (elementId === 'pc-plate-section-notice') {
+      try {
+        const form = doc.getForm();
+        const noticeField = form.createTextField(`notice_descriptive_field_${Math.floor(Math.random() * 10000)}`);
+        noticeField.enableMultiline();
+
+        // Récupération du texte de la notice depuis le DOM
+        const textareaEl = el.querySelector('textarea');
+        let textVal = textareaEl ? textareaEl.value : '';
+        if (!textVal) {
+          const noticeEl = el.querySelector('#pc-plate-section-notice > div > div:last-child');
+          if (noticeEl) textVal = noticeEl.innerText || '';
+        }
+
+        if (textVal) {
+          noticeField.setText(textVal);
+        }
+
+        // Positionnement précis sur le cadre PC4 (A4 Paysage: 841.89 x 595.28 pt)
+        noticeField.addToPage(page, {
+          x: 32,
+          y: 38,
+          width: 778,
+          height: 238,
+          borderWidth: 0,
+        });
+      } catch (fErr) {
+        console.warn('[UrbanismeDoc] Erreur création champ interactif notice:', fErr);
+      }
+    }
   } catch (err) {
     console.error(`[UrbanismeDoc] Error capturing #${elementId}:`, err);
   }

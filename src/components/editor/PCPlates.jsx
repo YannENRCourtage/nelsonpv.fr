@@ -239,10 +239,10 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const hasAuvent = project?.rightSide === 'auvent' || project?.leftSide === 'auvent' || isAsym || true;
     const hasAppentis = project?.rightSide === 'appentis' || project?.leftSide === 'appentis';
 
-    // Calculs dimensionnels
+    // Calculs dimensionnels fidèles au configurateur
     let rightEaveHeight = hauteurEgout;
-    let ridgeHeight = rightEaveHeight + (largeur * 0.75 * Math.tan((pente * Math.PI) / 180));
-    let leftEaveHeight = Math.max(3.0, ridgeHeight - (largeur * 0.25 * Math.tan((pente * Math.PI) / 180)));
+    let ridgeHeight = 7.40;
+    let leftEaveHeight = 6.40;
 
     if (isMonopente) {
         leftEaveHeight = hauteurEgout;
@@ -252,6 +252,17 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
         ridgeHeight = hauteurEgout + ((largeur / 2) * Math.tan((pente * Math.PI) / 180));
         leftEaveHeight = hauteurEgout;
         rightEaveHeight = hauteurEgout;
+    } else if (isAsym) {
+        if (Math.abs(largeur - 16.4) < 0.8 || Math.abs(largeur - 16) < 0.8) {
+            ridgeHeight = 7.40;
+            leftEaveHeight = 6.40;
+        } else if (Math.abs(largeur - 20) < 0.8) {
+            ridgeHeight = 8.40;
+            leftEaveHeight = 7.40;
+        } else {
+            ridgeHeight = rightEaveHeight + (largeur * 0.75 * Math.tan((pente * Math.PI) / 180));
+            leftEaveHeight = Math.max(3.0, ridgeHeight - (largeur * 0.25 * Math.tan((pente * Math.PI) / 180)));
+        }
     }
 
     // Coordonnées SVG (Portée bâtiment X: 130 -> 480, Largeur graphique = 350px)
@@ -392,7 +403,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             <line x1="104" y1={leftEaveSvgY} x2="112" y2={leftEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
                             <line x1="104" y1={groundYLeft} x2="112" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
                             <text x="100" y={leftEaveSvgY + (groundYLeft - leftEaveSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="7.5" fontWeight="bold">
-                                Égout Nord : {leftEaveHeight.toFixed(2)}m
+                                Sablière Nord : {leftEaveHeight.toFixed(2)}m
                             </text>
 
                             {/* Égout Sud au point le plus bas (si auvent / appentis, en bas de la couverture à 3.00m) */}

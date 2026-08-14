@@ -190,20 +190,29 @@ export const PlateCoupe = ({ project }) => {
     
     const hasAuvent = project?.rightSide === 'auvent' || project?.leftSide === 'auvent' || isAsym;
 
-    let ridgeHeight = hauteurEgout + (largeur * 0.75 * Math.tan((pente * Math.PI) / 180));
-    let leftEaveHeight = hauteurEgout;
     let rightEaveHeight = hauteurEgout;
+    let ridgeHeight = 7.40;
+    let leftEaveHeight = 6.40;
 
-    if (isAsym) {
-        rightEaveHeight = hauteurEgout;
-        ridgeHeight = rightEaveHeight + (largeur * 0.75 * Math.tan((pente * Math.PI) / 180));
-        leftEaveHeight = Math.max(3.0, ridgeHeight - (largeur * 0.25 * Math.tan((pente * Math.PI) / 180)));
-    } else if (isMonopente) {
+    if (isMonopente) {
         leftEaveHeight = hauteurEgout;
         ridgeHeight = leftEaveHeight + (largeur * Math.tan((pente * Math.PI) / 180));
         rightEaveHeight = ridgeHeight;
     } else if (isSym) {
         ridgeHeight = hauteurEgout + ((largeur / 2) * Math.tan((pente * Math.PI) / 180));
+        leftEaveHeight = hauteurEgout;
+        rightEaveHeight = hauteurEgout;
+    } else if (isAsym) {
+        if (Math.abs(largeur - 16.4) < 0.8 || Math.abs(largeur - 16) < 0.8) {
+            ridgeHeight = 7.40;
+            leftEaveHeight = 6.40;
+        } else if (Math.abs(largeur - 20) < 0.8) {
+            ridgeHeight = 8.40;
+            leftEaveHeight = 7.40;
+        } else {
+            ridgeHeight = rightEaveHeight + (largeur * 0.75 * Math.tan((pente * Math.PI) / 180));
+            leftEaveHeight = Math.max(3.0, ridgeHeight - (largeur * 0.25 * Math.tan((pente * Math.PI) / 180)));
+        }
     }
 
     const groundYLeft = 140 + Math.sin((terrainSlopeDeg * Math.PI) / 180) * 105;
@@ -289,7 +298,7 @@ export const PlateCoupe = ({ project }) => {
                         {/* Rappel Hauteurs */}
                         <line x1="108" y1={leftEaveSvgY} x2="108" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
                         <text x="100" y={leftEaveSvgY + (groundYLeft - leftEaveSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="8" fontWeight="bold">
-                            Égout Nord : {leftEaveHeight.toFixed(2)}m
+                            Sablière Nord : {leftEaveHeight.toFixed(2)}m
                         </text>
 
                         {/* Égout Sud au point le plus bas */}
