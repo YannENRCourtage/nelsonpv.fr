@@ -56,13 +56,13 @@ const Footer = ({ project }) => {
     );
 };
 
-const ImageUploadZone = ({ isInteractive, photo, onUpload, defaultText = "Cliquez pour ajouter l'image", label = "Image" }) => {
+const ImageUploadZone = ({ isInteractive, photo, onUpload, defaultText = "Cliquez pour ajouter l'image", label = "Image", imageStyle = {} }) => {
     if (!isInteractive && photo) {
         return (
             <img 
                 src={photo} 
                 alt={label} 
-                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', maxWidth: '100%', maxHeight: '100%' }} 
+                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', maxWidth: '100%', maxHeight: '100%', ...imageStyle }} 
             />
         );
     }
@@ -70,7 +70,7 @@ const ImageUploadZone = ({ isInteractive, photo, onUpload, defaultText = "Clique
     return (
         <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {photo ? (
-                <img src={photo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain', maxWidth: '100%', maxHeight: '100%' }} />
+                <img src={photo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain', maxWidth: '100%', maxHeight: '100%', ...imageStyle }} />
             ) : (
                 <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '9pt', padding: '10px' }}>
                     <div style={{ fontSize: '18pt', marginBottom: '4px' }}>📷</div>
@@ -219,7 +219,7 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
 };
 
 /**
- * PLANCHE COMBINÉE PC3 / PC4 : COUPE TRANSVERSALE ASYMÉTRIQUE FIDÈLE AU MODÈLE ET À L'IMAGE ARCHITECTE
+ * PLANCHE COMBINÉE PC3 / PC4 : COUPE TRANSVERSALE ASYMÉTRIQUE FIDÈLE AU MODÈLE
  */
 export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isInteractive }) => {
     const longueur = project?.longueur || '30.0';
@@ -229,12 +229,12 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const terrainSlopeDeg = parseFloat(project?.pente_terrain || project?.terrain_slope || 3);
     const displayKwc = project?.kwc || project?.puissance || project?.projectSize || 256;
     
-    // Détection stricte
+    // Détection stricte : asymétrique par défaut (ne pas confondre avec symétrique)
     const rawType = (project?.buildingType || project?.installationType || project?.type || 'asymetrique_1').toLowerCase();
     const isOmbriere = rawType.includes('ombriere');
     const isMonopente = rawType.includes('monopente');
-    const isSym = rawType.includes('symetrique');
-    const isAsym = !isOmbriere && !isMonopente && !isSym;
+    const isSym = rawType.includes('symetrique') && !rawType.includes('asym');
+    const isAsym = !isOmbriere && !isMonopente && !isSym; // Bâtiment agricole asymétrique 1 zone
     
     const hasAuvent = project?.rightSide === 'auvent' || project?.leftSide === 'auvent' || isAsym || true;
     const hasAppentis = project?.rightSide === 'appentis' || project?.leftSide === 'appentis';
@@ -258,7 +258,7 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const groundYLeft = 140 + Math.sin((terrainSlopeDeg * Math.PI) / 180) * 105;
     const groundYRight = 140 - Math.sin((terrainSlopeDeg * Math.PI) / 180) * 105;
 
-    const apexSvgX = isAsym ? 218 : isSym ? 305 : 480;
+    const apexSvgX = isAsym ? 218 : 305;
     const apexSvgY = 20;
     const leftEaveSvgY = isAsym ? 44 : 54;
     const rightEaveSvgY = 54;
@@ -270,7 +270,7 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const scaleTotalWidth = 10 * pxPerMeter; // Largeur exacte de la barre 10m
     const scaleSegWidth = 2 * pxPerMeter; // Largeur segment 2m
     const scaleStartX = 660 - scaleTotalWidth; // Ancré en bas à droite sous TN Amont
-    const scaleY = 140;
+    const scaleY = 142;
 
     const roofTypeLabel = isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque';
 
@@ -291,7 +291,7 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                     </div>
 
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg width="680" height="152" viewBox="0 0 680 152" style={{ width: '100%', height: '100%', maxHeight: '72mm' }}>
+                        <svg width="680" height="154" viewBox="0 0 680 154" style={{ width: '100%', height: '100%', maxHeight: '74mm' }}>
                             
                             {/* Badges d'Orientation NORD / SUD */}
                             <rect x="70" y="8" width="46" height="15" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
@@ -313,7 +313,7 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                                 <rect x="545" y={auventTipSvgY} width="6" height={groundYRight - auventTipSvgY} fill="#334155" />
                             )}
 
-                            {/* 3. Portique & PANNEAUX SOLAIRES SUR TOUTE LA TOITURE */}
+                            {/* 3. Portique & PANNEAUX SOLAIRES SUR TOUTE LA TOITURE (VERSANT COURT NORD + VERSANT LONG SUD + AUVENT) */}
                             {isAsym ? (
                                 <>
                                     {/* Versant court Nord (5m) */}
@@ -399,12 +399,12 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                                 <rect x={scaleSegWidth * 3} y={0} width={scaleSegWidth} height={4} fill="#cbd5e1" />
                                 <rect x={scaleSegWidth * 4} y={0} width={scaleSegWidth} height={4} fill="#0f172a" />
                                 
-                                <text x={0} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">0</text>
-                                <text x={scaleSegWidth} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">2</text>
-                                <text x={scaleSegWidth * 2} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">4</text>
-                                <text x={scaleSegWidth * 3} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">6</text>
-                                <text x={scaleSegWidth * 4} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">8</text>
-                                <text x={scaleTotalWidth} y={10} fill="#0f172a" fontSize="7" fontWeight="bold" textAnchor="middle">10m</text>
+                                <text x={0} y={9} fill="#475569" fontSize="6.5" textAnchor="middle">0</text>
+                                <text x={scaleSegWidth} y={9} fill="#475569" fontSize="6.5" textAnchor="middle">2</text>
+                                <text x={scaleSegWidth * 2} y={9} fill="#475569" fontSize="6.5" textAnchor="middle">4</text>
+                                <text x={scaleSegWidth * 3} y={9} fill="#475569" fontSize="6.5" textAnchor="middle">6</text>
+                                <text x={scaleSegWidth * 4} y={9} fill="#475569" fontSize="6.5" textAnchor="middle">8</text>
+                                <text x={scaleTotalWidth} y={9} fill="#0f172a" fontSize="7" fontWeight="bold" textAnchor="middle">10m</text>
                             </g>
                         </svg>
                     </div>
@@ -445,7 +445,7 @@ export const PlateNotice = (props) => <PlateSectionAndNotice {...props} />;
 
 /**
  * PLANCHE PC5 : PLAN DES FAÇADES ET TOITURES (5 VUES 3D)
- * Directive : Encarts aux dimensions initiales, image à l'intérieur réduite de 15% en hauteur sans modifier la largeur
+ * Directive : Encarts aux dimensions initiales, images Façade Est, Ouest et Couverture compressées de 10% en hauteur sans modifier la largeur
  */
 export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => {
     const sud = captures?.facade_sud || captures?.facades_projet;
@@ -453,6 +453,8 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
     const est = captures?.facade_est;
     const ouest = captures?.facade_ouest;
     const toiture = captures?.vue_couverture || captures?.toiture;
+
+    const compressedStyle = { transform: 'scaleY(0.9)', transformOrigin: 'center' };
 
     return (
         <div style={PAGE_STYLE} id="pc-plate-facades">
@@ -494,45 +496,43 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                     </div>
                 </div>
 
-                {/* Ligne 2 : Pignons (Est & Ouest aux dimensions d'encart initiales avec image à -15% hauteur) et Vue Toiture */}
+                {/* Ligne 2 : Pignons (Est & Ouest) et Vue Toiture avec hauteur d'image compressée de 10% */}
                 <div style={{ flex: 1.15, display: 'flex', gap: '4mm', minHeight: '54mm' }}>
-                    {/* Façade Est : Encart initial, image à 85% de hauteur sans modifier la largeur */}
+                    {/* Façade Est : Encart initial, image compressée de 10% en hauteur */}
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
                             3. FAÇADE EST (PIGNON GAUCHE)
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', width: '100%', height: '100%' }}>
-                            <div style={{ width: '100%', height: '85%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <ImageUploadZone 
-                                    isInteractive={isInteractive} 
-                                    photo={est || sud} 
-                                    onUpload={(data) => onUpload && onUpload('facade_est', data)} 
-                                    defaultText="Vue Façade Est" 
-                                    label="Façade Est"
-                                />
-                            </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
+                            <ImageUploadZone 
+                                isInteractive={isInteractive} 
+                                photo={est || sud} 
+                                onUpload={(data) => onUpload && onUpload('facade_est', data)} 
+                                defaultText="Vue Façade Est" 
+                                label="Façade Est"
+                                imageStyle={compressedStyle}
+                            />
                         </div>
                     </div>
 
-                    {/* Façade Ouest : Encart initial, image à 85% de hauteur sans modifier la largeur */}
+                    {/* Façade Ouest : Encart initial, image compressée de 10% en hauteur */}
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
                             4. FAÇADE OUEST (PIGNON DROIT)
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', width: '100%', height: '100%' }}>
-                            <div style={{ width: '100%', height: '85%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <ImageUploadZone 
-                                    isInteractive={isInteractive} 
-                                    photo={ouest || sud} 
-                                    onUpload={(data) => onUpload && onUpload('facade_ouest', data)} 
-                                    defaultText="Vue Façade Ouest" 
-                                    label="Façade Ouest"
-                                />
-                            </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
+                            <ImageUploadZone 
+                                isInteractive={isInteractive} 
+                                photo={ouest || sud} 
+                                onUpload={(data) => onUpload && onUpload('facade_ouest', data)} 
+                                defaultText="Vue Façade Ouest" 
+                                label="Façade Ouest"
+                                imageStyle={compressedStyle}
+                            />
                         </div>
                     </div>
 
-                    {/* Vue Couverture */}
+                    {/* Vue Couverture : Encart initial, image compressée de 10% en hauteur */}
                     <div style={{ flex: 1.5, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
                         <div style={{ padding: '1.8mm', background: '#dbeafe', borderBottom: '1px solid #93c5fd', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#1e40af' }}>
                             5. VUE COUVERTURE (PLAN TOITURE PHOTOVOLTAÏQUE)
@@ -544,6 +544,7 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                                 onUpload={(data) => onUpload && onUpload('vue_couverture', data)} 
                                 defaultText="Vue Couverture Toiture (Format Paysage)" 
                                 label="Plan Toiture"
+                                imageStyle={compressedStyle}
                             />
                         </div>
                     </div>

@@ -185,7 +185,7 @@ export const PlateCoupe = ({ project }) => {
     const rawType = (project?.buildingType || project?.installationType || project?.type || 'asymetrique_1').toLowerCase();
     const isOmbriere = rawType.includes('ombriere');
     const isMonopente = rawType.includes('monopente');
-    const isSym = rawType.includes('symetrique');
+    const isSym = rawType.includes('symetrique') && !rawType.includes('asym');
     const isAsym = !isOmbriere && !isMonopente && !isSym;
     
     const hasAuvent = project?.rightSide === 'auvent' || project?.leftSide === 'auvent' || isAsym;
@@ -209,7 +209,7 @@ export const PlateCoupe = ({ project }) => {
     const groundYLeft = 140 + Math.sin((terrainSlopeDeg * Math.PI) / 180) * 105;
     const groundYRight = 140 - Math.sin((terrainSlopeDeg * Math.PI) / 180) * 105;
 
-    const apexSvgX = isAsym ? 218 : isSym ? 305 : 480;
+    const apexSvgX = isAsym ? 218 : 305;
     const apexSvgY = 20;
     const leftEaveSvgY = isAsym ? 44 : 54;
     const rightEaveSvgY = 54;
@@ -220,7 +220,7 @@ export const PlateCoupe = ({ project }) => {
     const scaleTotalWidth = 10 * pxPerM;
     const scaleSegWidth = 2 * pxPerM;
     const scaleStartX = 660 - scaleTotalWidth;
-    const scaleY = 140;
+    const scaleY = 142;
 
     const roofTypeLabel = isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque';
 
@@ -362,29 +362,25 @@ export const PlateFacades = ({ project, captures }) => {
                 </div>
 
                 <div style={{ flex: 1.15, display: 'flex', gap: '3mm' }}>
-                    {/* Est : dimensions d'encart initiales avec image à -15% de hauteur */}
+                    {/* Est : dimensions d'encart initiales avec image compressée de 10% en hauteur */}
                     <div style={{ flex: 0.85, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE EST</div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-                            <div style={{ width: '100%', height: '85%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <img src={est || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Est" />
-                            </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <img src={est || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scaleY(0.9)', transformOrigin: 'center' }} alt="Est" />
                         </div>
                     </div>
-                    {/* Ouest : dimensions d'encart initiales avec image à -15% de hauteur */}
+                    {/* Ouest : dimensions d'encart initiales avec image compressée de 10% en hauteur */}
                     <div style={{ flex: 0.85, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE OUEST</div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
-                            <div style={{ width: '100%', height: '85%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <img src={ouest || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Ouest" />
-                            </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <img src={ouest || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scaleY(0.9)', transformOrigin: 'center' }} alt="Ouest" />
                         </div>
                     </div>
-                    {/* Toiture */}
+                    {/* Toiture : dimensions d'encart initiales avec image compressée de 10% en hauteur */}
                     <div style={{ flex: 1.8, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#dbeafe', color: '#1e40af', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>VUE COUVERTURE (PAYSAGE)</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <img src={toiture || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Toiture" />
+                            <img src={toiture || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scaleY(0.9)', transformOrigin: 'center' }} alt="Toiture" />
                         </div>
                     </div>
                 </div>
