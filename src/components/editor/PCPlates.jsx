@@ -20,30 +20,30 @@ const HEADER_STYLE = {
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottom: '2px solid #10b981',
-    paddingBottom: '5mm',
-    marginBottom: '5mm'
+    paddingBottom: '4mm',
+    marginBottom: '4mm'
 };
 
 const LOGO_NELSON = "https://horizons-cdn.hostinger.com/350bc103-daf8-48b5-9a02-076489f36a7d/338201d787e373b4c0b156cb07a5b792.png"; 
 
-const PlateHeader = ({ title, project, showBranding }) => {
+export const PlateHeader = ({ title, project, showBranding }) => {
     const clientFullName = `${project?.name || project?.lastName || ''} ${project?.firstName || ''}`.trim() || project?.clientName || 'Client';
     return (
         <div style={HEADER_STYLE}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <img src={LOGO_NELSON} alt="Nelson" style={{ height: '12mm' }} />
+                <img src={LOGO_NELSON} alt="Nelson" style={{ height: '11mm' }} />
                 <div style={{ borderLeft: '1px solid #ccc', paddingLeft: '10px' }}>
-                    <div style={{ fontSize: '10pt', fontWeight: 'bold', color: '#10b981' }}>NELSON</div>
+                    <div style={{ fontSize: '9.5pt', fontWeight: 'bold', color: '#10b981' }}>NELSON</div>
                     {showBranding ? (
-                        <div style={{ fontSize: '8pt', color: '#666', fontWeight: 'bold' }}>nelsonpv.fr</div>
+                        <div style={{ fontSize: '7.5pt', color: '#666', fontWeight: 'bold' }}>nelsonpv.fr</div>
                     ) : (
-                        <div style={{ fontSize: '8pt', color: '#666' }}>L'énergie solaire simplifiée</div>
+                        <div style={{ fontSize: '7.5pt', color: '#666' }}>L'énergie solaire simplifiée</div>
                     )}
                 </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#10b981' }}>{title}</div>
-                <div style={{ fontSize: '9pt', color: '#333' }}>
+                <div style={{ fontSize: '13pt', fontWeight: 'bold', color: '#10b981' }}>{title}</div>
+                <div style={{ fontSize: '8.5pt', color: '#333' }}>
                     Projet : {clientFullName} — {project?.city || project?.cadastre_commune || ''} ({project?.zip || project?.zipCode || ''})
                 </div>
             </div>
@@ -51,8 +51,8 @@ const PlateHeader = ({ title, project, showBranding }) => {
     );
 };
 
-const Footer = ({ project }) => (
-    <div style={{ marginTop: '5mm', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '8pt', color: '#666', borderTop: '1px solid #eee', paddingTop: '3mm' }}>
+export const Footer = ({ project }) => (
+    <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '7.5pt', color: '#666', borderTop: '1px solid #eee', paddingTop: '2.5mm' }}>
         <div>NELSON - nelsonpv.fr</div>
         <div style={{ fontWeight: 'bold' }}>DOSSIER DE PERMIS DE CONSTRUIRE</div>
         <div>Date : {new Date().toLocaleDateString('fr-FR')}</div>
@@ -73,7 +73,7 @@ const ImageUploadZone = ({ isInteractive, label, photo, onUpload, defaultText })
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = (event) => onUpload(event.target.result);
+            reader.onload = (event) => onUpload && onUpload(event.target.result);
             reader.readAsDataURL(file);
         }
     };
@@ -101,16 +101,16 @@ const ImageUploadZone = ({ isInteractive, label, photo, onUpload, defaultText })
             {photo ? (
                 <img src={photo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#64748b' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', color: '#64748b' }}>
                     {isInteractive ? (
                         <>
-                            <div style={{ padding: '8px 16px', background: '#10b981', color: 'white', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', pointerEvents: 'none' }}>
+                            <div style={{ padding: '6px 12px', background: '#10b981', color: 'white', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', pointerEvents: 'none' }}>
                                 + Charger une image
                             </div>
-                            <span style={{ fontSize: '11px', pointerEvents: 'none' }}>{label || defaultText}</span>
+                            <span style={{ fontSize: '10px', pointerEvents: 'none' }}>{label || defaultText}</span>
                         </>
                     ) : (
-                        <span style={{ fontSize: '12pt', fontWeight: 'bold' }}>{defaultText}</span>
+                        <span style={{ fontSize: '10pt', fontWeight: 'bold' }}>{defaultText}</span>
                     )}
                 </div>
             )}
@@ -166,7 +166,7 @@ export const PlateCover = ({ project, installationType }) => {
 export const PlateSituation = ({ project, captures, isInteractive, onUpload }) => {
     return (
         <div style={PAGE_STYLE} id="pc-plate-situation">
-            <PlateHeader title="PC1 : PLAN DE SITUATION" project={project} />
+            <PlateHeader title="PC1 : PLAN DE SITUATION DU TERRAIN" project={project} />
             <div style={{ flex: 1, display: 'flex', gap: '8mm' }}>
                 <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ padding: '3mm', background: '#f8fafc', borderBottom: '1px solid #cbd5e1', fontSize: '10pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
@@ -222,112 +222,215 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
     );
 };
 
-export const PlateSection = ({ project, captures, isInteractive, onUpload }) => {
-    const isBattery = project?.type === 'batterie';
+/**
+ * PLANCHE COMBINÉE PC3 / PC4 : PLAN EN COUPE DU TERRAIN & NOTICE DESCRIPTIVE SUR LA MÊME PAGE
+ */
+export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isInteractive }) => {
     const longueur = project?.longueur || '30.0';
-    const largeur = project?.largeur || '16.4';
-    const hauteurEgout = project?.hauteur_egout || '4.0';
-    const pente = project?.pente || '15';
+    const largeur = parseFloat(project?.largeur || 16.4);
+    const hauteurEgout = parseFloat(project?.hauteur_egout || 4.0);
+    const pente = parseFloat(project?.pente || 15);
+    const terrainSlopeDeg = parseFloat(project?.pente_terrain || project?.terrain_slope || 3); // Pente naturelle du terrain
+    const ridgeHeight = (hauteurEgout + largeur * Math.tan((pente * Math.PI) / 180)).toFixed(2);
+
+    // Points de dessin SVG pour le profil altimétrique et la coupe
+    const groundYLeft = 145 + Math.sin((terrainSlopeDeg * Math.PI) / 180) * 120;
+    const groundYRight = 145 - Math.sin((terrainSlopeDeg * Math.PI) / 180) * 120;
 
     return (
-        <div style={PAGE_STYLE} id="pc-plate-section">
-            <PlateHeader title="PC3 : PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION" project={project} />
-            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '6mm', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f8fafc', overflow: 'hidden' }}>
-                {captures?.coupe_projet ? (
-                    <ImageUploadZone 
-                        isInteractive={isInteractive} 
-                        photo={captures?.coupe_projet} 
-                        onUpload={(data) => onUpload && onUpload('coupe_projet', data)} 
-                        defaultText="Plan en coupe inséré" 
-                        label="Plan en coupe"
-                    />
-                ) : !isBattery ? (
-                    /* Rendu vectoriel architectural du bâtiment avec cotations */
-                    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div style={{ fontSize: '11pt', fontWeight: 'bold', color: '#1e293b' }}>
-                            Coupe transversale — Bâtiment agricole photovoltaïque ({largeur}m x {longueur}m)
-                        </div>
-                        <svg width="680" height="220" viewBox="0 0 680 220" style={{ maxWidth: '100%', height: 'auto' }}>
-                            {/* Ligne Terrain */}
-                            <line x1="40" y1="180" x2="640" y2="180" stroke="#64748b" strokeWidth="2" strokeDasharray="4 2" />
-                            <text x="340" y="200" textAnchor="middle" fill="#64748b" fontSize="11" fontStyle="italic">Terrain naturel existant (TN = 0.00)</text>
+        <div style={PAGE_STYLE} id="pc-plate-section-notice">
+            <PlateHeader title="PC3 : PLAN EN COUPE & PC4 : NOTICE DESCRIPTIVE" project={project} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4mm' }}>
+                
+                {/* ── HAUT : PC3 PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION ── */}
+                <div style={{ height: '88mm', border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '3mm 5mm', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2mm' }}>
+                        <span style={{ fontSize: '9.5pt', fontWeight: 'bold', color: '#0f172a' }}>
+                            PC3 — Coupe transversale & Profil altimétrique (Pente terrain {terrainSlopeDeg}°)
+                        </span>
+                        <span style={{ fontSize: '8pt', color: '#64748b' }}>
+                            Échelle indicative • Dimensions : {largeur}m × {longueur}m
+                        </span>
+                    </div>
 
-                            {/* Poteaux */}
-                            <rect x="140" y="90" width="12" height="90" fill="#334155" />
-                            <rect x="528" y="60" width="12" height="120" fill="#334155" />
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="680" height="150" viewBox="0 0 680 150" style={{ width: '100%', height: '100%', maxHeight: '72mm' }}>
+                            {/* 1. Ligne de Terrain Naturel (TN) inclinée selon l'altimétrie */}
+                            <line x1="30" y1={groundYLeft} x2="650" y2={groundYRight} stroke="#94a3b8" strokeWidth="2.5" strokeDasharray="6 3" />
+                            <text x="50" y={groundYLeft + 14} fill="#64748b" fontSize="9" fontStyle="italic">TN Aval (-0.30m)</text>
+                            <text x="630" y={groundYRight + 14} textAnchor="end" fill="#64748b" fontSize="9" fontStyle="italic">TN Amont (+0.40m)</text>
 
-                            {/* Toiture / Charpente */}
-                            <polygon points="135,90 545,55 540,65 140,98" fill="#1e293b" />
-                            {/* Panneaux solaires bleus */}
-                            <polygon points="140,88 540,53 538,47 138,82" fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                            {/* 2. Poteaux métalliques de structure */}
+                            <rect x="150" y="55" width="10" height={groundYLeft - 55} fill="#334155" />
+                            <rect x="520" y="30" width="10" height={groundYRight - 30} fill="#334155" />
 
-                            {/* Cotations */}
-                            {/* Hauteur égout gauche */}
-                            <line x1="110" y1="90" x2="110" y2="180" stroke="#ef4444" strokeWidth="1.5" />
-                            <text x="100" y="140" textAnchor="end" fill="#ef4444" fontSize="11" fontWeight="bold">H. Egout : {hauteurEgout}m</text>
+                            {/* 3. Toiture métallique et modules solaires */}
+                            <polygon points={`145,55 535,28 530,35 150,62`} fill="#1e293b" />
+                            <polygon points={`148,53 533,26 531,21 146,48`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
 
-                            {/* Hauteur Faîtage droite */}
-                            <line x1="570" y1="55" x2="570" y2="180" stroke="#ef4444" strokeWidth="1.5" />
-                            <text x="580" y="120" textAnchor="start" fill="#ef4444" fontSize="11" fontWeight="bold">H. Faîtage : {(Number(hauteurEgout) + Number(largeur) * Math.tan((pente * Math.PI) / 180)).toFixed(2)}m</text>
+                            {/* 4. Information PENTE : STRICTEMENT AU-DESSUS DE LA COUVERTURE */}
+                            <text x="340" y="20" textAnchor="middle" fill="#1e3a8a" fontSize="10.5" fontWeight="bold">
+                                ▲ Pente toiture : {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%)
+                            </text>
 
-                            {/* Largeur Bâtiment */}
-                            <line x1="140" y1="210" x2="540" y2="210" stroke="#0284c7" strokeWidth="1.5" />
-                            <text x="340" y="215" textAnchor="middle" fill="#0284c7" fontSize="11" fontWeight="bold">Largeur : {largeur} m (Pente toiture {pente}°)</text>
+                            {/* 5. Rappel Hauteur Égout à gauche */}
+                            <line x1="125" y1="55" x2="125" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
+                            <line x1="120" y1="55" x2="130" y2="55" stroke="#ef4444" strokeWidth="1.2" />
+                            <line x1="120" y1={groundYLeft} x2="130" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
+                            <text x="115" y="90" textAnchor="end" fill="#ef4444" fontSize="9.5" fontWeight="bold">H. Égout : {hauteurEgout.toFixed(2)}m</text>
+
+                            {/* 6. Rappel Hauteur Faîtage à droite */}
+                            <line x1="550" y1="28" x2="550" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
+                            <line x1="545" y1="28" x2="555" y2="28" stroke="#ef4444" strokeWidth="1.2" />
+                            <line x1="545" y1={groundYRight} x2="555" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
+                            <text x="560" y="75" textAnchor="start" fill="#ef4444" fontSize="9.5" fontWeight="bold">H. Faîtage : {ridgeHeight}m</text>
+
+                            {/* 7. Ligne de Largeur et texte STRICTEMENT AU-DESSOUS DU TRAIT */}
+                            <line x1="150" y1="130" x2="530" y2="130" stroke="#0284c7" strokeWidth="1.5" />
+                            <line x1="150" y1="124" x2="150" y2="136" stroke="#0284c7" strokeWidth="1.5" />
+                            <line x1="530" y1="124" x2="530" y2="136" stroke="#0284c7" strokeWidth="1.5" />
+                            {/* Texte AU-DESSOUS */}
+                            <text x="340" y="145" textAnchor="middle" fill="#0284c7" fontSize="10.5" fontWeight="bold">
+                                ▼ Largeur : {largeur.toFixed(2)} m (Emprise au sol)
+                            </text>
                         </svg>
-                        <div style={{ fontSize: '9pt', color: '#64748b' }}>
-                            Charpente métallique traitée anti-corrosion, toiture en bac acier recevant modules photovoltaïques intégrés.
-                        </div>
                     </div>
-                ) : (
-                    <ImageUploadZone 
-                        isInteractive={isInteractive} 
-                        photo={captures?.coupe_projet} 
-                        onUpload={(data) => onUpload && onUpload('coupe_projet', data)} 
-                        defaultText="Plan en coupe batterie à insérer" 
-                        label="Plan en coupe"
-                    />
-                )}
+                </div>
+
+                {/* ── BAS : PC4 NOTICE DESCRIPTIVE (NOTICE DU PROJET) ── */}
+                <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '3.5mm 6mm', background: '#fff', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: '9.5pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5mm' }}>
+                        PC4 — Notice descriptive du projet & Caractéristiques architecturales
+                    </div>
+                    <div style={{ flex: 1, overflow: 'hidden', fontSize: '8.5pt', lineHeight: '1.4', color: '#334155' }}>
+                        {isInteractive ? (
+                            <textarea 
+                                style={{ width: '100%', height: '100%', border: 'none', resize: 'none', outline: 'none', fontSize: '8.5pt', fontFamily: 'Arial, sans-serif' }}
+                                value={noticeText || project?.description || ''}
+                                onChange={(e) => onNoticeChange && onNoticeChange(e.target.value)}
+                                placeholder="Notice descriptive du projet..."
+                            />
+                        ) : (
+                            <div style={{ whiteSpace: 'pre-wrap' }}>
+                                {noticeText || project?.description || `Construction d'un bâtiment agricole à charpente métallique recevant une centrale solaire photovoltaïque intégrée en toiture de ${project?.kwc || 100} kWc.
+• Dimensions de l'ouvrage : Longueur ${longueur}m, Largeur ${largeur}m, Hauteur égout ${hauteurEgout}m, Pente toiture ${pente}°.
+• Matériaux : Structure acier galvanisé, toiture bac acier avec modules photovoltaïques monocristallins foncés, finition soignée anti-reflet.
+• Destination : Activité agricole, stockage de matériel/fourrage et valorisation de l'énergie solaire renouvelable.`}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
             </div>
             <Footer project={project} />
         </div>
     );
 };
 
-export const PlateNotice = ({ project, noticeText, onNoticeChange, isInteractive }) => {
-    return (
-        <div style={PAGE_STYLE} id="pc-plate-notice">
-            <PlateHeader title="PC4 : NOTICE DESCRIPTIVE DU PROJET" project={project} showBranding={true} />
-            <div style={{ flex: 1, padding: '5mm', overflowY: 'hidden', fontSize: '10pt', lineHeight: '1.5', color: '#1e293b', border: '1px solid #cbd5e1', borderRadius: '3mm', background: '#fff' }}>
-                {isInteractive ? (
-                    <textarea 
-                        style={{ width: '100%', height: '100%', border: 'none', resize: 'none', outline: 'none', fontSize: '10pt', fontFamily: 'Arial, sans-serif' }}
-                        value={noticeText}
-                        onChange={(e) => onNoticeChange && onNoticeChange(e.target.value)}
-                        placeholder="Saisissez ou collez la notice descriptive du projet ici..."
-                    />
-                ) : (
-                    <div style={{ whiteSpace: 'pre-wrap' }}>
-                        {noticeText || project?.description || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Notice descriptive du projet solaire.</span>}
-                    </div>
-                )}
-            </div>
-            <Footer project={project} />
-        </div>
-    );
-};
+export const PlateSection = (props) => <PlateSectionAndNotice {...props} />;
+export const PlateNotice = (props) => <PlateSectionAndNotice {...props} />;
 
+/**
+ * PLANCHE PC5 : PLAN DES FAÇADES ET TOITURES (5 ZONES : SUD, NORD, EST, OUEST, TOITURE)
+ */
 export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => {
+    const sud = captures?.facade_sud || captures?.facades_projet;
+    const nord = captures?.facade_nord;
+    const est = captures?.facade_est;
+    const ouest = captures?.facade_ouest;
+    const toiture = captures?.vue_couverture || captures?.toiture;
+
     return (
         <div style={PAGE_STYLE} id="pc-plate-facades">
-            <PlateHeader title="PC5 : PLAN DES FAÇADES ET TOITURES / VUE 3D" project={project} />
-            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '4mm', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', overflow: 'hidden' }}>
-                <ImageUploadZone 
-                    isInteractive={isInteractive} 
-                    photo={captures?.facades_projet} 
-                    onUpload={(data) => onUpload && onUpload('facades_projet', data)} 
-                    defaultText="Vue 3D / Plan des façades et toitures du projet" 
-                    label="Plan des façades & toitures"
-                />
+            <PlateHeader title="PC5 : PLAN DES FAÇADES ET TOITURES (5 VUES 3D)" project={project} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3mm' }}>
+                
+                {/* Ligne 1 : Façades Longs Pans (Sud & Nord) */}
+                <div style={{ flex: 1.1, display: 'flex', gap: '4mm' }}>
+                    {/* Façade Sud */}
+                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+                        <div style={{ padding: '2mm', background: '#e2e8f0', borderBottom: '1px solid #cbd5e1', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                            1. FAÇADE SUD (VUE AVANT / LONG PAN)
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                            <ImageUploadZone 
+                                isInteractive={isInteractive} 
+                                photo={sud} 
+                                onUpload={(data) => onUpload && onUpload('facade_sud', data)} 
+                                defaultText="Vue Façade Sud" 
+                                label="Façade Sud"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Façade Nord */}
+                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+                        <div style={{ padding: '2mm', background: '#e2e8f0', borderBottom: '1px solid #cbd5e1', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                            2. FAÇADE NORD (VUE ARRIÈRE)
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                            <ImageUploadZone 
+                                isInteractive={isInteractive} 
+                                photo={nord || sud} 
+                                onUpload={(data) => onUpload && onUpload('facade_nord', data)} 
+                                defaultText="Vue Façade Nord" 
+                                label="Façade Nord"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Ligne 2 : Pignons (Est & Ouest) et Vue Toiture (Couverture) */}
+                <div style={{ flex: 1, display: 'flex', gap: '4mm' }}>
+                    {/* Façade Est */}
+                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+                        <div style={{ padding: '2mm', background: '#e2e8f0', borderBottom: '1px solid #cbd5e1', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                            3. FAÇADE EST (PIGNON GAUCHE)
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                            <ImageUploadZone 
+                                isInteractive={isInteractive} 
+                                photo={est || sud} 
+                                onUpload={(data) => onUpload && onUpload('facade_est', data)} 
+                                defaultText="Vue Façade Est" 
+                                label="Façade Est"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Façade Ouest */}
+                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+                        <div style={{ padding: '2mm', background: '#e2e8f0', borderBottom: '1px solid #cbd5e1', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                            4. FAÇADE OUEST (PIGNON DROIT)
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                            <ImageUploadZone 
+                                isInteractive={isInteractive} 
+                                photo={ouest || sud} 
+                                onUpload={(data) => onUpload && onUpload('facade_ouest', data)} 
+                                defaultText="Vue Façade Ouest" 
+                                label="Façade Ouest"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Vue Couverture (Toiture) */}
+                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+                        <div style={{ padding: '2mm', background: '#dbeafe', borderBottom: '1px solid #93c5fd', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#1e40af' }}>
+                            5. VUE COUVERTURE (PLAN TOITURE PV)
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                            <ImageUploadZone 
+                                isInteractive={isInteractive} 
+                                photo={toiture || sud} 
+                                onUpload={(data) => onUpload && onUpload('vue_couverture', data)} 
+                                defaultText="Vue Couverture Toiture" 
+                                label="Plan Toiture"
+                            />
+                        </div>
+                    </div>
+                </div>
+
             </div>
             <Footer project={project} />
         </div>
@@ -335,8 +438,7 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
 };
 
 /**
- * PC6 : DOCUMENT GRAPHIQUE D'INSERTION PAYSAGÈRE
- * Affiche les vues Avant et Après sur la MÊME LIGNE HORIZONTALE (side-by-side)
+ * PC6 : DOCUMENT GRAPHIQUE D'INSERTION PAYSAGÈRE (Side-by-Side)
  */
 export const PlateInsertion = ({ project, photos, isInteractive, onUpload }) => (
     <div style={PAGE_STYLE} id="pc-plate-insertion">

@@ -38,8 +38,7 @@ import {
   PlateCover as PCPlateCover,
   PlateSituation as PCPlateSituation,
   PlateMasse as PCPlateMasse,
-  PlateSection as PCPlateSection,
-  PlateNotice as PCPlateNotice,
+  PlateSectionAndNotice as PCPlateSectionAndNotice,
   PlateFacades as PCPlateFacades,
   PlateInsertion as PCPlateInsertion,
   PlateEnvProcheLointain as PCPlateEnv,
@@ -258,8 +257,7 @@ export default function Developpement() {
         ? [
             `${prefix}plate-situation`,
             `${prefix}plate-masse`,
-            `${prefix}plate-section`,
-            `${prefix}plate-notice`,
+            `${prefix}plate-section-notice`,
             `${prefix}plate-facades`,
             `${prefix}plate-insertion`,
             `${prefix}plate-env`
@@ -543,8 +541,7 @@ export default function Developpement() {
           <div id="dev-pc-plate-cover"><PCPlateCover project={selectedProject} installationType={selectedProject.type || 'batiment_solaire'} /></div>
           <div id="dev-pc-plate-situation"><PCPlateSituation project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
           <div id="dev-pc-plate-masse"><PCPlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
-          <div id="dev-pc-plate-section"><PCPlateSection project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
-          <div id="dev-pc-plate-notice"><PCPlateNotice project={selectedProject} noticeText={selectedProject.description || selectedProject.pc_notice} /></div>
+          <div id="dev-pc-plate-section-notice"><PCPlateSectionAndNotice project={selectedProject} noticeText={selectedProject.description || selectedProject.pc_notice} /></div>
           <div id="dev-pc-plate-facades"><PCPlateFacades project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
           <div id="dev-pc-plate-insertion"><PCPlateInsertion project={selectedProject} photos={selectedProject.pc_photos || {}} /></div>
           <div id="dev-pc-plate-env"><PCPlateEnv project={selectedProject} photos={selectedProject.pc_photos || {}} /></div>

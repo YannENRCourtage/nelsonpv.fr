@@ -152,50 +152,61 @@ export default function LandscapeIntegrationModal({
     shadowPlane.receiveShadow = true;
     scene.add(shadowPlane);
 
-    // 4. Procedural 3D Building / Ombrière
+    // 4. Modélisation 3D exacte du bâtiment / ombrière configuré
     const buildingGroup = new THREE.Group();
 
-    const lg = Number(projectDimensions.longueur || 20);
-    const lr = Number(projectDimensions.largeur || 10);
-    const ht = Number(projectDimensions.hauteur_egout || 5);
+    const lg = Number(projectDimensions.longueur || 30.0);
+    const lr = Number(projectDimensions.largeur || 18.6);
+    const ht = Number(projectDimensions.hauteur_egout || 4.0);
+    const penteDeg = Number(projectDimensions.pente || 15);
+    const ridgeHt = ht + lr * Math.tan((penteDeg * Math.PI) / 180);
 
-    // Poteaux métalliques
-    const postGeo = new THREE.BoxGeometry(0.3, ht, 0.3);
-    const postMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4, metalness: 0.8 });
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4, metalness: 0.75 });
+    const rafterMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.3, metalness: 0.8 });
+    const solarMat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.2, metalness: 0.9 });
 
-    const corners = [
-      [-lg / 2, -lr / 2],
-      [lg / 2, -lr / 2],
-      [lg / 2, lr / 2],
-      [-lg / 2, lr / 2],
-    ];
+    const halfL = lg / 2;
+    const halfW = lr / 2;
+    const bayCount = Math.max(3, Math.round(lg / 6));
+    const baySpacing = lg / bayCount;
 
-    corners.forEach(([cx, cz]) => {
-      const post = new THREE.Mesh(postGeo, postMat);
-      post.position.set(cx, ht / 2, cz);
-      post.castShadow = true;
-      buildingGroup.add(post);
-    });
+    // Portiques métalliques selon le nombre de travées
+    for (let i = 0; i <= bayCount; i++) {
+      const z = -halfL + i * baySpacing;
 
-    // Toiture & Panneaux Solaires
-    const roofGeo = new THREE.BoxGeometry(lg + 0.6, 0.2, lr + 0.6);
-    const roofMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
-    const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.set(0, ht + 0.1, 0);
-    roof.rotation.x = Math.PI / 12; // Pente de toiture
-    roof.castShadow = true;
-    buildingGroup.add(roof);
+      // Poteau Bas (Egout)
+      const postBas = new THREE.Mesh(new THREE.BoxGeometry(0.35, ht, 0.35), postMat);
+      postBas.position.set(-halfW, ht / 2, z);
+      postBas.castShadow = true;
+      buildingGroup.add(postBas);
 
-    // Grille de panneaux photovoltaïques bleus
-    const solarGeo = new THREE.BoxGeometry(lg, 0.05, lr);
-    const solarMat = new THREE.MeshStandardMaterial({
-      color: 0x1d4ed8,
-      roughness: 0.2,
-      metalness: 0.9,
-    });
-    const solarArray = new THREE.Mesh(solarGeo, solarMat);
-    solarArray.position.set(0, ht + 0.22, 0);
-    solarArray.rotation.x = Math.PI / 12;
+      // Poteau Haut (Faîtage)
+      const postHaut = new THREE.Mesh(new THREE.BoxGeometry(0.35, ridgeHt, 0.35), postMat);
+      postHaut.position.set(halfW, ridgeHt / 2, z);
+      postHaut.castShadow = true;
+      buildingGroup.add(postHaut);
+
+      // Traverse / Arbalétrier
+      const rafterLen = Math.sqrt(Math.pow(lr, 2) + Math.pow(ridgeHt - ht, 2));
+      const rafter = new THREE.Mesh(new THREE.BoxGeometry(rafterLen, 0.25, 0.2), rafterMat);
+      rafter.position.set(0, (ht + ridgeHt) / 2, z);
+      rafter.rotation.z = Math.atan2(ridgeHt - ht, lr);
+      rafter.castShadow = true;
+      buildingGroup.add(rafter);
+    }
+
+    // Toiture et Panneaux photovoltaïques en toiture
+    const roofLen = Math.sqrt(Math.pow(lr, 2) + Math.pow(ridgeHt - ht, 2)) + 0.4;
+    const roofMesh = new THREE.Mesh(new THREE.BoxGeometry(roofLen, 0.08, lg + 0.4), rafterMat);
+    roofMesh.position.set(0, (ht + ridgeHt) / 2 + 0.1, 0);
+    roofMesh.rotation.z = Math.atan2(ridgeHt - ht, lr);
+    roofMesh.castShadow = true;
+    buildingGroup.add(roofMesh);
+
+    // Panneaux Solaires Bleus
+    const solarArray = new THREE.Mesh(new THREE.BoxGeometry(roofLen - 0.2, 0.04, lg - 0.2), solarMat);
+    solarArray.position.set(0, (ht + ridgeHt) / 2 + 0.16, 0);
+    solarArray.rotation.z = Math.atan2(ridgeHt - ht, lr);
     solarArray.castShadow = true;
     buildingGroup.add(solarArray);
 
