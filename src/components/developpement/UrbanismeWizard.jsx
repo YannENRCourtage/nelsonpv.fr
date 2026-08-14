@@ -897,6 +897,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             </button>
                           </div>
                         </div>
+                      ) : (
                         <label className="aspect-video rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 bg-white transition-colors">
                           <Upload className="w-5 h-5 text-gray-400 mb-1" />
                           <span className="text-[11px] text-gray-500 font-semibold">Importer photo lointaine</span>
