@@ -439,7 +439,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
                   className="p-6 space-y-4">
                   <div>
                     <h3 className="text-sm font-bold text-gray-800">Étape 2 : Cadastre & Cartographie PC1 / PC2 Automatique</h3>
-                    <p className="text-xs text-gray-500">Les cartes IGN, Géoportail et le plan de masse OSM (zoom 19) sont générés automatiquement.</p>
+                    <p className="text-xs text-gray-500">Les cartes IGN, Géoportail et le plan de masse sont générés automatiquement.</p>
                   </div>
 
                   <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
@@ -526,9 +526,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
                       )}
                     </div>
 
-                    {/* Plan de Masse OSM Zoom 19 PC2 */}
+                    {/* Plan de Masse PC2 */}
                     <div className="border border-gray-200 rounded-2xl p-2.5 bg-gray-50 text-center relative overflow-hidden">
-                      <p className="text-[11px] font-bold text-gray-600 mb-1.5">PC2 — Plan de Masse (OSM Zoom 19)</p>
+                      <p className="text-[11px] font-bold text-gray-600 mb-1.5">PC2 — Plan de Masse</p>
                       {captures?.masse_projet ? (
                         <div className="relative group rounded-xl overflow-hidden aspect-video border border-gray-200">
                           <img src={captures.masse_projet} alt="Plan de masse" className="w-full h-full object-cover" />
@@ -626,7 +626,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
                   className="p-5 space-y-4">
                   <div>
                     <h3 className="text-sm font-bold text-gray-800">Étape 4 : PC5 (5 vues Façades & Toiture) & PC6 (Insertion paysagère 3D)</h3>
-                    <p className="text-xs text-gray-500">Capturez les 5 vues de façades pour la PC5 (fond neutre) et positionnez le modèle 3D sur votre photo de terrain pour la PC6.</p>
+                    <p className="text-xs text-gray-500">Capturez les 5 vues de façades pour la PC5 et positionnez le modèle 3D sur votre photo de terrain pour la PC6.</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">

@@ -231,71 +231,72 @@ export const PlateCoupe = ({ project }) => {
 
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <svg width="680" height="142" viewBox="0 0 680 142" style={{ width: '100%', height: '100%', maxHeight: '85mm' }}>
-                        <line x1="20" y1={groundYLeft} x2="660" y2={groundYRight} stroke="#94a3b8" strokeWidth="2" strokeDasharray="6 3" />
-                        <text x="35" y={groundYLeft + 12} fill="#64748b" fontSize="8" fontStyle="italic">TN Aval (-0.30m)</text>
-                        <text x="645" y={groundYRight + 12} textAnchor="end" fill="#64748b" fontSize="8" fontStyle="italic">TN Amont (+0.40m)</text>
+                        {/* Badges d'Orientation NORD / SUD */}
+                        <rect x="70" y="10" width="46" height="15" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
+                        <text x="93" y="21" textAnchor="middle" fill="#2563eb" fontSize="8" fontWeight="bold">NORD</text>
 
-                        <rect x="140" y={leftEaveSvgY} width="9" height={groundYLeft - leftEaveSvgY} fill="#334155" />
-                        <rect x="502" y={rightEaveSvgY} width="9" height={groundYRight - rightEaveSvgY} fill="#334155" />
+                        <rect x="585" y="10" width="40" height="15" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
+                        <text x="605" y="21" textAnchor="middle" fill="#2563eb" fontSize="8" fontWeight="bold">SUD</text>
+
+                        <line x1="20" y1={groundYLeft} x2="660" y2={groundYRight} stroke="#94a3b8" strokeWidth="2" strokeDasharray="6 3" />
+                        <text x="35" y={groundYLeft + 12} fill="#64748b" fontSize="8" fontStyle="italic">Terrain naturel conservé (TN Aval)</text>
+                        <text x="645" y={groundYRight + 12} textAnchor="end" fill="#64748b" fontSize="8" fontStyle="italic">TN Amont</text>
+
+                        <rect x="130" y={leftEaveSvgY} width="9" height={groundYLeft - leftEaveSvgY} fill="#334155" />
+                        <rect x="472" y={rightEaveSvgY} width="9" height={groundYRight - rightEaveSvgY} fill="#334155" />
 
                         {isAsym ? (
                             <>
-                                {/* Versant court gauche avec panneaux solaires */}
-                                <line x1="140" y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="5" />
-                                <polygon points={`136,${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 8} 136,${leftEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                {/* Versant court Nord avec panneaux solaires */}
+                                <line x1="130" y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="5" />
+                                <polygon points={`126,${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 8} 126,${leftEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
                                 
-                                {/* Versant long droit avec panneaux solaires */}
-                                <line x1={apexSvgX} y1={apexSvgY} x2="510" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
-                                <polygon points={`${apexSvgX},${apexSvgY - 2} 514,${rightEaveSvgY - 2} 514,${rightEaveSvgY - 8} ${apexSvgX},${apexSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                {/* Versant long Sud avec panneaux solaires */}
+                                <line x1={apexSvgX} y1={apexSvgY} x2="480" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
+                                <polygon points={`${apexSvgX},${apexSvgY - 2} 484,${rightEaveSvgY - 2} 484,${rightEaveSvgY - 8} ${apexSvgX},${apexSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
                                 
                                 {/* Auvent avec panneaux solaires */}
                                 {hasAuvent && (
                                     <>
-                                        <line x1="510" y1={rightEaveSvgY} x2={auventTipSvgX} y2={auventTipSvgY} stroke="#1e293b" strokeWidth="4" />
-                                        <polygon points={`510,${rightEaveSvgY - 2} ${auventTipSvgX + 4},${auventTipSvgY - 2} ${auventTipSvgX + 4},${auventTipSvgY - 8} 510,${rightEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
-                                        <text x={(510 + auventTipSvgX) / 2} y={rightEaveSvgY - 14} textAnchor="middle" fill="#0284c7" fontSize="8" fontWeight="bold">Auvent +4.00m</text>
+                                        <line x1="480" y1={rightEaveSvgY} x2={auventTipSvgX} y2={auventTipSvgY} stroke="#1e293b" strokeWidth="4" />
+                                        <polygon points={`480,${rightEaveSvgY - 2} ${auventTipSvgX + 4},${auventTipSvgY - 2} ${auventTipSvgX + 4},${auventTipSvgY - 8} 480,${rightEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                        <text x={(480 + auventTipSvgX) / 2} y={rightEaveSvgY - 14} textAnchor="middle" fill="#0284c7" fontSize="7.5" fontWeight="bold">Auvent +4.00m</text>
                                     </>
                                 )}
                             </>
                         ) : (
                             <>
-                                <line x1="140" y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="5" />
-                                <line x1={apexSvgX} y1={apexSvgY} x2="510" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
-                                <polygon points={`136,${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 8} 136,${leftEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
-                                <polygon points={`${apexSvgX},${apexSvgY - 2} 514,${rightEaveSvgY - 2} 514,${rightEaveSvgY - 8} ${apexSvgX},${apexSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                <line x1="130" y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="5" />
+                                <line x1={apexSvgX} y1={apexSvgY} x2="480" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
+                                <polygon points={`126,${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 8} 126,${leftEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                <polygon points={`${apexSvgX},${apexSvgY - 2} 484,${rightEaveSvgY - 2} 484,${rightEaveSvgY - 8} ${apexSvgX},${apexSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
                             </>
                         )}
 
-                        <text x={isAsym ? 370 : apexSvgX} y={apexSvgY - 12} textAnchor="middle" fill="#1e3a8a" fontSize="9.5" fontWeight="bold">
-                            ▲ Pente toiture : {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%)
+                        <text x={350} y={apexSvgY - 10} textAnchor="middle" fill="#1e3a8a" fontSize="8.5" fontWeight="bold">
+                            Toiture photovoltaïque : pente {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%) • Bac acier RAL 7016 + Modules solaires
                         </text>
 
                         {/* Rappel Hauteurs */}
-                        <line x1="115" y1={leftEaveSvgY} x2="115" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
-                        <line x1="110" y1={leftEaveSvgY} x2="120" y2={leftEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
-                        <line x1="110" y1={groundYLeft} x2="120" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
-                        <text x="105" y={leftEaveSvgY + (groundYLeft - leftEaveSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="8" fontWeight="bold">
-                            {isAsym ? `H. Égout Gauche : ${leftEaveHeight.toFixed(2)}m` : `H. Égout : ${hauteurEgout.toFixed(2)}m`}
+                        <line x1="108" y1={leftEaveSvgY} x2="108" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
+                        <text x="100" y={leftEaveSvgY + (groundYLeft - leftEaveSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="8" fontWeight="bold">
+                            Égout Nord : {leftEaveHeight.toFixed(2)}m
                         </text>
 
-                        <line x1="535" y1={rightEaveSvgY} x2="535" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
-                        <line x1="530" y1={rightEaveSvgY} x2="540" y2={rightEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
-                        <line x1="530" y1={groundYRight} x2="540" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
-                        <text x="545" y={rightEaveSvgY + (groundYRight - rightEaveSvgY) / 2 + 3} textAnchor="start" fill="#ef4444" fontSize="8" fontWeight="bold">
-                            {isAsym ? `H. Égout Droit : ${rightEaveHeight.toFixed(2)}m` : `H. Égout : ${hauteurEgout.toFixed(2)}m`}
+                        <line x1="502" y1={rightEaveSvgY} x2="502" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
+                        <text x="510" y={rightEaveSvgY + (groundYRight - rightEaveSvgY) / 2 + 3} textAnchor="start" fill="#ef4444" fontSize="8" fontWeight="bold">
+                            Égout Sud : {rightEaveHeight.toFixed(2)}m
                         </text>
 
                         <line x1={apexSvgX} y1={apexSvgY} x2={apexSvgX} y2={groundYLeft} stroke="#ef4444" strokeWidth="1" strokeDasharray="3 2" />
-                        <text x={apexSvgX + 6} y={apexSvgY + 26} fill="#ef4444" fontSize="8.5" fontWeight="bold">
-                            H. Faîtage : {ridgeHeight.toFixed(2)}m
+                        <text x={apexSvgX + 6} y={apexSvgY + 24} fill="#ef4444" fontSize="8.5" fontWeight="bold">
+                            Faîtage : {ridgeHeight.toFixed(2)}m
                         </text>
 
-                        <text x="325" y="122" textAnchor="middle" fill="#0284c7" fontSize="10.5" fontWeight="bold">
+                        <text x="305" y="122" textAnchor="middle" fill="#0284c7" fontSize="9.5" fontWeight="bold">
                             ▼ Largeur : {largeur.toFixed(2)} m (Emprise au sol)
                         </text>
-                        <line x1="140" y1="130" x2="510" y2="130" stroke="#0284c7" strokeWidth="1.5" />
-                        <line x1="140" y1="124" x2="140" y2="136" stroke="#0284c7" strokeWidth="1.5" />
-                        <line x1="510" y1="124" x2="510" y2="136" stroke="#0284c7" strokeWidth="1.5" />
+                        <line x1="130" y1="129" x2="480" y2="129" stroke="#0284c7" strokeWidth="1.5" />
                     </svg>
                 </div>
             </div>
@@ -320,7 +321,7 @@ export const PlateFacades = ({ project, captures }) => {
         <div style={PAGE_STYLE} id="dp-plate-facades">
             <PlateHeader title="DP4 — PLAN DES FAÇADES ET TOITURES / VUES 3D" project={project} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3mm', maxHeight: '135mm', marginBottom: '5mm' }}>
-                <div style={{ flex: 1, display: 'flex', gap: '3.5mm' }}>
+                <div style={{ flex: 1, display: 'flex', gap: '3mm' }}>
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE SUD</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -334,20 +335,24 @@ export const PlateFacades = ({ project, captures }) => {
                         </div>
                     </div>
                 </div>
-                <div style={{ flex: 1.15, display: 'flex', gap: '3.5mm' }}>
-                    <div style={{ flex: 0.85, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE EST</div>
+
+                <div style={{ flex: 1.15, display: 'flex', gap: '3mm', alignItems: 'center' }}>
+                    {/* Est : hauteur réduite de 15% */}
+                    <div style={{ flex: 0.85, height: '85%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                        <div style={{ padding: '1.2mm', background: '#f1f5f9', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE EST</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <img src={est || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Est" />
                         </div>
                     </div>
-                    <div style={{ flex: 0.85, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE OUEST</div>
+                    {/* Ouest : hauteur réduite de 15% */}
+                    <div style={{ flex: 0.85, height: '85%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                        <div style={{ padding: '1.2mm', background: '#f1f5f9', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE OUEST</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <img src={ouest || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Ouest" />
                         </div>
                     </div>
-                    <div style={{ flex: 1.8, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                    {/* Toiture */}
+                    <div style={{ flex: 1.8, height: '100%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#dbeafe', color: '#1e40af', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>VUE COUVERTURE (PAYSAGE)</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <img src={toiture || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Toiture" />
@@ -370,10 +375,11 @@ export const PlateInsertion = ({ project, captures, photos }) => {
     return (
         <div style={PAGE_STYLE} id="dp-plate-insertion">
             <PlateHeader title="DP6 — DOCUMENT GRAPHIQUE D'INSERTION PAYSAGÈRE" project={project} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: '135mm', marginBottom: '5mm' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: '124mm', marginBottom: '6mm' }}>
                 <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
-                    <div style={{ padding: '2.5mm', background: '#e2e8f0', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#1e293b' }}>
-                        1. VUE DE L'ÉTAT INITIAL (AVANT PROJET)
+                    <div style={{ padding: '2mm', background: '#e2e8f0', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#1e293b', lineHeight: '1.25' }}>
+                        <div>1. VUE DE L'ÉTAT INITIAL</div>
+                        <div style={{ fontSize: '7.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '1px' }}>(AVANT TRAVAUX)</div>
                     </div>
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                         <img src={photoAvant} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Avant" crossOrigin="anonymous" />
@@ -381,8 +387,9 @@ export const PlateInsertion = ({ project, captures, photos }) => {
                 </div>
 
                 <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
-                    <div style={{ padding: '2.5mm', background: '#dcfce7', borderBottom: '1px solid #86efac', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#166534' }}>
-                        2. VUE APRÈS PROJET (SIMULATION 3D D'INSERTION PAYSAGÈRE)
+                    <div style={{ padding: '2mm', background: '#dcfce7', borderBottom: '1px solid #86efac', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#166534', lineHeight: '1.25' }}>
+                        <div>2. VUE APRÈS PROJET</div>
+                        <div style={{ fontSize: '7.5pt', fontWeight: 'normal', color: '#15803d', marginTop: '1px' }}>(SIMULATION 3D D'INSERTION PAYSAGÈRE)</div>
                     </div>
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                         <img src={photoApres} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Après" crossOrigin="anonymous" />
