@@ -257,128 +257,133 @@ export default function LandscapeIntegrationModal({
             )}
           </div>
 
-          {/* Contrôles */}
-          <div className="w-80 bg-slate-950/95 border-l border-slate-800 p-5 flex flex-col gap-3.5 overflow-y-auto text-xs">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="font-extrabold text-white flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
-                <Sliders className="w-4 h-4 text-blue-400" /> Réglages 3D
-              </span>
-              <button
-                onClick={() => setTransform({ posX: 0, posY: -2, posZ: 0, rotY: 0.35, rotX: 0.15, rotZ: 0, scale: 0.85, sunAngle: 45 })}
-                className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1"
-              >
-                <RefreshCw className="w-3 h-3" /> Réinitialiser
-              </button>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-slate-300 mb-1 font-semibold">
-                <span>Taille / Échelle</span>
-                <span className="text-blue-400 font-bold">{Math.round(transform.scale * 100)}%</span>
-              </div>
-              <input
-                type="range" min="0.2" max="3.0" step="0.05"
-                value={transform.scale}
-                onChange={e => setTransform(t => ({ ...t, scale: parseFloat(e.target.value) }))}
-                className="w-full accent-blue-500 cursor-pointer"
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between text-slate-300 mb-1 font-semibold">
-                <span className="flex items-center gap-1"><Compass className="w-3.5 h-3.5 text-blue-400" /> Azimut (Rotation 360°)</span>
-                <span className="text-blue-400 font-bold">{Math.round((transform.rotY * 180) / Math.PI)}°</span>
-              </div>
-              <input
-                type="range" min="-3.14" max="3.14" step="0.05"
-                value={transform.rotY}
-                onChange={e => setTransform(t => ({ ...t, rotY: parseFloat(e.target.value) }))}
-                className="w-full accent-blue-500 cursor-pointer"
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between text-slate-300 mb-1 font-semibold">
-                <span>Inclinaison Terrain</span>
-                <span className="text-blue-400 font-bold">{Math.round((transform.rotX * 180) / Math.PI)}°</span>
-              </div>
-              <input
-                type="range" min="-0.5" max="0.5" step="0.02"
-                value={transform.rotX}
-                onChange={e => setTransform(t => ({ ...t, rotX: parseFloat(e.target.value) }))}
-                className="w-full accent-blue-500 cursor-pointer"
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between text-slate-300 mb-1 font-semibold">
-                <span>Position Horizontale (X)</span>
-                <span className="text-blue-400 font-bold">{transform.posX.toFixed(1)} m</span>
-              </div>
-              <input
-                type="range" min="-30" max="30" step="0.5"
-                value={transform.posX}
-                onChange={e => setTransform(t => ({ ...t, posX: parseFloat(e.target.value) }))}
-                className="w-full accent-blue-500 cursor-pointer"
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between text-slate-300 mb-1 font-semibold">
-                <span>Hauteur sol (Altitude)</span>
-                <span className="text-blue-400 font-bold">{transform.posY.toFixed(1)} m</span>
-              </div>
-              <input
-                type="range" min="-20" max="20" step="0.5"
-                value={transform.posY}
-                onChange={e => setTransform(t => ({ ...t, posY: parseFloat(e.target.value) }))}
-                className="w-full accent-blue-500 cursor-pointer"
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between text-slate-300 mb-1 font-semibold">
-                <span className="flex items-center gap-1"><Sun className="w-3.5 h-3.5 text-amber-400" /> Ensoleillement & Ombres</span>
-                <span className="text-amber-400 font-bold">{transform.sunAngle}°</span>
-              </div>
-              <input
-                type="range" min="0" max="360" step="5"
-                value={transform.sunAngle}
-                onChange={e => setTransform(t => ({ ...t, sunAngle: parseInt(e.target.value) }))}
-                className="w-full accent-amber-500 cursor-pointer"
-              />
-            </div>
-
-            <div className="pt-2 border-t border-slate-800">
-              <span className="text-slate-400 text-[10.5px] font-bold block mb-2 uppercase">Vues d'orientation</span>
-              <div className="grid grid-cols-2 gap-1.5 mb-4">
+          {/* Contrôles à droite */}
+          <div className="w-80 bg-slate-950/95 border-l border-slate-800 flex flex-col justify-between overflow-hidden text-xs">
+            {/* Liste de contrôles avec scroll */}
+            <div className="flex-1 p-5 space-y-3.5 overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <span className="font-extrabold text-white flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                  <Sliders className="w-4 h-4 text-blue-400" /> Réglages 3D
+                </span>
                 <button
-                  onClick={() => setTransform(t => ({ ...t, rotY: 0 }))}
-                  className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200"
+                  onClick={() => setTransform({ posX: 0, posY: -2, posZ: 0, rotY: 0.35, rotX: 0.15, rotZ: 0, scale: 0.85, sunAngle: 45 })}
+                  className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1"
                 >
-                  Pignon Est
-                </button>
-                <button
-                  onClick={() => setTransform(t => ({ ...t, rotY: -Math.PI / 2 }))}
-                  className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200"
-                >
-                  Façade Sud
-                </button>
-                <button
-                  onClick={() => setTransform(t => ({ ...t, rotY: 0.5 }))}
-                  className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200"
-                >
-                  Perspective 3/4
-                </button>
-                <button
-                  onClick={() => setTransform(t => ({ ...t, rotY: Math.PI / 2 }))}
-                  className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200"
-                >
-                  Façade Nord
+                  <RefreshCw className="w-3 h-3" /> Réinitialiser
                 </button>
               </div>
 
-              {/* Bouton de validation déplacé en bas à droite */}
+              <div>
+                <div className="flex justify-between text-slate-300 mb-1 font-semibold">
+                  <span>Taille / Échelle</span>
+                  <span className="text-blue-400 font-bold">{Math.round(transform.scale * 100)}%</span>
+                </div>
+                <input
+                  type="range" min="0.2" max="3.0" step="0.05"
+                  value={transform.scale}
+                  onChange={e => setTransform(t => ({ ...t, scale: parseFloat(e.target.value) }))}
+                  className="w-full accent-blue-500 cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-slate-300 mb-1 font-semibold">
+                  <span className="flex items-center gap-1"><Compass className="w-3.5 h-3.5 text-blue-400" /> Azimut (Rotation 360°)</span>
+                  <span className="text-blue-400 font-bold">{Math.round((transform.rotY * 180) / Math.PI)}°</span>
+                </div>
+                <input
+                  type="range" min="-3.14" max="3.14" step="0.05"
+                  value={transform.rotY}
+                  onChange={e => setTransform(t => ({ ...t, rotY: parseFloat(e.target.value) }))}
+                  className="w-full accent-blue-500 cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-slate-300 mb-1 font-semibold">
+                  <span>Inclinaison Terrain</span>
+                  <span className="text-blue-400 font-bold">{Math.round((transform.rotX * 180) / Math.PI)}°</span>
+                </div>
+                <input
+                  type="range" min="-0.5" max="0.5" step="0.02"
+                  value={transform.rotX}
+                  onChange={e => setTransform(t => ({ ...t, rotX: parseFloat(e.target.value) }))}
+                  className="w-full accent-blue-500 cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-slate-300 mb-1 font-semibold">
+                  <span>Position Horizontale (X)</span>
+                  <span className="text-blue-400 font-bold">{transform.posX.toFixed(1)} m</span>
+                </div>
+                <input
+                  type="range" min="-30" max="30" step="0.5"
+                  value={transform.posX}
+                  onChange={e => setTransform(t => ({ ...t, posX: parseFloat(e.target.value) }))}
+                  className="w-full accent-blue-500 cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-slate-300 mb-1 font-semibold">
+                  <span>Hauteur sol (Altitude)</span>
+                  <span className="text-blue-400 font-bold">{transform.posY.toFixed(1)} m</span>
+                </div>
+                <input
+                  type="range" min="-20" max="20" step="0.5"
+                  value={transform.posY}
+                  onChange={e => setTransform(t => ({ ...t, posY: parseFloat(e.target.value) }))}
+                  className="w-full accent-blue-500 cursor-pointer"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-slate-300 mb-1 font-semibold">
+                  <span className="flex items-center gap-1"><Sun className="w-3.5 h-3.5 text-amber-400" /> Ensoleillement & Ombres</span>
+                  <span className="text-amber-400 font-bold">{transform.sunAngle}°</span>
+                </div>
+                <input
+                  type="range" min="0" max="360" step="5"
+                  value={transform.sunAngle}
+                  onChange={e => setTransform(t => ({ ...t, sunAngle: parseInt(e.target.value) }))}
+                  className="w-full accent-amber-500 cursor-pointer"
+                />
+              </div>
+
+              <div className="pt-2 border-t border-slate-800">
+                <span className="text-slate-400 text-[10.5px] font-bold block mb-2 uppercase">Vues d'orientation</span>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    onClick={() => setTransform(t => ({ ...t, rotY: 0 }))}
+                    className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200 transition-colors"
+                  >
+                    Pignon Est
+                  </button>
+                  <button
+                    onClick={() => setTransform(t => ({ ...t, rotY: -Math.PI / 2 }))}
+                    className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200 transition-colors"
+                  >
+                    Façade Sud
+                  </button>
+                  <button
+                    onClick={() => setTransform(t => ({ ...t, rotY: 0.5 }))}
+                    className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200 transition-colors"
+                  >
+                    Perspective 3/4
+                  </button>
+                  <button
+                    onClick={() => setTransform(t => ({ ...t, rotY: Math.PI / 2 }))}
+                    className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200 transition-colors"
+                  >
+                    Façade Nord
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Bouton ancré strictement en bas à droite de la fenêtre */}
+            <div className="p-4 border-t border-slate-800 bg-slate-950 flex-shrink-0">
               <button
                 onClick={handleSaveAndExport}
                 disabled={isSaving || !photoSrc}

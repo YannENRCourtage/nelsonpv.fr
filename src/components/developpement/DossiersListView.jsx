@@ -155,6 +155,51 @@ export default function DossiersListView({
     return <Building className="w-3.5 h-3.5 text-blue-600" />;
   };
 
+  // Numérotation stricte des dossiers au format 6 chiffres : YYDDNN (ex: 263206 pour le 6ème dossier 2026 dans le Gers 32)
+  const dossierNumbersMap = useMemo(() => {
+    const deptYearCounters = {};
+    const map = {};
+
+    // Trier les projets pour une numérotation chronologique et stable
+    const sorted = [...projects].sort((a, b) => {
+      const da = new Date(a.createdAt || a.created_at || a.date || 0).getTime();
+      const db = new Date(b.createdAt || b.created_at || b.date || 0).getTime();
+      return da - db;
+    });
+
+    sorted.forEach((p, idx) => {
+      // 1. Année sur 2 chiffres (ex: "26")
+      let year = '26';
+      const dateVal = p.createdAt || p.created_at || p.updatedAt;
+      if (dateVal) {
+        const d = new Date(dateVal);
+        if (!isNaN(d.getTime())) {
+          year = String(d.getFullYear()).slice(-2);
+        }
+      }
+
+      // 2. Département sur 2 chiffres (ex: "32", "24", "17", "33")
+      const rawZip = String(p.zip || p.zipCode || p.code_postal || p.postalCode || '');
+      let dept = '32';
+      if (rawZip && rawZip.length >= 2) {
+        dept = rawZip.substring(0, 2);
+      } else if (p.address) {
+        const match = p.address.match(/\b(0[1-9]|[1-8][0-9]|9[0-8]|2[ABab])\d{3}\b/);
+        if (match) dept = match[1];
+      }
+
+      // 3. Numérotation séquentielle par Année + Département
+      const key = `${year}_${dept}`;
+      deptYearCounters[key] = (deptYearCounters[key] || 0) + 1;
+      const numInDept = String(deptYearCounters[key]).padStart(2, '0');
+
+      // Numéro à 6 chiffres : YYDDNN (ex: 263206)
+      map[p.id || idx] = `${year}${dept}${numInDept}`;
+    });
+
+    return map;
+  }, [projects]);
+
   return (
     <div className="w-full space-y-5">
       {/* ── BARRE D'OUTILS ET FILTRES (Style Monday.com) ────────────────── */}
@@ -268,13 +313,13 @@ export default function DossiersListView({
                 <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${statusCfg.bg}`} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
-                  {/* ── PARTIE GAUCHE (5/12) : 2 Sous-lignes ──────────────── */}
-                  <div className="lg:col-span-5 p-4 pl-6 space-y-2.5 flex flex-col justify-center">
-                    {/* Ligne 1 : Nom du projet | Puissance */}
+                  {/* ── PARTIE GAUCHE (6/12) : 2 Sous-lignes Élargies ──────────────── */}
+                  <div className="lg:col-span-6 p-4 pl-6 space-y-2 flex flex-col justify-center">
+                    {/* Ligne 1 : N° Dossier (6 chiffres) | Nom du projet | Puissance */}
                     <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-[10px] font-black px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md tracking-wider flex-shrink-0">
-                          {p.dossier_num || `DOS-${(p.id || index + 100).toString().slice(-4)}`}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-[11px] font-black px-2 py-0.5 bg-slate-100 text-blue-900 border border-slate-200 rounded-md tracking-wider flex-shrink-0 font-mono shadow-2xs">
+                          {dossierNumbersMap[p.id || index] || p.dossier_num || `2632${String(index + 1).padStart(2, '0')}`}
                         </span>
                         <h3 className="text-base font-extrabold text-slate-900 truncate group-hover:text-blue-600 transition-colors" title={projectName}>
                           {projectName}
@@ -287,36 +332,36 @@ export default function DossiersListView({
                       </span>
                     </div>
 
-                    {/* Ligne 2 : Nom du client | Adresse | CP | Ville */}
-                    <div className="flex items-center gap-3 text-xs text-slate-600 flex-wrap">
-                      <span className="font-bold text-slate-800 flex items-center gap-1">
+                    {/* Ligne 2 : Nom du client | Adresse | CP | Ville Complète sans coupure */}
+                    <div className="flex items-center gap-2.5 text-xs text-slate-600 flex-nowrap overflow-hidden">
+                      <span className="font-bold text-slate-800 flex items-center gap-1 flex-shrink-0">
                         <User className="w-3.5 h-3.5 text-slate-400" />
                         {clientFullName}
                       </span>
-                      <span className="text-slate-300">•</span>
-                      <span className="flex items-center gap-1 text-slate-500 font-medium truncate max-w-[260px]">
+                      <span className="text-slate-300 flex-shrink-0">•</span>
+                      <span className="flex items-center gap-1 text-slate-500 font-medium truncate flex-1 min-w-0" title={`${p.address ? `${p.address}, ` : ''}${p.zip || p.zipCode ? `${p.zip || p.zipCode} ` : ''}${p.city || ''}`}>
                         <MapPin className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
                         {p.address ? `${p.address}, ` : ''}{p.zip || p.zipCode ? `${p.zip || p.zipCode} ` : ''}{p.city || ''}
                       </span>
                     </div>
                   </div>
 
-                  {/* ── PARTIE DROITE (4/12) : 2 Sous-lignes ─────────────── */}
-                  <div className="lg:col-span-4 p-4 space-y-2.5 flex flex-col justify-center bg-slate-50/40">
+                  {/* ── PARTIE CENTRALE (3/12) : 2 Sous-lignes ─────────────── */}
+                  <div className="lg:col-span-3 p-4 space-y-2 flex flex-col justify-center bg-slate-50/40">
                     {/* Ligne 1 : Statut du projet | Nom du Commercial */}
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-semibold text-slate-400">Statut :</span>
-                        <span className={`px-3 py-1 rounded-lg text-xs font-extrabold ${statusCfg.bg} ${statusCfg.text} shadow-2xs`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-[10px] font-semibold text-slate-400">Statut :</span>
+                        <span className={`px-2.5 py-0.5 rounded-lg text-xs font-extrabold ${statusCfg.bg} ${statusCfg.text} shadow-2xs`}>
                           {statusCfg.label}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1.5 text-xs text-slate-700 font-bold">
-                        <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-black">
+                      <div className="flex items-center gap-1 text-xs text-slate-700 font-bold min-w-0">
+                        <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-black flex-shrink-0">
                           {commercialName.charAt(0)}
                         </div>
-                        <span className="truncate max-w-[130px]" title={`Commercial : ${commercialName}`}>
+                        <span className="truncate" title={`Commercial : ${commercialName}`}>
                           {commercialName}
                         </span>
                       </div>

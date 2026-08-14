@@ -96,7 +96,10 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         birthDate: project.birthDate || '14/02/1970',
         birthCity: project.birthCity || projCity || 'AUCH',
         birthDept: project.birthDept || (projZip ? projZip.substring(0, 2) : '32'),
-        description: project.description || `Construction d'un bâtiment agricole à charpente métallique avec centrale photovoltaïque en toiture de ${project.kwc || 100} kWc`,
+        kwc: project.kwc || project.puissance || project.projectSize || 256,
+        projectSize: project.projectSize || project.kwc || project.puissance || 256,
+        puissance: project.puissance || project.kwc || project.projectSize || 256,
+        description: project.description || `Construction d'un bâtiment agricole à charpente métallique avec centrale photovoltaïque en toiture de ${project.kwc || project.puissance || project.projectSize || 100} kWc`,
         longueur: String(config.length || 30.0),
         largeur: String(config.width || 20.0),
         hauteur_egout: String(config.buildingType?.startsWith('asymetrique') ? 4.0 : (config.eaveHeight || 4.0)),
@@ -143,27 +146,31 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     }
   }, [project, isOpen]);
 
-  // Synchronisation continue des valeurs du configurateur vers le projet
+  // Synchronisation continue des valeurs du configurateur vers le projet (sans écraser le kWc du client)
   useEffect(() => {
     if (config) {
       const isOmbriere = (config.buildingType || '').startsWith('ombriere');
       const category = isOmbriere ? 'ombriere' : 'batiment_solaire';
-      const kwcCalc = config.solarStats?.power ? Math.round(config.solarStats.power) : Math.round((config.width * config.length * 0.22) / 5) * 5;
+      const kwcEstimate = config.solarStats?.power ? Math.round(config.solarStats.power) : Math.round((config.width * config.length * 0.22) / 5) * 5;
 
-      setEditedProject(prev => ({
-        ...prev,
-        type: category,
-        installationType: category,
-        buildingType: config.buildingType,
-        largeur: String(config.width.toFixed(2)),
-        longueur: String(config.length.toFixed(2)),
-        hauteur_egout: String(config.eaveHeight.toFixed(2)),
-        pente: String(config.roofPitch),
-        kwc: kwcCalc,
-        projectSize: kwcCalc,
-      }));
+      setEditedProject(prev => {
+        const clientKwc = project?.kwc || project?.puissance || project?.projectSize || prev?.kwc || kwcEstimate;
+        return {
+          ...prev,
+          type: category,
+          installationType: category,
+          buildingType: config.buildingType,
+          largeur: String(config.width.toFixed(2)),
+          longueur: String(config.length.toFixed(2)),
+          hauteur_egout: String(config.eaveHeight.toFixed(2)),
+          pente: String(config.roofPitch),
+          kwc: clientKwc,
+          projectSize: clientKwc,
+          puissance: clientKwc,
+        };
+      });
     }
-  }, [config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.solarStats]);
+  }, [config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.solarStats, project?.kwc, project?.puissance, project?.projectSize]);
 
   // Sauvegarde simulation 3D après projet (PC6)
   const handleSaveSimulation = (simulatedDataUrl) => {
@@ -233,6 +240,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const handleGenerate = async () => {
     if (!onGenerate) return;
     setIsGenerating(true);
+    const clientKwc = project?.kwc || project?.puissance || project?.projectSize || editedProject?.kwc || 256;
     const finalProject = {
       ...editedProject,
       ...fieldValues,
@@ -245,7 +253,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       rightSide: config.rightSide || 'none',
       bayCount: config.bayCount,
       baySpacing: config.baySpacing,
-      kwc: config.solarStats?.power ? Math.round(config.solarStats.power) : (editedProject.kwc || 100),
+      kwc: clientKwc,
+      projectSize: clientKwc,
+      puissance: clientKwc,
       urbanisme_captures: captures,
       pc_photos: photos,
     };
