@@ -162,6 +162,29 @@ export default function Crm() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [calendarDate, setCalendarDate] = useState(new Date());
 
+  // Helper de normalisation du tenant / entreprise
+  const normalizeTenant = (t, email = '') => {
+    if (!t && email) {
+      const em = email.toLowerCase();
+      if (em.includes('acama')) return 'acama';
+      return 'green-invest';
+    }
+    const clean = (t || '').toLowerCase().trim();
+    if (clean.includes('acama')) return 'acama';
+    if (clean.includes('green') || clean.includes('invest') || clean.includes('barconniere') || clean.includes('enr')) return 'green-invest';
+    return clean || 'green-invest';
+  };
+
+  const currentUserTenant = normalizeTenant(user?.tenantId || activeTenantId, user?.email);
+
+  // Utilisateurs restreints au même tenant que l'utilisateur connecté
+  const tenantUsers = useMemo(() => {
+    return users.filter(u => {
+      const uTenant = normalizeTenant(u.tenantId || u.company, u.email);
+      return uTenant === currentUserTenant;
+    });
+  }, [users, currentUserTenant]);
+
   // Charger les données initiales
   const refreshActivities = async () => {
     try {
@@ -935,7 +958,7 @@ export default function Crm() {
               className="flex-1 md:flex-none px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-[140px]"
             >
               <option value="all">Tous les utilisateurs</option>
-              {users.map(u => (
+              {tenantUsers.map(u => (
                 <option key={u.id} value={u.firstName || u.displayName}>{u.firstName || u.displayName || 'Utilisateur'}</option>
               ))}
             </select>
@@ -1633,7 +1656,7 @@ export default function Crm() {
               className="flex-1 md:flex-none px-3 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-w-[140px]"
             >
               <option value="all">Tous les utilisateurs</option>
-              {users.map(u => (
+              {tenantUsers.map(u => (
                 <option key={u.id} value={u.firstName || u.displayName}>{u.firstName || u.displayName || 'Utilisateur'}</option>
               ))}
             </select>

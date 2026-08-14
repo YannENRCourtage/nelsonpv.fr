@@ -57,6 +57,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [generatingMaps, setGeneratingMaps] = useState(false);
   const [fieldValues, setFieldValues] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
+  const [noticeText, setNoticeText] = useState('');
   const [selectedPages, setSelectedPages] = useState({
     cover: true,
     situation: true,
@@ -68,6 +69,52 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     env: true,
     cerfa: true,
   });
+
+  // Helper pour générer automatiquement la notice structurée en 5 points
+  const buildAutoNoticeText = useCallback(() => {
+    const projectCity = editedProject?.city || editedProject?.cadastre_commune || editedProject?.commune || 'SAINT ARAILLES';
+    const projectZip = editedProject?.zip || editedProject?.zipCode || editedProject?.postalCode || '32100';
+    const projectAddress = editedProject?.address || editedProject?.clientAddress || editedProject?.siteAddress || '2810 Chemin de l\'osse';
+    const rawSection = editedProject?.cadastre_section || editedProject?.cadastreSection || '';
+    const rawNumero = editedProject?.cadastre_numero || editedProject?.cadastreNumero || editedProject?.cadastre_parcel || editedProject?.parcelle || '000 B 633';
+    const projectCadastre = `${rawSection ? `${rawSection} ` : ''}${rawNumero}`.trim();
+    const projectSurface = editedProject?.surface_terrain ? `${editedProject.surface_terrain} m²` : (editedProject?.cadastre_surface ? `${editedProject.cadastre_surface} m²` : '18 384 m²');
+    const projectAltitude = editedProject?.altitude || '140.62 m';
+    const longueur = config.length || 30;
+    const largeur = Number(config.width || 20);
+    const totalSurface = (largeur * longueur).toFixed(2);
+    const hasAuvent = config.rightSide === 'auvent' || config.leftSide === 'auvent' || true;
+    const isAsym = config.buildingType?.startsWith('asym');
+    const isSym = config.buildingType?.startsWith('sym');
+    const roofTypeLabel = isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque';
+    const pente = config.roofPitch || 15;
+    const bayCount = config.bayCount || 5;
+    const baySpacing = config.baySpacing || 6;
+    const displayKwc = editedProject?.kwc || editedProject?.puissance || editedProject?.projectSize || 256;
+
+    return `NOTICE D'INSERTION & DESCRIPTIVE DU PROJET
+
+1- OBJET DE LA DEMANDE
+La demande de permis de construire porte sur la construction d'un hangar à usage agricole avec toiture photovoltaïque. Il servira de stockage de matériel et céréales (${totalSurface} m²).
+
+2- LE SITE
+Le projet se situe sur la commune de ${projectCity} (${projectZip}) au ${projectAddress}. Le terrain concerné par le projet est cadastré sous le numéro ${projectCadastre} (surface : ${projectSurface}). Le terrain est globalement plat et se trouve à une altitude de ${projectAltitude} au-dessus du niveau de la mer. Le site s'inscrit dans un paysage à identité rurale. L'accès du site se fait par le Sud de la parcelle via la voie d'accès existante.
+
+3- LE PROJET
+Le projet a pour objet la construction d'un hangar de forme rectangulaire (longueur : ${longueur}m, largeur : ${largeur.toFixed(2)}m${hasAuvent ? ' + Auvent 4.00m' : ''}) en structure métallique (RAL 7016 / 7005), composé de ${bayCount} travées de ${baySpacing}m d'entraxe. La toiture sera constituée d'une double pente ${roofTypeLabel} (${pente}°) avec pour couverture un bac acier anti condensation sur les deux versants (RAL 7016). Des panneaux photovoltaïques (RAL 9005) viendront recouvrir le bac acier sur l'ensemble de la toiture, permettant de créer une centrale de production d'électricité photovoltaïque de ${displayKwc} kWc.
+Ce bâtiment sera ouvert et non clos. Les façades Est, Ouest, Nord et Sud seront ouvertes.
+Un terrassement sera réalisé pour la mise en oeuvre d'une plateforme en grave compactée.
+Des tranchées drainantes seront réalisées tout autour du bâtiment projet afin d'évacuer les eaux pluviales par infiltration dans le sol.
+
+4- RACCORDEMENT AUX RESEAUX
+Le bâtiment ne sera pas raccordé aux réseaux d'eau, ni d'assainissement, ni d'électricité. Il n'y a donc pas de besoins en alimentation à ces niveaux là.
+Seule l'électricité produite par la centrale photovoltaïque est renvoyée dans le réseau ENEDIS via un point de livraison situé sur la parcelle au Sud de la parcelle (PDL).
+L'emplacement du point de livraison indiqué dans les pièces graphiques de l'autorisation d'urbanisme n'apparaît qu'à titre indicatif.
+Le positionnement du point de livraison et d'un transformateur (le cas échéant) demeure à l'appréciation finale du gestionnaire de réseau en fonction du site et des équipements déjà existants.
+
+5- SECURITE INCENDIE
+Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf PC 02 - Plan de masse).`;
+  }, [editedProject, config]);
 
   // Modales
   const [cropModal, setCropModal] = useState({ open: false, src: null, category: null, key: null, title: '' });
@@ -92,6 +139,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         configActions.setBuildingType('asymetrique_1');
       }
 
+      const initialNotice = project?.noticeText || project?.description || buildAutoNoticeText();
+      setNoticeText(initialNotice);
+
       const initProj = {
         ...project,
         type: isOmbriere ? 'ombriere' : 'batiment_solaire',
@@ -110,7 +160,8 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         kwc: project.kwc || project.puissance || project.projectSize || 256,
         projectSize: project.projectSize || project.kwc || project.puissance || 256,
         puissance: project.puissance || project.kwc || project.projectSize || 256,
-        description: project.description || `Construction d'un bâtiment agricole à charpente métallique avec centrale photovoltaïque en toiture de ${project.kwc || project.puissance || project.projectSize || 100} kWc`,
+        noticeText: initialNotice,
+        description: initialNotice,
         longueur: String(config.length || 30.0),
         largeur: String(config.width || 20.0),
         hauteur_egout: String(config.buildingType?.startsWith('asymetrique') ? 4.0 : (config.eaveHeight || 4.0)),
@@ -267,6 +318,8 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       kwc: clientKwc,
       projectSize: clientKwc,
       puissance: clientKwc,
+      noticeText: noticeText || editedProject.noticeText || project?.noticeText || '',
+      description: noticeText || editedProject.description || project?.description || '',
       urbanisme_captures: captures,
       pc_photos: photos,
     };
@@ -281,7 +334,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   if (!isOpen) return null;
 
   const summary = buildCerfaDataSummary({ ...editedProject, ...fieldValues }, editedProject.type || 'batiment_solaire');
-  const STEPS = ['Déclarant', 'Cartes PC1', 'Cotations & Côtes', 'Photos (Crop)', 'Validation'];
+  const STEPS = ['Déclarant', 'Cartes PC1', 'Cotations & Côtes', 'Photos (Crop)', 'Notice Descriptive', 'Validation'];
 
   return (
     <AnimatePresence>
@@ -844,7 +897,6 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
                             </button>
                           </div>
                         </div>
-                      ) : (
                         <label className="aspect-video rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 bg-white transition-colors">
                           <Upload className="w-5 h-5 text-gray-400 mb-1" />
                           <span className="text-[11px] text-gray-500 font-semibold">Importer photo lointaine</span>
@@ -856,9 +908,100 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
                 </motion.div>
               )}
 
-              {/* ÉTAPE 4 — Validation & Sélection des pages du PDF */}
+              {/* ÉTAPE 4 — Notice d'insertion & Descriptive du projet */}
               {step === 4 && (
-                <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                <motion.div
+                  key="step4-notice"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="p-6 space-y-4 max-h-[70vh] overflow-y-auto"
+                >
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-sm text-slate-900">
+                          Étape 5 : Notice d'insertion & Descriptive du projet (PC4)
+                        </h4>
+                        <p className="text-xs text-slate-600 mt-0.5">
+                          Complétez et personnalisez les 5 points de la notice. Ce texte est injecté dans la planche PC4 et restera modifiable dans le PDF final.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const auto = buildAutoNoticeText();
+                          setNoticeText(auto);
+                          setEditedProject(prev => ({ ...prev, noticeText: auto, description: auto }));
+                        }}
+                        className="px-3 py-1.5 bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5"
+                        title="Régénérer le texte selon les paramètres actuels du projet"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Réinitialiser au texte automatique
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Éditeur de Notice avec compteur */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-700 pb-2 border-b border-slate-100">
+                      <span className="flex items-center gap-1.5 text-indigo-700">
+                        <Sparkles className="w-4 h-4" />
+                        Texte de la notice descriptive (5 points structurés)
+                      </span>
+                      <span className="text-slate-400 text-[11px] font-semibold">
+                        {noticeText.length} caractères • {noticeText.split(/\s+/).filter(Boolean).length} mots
+                      </span>
+                    </div>
+
+                    <textarea
+                      rows={15}
+                      value={noticeText}
+                      onChange={(e) => {
+                        setNoticeText(e.target.value);
+                        setEditedProject(prev => ({ ...prev, noticeText: e.target.value, description: e.target.value }));
+                      }}
+                      placeholder="Rédigez ou personnalisez la notice descriptive du projet..."
+                      className="w-full p-4 bg-slate-50/70 border border-slate-200 rounded-xl text-xs leading-relaxed text-slate-800 font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y transition-all"
+                    />
+
+                    {/* Rappel des 5 points clés */}
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2 text-[10px]">
+                      <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                        <strong className="block text-slate-800 mb-0.5">1- Objet</strong>
+                        <span className="text-slate-500">Destination agricole & surface</span>
+                      </div>
+                      <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                        <strong className="block text-slate-800 mb-0.5">2- Le Site</strong>
+                        <span className="text-slate-500">Commune, parcelle, altitude</span>
+                      </div>
+                      <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                        <strong className="block text-slate-800 mb-0.5">3- Le Projet</strong>
+                        <span className="text-slate-500">Dimensions, structure, kWc, RAL</span>
+                      </div>
+                      <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                        <strong className="block text-slate-800 mb-0.5">4- Réseaux</strong>
+                        <span className="text-slate-500">Raccordement Enedis (PDL)</span>
+                      </div>
+                      <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                        <strong className="block text-slate-800 mb-0.5">5- Incendie</strong>
+                        <span className="text-slate-500">Bâche 120m³, aire 4×8m</span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ÉTAPE 5 — Validation & Sélection des pages du PDF */}
+              {step === 5 && (
+                <motion.div key="step5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                   className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                   <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-emerald-900 flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
@@ -951,7 +1094,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
                               <div className="flex items-center justify-between mb-1.5">
                                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
                                   isChecked ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-600'
-                                }`}>
+                                }}`}>
                                   {item.code}
                                 </span>
                                 <input
@@ -1028,9 +1171,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
               {step === 0 ? 'Annuler' : 'Précédent'}
             </button>
 
-            {step < 4 ? (
+            {step < 5 ? (
               <button
-                onClick={() => setStep(s => Math.min(4, s + 1))}
+                onClick={() => setStep(s => Math.min(5, s + 1))}
                 className={`flex items-center gap-2 px-5 py-2 text-xs font-bold text-white rounded-xl transition-all shadow-sm ${dossierInfo.accentColor} hover:opacity-90`}
               >
                 Suivant

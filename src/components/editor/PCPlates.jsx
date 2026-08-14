@@ -228,6 +228,7 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const pente = parseFloat(project?.pente || 15);
     const terrainSlopeDeg = parseFloat(project?.pente_terrain || project?.terrain_slope || 3);
     const displayKwc = project?.kwc || project?.puissance || project?.projectSize || 256;
+    const effectiveNoticeText = noticeText || project?.noticeText || project?.description;
     
     // Détection stricte : asymétrique par défaut (ne pas confondre avec symétrique)
     const rawType = (project?.buildingType || project?.installationType || project?.type || 'asymetrique_1').toLowerCase();
@@ -477,10 +478,14 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                         {isInteractive ? (
                             <textarea 
                                 style={{ width: '100%', height: '100%', border: 'none', resize: 'none', outline: 'none', fontSize: '6.8pt', fontFamily: 'Arial, sans-serif', lineHeight: '1.3' }}
-                                value={noticeText || default5PointsNotice}
+                                value={effectiveNoticeText || default5PointsNotice}
                                 onChange={(e) => onNoticeChange && onNoticeChange(e.target.value)}
                                 placeholder="Notice descriptive du projet..."
                             />
+                        ) : effectiveNoticeText ? (
+                            <div style={{ whiteSpace: 'pre-line', fontSize: '6.8pt', lineHeight: '1.28', color: '#334155' }}>
+                                {effectiveNoticeText}
+                            </div>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5mm' }}>
                                 <div>
