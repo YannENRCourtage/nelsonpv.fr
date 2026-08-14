@@ -193,7 +193,8 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     const section   = project?.cadastre_section || '';
     const parcelle  = project?.cadastre_numero || '';
     const surface   = project?.cadastre_surface ? `${project.cadastre_surface} m²` : '';
-    const kwc       = project?.kwc || project?.projectSize || project?.power || '';
+    const rawKwc    = project?.kwc || project?.projectSize || project?.power || (project?.solarStats?.power ? Math.round(project.solarStats.power) : '');
+    const kwcStr    = rawKwc ? (String(rawKwc).includes('kWc') ? String(rawKwc).trim() : `${rawKwc} kWc`) : '100 kWc';
     const email     = project?.email || project?.clientEmail || 'isabelle.dupond@gmail.com';
     const tel       = project?.phone || project?.clientPhone || '06 47 92 34 24';
     const dateStr   = new Date().toLocaleDateString('fr-FR');
@@ -208,15 +209,18 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     }
 
     const typeLabels = {
-      batiment_solaire: `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwc || 100} kWc.`,
-      batiment:         `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwc || 100} kWc.`,
-      construction:     `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwc || 100} kWc.`,
-      ombriere:         `Construction d'une structure ombrière photovoltaïque d'une puissance de ${kwc || 100} kWc.`,
-      toiture:          `Installation de modules solaires photovoltaïques en toiture d'une puissance de ${kwc || 100} kWc.`,
+      batiment_solaire: `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwcStr}.`,
+      batiment:         `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwcStr}.`,
+      construction:     `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwcStr}.`,
+      ombriere:         `Construction d'une structure ombrière photovoltaïque d'une puissance de ${kwcStr}.`,
+      toiture:          `Installation de modules solaires photovoltaïques en toiture d'une puissance de ${kwcStr}.`,
       batterie:         `Installation d'un système de stockage d'énergie par batterie.`,
     };
 
-    const objet = project?.description || project?.projectDescription || typeLabels[installationType] || typeLabels['batiment_solaire'];
+    let objet = project?.description || project?.projectDescription || typeLabels[installationType] || typeLabels['batiment_solaire'];
+    if (rawKwc && !objet.includes(kwcStr)) {
+      objet = objet.replace(/\d+\s*kWc/gi, kwcStr);
+    }
     const isNewConstruction = !['toiture'].includes(installationType);
 
     const addrParts = address.trim().split(' ');

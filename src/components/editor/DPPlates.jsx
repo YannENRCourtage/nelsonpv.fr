@@ -173,54 +173,120 @@ export const PlateMasse = ({ project, captures }) => {
 /**
  * PLANCHE DP3 : PLAN EN COUPE
  */
-export const PlateSection = ({ project }) => {
+export const PlateCoupe = ({ project }) => {
     const longueur = project?.longueur || '30.0';
-    const largeur = parseFloat(project?.largeur || 16.4);
+    const largeur = parseFloat(project?.largeur || 20.0);
     const hauteurEgout = parseFloat(project?.hauteur_egout || 4.0);
     const pente = parseFloat(project?.pente || 15);
     const terrainSlopeDeg = parseFloat(project?.pente_terrain || project?.terrain_slope || 3);
-    const ridgeHeight = (hauteurEgout + largeur * Math.tan((pente * Math.PI) / 180)).toFixed(2);
+    const bType = (project?.buildingType || project?.type || 'asymetrique_1').toLowerCase();
+    const hasAuvent = project?.rightSide === 'auvent' || project?.leftSide === 'auvent';
 
-    const groundYLeft = 142 + Math.sin((terrainSlopeDeg * Math.PI) / 180) * 120;
-    const groundYRight = 142 - Math.sin((terrainSlopeDeg * Math.PI) / 180) * 120;
+    const isAsym = bType.includes('asymetrique');
+    const isSym = bType.includes('symetrique');
+    const isMonopente = bType.includes('monopente');
+
+    let ridgeHeight = hauteurEgout + (largeur * 0.75 * Math.tan((pente * Math.PI) / 180));
+    let leftEaveHeight = hauteurEgout;
+    let rightEaveHeight = hauteurEgout;
+
+    if (isAsym) {
+        rightEaveHeight = hauteurEgout;
+        ridgeHeight = rightEaveHeight + (largeur * 0.75 * Math.tan((pente * Math.PI) / 180));
+        leftEaveHeight = Math.max(3.0, ridgeHeight - (largeur * 0.25 * Math.tan((pente * Math.PI) / 180)));
+    } else if (isMonopente) {
+        leftEaveHeight = hauteurEgout;
+        ridgeHeight = leftEaveHeight + (largeur * Math.tan((pente * Math.PI) / 180));
+        rightEaveHeight = ridgeHeight;
+    } else if (isSym) {
+        ridgeHeight = hauteurEgout + ((largeur / 2) * Math.tan((pente * Math.PI) / 180));
+    }
+
+    const groundYLeft = 142 + Math.sin((terrainSlopeDeg * Math.PI) / 180) * 110;
+    const groundYRight = 142 - Math.sin((terrainSlopeDeg * Math.PI) / 180) * 110;
+
+    let apexSvgX = 245;
+    let apexSvgY = 20;
+    let leftEaveSvgY = 48;
+    let rightEaveSvgY = 58;
+
+    if (isSym) {
+        apexSvgX = 340;
+        apexSvgY = 25;
+        leftEaveSvgY = 58;
+        rightEaveSvgY = 58;
+    } else if (isMonopente) {
+        apexSvgX = 530;
+        apexSvgY = 22;
+        leftEaveSvgY = 60;
+        rightEaveSvgY = 22;
+    }
 
     return (
-        <div style={PAGE_STYLE} id="dp-plate-section">
+        <div style={PAGE_STYLE} id="dp-plate-coupe">
             <PlateHeader title="DP3 — PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION" project={project} />
             <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6mm 10mm', display: 'flex', flexDirection: 'column', background: '#f8fafc', maxHeight: '135mm', marginBottom: '5mm' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2mm' }}>
                     <span style={{ fontSize: '10pt', fontWeight: 'bold', color: '#0f172a' }}>
-                        Coupe transversale AA' — Bâtiment agricole photovoltaïque & Terrain naturel
+                        Coupe transversale AA' — Bâtiment photovoltaïque & Terrain naturel
                     </span>
                     <span style={{ fontSize: '8.5pt', color: '#64748b' }}>
-                        Dimensions : {largeur}m × {longueur}m • Échelle indicative
+                        Dimensions : {largeur.toFixed(2)}m × {longueur}m • Échelle indicative
                     </span>
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <svg width="680" height="142" viewBox="0 0 680 142" style={{ width: '100%', height: '100%', maxHeight: '85mm' }}>
-                        <line x1="30" y1={groundYLeft} x2="650" y2={groundYRight} stroke="#94a3b8" strokeWidth="2.2" strokeDasharray="6 3" />
-                        <text x="50" y={groundYLeft + 12} fill="#64748b" fontSize="8.5" fontStyle="italic">TN Aval (-0.30m)</text>
-                        <text x="630" y={groundYRight + 12} textAnchor="end" fill="#64748b" fontSize="8.5" fontStyle="italic">TN Amont (+0.40m)</text>
+                        <line x1="30" y1={groundYLeft} x2="650" y2={groundYRight} stroke="#94a3b8" strokeWidth="2" strokeDasharray="6 3" />
+                        <text x="50" y={groundYLeft + 12} fill="#64748b" fontSize="8" fontStyle="italic">TN Aval (-0.30m)</text>
+                        <text x="630" y={groundYRight + 12} textAnchor="end" fill="#64748b" fontSize="8" fontStyle="italic">TN Amont (+0.40m)</text>
 
-                        <rect x="150" y="52" width="10" height={groundYLeft - 52} fill="#334155" />
-                        <rect x="520" y="28" width="10" height={groundYRight - 28} fill="#334155" />
+                        <rect x="150" y={leftEaveSvgY} width="9" height={groundYLeft - leftEaveSvgY} fill="#334155" />
+                        <rect x="521" y={rightEaveSvgY} width="9" height={groundYRight - rightEaveSvgY} fill="#334155" />
 
-                        <polygon points={`145,52 535,26 530,33 150,59`} fill="#1e293b" />
-                        <polygon points={`148,50 533,24 531,19 146,45`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                        {isAsym ? (
+                            <>
+                                <line x1="150" y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="5" />
+                                <line x1={apexSvgX} y1={apexSvgY} x2="530" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
+                                <polygon points={`146,${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 6} 146,${leftEaveSvgY - 6}`} fill="#334155" />
+                                <polygon points={`${apexSvgX},${apexSvgY - 2} 534,${rightEaveSvgY - 2} 534,${rightEaveSvgY - 7} ${apexSvgX},${apexSvgY - 7}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                            </>
+                        ) : isSym ? (
+                            <>
+                                <line x1="150" y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="5" />
+                                <line x1={apexSvgX} y1={apexSvgY} x2="530" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
+                                <polygon points={`146,${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 7} 146,${leftEaveSvgY - 7}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                <polygon points={`${apexSvgX},${apexSvgY - 2} 534,${rightEaveSvgY - 2} 534,${rightEaveSvgY - 7} ${apexSvgX},${apexSvgY - 7}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                            </>
+                        ) : (
+                            <>
+                                <line x1="150" y1={leftEaveSvgY} x2="530" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
+                                <polygon points={`146,${leftEaveSvgY - 2} 534,${rightEaveSvgY - 2} 534,${rightEaveSvgY - 7} 146,${leftEaveSvgY - 7}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                            </>
+                        )}
 
-                        {/* Pente AU-DESSUS de la toiture */}
-                        <text x="340" y="17" textAnchor="middle" fill="#1e3a8a" fontSize="10" fontWeight="bold">
+                        {hasAuvent && (
+                            <>
+                                <line x1="530" y1={rightEaveSvgY} x2="595" y2={rightEaveSvgY + 8} stroke="#1e293b" strokeWidth="4" />
+                                <polygon points={`530,${rightEaveSvgY - 2} 597,${rightEaveSvgY + 6} 597,${rightEaveSvgY + 2} 530,${rightEaveSvgY - 6}`} fill="#475569" />
+                                <text x="562" y={rightEaveSvgY - 10} textAnchor="middle" fill="#475569" fontSize="7.5" fontWeight="bold">Auvent +4m</text>
+                            </>
+                        )}
+
+                        <text x={isAsym ? 385 : apexSvgX} y={apexSvgY - 8} textAnchor="middle" fill="#1e3a8a" fontSize="10" fontWeight="bold">
                             ▲ Pente toiture : {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%)
                         </text>
 
-                        <line x1="125" y1="52" x2="125" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
-                        <text x="115" y="85" textAnchor="end" fill="#ef4444" fontSize="9" fontWeight="bold">H. Égout : {hauteurEgout.toFixed(2)}m</text>
+                        <line x1="125" y1={leftEaveSvgY} x2="125" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
+                        <text x="115" y={leftEaveSvgY + (groundYLeft - leftEaveSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="9" fontWeight="bold">
+                            H. Égout : {hauteurEgout.toFixed(2)}m
+                        </text>
 
-                        <line x1="550" y1="26" x2="550" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
-                        <text x="560" y="70" textAnchor="start" fill="#ef4444" fontSize="9" fontWeight="bold">H. Faîtage : {ridgeHeight}m</text>
+                        <line x1={apexSvgX} y1={apexSvgY} x2={apexSvgX} y2={groundYLeft} stroke="#ef4444" strokeWidth="1" strokeDasharray="3 2" />
+                        <text x={apexSvgX + 6} y={apexSvgY + 30} fill="#ef4444" fontSize="9" fontWeight="bold">
+                            H. Faîtage : {ridgeHeight.toFixed(2)}m
+                        </text>
 
-                        {/* Largeur AU-DESSUS du trait */}
                         <text x="340" y="122" textAnchor="middle" fill="#0284c7" fontSize="10.5" fontWeight="bold">
                             ▼ Largeur : {largeur.toFixed(2)} m (Emprise au sol)
                         </text>

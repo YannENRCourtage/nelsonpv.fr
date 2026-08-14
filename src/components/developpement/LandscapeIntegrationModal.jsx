@@ -7,9 +7,9 @@ import {
 
 /**
  * LandscapeIntegrationModal — Incrustation 3D interactive sur photo de terrain (PC6)
- * Directive 2 :
- * - Chargement exact du bâtiment configuré (symétrique, asymétrique, monopente, ombrière, auvent, etc.)
- * - Interaction directe à la souris (Drag / Rotate) identique à la visionneuse principale du configurateur
+ * Directive 1 & 2 :
+ * - Modélisation 3D exacte du bâtiment configuré (asymétrique, travées, auvent, etc.)
+ * - Interaction orbitale directe au glisser-souris (Drag / Rotate)
  */
 export default function LandscapeIntegrationModal({
   isOpen,
@@ -22,16 +22,15 @@ export default function LandscapeIntegrationModal({
   const [photoSrc, setPhotoSrc] = useState(initialPhoto || null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Transformations 3D
   const [transform, setTransform] = useState({
-    posX: 0,       // Position X
-    posY: -2,      // Altitude Y
-    posZ: 0,       // Profondeur Z
-    rotY: 0.35,    // Azimut / Rotation Y (modifié directement au glisser-déplacer souris)
-    rotX: 0.15,    // Inclinaison perspective X (modifié directement au glisser vertical)
-    rotZ: 0.0,     // Dévers Roll Z
-    scale: 1.0,    // Taille / Échelle
-    sunAngle: 45,  // Ensoleillement
+    posX: 0,
+    posY: -2,
+    posZ: 0,
+    rotY: 0.35,
+    rotX: 0.15,
+    rotZ: 0.0,
+    scale: 1.0,
+    sunAngle: 45,
   });
 
   const containerRef = useRef(null);
@@ -41,9 +40,10 @@ export default function LandscapeIntegrationModal({
     camera: null,
     renderer: null,
     buildingGroup: null,
+    shadowPlane: null,
     dirLight: null,
     isDragging: false,
-    dragButton: 0, // 0 = left click (rotate), 2 = right click (pan)
+    dragButton: 0,
     dragStart: { x: 0, y: 0 },
     animationId: null
   });
@@ -61,15 +61,12 @@ export default function LandscapeIntegrationModal({
     const w = container.clientWidth || 800;
     const h = container.clientHeight || 500;
 
-    // 1. Scene transparente
     const scene = new THREE.Scene();
 
-    // 2. Camera
     const camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 1000);
     camera.position.set(0, 5, 38);
     camera.lookAt(0, 3, 0);
 
-    // 3. Renderer WebGL transparent
     const renderer = new THREE.WebGLRenderer({
       canvas,
       alpha: true,
@@ -81,7 +78,6 @@ export default function LandscapeIntegrationModal({
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    // 4. Lumières
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
     scene.add(ambientLight);
 
@@ -97,8 +93,7 @@ export default function LandscapeIntegrationModal({
     fillLight.position.set(-30, 20, -30);
     scene.add(fillLight);
 
-    // 5. Shadow Catcher sous le bâtiment
-    const shadowPlaneGeo = new THREE.PlaneGeometry(120, 120);
+    const shadowPlaneGeo = new THREE.PlaneGeometry(140, 140);
     const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.35 });
     const shadowPlane = new THREE.Mesh(shadowPlaneGeo, shadowPlaneMat);
     shadowPlane.rotation.x = -Math.PI / 2;
@@ -106,110 +101,121 @@ export default function LandscapeIntegrationModal({
     shadowPlane.receiveShadow = true;
     scene.add(shadowPlane);
 
-    // 6. Modélisation 3D exacte du bâtiment configuré
+    // ── Construction géométrique exacte du bâtiment configuré ──
     const buildingGroup = new THREE.Group();
 
     const lg = Number(projectDimensions.longueur || 30.0);
-    const lr = Number(projectDimensions.largeur || 18.6);
+    const lr = Number(projectDimensions.largeur || 20.0);
     const ht = Number(projectDimensions.hauteur_egout || 4.0);
     const penteDeg = Number(projectDimensions.pente || 15);
-    const buildingType = projectDimensions.buildingType || projectDimensions.type || 'asymetrique_1';
-    const leftSide = projectDimensions.leftSide || 'none';
+    const buildingType = (projectDimensions.buildingType || projectDimensions.type || 'asymetrique_1').toLowerCase();
     const rightSide = projectDimensions.rightSide || 'none';
 
     const isAsym = buildingType.includes('asymetrique');
     const isMonopente = buildingType === 'monopente';
     const isOmbriere = buildingType.includes('ombriere');
-
-    let ridgeX = 0;
-    let ridgeHeight = ht + (lr / 2) * Math.tan((penteDeg * Math.PI) / 180);
-    let eaveLeftH = ht;
-    let eaveRightH = ht;
-
-    if (isAsym) {
-      ridgeX = lr * 0.2;
-      ridgeHeight = ht + (lr * 0.7) * Math.tan((penteDeg * Math.PI) / 180);
-      eaveRightH = Math.max(3.0, ht - 0.5);
-    } else if (isMonopente) {
-      ridgeX = lr / 2;
-      ridgeHeight = ht + lr * Math.tan((penteDeg * Math.PI) / 180);
-      eaveLeftH = ht;
-      eaveRightH = ridgeHeight;
-    } else if (isOmbriere) {
-      ridgeX = 0;
-      ridgeHeight = ht + 0.8;
-      eaveLeftH = ht;
-      eaveRightH = ht - 0.4;
-    }
-
-    const postMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.35, metalness: 0.75 });
-    const rafterMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.3, metalness: 0.8 });
-    const solarMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.15, metalness: 0.85 });
+    const pitchRad = (penteDeg * Math.PI) / 180;
 
     const halfL = lg / 2;
     const halfW = lr / 2;
     const bayCount = Math.max(3, Math.round(lg / 6));
     const baySpacing = lg / bayCount;
 
-    // Portiques métalliques
+    let apexX = 0;
+    let rightEaveH = ht;
+    let leftEaveH = ht;
+    let ridgeH = ht + halfW * Math.tan(pitchRad);
+
+    if (isAsym) {
+      const rightSpan = lr * 0.75;
+      const leftSpan = lr * 0.25;
+      apexX = -halfW + leftSpan;
+      rightEaveH = ht;
+      ridgeH = rightEaveH + rightSpan * Math.tan(pitchRad);
+      leftEaveH = Math.max(3.0, ridgeH - leftSpan * Math.tan(pitchRad));
+    } else if (isMonopente) {
+      apexX = -halfW;
+      leftEaveH = ht + lr * Math.tan(pitchRad);
+      rightEaveH = ht;
+      ridgeH = leftEaveH;
+    } else if (isOmbriere) {
+      apexX = 0;
+      ridgeH = ht + 0.8;
+      leftEaveH = ht;
+      rightEaveH = ht - 0.4;
+    }
+
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.35, metalness: 0.75 });
+    const rafterMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.3, metalness: 0.8 });
+    const solarMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.15, metalness: 0.85 });
+
     for (let i = 0; i <= bayCount; i++) {
       const z = -halfL + i * baySpacing;
 
       // Poteau Gauche
-      const postG = new THREE.Mesh(new THREE.BoxGeometry(0.35, eaveLeftH, 0.35), postMat);
-      postG.position.set(-halfW, eaveLeftH / 2, z);
+      const postG = new THREE.Mesh(new THREE.BoxGeometry(0.35, leftEaveH, 0.35), postMat);
+      postG.position.set(-halfW, leftEaveH / 2, z);
       postG.castShadow = true;
       buildingGroup.add(postG);
 
       // Poteau Droit
-      const postD = new THREE.Mesh(new THREE.BoxGeometry(0.35, eaveRightH, 0.35), postMat);
-      postD.position.set(halfW, eaveRightH / 2, z);
+      const postD = new THREE.Mesh(new THREE.BoxGeometry(0.35, rightEaveH, 0.35), postMat);
+      postD.position.set(halfW, rightEaveH / 2, z);
       postD.castShadow = true;
       buildingGroup.add(postD);
 
-      // Arbalétrier Versant Sud (Principal)
-      const lenSud = Math.sqrt(Math.pow(ridgeX - (-halfW), 2) + Math.pow(ridgeHeight - eaveLeftH, 2));
-      const rafterSud = new THREE.Mesh(new THREE.BoxGeometry(lenSud, 0.25, 0.2), rafterMat);
-      rafterSud.position.set((-halfW + ridgeX) / 2, (eaveLeftH + ridgeHeight) / 2, z);
-      rafterSud.rotation.z = Math.atan2(ridgeHeight - eaveLeftH, ridgeX - (-halfW));
-      rafterSud.castShadow = true;
-      buildingGroup.add(rafterSud);
+      // Arbalétrier Gauche
+      const lenG = Math.sqrt(Math.pow(apexX - (-halfW), 2) + Math.pow(ridgeH - leftEaveH, 2));
+      const rafterG = new THREE.Mesh(new THREE.BoxGeometry(lenG, 0.25, 0.2), rafterMat);
+      rafterG.position.set((-halfW + apexX) / 2, (leftEaveH + ridgeH) / 2, z);
+      rafterG.rotation.z = Math.atan2(ridgeH - leftEaveH, apexX - (-halfW));
+      rafterG.castShadow = true;
+      buildingGroup.add(rafterG);
 
-      // Arbalétrier Versant Nord (si bi-pente)
+      // Arbalétrier Droit
       if (!isMonopente) {
-        const lenNord = Math.sqrt(Math.pow(halfW - ridgeX, 2) + Math.pow(ridgeHeight - eaveRightH, 2));
-        const rafterNord = new THREE.Mesh(new THREE.BoxGeometry(lenNord, 0.25, 0.2), rafterMat);
-        rafterNord.position.set((ridgeX + halfW) / 2, (ridgeHeight + eaveRightH) / 2, z);
-        rafterNord.rotation.z = Math.atan2(eaveRightH - ridgeHeight, halfW - ridgeX);
-        rafterNord.castShadow = true;
-        buildingGroup.add(rafterNord);
+        const lenD = Math.sqrt(Math.pow(halfW - apexX, 2) + Math.pow(ridgeH - rightEaveH, 2));
+        const rafterD = new THREE.Mesh(new THREE.BoxGeometry(lenD, 0.25, 0.2), rafterMat);
+        rafterD.position.set((apexX + halfW) / 2, (ridgeH + rightEaveH) / 2, z);
+        rafterD.rotation.z = Math.atan2(rightEaveH - ridgeH, halfW - apexX);
+        rafterD.castShadow = true;
+        buildingGroup.add(rafterD);
       }
 
-      // Extension auvent/appentis
+      // Auvent / Appentis
       if (rightSide === 'auvent' || rightSide === 'appentis') {
         const extLen = 4.0;
         const rafterExt = new THREE.Mesh(new THREE.BoxGeometry(extLen, 0.2, 0.15), rafterMat);
-        rafterExt.position.set(halfW + extLen / 2, eaveRightH - 0.2, z);
+        rafterExt.position.set(halfW + extLen / 2, rightEaveH - 0.2, z);
         rafterExt.rotation.z = -0.15;
         buildingGroup.add(rafterExt);
       }
     }
 
-    // Couverture photovoltaïque Toiture
-    const lenSudRoof = Math.sqrt(Math.pow(ridgeX - (-halfW), 2) + Math.pow(ridgeHeight - eaveLeftH, 2)) + 0.4;
-    const roofSud = new THREE.Mesh(new THREE.BoxGeometry(lenSudRoof, 0.08, lg + 0.4), solarMat);
-    roofSud.position.set((-halfW + ridgeX) / 2, (eaveLeftH + ridgeHeight) / 2 + 0.1, 0);
-    roofSud.rotation.z = Math.atan2(ridgeHeight - eaveLeftH, ridgeX - (-halfW));
-    roofSud.castShadow = true;
-    buildingGroup.add(roofSud);
+    // Couverture Solaire Principale
+    const lenMainRoof = Math.sqrt(Math.pow(halfW - apexX, 2) + Math.pow(ridgeH - rightEaveH, 2)) + 0.4;
+    const roofMain = new THREE.Mesh(new THREE.BoxGeometry(lenMainRoof, 0.08, lg + 0.4), solarMat);
+    roofMain.position.set((apexX + halfW) / 2, (ridgeH + rightEaveH) / 2 + 0.1, 0);
+    roofMain.rotation.z = Math.atan2(rightEaveH - ridgeH, halfW - apexX);
+    roofMain.castShadow = true;
+    buildingGroup.add(roofMain);
 
+    // Couverture Versant Court
     if (!isMonopente) {
-      const lenNordRoof = Math.sqrt(Math.pow(halfW - ridgeX, 2) + Math.pow(ridgeHeight - eaveRightH, 2)) + 0.4;
-      const roofNord = new THREE.Mesh(new THREE.BoxGeometry(lenNordRoof, 0.08, lg + 0.4), rafterMat);
-      roofNord.position.set((ridgeX + halfW) / 2, (ridgeHeight + eaveRightH) / 2 + 0.1, 0);
-      roofNord.rotation.z = Math.atan2(eaveRightH - ridgeHeight, halfW - ridgeX);
-      roofNord.castShadow = true;
-      buildingGroup.add(roofNord);
+      const lenLeftRoof = Math.sqrt(Math.pow(apexX - (-halfW), 2) + Math.pow(ridgeH - leftEaveH, 2)) + 0.4;
+      const roofLeft = new THREE.Mesh(new THREE.BoxGeometry(lenLeftRoof, 0.08, lg + 0.4), rafterMat);
+      roofLeft.position.set((-halfW + apexX) / 2, (leftEaveH + ridgeH) / 2 + 0.1, 0);
+      roofLeft.rotation.z = Math.atan2(ridgeH - leftEaveH, apexX - (-halfW));
+      roofLeft.castShadow = true;
+      buildingGroup.add(roofLeft);
+    }
+
+    // Couverture Auvent
+    if (rightSide === 'auvent' || rightSide === 'appentis') {
+      const roofAuvent = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.06, lg + 0.4), rafterMat);
+      roofAuvent.position.set(halfW + 2.0, rightEaveH - 0.1, 0);
+      roofAuvent.rotation.z = -0.15;
+      buildingGroup.add(roofAuvent);
     }
 
     scene.add(buildingGroup);
@@ -219,14 +225,13 @@ export default function LandscapeIntegrationModal({
       camera,
       renderer,
       buildingGroup,
-      dirLight,
       shadowPlane,
+      dirLight,
       isDragging: false,
       dragButton: 0,
       dragStart: { x: 0, y: 0 }
     };
 
-    // Animation Loop
     const animate = () => {
       threeRef.current.animationId = requestAnimationFrame(animate);
       renderer.render(scene, camera);
@@ -250,7 +255,6 @@ export default function LandscapeIntegrationModal({
     };
   }, [isOpen, photoSrc, projectDimensions]);
 
-  // Synchronisation continue des paramètres de transformation
   useEffect(() => {
     const { buildingGroup, shadowPlane, dirLight } = threeRef.current;
     if (!buildingGroup) return;
@@ -270,10 +274,10 @@ export default function LandscapeIntegrationModal({
     }
   }, [transform]);
 
-  // ── DIRECTIVE 2 : INTERACTION DIRECTE SOURIS (DRAG / ROTATE ORBITAL NATUREL) ──
+  // Interaction directe à la souris (Drag / Rotate orbital naturel)
   const handleMouseDown = (e) => {
     threeRef.current.isDragging = true;
-    threeRef.current.dragButton = e.button; // 0 = gauche (rotation), 2 = droite (déplacement)
+    threeRef.current.dragButton = e.button;
     threeRef.current.dragStart = { x: e.clientX, y: e.clientY };
   };
 
@@ -283,14 +287,12 @@ export default function LandscapeIntegrationModal({
     const dy = e.clientY - threeRef.current.dragStart.y;
 
     if (e.shiftKey || threeRef.current.dragButton === 2) {
-      // Déplacement Translation (Pan) avec Shift ou clic droit
       setTransform(prev => ({
         ...prev,
         posX: prev.posX + dx * 0.04,
         posY: prev.posY - dy * 0.04,
       }));
     } else {
-      // Rotation Orbitale naturelle (identique à la visionneuse du configurateur)
       setTransform(prev => ({
         ...prev,
         rotY: prev.rotY + dx * 0.01,
@@ -314,7 +316,6 @@ export default function LandscapeIntegrationModal({
     }));
   };
 
-  // Exportation Haute Résolution de l'image finale
   const handleSaveAndExport = async () => {
     if (!containerRef.current || !photoSrc) return;
     setIsSaving(true);
@@ -330,7 +331,6 @@ export default function LandscapeIntegrationModal({
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
 
-      // 1. Photo de terrain en fond
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.src = photoSrc;
@@ -341,7 +341,6 @@ export default function LandscapeIntegrationModal({
 
       ctx.drawImage(img, 0, 0, exportCanvas.width, exportCanvas.height);
 
-      // 2. Modèle 3D superposé
       const { renderer, scene, camera } = threeRef.current;
       if (renderer && scene && camera) {
         renderer.render(scene, camera);
@@ -364,11 +363,11 @@ export default function LandscapeIntegrationModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] flex items-center justify-center p-3">
-      <div className="bg-slate-900 text-white rounded-3xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden shadow-2xl border border-slate-700">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] flex items-center justify-center p-3 pt-14">
+      <div className="bg-slate-900 text-white rounded-3xl w-full max-w-6xl h-[88vh] flex flex-col overflow-hidden shadow-2xl border border-slate-700">
         
         {/* Header */}
-        <div className="px-6 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+        <div className="px-6 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-600/20 text-blue-400 rounded-xl">
               <Sparkles className="w-5 h-5" />
@@ -378,7 +377,7 @@ export default function LandscapeIntegrationModal({
                 Incrustation 3D du Projet Solaire sur photo de terrain (PC6)
               </h3>
               <p className="text-xs text-slate-400">
-                Structure {projectDimensions.largeur || '18.6'}m × {projectDimensions.longueur || '30.0'}m • Glissez sur la photo pour tourner et orienter le bâtiment
+                Structure {projectDimensions.largeur || '20.0'}m × {projectDimensions.longueur || '30.0'}m • Glissez sur la photo pour tourner et orienter le bâtiment
               </p>
             </div>
           </div>
@@ -387,7 +386,7 @@ export default function LandscapeIntegrationModal({
             <button
               onClick={handleSaveAndExport}
               disabled={isSaving || !photoSrc}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all active:scale-95 disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all active:scale-95 disabled:opacity-50"
             >
               <Check className="w-4 h-4" />
               <span>{isSaving ? 'Génération de la PC6...' : 'Valider & Sauvegarder PC6'}</span>
@@ -401,10 +400,8 @@ export default function LandscapeIntegrationModal({
           </div>
         </div>
 
-        {/* Visualisation + Panneau latéral */}
+        {/* Visualisation + Panneau */}
         <div className="flex-1 flex overflow-hidden">
-          
-          {/* ZONE DE VISUALISATION (PHOTO + 3D OVERLAY) */}
           <div
             ref={containerRef}
             className="flex-1 relative bg-black flex items-center justify-center overflow-hidden select-none cursor-grab active:cursor-grabbing"
@@ -442,22 +439,20 @@ export default function LandscapeIntegrationModal({
             )}
           </div>
 
-          {/* PANNEAU DE CONTRÔLE */}
-          <div className="w-80 bg-slate-950/95 border-l border-slate-800 p-5 flex flex-col gap-4 overflow-y-auto text-xs">
+          {/* Contrôles */}
+          <div className="w-80 bg-slate-950/95 border-l border-slate-800 p-5 flex flex-col gap-3.5 overflow-y-auto text-xs">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="font-extrabold text-white flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
-                <Sliders className="w-4 h-4 text-blue-400" /> Contrôles 3D
+                <Sliders className="w-4 h-4 text-blue-400" /> Réglages 3D
               </span>
               <button
                 onClick={() => setTransform({ posX: 0, posY: -2, posZ: 0, rotY: 0.35, rotX: 0.15, rotZ: 0, scale: 1.0, sunAngle: 45 })}
                 className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1"
-                title="Réinitialiser"
               >
                 <RefreshCw className="w-3 h-3" /> Réinitialiser
               </button>
             </div>
 
-            {/* Taille / Échelle */}
             <div>
               <div className="flex justify-between text-slate-300 mb-1 font-semibold">
                 <span>Taille / Échelle</span>
@@ -471,7 +466,6 @@ export default function LandscapeIntegrationModal({
               />
             </div>
 
-            {/* Azimut / Orientation Y */}
             <div>
               <div className="flex justify-between text-slate-300 mb-1 font-semibold">
                 <span className="flex items-center gap-1"><Compass className="w-3.5 h-3.5 text-blue-400" /> Azimut (Rotation 360°)</span>
@@ -485,7 +479,6 @@ export default function LandscapeIntegrationModal({
               />
             </div>
 
-            {/* Inclinaison Terrain X */}
             <div>
               <div className="flex justify-between text-slate-300 mb-1 font-semibold">
                 <span>Inclinaison Terrain</span>
@@ -499,7 +492,6 @@ export default function LandscapeIntegrationModal({
               />
             </div>
 
-            {/* Position X (Horizontal) */}
             <div>
               <div className="flex justify-between text-slate-300 mb-1 font-semibold">
                 <span>Position Horizontale (X)</span>
@@ -513,7 +505,6 @@ export default function LandscapeIntegrationModal({
               />
             </div>
 
-            {/* Hauteur sol Y */}
             <div>
               <div className="flex justify-between text-slate-300 mb-1 font-semibold">
                 <span>Hauteur sol (Altitude)</span>
@@ -527,7 +518,6 @@ export default function LandscapeIntegrationModal({
               />
             </div>
 
-            {/* Angle Soleil */}
             <div>
               <div className="flex justify-between text-slate-300 mb-1 font-semibold">
                 <span className="flex items-center gap-1"><Sun className="w-3.5 h-3.5 text-amber-400" /> Ensoleillement & Ombres</span>
@@ -541,7 +531,6 @@ export default function LandscapeIntegrationModal({
               />
             </div>
 
-            {/* Vues rapides */}
             <div className="pt-2 border-t border-slate-800">
               <span className="text-slate-400 text-[10.5px] font-bold block mb-2 uppercase">Vues d'orientation</span>
               <div className="grid grid-cols-2 gap-1.5">
@@ -571,11 +560,8 @@ export default function LandscapeIntegrationModal({
                 </button>
               </div>
             </div>
-
           </div>
-
         </div>
-
       </div>
     </div>
   );

@@ -255,14 +255,13 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-2"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 pt-14 pb-3 overflow-hidden"
       >
         <motion.div
           initial={{ scale: 0.96, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.96, opacity: 0 }}
-          className="bg-white rounded-3xl shadow-2xl w-full max-w-7xl overflow-hidden flex flex-col"
-          style={{ height: '95vh' }}
+          className="bg-white rounded-3xl shadow-2xl w-full max-w-[1450px] max-h-[85vh] h-[85vh] overflow-hidden flex flex-col mt-2"
         >
           {/* Header */}
           <div className={`${dossierInfo.bgColor} px-6 pt-4 pb-3 border-b ${dossierInfo.borderColor}`}>
@@ -530,7 +529,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
               {/* ÉTAPE 2 — Configurateur 2D/3D (Exact Clone de la page Configurateur - Directive 1) */}
               {step === 2 && (
                 <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                  className="p-4 flex flex-col lg:flex-row gap-4 h-[72vh] overflow-hidden bg-slate-100/70 rounded-2xl">
+                  className="p-3 flex flex-col lg:flex-row gap-3.5 h-[64vh] overflow-hidden bg-slate-100/70 rounded-2xl">
                   
                   {/* Panneau de contrôle gauche (Composant officiel ControlPanel de la page Configurateur) */}
                   <div className="w-full lg:w-[410px] h-full overflow-y-auto pr-1">
