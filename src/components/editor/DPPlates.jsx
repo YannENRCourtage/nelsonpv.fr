@@ -206,15 +206,23 @@ export const PlateCoupe = ({ project }) => {
         ridgeHeight = hauteurEgout + ((largeur / 2) * Math.tan((pente * Math.PI) / 180));
     }
 
-    const groundYLeft = 142 + Math.sin((terrainSlopeDeg * Math.PI) / 180) * 105;
-    const groundYRight = 142 - Math.sin((terrainSlopeDeg * Math.PI) / 180) * 105;
+    const groundYLeft = 140 + Math.sin((terrainSlopeDeg * Math.PI) / 180) * 105;
+    const groundYRight = 140 - Math.sin((terrainSlopeDeg * Math.PI) / 180) * 105;
 
-    const apexSvgX = isAsym ? 232 : isSym ? 325 : 510;
-    const apexSvgY = 18;
-    const leftEaveSvgY = isAsym ? 46 : 56;
-    const rightEaveSvgY = 56;
-    const auventTipSvgX = 582;
-    const auventTipSvgY = 68;
+    const apexSvgX = isAsym ? 218 : isSym ? 305 : 480;
+    const apexSvgY = 20;
+    const leftEaveSvgY = isAsym ? 44 : 54;
+    const rightEaveSvgY = 54;
+    const auventTipSvgX = 550;
+    const auventTipSvgY = 66;
+
+    const pxPerM = 350 / (largeur || 20.0);
+    const scaleTotalWidth = 10 * pxPerM;
+    const scaleSegWidth = 2 * pxPerM;
+    const scaleStartX = 660 - scaleTotalWidth;
+    const scaleY = 140;
+
+    const roofTypeLabel = isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque';
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-coupe">
@@ -230,17 +238,17 @@ export const PlateCoupe = ({ project }) => {
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="680" height="142" viewBox="0 0 680 142" style={{ width: '100%', height: '100%', maxHeight: '85mm' }}>
+                    <svg width="680" height="152" viewBox="0 0 680 152" style={{ width: '100%', height: '100%', maxHeight: '85mm' }}>
                         {/* Badges d'Orientation NORD / SUD */}
-                        <rect x="70" y="10" width="46" height="15" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
-                        <text x="93" y="21" textAnchor="middle" fill="#2563eb" fontSize="8" fontWeight="bold">NORD</text>
+                        <rect x="70" y="8" width="46" height="15" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
+                        <text x="93" y="19" textAnchor="middle" fill="#2563eb" fontSize="8" fontWeight="bold">NORD</text>
 
-                        <rect x="585" y="10" width="40" height="15" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
-                        <text x="605" y="21" textAnchor="middle" fill="#2563eb" fontSize="8" fontWeight="bold">SUD</text>
+                        <rect x="585" y="8" width="40" height="15" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
+                        <text x="605" y="19" textAnchor="middle" fill="#2563eb" fontSize="8" fontWeight="bold">SUD</text>
 
                         <line x1="20" y1={groundYLeft} x2="660" y2={groundYRight} stroke="#94a3b8" strokeWidth="2" strokeDasharray="6 3" />
                         <text x="35" y={groundYLeft + 12} fill="#64748b" fontSize="8" fontStyle="italic">Terrain naturel conservé (TN Aval)</text>
-                        <text x="645" y={groundYRight + 12} textAnchor="end" fill="#64748b" fontSize="8" fontStyle="italic">TN Amont</text>
+                        <text x="655" y={groundYRight - 4} textAnchor="end" fill="#64748b" fontSize="8" fontStyle="italic">TN Amont</text>
 
                         <rect x="130" y={leftEaveSvgY} width="9" height={groundYLeft - leftEaveSvgY} fill="#334155" />
                         <rect x="472" y={rightEaveSvgY} width="9" height={groundYRight - rightEaveSvgY} fill="#334155" />
@@ -270,9 +278,12 @@ export const PlateCoupe = ({ project }) => {
                                 <line x1={apexSvgX} y1={apexSvgY} x2="480" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
                                 <polygon points={`126,${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 8} 126,${leftEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
                                 <polygon points={`${apexSvgX},${apexSvgY - 2} 484,${rightEaveSvgY - 2} 484,${rightEaveSvgY - 8} ${apexSvgX},${apexSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
-                                  {/* 4. Mentions de Toiture & PENTE REMONTÉE */}
+                            </>
+                        )}
+
+                        {/* 4. Mentions de Toiture & PENTE REMONTÉE */}
                         <text x={350} y={8} textAnchor="middle" fill="#1e3a8a" fontSize="8.5" fontWeight="bold">
-                            Toiture {isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque'} : pente {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%) • Bac acier RAL 7016 + Modules solaires
+                            Toiture {roofTypeLabel} : pente {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%) • Bac acier RAL 7016 + Modules solaires
                         </text>
 
                         {/* Rappel Hauteurs */}
@@ -294,31 +305,23 @@ export const PlateCoupe = ({ project }) => {
                         <text x="305" y={118} textAnchor="middle" fill="#0284c7" fontSize="9.5" fontWeight="bold">
                             ▼ Largeur : {largeur.toFixed(2)} m (Emprise au sol)
                         </text>
-                        <line x1="130" y1="125" x2="480" y2="125" stroke="#0284c7" strokeWidth="1.5" />
+                        <line x1="130" y1={125} x2="480" y2={125} stroke="#0284c7" strokeWidth="1.5" />
 
                         {/* Barre d'échelle métrique EXACTE (0 à 10m) en bas à droite sous TN Amont */}
-                        {(() => {
-                            const pxPerM = 350 / (largeur || 20.0);
-                            const totalW = 10 * pxPerM;
-                            const segW = 2 * pxPerM;
-                            const startX = 660 - totalW;
-                            return (
-                                <g transform={`translate(${startX}, 140)`}>
-                                    <rect x={0} y={0} width={segW} height={4} fill="#0f172a" />
-                                    <rect x={segW} y={0} width={segW} height={4} fill="#cbd5e1" />
-                                    <rect x={segW * 2} y={0} width={segW} height={4} fill="#0f172a" />
-                                    <rect x={segW * 3} y={0} width={segW} height={4} fill="#cbd5e1" />
-                                    <rect x={segW * 4} y={0} width={segW} height={4} fill="#0f172a" />
-                                    
-                                    <text x={0} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">0</text>
-                                    <text x={segW} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">2</text>
-                                    <text x={segW * 2} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">4</text>
-                                    <text x={segW * 3} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">6</text>
-                                    <text x={segW * 4} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">8</text>
-                                    <text x={totalW} y={10} fill="#0f172a" fontSize="7" fontWeight="bold" textAnchor="middle">10m</text>
-                                </g>
-                            );
-                        })()}
+                        <g transform={`translate(${scaleStartX}, ${scaleY})`}>
+                            <rect x={0} y={0} width={scaleSegWidth} height={4} fill="#0f172a" />
+                            <rect x={scaleSegWidth} y={0} width={scaleSegWidth} height={4} fill="#cbd5e1" />
+                            <rect x={scaleSegWidth * 2} y={0} width={scaleSegWidth} height={4} fill="#0f172a" />
+                            <rect x={scaleSegWidth * 3} y={0} width={scaleSegWidth} height={4} fill="#cbd5e1" />
+                            <rect x={scaleSegWidth * 4} y={0} width={scaleSegWidth} height={4} fill="#0f172a" />
+                            
+                            <text x={0} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">0</text>
+                            <text x={scaleSegWidth} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">2</text>
+                            <text x={scaleSegWidth * 2} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">4</text>
+                            <text x={scaleSegWidth * 3} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">6</text>
+                            <text x={scaleSegWidth * 4} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">8</text>
+                            <text x={scaleTotalWidth} y={10} fill="#0f172a" fontSize="7" fontWeight="bold" textAnchor="middle">10m</text>
+                        </g>
                     </svg>
                 </div>
             </div>
