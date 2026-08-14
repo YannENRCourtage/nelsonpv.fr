@@ -2,11 +2,11 @@ import React from 'react';
 import { getInstallationTypeInfo } from '@/services/UrbanismeDocService';
 import batteryPhotoDefault from '@/assets/battery_photo.jpg';
 
-// Dimensions A4 Paysage : 297 x 210 mm
+// Dimensions A4 Paysage : 297 x 210 mm avec marges équilibrées et espace pour le footer rehaussé
 const PAGE_STYLE = {
     width: '297mm',
     height: '210mm',
-    padding: '10mm',
+    padding: '8mm 10mm 12mm 10mm',
     boxSizing: 'border-box',
     backgroundColor: 'white',
     color: '#333',
@@ -21,8 +21,8 @@ const HEADER_STYLE = {
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottom: '2px solid #00429d',
-    paddingBottom: '5mm',
-    marginBottom: '5mm'
+    paddingBottom: '3.5mm',
+    marginBottom: '3.5mm'
 };
 
 const LOGO_NELSON = "https://horizons-cdn.hostinger.com/350bc103-daf8-48b5-9a02-076489f36a7d/338201d787e373b4c0b156cb07a5b792.png"; 
@@ -32,19 +32,19 @@ export const PlateHeader = ({ title, project, showBranding }) => {
     return (
         <div style={HEADER_STYLE}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <img src={LOGO_NELSON} alt="Nelson" style={{ height: '12mm' }} />
+                <img src={LOGO_NELSON} alt="Nelson" style={{ height: '10.5mm' }} />
                 <div style={{ borderLeft: '1px solid #ccc', paddingLeft: '10px' }}>
-                    <div style={{ fontSize: '10pt', fontWeight: 'bold', color: '#00429d' }}>NELSON</div>
+                    <div style={{ fontSize: '9.5pt', fontWeight: 'bold', color: '#00429d' }}>NELSON</div>
                     {showBranding ? (
-                        <div style={{ fontSize: '8pt', color: '#666', fontWeight: 'bold' }}>nelsonpv.fr</div>
+                        <div style={{ fontSize: '7.5pt', color: '#666', fontWeight: 'bold' }}>nelsonpv.fr</div>
                     ) : (
-                        <div style={{ fontSize: '8pt', color: '#666' }}>L'énergie solaire simplifiée</div>
+                        <div style={{ fontSize: '7.5pt', color: '#666' }}>L'énergie solaire simplifiée</div>
                     )}
                 </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#00429d' }}>{title}</div>
-                <div style={{ fontSize: '9pt', color: '#333' }}>
+                <div style={{ fontSize: '12.5pt', fontWeight: 'bold', color: '#00429d' }}>{title}</div>
+                <div style={{ fontSize: '8.5pt', color: '#333' }}>
                     Projet : {clientFullName} — {project?.city || project?.cadastre_commune || ''} ({project?.zip || project?.zipCode || ''})
                 </div>
             </div>
@@ -53,9 +53,9 @@ export const PlateHeader = ({ title, project, showBranding }) => {
 };
 
 export const Footer = ({ project }) => (
-    <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '8pt', color: '#666', borderTop: '1px solid #eee', paddingTop: '3mm' }}>
-        <div>NELSON - nelsonpv.fr</div>
-        <div>Dossier de Déclaration Préalable</div>
+    <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '8.5pt', color: '#475569', borderTop: '1.5px solid #00429d', paddingTop: '3mm', paddingBottom: '1mm' }}>
+        <div style={{ fontWeight: 'bold' }}>NELSON - nelsonpv.fr</div>
+        <div style={{ fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>DOSSIER DE DÉCLARATION PRÉALABLE</div>
         <div>Date : {new Date().toLocaleDateString('fr-FR')}</div>
     </div>
 );
@@ -69,75 +69,79 @@ export const PlateCover = ({ project, installationType }) => {
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-cover">
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between', border: '1px solid #00429d', padding: '15mm', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between', border: '1.5px solid #00429d', padding: '10mm', boxSizing: 'border-box', marginBottom: '5mm' }}>
                 
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <img src={LOGO_NELSON} alt="Nelson" style={{ height: '18mm' }} />
+                    <img src={LOGO_NELSON} alt="Nelson" style={{ height: '14mm' }} />
                     <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '12pt', fontWeight: 'bold', color: '#00429d' }}>DOSSIER D'URBANISME</div>
-                        <div style={{ fontSize: '10pt', color: '#666' }}>Déclaration Préalable de Travaux</div>
+                        <div style={{ fontSize: '11pt', fontWeight: 'bold', color: '#00429d' }}>DOSSIER D'URBANISME</div>
+                        <div style={{ fontSize: '9pt', color: '#666' }}>Déclaration Préalable de Travaux</div>
                     </div>
                 </div>
 
-                {/* Center Title */}
-                <div style={{ textAlign: 'center', margin: '10mm 0' }}>
-                    <div style={{ fontSize: '24pt', fontWeight: '900', color: '#00429d', textTransform: 'uppercase', marginBottom: '4mm' }}>
+                {/* Main Titles */}
+                <div style={{ textAlign: 'center', margin: '6mm 0' }}>
+                    <h1 style={{ fontSize: '20pt', fontWeight: '900', color: '#00429d', margin: 0, textTransform: 'uppercase' }}>
                         {typeInfo.title}
-                    </div>
-                    <div style={{ fontSize: '14pt', color: '#334155', fontWeight: 'bold' }}>
+                    </h1>
+                    <h2 style={{ fontSize: '12pt', color: '#4b5563', marginTop: '3mm', fontWeight: 'bold' }}>
                         {typeInfo.subtitle}
+                    </h2>
+                </div>
+
+                {/* Left details + Right table */}
+                <div style={{ display: 'flex', gap: '8mm' }}>
+                    <div style={{ flex: 1, backgroundColor: '#f0fdf4', padding: '4mm', borderRadius: '4px', borderLeft: '4px solid #16a34a', fontSize: '9.5pt', lineHeight: 1.4 }}>
+                        <div style={{ fontWeight: 'bold', color: '#166534', marginBottom: '1.5mm' }}>DEMANDEUR :</div>
+                        <div style={{ fontWeight: 'bold', color: '#0f172a', fontSize: '10.5pt' }}>{clientFullName}</div>
+                        <div>Commune : {project?.cadastre_commune || project?.city || '—'}</div>
+                        <div>Section & Parcelle : {project?.cadastre_section || '—'} {project?.cadastre_numero || '—'}</div>
+                        <div>Surface du terrain : {project?.cadastre_surface || project?.surface || '—'} m²</div>
+                        <div>Puissance crête : {project?.kwc || 100} kWc</div>
+                        <div>Type : {typeInfo.title}</div>
+                    </div>
+
+                    <div style={{ flex: 1, backgroundColor: '#f8fafc', padding: '4mm', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '9.5pt', lineHeight: 1.4 }}>
+                        <div style={{ fontWeight: 'bold', color: '#00429d', marginBottom: '1.5mm' }}>ADRESSE DU TERRAIN :</div>
+                        <div>{project?.address || project?.adresse || '—'}</div>
+                        <div>{project?.zip || project?.zipCode || ''} {project?.city || project?.commune || ''}</div>
+                        <div style={{ marginTop: '2mm', fontWeight: 'bold', color: '#00429d' }}>DESCRIPTIF SOMMAIRE :</div>
+                        <div style={{ fontSize: '8.5pt', color: '#334155' }}>
+                            {project?.description || `Construction d'un bâtiment agricole solaire photovoltaïque d'une puissance de ${project?.kwc || 100} kWc.`}
+                        </div>
                     </div>
                 </div>
 
-                {/* Project Details Box */}
-                <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #cbd5e1', borderRadius: '8px', padding: '8mm' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8mm' }}>
-                        <div>
-                            <div style={{ fontSize: '10pt', color: '#64748b', textTransform: 'uppercase', marginBottom: '1mm', fontWeight: 'bold' }}>Demandeur (Maître d'ouvrage) :</div>
-                            <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#0f172a' }}>{clientFullName}</div>
-                            {project?.email && <div style={{ fontSize: '10pt', color: '#334155', marginTop: '1mm' }}>{project.email}</div>}
-                            {project?.phone && <div style={{ fontSize: '10pt', color: '#334155' }}>{project.phone}</div>}
-                        </div>
-                        <div>
-                            <div style={{ fontSize: '10pt', color: '#64748b', textTransform: 'uppercase', marginBottom: '1mm', fontWeight: 'bold' }}>Adresse du terrain :</div>
-                            <div style={{ fontSize: '12pt', fontWeight: 'bold', color: '#0f172a' }}>{project?.address || project?.adresse || '—'}</div>
-                            <div style={{ fontSize: '12pt', color: '#334155' }}>{project?.zip || project?.zipCode || ''} {project?.city || project?.commune || ''}</div>
-                            <div style={{ fontSize: '10.5pt', color: '#00429d', marginTop: '2mm', fontWeight: 'bold' }}>
-                                Section {project?.cadastre_section || project?.section || '-'} n° {project?.cadastre_numero || project?.numero || '-'} {project?.cadastre_surface ? `(${project.cadastre_surface} m²)` : ''}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <Footer project={project} />
             </div>
+            <Footer project={project} />
         </div>
     );
 };
 
 /**
- * PLANCHE 2 : PLAN DE SITUATION (DP1)
+ * PLANCHE DP1 : PLAN DE SITUATION
  */
 export const PlateSituation = ({ project, captures }) => {
     return (
-        <div style={{ ...PAGE_STYLE, paddingTop: '12mm', paddingLeft: '12mm', paddingRight: '12mm', paddingBottom: '8mm', backgroundColor: '#fff' }} id="dp-plate-situation">
-            <PlateHeader title="DP1 — PLAN DE SITUATION" project={project} />
-            <div style={{ flex: 1, display: 'flex', gap: '8mm' }}>
-                <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ padding: '2mm', background: '#f8fafc', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center' }}>
-                        Vue Cartographique (IGN / Cadastre)
+        <div style={PAGE_STYLE} id="dp-plate-situation">
+            <PlateHeader title="DP1 — PLAN DE SITUATION DU TERRAIN" project={project} />
+            <div style={{ flex: 1, display: 'flex', gap: '8mm', maxHeight: '135mm', marginBottom: '5mm' }}>
+                <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+                    <div style={{ padding: '2.5mm', background: '#e2e8f0', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#1e293b' }}>
+                        1. CARTE DE SITUATION GÉNÉRALE (IGN / SCAN 25)
                     </div>
-                    <div style={{ flex: 1, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                        <img src={captures?.ign || captures?.cadastre || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan IGN" crossOrigin="anonymous" />
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                        <img src={captures?.ign || captures?.cadastre || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Carte IGN" crossOrigin="anonymous" />
                     </div>
                 </div>
-                <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ padding: '2mm', background: '#f8fafc', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center' }}>
-                        Vue Aérienne (Géoportail / Satellite)
+
+                <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+                    <div style={{ padding: '2.5mm', background: '#e2e8f0', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#1e293b' }}>
+                        2. VUE AÉRIENNE DU SITE (GÉOPORTAIL / SATELLITE)
                     </div>
-                    <div style={{ flex: 1, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                        <img src={captures?.satellite || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Vue Satellite" crossOrigin="anonymous" />
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                        <img src={captures?.satellite || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Vue Aérienne" crossOrigin="anonymous" />
                     </div>
                 </div>
             </div>
@@ -147,14 +151,17 @@ export const PlateSituation = ({ project, captures }) => {
 };
 
 /**
- * PLANCHE 3 : PLAN DE MASSE (DP2)
+ * PLANCHE DP2 : PLAN DE MASSE (Cadre réduit en hauteur pour rehausser le footer)
  */
 export const PlateMasse = ({ project, captures }) => {
     return (
-        <div style={{ ...PAGE_STYLE, paddingTop: '12mm', paddingLeft: '12mm', paddingRight: '12mm', paddingBottom: '8mm', backgroundColor: '#fff' }} id="dp-plate-masse">
-            <PlateHeader title="DP2 — PLAN DE MASSE DES CONSTRUCTIONS" project={project} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4mm' }}>
-                <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={PAGE_STYLE} id="dp-plate-masse">
+            <PlateHeader title="DP2 — PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS" project={project} />
+            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', maxHeight: '135mm', marginBottom: '5mm' }}>
+                <div style={{ padding: '2.5mm', background: '#e2e8f0', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#1e293b' }}>
+                    PLAN DE MASSE DE L'ÉTAT PROJETÉ (OPENSTREETMAP ZOOM 19 / EXTRAIT CADASTRAL)
+                </div>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                     <img src={captures?.masse_projet || captures?.satellite || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan de masse" crossOrigin="anonymous" />
                 </div>
             </div>
@@ -164,65 +171,116 @@ export const PlateMasse = ({ project, captures }) => {
 };
 
 /**
- * PLANCHE DP3 : PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION
+ * PLANCHE DP3 : PLAN EN COUPE
  */
-export const PlateSection = ({ project, captures }) => {
-    const isBattery = project?.type === 'batterie';
+export const PlateSection = ({ project }) => {
     const longueur = project?.longueur || '30.0';
-    const largeur = project?.largeur || '16.4';
-    const hauteurEgout = project?.hauteur_egout || '4.0';
-    const pente = project?.pente || '15';
+    const largeur = parseFloat(project?.largeur || 16.4);
+    const hauteurEgout = parseFloat(project?.hauteur_egout || 4.0);
+    const pente = parseFloat(project?.pente || 15);
+    const terrainSlopeDeg = parseFloat(project?.pente_terrain || project?.terrain_slope || 3);
+    const ridgeHeight = (hauteurEgout + largeur * Math.tan((pente * Math.PI) / 180)).toFixed(2);
 
-    if (isBattery) {
-        const batteryName = project?.battery_model || "CESC Mercury 261";
-        return (
-            <div style={PAGE_STYLE} id="dp-plate-section">
-                <PlateHeader title="DP3 — PLAN EN COUPE (BATTERIE)" project={project} />
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                    <div style={{ position: 'relative', width: '100mm', height: '90mm', borderBottom: '1px solid #999', marginBottom: '5mm' }}>
-                        <div style={{ position: 'absolute', bottom: '-8mm', left: 0, right: 0, textAlign: 'center', fontSize: '10pt', color: '#999', fontStyle: 'italic' }}>Terrain naturel existant (plat — pas de terrassement)</div>
-                        <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '50mm', height: '100mm', backgroundColor: '#fef3c7', border: '1.5px solid #d97706', display: 'flex', flexDirection: 'column', padding: '2mm' }}>
-                            <div style={{ position: 'absolute', top: '-10mm', left: 0, right: 0, textAlign: 'center' }}>
-                                <div style={{ fontSize: '11pt', fontWeight: 'bold', color: '#d97706' }}>{batteryName}</div>
-                            </div>
-                            <div style={{ flex: 1, border: '1px solid #f59e0b', marginBottom: '1mm', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '9pt', color: '#d97706', fontWeight: 'bold' }}>Armoire Batterie</div>
-                        </div>
-                    </div>
-                </div>
-                <Footer project={project} />
-            </div>
-        );
-    }
+    const groundYLeft = 142 + Math.sin((terrainSlopeDeg * Math.PI) / 180) * 120;
+    const groundYRight = 142 - Math.sin((terrainSlopeDeg * Math.PI) / 180) * 120;
 
     return (
         <div style={PAGE_STYLE} id="dp-plate-section">
             <PlateHeader title="DP3 — PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION" project={project} />
-            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6mm', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f8fafc' }}>
-                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ fontSize: '12pt', fontWeight: 'bold', color: '#1e293b' }}>
-                        Coupe transversale — Bâtiment agricole photovoltaïque ({largeur}m x {longueur}m)
-                    </div>
-                    <svg width="680" height="220" viewBox="0 0 680 220" style={{ maxWidth: '100%', height: 'auto' }}>
-                        <line x1="40" y1="180" x2="640" y2="180" stroke="#64748b" strokeWidth="2" strokeDasharray="4 2" />
-                        <text x="340" y="200" textAnchor="middle" fill="#64748b" fontSize="11" fontStyle="italic">Terrain naturel existant (TN = 0.00)</text>
+            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6mm 10mm', display: 'flex', flexDirection: 'column', background: '#f8fafc', maxHeight: '135mm', marginBottom: '5mm' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2mm' }}>
+                    <span style={{ fontSize: '10pt', fontWeight: 'bold', color: '#0f172a' }}>
+                        Coupe transversale AA' — Bâtiment agricole photovoltaïque & Terrain naturel
+                    </span>
+                    <span style={{ fontSize: '8.5pt', color: '#64748b' }}>
+                        Dimensions : {largeur}m × {longueur}m • Échelle indicative
+                    </span>
+                </div>
 
-                        <rect x="140" y="90" width="12" height="90" fill="#334155" />
-                        <rect x="528" y="60" width="12" height="120" fill="#334155" />
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width="680" height="142" viewBox="0 0 680 142" style={{ width: '100%', height: '100%', maxHeight: '85mm' }}>
+                        <line x1="30" y1={groundYLeft} x2="650" y2={groundYRight} stroke="#94a3b8" strokeWidth="2.2" strokeDasharray="6 3" />
+                        <text x="50" y={groundYLeft + 12} fill="#64748b" fontSize="8.5" fontStyle="italic">TN Aval (-0.30m)</text>
+                        <text x="630" y={groundYRight + 12} textAnchor="end" fill="#64748b" fontSize="8.5" fontStyle="italic">TN Amont (+0.40m)</text>
 
-                        <polygon points="135,90 545,55 540,65 140,98" fill="#1e293b" />
-                        <polygon points="140,88 540,53 538,47 138,82" fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                        <rect x="150" y="52" width="10" height={groundYLeft - 52} fill="#334155" />
+                        <rect x="520" y="28" width="10" height={groundYRight - 28} fill="#334155" />
 
-                        <line x1="110" y1="90" x2="110" y2="180" stroke="#ef4444" strokeWidth="1.5" />
-                        <text x="100" y="140" textAnchor="end" fill="#ef4444" fontSize="11" fontWeight="bold">H. Egout : {hauteurEgout}m</text>
+                        <polygon points={`145,52 535,26 530,33 150,59`} fill="#1e293b" />
+                        <polygon points={`148,50 533,24 531,19 146,45`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
 
-                        <line x1="570" y1="55" x2="570" y2="180" stroke="#ef4444" strokeWidth="1.5" />
-                        <text x="580" y="120" textAnchor="start" fill="#ef4444" fontSize="11" fontWeight="bold">H. Faîtage : {(Number(hauteurEgout) + Number(largeur) * Math.tan((pente * Math.PI) / 180)).toFixed(2)}m</text>
+                        {/* Pente AU-DESSUS de la toiture */}
+                        <text x="340" y="17" textAnchor="middle" fill="#1e3a8a" fontSize="10" fontWeight="bold">
+                            ▲ Pente toiture : {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%)
+                        </text>
 
-                        <line x1="140" y1="210" x2="540" y2="210" stroke="#0284c7" strokeWidth="1.5" />
-                        <text x="340" y="215" textAnchor="middle" fill="#0284c7" fontSize="11" fontWeight="bold">Largeur : {largeur} m (Pente toiture {pente}°)</text>
+                        <line x1="125" y1="52" x2="125" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
+                        <text x="115" y="85" textAnchor="end" fill="#ef4444" fontSize="9" fontWeight="bold">H. Égout : {hauteurEgout.toFixed(2)}m</text>
+
+                        <line x1="550" y1="26" x2="550" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
+                        <text x="560" y="70" textAnchor="start" fill="#ef4444" fontSize="9" fontWeight="bold">H. Faîtage : {ridgeHeight}m</text>
+
+                        {/* Largeur AU-DESSUS du trait */}
+                        <text x="340" y="122" textAnchor="middle" fill="#0284c7" fontSize="10.5" fontWeight="bold">
+                            ▼ Largeur : {largeur.toFixed(2)} m (Emprise au sol)
+                        </text>
+                        <line x1="150" y1="130" x2="530" y2="130" stroke="#0284c7" strokeWidth="1.5" />
+                        <line x1="150" y1="124" x2="150" y2="136" stroke="#0284c7" strokeWidth="1.5" />
+                        <line x1="530" y1="124" x2="530" y2="136" stroke="#0284c7" strokeWidth="1.5" />
                     </svg>
-                    <div style={{ fontSize: '9pt', color: '#64748b' }}>
-                        Charpente métallique traitée anti-corrosion, toiture en bac acier recevant modules photovoltaïques intégrés.
+                </div>
+            </div>
+            <Footer project={project} />
+        </div>
+    );
+};
+
+/**
+ * PLANCHE DP4 : FAÇADES ET TOITURES (5 Vues 3D)
+ */
+export const PlateFacades = ({ project, captures }) => {
+    const sud = captures?.facade_sud || captures?.facades_projet;
+    const nord = captures?.facade_nord;
+    const est = captures?.facade_est;
+    const ouest = captures?.facade_ouest;
+    const toiture = captures?.vue_couverture || captures?.toiture;
+
+    return (
+        <div style={PAGE_STYLE} id="dp-plate-facades">
+            <PlateHeader title="DP4 — PLAN DES FAÇADES ET TOITURES / VUES 3D" project={project} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3mm', maxHeight: '135mm', marginBottom: '5mm' }}>
+                <div style={{ flex: 1, display: 'flex', gap: '3.5mm' }}>
+                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE SUD</div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <img src={sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Sud" />
+                        </div>
+                    </div>
+                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE NORD</div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <img src={nord || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Nord" />
+                        </div>
+                    </div>
+                </div>
+                <div style={{ flex: 1.15, display: 'flex', gap: '3.5mm' }}>
+                    <div style={{ flex: 0.85, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE EST</div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <img src={est || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Est" />
+                        </div>
+                    </div>
+                    <div style={{ flex: 0.85, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE OUEST</div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <img src={ouest || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Ouest" />
+                        </div>
+                    </div>
+                    <div style={{ flex: 1.8, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                        <div style={{ padding: '1.5mm', background: '#dbeafe', color: '#1e40af', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>VUE COUVERTURE (PAYSAGE)</div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <img src={toiture || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Toiture" />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -232,22 +290,7 @@ export const PlateSection = ({ project, captures }) => {
 };
 
 /**
- * PLANCHE DP4 : FAÇADES ET TOITURES
- */
-export const PlateFacades = ({ project, captures }) => {
-    return (
-        <div style={PAGE_STYLE} id="dp-plate-facades">
-            <PlateHeader title="DP4 — PLAN DES FAÇADES ET TOITURES / VUE 3D" project={project} />
-            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', padding: '4mm', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', overflow: 'hidden' }}>
-                <img src={captures?.facades_projet || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Façades" crossOrigin="anonymous" />
-            </div>
-            <Footer project={project} />
-        </div>
-    );
-};
-
-/**
- * PLANCHE DP6 : DOCUMENT GRAPHIQUE D'INSERTION (Side-by-Side sur la même ligne)
+ * PLANCHE DP6 : DOCUMENT GRAPHIQUE D'INSERTION (Side-by-Side)
  */
 export const PlateInsertion = ({ project, captures, photos }) => {
     const photoAvant = photos?.avant || captures?.photo_avant || '';
@@ -256,7 +299,7 @@ export const PlateInsertion = ({ project, captures, photos }) => {
     return (
         <div style={PAGE_STYLE} id="dp-plate-insertion">
             <PlateHeader title="DP6 — DOCUMENT GRAPHIQUE D'INSERTION PAYSAGÈRE" project={project} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: '135mm', marginBottom: '5mm' }}>
                 <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
                     <div style={{ padding: '2.5mm', background: '#e2e8f0', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#1e293b' }}>
                         1. VUE DE L'ÉTAT INITIAL (AVANT PROJET)
@@ -280,15 +323,12 @@ export const PlateInsertion = ({ project, captures, photos }) => {
     );
 };
 
-/**
- * PLANCHE DP7 : ENVIRONNEMENT PROCHE
- */
 export const PlateEnvProche = ({ project, captures, photos }) => {
     const photoProche = photos?.proche || captures?.env_proche || captures?.satellite || '';
     return (
         <div style={PAGE_STYLE} id="dp-plate-env-proche">
             <PlateHeader title="DP7 — PHOTOGRAPHIE DE L'ENVIRONNEMENT PROCHE" project={project} />
-            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '135mm', marginBottom: '5mm' }}>
                 <img src={photoProche} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Proche" crossOrigin="anonymous" />
             </div>
             <Footer project={project} />
@@ -300,14 +340,14 @@ export const PlateInsertionNotice = ({ project }) => {
     return (
         <div style={PAGE_STYLE} id="dp-plate-notice-insertion">
             <PlateHeader title="DP11 — NOTICE DESCRIPTIVE DES TRAVAUX" project={project} showBranding={true} />
-            <div style={{ flex: 1, padding: '6mm 10mm', overflowY: 'hidden', fontSize: '10pt', lineHeight: '1.5', color: '#1e293b', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff' }}>
-                <h3 style={{ fontSize: '11pt', fontWeight: 'bold', color: '#00429d', marginBottom: '2mm' }}>Objet de la Déclaration Préalable</h3>
+            <div style={{ flex: 1, padding: '5mm 8mm', overflowY: 'hidden', fontSize: '9.5pt', lineHeight: '1.45', color: '#1e293b', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff', maxHeight: '135mm', marginBottom: '5mm' }}>
+                <h3 style={{ fontSize: '10.5pt', fontWeight: 'bold', color: '#00429d', marginBottom: '2mm' }}>Objet de la Déclaration Préalable</h3>
                 <p style={{ whiteSpace: 'pre-wrap' }}>
                     {project?.description || `Construction d'un bâtiment agricole à charpente métallique recevant une centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${project?.kwc || 100} kWc.`}
                 </p>
-                <div style={{ marginTop: '5mm', padding: '4mm', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-                    <div style={{ fontWeight: 'bold', color: '#00429d', marginBottom: '2mm' }}>Caractéristiques de l'ouvrage :</div>
-                    <ul style={{ paddingLeft: '20px', margin: 0 }}>
+                <div style={{ marginTop: '4mm', padding: '3.5mm', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+                    <div style={{ fontWeight: 'bold', color: '#00429d', marginBottom: '1.5mm' }}>Caractéristiques de l'ouvrage :</div>
+                    <ul style={{ paddingLeft: '18px', margin: 0, fontSize: '9pt' }}>
                         <li>Emprise et dimensions : {project?.largeur || '16.4'} m de large par {project?.longueur || '30.0'} m de long</li>
                         <li>Hauteur à l'égout : {project?.hauteur_egout || '4.0'} m — Pente toiture : {project?.pente || '15'}°</li>
                         <li>Destination : Activité agricole, stockage et production d'énergie solaire photovoltaïque</li>
@@ -323,11 +363,11 @@ export const PlateAspect = ({ project, batteryPhoto }) => {
     return (
         <div style={PAGE_STYLE} id="dp-plate-aspect">
             <PlateHeader title="DP5 : REPRÉSENTATION DE L'ASPECT EXTÉRIEUR" project={project} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8mm', padding: '5mm' }}>
-                <div style={{ border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden', flex: 1 }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6mm', padding: '4mm', maxHeight: '135mm', marginBottom: '5mm' }}>
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', flex: 1 }}>
                     <img 
                         src={batteryPhoto || project?.urbanisme_captures?.facades_projet || "https://nelsonpv.fr/mercury_product_photo.jpg"} 
-                        style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#f8fafc' }} 
+                        style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#ffffff' }} 
                         alt="Aspect extérieur" 
                     />
                 </div>
@@ -340,7 +380,7 @@ export const PlateAspect = ({ project, batteryPhoto }) => {
 export const PlateEnvLointain = ({ project, captures, photos }) => (
     <div style={PAGE_STYLE} id="dp-plate-env-lointain">
         <PlateHeader title="DP8 : PHOTOGRAPHIE DE L'ENVIRONNEMENT LOINTAIN" project={project} />
-        <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', maxHeight: '135mm', marginBottom: '5mm' }}>
             <img src={photos?.lointain || captures?.env_lointain || captures?.satellite || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Lointain" crossOrigin="anonymous" />
         </div>
         <Footer project={project} />
@@ -350,4 +390,3 @@ export const PlateEnvLointain = ({ project, captures, photos }) => (
 export const PlateNotice = ({ project, captures }) => (
     <PlateInsertionNotice project={project} />
 );
-

@@ -10,42 +10,13 @@ import {
 import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames } from '@/services/SmartCerfaService';
 import { cadastreService } from '@/services/CadastreService';
 import { getOrGenerateProjectMaps } from '@/services/AutoMapService';
+import { useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
+import { ControlPanel } from '../configurator/ui/ControlPanel.jsx';
+import BuildingScene from '../configurator/BuildingScene.jsx';
 import ImageCropModal from './ImageCropModal';
 import DimensionsModal from './DimensionsModal';
 import LandscapeIntegrationModal from './LandscapeIntegrationModal';
 import Building3DViewer from './Building3DViewer';
-
-// ─── Modèles de bâtiments du Configurateur Nelson ───────────────────────────
-
-const BATIMENT_TYPES = [
-  { id: 'symetrique', label: 'Symétrique', widths: [15.0, 18.6, 22.3, 26.0, 29.8, 33.5], defaultPitch: 10, defaultEave: 5.5 },
-  { id: 'asymetrique_1', label: 'Asymétrique 1 zone', widths: [16.4, 20.0], defaultPitch: 15, defaultEave: 4.0 },
-  { id: 'asymetrique_2', label: 'Asymétrique 2 zones', widths: [25.5, 29.1], defaultPitch: 15, defaultEave: 4.5 },
-  { id: 'monopente', label: 'Monopente', widths: [12.7, 16.4], defaultPitch: 10, defaultEave: 4.0 },
-];
-
-const OMBRIERE_TYPES = [
-  { id: 'ombriere_vl_double', label: 'Ombrière VL double', widths: [9.1, 11.3], defaultPitch: 10, defaultEave: 2.8 },
-  { id: 'ombriere_vl_simple_gauche', label: 'Ombrière VL simple gauche', widths: [6.9], defaultPitch: 10, defaultEave: 4.5 },
-  { id: 'ombriere_vl_simple_droite', label: 'Ombrière VL simple droite', widths: [6.9], defaultPitch: 10, defaultEave: 4.5 },
-  { id: 'ombriere_pl', label: 'Ombrière PL', widths: [15.8, 20.2, 24.6], defaultPitch: 10, defaultEave: 6.0 },
-];
-
-// Uniquement 2 types autorisés : Bâtiment et Ombrière
-const INSTALL_TYPES = [
-  {
-    id: 'batiment_solaire',
-    label: 'Bâtiment',
-    sublabel: 'Bâtiment agricole à charpente métallique',
-    icon: Building2,
-  },
-  {
-    id: 'ombriere',
-    label: 'Ombrière photovoltaïque',
-    sublabel: 'Structure ombrière de parking / stockage',
-    icon: Car,
-  },
-];
 
 const DOSSIER_INFO = {
   cu: {
@@ -72,17 +43,12 @@ const DOSSIER_INFO = {
 };
 
 export default function UrbanismeWizard({ isOpen, onClose, type, project, onGenerate }) {
-  const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes PC1/PC2, 2=Configurateur 2D/3D, 3=Photos/3D, 4=Validation
-  const [selectedCategory, setSelectedCategory] = useState('batiment_solaire'); // 'batiment_solaire' | 'ombriere'
-  const [configMode, setConfigMode] = useState('predefined'); // 'predefined' (ECO-EVO) | 'custom' (sur-mesure)
-  const [buildingType, setBuildingType] = useState('asymetrique_1');
-  const [width, setWidth] = useState(16.4);
-  const [bayCount, setBayCount] = useState(4);
-  const [baySpacing, setBaySpacing] = useState(7.5);
-  const [leftExtension, setLeftExtension] = useState('none');
-  const [rightExtension, setRightExtension] = useState('none');
-  const [showDimensions, setShowDimensions] = useState(true);
-  const [hasSolarOption, setHasSolarOption] = useState(true);
+  const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes PC1/PC2, 2=Configurateur 2D/3D (Clone page Configurateur), 3=Photos/3D, 4=Validation
+  const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D_FRONT'
+  
+  // Zustand Store du Configurateur Nelson
+  const config = useConfiguratorValues();
+  const configActions = useConfiguratorActions();
 
   const [editedProject, setEditedProject] = useState(project || {});
   const [captures, setCaptures] = useState(project?.urbanisme_captures || {});
@@ -98,18 +64,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 
   const dossierInfo = DOSSIER_INFO[type] || DOSSIER_INFO.pc;
 
-  // Calculs dérivés
-  const currentTypeList = selectedCategory === 'ombriere' ? OMBRIERE_TYPES : BATIMENT_TYPES;
-  const currentStructure = currentTypeList.find(t => t.id === buildingType) || currentTypeList[0];
-  
-  const length = useMemo(() => (bayCount * baySpacing), [bayCount, baySpacing]);
-  const surfaceM2 = useMemo(() => Math.round(width * length), [width, length]);
-  const kwcEstimate = useMemo(() => Math.round((surfaceM2 * 0.22) / 5) * 5, [surfaceM2]);
-  const eaveHeight = currentStructure?.defaultEave || 4.0;
-  const roofPitch = currentStructure?.defaultPitch || 15;
-  const ridgeHeight = (eaveHeight + width * Math.tan((roofPitch * Math.PI) / 180)).toFixed(2);
-
-  // Initialisation à l'ouverture
+  // Synchronisation du projet initial à l'ouverture
   useEffect(() => {
     if (project && isOpen) {
       const names = resolveDemandeurNames(project);
@@ -120,11 +75,11 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       const projCity = project.city || project.commune || project.clientCity || project.cadastre_commune || '';
 
       const isOmbriere = (project.type || '').toLowerCase().includes('ombriere');
-      setSelectedCategory(isOmbriere ? 'ombriere' : 'batiment_solaire');
-      setBuildingType(isOmbriere ? 'ombriere_vl_double' : 'asymetrique_1');
-      setWidth(isOmbriere ? 9.1 : 16.4);
-      setBayCount(4);
-      setBaySpacing(7.5);
+      if (isOmbriere) {
+        configActions.setBuildingType('ombriere_vl_double');
+      } else {
+        configActions.setBuildingType('symetrique');
+      }
 
       const initProj = {
         ...project,
@@ -141,10 +96,10 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         birthCity: project.birthCity || projCity || 'AUCH',
         birthDept: project.birthDept || (projZip ? projZip.substring(0, 2) : '32'),
         description: project.description || `Construction d'un bâtiment agricole à charpente métallique avec centrale photovoltaïque en toiture de ${project.kwc || 100} kWc`,
-        longueur: '30.0',
-        largeur: '16.4',
-        hauteur_egout: '4.0',
-        pente: '15',
+        longueur: String(config.length || 30.0),
+        largeur: String(config.width || 18.6),
+        hauteur_egout: String(config.eaveHeight || 5.5),
+        pente: String(config.roofPitch || 10),
         pente_terrain: project.pente_terrain || '3',
         cotation_bati: project.cotation_bati || '12.50',
         cotation_voie: project.cotation_voie || '8.00',
@@ -185,41 +140,27 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     }
   }, [project, isOpen]);
 
-  // Synchronisation des dimensions vers editedProject
+  // Synchronisation continue des valeurs du configurateur vers le projet
   useEffect(() => {
-    setEditedProject(prev => ({
-      ...prev,
-      type: selectedCategory,
-      installationType: selectedCategory,
-      largeur: String(width),
-      longueur: String(length.toFixed(1)),
-      hauteur_egout: String(eaveHeight),
-      pente: String(roofPitch),
-      kwc: kwcEstimate,
-      projectSize: kwcEstimate,
-    }));
-  }, [selectedCategory, width, length, eaveHeight, roofPitch, kwcEstimate]);
+    if (config) {
+      const isOmbriere = (config.buildingType || '').startsWith('ombriere');
+      const category = isOmbriere ? 'ombriere' : 'batiment_solaire';
+      const kwcCalc = config.solarStats?.power ? Math.round(config.solarStats.power) : Math.round((config.width * config.length * 0.22) / 5) * 5;
 
-  // Handler changement catégorie Bâtiment / Ombrière
-  const handleCategoryChange = (catId) => {
-    setSelectedCategory(catId);
-    if (catId === 'ombriere') {
-      setBuildingType('ombriere_vl_double');
-      setWidth(9.1);
-    } else {
-      setBuildingType('asymetrique_1');
-      setWidth(16.4);
+      setEditedProject(prev => ({
+        ...prev,
+        type: category,
+        installationType: category,
+        buildingType: config.buildingType,
+        largeur: String(config.width.toFixed(2)),
+        longueur: String(config.length.toFixed(2)),
+        hauteur_egout: String(config.eaveHeight.toFixed(2)),
+        pente: String(config.roofPitch),
+        kwc: kwcCalc,
+        projectSize: kwcCalc,
+      }));
     }
-  };
-
-  // Handler sélection structure
-  const handleStructureTypeChange = (typeId) => {
-    setBuildingType(typeId);
-    const st = currentTypeList.find(t => t.id === typeId);
-    if (st && st.widths.length > 0) {
-      setWidth(st.widths[0]);
-    }
-  };
+  }, [config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.solarStats]);
 
   // Sauvegarde simulation 3D après projet (PC6)
   const handleSaveSimulation = (simulatedDataUrl) => {
@@ -233,7 +174,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const updated = {
       ...captures,
       [slotKey]: dataUrl,
-      facades_projet: dataUrl // master thumbnail
+      facades_projet: dataUrl
     };
     setCaptures(updated);
     setEditedProject(prev => ({ ...prev, urbanisme_captures: updated }));
@@ -292,17 +233,11 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const finalProject = {
       ...editedProject,
       ...fieldValues,
-      type: selectedCategory,
-      installationType: selectedCategory,
-      largeur: String(width),
-      longueur: String(length.toFixed(1)),
-      hauteur_egout: String(eaveHeight),
-      pente: String(roofPitch),
       urbanisme_captures: captures,
       pc_photos: photos,
     };
     try {
-      await onGenerate(type, selectedCategory, finalProject);
+      await onGenerate(type, editedProject.type || 'batiment_solaire', finalProject);
     } finally {
       setIsGenerating(false);
       onClose();
@@ -311,7 +246,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 
   if (!isOpen) return null;
 
-  const summary = buildCerfaDataSummary({ ...editedProject, ...fieldValues, type: selectedCategory }, selectedCategory);
+  const summary = buildCerfaDataSummary({ ...editedProject, ...fieldValues }, editedProject.type || 'batiment_solaire');
   const STEPS = ['Déclarant', 'Cartes PC1', 'Cotations & Côtes', 'Photos (Crop)', 'Validation'];
 
   return (
@@ -592,233 +527,71 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
                 </motion.div>
               )}
 
-              {/* ÉTAPE 2 — Configurateur 2D/3D (Exact Design & Graphisme page Configurateur) */}
+              {/* ÉTAPE 2 — Configurateur 2D/3D (Exact Clone de la page Configurateur - Directive 1) */}
               {step === 2 && (
                 <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                  className="p-5 space-y-4">
+                  className="p-4 flex flex-col lg:flex-row gap-4 h-[72vh] overflow-hidden bg-slate-100/70 rounded-2xl">
                   
-                  {/* Sélecteur Strict Bâtiment vs Ombrière */}
-                  <div className="flex items-center gap-3 border-b border-gray-200 pb-3">
-                    <button
-                      onClick={() => handleCategoryChange('batiment_solaire')}
-                      className={`flex-1 py-3 px-4 rounded-2xl font-extrabold text-sm transition-all flex items-center justify-center gap-2.5 ${
-                        selectedCategory === 'batiment_solaire'
-                          ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400/50'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                    >
-                      <Building2 className="w-5 h-5" />
-                      <span>Bâtiment agricole solaire</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleCategoryChange('ombriere')}
-                      className={`flex-1 py-3 px-4 rounded-2xl font-extrabold text-sm transition-all flex items-center justify-center gap-2.5 ${
-                        selectedCategory === 'ombriere'
-                          ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400/50'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                    >
-                      <Car className="w-5 h-5" />
-                      <span>Ombrière photovoltaïque</span>
-                    </button>
+                  {/* Panneau de contrôle gauche (Composant officiel ControlPanel de la page Configurateur) */}
+                  <div className="w-full lg:w-[410px] h-full overflow-y-auto pr-1">
+                    <ControlPanel isAcama={false} selectedProject={editedProject} />
                   </div>
 
-                  {/* Grid 2 colonnes : Panneau de contrôle (style ControlPanel.jsx) + Visualisation 3D (style Configurateur.jsx) */}
-                  <div className="grid grid-cols-12 gap-5">
+                  {/* Scène 3D droite (Composant officiel BuildingScene de la page Configurateur) */}
+                  <div className="flex-1 relative h-full rounded-2xl overflow-hidden border border-slate-200 bg-gradient-to-b from-slate-50 to-slate-200 shadow-sm isolate">
                     
-                    {/* PANNEAU DE CONTRÔLE GAUCHE (Exact style Configurateur) */}
-                    <div className="col-span-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 text-xs max-h-[58vh] overflow-y-auto">
-                      <div>
-                        <h4 className="text-base font-extrabold text-slate-900 mb-2">Configurateur 2D/3D</h4>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setConfigMode('predefined')}
-                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${configMode === 'predefined' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                          >
-                            Gamme ECO-EVO
-                          </button>
-                          <button
-                            onClick={() => setConfigMode('custom')}
-                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${configMode === 'custom' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                          >
-                            Bâtiments sur-mesure
-                          </button>
-                        </div>
+                    {/* Badge dimensions top-left & bouton côtes */}
+                    <div className="absolute top-3 left-3 z-20 flex flex-col gap-2 pointer-events-auto">
+                      <div className="bg-white/95 backdrop-blur px-3 py-1.5 rounded-lg shadow-sm border border-slate-200">
+                        <span className="text-slate-800 font-bold text-sm whitespace-nowrap">
+                          {config.length.toFixed(2)}m × {config.width.toFixed(2)}m — {Math.round(config.width * config.length)}m²
+                        </span>
                       </div>
 
-                      {/* Type de Bâtiment */}
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider">
-                          Type de {selectedCategory === 'ombriere' ? 'structure' : 'bâtiment'}
-                        </label>
-                        <select
-                          value={buildingType}
-                          onChange={(e) => handleStructureTypeChange(e.target.value)}
-                          className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg font-semibold text-xs bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 outline-none"
-                        >
-                          {currentTypeList.map(t => (
-                            <option key={t.id} value={t.id}>{t.label}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Largeur */}
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider">
-                          Largeur du {selectedCategory === 'ombriere' ? 'module' : 'bâtiment'}
-                        </label>
-                        <select
-                          value={width}
-                          onChange={(e) => setWidth(parseFloat(e.target.value))}
-                          className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg font-semibold text-xs bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 outline-none"
-                        >
-                          {currentStructure.widths.map(w => (
-                            <option key={w} value={w}>{w} m</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Extensions (Auvent / Appentis) */}
-                      {selectedCategory === 'batiment_solaire' && (
-                        <div>
-                          <label className="block text-[11px] font-semibold text-slate-500 mb-1 uppercase tracking-wider">
-                            Extensions
-                          </label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="flex gap-1">
-                              <span className="text-[10px] font-bold text-slate-400 self-center w-6">GCH</span>
-                              <button
-                                type="button"
-                                onClick={() => setLeftExtension(leftExtension === 'auvent' ? 'none' : 'auvent')}
-                                className={`flex-1 py-1 rounded text-[10px] font-bold border ${leftExtension === 'auvent' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
-                              >
-                                AUVENT
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setLeftExtension(leftExtension === 'appentis' ? 'none' : 'appentis')}
-                                className={`flex-1 py-1 rounded text-[10px] font-bold border ${leftExtension === 'appentis' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
-                              >
-                                APPENTIS
-                              </button>
-                            </div>
-                            <div className="flex gap-1">
-                              <span className="text-[10px] font-bold text-slate-400 self-center w-6">DRT</span>
-                              <button
-                                type="button"
-                                onClick={() => setRightExtension(rightExtension === 'auvent' ? 'none' : 'auvent')}
-                                className={`flex-1 py-1 rounded text-[10px] font-bold border ${rightExtension === 'auvent' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
-                              >
-                                AUVENT
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setRightExtension(rightExtension === 'appentis' ? 'none' : 'appentis')}
-                                className={`flex-1 py-1 rounded text-[10px] font-bold border ${rightExtension === 'appentis' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
-                              >
-                                APPENTIS
-                              </button>
-                            </div>
-                          </div>
+                      {config.hasSolar && (
+                        <div className="bg-yellow-50/95 backdrop-blur px-3 py-1 rounded-lg shadow-sm border border-yellow-200">
+                          <span className="text-yellow-800 font-bold text-xs whitespace-nowrap">
+                            ⚡ {config.solarStats?.power?.toFixed(2)} kWc
+                          </span>
                         </div>
                       )}
 
-                      {/* Espacement Travées */}
-                      <div>
-                        <label className="block text-[11px] font-semibold text-slate-500 mb-1 uppercase tracking-wider">
-                          Espacement Travées
-                        </label>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setBaySpacing(6.0)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${baySpacing === 6.0 ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700'}`}
-                          >
-                            6m
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setBaySpacing(7.5)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${baySpacing === 7.5 ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700'}`}
-                          >
-                            7.5m
-                          </button>
+                      <button
+                        onClick={configActions.toggleDimensions}
+                        className={`px-3 py-1.5 rounded-lg font-semibold text-xs shadow-sm border transition-all flex items-center justify-between gap-2.5 ${
+                          config.showDimensions ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span>Afficher les côtes</span>
+                        <div className={`w-8 h-4 rounded-full relative transition-colors ${config.showDimensions ? 'bg-white/30' : 'bg-slate-300'}`}>
+                          <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${config.showDimensions ? 'left-4' : 'left-0.5'}`} />
                         </div>
-                      </div>
-
-                      {/* Nombre de Travées */}
-                      <div>
-                        <label className="block text-[11px] font-semibold text-slate-500 mb-1 uppercase tracking-wider">
-                          Nombre de Travées
-                        </label>
-                        <div className="flex items-center gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setBayCount(Math.max(2, bayCount - 1))}
-                            className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center justify-center text-sm"
-                          >
-                            -
-                          </button>
-                          <span className="font-extrabold text-sm text-slate-900 min-w-16 text-center">
-                            {bayCount} <span className="text-[10px] text-slate-400 font-normal">travées</span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setBayCount(Math.min(12, bayCount + 1))}
-                            className="w-8 h-8 rounded-lg bg-emerald-600 text-white font-bold flex items-center justify-center text-sm"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Paramètres Fixes */}
-                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-[11px] font-medium text-slate-600">
-                        <span><span className="w-2 h-2 rounded-full bg-amber-500 inline-block mr-1"></span>Pente : {roofPitch}°</span>
-                        <span><span className="w-2 h-2 rounded-full bg-purple-500 inline-block mr-1"></span>H. Égout : {eaveHeight}m</span>
-                      </div>
-
-                      {/* Option Solaire */}
-                      <div className="p-2.5 bg-yellow-50/80 border border-yellow-200 rounded-xl text-center">
-                        <span className="text-[11px] font-bold text-yellow-900">Couverture Solaire PV intégrée</span>
-                      </div>
+                      </button>
                     </div>
 
-                    {/* ZONE 3D DROITE (Exact style Configurateur) */}
-                    <div className="col-span-7 flex flex-col relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-50">
-                      
-                      {/* Badge Dimensions & Toggle Côtes (Top Left) */}
-                      <div className="absolute top-3 left-3 z-20 flex flex-col gap-2">
-                        <div className="bg-white/95 backdrop-blur px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 font-extrabold text-xs text-slate-800">
-                          {length.toFixed(2)}m × {width.toFixed(2)}m — {surfaceM2}m²
-                        </div>
-                        <div className="bg-yellow-50/95 backdrop-blur px-3 py-1 rounded-lg shadow-sm border border-yellow-200 font-bold text-xs text-yellow-800">
-                          ⚡ ~{kwcEstimate} kWc
-                        </div>
-                      </div>
+                    {/* Vue 3D / 2D Toggles top-right */}
+                    <div className="absolute top-3 right-3 z-20 flex gap-1.5 bg-white/90 backdrop-blur p-1 rounded-xl border border-slate-200 shadow-sm pointer-events-auto">
+                      <button
+                        onClick={() => setViewMode('3D')}
+                        className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
+                          viewMode === '3D' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        Vue 3D
+                      </button>
+                      <button
+                        onClick={() => setViewMode('2D_FRONT')}
+                        className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
+                          viewMode === '2D_FRONT' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        Vue 2D
+                      </button>
+                    </div>
 
-                      {/* 3D Scene */}
-                      <div className="flex-1 min-h-[360px]">
-                        <Building3DViewer
-                          buildingConfig={{
-                            longueur: length,
-                            largeur: width,
-                            hauteur_egout: eaveHeight,
-                            pente: roofPitch,
-                            type: selectedCategory
-                          }}
-                          onCaptureSnapshot={handleCaptureSnapshotPC5}
-                          onCaptureAll5Views={handleCaptureAll5ViewsPC5}
-                          height={360}
-                        />
-                      </div>
-
-                      {/* Footer Note */}
-                      <div className="p-2.5 bg-white border-t border-slate-200 flex justify-between items-center text-[11px] text-slate-500">
-                        <span>Pente terrain estimée : <strong>{editedProject?.pente_terrain || 3}°</strong></span>
-                        <span>Faîtage : <strong>{ridgeHeight} m</strong></span>
-                      </div>
+                    {/* Rendu Canvas BuildingScene */}
+                    <div className="w-full h-full">
+                      <BuildingScene viewMode={viewMode} />
                     </div>
 
                   </div>
@@ -831,7 +604,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
                   className="p-5 space-y-4">
                   <div>
                     <h3 className="text-sm font-bold text-gray-800">Étape 4 : PC5 (5 vues Façades & Toiture) & PC6 (Insertion paysagère 3D)</h3>
-                    <p className="text-xs text-gray-500">Capturez les 5 vues de façades pour la PC5 et générez la simulation 3D pour la PC6.</p>
+                    <p className="text-xs text-gray-500">Capturez les 5 vues de façades pour la PC5 (fond neutre) et positionnez le modèle 3D sur votre photo de terrain pour la PC6.</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -851,11 +624,11 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
                       <div className="flex-1 mb-2">
                         <Building3DViewer
                           buildingConfig={{
-                            longueur: length,
-                            largeur: width,
-                            hauteur_egout: eaveHeight,
-                            pente: roofPitch,
-                            type: selectedCategory
+                            longueur: config.length,
+                            largeur: config.width,
+                            hauteur_egout: config.eaveHeight,
+                            pente: config.roofPitch,
+                            type: editedProject.type
                           }}
                           onCaptureSnapshot={handleCaptureSnapshotPC5}
                           onCaptureAll5Views={handleCaptureAll5ViewsPC5}
@@ -868,12 +641,12 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
                     <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center flex flex-col">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                          <Sparkles className="w-4 h-4 text-indigo-600" /> PC6 — Insertion Paysagère 3D ({width}m × {length}m)
+                          <Sparkles className="w-4 h-4 text-indigo-600" /> PC6 — Insertion Paysagère 3D ({config.width}m × {config.length}m)
                         </span>
                         {photos?.apres ? (
                           <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">✓ Simulation Prête</span>
                         ) : (
-                          <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">À tracer</span>
+                          <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">À ajuster</span>
                         )}
                       </div>
 
@@ -903,14 +676,14 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
                               onClick={() => setLandscapeModalOpen(true)}
                               className="w-full py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all"
                             >
-                              <Box className="w-3.5 h-3.5" /> Tracer l'emprise & Rendu 3D sur photo
+                              <Box className="w-3.5 h-3.5" /> Ajuster & Déplacer le modèle 3D sur la photo
                             </button>
                           </div>
                         ) : (
                           <label className="aspect-video rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 bg-white transition-colors">
                             <Upload className="w-6 h-6 text-gray-400 mb-1" />
                             <span className="text-xs text-gray-600 font-bold">1. Charger photo de terrain (Avant)</span>
-                            <span className="text-[10px] text-gray-400">Puis tracer l'emprise 3D du projet</span>
+                            <span className="text-[10px] text-gray-400">Puis ajustez la position du modèle 3D</span>
                             <input type="file" accept="image/*" className="hidden" onChange={e => handleFileSelectForCrop('photos', 'avant', 'Photo Terrain Avant', e)} />
                           </label>
                         )}
@@ -1023,13 +796,13 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
             onClose={() => setLandscapeModalOpen(false)}
             initialPhoto={photos?.avant}
             projectDimensions={{
-              longueur: length,
-              largeur: width,
-              hauteur_egout: eaveHeight,
-              pente: roofPitch,
-              type: selectedCategory
+              longueur: config.length,
+              largeur: config.width,
+              hauteur_egout: config.eaveHeight,
+              pente: config.roofPitch,
+              type: editedProject.type
             }}
-            installationType={selectedCategory}
+            installationType={editedProject.type}
             onSaveSimulation={handleSaveSimulation}
           />
 

@@ -4,12 +4,13 @@ import { Camera, RotateCw, ZoomIn, Box, Sparkles, Check, RefreshCw, Eye, Layers 
 
 /**
  * Building3DViewer — Visionneuse 3D interactive du bâtiment / ombrière solaire
- * Permet d'orbiter autour du modèle 3D en temps réel et de capturer les 5 zones de façades et toiture pour la PC5 :
+ * Fond neutre sans quadrillage (Directive 3)
+ * Angles de prise de vue 3D :
  * - Façade Sud
  * - Façade Nord
- * - Façade Est
- * - Façade Ouest
- * - Vue couverture (Toiture)
+ * - Façade Est (Pignon)
+ * - Façade Ouest (Pignon)
+ * - Vue Couverture (Toiture orientée en format PAYSAGE horizontal)
  */
 export default function Building3DViewer({
   buildingConfig = {},
@@ -47,9 +48,9 @@ export default function Building3DViewer({
     const w = container.clientWidth || 600;
     const h = height;
 
-    // 1. Scene
+    // 1. Scene avec fond neutre sans quadrillage
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf8fafc);
+    scene.background = new THREE.Color(0xffffff);
 
     // 2. Camera
     const camera = new THREE.PerspectiveCamera(45, w / h, 0.5, 1000);
@@ -73,34 +74,29 @@ export default function Building3DViewer({
     container.appendChild(renderer.domElement);
 
     // 4. Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.95);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xfff5e6, 1.5);
-    dirLight.position.set(60, 80, 50);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.4);
+    dirLight.position.set(60, 90, 60);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 2048;
     dirLight.shadow.mapSize.height = 2048;
     dirLight.shadow.bias = -0.0005;
     scene.add(dirLight);
 
-    const fillLight = new THREE.DirectionalLight(0xb0c4de, 0.6);
-    fillLight.position.set(-40, 30, -40);
+    const fillLight = new THREE.DirectionalLight(0xe2e8f0, 0.6);
+    fillLight.position.set(-50, 40, -50);
     scene.add(fillLight);
 
-    // 5. Sol / Shadow Catcher
-    const planeGeo = new THREE.PlaneGeometry(160, 160);
-    const planeMat = new THREE.ShadowMaterial({ opacity: 0.22 });
+    // 5. Sol / Shadow Catcher discret (sans quadrillage)
+    const planeGeo = new THREE.PlaneGeometry(200, 200);
+    const planeMat = new THREE.ShadowMaterial({ opacity: 0.18 });
     const floor = new THREE.Mesh(planeGeo, planeMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = 0;
     floor.receiveShadow = true;
     scene.add(floor);
-
-    // Grille
-    const grid = new THREE.GridHelper(100, 25, 0x94a3b8, 0xe2e8f0);
-    grid.position.y = 0.01;
-    scene.add(grid);
 
     // 6. Construction 3D Bâtiment / Structure
     const meshGroup = new THREE.Group();
@@ -167,8 +163,8 @@ export default function Building3DViewer({
     roofMesh.receiveShadow = true;
     meshGroup.add(roofMesh);
 
-    // Lignes de séparation de modules photovoltaïques
-    const gridTextureMat = new THREE.MeshBasicMaterial({ color: 0x93c5fd, wireframe: true });
+    // Lignes de modules photovoltaïques discrètes
+    const gridTextureMat = new THREE.MeshBasicMaterial({ color: 0x60a5fa, wireframe: true, opacity: 0.4, transparent: true });
     const wireRoof = new THREE.Mesh(roofGeo, gridTextureMat);
     wireRoof.position.set(0, (eaveHeight + ridgeHeight) / 2 + 0.13, 0);
     wireRoof.rotation.z = Math.atan2(ridgeHeight - eaveHeight, width);
@@ -218,7 +214,7 @@ export default function Building3DViewer({
 
     const onWheel = (e) => {
       e.preventDefault();
-      threeRef.current.distance = Math.max(15, Math.min(100, threeRef.current.distance + e.deltaY * 0.05));
+      threeRef.current.distance = Math.max(15, Math.min(120, threeRef.current.distance + e.deltaY * 0.05));
       updateCameraPos();
     };
 
@@ -241,12 +237,13 @@ export default function Building3DViewer({
   }, [length, width, eaveHeight, pitchDeg, type, height]);
 
   // Positions préconfigurées pour les 5 façades et toiture
+  // Directive 3 : Vue Toiture orientée de façon horizontale (format paysage)
   const CAMERA_PRESETS = {
-    facade_sud: { rotation: { x: 0.15, y: 0 }, distance: 45, label: 'Façade Sud' },
-    facade_nord: { rotation: { x: 0.15, y: Math.PI }, distance: 45, label: 'Façade Nord' },
-    facade_est: { rotation: { x: 0.15, y: -Math.PI / 2 }, distance: 40, label: 'Façade Est' },
-    facade_ouest: { rotation: { x: 0.15, y: Math.PI / 2 }, distance: 40, label: 'Façade Ouest' },
-    vue_couverture: { rotation: { x: Math.PI / 2 - 0.08, y: 0 }, distance: 42, label: 'Vue Couverture' },
+    facade_sud: { rotation: { x: 0.12, y: 0 }, distance: 45, label: 'Façade Sud' },
+    facade_nord: { rotation: { x: 0.12, y: Math.PI }, distance: 45, label: 'Façade Nord' },
+    facade_est: { rotation: { x: 0.12, y: -Math.PI / 2 }, distance: 40, label: 'Façade Est' },
+    facade_ouest: { rotation: { x: 0.12, y: Math.PI / 2 }, distance: 40, label: 'Façade Ouest' },
+    vue_couverture: { rotation: { x: Math.PI / 2 - 0.02, y: -Math.PI / 2 }, distance: 48, label: 'Vue Toiture (Paysage)' },
   };
 
   const applyPreset = (presetKey) => {
@@ -286,7 +283,7 @@ export default function Building3DViewer({
 
     for (const key of keys) {
       applyPreset(key);
-      await new Promise(r => setTimeout(r, 120));
+      await new Promise(r => setTimeout(r, 140));
       threeRef.current.renderer.render(threeRef.current.scene, threeRef.current.camera);
       const dataUrl = threeRef.current.renderer.domElement.toDataURL('image/jpeg', 0.95);
       results[key] = dataUrl;
@@ -312,9 +309,9 @@ export default function Building3DViewer({
   };
 
   return (
-    <div className={`relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 shadow-xs flex flex-col ${className}`}>
-      {/* 3D Canvas Mount */}
-      <div ref={mountRef} style={{ width: '100%', height }} className="cursor-grab active:cursor-grabbing flex-1" />
+    <div className={`relative rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-xs flex flex-col ${className}`}>
+      {/* 3D Canvas Mount (Fond neutre blanc sans grille) */}
+      <div ref={mountRef} style={{ width: '100%', height }} className="cursor-grab active:cursor-grabbing flex-1 bg-white" />
 
       {/* Top Bar : Sélecteur des 5 angles prédéfinis */}
       <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none flex-wrap gap-1">
@@ -324,7 +321,7 @@ export default function Building3DViewer({
             { id: 'facade_nord', label: 'Façade Nord' },
             { id: 'facade_est', label: 'Façade Est' },
             { id: 'facade_ouest', label: 'Façade Ouest' },
-            { id: 'vue_couverture', label: 'Toiture' },
+            { id: 'vue_couverture', label: 'Toiture (Paysage)' },
           ].map(btn => (
             <button
               key={btn.id}

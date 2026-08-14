@@ -1,15 +1,14 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  X, Check, Trash2, RotateCcw, MousePointer, Edit3, Box, Eye,
-  Layers, Sun, Sparkles, Upload, Image as ImageIcon, Sliders
-} from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
 import * as THREE from 'three';
+import {
+  X, Check, RotateCw, ZoomIn, ZoomOut, Move,
+  Sliders, RefreshCw, Eye, Download, Layers, Sparkles, Sun, Compass
+} from 'lucide-react';
 
 /**
- * LandscapeIntegrationModal — Module d'intégration paysagère interactive (PCMI 6 / DP 6)
- * Permet de dessiner l'emprise au sol (polygone vectoriel) sur la photo d'état initial (Avant),
- * d'ajuster la perspective et d'y incruster le modèle 3D du bâtiment / ombrière solaire avec ombres portées.
+ * LandscapeIntegrationModal — Incrustation 3D interactive sur photo de terrain (PC6)
+ * Injecte directement le modèle 3D du bâtiment / ombrière configuré en sur-imposition sur la photo de terrain.
+ * L'utilisateur peut déplacer, orienter, incliner et redimensionner le bâtiment librement sur la photo.
  */
 export default function LandscapeIntegrationModal({
   isOpen,
@@ -20,139 +19,93 @@ export default function LandscapeIntegrationModal({
   onSaveSimulation,
 }) {
   const [photoSrc, setPhotoSrc] = useState(initialPhoto || null);
-  const [mode, setMode] = useState('draw'); // 'draw', 'select', '3d'
-  const [points, setPoints] = useState([]); // Points normalisés [{ x: 0..1, y: 0..1 }]
-  const [fillColor, setFillColor] = useState('#ef4444');
-  const [fillOpacity, setFillOpacity] = useState(0.5);
-  const [activePointIndex, setActivePointIndex] = useState(null);
-  const [isDragging, setIsDragging] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // References DOM
-  const containerRef = useRef(null);
-  const imgRef = useRef(null);
-  const threeCanvasRef = useRef(null);
+  // Paramètres de transformation 3D du bâtiment sur la photo
+  const [transform, setTransform] = useState({
+    posX: 0,       // Déplacement horizontal (-50 à 50)
+    posY: -2,      // Déplacement vertical / altitude (-30 à 30)
+    posZ: 0,       // Profondeur (-50 à 50)
+    rotY: 0.35,    // Orientation Azimut (0 à 2*PI)
+    rotX: 0.05,    // Inclinaison perspective Pitch (-0.5 à 0.5)
+    rotZ: 0.0,     // Dévers Roll (-0.3 à 0.3)
+    scale: 1.0,    // Échelle / Taille du bâtiment (0.2 à 3.0)
+    sunAngle: 45,  // Angle de la lumière solaire (ombres)
+  });
 
-  // Three.js instances ref
+  const containerRef = useRef(null);
+  const canvas3DRef = useRef(null);
   const threeRef = useRef({
     scene: null,
     camera: null,
     renderer: null,
     buildingGroup: null,
-    light: null,
+    dirLight: null,
+    isDragging: false,
+    dragStart: { x: 0, y: 0 },
+    animationId: null
   });
 
   useEffect(() => {
     if (initialPhoto) setPhotoSrc(initialPhoto);
   }, [initialPhoto]);
 
-  // Réinitialisation de la modale à l'ouverture
+  // Initialisation et boucle de rendu Three.js
   useEffect(() => {
-    if (isOpen) {
-      if (!points || points.length === 0) {
-        // Exemples de 4 points par défaut formant un trapèze en perspective au sol
-        setPoints([
-          { x: 0.25, y: 0.75 },
-          { x: 0.75, y: 0.75 },
-          { x: 0.65, y: 0.55 },
-          { x: 0.35, y: 0.55 },
-        ]);
-      }
-    }
-  }, [isOpen]);
+    if (!isOpen || !photoSrc || !canvas3DRef.current) return;
+    const canvas = canvas3DRef.current;
+    const container = containerRef.current;
+    if (!container) return;
 
-  // Téléversement d'une nouvelle photo de terrain
-  const handlePhotoUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => setPhotoSrc(event.target.result);
-    reader.readAsDataURL(file);
-  };
+    const w = container.clientWidth || 800;
+    const h = container.clientHeight || 500;
 
-  // Clic sur l'image pour placer un point en mode 'draw'
-  const handleContainerClick = (e) => {
-    if (mode !== 'draw' || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-
-    if (points.length < 8) {
-      setPoints(prev => [...prev, { x, y }]);
-    }
-  };
-
-  // Gestion du glisser-déplacer des sommets du polygone
-  const handlePointMouseDown = (idx, e) => {
-    e.stopPropagation();
-    setActivePointIndex(idx);
-    setIsDragging(true);
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isDragging || activePointIndex === null || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-
-    setPoints(prev => {
-      const copy = [...prev];
-      copy[activePointIndex] = { x, y };
-      return copy;
-    });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    setActivePointIndex(null);
-  };
-
-  // Effacer tous les points
-  const handleClearDrawing = () => {
-    setPoints([]);
-  };
-
-  // ── 3D Scene Initialization & Perspective Matching (Three.js) ─────────────
-  useEffect(() => {
-    if (mode !== '3d' || !threeCanvasRef.current || !containerRef.current) return;
-
-    const canvas = threeCanvasRef.current;
-    const width = containerRef.current.clientWidth;
-    const height = containerRef.current.clientHeight;
-
-    // 1. Scene setup
+    // 1. Scene transparente
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.set(0, 12, 25);
-    camera.lookAt(0, 2, 0);
 
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true });
-    renderer.setSize(width, height);
+    // 2. Camera
+    const camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 1000);
+    camera.position.set(0, 5, 38);
+    camera.lookAt(0, 3, 0);
+
+    // 3. Renderer avec canal alpha transparent
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      alpha: true,
+      antialias: true,
+      preserveDrawingBuffer: true
+    });
+    renderer.setSize(w, h);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    // 2. Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+    // 4. Lumières réalistes
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xfffaed, 1.4);
-    dirLight.position.set(15, 35, 20);
+    const dirLight = new THREE.DirectionalLight(0xfff8e7, 1.6);
+    dirLight.position.set(40, 60, 40);
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 1024;
-    dirLight.shadow.mapSize.height = 1024;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
     dirLight.shadow.bias = -0.0005;
     scene.add(dirLight);
 
-    // 3. Shadow Catcher Plane
-    const shadowPlaneGeo = new THREE.PlaneGeometry(100, 100);
+    const fillLight = new THREE.DirectionalLight(0xb0c4de, 0.5);
+    fillLight.position.set(-30, 20, -30);
+    scene.add(fillLight);
+
+    // 5. Plan d'ombres portées sous le bâtiment (Shadow Catcher discret)
+    const shadowPlaneGeo = new THREE.PlaneGeometry(120, 120);
     const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.35 });
     const shadowPlane = new THREE.Mesh(shadowPlaneGeo, shadowPlaneMat);
     shadowPlane.rotation.x = -Math.PI / 2;
+    shadowPlane.position.y = -0.05;
     shadowPlane.receiveShadow = true;
     scene.add(shadowPlane);
 
-    // 4. Modélisation 3D exacte du bâtiment / ombrière configuré
+    // 6. Modélisation 3D exacte du bâtiment / ombrière configuré
     const buildingGroup = new THREE.Group();
 
     const lg = Number(projectDimensions.longueur || 30.0);
@@ -161,16 +114,16 @@ export default function LandscapeIntegrationModal({
     const penteDeg = Number(projectDimensions.pente || 15);
     const ridgeHt = ht + lr * Math.tan((penteDeg * Math.PI) / 180);
 
-    const postMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4, metalness: 0.75 });
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.35, metalness: 0.75 });
     const rafterMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.3, metalness: 0.8 });
-    const solarMat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.2, metalness: 0.9 });
+    const solarMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.15, metalness: 0.85 });
 
     const halfL = lg / 2;
     const halfW = lr / 2;
     const bayCount = Math.max(3, Math.round(lg / 6));
     const baySpacing = lg / bayCount;
 
-    // Portiques métalliques selon le nombre de travées
+    // Portiques métalliques
     for (let i = 0; i <= bayCount; i++) {
       const z = -halfL + i * baySpacing;
 
@@ -195,7 +148,7 @@ export default function LandscapeIntegrationModal({
       buildingGroup.add(rafter);
     }
 
-    // Toiture et Panneaux photovoltaïques en toiture
+    // Toiture et Panneaux photovoltaïques
     const roofLen = Math.sqrt(Math.pow(lr, 2) + Math.pow(ridgeHt - ht, 2)) + 0.4;
     const roofMesh = new THREE.Mesh(new THREE.BoxGeometry(roofLen, 0.08, lg + 0.4), rafterMat);
     roofMesh.position.set(0, (ht + ridgeHt) / 2 + 0.1, 0);
@@ -212,44 +165,97 @@ export default function LandscapeIntegrationModal({
 
     scene.add(buildingGroup);
 
-    // 5. Alignement de la caméra d'après les 4 sommets du polygone 2D
-    if (points.length >= 4) {
-      // Calcul du centre et de l'inclinaison de l'emprise dessinée
-      const avgX = points.reduce((acc, p) => acc + p.x, 0) / points.length;
-      const avgY = points.reduce((acc, p) => acc + p.y, 0) / points.length;
+    threeRef.current = {
+      scene,
+      camera,
+      renderer,
+      buildingGroup,
+      dirLight,
+      shadowPlane,
+      isDragging: false,
+      dragStart: { x: 0, y: 0 }
+    };
 
-      const topWidth = Math.abs(points[2].x - points[3].x);
-      const botWidth = Math.abs(points[1].x - points[0].x);
-      const heightSpread = Math.abs(points[0].y - points[3].y);
-
-      // Calcul de la rotation et du recul caméra
-      const rotY = (avgX - 0.5) * 0.8;
-      const pitch = (avgY - 0.5) * 0.6;
-      const scaleFactor = Math.max(0.5, (botWidth + topWidth) * 1.5);
-
-      buildingGroup.scale.set(scaleFactor, scaleFactor, scaleFactor);
-      buildingGroup.position.set((avgX - 0.5) * 20, 0, (avgY - 0.5) * 10);
-      buildingGroup.rotation.y = rotY;
-    }
-
-    threeRef.current = { scene, camera, renderer, buildingGroup, light: dirLight };
-
-    let animationFrameId;
+    // Animation Loop
     const animate = () => {
-      animationFrameId = requestAnimationFrame(animate);
+      threeRef.current.animationId = requestAnimationFrame(animate);
       renderer.render(scene, camera);
     };
     animate();
 
+    const handleResize = () => {
+      if (!containerRef.current || !renderer || !camera) return;
+      const nw = containerRef.current.clientWidth;
+      const nh = containerRef.current.clientHeight;
+      camera.aspect = nw / nh;
+      camera.updateProjectionMatrix();
+      renderer.setSize(nw, nh);
+    };
+    window.addEventListener('resize', handleResize);
+
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(threeRef.current.animationId);
       renderer.dispose();
     };
-  }, [mode, points, projectDimensions]);
+  }, [isOpen, photoSrc, projectDimensions]);
 
-  // Exportation & Fusion de l'image finale
+  // Synchronisation continue des paramètres de transformation
+  useEffect(() => {
+    const { buildingGroup, shadowPlane, dirLight } = threeRef.current;
+    if (!buildingGroup) return;
+
+    buildingGroup.position.set(transform.posX, transform.posY, transform.posZ);
+    buildingGroup.rotation.set(transform.rotX, transform.rotY, transform.rotZ);
+    buildingGroup.scale.set(transform.scale, transform.scale, transform.scale);
+
+    if (shadowPlane) {
+      shadowPlane.position.set(transform.posX, transform.posY - 0.05, transform.posZ);
+      shadowPlane.rotation.z = transform.rotY;
+    }
+
+    if (dirLight) {
+      const rad = (transform.sunAngle * Math.PI) / 180;
+      dirLight.position.set(Math.cos(rad) * 60, 60, Math.sin(rad) * 60);
+    }
+  }, [transform]);
+
+  // Interaction Drag à la souris sur la photo
+  const handleMouseDown = (e) => {
+    threeRef.current.isDragging = true;
+    threeRef.current.dragStart = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleMouseMove = (e) => {
+    if (!threeRef.current.isDragging) return;
+    const dx = e.clientX - threeRef.current.dragStart.x;
+    const dy = e.clientY - threeRef.current.dragStart.y;
+
+    setTransform(prev => ({
+      ...prev,
+      posX: prev.posX + dx * 0.04,
+      posY: prev.posY - dy * 0.04,
+    }));
+
+    threeRef.current.dragStart = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleMouseUp = () => {
+    threeRef.current.isDragging = false;
+  };
+
+  const handleWheel = (e) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.05 : 0.95;
+    setTransform(prev => ({
+      ...prev,
+      scale: Math.max(0.15, Math.min(3.5, prev.scale * factor))
+    }));
+  };
+
+  // Exportation Haute Résolution de l'image finale
   const handleSaveAndExport = async () => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !photoSrc) return;
     setIsSaving(true);
 
     try {
@@ -260,38 +266,35 @@ export default function LandscapeIntegrationModal({
       exportCanvas.width = width * 2;
       exportCanvas.height = height * 2;
       const ctx = exportCanvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
 
-      ctx.scale(2, 2);
+      // 1. Dessiner la photo de terrain en fond
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = photoSrc;
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
 
-      // 1. Dessiner la photo de fond
-      if (imgRef.current) {
-        ctx.drawImage(imgRef.current, 0, 0, width, height);
+      ctx.drawImage(img, 0, 0, exportCanvas.width, exportCanvas.height);
+
+      // 2. Dessiner le rendu 3D du bâtiment par-dessus
+      const { renderer, scene, camera } = threeRef.current;
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+        ctx.drawImage(renderer.domElement, 0, 0, exportCanvas.width, exportCanvas.height);
       }
 
-      // 2. Dessiner le polygone 2D ou le rendu WebGL 3D
-      if (mode === '3d' && threeRef.current.renderer) {
-        ctx.drawImage(threeRef.current.renderer.domElement, 0, 0, width, height);
-      } else if (points.length > 2) {
-        ctx.beginPath();
-        ctx.moveTo(points[0].x * width, points[0].y * height);
-        for (let i = 1; i < points.length; i++) {
-          ctx.lineTo(points[i].x * width, points[i].y * height);
-        }
-        ctx.closePath();
-        ctx.fillStyle = fillColor;
-        ctx.globalAlpha = fillOpacity;
-        ctx.fill();
-        ctx.globalAlpha = 1.0;
-        ctx.strokeStyle = '#dc2626';
-        ctx.lineWidth = 3;
-        ctx.stroke();
+      const finalDataUrl = exportCanvas.toDataURL('image/jpeg', 0.95);
+      if (onSaveSimulation) {
+        onSaveSimulation(finalDataUrl);
       }
-
-      const mergedDataUrl = exportCanvas.toDataURL('image/jpeg', 0.92);
-      onSaveSimulation(mergedDataUrl);
       onClose();
-    } catch (err) {
-      console.error('Erreur export simulation paysagère:', err);
+    } catch (e) {
+      console.error('Erreur export insertion 3D:', e);
+      alert('Erreur lors de la sauvegarde de l’image.');
     } finally {
       setIsSaving(false);
     }
@@ -300,190 +303,217 @@ export default function LandscapeIntegrationModal({
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
-      >
-        <motion.div
-          initial={{ scale: 0.96, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.96, opacity: 0 }}
-          className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col"
-          style={{ maxHeight: '94vh' }}
-        >
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-xs">
-                PC6
-              </div>
-              <div>
-                <h3 className="font-extrabold text-base text-gray-900">Intégration Paysagère Interactive (Emprise & 3D)</h3>
-                <p className="text-xs text-gray-500">Dessinez l'emprise au sol du projet pour l'incruster en 3D sur la photo d'état initial.</p>
-              </div>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] flex items-center justify-center p-3">
+      <div className="bg-slate-900 text-white rounded-3xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden shadow-2xl border border-slate-700">
+        
+        {/* Header */}
+        <div className="px-6 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-600/20 text-blue-400 rounded-xl">
+              <Sparkles className="w-5 h-5" />
             </div>
+            <div>
+              <h3 className="font-extrabold text-base text-white">
+                Incrustation 3D du Projet Solaire sur photo de terrain (PC6)
+              </h3>
+              <p className="text-xs text-slate-400">
+                Structure {projectDimensions.largeur || '18.6'}m × {projectDimensions.longueur || '30.0'}m • Déplacez et ajustez le modèle librement sur le terrain
+              </p>
+            </div>
+          </div>
 
-            <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-200 text-gray-400 hover:text-gray-600">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSaveAndExport}
+              disabled={isSaving || !photoSrc}
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all active:scale-95 disabled:opacity-50"
+            >
+              <Check className="w-4 h-4" />
+              <span>{isSaving ? 'Génération de la PC6...' : 'Valider & Sauvegarder PC6'}</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
+        </div>
 
-          {/* Barre de contrôle supérieure (Urbassist style) */}
-          <div className="px-6 py-3 bg-slate-900 text-white flex items-center justify-between flex-wrap gap-3">
-            {/* Outillage Mode */}
-            <div className="flex items-center gap-2 bg-slate-800 p-1 rounded-xl">
-              <button
-                onClick={() => setMode('draw')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  mode === 'draw' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-300 hover:text-white'
-                }`}
-              >
-                <Edit3 className="w-3.5 h-3.5" /> Tracer Forme (2D)
-              </button>
-
-              <button
-                onClick={() => setMode('select')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  mode === 'select' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-300 hover:text-white'
-                }`}
-              >
-                <MousePointer className="w-3.5 h-3.5" /> Sélection / Ajuster
-              </button>
-
-              <button
-                onClick={() => setMode('3d')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  mode === '3d' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-300 hover:text-white'
-                }`}
-              >
-                <Box className="w-3.5 h-3.5" /> Incrustation 3D
-              </button>
-            </div>
-
-            {/* Contrôle Couleur & Opacité du fond */}
-            {mode !== '3d' && (
-              <div className="flex items-center gap-4 text-xs font-semibold text-gray-300">
-                <div className="flex items-center gap-2">
-                  <span>Couleur fond :</span>
-                  <input
-                    type="color"
-                    value={fillColor}
-                    onChange={e => setFillColor(e.target.value)}
-                    className="w-7 h-7 rounded-lg border-none cursor-pointer bg-transparent"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span>Opacité fond :</span>
-                  <input
-                    type="range" min="0.1" max="1" step="0.05"
-                    value={fillOpacity}
-                    onChange={e => setFillOpacity(parseFloat(e.target.value))}
-                    className="w-24 accent-blue-500 cursor-pointer"
-                  />
-                </div>
-
-                <button
-                  onClick={handleClearDrawing}
-                  className="flex items-center gap-1 text-red-400 hover:text-red-300 hover:bg-slate-800 px-2.5 py-1 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" /> Effacer
-                </button>
-              </div>
-            )}
-
-            {/* Importer nouvelle photo */}
-            <label className="flex items-center gap-1.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-xl cursor-pointer transition-colors">
-              <Upload className="w-3.5 h-3.5 text-blue-400" />
-              Changer photo terrain
-              <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-            </label>
-          </div>
-
-          {/* Zone de travail (Canvas & Image) */}
-          <div className="flex-1 bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden select-none">
+        {/* Corps principal : Photo + Canvas 3D superposé + Panneau de réglages */}
+        <div className="flex-1 flex overflow-hidden">
+          
+          {/* ZONE DE VISUALISATION (PHOTO + 3D OVERLAY) */}
+          <div
+            ref={containerRef}
+            className="flex-1 relative bg-black flex items-center justify-center overflow-hidden select-none cursor-move"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onWheel={handleWheel}
+          >
             {photoSrc ? (
-              <div
-                ref={containerRef}
-                onClick={handleContainerClick}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                className="relative rounded-2xl overflow-hidden shadow-2xl max-w-full max-h-full"
-                style={{ aspectRatio: '16 / 9', width: '100%', maxHeight: '540px' }}
-              >
+              <>
                 {/* Photo de fond */}
                 <img
-                  ref={imgRef}
                   src={photoSrc}
-                  alt="Terrain"
-                  className="w-full h-full object-cover pointer-events-none"
+                  alt="Terrain initial"
+                  className="absolute inset-0 w-full h-full object-cover pointer-events-none"
                 />
 
-                {/* Calque WebGL 3D */}
-                {mode === '3d' && (
-                  <canvas ref={threeCanvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
-                )}
+                {/* Canvas Three.js transparent superposé */}
+                <canvas
+                  ref={canvas3DRef}
+                  className="absolute inset-0 w-full h-full pointer-events-none"
+                />
 
-                {/* Calque SVG Polygone 2D Vectoriel */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                  {points.length > 0 && (
-                    <polygon
-                      points={points.map(p => `${p.x * 100}%,${p.y * 100}%`).join(' ')}
-                      fill={fillColor}
-                      fillOpacity={fillOpacity}
-                      stroke="#dc2626"
-                      strokeWidth="2.5"
-                    />
-                  )}
-                </svg>
-
-                {/* Sommets déplaçables */}
-                {points.map((p, idx) => (
-                  <div
-                    key={idx}
-                    onMouseDown={(e) => handlePointMouseDown(idx, e)}
-                    className="absolute w-5 h-5 -ml-2.5 -mt-2.5 rounded-full bg-white border-2 border-red-600 shadow-md cursor-grab active:cursor-grabbing flex items-center justify-center text-[9px] font-bold text-red-600 hover:scale-125 transition-transform"
-                    style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%` }}
-                  >
-                    {idx + 1}
-                  </div>
-                ))}
-              </div>
+                {/* Badge d'aide contextuelle */}
+                <div className="absolute bottom-4 left-4 bg-slate-900/85 backdrop-blur-md px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 border border-slate-700 pointer-events-none">
+                  🖱️ Glissez pour déplacer le bâtiment • Molette pour ajuster la taille / échelle
+                </div>
+              </>
             ) : (
-              <label className="flex flex-col items-center justify-center w-full h-72 border-2 border-dashed border-slate-700 rounded-3xl cursor-pointer hover:border-blue-500 transition-colors">
-                <ImageIcon className="w-10 h-10 text-slate-500 mb-2" />
-                <span className="text-sm font-bold text-slate-300">Importer une photo du terrain (État initial)</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-              </label>
+              <div className="text-center p-8">
+                <p className="text-slate-400 text-sm">Veuillez charger une photo de terrain pour commencer l'incrustation.</p>
+              </div>
             )}
           </div>
 
-          {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50">
-            <p className="text-xs text-gray-500">
-              {mode === '3d'
-                ? "Le modèle 3D du bâtiment est incrusté et ancré sur l'emprise au sol dessinée."
-                : "Cliquez sur la photo pour placer les sommets de l'emprise au sol de votre bâtiment."}
-            </p>
-
-            <div className="flex items-center gap-3">
-              <button onClick={onClose} className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800">
-                Annuler
-              </button>
+          {/* PANNEAU DE CONTRÔLE DES AXES & TRANSFORMATIONS */}
+          <div className="w-80 bg-slate-950/95 border-l border-slate-800 p-5 flex flex-col gap-4 overflow-y-auto text-xs">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="font-extrabold text-white flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                <Sliders className="w-4 h-4 text-blue-400" /> Réglages du modèle 3D
+              </span>
               <button
-                onClick={handleSaveAndExport}
-                disabled={isSaving}
-                className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-all disabled:opacity-60"
+                onClick={() => setTransform({ posX: 0, posY: -2, posZ: 0, rotY: 0.35, rotX: 0.05, rotZ: 0, scale: 1.0, sunAngle: 45 })}
+                className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1"
+                title="Réinitialiser la position"
               >
-                <Check className="w-4 h-4" /> Valider & Injecter dans le PDF PC6
+                <RefreshCw className="w-3 h-3" /> Réinitialiser
               </button>
             </div>
+
+            {/* 1. Taille / Échelle */}
+            <div>
+              <div className="flex justify-between text-slate-300 mb-1 font-semibold">
+                <span>Taille / Échelle</span>
+                <span className="text-blue-400 font-bold">{Math.round(transform.scale * 100)}%</span>
+              </div>
+              <input
+                type="range" min="0.2" max="3.0" step="0.05"
+                value={transform.scale}
+                onChange={e => setTransform(t => ({ ...t, scale: parseFloat(e.target.value) }))}
+                className="w-full accent-blue-500 cursor-pointer"
+              />
+            </div>
+
+            {/* 2. Orientation Azimut (Rotation Y) */}
+            <div>
+              <div className="flex justify-between text-slate-300 mb-1 font-semibold">
+                <span className="flex items-center gap-1"><Compass className="w-3.5 h-3.5 text-blue-400" /> Azimut / Orientation</span>
+                <span className="text-blue-400 font-bold">{Math.round((transform.rotY * 180) / Math.PI)}°</span>
+              </div>
+              <input
+                type="range" min="-3.14" max="3.14" step="0.05"
+                value={transform.rotY}
+                onChange={e => setTransform(t => ({ ...t, rotY: parseFloat(e.target.value) }))}
+                className="w-full accent-blue-500 cursor-pointer"
+              />
+            </div>
+
+            {/* 3. Inclinaison Terrain / Perspective (Pitch) */}
+            <div>
+              <div className="flex justify-between text-slate-300 mb-1 font-semibold">
+                <span>Inclinaison Terrain (Pente)</span>
+                <span className="text-blue-400 font-bold">{Math.round((transform.rotX * 180) / Math.PI)}°</span>
+              </div>
+              <input
+                type="range" min="-0.5" max="0.5" step="0.02"
+                value={transform.rotX}
+                onChange={e => setTransform(t => ({ ...t, rotX: parseFloat(e.target.value) }))}
+                className="w-full accent-blue-500 cursor-pointer"
+              />
+            </div>
+
+            {/* 4. Dévers latéral (Roll) */}
+            <div>
+              <div className="flex justify-between text-slate-300 mb-1 font-semibold">
+                <span>Dévers latéral</span>
+                <span className="text-blue-400 font-bold">{Math.round((transform.rotZ * 180) / Math.PI)}°</span>
+              </div>
+              <input
+                type="range" min="-0.3" max="0.3" step="0.02"
+                value={transform.rotZ}
+                onChange={e => setTransform(t => ({ ...t, rotZ: parseFloat(e.target.value) }))}
+                className="w-full accent-blue-500 cursor-pointer"
+              />
+            </div>
+
+            {/* 5. Hauteur / Élévation */}
+            <div>
+              <div className="flex justify-between text-slate-300 mb-1 font-semibold">
+                <span>Hauteur sol (Altitude)</span>
+                <span className="text-blue-400 font-bold">{transform.posY.toFixed(1)} m</span>
+              </div>
+              <input
+                type="range" min="-20" max="20" step="0.5"
+                value={transform.posY}
+                onChange={e => setTransform(t => ({ ...t, posY: parseFloat(e.target.value) }))}
+                className="w-full accent-blue-500 cursor-pointer"
+              />
+            </div>
+
+            {/* 6. Ensoleillement & Ombres */}
+            <div>
+              <div className="flex justify-between text-slate-300 mb-1 font-semibold">
+                <span className="flex items-center gap-1"><Sun className="w-3.5 h-3.5 text-amber-400" /> Angle du Soleil</span>
+                <span className="text-amber-400 font-bold">{transform.sunAngle}°</span>
+              </div>
+              <input
+                type="range" min="0" max="360" step="5"
+                value={transform.sunAngle}
+                onChange={e => setTransform(t => ({ ...t, sunAngle: parseInt(e.target.value) }))}
+                className="w-full accent-amber-500 cursor-pointer"
+              />
+            </div>
+
+            {/* Boutons d'angles rapides */}
+            <div className="pt-2 border-t border-slate-800">
+              <span className="text-slate-400 text-[10.5px] font-bold block mb-2 uppercase">Vues rapides</span>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={() => setTransform(t => ({ ...t, rotY: 0 }))}
+                  className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200"
+                >
+                  Face
+                </button>
+                <button
+                  onClick={() => setTransform(t => ({ ...t, rotY: Math.PI / 2 }))}
+                  className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200"
+                >
+                  Pignon
+                </button>
+                <button
+                  onClick={() => setTransform(t => ({ ...t, rotY: 0.5 }))}
+                  className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200"
+                >
+                  3/4 Droit
+                </button>
+                <button
+                  onClick={() => setTransform(t => ({ ...t, rotY: -0.5 }))}
+                  className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200"
+                >
+                  3/4 Gauche
+                </button>
+              </div>
+            </div>
+
           </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+
+        </div>
+
+      </div>
+    </div>
   );
 }
