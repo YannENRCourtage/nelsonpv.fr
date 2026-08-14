@@ -270,11 +270,9 @@ export const PlateCoupe = ({ project }) => {
                                 <line x1={apexSvgX} y1={apexSvgY} x2="480" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
                                 <polygon points={`126,${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 8} 126,${leftEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
                                 <polygon points={`${apexSvgX},${apexSvgY - 2} 484,${rightEaveSvgY - 2} 484,${rightEaveSvgY - 8} ${apexSvgX},${apexSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
-                            </>
-                        )}
-
-                        <text x={350} y={apexSvgY - 10} textAnchor="middle" fill="#1e3a8a" fontSize="8.5" fontWeight="bold">
-                            Toiture photovoltaïque : pente {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%) • Bac acier RAL 7016 + Modules solaires
+                                  {/* 4. Mentions de Toiture & PENTE REMONTÉE */}
+                        <text x={350} y={8} textAnchor="middle" fill="#1e3a8a" fontSize="8.5" fontWeight="bold">
+                            Toiture {isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque'} : pente {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%) • Bac acier RAL 7016 + Modules solaires
                         </text>
 
                         {/* Rappel Hauteurs */}
@@ -293,10 +291,34 @@ export const PlateCoupe = ({ project }) => {
                             Faîtage : {ridgeHeight.toFixed(2)}m
                         </text>
 
-                        <text x="305" y="122" textAnchor="middle" fill="#0284c7" fontSize="9.5" fontWeight="bold">
+                        <text x="305" y={118} textAnchor="middle" fill="#0284c7" fontSize="9.5" fontWeight="bold">
                             ▼ Largeur : {largeur.toFixed(2)} m (Emprise au sol)
                         </text>
-                        <line x1="130" y1="129" x2="480" y2="129" stroke="#0284c7" strokeWidth="1.5" />
+                        <line x1="130" y1="125" x2="480" y2="125" stroke="#0284c7" strokeWidth="1.5" />
+
+                        {/* Barre d'échelle métrique EXACTE (0 à 10m) en bas à droite sous TN Amont */}
+                        {(() => {
+                            const pxPerM = 350 / (largeur || 20.0);
+                            const totalW = 10 * pxPerM;
+                            const segW = 2 * pxPerM;
+                            const startX = 660 - totalW;
+                            return (
+                                <g transform={`translate(${startX}, 140)`}>
+                                    <rect x={0} y={0} width={segW} height={4} fill="#0f172a" />
+                                    <rect x={segW} y={0} width={segW} height={4} fill="#cbd5e1" />
+                                    <rect x={segW * 2} y={0} width={segW} height={4} fill="#0f172a" />
+                                    <rect x={segW * 3} y={0} width={segW} height={4} fill="#cbd5e1" />
+                                    <rect x={segW * 4} y={0} width={segW} height={4} fill="#0f172a" />
+                                    
+                                    <text x={0} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">0</text>
+                                    <text x={segW} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">2</text>
+                                    <text x={segW * 2} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">4</text>
+                                    <text x={segW * 3} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">6</text>
+                                    <text x={segW * 4} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">8</text>
+                                    <text x={totalW} y={10} fill="#0f172a" fontSize="7" fontWeight="bold" textAnchor="middle">10m</text>
+                                </g>
+                            );
+                        })()}
                     </svg>
                 </div>
             </div>
@@ -336,23 +358,27 @@ export const PlateFacades = ({ project, captures }) => {
                     </div>
                 </div>
 
-                <div style={{ flex: 1.15, display: 'flex', gap: '3mm', alignItems: 'center' }}>
-                    {/* Est : hauteur réduite de 15% */}
-                    <div style={{ flex: 0.85, height: '85%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-                        <div style={{ padding: '1.2mm', background: '#f1f5f9', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE EST</div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <img src={est || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Est" />
+                <div style={{ flex: 1.15, display: 'flex', gap: '3mm' }}>
+                    {/* Est : dimensions d'encart initiales avec image à -15% de hauteur */}
+                    <div style={{ flex: 0.85, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE EST</div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                            <div style={{ width: '100%', height: '85%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <img src={est || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Est" />
+                            </div>
                         </div>
                     </div>
-                    {/* Ouest : hauteur réduite de 15% */}
-                    <div style={{ flex: 0.85, height: '85%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-                        <div style={{ padding: '1.2mm', background: '#f1f5f9', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE OUEST</div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <img src={ouest || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Ouest" />
+                    {/* Ouest : dimensions d'encart initiales avec image à -15% de hauteur */}
+                    <div style={{ flex: 0.85, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE OUEST</div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+                            <div style={{ width: '100%', height: '85%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <img src={ouest || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Ouest" />
+                            </div>
                         </div>
                     </div>
                     {/* Toiture */}
-                    <div style={{ flex: 1.8, height: '100%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                    <div style={{ flex: 1.8, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#dbeafe', color: '#1e40af', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>VUE COUVERTURE (PAYSAGE)</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <img src={toiture || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Toiture" />

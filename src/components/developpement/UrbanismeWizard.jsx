@@ -5,7 +5,7 @@ import {
   ChevronRight, ChevronLeft, Loader2, FileCheck, Zap,
   Hash, Ruler, Info, RefreshCw, Mail, Phone, FileText,
   Upload, Image as ImageIcon, Check, Camera, Eye, Sparkles, Layers,
-  Crop, HelpCircle, ArrowRight, Box, Sliders
+  Crop, HelpCircle, ArrowRight, Box, Sliders, Trash2
 } from 'lucide-react';
 import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames } from '@/services/SmartCerfaService';
 import { cadastreService } from '@/services/CadastreService';
@@ -680,16 +680,60 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
                           <div className="space-y-2">
                             <div className="grid grid-cols-2 gap-2">
                               {/* Photo Avant */}
-                              <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200">
+                              <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 group">
                                 <img src={photos.avant} alt="Avant" className="w-full h-full object-cover" />
                                 <span className="absolute top-1 left-1 bg-black/60 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">Avant</span>
+                                
+                                {/* Boutons d'action Photo Avant */}
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
+                                  <label title="Remplacer la photo" className="cursor-pointer p-1.5 bg-white/90 hover:bg-white text-slate-800 rounded-lg shadow-sm transition-all hover:scale-105">
+                                    <Upload className="w-3.5 h-3.5" />
+                                    <input type="file" accept="image/*" className="hidden" onChange={e => handleFileSelectForCrop('photos', 'avant', 'Photo Terrain Avant', e)} />
+                                  </label>
+                                  <button
+                                    type="button"
+                                    title="Recadrer la photo"
+                                    onClick={() => setCropModal({ open: true, src: photos.avant, category: 'photos', key: 'avant', title: 'Recadrer Photo Terrain Avant' })}
+                                    className="p-1.5 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
+                                  >
+                                    <Crop className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="Supprimer la photo"
+                                    onClick={() => setPhotos(prev => ({ ...prev, avant: null, apres: null }))}
+                                    className="p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
+
                               {/* Photo Après */}
-                              <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 bg-gray-100 flex items-center justify-center">
+                              <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 bg-gray-100 flex items-center justify-center group">
                                 {photos?.apres ? (
                                   <>
                                     <img src={photos.apres} alt="Après" className="w-full h-full object-cover" />
                                     <span className="absolute top-1 left-1 bg-emerald-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">Après (3D)</span>
+                                    
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
+                                      <button
+                                        type="button"
+                                        title="Recadrer l'insertion"
+                                        onClick={() => setCropModal({ open: true, src: photos.apres, category: 'photos', key: 'apres', title: 'Recadrer Simulation 3D' })}
+                                        className="p-1.5 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
+                                      >
+                                        <Crop className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        title="Réinitialiser l'incrustation"
+                                        onClick={() => setPhotos(prev => ({ ...prev, apres: null }))}
+                                        className="p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
                                   </>
                                 ) : (
                                   <span className="text-[10px] text-gray-400 font-semibold">En attente d'incrustation</span>
@@ -726,6 +770,28 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
                       {photos?.proche ? (
                         <div className="relative group rounded-xl overflow-hidden aspect-video border border-gray-200">
                           <img src={photos.proche} alt="Env Proche" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
+                            <label title="Remplacer la photo" className="cursor-pointer p-1.5 bg-white/90 hover:bg-white text-slate-800 rounded-lg shadow-sm transition-all hover:scale-105">
+                              <Upload className="w-3.5 h-3.5" />
+                              <input type="file" accept="image/*" className="hidden" onChange={e => handleFileSelectForCrop('photos', 'proche', 'Environnement Proche', e)} />
+                            </label>
+                            <button
+                              type="button"
+                              title="Recadrer"
+                              onClick={() => setCropModal({ open: true, src: photos.proche, category: 'photos', key: 'proche', title: 'Recadrer Environnement Proche' })}
+                              className="p-1.5 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
+                            >
+                              <Crop className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Supprimer"
+                              onClick={() => setPhotos(prev => ({ ...prev, proche: null }))}
+                              className="p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <label className="aspect-video rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 bg-white transition-colors">
@@ -744,6 +810,28 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
                       {photos?.lointain ? (
                         <div className="relative group rounded-xl overflow-hidden aspect-video border border-gray-200">
                           <img src={photos.lointain} alt="Env Lointain" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
+                            <label title="Remplacer la photo" className="cursor-pointer p-1.5 bg-white/90 hover:bg-white text-slate-800 rounded-lg shadow-sm transition-all hover:scale-105">
+                              <Upload className="w-3.5 h-3.5" />
+                              <input type="file" accept="image/*" className="hidden" onChange={e => handleFileSelectForCrop('photos', 'lointain', 'Environnement Lointain', e)} />
+                            </label>
+                            <button
+                              type="button"
+                              title="Recadrer"
+                              onClick={() => setCropModal({ open: true, src: photos.lointain, category: 'photos', key: 'lointain', title: 'Recadrer Environnement Lointain' })}
+                              className="p-1.5 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
+                            >
+                              <Crop className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Supprimer"
+                              onClick={() => setPhotos(prev => ({ ...prev, lointain: null }))}
+                              className="p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <label className="aspect-video rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 bg-white transition-colors">

@@ -156,15 +156,11 @@ export const PlateGarde = ({ project }) => {
     );
 };
 
-/**
- * PLANCHE PC1 : PLAN DE SITUATION DU TERRAIN
- */
 export const PlateSituation = ({ project, captures, isInteractive, onUpload }) => {
     return (
         <div style={PAGE_STYLE} id="pc-plate-situation">
             <PlateHeader title="PC1 : PLAN DE SITUATION DU TERRAIN" project={project} />
             <div style={{ flex: 1, display: 'flex', gap: '8mm', maxHeight: '126mm', marginBottom: '6mm' }}>
-                {/* Encart Vue Cartographique */}
                 <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ padding: '2mm', background: '#f8fafc', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a', lineHeight: '1.25' }}>
                         <div>Vue Cartographique</div>
@@ -181,7 +177,6 @@ export const PlateSituation = ({ project, captures, isInteractive, onUpload }) =
                     </div>
                 </div>
 
-                {/* Encart Vue Aérienne */}
                 <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ padding: '2mm', background: '#f8fafc', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a', lineHeight: '1.25' }}>
                         <div>Vue Aérienne</div>
@@ -225,7 +220,6 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
 
 /**
  * PLANCHE COMBINÉE PC3 / PC4 : COUPE TRANSVERSALE ASYMÉTRIQUE FIDÈLE AU MODÈLE ET À L'IMAGE ARCHITECTE
- * Coupe de terrain asymétrique avec versants et auvent/appentis entièrement recouverts de panneaux solaires
  */
 export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isInteractive }) => {
     const longueur = project?.longueur || '30.0';
@@ -235,45 +229,58 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const terrainSlopeDeg = parseFloat(project?.pente_terrain || project?.terrain_slope || 3);
     const displayKwc = project?.kwc || project?.puissance || project?.projectSize || 256;
     
-    // Détection stricte : par défaut TOUS les bâtiments photovoltaïques agricoles sont traités en asymétrique fidèle
+    // Détection stricte
     const rawType = (project?.buildingType || project?.installationType || project?.type || 'asymetrique_1').toLowerCase();
     const isOmbriere = rawType.includes('ombriere');
     const isMonopente = rawType.includes('monopente');
-    const isAsym = !isOmbriere && !isMonopente; // Coupe asymétrique standard avec pente longue et pente courte
+    const isSym = rawType.includes('symetrique');
+    const isAsym = !isOmbriere && !isMonopente && !isSym;
     
     const hasAuvent = project?.rightSide === 'auvent' || project?.leftSide === 'auvent' || isAsym || true;
     const hasAppentis = project?.rightSide === 'appentis' || project?.leftSide === 'appentis';
 
-    // Calculs dimensionnels stricts
-    let rightEaveHeight = hauteurEgout; // Égout Sud = 4.00m
-    let ridgeHeight = rightEaveHeight + (largeur * 0.75 * Math.tan((pente * Math.PI) / 180)); // Faîtage = 8.02m
-    let leftEaveHeight = Math.max(3.0, ridgeHeight - (largeur * 0.25 * Math.tan((pente * Math.PI) / 180))); // Égout Nord = 6.68m
-    let auventTipHeight = Math.max(2.5, rightEaveHeight - (4.0 * Math.tan((pente * Math.PI) / 180))); // Pointe auvent = 2.93m
+    // Calculs dimensionnels
+    let rightEaveHeight = hauteurEgout;
+    let ridgeHeight = rightEaveHeight + (largeur * 0.75 * Math.tan((pente * Math.PI) / 180));
+    let leftEaveHeight = Math.max(3.0, ridgeHeight - (largeur * 0.25 * Math.tan((pente * Math.PI) / 180)));
 
     if (isMonopente) {
         leftEaveHeight = hauteurEgout;
         ridgeHeight = leftEaveHeight + (largeur * Math.tan((pente * Math.PI) / 180));
         rightEaveHeight = ridgeHeight;
+    } else if (isSym) {
+        ridgeHeight = hauteurEgout + ((largeur / 2) * Math.tan((pente * Math.PI) / 180));
+        leftEaveHeight = hauteurEgout;
+        rightEaveHeight = hauteurEgout;
     }
 
-    // Coordonnées SVG (Portée bâtiment X: 130 -> 480, Largeur graphique = 350px, Auvent X: 480 -> 550)
-    const groundYLeft = 142 + Math.sin((terrainSlopeDeg * Math.PI) / 180) * 105;
-    const groundYRight = 142 - Math.sin((terrainSlopeDeg * Math.PI) / 180) * 105;
+    // Coordonnées SVG (Portée bâtiment X: 130 -> 480, Largeur graphique = 350px)
+    const groundYLeft = 140 + Math.sin((terrainSlopeDeg * Math.PI) / 180) * 105;
+    const groundYRight = 140 - Math.sin((terrainSlopeDeg * Math.PI) / 180) * 105;
 
-    const apexSvgX = isAsym ? 218 : 305;
-    const apexSvgY = 16;
-    const leftEaveSvgY = isAsym ? 44 : 56;
-    const rightEaveSvgY = 56;
+    const apexSvgX = isAsym ? 218 : isSym ? 305 : 480;
+    const apexSvgY = 20;
+    const leftEaveSvgY = isAsym ? 44 : 54;
+    const rightEaveSvgY = 54;
     const auventTipSvgX = 550;
-    const auventTipSvgY = 68;
+    const auventTipSvgY = 66;
+
+    // Calcul de l'échelle métrique exacte (350px pour largeur mètres)
+    const pxPerMeter = 350 / (largeur || 20.0);
+    const scaleTotalWidth = 10 * pxPerMeter; // Largeur exacte de la barre 10m
+    const scaleSegWidth = 2 * pxPerMeter; // Largeur segment 2m
+    const scaleStartX = 660 - scaleTotalWidth; // Ancré en bas à droite sous TN Amont
+    const scaleY = 140;
+
+    const roofTypeLabel = isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque';
 
     return (
         <div style={PAGE_STYLE} id="pc-plate-section-notice">
             <PlateHeader title="PC3 : PLAN EN COUPE & PC4 : NOTICE DESCRIPTIVE" project={project} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3.5mm', maxHeight: '138mm', marginBottom: '5mm' }}>
                 
-                {/* ── HAUT : PC3 PLAN EN COUPE TRANSVERSALE DYNAMIQUE FIDÈLE (STYLE COUPE DE TERRAIN ARCHITECTE) ── */}
-                <div style={{ height: '82mm', border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '2mm 5mm', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                {/* ── HAUT : PC3 PLAN EN COUPE TRANSVERSALE DYNAMIQUE FIDÈLE ── */}
+                <div style={{ height: '84mm', border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '2mm 5mm', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1mm' }}>
                         <span style={{ fontSize: '9pt', fontWeight: 'bold', color: '#0f172a' }}>
                             PC3 — COUPE DE TERRAIN & DU BÂTIMENT (COUPE TRANSVERSALE AA')
@@ -284,38 +291,37 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                     </div>
 
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg width="680" height="142" viewBox="0 0 680 142" style={{ width: '100%', height: '100%', maxHeight: '68mm' }}>
+                        <svg width="680" height="152" viewBox="0 0 680 152" style={{ width: '100%', height: '100%', maxHeight: '72mm' }}>
                             
-                            {/* Badges d'Orientation NORD / SUD (comme sur l'image architecte 2) */}
-                            <rect x="70" y="10" width="46" height="15" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
-                            <text x="93" y="21" textAnchor="middle" fill="#2563eb" fontSize="8" fontWeight="bold">NORD</text>
+                            {/* Badges d'Orientation NORD / SUD */}
+                            <rect x="70" y="8" width="46" height="15" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
+                            <text x="93" y="19" textAnchor="middle" fill="#2563eb" fontSize="8" fontWeight="bold">NORD</text>
 
-                            <rect x="585" y="10" width="40" height="15" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
-                            <text x="605" y="21" textAnchor="middle" fill="#2563eb" fontSize="8" fontWeight="bold">SUD</text>
+                            <rect x="585" y="8" width="40" height="15" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
+                            <text x="605" y="19" textAnchor="middle" fill="#2563eb" fontSize="8" fontWeight="bold">SUD</text>
 
-                            {/* 1. Ligne de Terrain Naturel (TN) & Hachures du sol */}
+                            {/* 1. Ligne de Terrain Naturel (TN) */}
                             <line x1="20" y1={groundYLeft} x2="660" y2={groundYRight} stroke="#94a3b8" strokeWidth="2" strokeDasharray="6 3" />
                             <text x="35" y={groundYLeft + 12} fill="#64748b" fontSize="8" fontStyle="italic">Terrain naturel conservé (TN Aval)</text>
-                            <text x="645" y={groundYRight + 12} textAnchor="end" fill="#64748b" fontSize="8" fontStyle="italic">TN Amont</text>
+                            <text x="655" y={groundYRight - 4} textAnchor="end" fill="#64748b" fontSize="8" fontStyle="italic">TN Amont</text>
 
-                            {/* 2. Poteaux métalliques principaux en acier galvanisé */}
+                            {/* 2. Poteaux métalliques principaux */}
                             <rect x="130" y={leftEaveSvgY} width="9" height={groundYLeft - leftEaveSvgY} fill="#334155" />
                             <rect x="472" y={rightEaveSvgY} width="9" height={groundYRight - rightEaveSvgY} fill="#334155" />
 
-                            {/* Poteau appentis si configuré */}
                             {hasAppentis && (
                                 <rect x="545" y={auventTipSvgY} width="6" height={groundYRight - auventTipSvgY} fill="#334155" />
                             )}
 
-                            {/* 3. Portique & PANNEAUX SOLAIRES SUR TOUTE LA TOITURE (VERSANT COURT NORD + VERSANT LONG SUD + AUVENT) */}
+                            {/* 3. Portique & PANNEAUX SOLAIRES SUR TOUTE LA TOITURE */}
                             {isAsym ? (
                                 <>
-                                    {/* Versant court Nord (5m) : Portique acier + Panneaux solaires photovoltaïques */}
+                                    {/* Versant court Nord (5m) */}
                                     <line x1="130" y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="5" />
                                     <polygon points={`126,${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 8} 126,${leftEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
                                     <line x1={130 + (apexSvgX - 130) * 0.5} y1={leftEaveSvgY + (apexSvgY - leftEaveSvgY) * 0.5 - 8} x2={130 + (apexSvgX - 130) * 0.5} y2={leftEaveSvgY + (apexSvgY - leftEaveSvgY) * 0.5 - 2} stroke="#93c5fd" strokeWidth="1" />
 
-                                    {/* Versant long Sud (15m) : Portique acier + Panneaux solaires photovoltaïques */}
+                                    {/* Versant long Sud (15m) */}
                                     <line x1={apexSvgX} y1={apexSvgY} x2="480" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
                                     <polygon points={`${apexSvgX},${apexSvgY - 2} 484,${rightEaveSvgY - 2} 484,${rightEaveSvgY - 8} ${apexSvgX},${apexSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
                                     {[0.2, 0.4, 0.6, 0.8].map((ratio, idx) => {
@@ -324,7 +330,7 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                                         return <line key={idx} x1={px} y1={py - 8} x2={px} y2={py - 2} stroke="#93c5fd" strokeWidth="1" />;
                                     })}
 
-                                    {/* Auvent Sud (+4m) : Console acier + Panneaux solaires sur toute la surface de l'auvent */}
+                                    {/* Auvent Sud (+4m) */}
                                     {hasAuvent && (
                                         <>
                                             <line x1="480" y1={rightEaveSvgY} x2={auventTipSvgX} y2={auventTipSvgY} stroke="#1e293b" strokeWidth="4" />
@@ -343,13 +349,12 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                                 </>
                             )}
 
-                            {/* 4. Mentions de Toiture & PENTE AU-DESSUS DE LA COUVERTURE */}
-                            <text x={350} y={apexSvgY - 10} textAnchor="middle" fill="#1e3a8a" fontSize="8.5" fontWeight="bold">
-                                Toiture photovoltaïque : pente {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%) • Bac acier RAL 7016 + Modules solaires
+                            {/* 4. Mentions de Toiture & PENTE REMONTÉE AU-DESSUS DE LA COUVERTURE */}
+                            <text x={350} y={8} textAnchor="middle" fill="#1e3a8a" fontSize="8.5" fontWeight="bold">
+                                Toiture {roofTypeLabel} : pente {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%) • Bac acier RAL 7016 + Modules solaires
                             </text>
 
-                            {/* 5. Rappel Hauteurs d'égout et Faîtage (Format cote architecte) */}
-                            {/* Égout Nord */}
+                            {/* 5. Rappel Hauteurs d'égout et Faîtage */}
                             <line x1="108" y1={leftEaveSvgY} x2="108" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
                             <line x1="104" y1={leftEaveSvgY} x2="112" y2={leftEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
                             <line x1="104" y1={groundYLeft} x2="112" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
@@ -357,7 +362,6 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                                 Égout Nord : {leftEaveHeight.toFixed(2)}m
                             </text>
 
-                            {/* Égout Sud */}
                             <line x1="502" y1={rightEaveSvgY} x2="502" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
                             <line x1="498" y1={rightEaveSvgY} x2="506" y2={rightEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
                             <line x1="498" y1={groundYRight} x2="506" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
@@ -365,38 +369,42 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                                 Égout Sud : {rightEaveHeight.toFixed(2)}m
                             </text>
 
-                            {/* Faîtage */}
                             <line x1={apexSvgX} y1={apexSvgY} x2={apexSvgX} y2={groundYLeft} stroke="#ef4444" strokeWidth="1" strokeDasharray="3 2" />
                             <text x={apexSvgX + 6} y={apexSvgY + 24} fill="#ef4444" fontSize="8.5" fontWeight="bold">
                                 Faîtage : {ridgeHeight.toFixed(2)}m
                             </text>
 
                             {/* 6. Largeur d'emprise au sol AU-DESSUS du trait bleu */}
-                            <text x="305" y="122" textAnchor="middle" fill="#0284c7" fontSize="9.5" fontWeight="bold">
+                            <text x="305" y="118" textAnchor="middle" fill="#0284c7" fontSize="9.5" fontWeight="bold">
                                 ▼ Largeur : {largeur.toFixed(2)} m (Emprise au sol)
                             </text>
-                            <line x1="130" y1="129" x2="480" y2="129" stroke="#0284c7" strokeWidth="1.5" />
-                            <line x1="130" y1="124" x2="130" y2="134" stroke="#0284c7" strokeWidth="1.5" />
-                            <line x1="480" y1="124" x2="480" y2="134" stroke="#0284c7" strokeWidth="1.5" />
+                            <line x1="130" y1="125" x2="480" y2="125" stroke="#0284c7" strokeWidth="1.5" />
+                            <line x1="130" y1="120" x2="130" y2="130" stroke="#0284c7" strokeWidth="1.5" />
+                            <line x1="480" y1="120" x2="480" y2="130" stroke="#0284c7" strokeWidth="1.5" />
 
                             {/* Cote de l'auvent au sol */}
                             {hasAuvent && (
                                 <>
-                                    <line x1="480" y1="129" x2={auventTipSvgX} y2="129" stroke="#0284c7" strokeWidth="1.5" strokeDasharray="4 2" />
-                                    <line x1={auventTipSvgX} y1="124" x2={auventTipSvgX} y2="134" stroke="#0284c7" strokeWidth="1.5" />
-                                    <text x={(480 + auventTipSvgX) / 2} y="138" textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">+4.00m</text>
+                                    <line x1="480" y1="125" x2={auventTipSvgX} y2="125" stroke="#0284c7" strokeWidth="1.5" strokeDasharray="4 2" />
+                                    <line x1={auventTipSvgX} y1="120" x2={auventTipSvgX} y2="130" stroke="#0284c7" strokeWidth="1.5" />
+                                    <text x={(480 + auventTipSvgX) / 2} y="133" textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">+4.00m</text>
                                 </>
                             )}
 
-                            {/* Échelle graphique en bas à droite (comme sur l'image architecte 2) */}
-                            <g transform="translate(570, 126)">
-                                <rect x="0" y="0" width="15" height="4" fill="#0f172a" />
-                                <rect x="15" y="0" width="15" height="4" fill="#cbd5e1" />
-                                <rect x="30" y="0" width="15" height="4" fill="#0f172a" />
-                                <rect x="45" y="0" width="15" height="4" fill="#cbd5e1" />
-                                <text x="0" y="10" fill="#64748b" fontSize="6">0</text>
-                                <text x="30" y="10" fill="#64748b" fontSize="6">5</text>
-                                <text x="60" y="10" fill="#64748b" fontSize="6">10m</text>
+                            {/* Barre d'échelle métrique EXACTE (0 à 10m) en bas à droite sous TN Amont */}
+                            <g transform={`translate(${scaleStartX}, ${scaleY})`}>
+                                <rect x={0} y={0} width={scaleSegWidth} height={4} fill="#0f172a" />
+                                <rect x={scaleSegWidth} y={0} width={scaleSegWidth} height={4} fill="#cbd5e1" />
+                                <rect x={scaleSegWidth * 2} y={0} width={scaleSegWidth} height={4} fill="#0f172a" />
+                                <rect x={scaleSegWidth * 3} y={0} width={scaleSegWidth} height={4} fill="#cbd5e1" />
+                                <rect x={scaleSegWidth * 4} y={0} width={scaleSegWidth} height={4} fill="#0f172a" />
+                                
+                                <text x={0} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">0</text>
+                                <text x={scaleSegWidth} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">2</text>
+                                <text x={scaleSegWidth * 2} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">4</text>
+                                <text x={scaleSegWidth * 3} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">6</text>
+                                <text x={scaleSegWidth * 4} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">8</text>
+                                <text x={scaleTotalWidth} y={10} fill="#0f172a" fontSize="7" fontWeight="bold" textAnchor="middle">10m</text>
                             </g>
                         </svg>
                     </div>
@@ -437,7 +445,7 @@ export const PlateNotice = (props) => <PlateSectionAndNotice {...props} />;
 
 /**
  * PLANCHE PC5 : PLAN DES FAÇADES ET TOITURES (5 VUES 3D)
- * Directive : Hauteur des vues Façade Est et Ouest réduite de 15% sans modifier la largeur, avec image redimensionnée
+ * Directive : Encarts aux dimensions initiales, image à l'intérieur réduite de 15% en hauteur sans modifier la largeur
  */
 export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => {
     const sud = captures?.facade_sud || captures?.facades_projet;
@@ -486,42 +494,46 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                     </div>
                 </div>
 
-                {/* Ligne 2 : Pignons (Est & Ouest réduits de 15% en hauteur) et Vue Toiture */}
-                <div style={{ flex: 1.15, display: 'flex', gap: '4mm', minHeight: '54mm', alignItems: 'center' }}>
-                    {/* Façade Est : Hauteur diminuée de 15% sans modifier la largeur */}
-                    <div style={{ flex: 1, height: '85%', border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
-                        <div style={{ padding: '1.2mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                {/* Ligne 2 : Pignons (Est & Ouest aux dimensions d'encart initiales avec image à -15% hauteur) et Vue Toiture */}
+                <div style={{ flex: 1.15, display: 'flex', gap: '4mm', minHeight: '54mm' }}>
+                    {/* Façade Est : Encart initial, image à 85% de hauteur sans modifier la largeur */}
+                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+                        <div style={{ padding: '1.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
                             3. FAÇADE EST (PIGNON GAUCHE)
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
-                            <ImageUploadZone 
-                                isInteractive={isInteractive} 
-                                photo={est || sud} 
-                                onUpload={(data) => onUpload && onUpload('facade_est', data)} 
-                                defaultText="Vue Façade Est" 
-                                label="Façade Est"
-                            />
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', width: '100%', height: '100%' }}>
+                            <div style={{ width: '100%', height: '85%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <ImageUploadZone 
+                                    isInteractive={isInteractive} 
+                                    photo={est || sud} 
+                                    onUpload={(data) => onUpload && onUpload('facade_est', data)} 
+                                    defaultText="Vue Façade Est" 
+                                    label="Façade Est"
+                                />
+                            </div>
                         </div>
                     </div>
 
-                    {/* Façade Ouest : Hauteur diminuée de 15% sans modifier la largeur */}
-                    <div style={{ flex: 1, height: '85%', border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
-                        <div style={{ padding: '1.2mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                    {/* Façade Ouest : Encart initial, image à 85% de hauteur sans modifier la largeur */}
+                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+                        <div style={{ padding: '1.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
                             4. FAÇADE OUEST (PIGNON DROIT)
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
-                            <ImageUploadZone 
-                                isInteractive={isInteractive} 
-                                photo={ouest || sud} 
-                                onUpload={(data) => onUpload && onUpload('facade_ouest', data)} 
-                                defaultText="Vue Façade Ouest" 
-                                label="Façade Ouest"
-                            />
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', width: '100%', height: '100%' }}>
+                            <div style={{ width: '100%', height: '85%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <ImageUploadZone 
+                                    isInteractive={isInteractive} 
+                                    photo={ouest || sud} 
+                                    onUpload={(data) => onUpload && onUpload('facade_ouest', data)} 
+                                    defaultText="Vue Façade Ouest" 
+                                    label="Façade Ouest"
+                                />
+                            </div>
                         </div>
                     </div>
 
-                    {/* Vue Couverture (Plan Toiture plein cadre paysage) */}
-                    <div style={{ flex: 1.5, height: '100%', border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+                    {/* Vue Couverture */}
+                    <div style={{ flex: 1.5, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
                         <div style={{ padding: '1.8mm', background: '#dbeafe', borderBottom: '1px solid #93c5fd', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#1e40af' }}>
                             5. VUE COUVERTURE (PLAN TOITURE PHOTOVOLTAÏQUE)
                         </div>
@@ -543,15 +555,10 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
     );
 };
 
-/**
- * PLANCHE PC6 : DOCUMENT GRAPHIQUE D'INSERTION PAYSAGÈRE
- * Directive : Hauteur de cadre réduite, mentions (AVANT TRAVAUX) et (SIMULATION 3D D'INSERTION PAYSAGÈRE) sur 2ème ligne
- */
 export const PlateInsertion = ({ project, photos, isInteractive, onUpload }) => (
     <div style={PAGE_STYLE} id="pc-plate-insertion">
         <PlateHeader title="PC6 : DOCUMENT GRAPHIQUE D'INSERTION PAYSAGÈRE" project={project} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: '124mm', marginBottom: '6mm' }}>
-            {/* Vue Avant Projet */}
             <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', position: 'relative', background: '#f8fafc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 <div style={{ padding: '2mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a', lineHeight: '1.25' }}>
                     <div>1. VUE DE L'ÉTAT INITIAL DU SITE</div>
@@ -568,7 +575,6 @@ export const PlateInsertion = ({ project, photos, isInteractive, onUpload }) => 
                 </div>
             </div>
 
-            {/* Vue Après Projet */}
             <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', position: 'relative', background: '#f8fafc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 <div style={{ padding: '2mm', background: '#dcfce7', borderBottom: '1px solid #86efac', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#166534', lineHeight: '1.25' }}>
                     <div>2. VUE APRÈS PROJET</div>
@@ -589,14 +595,10 @@ export const PlateInsertion = ({ project, photos, isInteractive, onUpload }) => 
     </div>
 );
 
-/**
- * PLANCHE PC7 & PC8 : ENVIRONNEMENT PROCHE ET LOINTAIN (SUR LA MÊME LIGNE)
- */
 export const PlateEnv = ({ project, photos, isInteractive, onUpload }) => (
     <div style={PAGE_STYLE} id="pc-plate-env">
         <PlateHeader title="PC7 & PC8 : ENVIRONNEMENT PROCHE ET LOINTAIN" project={project} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: '135mm', marginBottom: '5mm' }}>
-            {/* PC7 à gauche */}
             <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
                 <div style={{ padding: '2.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
                     PC7 — Photographie dans l'environnement proche
@@ -612,7 +614,6 @@ export const PlateEnv = ({ project, photos, isInteractive, onUpload }) => (
                 </div>
             </div>
 
-            {/* PC8 à droite */}
             <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
                 <div style={{ padding: '2.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
                     PC8 — Photographie dans le paysage lointain
