@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nelson-crm-cache-v1';
+const CACHE_NAME = 'nelson-pwa-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -22,6 +22,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cache) => {
           if (cache !== CACHE_NAME) {
+            console.log('[SW] Suppression de l\'ancien cache :', cache);
             return caches.delete(cache);
           }
         })
@@ -31,21 +32,52 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET' || event.request.url.includes('firestore.googleapis.com')) {
+  // Ignore non-GET requests and external API calls
+  if (event.request.method !== 'GET' || event.request.url.includes('firestore.googleapis.com') || event.request.url.includes('firebase')) {
     return;
   }
 
-  event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        return caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, networkResponse.clone());
+  // Network-First strategy for HTML, JS and CSS to ensure instant updates after Vercel deployments
+  const isCodeAsset = event.request.mode === 'navigate' || 
+                      event.request.url.includes('.js') || 
+                      event.request.url.includes('.css') || 
+                      event.request.url.includes('/index.html');
+
+  if (isCodeAsset) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
           return networkResponse;
-        });
-      })
-      .catch(() => {
-        return caches.match(event.request);
-      })
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Cache-First with Network fallback for static images
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) return cachedResponse;
+      return fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+        }
+        return networkResponse;
+      });
+    })
   );
 });

@@ -71,17 +71,51 @@
   </noscript>
   <!-- End of Statcounter Code -->
 
-  <!-- Enregistrement du Service Worker pour la PWA -->
+  <!-- Enregistrement du Service Worker pour la PWA avec auto-update -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/service-worker.js')
           .then((registration) => {
             console.log('ServiceWorker enregistré avec succès.', registration.scope);
+
+            // Vérification périodique des nouvelles versions (toutes les 60 secondes)
+            setInterval(() => {
+              registration.update();
+            }, 60000);
+
+            // Vérification à chaque fois que l'application repasse au premier plan
+            document.addEventListener('visibilitychange', () => {
+              if (document.visibilityState === 'visible') {
+                registration.update();
+              }
+            });
+
+            // Détection des nouvelles versions Vercel
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    console.log('Nouvelle version Vercel détectée ! Activation de la mise à jour PWA...');
+                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                  }
+                });
+              }
+            });
           })
           .catch((error) => {
             console.error('Erreur lors de l\'enregistrement du ServiceWorker:', error);
           });
+
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            refreshing = true;
+            console.log('Nouveau ServiceWorker activé. Rechargement automatique de l\'application PWA...');
+            window.location.reload();
+          }
+        });
       });
     }
   </script>

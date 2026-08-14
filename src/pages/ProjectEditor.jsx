@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { useConfiguratorStore, useConfiguratorValues } from '@/stores/useConfiguratorStore';
-import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Building, X, FolderHeart as HomeIcon, Map as MapIcon, ExternalLink, RotateCcw, RotateCw, Type, MessageCircle, Box, Layout, Search, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { MapPin, DoorOpen, Home, Flame, Zap, Plug, Users, ImagePlus, Camera, Building, X, FolderHeart as HomeIcon, Map as MapIcon, ExternalLink, RotateCcw, RotateCw, Type, MessageCircle, Box, Layout, Search, ChevronDown, ChevronUp, Info, ArrowLeft } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import MapEditor from "../components/MapEditor";
 import StreetViewTab from "../components/StreetViewTab";
@@ -100,6 +100,7 @@ function SymbolsPanel({ onSymbolSelect, selectedSymbol }) {
 
 export default function ProjectEditor() {
   const { projectId } = useParams();
+  const navigate = useNavigate();
   const { projects, setProject, project, updateProject, saveProject } = useProjects();
 
   const handleAddressSelect = (feature) => {
@@ -230,6 +231,9 @@ export default function ProjectEditor() {
 
 
   useEffect(() => {
+    // Reset project state on project change to avoid data leak from previous project
+    setProject(null);
+
     const loadProject = async () => {
       // If creating new project, set init state
       if (projectId === 'new') {
@@ -247,6 +251,7 @@ export default function ProjectEditor() {
           status: 'Nouveau',
           user: project?.user || '',
           projectSize: '',
+          kwc: '',
           comments: '',
           captures: [null, null, null, null],
 
@@ -491,6 +496,7 @@ export default function ProjectEditor() {
       status: 'Nouveau',
       user: project?.user || '',
       projectSize: '',
+      kwc: '',
       comments: '',
       captures: [null, null, null, null],
       photos: [],
@@ -728,6 +734,17 @@ export default function ProjectEditor() {
         <section className="col-span-1 lg:col-span-9 rounded-2xl bg-white p-3 lg:p-6 shadow-sm h-full flex flex-col justify-between">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start mb-4">
             <div className="flex items-center justify-between lg:justify-start gap-3 w-full lg:w-auto">
+              <Button
+                type="button"
+                onClick={() => navigate('/crm?tab=projects')}
+                variant="outline"
+                size="sm"
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300 font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                title="Retour à la liste des projets CRM"
+              >
+                <ArrowLeft className="w-4 h-4 text-slate-700" />
+                <span>Retour</span>
+              </Button>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold">Client &amp; Projet</h2>
                 <button
@@ -1167,7 +1184,18 @@ export default function ProjectEditor() {
                   </button>
                 </div>
               </div>
-              <div className="col-span-6"><label className="text-sm font-medium">Projet</label><Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} className="mt-1" placeholder="Ex: 150m² ou 9kWc" /></div>
+              <div className="col-span-6">
+                <div className="flex gap-2">
+                  <div className="w-[88%]">
+                    <label className="text-sm font-medium">Projet</label>
+                    <Input value={p.projectSize || ''} onChange={e => updateProject({ projectSize: e.target.value })} className="mt-1 h-10" placeholder="Ex: T9 MAXI 75x32m + 4 batteries" />
+                  </div>
+                  <div className="w-[12%] min-w-[70px]">
+                    <label className="text-sm font-medium text-blue-600 font-bold">kWc</label>
+                    <Input value={p.kwc || ''} onChange={e => updateProject({ kwc: e.target.value })} className="mt-1 h-10 font-bold text-blue-900 border-blue-200 focus:border-blue-500" placeholder="kWc" />
+                  </div>
+                </div>
+              </div>
 
               {/* Desktop: Technical Fields */}
               <div className="col-span-12 space-y-2">

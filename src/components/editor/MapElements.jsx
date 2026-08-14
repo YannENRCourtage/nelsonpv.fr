@@ -4100,6 +4100,7 @@ function MapTargetInfo({ targetPos, setTargetPos, hoverInfo, showInfoPanel, setS
 
         if (targetPos.isManual && setProject) {
           setProject(prev => {
+            if (!prev) return prev;
             const currentGps = `${targetPos.lat}, ${targetPos.lng}`;
             if (prev.gps === currentGps) return prev;
             return {
@@ -4342,12 +4343,12 @@ function MapEvents({ project, setProject, onAddressFound, onAddressSearched, set
       const isSecondBuilding = existingPredefined.length >= 1;
 
       if (isSecondBuilding) {
-        setProject(prev => ({ ...prev, panelAspect2: az, panelAngle2: '15' })); // Default angle 15 for 2nd building
+        setProject(prev => (prev ? { ...prev, panelAspect2: az, panelAngle2: '15' } : prev)); // Default angle 15 for 2nd building
         toast({ ...toastStyle, title: `Bâtiment ${building.code} ajouté`, description: `Azimut calculé : ${az}° (Sud) - Configuré en Bâtiment 2` });
       } else {
         // If this is the FIRST building, we set the primary panelAspect
         // We do NOT touch panelAspect if we are adding a second building.
-        setProject(prev => ({ ...prev, panelAspect: az }));
+        setProject(prev => (prev ? { ...prev, panelAspect: az } : prev));
         if (setIsAzimuthDefaulted) setIsAzimuthDefaulted(true);
         toast({ ...toastStyle, title: `Bâtiment ${building.code} ajouté`, description: `Azimut calculé : ${az}° (Sud)` });
       }
@@ -4993,6 +4994,7 @@ function MapStateSync({ project, setProject }) {
       if (JSON.stringify(newView) !== JSON.stringify(lastSavedViewRef.current)) {
         lastSavedViewRef.current = newView;
         setProject(prev => {
+          if (!prev) return prev;
           if (prev?.mapView && JSON.stringify(prev.mapView) === JSON.stringify(newView)) return prev;
           return { ...prev, mapView: newView };
         });
@@ -5382,6 +5384,8 @@ export default function MapElements({
       // Log pour vérifier ce qu'on envoie au projet
       // console.log("[MapElements] Syncing local features to project state:", sanitizedFeatures.length);
       setProject(prev => {
+        if (!prev) return prev;
+
         const prevFeatures = prev?.features || [];
 
         // Bidirectional Sync: Check if azimuth needs update

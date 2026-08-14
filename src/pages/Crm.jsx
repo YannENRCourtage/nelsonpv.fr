@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { useProjects } from '@/contexts/ProjectContext.jsx';
 import * as XLSX from 'xlsx';
@@ -118,11 +118,19 @@ import DuplicateProjectModal from '@/components/DuplicateProjectModal.jsx';
 
 export default function Crm() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { projects, setProjects } = useProjects();
   const { user, activeTenantId } = useAuth();
 
   // États principaux
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabFromUrl || 'dashboard');
+
+  useEffect(() => {
+    if (tabFromUrl && ['dashboard', 'contacts', 'projects', 'calendar', 'reports'].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
   const [viewMode, setViewMode] = useState('list');
   const [selectedProjects, setSelectedProjects] = useState([]);
   const [selectedContacts, setSelectedContacts] = useState([]);
@@ -685,6 +693,7 @@ export default function Crm() {
         'Code Postal': p.zip || '-',
         'Ville': p.city || '-',
         'GPS': p.gps || '-',
+        'Puissance (kWc)': p.kwc ? (p.kwc.toLowerCase().includes('kwc') ? p.kwc : `${p.kwc} kWc`) : (p.projectSize || '-'),
         'Type': p.type || 'Construction',
         'Statut': p.status === 'draft' ? 'Nouveau' : (p.status || 'Nouveau')
       }));
@@ -1746,10 +1755,10 @@ export default function Crm() {
           <div className="overflow-x-auto">
             {/* ... Existing Table Code ... */}
 
-            <table className="w-full">
+            <table className="w-full text-xs">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase w-10">
+                  <th className="px-2 py-3 text-left font-semibold text-slate-700 uppercase w-8">
                     <input
                       type="checkbox"
                       className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
@@ -1757,17 +1766,18 @@ export default function Crm() {
                       onChange={handleSelectAllProjects}
                     />
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Nom Projet</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Client</th>
-                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Commercial</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Chef de projet</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Adresse</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Code Postal</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Ville</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Coordonnées GPS</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Type</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-700 uppercase">Statut</th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-slate-700 uppercase">Actions</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[140px]">Nom Projet</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[120px]">Client</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase">Commercial</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase">Chef de projet</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[140px]">Adresse</th>
+                  <th className="px-2 py-3 text-left font-semibold text-slate-700 uppercase">CP</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[100px]">Ville</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-700 uppercase max-w-[120px]">GPS</th>
+                  <th className="px-2 py-3 text-left font-semibold text-blue-600 uppercase w-[75px]">Puissance</th>
+                  <th className="px-1.5 py-3 text-center font-semibold text-slate-700 uppercase w-[85px]">Type</th>
+                  <th className="px-1.5 py-3 text-center font-semibold text-slate-700 uppercase w-[85px]">Statut</th>
+                  <th className="pl-1 pr-2 py-3 text-right font-semibold text-slate-700 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1775,7 +1785,7 @@ export default function Crm() {
                   <tr key={project.id} className={`hover:bg-slate-50 transition-colors cursor-pointer ${selectedProjects.includes(project.id) ? 'bg-blue-50/20' : ''}`}
                     onClick={(e) => { if (!e.target.closest('button, input, a, select')) navigate(`/project/${project.id}/edit`); }}
                   >
-                    <td className="px-6 py-4 w-10">
+                    <td className="px-2 py-3 w-8">
                       <input
                         type="checkbox"
                         className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
@@ -1783,96 +1793,89 @@ export default function Crm() {
                         onChange={() => handleSelectProject(project.id)}
                       />
                     </td>
-                    <td className="px-6 py-4 font-medium text-slate-900">
+                    <td className="px-3 py-3 font-medium text-slate-900 max-w-[140px] truncate" title={[project.name, project.zip, project.city].filter(Boolean).join(' ').toUpperCase()}>
                       {[project.name, project.zip, project.city].filter(Boolean).join(' ').toUpperCase() || 'Sans nom'}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3 max-w-[120px] truncate">
                       {(() => {
                         const name = project.name || '';
                         const firstName = project.firstName || '';
                         const clientName = `${name} ${firstName}`.trim() || 'Sans nom';
-                        return <span className="text-slate-900 font-medium">{clientName}</span>;
+                        return <span className="text-slate-900 font-medium" title={clientName}>{clientName}</span>;
                       })()}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3">
                       {(() => {
                         const commercial = project.commercial;
-
-                        // Avatar lookup
                         let photoURL = null;
                         if (users.length > 0 && commercial) {
-                          // Try to find by name exact match
                           const userByName = users.find(u =>
                             (u.firstName && u.firstName.toLowerCase() === commercial.toLowerCase()) ||
                             (u.displayName && u.displayName.toLowerCase() === commercial.toLowerCase())
                           );
-
-                          if (userByName?.photoURL) {
-                            photoURL = userByName.photoURL;
-                          }
+                          if (userByName?.photoURL) photoURL = userByName.photoURL;
                         }
-
-                        if (!commercial) return <span className="text-slate-400 text-sm italic">-</span>;
-
+                        if (!commercial) return <span className="text-slate-400 text-xs italic">-</span>;
                         return (
-                          <div className={`flex items-center gap-3 px-3 py-1.5 rounded-full ${getUserColor(commercial)} w-fit pr-5 text-left`}>
-                            <div className="w-8 h-8 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
+                          <div className={`flex items-center gap-2 px-2.5 py-1 rounded-full ${getUserColor(commercial)} w-fit pr-3 text-left`}>
+                            <div className="w-6 h-6 rounded-full overflow-hidden bg-white/40 flex-shrink-0 border border-white/20">
                               <UserAvatar name={commercial} photoURL={photoURL} size="w-full h-full" showName={false} />
                             </div>
-                            <span className="text-sm font-bold truncate max-w-[120px]">{commercial}</span>
+                            <span className="text-xs font-bold truncate max-w-[90px]">{commercial}</span>
                           </div>
                         );
                       })()}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3">
                       {(() => {
                         const projectUser = project.assignedUser;
-
-                        if (!projectUser) return <span className="text-slate-400 text-sm italic">-</span>;
-
+                        if (!projectUser) return <span className="text-slate-400 text-xs italic">-</span>;
                         return (
-                          <div className="flex items-center gap-3 w-fit pr-5 text-left">
-                            <UserAvatar name={projectUser} size="w-8 h-8" showName={false} />
-                            <span className="text-sm font-bold truncate max-w-[120px]">{projectUser}</span>
+                          <div className="flex items-center gap-2 w-fit pr-3 text-left">
+                            <UserAvatar name={projectUser} size="w-6 h-6" showName={false} />
+                            <span className="text-xs font-bold truncate max-w-[90px]">{projectUser}</span>
                           </div>
                         );
                       })()}
                     </td>
-                    <td className="px-6 py-4 text-slate-600">{project.address || '-'}</td>
-                    <td className="px-6 py-4 text-slate-600">{project.zip || '-'}</td>
-                    <td className="px-6 py-4 text-slate-600">{project.city || '-'}</td>
-                    <td className="px-6 py-4 text-slate-600">{project.gps || '-'}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold shadow-sm block text-center ${getTypeColor(project.type)}`}>
+                    <td className="px-3 py-3 text-slate-600 max-w-[140px] truncate" title={project.address || '-'}>{project.address || '-'}</td>
+                    <td className="px-2 py-3 text-slate-600 whitespace-nowrap">{project.zip || '-'}</td>
+                    <td className="px-3 py-3 text-slate-600 max-w-[100px] truncate" title={project.city || '-'}>{project.city || '-'}</td>
+                    <td className="px-3 py-3 text-slate-600 max-w-[120px] truncate" title={project.gps || '-'}>{project.gps || '-'}</td>
+                    <td className="px-2 py-3 text-slate-900 font-bold whitespace-nowrap w-[75px]">
+                      {project.kwc ? (project.kwc.toString().toLowerCase().includes('kwc') ? project.kwc : `${project.kwc} kWc`) : '-'}
+                    </td>
+                    <td className="px-1.5 py-3 whitespace-nowrap w-[85px]">
+                      <span className={`px-2 py-1 rounded-full text-[11px] font-bold shadow-sm block text-center w-full ${getTypeColor(project.type)}`}>
                         {project.type || 'Construction'}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold shadow-sm block text-center ${getStatusColor(project.status)}`}>
+                    <td className="px-1.5 py-3 whitespace-nowrap w-[85px]">
+                      <span className={`px-2 py-1 rounded-full text-[11px] font-bold shadow-sm block text-center w-full ${getStatusColor(project.status)}`}>
                         {project.status === 'draft' ? 'Nouveau' : (project.status || 'Nouveau')}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
+                    <td className="pl-1 pr-2 py-3 text-right whitespace-nowrap">
+                      <div className="flex justify-end items-center gap-0.5">
                         {isTransferAuthorized() && (
                           <>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleOpenTransferModal(project)}
-                              className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                              className="h-7 w-7 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
                               title="Transférer entreprise"
                             >
-                              <Shuffle className="w-4 h-4" />
+                              <Shuffle className="w-3.5 h-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleOpenDuplicateModal(project)}
-                              className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                              className="h-7 w-7 p-0 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
                               title="Dupliquer le projet"
                             >
-                              <Copy className="w-4 h-4" />
+                              <Copy className="w-3.5 h-3.5" />
                             </Button>
                           </>
                         )}
@@ -1880,28 +1883,28 @@ export default function Crm() {
                           variant="ghost"
                           size="sm"
                           onClick={() => navigate(`/project/${project.id}/edit`)}
-                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          className="h-7 w-7 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                           title="Modifier"
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-3.5 h-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleGeneratePDF(project.id)}
-                          className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                          className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
                           title="Générer PDF"
                         >
-                          <FileText className="w-4 h-4" />
+                          <FileText className="w-3.5 h-3.5" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeleteProject(project.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                           title="Supprimer"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
                     </td>
@@ -2209,7 +2212,10 @@ export default function Crm() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setSearchParams({ tab: item.id });
+                  }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
                     ? 'bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg shadow-blue-500/50'
                     : 'hover:bg-slate-700/50'

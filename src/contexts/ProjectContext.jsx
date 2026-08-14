@@ -135,7 +135,7 @@ export function ProjectProvider({ children }) {
     if (typeof next === "function") {
       _setProject((prev) => next(prev));
     } else {
-      _setProject((prev) => ({ ...(prev || {}), ...(next || {}) }));
+      _setProject(next);
     }
   }, []);
 

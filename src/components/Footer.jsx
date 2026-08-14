@@ -48,6 +48,17 @@ export default function Footer() {
       if (outcome === 'accepted') {
         setDeferredPrompt(null);
       }
+    } else {
+      const ua = navigator.userAgent.toLowerCase();
+      if (ua.includes('edg')) {
+        alert("Pour installer l'application sur Microsoft Edge :\n1. Cliquez sur le menu (...) en haut à droite\n2. Allez dans 'Applications'\n3. Cliquez sur 'Installer ce site en tant qu'application'.");
+      } else if (ua.includes('firefox')) {
+        alert("Pour installer l'application sur Firefox :\n1. Cliquez sur le menu (≡) en haut à droite\n2. Sélectionnez 'Installer' ou 'Ajouter à l'écran d'accueil'.");
+      } else if (ua.includes('safari') && !ua.includes('chrome')) {
+        alert("Pour installer l'application sur Safari :\n1. Cliquez sur le bouton Partager ⎋\n2. Sélectionnez 'Sur l'écran d'accueil'.");
+      } else {
+        alert("Pour installer l'application NELSON, utilisez la fonction 'Installer l'application' ou 'Ajouter à l'écran d'accueil' dans le menu de votre navigateur.");
+      }
     }
   };
 
@@ -88,36 +99,34 @@ export default function Footer() {
                 </li>
               ))}
             </ul>
-            {deferredPrompt && (
-              <button 
-                onClick={handleInstallClick} 
-                className="footer__install-btn"
-                style={{ 
-                  marginTop: '1rem', 
-                  padding: '0.6rem 1rem', 
-                  background: '#2563eb', 
-                  color: '#ffffff', 
-                  border: 'none', 
-                  borderRadius: '6px', 
-                  cursor: 'pointer', 
-                  fontWeight: '600',
-                  fontSize: '0.9rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  transition: 'background 0.2s ease'
-                }}
-                onMouseOver={(e) => e.target.style.background = '#1d4ed8'}
-                onMouseOut={(e) => e.target.style.background = '#2563eb'}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="7 10 12 15 17 10"></polyline>
-                  <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-                Télécharger l'application
-              </button>
-            )}
+            <button 
+              onClick={handleInstallClick} 
+              className="footer__install-btn"
+              style={{ 
+                marginTop: '1rem', 
+                padding: '0.6rem 1rem', 
+                background: '#2563eb', 
+                color: '#ffffff', 
+                border: 'none', 
+                borderRadius: '6px', 
+                cursor: 'pointer', 
+                fontWeight: '600',
+                fontSize: '0.9rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                transition: 'background 0.2s ease'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#1d4ed8'}
+              onMouseOut={(e) => e.currentTarget.style.background = '#2563eb'}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Télécharger l'application
+            </button>
           </div>
         </div>
         <div className="footer__bottom">

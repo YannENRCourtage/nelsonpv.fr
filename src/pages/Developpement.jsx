@@ -1,490 +1,555 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext.jsx';
 import { apiService } from '@/services/api';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, Download, FileText, Zap, ChevronRight, User, Search, X, Battery, Cable, Building } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import html2canvas from 'html2canvas';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-    PlateCover,
-    PlateSituation,
-    PlateMasse,
-    PlateSection,
-    PlateFacades,
-    PlateInsertionNotice,
-    PlateEnvProche,
-} from '@/components/editor/DPPlates';
-import RaccordementBatterie from '@/components/developpement/RaccordementBatterie';
-import PCBatimentTab from '@/components/developpement/PCBatimentTab';
-import { cadastreService } from '@/services/CadastreService';
+  Folder, FileText, Users, ChevronLeft, ChevronRight, Loader2,
+  Briefcase, Sparkles, Building, Sun, Zap
+} from 'lucide-react';
 
-const TABS = [
-    { id: 'dp-batterie', label: 'DP Batterie', icon: Battery },
-    { id: 'pc-batiment', label: 'PC Bâtiment', icon: Building },
-    { id: 'raccordement', label: 'Raccordement Batterie', icon: Cable },
+import html2canvas from 'html2canvas';
+
+// Sub-components (Views)
+import DossiersListView from '@/components/developpement/DossiersListView';
+import EtudeDossierView from '@/components/developpement/EtudeDossierView';
+import ProfessionnelsView from '@/components/developpement/ProfessionnelsView';
+
+// Modals
+import UrbanismeWizard from '@/components/developpement/UrbanismeWizard';
+import EmailMandatementModal from '@/components/developpement/EmailMandatementModal';
+import RaccordementModal from '@/components/developpement/RaccordementModal';
+import AosAoModal from '@/components/developpement/AosAoModal';
+import ConsuelModal from '@/components/developpement/ConsuelModal';
+
+// Existing plate components (reused for PDF generation)
+import {
+  PlateCover,
+  PlateSituation,
+  PlateMasse,
+  PlateSection,
+  PlateFacades,
+  PlateInsertion as DPPlateInsertion,
+  PlateInsertionNotice,
+  PlateEnvProche,
+} from '@/components/editor/DPPlates';
+
+import {
+  PlateCover as PCPlateCover,
+  PlateSituation as PCPlateSituation,
+  PlateMasse as PCPlateMasse,
+  PlateSection as PCPlateSection,
+  PlateNotice as PCPlateNotice,
+  PlateFacades as PCPlateFacades,
+  PlateInsertion as PCPlateInsertion,
+  PlateEnvProcheLointain as PCPlateEnv,
+} from '@/components/editor/PCPlates';
+
+// Services & Data
+import { generateFullUrbanismePDF } from '@/services/UrbanismeDocService';
+import {
+  getProfessionals, addProfessional, updateProfessional, deleteProfessional
+} from '@/services/devWorkflowService';
+
+// ── Sidebar Navigation Items ─────────────────────────────────────────────────
+const SIDEBAR_SECTIONS = [
+  { id: 'dossiers', label: 'Dossiers', icon: Folder },
+  { id: 'etude', label: 'Étude dossier', icon: FileText },
+  { id: 'professionnels', label: 'Professionnels', icon: Users },
 ];
 
-// ─── Styles communs ──────────────────────────────────────────────────────────
-const sidebarW = '260px';
-
 export default function Developpement() {
-    const { user, activeTenantId } = useAuth();
-    const [activeTab, setActiveTab] = useState('dp-batterie');
+  const { user, activeTenantId } = useAuth();
+  const [activeSection, setActiveSection] = useState('dossiers');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-    const currentUser = {
-        name: user?.firstName ? `${user.firstName} ${user.lastName || ''}` : (user?.displayName || 'Utilisateur'),
-        role: user?.title || (user?.role === 'admin' ? 'Administrateur' : ((user?.firstName?.toLowerCase().includes('laurent') && user?.lastName?.toLowerCase().includes('guyon')) ? 'Président' : 'Conseiller')),
-        avatar: user?.photoURL ? user.photoURL : (user?.firstName?.[0] || user?.displayName?.[0] || 'U').toUpperCase(),
-        photoURL: user?.photoURL,
-        color: user?.role === 'admin' ? 'bg-indigo-600' : 'bg-blue-600'
-    };
+  // Current user info
+  const currentUser = {
+    uid: user?.uid,
+    name: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : (user?.displayName || 'Utilisateur'),
+    firstName: user?.firstName || 'Yann',
+    displayName: user?.displayName || 'Yann BARBERIS',
+    email: user?.email,
+    role: user?.title || (user?.role === 'admin' ? 'Administrateur' : 'Chef de projet'),
+    avatar: (user?.firstName?.[0] || user?.displayName?.[0] || 'Y').toUpperCase(),
+    photoURL: user?.photoURL,
+    color: user?.role === 'admin' ? 'bg-indigo-600' : 'bg-blue-600',
+  };
 
-    // ── Projets / Clients
-    const [projects, setProjects] = useState([]);
-    const [loadingProjects, setLoadingProjects] = useState(true);
-    const [search, setSearch] = useState('');
-    const [selectedProject, setSelectedProject] = useState(null);
+  // ── Projects State ──────────────────────────────────────────────
+  const [projects, setProjects] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(true);
+  const [selectedProject, setSelectedProject] = useState(null);
 
-    // ── DP Generation
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [captureStep, setCaptureStep] = useState('');
+  // ── Professionals State ─────────────────────────────────────────
+  const [professionals, setProfessionals] = useState([]);
 
-    // Charger la liste des projets
-    useEffect(() => {
-        const loadProjects = async () => {
-            try {
-                setLoadingProjects(true);
-                const data = await apiService.getProjects(activeTenantId);
-                setProjects(data || []);
-            } catch (e) {
-                console.error('Erreur chargement projets', e);
-            } finally {
-                setLoadingProjects(false);
-            }
-        };
-        loadProjects();
-    }, [activeTenantId]);
+  // ── Modals State ────────────────────────────────────────────────
+  const [urbanismeModal, setUrbanismeModal] = useState({ open: false, type: 'dp' });
+  const [emailMandatementModal, setEmailMandatementModal] = useState({ open: false, type: 'geometre' });
+  const [raccordementModal, setRaccordementModal] = useState(false);
+  const [aosModal, setAosModal] = useState(false);
+  const [consuelModal, setConsuelModal] = useState(false);
 
-    // Filtrage projets
-    const filteredProjects = projects.filter((p) => {
-        const q = search.toLowerCase();
-        return (
-            (p.firstName && p.firstName.toLowerCase().includes(q)) ||
-            (p.lastName && p.lastName.toLowerCase().includes(q)) ||
-            (p.city && p.city.toLowerCase().includes(q)) ||
-            (p.name && p.name.toLowerCase().includes(q))
-        );
-    });
+  // ── PDF Generation State ────────────────────────────────────────
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [captureStep, setCaptureStep] = useState('');
 
-    // Chargement dynamique du cadastre si manquant
-    useEffect(() => {
-        const fetchMissingCadastre = async () => {
-            if (selectedProject?.gps && !selectedProject?.cadastre_section) {
-                try {
-                    const [lat, lng] = selectedProject.gps.split(',').map(Number);
-                    const data = await cadastreService.getParcelle(lat, lng);
-                    if (data) {
-                        const updates = {
-                            cadastre_section: data.section,
-                            cadastre_numero: data.numero,
-                            cadastre_surface: data.contenance,
-                            cadastre_commune: data.nom_commune,
-                            cadastre_code_insee: data.code_commune
-                        };
-                        setSelectedProject(prev => ({ ...prev, ...updates }));
-                        await apiService.updateProject(selectedProject.id, updates);
-                    }
-                } catch (err) {
-                    console.error("Erreur récupération cadastre :", err);
-                }
-            }
-        };
-        fetchMissingCadastre();
-    }, [selectedProject?.id, selectedProject?.gps]);
-
-
-    // ─── Génération du PDF DP complet ─────────────────────────────────────────
-    const handleGenerateDP = async () => {
-        if (!selectedProject) {
-            toast({ title: 'Sélectionnez un client', variant: 'destructive' });
-            return;
+  // ── Load Projects ───────────────────────────────────────────────
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        setLoadingProjects(true);
+        const data = await apiService.getProjects(activeTenantId);
+        setProjects(data || []);
+        if (data && data.length > 0 && !selectedProject) {
+          setSelectedProject(data[0]);
         }
-        setIsGenerating(true);
-        setCaptureStep('Préparation des planches…');
-
-        try {
-            const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-
-            // IDs des planches à capturer (dans l'ordre du dossier)
-            const plateIds = [
-                'dev-plate-cover',
-                'dev-plate-situation',
-                'dev-plate-masse',
-                'dev-plate-section',
-                'dev-plate-facades',
-                'dev-plate-env-proche',
-                'dev-plate-notice'
-            ];
-
-            const { PDFDocument } = await import('pdf-lib');
-            const finalDoc = await PDFDocument.create();
-
-            for (const id of plateIds) {
-                setCaptureStep(`Capture ${id}…`);
-                const el = document.getElementById(id);
-                if (!el) continue;
-                await wait(150);
-                const canvas = await html2canvas(el, {
-                    scale: 2,
-                    useCORS: true,
-                    allowTaint: true,
-                    logging: false,
-                });
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-
-                try {
-                    const plateImg = await finalDoc.embedJpg(dataUrl);
-                    const page = finalDoc.addPage([841.89, 595.28]); // A4 Paysage
-                    page.drawImage(plateImg, { x: 0, y: 0, width: 841.89, height: 595.28 });
-                } catch (e) {
-                    console.error(`Erreur planche ${id}`, e);
-                }
-            }
-
-            // Ajout du CERFA de 20 pages (cerfa_16702-02.pdf) depuis /public/
-            setCaptureStep('Ajout des pages CERFA…');
-            try {
-                const cerfaUrl = '/cerfa_16702-02.pdf';
-                const cerfaArrayBuffer = await fetch(cerfaUrl).then(res => res.arrayBuffer());
-                const cerfaDoc = await PDFDocument.load(cerfaArrayBuffer);
-                const copiedPages = await finalDoc.copyPages(cerfaDoc, cerfaDoc.getPageIndices());
-                copiedPages.forEach((page) => {
-                    finalDoc.addPage(page);
-                });
-            } catch (err) {
-                console.error("Erreur lors de l'ajout du CERFA:", err);
-            }
-
-            setCaptureStep('Assemblage PDF…');
-            const pdfBytes = await finalDoc.save();
-            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            const clientName = `${selectedProject.firstName || ''} ${selectedProject.name || ''}`.trim();
-            link.download = `DP_Batterie_${clientName || 'Projet'}.pdf`;
-            link.click();
-
-            toast({ title: 'Dossier DP généré', description: 'Le PDF a été téléchargé avec succès.' });
-        } catch (err) {
-            console.error('DP generation error', err);
-            toast({ title: 'Erreur', description: 'Impossible de générer le dossier.', variant: 'destructive' });
-        } finally {
-            setIsGenerating(false);
-            setCaptureStep('');
-        }
+      } catch (e) {
+        console.error('Erreur chargement projets', e);
+      } finally {
+        setLoadingProjects(false);
+      }
     };
+    loadProjects();
+  }, [activeTenantId]);
 
-    return (
-        <div style={{ display: 'flex', height: 'calc(100vh - 64px)', background: '#f0f4f8' }}>
-            {/* ── Sidebar Latérale ─────────────────────────────────────────── */}
-            <aside style={{
-                width: sidebarW,
-                minWidth: sidebarW,
-                background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)',
-                display: 'flex',
-                flexDirection: 'column',
-                padding: '24px 0',
-                boxShadow: '4px 0 24px rgba(0,0,0,0.18)',
-                zIndex: 10,
-                position: 'sticky',
-                top: 0,
-                height: 'calc(100vh - 64px)',
-                overflowY: 'auto',
-            }}>
-                <div style={{ padding: '0 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                        <div style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', borderRadius: 10, padding: 8 }}>
-                            <Zap size={18} color="white" />
-                        </div>
-                        <span style={{ color: 'white', fontWeight: 800, fontSize: 15, letterSpacing: 0.5 }}>Développement</span>
-                    </div>
-                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginLeft: 38 }}>Dossiers & Raccordements</p>
+  // ── Load Professionals ──────────────────────────────────────────
+  useEffect(() => {
+    const loadProfs = async () => {
+      try {
+        const data = await getProfessionals();
+        if (data && data.length > 0) {
+          setProfessionals(data);
+        } else {
+          // Default mock data
+          const defaultProfs = [
+            {
+              id: 'prof-1',
+              name: 'Dupont',
+              firstName: 'Jean',
+              company: 'SCP Dupont - Commissaires de Justice',
+              phone: '05 56 12 34 56',
+              email: 'huissier.dupont@justice.fr',
+              address: '14 Rue Sainte-Catherine',
+              zip: '33000',
+              city: 'Bordeaux',
+              categories: ['huissier'],
+            },
+            {
+              id: 'prof-2',
+              name: 'Lemoine',
+              firstName: 'Claire',
+              company: 'Cabinet Lemoine Géomètres-Experts',
+              phone: '05 56 98 76 54',
+              email: 'contact@lemoine-geometre.fr',
+              address: '8 Boulevard de la Plage',
+              zip: '33120',
+              city: 'Arcachon',
+              categories: ['geometre'],
+            },
+            {
+              id: 'prof-3',
+              name: 'Martin',
+              firstName: 'Antoine',
+              company: 'Étude Notariale Martin & Associés',
+              phone: '05 53 45 67 89',
+              email: 'notaire.martin@notaires.fr',
+              address: '2 Place Gambetta',
+              zip: '33000',
+              city: 'Bordeaux',
+              categories: ['notaire'],
+            },
+            {
+              id: 'prof-4',
+              name: 'Laval',
+              firstName: 'Sophie',
+              company: 'Atelier d\'Architecture Solaire DPLG',
+              phone: '05 56 33 22 11',
+              email: 'sophie.laval@archi-solaire.fr',
+              address: '25 Quai des Chartrons',
+              zip: '33000',
+              city: 'Bordeaux',
+              categories: ['architecte'],
+            },
+          ];
+          setProfessionals(defaultProfs);
+        }
+      } catch (e) {
+        console.error('Erreur chargement professionnels', e);
+      }
+    };
+    loadProfs();
+  }, []);
+
+  // ── Handler Sélection Projet depuis la Liste ────────────────────
+  const handleSelectProjectFromList = (proj) => {
+    setSelectedProject(proj);
+    setActiveSection('etude');
+  };
+
+  // ── Handlers Gestion Professionnels ─────────────────────────────
+  const handleAddProfessional = async (profData) => {
+    try {
+      let newId = `prof-${Date.now()}`;
+      try {
+        newId = await addProfessional(profData);
+      } catch (err) {
+        console.warn('Sauvegarde locale fallback Firestore:', err);
+      }
+      setProfessionals(prev => [...prev, { id: newId, ...profData }]);
+    } catch (e) {
+      console.error('Erreur ajout professionnel:', e);
+      throw e;
+    }
+  };
+
+  const handleUpdateProfessional = async (id, profData) => {
+    try {
+      try {
+        await updateProfessional(id, profData);
+      } catch (err) {
+        console.warn('Update local fallback Firestore:', err);
+      }
+      setProfessionals(prev => prev.map(p => p.id === id ? { ...p, ...profData } : p));
+    } catch (e) {
+      console.error('Erreur modif professionnel:', e);
+      throw e;
+    }
+  };
+
+  const handleDeleteProfessional = async (id) => {
+    try {
+      try {
+        await deleteProfessional(id);
+      } catch (err) {
+        console.warn('Delete local fallback Firestore:', err);
+      }
+      setProfessionals(prev => prev.filter(p => p.id !== id));
+      toast({ title: 'Professionnel supprimé', description: 'Le contact a été retiré du répertoire.' });
+    } catch (e) {
+      console.error('Erreur suppression professionnel:', e);
+    }
+  };
+
+  // ── Handlers Génération Document Urbanisme (PDF CERFA) ──────────
+  const handleUrbanismeGenerate = async (docType, chosenType, finalProject) => {
+    if (!selectedProject) return;
+    setIsGenerating(true);
+    setCaptureStep('Initialisation du dossier...');
+
+    try {
+      const projectToUse = {
+        ...selectedProject,
+        ...(finalProject || {}),
+        type: chosenType || finalProject?.type || selectedProject.type || 'batiment_solaire',
+        installationType: chosenType || finalProject?.installationType || selectedProject.installationType || 'batiment_solaire'
+      };
+      setSelectedProject(projectToUse);
+
+      // Laisser le temps à React de monter les planches dans le DOM avec les nouvelles données
+      await new Promise(r => setTimeout(r, 200));
+
+      const isPC = docType === 'pc';
+      const isCU = docType === 'cu';
+      const prefix = isPC ? 'dev-pc-' : 'dev-';
+
+      const plateIds = isPC
+        ? [
+            `${prefix}plate-situation`,
+            `${prefix}plate-masse`,
+            `${prefix}plate-section`,
+            `${prefix}plate-notice`,
+            `${prefix}plate-facades`,
+            `${prefix}plate-insertion`,
+            `${prefix}plate-env`
+          ]
+        : isCU
+        ? [
+            `dev-plate-situation`,
+            `dev-plate-masse`
+          ]
+        : [
+            `dev-plate-situation`,
+            `dev-plate-masse`,
+            `dev-plate-section`,
+            `dev-plate-facades`,
+            `dev-plate-insertion`,
+            `dev-plate-env-proche`,
+            `dev-plate-notice`
+          ];
+
+      await generateFullUrbanismePDF({
+        type: docType,
+        project: projectToUse,
+        installationType: chosenType || projectToUse.type || 'batiment_solaire',
+        plateIds: plateIds,
+        onProgress: (msg) => setCaptureStep(msg)
+      });
+
+      toast({
+        title: 'Dossier généré avec succès !',
+        description: `Le dossier ${docType.toUpperCase()} interactif a été téléchargé.`,
+      });
+    } catch (err) {
+      console.error('Erreur génération PDF urbanisme:', err);
+      toast({
+        title: 'Erreur de génération',
+        description: 'Une erreur est survenue lors de la création du PDF : ' + (err?.message || ''),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+      setCaptureStep('');
+    }
+  };
+
+  return (
+    <div className="flex h-[calc(100vh-64px)] w-full bg-[#f6f7fb] overflow-hidden">
+      {/* ═══ SIDEBAR NAVIGATION (Monday.com Style) ═══════════════════ */}
+      <aside
+        className={`${
+          sidebarCollapsed ? 'w-16' : 'w-60'
+        } bg-[#181b34] text-white flex flex-col justify-between transition-all duration-300 ease-in-out flex-shrink-0 z-20 shadow-xl`}
+      >
+        {/* Top Branding & Collapse Button */}
+        <div>
+          <div className="p-4 flex items-center justify-between border-b border-white/10">
+            {!sidebarCollapsed && (
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-black text-sm shadow-sm">
+                  ⚡
                 </div>
-
-                {/* Onglets */}
-                <nav style={{ flex: 1, padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {TABS.map((tab) => {
-                        const Icon = tab.icon;
-                        const isActive = activeTab === tab.id;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 12,
-                                    padding: '12px 16px',
-                                    borderRadius: 12,
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    background: isActive
-                                        ? 'linear-gradient(135deg, rgba(59,130,246,0.25), rgba(139,92,246,0.15))'
-                                        : 'transparent',
-                                    borderLeft: isActive ? '3px solid #3b82f6' : '3px solid transparent',
-                                    color: isActive ? '#93c5fd' : 'rgba(255,255,255,0.5)',
-                                    fontWeight: isActive ? 700 : 500,
-                                    fontSize: 13,
-                                    textAlign: 'left',
-                                    transition: 'all 0.2s',
-                                    width: '100%',
-                                }}
-                            >
-                                <Icon size={18} />
-                                <span style={{ flex: 1 }}>{tab.label}</span>
-                                {isActive && <ChevronRight size={14} />}
-                            </button>
-                        );
-                    })}
-                </nav>
-
-                {/* Info utilisateur */}
-                <div className="p-4 border-t border-slate-800">
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-700/50">
-                        <div className={`${currentUser.color} w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0`}>
-                            {currentUser.photoURL ? (
-                                <img src={currentUser.photoURL} alt="Avatar" className="w-full h-full object-cover" />
-                            ) : (
-                                currentUser.avatar
-                            )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-white text-sm truncate">{currentUser.name}</p>
-                            <p className="text-xs text-slate-400 truncate">
-                                {currentUser.name?.includes('Gysmo') ? 'Woaf ! Woaf !!' : currentUser.role}
-                            </p>
-                        </div>
-                    </div>
+                <div>
+                  <h1 className="font-extrabold text-sm tracking-wide text-white">Développement</h1>
+                  <p className="text-[10px] text-white/50 font-medium">Gestion de projets solaires</p>
                 </div>
-            </aside>
-
-            {/* ── Contenu Principal ─────────────────────────────────────────── */}
-            <main style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-                {activeTab === 'dp-batterie' && (
-                    <DPBatterieTab
-                        projects={filteredProjects}
-                        loadingProjects={loadingProjects}
-                        search={search}
-                        setSearch={setSearch}
-                        selectedProject={selectedProject}
-                        setSelectedProject={setSelectedProject}
-                        isGenerating={isGenerating}
-                        captureStep={captureStep}
-                        onGenerateDP={handleGenerateDP}
-                    />
-                )}
-                {activeTab === 'pc-batiment' && (
-                    <PCBatimentTab
-                        projects={filteredProjects}
-                        loadingProjects={loadingProjects}
-                        selectedProject={selectedProject}
-                        setSelectedProject={setSelectedProject}
-                    />
-                )}
-                {activeTab === 'raccordement' && (
-                    <RaccordementBatterie
-                        projects={filteredProjects}
-                        selectedProject={selectedProject}
-                        setSelectedProject={setSelectedProject}
-                    />
-                )}
-            </main>
-        </div>
-    );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  Onglet DP Batterie
-// ═══════════════════════════════════════════════════════════════════════════════
-function DPBatterieTab({
-    projects, loadingProjects, search, setSearch,
-    selectedProject, setSelectedProject,
-    isGenerating, captureStep, onGenerateDP,
-}) {
-    return (
-        <div style={{ display: 'flex', flex: 1, minHeight: 0, flexDirection: 'column' }}>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
-                {/* Header avec Menu Déroulant */}
-                <div style={{
-                    position: 'sticky', top: 0, zIndex: 50,
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    background: 'white', borderRadius: 16, padding: '20px 28px',
-                    boxShadow: '0 4px 15px rgba(0,0,0,0.08)', marginBottom: 24,
-                }}>
-                    <div style={{ flex: 1 }}>
-                        <h2 style={{ fontWeight: 900, fontSize: 20, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-                            Dossier de Déclaration Préalable — Batterie
-                        </h2>
-                        <div style={{ marginTop: 16 }}>
-                            <select
-                                value={selectedProject?.id || ''}
-                                onChange={(e) => {
-                                    const proj = projects.find(p => p.id === e.target.value);
-                                    setSelectedProject(proj || null);
-                                }}
-                                style={{
-                                    width: '100%', maxWidth: 450, padding: '12px 16px', borderRadius: 10,
-                                    border: '1px solid #cbd5e1', fontSize: 14, outline: 'none',
-                                    backgroundColor: '#f8fafc', color: '#0f172a', fontWeight: 600,
-                                    cursor: 'pointer', appearance: 'auto'
-                                }}
-                            >
-                                <option value="">-- Sélectionnez un projet / client --</option>
-                                {projects.map((p) => {
-                                    const clientName = `${p.firstName || ''} ${p.name || ''}`.trim() || 'Client sans nom';
-                                    const loc = p.city ? ` — ${p.city}` : '';
-                                    return (
-                                        <option key={p.id} value={p.id}>
-                                            {clientName}{loc}
-                                        </option>
-                                    );
-                                })}
-                            </select>
-                        </div>
-                    </div>
-                    <button
-                        onClick={onGenerateDP}
-                        disabled={isGenerating || !selectedProject}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: 8,
-                            padding: '14px 28px', borderRadius: 12, border: 'none',
-                            background: isGenerating || !selectedProject
-                                ? '#e2e8f0'
-                                : 'linear-gradient(135deg, #2563eb, #7c3aed)',
-                            color: isGenerating || !selectedProject ? '#94a3b8' : 'white',
-                            fontWeight: 700, fontSize: 14, cursor: isGenerating || !selectedProject ? 'not-allowed' : 'pointer',
-                            boxShadow: isGenerating || !selectedProject ? 'none' : '0 4px 16px rgba(37,99,235,0.3)',
-                            transition: 'all 0.2s',
-                        }}
-                    >
-                        {isGenerating ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={18} />}
-                        {isGenerating ? (captureStep || 'Génération…') : 'Télécharger le Dossier DP'}
-                    </button>
-                </div>
-
-                {!selectedProject ? (
-                    <div style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                        padding: 80, background: 'white', borderRadius: 20, border: '2px dashed #e2e8f0',
-                    }}>
-                        <FileText size={48} color="#cbd5e1" />
-                        <h3 style={{ color: '#94a3b8', marginTop: 16, fontWeight: 700 }}>Aucun client sélectionné</h3>
-                        <p style={{ color: '#94a3b8', fontSize: 13 }}>
-                            Choisissez un client dans le panneau de gauche pour visualiser et générer son dossier DP.
-                        </p>
-                    </div>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-                        <DPPlatePreview id="dev-plate-cover" label="Page de garde" clientLinked>
-                            <PlateCover project={selectedProject} />
-                        </DPPlatePreview>
-
-                        <DPPlatePreview id="dev-plate-situation" label="DP1 — Plan de situation" clientLinked>
-                            <PlateSituation project={selectedProject} captures={selectedProject.urbanisme_captures || {}} />
-                        </DPPlatePreview>
-
-                        <DPPlatePreview id="dev-plate-masse" label="DP2 — Plan de masse" clientLinked>
-                            <PlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} />
-                        </DPPlatePreview>
-
-                        <DPPlatePreview id="dev-plate-section" label="DP3 — Plan en coupe" fixed>
-                            <PlateSection project={selectedProject} />
-                        </DPPlatePreview>
-
-                        <DPPlatePreview id="dev-plate-facades" label="DP4 — Façades et toitures" fixed>
-                            <PlateFacades project={selectedProject} />
-                        </DPPlatePreview>
-
-                        <DPPlatePreview id="dev-plate-env-proche" label="DP7 — Vue aérienne satellite" clientLinked>
-                            <PlateEnvProche project={selectedProject} captures={selectedProject.urbanisme_captures || {}} />
-                        </DPPlatePreview>
-
-                        <DPPlatePreview id="dev-plate-notice" label="DP8.1 — Notice d'insertion" clientLinked>
-                            <PlateInsertionNotice project={selectedProject} />
-                        </DPPlatePreview>
-                    </div>
-                )}
-            </div>
-
-            {/* Hidden render zone for html2canvas */}
-            {selectedProject && (
-                <div style={{ position: 'fixed', left: '-9999px', top: 0, pointerEvents: 'none' }}>
-                    <div id="dev-plate-cover"><PlateCover project={selectedProject} /></div>
-                    <div id="dev-plate-situation"><PlateSituation project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
-                    <div id="dev-plate-masse"><PlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
-                    <div id="dev-plate-section"><PlateSection project={selectedProject} /></div>
-                    <div id="dev-plate-facades"><PlateFacades project={selectedProject} /></div>
-                    <div id="dev-plate-env-proche"><PlateEnvProche project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
-                    <div id="dev-plate-notice"><PlateInsertionNotice project={selectedProject} /></div>
-                </div>
+              </div>
             )}
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors mx-auto"
+              title={sidebarCollapsed ? 'Déplier le menu' : 'Replier le menu'}
+            >
+              {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            </button>
+          </div>
+
+          {/* 3 Onglets Principaux */}
+          <nav className="p-2 space-y-1.5 mt-2">
+            {SIDEBAR_SECTIONS.map((section) => {
+              const Icon = section.icon;
+              const isActive = activeSection === section.id;
+              return (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveSection(section.id)}
+                  className={`flex items-center gap-3 px-3.5 py-3 rounded-xl font-extrabold text-xs transition-all w-full text-left ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                      : 'text-white/70 hover:bg-white/5 hover:text-white'
+                  }`}
+                  title={sidebarCollapsed ? section.label : undefined}
+                >
+                  <Icon size={18} className="flex-shrink-0" />
+                  {!sidebarCollapsed && <span>{section.label}</span>}
+                </button>
+              );
+            })}
+          </nav>
         </div>
-    );
-}
 
-// ─── Composant de prévisualisation d'une planche ─────────────────────────────
-function DPPlatePreview({ id, label, children, fixed, clientLinked }) {
-    return (
-        <div style={{ background: 'white', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-            {/* Header de la planche */}
-            <div style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '12px 20px', borderBottom: '1px solid #f1f5f9',
-                background: fixed ? '#fefce8' : clientLinked ? '#eff6ff' : '#f8fafc',
-            }}>
-                <FileText size={16} color={fixed ? '#ca8a04' : clientLinked ? '#2563eb' : '#64748b'} />
-                <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{label}</span>
-                {fixed && (
-                    <span style={{
-                        fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
-                        background: '#fef08a', color: '#854d0e',
-                    }}>FIXE</span>
-                )}
-                {clientLinked && (
-                    <span style={{
-                        fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
-                        background: '#dbeafe', color: '#1d4ed8',
-                    }}>Lié au client</span>
-                )}
+        {/* User Info Bottom */}
+        <div className="p-3 border-t border-white/10">
+          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5">
+            <div className={`${currentUser.color} w-8 h-8 rounded-full flex items-center justify-center text-white font-black text-xs overflow-hidden flex-shrink-0`}>
+              {currentUser.photoURL ? (
+                <img src={currentUser.photoURL} alt="" className="w-full h-full object-cover" />
+              ) : (
+                currentUser.avatar
+              )}
             </div>
+            {!sidebarCollapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-white text-xs truncate">{currentUser.name}</p>
+                <p className="text-[10px] text-white/40 truncate">{currentUser.role}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </aside>
 
-            {/* Aperçu A4 paysage */}
-            <div style={{
-                padding: '20px', background: '#f8fafc',
-                display: 'flex', justifyContent: 'center', alignItems: 'center',
-            }}>
-                <div style={{
-                    width: '100%', maxWidth: '1122.5px', // Exact px width of 297mm at 96dpi
-                    aspectRatio: '297/210',
-                    background: 'white',
-                    boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
-                    borderRadius: 4,
-                    overflow: 'hidden',
-                    position: 'relative',
-                    containerType: 'inline-size'
-                }}>
-                    <div style={{
-                        width: '297mm', height: '210mm',
-                        transform: 'scale(calc(100cqw / 1122.5))',
-                        transformOrigin: 'top left',
-                        position: 'absolute', top: 0, left: 0
-                    }}>
-                        {children}
-                    </div>
+      {/* ═══ MAIN VIEWPORT (Full-Width Monday.com Design) ════════════ */}
+      <main className="flex-1 overflow-y-auto w-full p-4 lg:p-6 space-y-6">
+        {/* Overlay de chargement génération PDF */}
+        <AnimatePresence>
+          {isGenerating && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-2xl shadow-sm"
+            >
+              <Loader2 size={20} className="animate-spin text-blue-600" />
+              <div>
+                <p className="text-blue-900 font-bold text-xs">Génération du dossier en cours...</p>
+                <p className="text-blue-600 text-[11px]">{captureStep}</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── RENDU DE L'ONGLET SÉLECTIONNÉ ───────────────────────── */}
+        <AnimatePresence mode="wait">
+          {/* ONGLET 1 : DOSSIERS (Vue Tableau 2 Lignes) */}
+          {activeSection === 'dossiers' && (
+            <motion.div
+              key="dossiers"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.15 }}
+            >
+              <DossiersListView
+                projects={projects}
+                currentUser={currentUser}
+                onSelectProject={handleSelectProjectFromList}
+                activeProjectId={selectedProject?.id}
+              />
+            </motion.div>
+          )}
+
+          {/* ONGLET 2 : ÉTUDE DOSSIER (Workflow 9 Étapes) */}
+          {activeSection === 'etude' && (
+            <motion.div
+              key="etude"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.15 }}
+            >
+              {!selectedProject ? (
+                <div className="bg-white rounded-3xl p-16 text-center border-2 border-dashed border-slate-200 space-y-4">
+                  <Briefcase className="w-12 h-12 text-slate-300 mx-auto" />
+                  <h3 className="text-base font-bold text-slate-800">Aucun dossier sélectionné</h3>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    Veuillez sélectionner un dossier dans l'onglet "Dossiers" pour afficher et piloter son workflow.
+                  </p>
+                  <button
+                    onClick={() => setActiveSection('dossiers')}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+                  >
+                    Aller aux dossiers
+                  </button>
                 </div>
-            </div>
+              ) : (
+                <EtudeDossierView
+                  project={selectedProject}
+                  onBackToDossiers={() => setActiveSection('dossiers')}
+                  onOpenUrbanismeWizard={(type) => setUrbanismeModal({ open: true, type })}
+                  onOpenEmailMandatement={(type) => setEmailMandatementModal({ open: true, type })}
+                  onOpenRaccordementModal={() => setRaccordementModal(true)}
+                  onOpenAosModal={() => setAosModal(true)}
+                  onOpenConsuelModal={() => setConsuelModal(true)}
+                  professionals={professionals}
+                />
+              )}
+            </motion.div>
+          )}
+
+          {/* ONGLET 3 : PROFESSIONNELS */}
+          {activeSection === 'professionnels' && (
+            <motion.div
+              key="professionnels"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.15 }}
+            >
+              <ProfessionnelsView
+                professionals={professionals}
+                onAddProfessional={handleAddProfessional}
+                onUpdateProfessional={handleUpdateProfessional}
+                onDeleteProfessional={handleDeleteProfessional}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+
+      {/* ═══ MODALS ══════════════════════════════════════════════════ */}
+      {/* 1. Modal Urbanisme Wizard (CU, DP, PC) */}
+      <UrbanismeWizard
+        isOpen={urbanismeModal.open}
+        onClose={() => setUrbanismeModal({ open: false, type: 'dp' })}
+        type={urbanismeModal.type}
+        project={selectedProject}
+        onGenerate={handleUrbanismeGenerate}
+      />
+
+      {/* 2. Modal Génération Email Mandatement (Huissier, Géomètre, Notaire) */}
+      <EmailMandatementModal
+        isOpen={emailMandatementModal.open}
+        onClose={() => setEmailMandatementModal({ open: false, type: 'geometre' })}
+        type={emailMandatementModal.type}
+        project={selectedProject}
+        professionals={professionals}
+        onMailSent={() => {
+          setEmailMandatementModal({ open: false, type: 'geometre' });
+          toast({ title: 'Mail préparé', description: 'Le mail de mandatement a été transmis.' });
+        }}
+      />
+
+      {/* 3. Modal Raccordement Enedis */}
+      <RaccordementModal
+        isOpen={raccordementModal}
+        onClose={() => setRaccordementModal(false)}
+        project={selectedProject}
+      />
+
+      {/* 4. Modal AOS / AO */}
+      <AosAoModal
+        isOpen={aosModal}
+        onClose={() => setAosModal(false)}
+        project={selectedProject}
+      />
+
+      {/* 5. Modal Consuel */}
+      <ConsuelModal
+        isOpen={consuelModal}
+        onClose={() => setConsuelModal(false)}
+        project={selectedProject}
+        onSave={(data) => {
+          if (selectedProject) {
+            setSelectedProject({ ...selectedProject, ...data });
+          }
+        }}
+      />
+
+      {/* ═══ ZONE DE RENDU HTML2CANVAS POUR LE PDF CERFA ════════════ */}
+      {selectedProject && (
+        <div style={{ position: 'fixed', left: '-9999px', top: 0, pointerEvents: 'none' }}>
+          {/* DP & CU Plates */}
+          <div id="dev-plate-cover"><PlateCover project={selectedProject} installationType={selectedProject.type || 'batiment_solaire'} /></div>
+          <div id="dev-plate-situation"><PlateSituation project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
+          <div id="dev-plate-masse"><PlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
+          <div id="dev-plate-section"><PlateSection project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
+          <div id="dev-plate-facades"><PlateFacades project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
+          <div id="dev-plate-insertion"><DPPlateInsertion project={selectedProject} captures={selectedProject.urbanisme_captures || {}} photos={selectedProject.pc_photos || {}} /></div>
+          <div id="dev-plate-env-proche"><PlateEnvProche project={selectedProject} captures={selectedProject.urbanisme_captures || {}} photos={selectedProject.pc_photos || {}} /></div>
+          <div id="dev-plate-notice"><PlateInsertionNotice project={selectedProject} /></div>
+
+          {/* PC Plates */}
+          <div id="dev-pc-plate-cover"><PCPlateCover project={selectedProject} installationType={selectedProject.type || 'batiment_solaire'} /></div>
+          <div id="dev-pc-plate-situation"><PCPlateSituation project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
+          <div id="dev-pc-plate-masse"><PCPlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
+          <div id="dev-pc-plate-section"><PCPlateSection project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
+          <div id="dev-pc-plate-notice"><PCPlateNotice project={selectedProject} noticeText={selectedProject.description || selectedProject.pc_notice} /></div>
+          <div id="dev-pc-plate-facades"><PCPlateFacades project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
+          <div id="dev-pc-plate-insertion"><PCPlateInsertion project={selectedProject} photos={selectedProject.pc_photos || {}} /></div>
+          <div id="dev-pc-plate-env"><PCPlateEnv project={selectedProject} photos={selectedProject.pc_photos || {}} /></div>
         </div>
-    );
+      )}
+    </div>
+  );
 }

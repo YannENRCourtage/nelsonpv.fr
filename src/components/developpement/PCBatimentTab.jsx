@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import html2canvas from 'html2canvas';
+import { PDFDocument } from 'pdf-lib';
 
 import {
     PlateCover,
@@ -114,7 +115,6 @@ export default function PCBatimentTab({
                 'pc-plate-env'
             ];
 
-            const { PDFDocument } = await import('pdf-lib');
             const finalDoc = await PDFDocument.create();
 
             for (const id of plateIds) {
