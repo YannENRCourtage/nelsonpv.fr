@@ -34,37 +34,42 @@ function SceneCameraController({ activeSlot, onReady, controlsRef }) {
 
     camera.up.set(0, 1, 0);
 
-    // Distance dynamique pour cadrer TOUTE la longueur (52.5m ou plus) sans couper les extrémités
-    const distLong = Math.max(length * 1.18, width * 1.5, 40);
-    const distGable = Math.max(width * 1.35, 25);
-    const distRoof = Math.max(length, width) * 1.28;
+    const hasAuvent = config.rightSide === 'auvent' || config.leftSide === 'auvent';
+    const totalGableWidth = width + (hasAuvent ? 4.0 : 0);
+    const gableCenterX = hasAuvent ? (config.rightSide === 'auvent' ? 2.0 : -2.0) : 0;
+    const gableCenterY = (eaveHeight + (config.ridgeHeight || 8.0)) * 0.45;
+
+    // Distances adaptées aux proportions réelles de chaque élément
+    const distLong = Math.max(length * 1.05, 36);
+    const distGable = Math.max(totalGableWidth * 0.95, 20);
+    const distRoof = Math.max(length * 0.95, 28);
 
     if (activeSlot === 'facade_sud') {
-      // 1. Façade Sud (Long Pan Solaire) : cadrage intégral
+      // 1. Façade Sud (Long Pan Solaire) : Cadrage large horizontal
       camera.position.set(distLong, targetY, targetZ);
       ctrl.target.set(targetX, targetY, targetZ);
       camera.lookAt(targetX, targetY, targetZ);
     } else if (activeSlot === 'facade_nord') {
-      // 2. Façade Nord (Long Pan Arrière) : cadrage intégral
+      // 2. Façade Nord (Long Pan Arrière) : Cadrage large horizontal
       camera.position.set(-distLong, targetY, targetZ);
       ctrl.target.set(targetX, targetY, targetZ);
       camera.lookAt(targetX, targetY, targetZ);
     } else if (activeSlot === 'facade_est') {
-      // 3. Pignon Est (Gable gauche Z=0) : cadrage avec proportions exactes
-      camera.position.set(0, targetY, distGable);
-      ctrl.target.set(targetX, targetY, targetZ);
-      camera.lookAt(targetX, targetY, targetZ);
+      // 3. Pignon Est (Gable gauche Z=0) : Cadrage ajusté aux proportions réelles
+      camera.position.set(gableCenterX, gableCenterY, distGable);
+      ctrl.target.set(gableCenterX, gableCenterY, 0);
+      camera.lookAt(gableCenterX, gableCenterY, 0);
     } else if (activeSlot === 'facade_ouest') {
-      // 4. Pignon Ouest (Gable droit Z=-length) : cadrage avec proportions exactes
-      camera.position.set(0, targetY, -length - distGable);
-      ctrl.target.set(targetX, targetY, targetZ);
-      camera.lookAt(targetX, targetY, targetZ);
+      // 4. Pignon Ouest (Gable droit Z=-length) : Cadrage ajusté aux proportions réelles
+      camera.position.set(gableCenterX, gableCenterY, -length - distGable);
+      ctrl.target.set(gableCenterX, gableCenterY, -length);
+      camera.lookAt(gableCenterX, gableCenterY, -length);
     } else if (activeSlot === 'vue_couverture') {
-      // 5. Vue Toiture Plan (Format Paysage horizontal) : cadrage intégral
+      // 5. Vue Toiture Plan (Format Paysage horizontal plein cadre)
       camera.up.set(1, 0, 0);
-      camera.position.set(0, distRoof, targetZ);
-      ctrl.target.set(targetX, targetY, targetZ);
-      camera.lookAt(targetX, targetY, targetZ);
+      camera.position.set(gableCenterX, distRoof, targetZ);
+      ctrl.target.set(gableCenterX, 0, targetZ);
+      camera.lookAt(gableCenterX, 0, targetZ);
     } else {
       // Vue 3D Libre
       camera.position.set(maxDim * 0.85, maxDim * 0.6, maxDim * 0.7);

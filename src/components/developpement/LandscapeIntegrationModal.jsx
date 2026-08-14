@@ -201,14 +201,6 @@ export default function LandscapeIntegrationModal({
 
           <div className="flex items-center gap-3">
             <button
-              onClick={handleSaveAndExport}
-              disabled={isSaving || !photoSrc}
-              className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all active:scale-95 disabled:opacity-50"
-            >
-              <Check className="w-4 h-4" />
-              <span>{isSaving ? 'Génération de la PC6...' : 'Valider & Sauvegarder PC6'}</span>
-            </button>
-            <button
               onClick={onClose}
               className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
             >
@@ -359,7 +351,7 @@ export default function LandscapeIntegrationModal({
 
             <div className="pt-2 border-t border-slate-800">
               <span className="text-slate-400 text-[10.5px] font-bold block mb-2 uppercase">Vues d'orientation</span>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-2 gap-1.5 mb-4">
                 <button
                   onClick={() => setTransform(t => ({ ...t, rotY: 0 }))}
                   className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200"
@@ -385,6 +377,16 @@ export default function LandscapeIntegrationModal({
                   Façade Nord
                 </button>
               </div>
+
+              {/* Bouton de validation déplacé en bas à droite */}
+              <button
+                onClick={handleSaveAndExport}
+                disabled={isSaving || !photoSrc}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg hover:shadow-emerald-900/40 transition-all active:scale-95 disabled:opacity-50"
+              >
+                <Check className="w-4 h-4" />
+                <span>{isSaving ? 'Génération de la PC6...' : 'Valider & Sauvegarder PC6'}</span>
+              </button>
             </div>
           </div>
         </div>

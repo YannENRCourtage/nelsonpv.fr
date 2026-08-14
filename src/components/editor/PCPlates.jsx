@@ -155,14 +155,20 @@ export const PlateGarde = ({ project }) => {
     );
 };
 
+/**
+ * PLANCHE PC1 : PLAN DE SITUATION DU TERRAIN
+ * Directive 4 : Hauteur légèrement réduite et mentions sur 2 lignes
+ */
 export const PlateSituation = ({ project, captures, isInteractive, onUpload }) => {
     return (
         <div style={PAGE_STYLE} id="pc-plate-situation">
             <PlateHeader title="PC1 : PLAN DE SITUATION DU TERRAIN" project={project} />
-            <div style={{ flex: 1, display: 'flex', gap: '8mm', maxHeight: '135mm', marginBottom: '5mm' }}>
+            <div style={{ flex: 1, display: 'flex', gap: '8mm', maxHeight: '126mm', marginBottom: '6mm' }}>
+                {/* Encart Vue Cartographique */}
                 <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ padding: '2.5mm', background: '#f8fafc', borderBottom: '1px solid #cbd5e1', fontSize: '9.5pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
-                        Vue Cartographique (IGN / Cadastre)
+                    <div style={{ padding: '2mm', background: '#f8fafc', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a', lineHeight: '1.25' }}>
+                        <div>Vue Cartographique</div>
+                        <div style={{ fontSize: '7.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '1px' }}>(IGN / Cadastre)</div>
                     </div>
                     <div style={{ flex: 1, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <ImageUploadZone 
@@ -174,9 +180,12 @@ export const PlateSituation = ({ project, captures, isInteractive, onUpload }) =
                         />
                     </div>
                 </div>
+
+                {/* Encart Vue Aérienne */}
                 <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ padding: '2.5mm', background: '#f8fafc', borderBottom: '1px solid #cbd5e1', fontSize: '9.5pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
-                        Vue Aérienne (Géoportail / Satellite)
+                    <div style={{ padding: '2mm', background: '#f8fafc', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a', lineHeight: '1.25' }}>
+                        <div>Vue Aérienne</div>
+                        <div style={{ fontSize: '7.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '1px' }}>(Géoportail / Satellite)</div>
                     </div>
                     <div style={{ flex: 1, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <ImageUploadZone 
@@ -215,8 +224,8 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
 };
 
 /**
- * PLANCHE COMBINÉE PC3 / PC4 : COUPE TRANSVERSALE DYNAMIQUE FIDÈLE AU MODÈLE & NOTICE DESCRIPTIVE
- * Directive 3 : Reproduction exacte de la coupe transversale avec panneaux solaires sur toute la toiture
+ * PLANCHE COMBINÉE PC3 / PC4 : COUPE TRANSVERSALE ASYMÉTRIQUE FIDÈLE AU MODÈLE (AVEC AUVENT ET PANNEAUX SUR TOUTE LA TOITURE)
+ * Directive 2 : Coupe transversale fidèle avec versants et auvents entièrement couverts de panneaux solaires
  */
 export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isInteractive }) => {
     const longueur = project?.longueur || '30.0';
@@ -224,13 +233,16 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const hauteurEgout = parseFloat(project?.hauteur_egout || 4.0);
     const pente = parseFloat(project?.pente || 15);
     const terrainSlopeDeg = parseFloat(project?.pente_terrain || project?.terrain_slope || 3);
-    const bType = (project?.buildingType || project?.type || 'asymetrique_1').toLowerCase();
-    const hasAuvent = project?.rightSide === 'auvent' || project?.leftSide === 'auvent';
+    
+    // Détection stricte du type de bâtiment
+    const rawType = (project?.buildingType || project?.installationType || project?.type || 'asymetrique_1').toLowerCase();
+    const isOmbriere = rawType.includes('ombriere');
+    const isMonopente = rawType.includes('monopente');
+    const isSym = rawType.includes('symetrique');
+    const isAsym = !isOmbriere && !isMonopente && !isSym; // Bâtiment agricole asymétrique standard
+    
+    const hasAuvent = project?.rightSide === 'auvent' || project?.leftSide === 'auvent' || isAsym;
     const hasAppentis = project?.rightSide === 'appentis' || project?.leftSide === 'appentis';
-
-    const isAsym = bType.includes('asymetrique');
-    const isSym = bType.includes('symetrique');
-    const isMonopente = bType.includes('monopente');
 
     // Calculs dimensionnels stricts
     let ridgeHeight = hauteurEgout + (largeur * 0.75 * Math.tan((pente * Math.PI) / 180));
@@ -251,42 +263,28 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
         rightEaveHeight = hauteurEgout;
     }
 
-    // Coordonnées SVG
-    const groundYLeft = 142 + Math.sin((terrainSlopeDeg * Math.PI) / 180) * 110;
-    const groundYRight = 142 - Math.sin((terrainSlopeDeg * Math.PI) / 180) * 110;
+    // Coordonnées SVG (Base largeur X: 140 -> 510, Largeur graphique = 370px)
+    const groundYLeft = 142 + Math.sin((terrainSlopeDeg * Math.PI) / 180) * 105;
+    const groundYRight = 142 - Math.sin((terrainSlopeDeg * Math.PI) / 180) * 105;
 
-    let apexSvgX = 245; // Faîtage décalé à 25% de la largeur (Asymétrique 1 zone)
-    let apexSvgY = 22;
-    let leftEaveSvgY = 48;
-    let rightEaveSvgY = 58;
-
-    if (isSym) {
-        apexSvgX = 340;
-        apexSvgY = 25;
-        leftEaveSvgY = 58;
-        rightEaveSvgY = 58;
-    } else if (isMonopente) {
-        apexSvgX = 530;
-        apexSvgY = 22;
-        leftEaveSvgY = 60;
-        rightEaveSvgY = 22;
-    } else if (isAsym) {
-        apexSvgX = 245;
-        apexSvgY = 20;
-        leftEaveSvgY = 48;
-        rightEaveSvgY = 58;
-    }
+    // Points SVG selon géométrie asymétrique
+    const apexSvgX = isAsym ? 232 : isSym ? 325 : 510;
+    const apexSvgY = 18;
+    const leftEaveSvgY = isAsym ? 46 : 56;
+    const rightEaveSvgY = 56;
+    const auventTipSvgX = 582;
+    const auventTipSvgY = 68;
 
     return (
         <div style={PAGE_STYLE} id="pc-plate-section-notice">
             <PlateHeader title="PC3 : PLAN EN COUPE & PC4 : NOTICE DESCRIPTIVE" project={project} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3.5mm', maxHeight: '138mm', marginBottom: '5mm' }}>
                 
-                {/* ── HAUT : PC3 PLAN EN COUPE DYNAMIQUE ── */}
+                {/* ── HAUT : PC3 PLAN EN COUPE DYNAMIQUE FIDÈLE ── */}
                 <div style={{ height: '82mm', border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '2.5mm 5mm', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1mm' }}>
                         <span style={{ fontSize: '9pt', fontWeight: 'bold', color: '#0f172a' }}>
-                            PC3 — Coupe transversale & Profil altimétrique ({isAsym ? 'Bâtiment Asymétrique 1 zone' : isSym ? 'Bâtiment Bi-pente Symétrique' : isMonopente ? 'Bâtiment Monopente' : 'Structure Solaire'})
+                            PC3 — Coupe transversale & Profil altimétrique ({isAsym ? 'Bâtiment Asymétrique 1 zone avec Auvent' : isSym ? 'Bâtiment Bi-pente Symétrique' : 'Structure Solaire'})
                         </span>
                         <span style={{ fontSize: '7.5pt', color: '#64748b' }}>
                             Échelle indicative • Dimensions : {largeur.toFixed(2)}m × {longueur}m
@@ -296,87 +294,69 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <svg width="680" height="142" viewBox="0 0 680 142" style={{ width: '100%', height: '100%', maxHeight: '68mm' }}>
                             {/* 1. Ligne de Terrain Naturel (TN) */}
-                            <line x1="30" y1={groundYLeft} x2="650" y2={groundYRight} stroke="#94a3b8" strokeWidth="2" strokeDasharray="6 3" />
-                            <text x="45" y={groundYLeft + 12} fill="#64748b" fontSize="8" fontStyle="italic">TN Aval (-0.30m)</text>
-                            <text x="635" y={groundYRight + 12} textAnchor="end" fill="#64748b" fontSize="8" fontStyle="italic">TN Amont (+0.40m)</text>
+                            <line x1="20" y1={groundYLeft} x2="660" y2={groundYRight} stroke="#94a3b8" strokeWidth="2" strokeDasharray="6 3" />
+                            <text x="35" y={groundYLeft + 12} fill="#64748b" fontSize="8" fontStyle="italic">TN Aval (-0.30m)</text>
+                            <text x="645" y={groundYRight + 12} textAnchor="end" fill="#64748b" fontSize="8" fontStyle="italic">TN Amont (+0.40m)</text>
 
                             {/* 2. Poteaux métalliques principaux */}
-                            <rect x="150" y={leftEaveSvgY} width="9" height={groundYLeft - leftEaveSvgY} fill="#334155" />
-                            <rect x="521" y={rightEaveSvgY} width="9" height={groundYRight - rightEaveSvgY} fill="#334155" />
+                            <rect x="140" y={leftEaveSvgY} width="9" height={groundYLeft - leftEaveSvgY} fill="#334155" />
+                            <rect x="502" y={rightEaveSvgY} width="9" height={groundYRight - rightEaveSvgY} fill="#334155" />
 
-                            {/* 3. Portique & Panneaux Solaires sur TOUTE LA TOITURE */}
+                            {/* 3. Portique & PANNEAUX SOLAIRES SUR TOUTE LA TOITURE (VERSANTS + AUVENT) */}
                             {isAsym ? (
                                 <>
-                                    {/* Versant court gauche */}
-                                    <line x1="150" y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="5" />
-                                    <polygon points={`146,${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 6} 146,${leftEaveSvgY - 6}`} fill="#334155" />
-                                    
-                                    {/* Versant long droit entièrement couvert de modules PV solaires */}
-                                    <line x1={apexSvgX} y1={apexSvgY} x2="530" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
-                                    <polygon points={`${apexSvgX},${apexSvgY - 2} 534,${rightEaveSvgY - 2} 534,${rightEaveSvgY - 8} ${apexSvgX},${apexSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
-                                    
-                                    {/* Lignes de division des modules solaires photovoltaïques */}
-                                    {[0.15, 0.3, 0.45, 0.6, 0.75, 0.9].map((ratio, idx) => {
-                                        const px = apexSvgX + (530 - apexSvgX) * ratio;
+                                    {/* Versant court gauche (5m) : Portique + Panneaux solaires */}
+                                    <line x1="140" y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="5" />
+                                    <polygon points={`136,${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 8} 136,${leftEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                    <line x1={140 + (apexSvgX - 140) * 0.5} y1={leftEaveSvgY + (apexSvgY - leftEaveSvgY) * 0.5 - 8} x2={140 + (apexSvgX - 140) * 0.5} y2={leftEaveSvgY + (apexSvgY - leftEaveSvgY) * 0.5 - 2} stroke="#93c5fd" strokeWidth="1" />
+
+                                    {/* Versant long droit (15m) : Portique + Panneaux solaires */}
+                                    <line x1={apexSvgX} y1={apexSvgY} x2="510" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
+                                    <polygon points={`${apexSvgX},${apexSvgY - 2} 514,${rightEaveSvgY - 2} 514,${rightEaveSvgY - 8} ${apexSvgX},${apexSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                    {[0.2, 0.4, 0.6, 0.8].map((ratio, idx) => {
+                                        const px = apexSvgX + (510 - apexSvgX) * ratio;
                                         const py = apexSvgY + (rightEaveSvgY - apexSvgY) * ratio;
                                         return <line key={idx} x1={px} y1={py - 8} x2={px} y2={py - 2} stroke="#93c5fd" strokeWidth="1" />;
                                     })}
-                                </>
-                            ) : isSym ? (
-                                <>
-                                    <line x1="150" y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="5" />
-                                    <line x1={apexSvgX} y1={apexSvgY} x2="530" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
-                                    <polygon points={`146,${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 8} 146,${leftEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
-                                    <polygon points={`${apexSvgX},${apexSvgY - 2} 534,${rightEaveSvgY - 2} 534,${rightEaveSvgY - 8} ${apexSvgX},${apexSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
-                                    {[0.25, 0.5, 0.75].map((ratio, idx) => {
-                                        const px1 = 150 + (apexSvgX - 150) * ratio;
-                                        const py1 = leftEaveSvgY + (apexSvgY - leftEaveSvgY) * ratio;
-                                        const px2 = apexSvgX + (530 - apexSvgX) * ratio;
-                                        const py2 = apexSvgY + (rightEaveSvgY - apexSvgY) * ratio;
-                                        return (
-                                            <React.Fragment key={idx}>
-                                                <line x1={px1} y1={py1 - 8} x2={px1} y2={py1 - 2} stroke="#93c5fd" strokeWidth="1" />
-                                                <line x1={px2} y1={py2 - 8} x2={px2} y2={py2 - 2} stroke="#93c5fd" strokeWidth="1" />
-                                            </React.Fragment>
-                                        );
-                                    })}
+
+                                    {/* Auvent droit (+4m) : Rafter + Panneaux solaires sur toute la surface de l'auvent */}
+                                    {hasAuvent && (
+                                        <>
+                                            <line x1="510" y1={rightEaveSvgY} x2={auventTipSvgX} y2={auventTipSvgY} stroke="#1e293b" strokeWidth="4" />
+                                            <polygon points={`510,${rightEaveSvgY - 2} ${auventTipSvgX + 4},${auventTipSvgY - 2} ${auventTipSvgX + 4},${auventTipSvgY - 8} 510,${rightEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                            <line x1={510 + (auventTipSvgX - 510) * 0.5} y1={rightEaveSvgY + (auventTipSvgY - rightEaveSvgY) * 0.5 - 8} x2={510 + (auventTipSvgX - 510) * 0.5} y2={rightEaveSvgY + (auventTipSvgY - rightEaveSvgY) * 0.5 - 2} stroke="#93c5fd" strokeWidth="1" />
+                                            <text x={(510 + auventTipSvgX) / 2} y={rightEaveSvgY - 14} textAnchor="middle" fill="#0284c7" fontSize="8" fontWeight="bold">Auvent +4.00m</text>
+                                        </>
+                                    )}
                                 </>
                             ) : (
                                 <>
-                                    <line x1="150" y1={leftEaveSvgY} x2="530" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
-                                    <polygon points={`146,${leftEaveSvgY - 2} 534,${rightEaveSvgY - 2} 534,${rightEaveSvgY - 8} 146,${leftEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
-                                </>
-                            )}
-
-                            {/* Extension AUVENT / APPENTIS si présente */}
-                            {(hasAuvent || hasAppentis) && (
-                                <>
-                                    <line x1="530" y1={rightEaveSvgY} x2="595" y2={rightEaveSvgY + 8} stroke="#1e293b" strokeWidth="4" />
-                                    <polygon points={`530,${rightEaveSvgY - 2} 597,${rightEaveSvgY + 6} 597,${rightEaveSvgY + 2} 530,${rightEaveSvgY - 6}`} fill="#475569" />
-                                    <text x="562" y={rightEaveSvgY - 10} textAnchor="middle" fill="#475569" fontSize="7.5" fontWeight="bold">Auvent +4m</text>
-                                    {hasAppentis && <rect x="590" y={rightEaveSvgY + 8} width="6" height={groundYRight - (rightEaveSvgY + 8)} fill="#334155" />}
+                                    <line x1="140" y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="5" />
+                                    <line x1={apexSvgX} y1={apexSvgY} x2="510" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
+                                    <polygon points={`136,${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 8} 136,${leftEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                    <polygon points={`${apexSvgX},${apexSvgY - 2} 514,${rightEaveSvgY - 2} 514,${rightEaveSvgY - 8} ${apexSvgX},${apexSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
                                 </>
                             )}
 
                             {/* 4. Information PENTE : STRICTEMENT AU-DESSUS DU VERSANT */}
-                            <text x={isAsym ? 385 : apexSvgX} y={apexSvgY - 10} textAnchor="middle" fill="#1e3a8a" fontSize="9.5" fontWeight="bold">
+                            <text x={isAsym ? 370 : apexSvgX} y={apexSvgY - 12} textAnchor="middle" fill="#1e3a8a" fontSize="9.5" fontWeight="bold">
                                 ▲ Pente toiture : {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%)
                             </text>
 
                             {/* 5. Rappel Hauteurs d'égout et Faîtage */}
                             {/* Égout gauche */}
-                            <line x1="125" y1={leftEaveSvgY} x2="125" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
-                            <line x1="120" y1={leftEaveSvgY} x2="130" y2={leftEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
-                            <line x1="120" y1={groundYLeft} x2="130" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
-                            <text x="115" y={leftEaveSvgY + (groundYLeft - leftEaveSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="8" fontWeight="bold">
+                            <line x1="115" y1={leftEaveSvgY} x2="115" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
+                            <line x1="110" y1={leftEaveSvgY} x2="120" y2={leftEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
+                            <line x1="110" y1={groundYLeft} x2="120" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
+                            <text x="105" y={leftEaveSvgY + (groundYLeft - leftEaveSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="8" fontWeight="bold">
                                 {isAsym ? `H. Égout Gauche : ${leftEaveHeight.toFixed(2)}m` : `H. Égout : ${hauteurEgout.toFixed(2)}m`}
                             </text>
 
                             {/* Égout droit */}
-                            <line x1="555" y1={rightEaveSvgY} x2="555" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
-                            <line x1="550" y1={rightEaveSvgY} x2="560" y2={rightEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
-                            <line x1="550" y1={groundYRight} x2="560" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
-                            <text x="565" y={rightEaveSvgY + (groundYRight - rightEaveSvgY) / 2 + 3} textAnchor="start" fill="#ef4444" fontSize="8" fontWeight="bold">
+                            <line x1="535" y1={rightEaveSvgY} x2="535" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
+                            <line x1="530" y1={rightEaveSvgY} x2="540" y2={rightEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
+                            <line x1="530" y1={groundYRight} x2="540" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
+                            <text x="545" y={rightEaveSvgY + (groundYRight - rightEaveSvgY) / 2 + 3} textAnchor="start" fill="#ef4444" fontSize="8" fontWeight="bold">
                                 {isAsym ? `H. Égout Droit : ${rightEaveHeight.toFixed(2)}m` : `H. Égout : ${hauteurEgout.toFixed(2)}m`}
                             </text>
 
@@ -387,12 +367,20 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                             </text>
 
                             {/* 6. Largeur d'emprise au sol STRICTEMENT AU-DESSUS du trait bleu */}
-                            <text x="340" y="122" textAnchor="middle" fill="#0284c7" fontSize="10.5" fontWeight="bold">
+                            <text x="325" y="122" textAnchor="middle" fill="#0284c7" fontSize="10.5" fontWeight="bold">
                                 ▼ Largeur : {largeur.toFixed(2)} m (Emprise au sol)
                             </text>
-                            <line x1="150" y1="130" x2="530" y2="130" stroke="#0284c7" strokeWidth="1.5" />
-                            <line x1="150" y1="124" x2="150" y2="136" stroke="#0284c7" strokeWidth="1.5" />
-                            <line x1="530" y1="124" x2="530" y2="136" stroke="#0284c7" strokeWidth="1.5" />
+                            <line x1="140" y1="130" x2="510" y2="130" stroke="#0284c7" strokeWidth="1.5" />
+                            <line x1="140" y1="124" x2="140" y2="136" stroke="#0284c7" strokeWidth="1.5" />
+                            <line x1="510" y1="124" x2="510" y2="136" stroke="#0284c7" strokeWidth="1.5" />
+
+                            {/* Cote de l'auvent au sol */}
+                            {hasAuvent && (
+                                <>
+                                    <line x1="510" y1="130" x2={auventTipSvgX} y2="130" stroke="#0284c7" strokeWidth="1.5" strokeDasharray="4 2" />
+                                    <line x1={auventTipSvgX} y1="124" x2={auventTipSvgX} y2="136" stroke="#0284c7" strokeWidth="1.5" />
+                                </>
+                            )}
                         </svg>
                     </div>
                 </div>
@@ -432,7 +420,7 @@ export const PlateNotice = (props) => <PlateSectionAndNotice {...props} />;
 
 /**
  * PLANCHE PC5 : PLAN DES FAÇADES ET TOITURES (5 VUES 3D)
- * Directive 4 : Vues 3, 4 et 5 avec proportions respectées sans compression ni distorsion
+ * Directive 3 : Vues Façade Est, Façade Ouest et Couverture avec proportions réelles respectées
  */
 export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => {
     const sud = captures?.facade_sud || captures?.facades_projet;
@@ -447,7 +435,7 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3.5mm', maxHeight: '135mm', marginBottom: '5mm' }}>
                 
                 {/* Ligne 1 : Façades Longs Pans (Sud & Nord) */}
-                <div style={{ flex: 1, display: 'flex', gap: '4mm' }}>
+                <div style={{ flex: 1, display: 'flex', gap: '4mm', minHeight: '52mm' }}>
                     {/* Façade Sud */}
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
                         <div style={{ padding: '1.8mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
@@ -481,8 +469,8 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                     </div>
                 </div>
 
-                {/* Ligne 2 : Pignons (Est & Ouest) et Vue Toiture sans compression */}
-                <div style={{ flex: 1.15, display: 'flex', gap: '4mm' }}>
+                {/* Ligne 2 : Pignons (Est & Ouest) et Vue Toiture avec proportions réelles */}
+                <div style={{ flex: 1.15, display: 'flex', gap: '4mm', minHeight: '54mm' }}>
                     {/* Façade Est */}
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
                         <div style={{ padding: '1.8mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
@@ -515,8 +503,8 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                         </div>
                     </div>
 
-                    {/* Vue Couverture (Toiture Élargie) */}
-                    <div style={{ flex: 1.4, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+                    {/* Vue Couverture (Plan Toiture plein cadre paysage) */}
+                    <div style={{ flex: 1.5, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
                         <div style={{ padding: '1.8mm', background: '#dbeafe', borderBottom: '1px solid #93c5fd', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#1e40af' }}>
                             5. VUE COUVERTURE (PLAN TOITURE PHOTOVOLTAÏQUE)
                         </div>
@@ -578,7 +566,6 @@ export const PlateInsertion = ({ project, photos, isInteractive, onUpload }) => 
 
 /**
  * PLANCHE PC7 & PC8 : ENVIRONNEMENT PROCHE ET LOINTAIN (SUR LA MÊME LIGNE)
- * Directive : Mettre PC7 et PC8 sur la même ligne (Side-by-Side)
  */
 export const PlateEnv = ({ project, photos, isInteractive, onUpload }) => (
     <div style={PAGE_STYLE} id="pc-plate-env">
