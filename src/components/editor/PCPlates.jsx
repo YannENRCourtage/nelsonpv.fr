@@ -589,5 +589,6 @@ export const PlateEnv = ({ project, photos, isInteractive, onUpload }) => (
 
 export const PlateEnvProche = (props) => <PlateEnv {...props} />;
 export const PlateEnvLointain = (props) => <PlateEnv {...props} />;
+export const PlateEnvProcheLointain = (props) => <PlateEnv {...props} />;
 export const PlateImpact = (props) => <PlateNotice {...props} />;
 export const PlateCover = PlateGarde;
