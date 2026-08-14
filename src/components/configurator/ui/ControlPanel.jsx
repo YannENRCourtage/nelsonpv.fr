@@ -340,56 +340,53 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                 )
             }
 
-            {/* ========== ESPACEMENT TRAVÉES — masqué pour ACAMA EPONA/TALIAN ========== */}
+            {/* ========== ESPACEMENT & NOMBRE DE TRAVÉES (SUR LA MÊME LIGNE) ========== */}
             {
                 !isAcama && (
-                    <div className="param-group mb-4">
-                        <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
-                            Espacement Travées
-                        </label>
-                        <div className="inline-flex rounded-lg overflow-hidden border-2 border-slate-300">
-                            <button
-                                onClick={() => setBaySpacing(6)}
-                                className={`px-4 py-2 font-bold text-xs transition-all ${baySpacing === 6 ? 'bg-green-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
-                            >
-                                6m
-                            </button>
-                            <button
-                                onClick={() => setBaySpacing(7.5)}
-                                className={`px-4 py-2 font-bold text-xs transition-all ${baySpacing === 7.5 ? 'bg-green-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
-                            >
-                                7.5m
-                            </button>
-                        </div>
-                    </div>
-                )
-            }
-
-            {/* ========== NOMBRE DE TRAVÉES — masqué pour ACAMA EPONA/TALIAN ========== */}
-            {
-                !isAcama && (
-                    <div className="param-group mb-4">
-                        <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
-                            Nombre de Travées
-                        </label>
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={decrementBayCount}
-                                disabled={bayCount <= 4}
-                                className={`w-10 h-10 rounded-lg font-bold text-lg transition-all ${bayCount > 4 ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
-                            >
-                                −
-                            </button>
-                            <div className="text-center">
-                                <span className="text-2xl font-bold text-slate-900">{bayCount}</span>
-                                <p className="text-[10px] text-slate-500 leading-none mt-0.5">travées</p>
+                    <div className="param-group mb-4 grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
+                                Espacement Travées
+                            </label>
+                            <div className="inline-flex rounded-lg overflow-hidden border-2 border-slate-300 w-full">
+                                <button
+                                    onClick={() => setBaySpacing(6)}
+                                    className={`flex-1 py-1.5 font-bold text-xs transition-all ${baySpacing === 6 ? 'bg-green-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
+                                >
+                                    6m
+                                </button>
+                                <button
+                                    onClick={() => setBaySpacing(7.5)}
+                                    className={`flex-1 py-1.5 font-bold text-xs transition-all ${baySpacing === 7.5 ? 'bg-green-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
+                                >
+                                    7.5m
+                                </button>
                             </div>
-                            <button
-                                onClick={incrementBayCount}
-                                className="w-10 h-10 rounded-lg bg-green-500 text-white font-bold text-lg hover:bg-green-600 transition-all"
-                            >
-                                +
-                            </button>
+                        </div>
+
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
+                                Nombre de Travées
+                            </label>
+                            <div className="flex items-center justify-between gap-1 border-2 border-slate-300 rounded-lg p-0.5 bg-white">
+                                <button
+                                    onClick={decrementBayCount}
+                                    disabled={bayCount <= 4}
+                                    className={`w-7 h-7 rounded-md font-bold text-base transition-all flex items-center justify-center ${bayCount > 4 ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+                                >
+                                    −
+                                </button>
+                                <div className="text-center">
+                                    <span className="text-base font-bold text-slate-900 leading-none">{bayCount}</span>
+                                    <p className="text-[8.5px] text-slate-400 leading-none">travées</p>
+                                </div>
+                                <button
+                                    onClick={incrementBayCount}
+                                    className="w-7 h-7 rounded-md bg-green-500 text-white font-bold text-base hover:bg-green-600 transition-all flex items-center justify-center"
+                                >
+                                    +
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )
@@ -723,24 +720,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                 </div>
             )}
 
-            {/* ========== ACTIONS ========== */}
-            {selectedProject && (
-                <div className="mt-8 pt-6 border-t border-slate-200">
-                    <button
-                        onClick={() => navigate(`/project/${selectedProject.id}/edit?insertCustomBuilding=true`)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3"
-                    >
-                        <span className="text-xl">🗺️</span>
-                        <div className="text-left">
-                            <div className="text-xs opacity-80 uppercase font-black">Éditeur de projet</div>
-                            <div className="text-sm">Insérer sur la carte</div>
-                        </div>
-                    </button>
-                    <p className="text-[10px] text-slate-400 text-center mt-3 italic">
-                        Le bâtiment sera inséré avec les dimensions actuelles sur le projet {selectedProject.name}.
-                    </p>
-                </div>
-            )}
+            {/* Actions removed as requested */}
         </div>
     );
 }

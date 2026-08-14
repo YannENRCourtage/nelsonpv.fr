@@ -1,26 +1,79 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
+import { PerspectiveCamera, Environment, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
+import { Structure } from '@/components/configurator/structure/Structure.jsx';
+import { useConfiguratorValues } from '@/stores/useConfiguratorStore.js';
 import {
   X, Check, RotateCw, ZoomIn, ZoomOut, Move,
   Sliders, RefreshCw, Eye, Download, Layers, Sparkles, Sun, Compass
 } from 'lucide-react';
 
 /**
- * LandscapeIntegrationModal — Incrustation 3D interactive sur photo de terrain (PC6)
- * Directive 1 & 2 :
- * - Modélisation 3D exacte du bâtiment configuré (asymétrique, travées, auvent, etc.)
- * - Interaction orbitale directe au glisser-souris (Drag / Rotate)
+ * Three Context Bridge to get WebGL rendering context for high-res export
+ */
+function LandscapeThreeBridge({ onReady, transform, sunAngle }) {
+  const { gl, scene, camera } = useThree();
+  const config = useConfiguratorValues();
+  const targetZ = -(config.length || 30) / 2;
+
+  useEffect(() => {
+    if (onReady) onReady({ gl, scene, camera });
+  }, [gl, scene, camera, onReady]);
+
+  const sunRad = (sunAngle * Math.PI) / 180;
+
+  return (
+    <>
+      <ambientLight intensity={0.85} />
+      <directionalLight
+        position={[Math.cos(sunRad) * 70, 70, Math.sin(sunRad) * 70]}
+        intensity={2.2}
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.0001}
+      />
+      <Environment preset="city" />
+
+      <PerspectiveCamera
+        makeDefault
+        position={[0, 6, 38]}
+        fov={40}
+        near={0.1}
+        far={2000}
+      />
+
+      <group
+        position={[transform.posX, transform.posY, transform.posZ]}
+        rotation={[transform.rotX, transform.rotY, transform.rotZ]}
+        scale={transform.scale}
+      >
+        <Structure />
+        <ContactShadows
+          position={[0, -0.05, targetZ]}
+          opacity={0.5}
+          scale={Math.max(config.length || 30, config.width || 20, 40) * 1.6}
+          blur={2.5}
+          far={20}
+          color="#000000"
+        />
+      </group>
+    </>
+  );
+}
+
+/**
+ * LandscapeIntegrationModal — Incrustation 3D avec le modèle fidèle du configurateur
  */
 export default function LandscapeIntegrationModal({
   isOpen,
   onClose,
   initialPhoto,
-  projectDimensions = {},
-  installationType = 'batiment_solaire',
   onSaveSimulation,
 }) {
   const [photoSrc, setPhotoSrc] = useState(initialPhoto || null);
   const [isSaving, setIsSaving] = useState(false);
+  const config = useConfiguratorValues();
 
   const [transform, setTransform] = useState({
     posX: 0,
@@ -29,270 +82,41 @@ export default function LandscapeIntegrationModal({
     rotY: 0.35,
     rotX: 0.15,
     rotZ: 0.0,
-    scale: 1.0,
+    scale: 0.85,
     sunAngle: 45,
   });
 
   const containerRef = useRef(null);
-  const canvas3DRef = useRef(null);
-  const threeRef = useRef({
-    scene: null,
-    camera: null,
-    renderer: null,
-    buildingGroup: null,
-    shadowPlane: null,
-    dirLight: null,
-    isDragging: false,
-    dragButton: 0,
-    dragStart: { x: 0, y: 0 },
-    animationId: null
-  });
+  const threeContextRef = useRef(null);
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const dragButtonRef = useRef(0);
 
   useEffect(() => {
     if (initialPhoto) setPhotoSrc(initialPhoto);
   }, [initialPhoto]);
 
-  useEffect(() => {
-    if (!isOpen || !photoSrc || !canvas3DRef.current) return;
-    const canvas = canvas3DRef.current;
-    const container = containerRef.current;
-    if (!container) return;
-
-    const w = container.clientWidth || 800;
-    const h = container.clientHeight || 500;
-
-    const scene = new THREE.Scene();
-
-    const camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 1000);
-    camera.position.set(0, 5, 38);
-    camera.lookAt(0, 3, 0);
-
-    const renderer = new THREE.WebGLRenderer({
-      canvas,
-      alpha: true,
-      antialias: true,
-      preserveDrawingBuffer: true
-    });
-    renderer.setSize(w, h);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
-    scene.add(ambientLight);
-
-    const dirLight = new THREE.DirectionalLight(0xfff8e7, 1.6);
-    dirLight.position.set(40, 60, 40);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
-    dirLight.shadow.bias = -0.0005;
-    scene.add(dirLight);
-
-    const fillLight = new THREE.DirectionalLight(0xb0c4de, 0.5);
-    fillLight.position.set(-30, 20, -30);
-    scene.add(fillLight);
-
-    const shadowPlaneGeo = new THREE.PlaneGeometry(140, 140);
-    const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.35 });
-    const shadowPlane = new THREE.Mesh(shadowPlaneGeo, shadowPlaneMat);
-    shadowPlane.rotation.x = -Math.PI / 2;
-    shadowPlane.position.y = -0.05;
-    shadowPlane.receiveShadow = true;
-    scene.add(shadowPlane);
-
-    // ── Construction géométrique exacte du bâtiment configuré ──
-    const buildingGroup = new THREE.Group();
-
-    const lg = Number(projectDimensions.longueur || 30.0);
-    const lr = Number(projectDimensions.largeur || 20.0);
-    const ht = Number(projectDimensions.hauteur_egout || 4.0);
-    const penteDeg = Number(projectDimensions.pente || 15);
-    const buildingType = (projectDimensions.buildingType || projectDimensions.type || 'asymetrique_1').toLowerCase();
-    const rightSide = projectDimensions.rightSide || 'none';
-
-    const isAsym = buildingType.includes('asymetrique');
-    const isMonopente = buildingType === 'monopente';
-    const isOmbriere = buildingType.includes('ombriere');
-    const pitchRad = (penteDeg * Math.PI) / 180;
-
-    const halfL = lg / 2;
-    const halfW = lr / 2;
-    const bayCount = Math.max(3, Math.round(lg / 6));
-    const baySpacing = lg / bayCount;
-
-    let apexX = 0;
-    let rightEaveH = ht;
-    let leftEaveH = ht;
-    let ridgeH = ht + halfW * Math.tan(pitchRad);
-
-    if (isAsym) {
-      const rightSpan = lr * 0.75;
-      const leftSpan = lr * 0.25;
-      apexX = -halfW + leftSpan;
-      rightEaveH = ht;
-      ridgeH = rightEaveH + rightSpan * Math.tan(pitchRad);
-      leftEaveH = Math.max(3.0, ridgeH - leftSpan * Math.tan(pitchRad));
-    } else if (isMonopente) {
-      apexX = -halfW;
-      leftEaveH = ht + lr * Math.tan(pitchRad);
-      rightEaveH = ht;
-      ridgeH = leftEaveH;
-    } else if (isOmbriere) {
-      apexX = 0;
-      ridgeH = ht + 0.8;
-      leftEaveH = ht;
-      rightEaveH = ht - 0.4;
-    }
-
-    const postMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.35, metalness: 0.75 });
-    const rafterMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.3, metalness: 0.8 });
-    const solarMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.15, metalness: 0.85 });
-
-    for (let i = 0; i <= bayCount; i++) {
-      const z = -halfL + i * baySpacing;
-
-      // Poteau Gauche
-      const postG = new THREE.Mesh(new THREE.BoxGeometry(0.35, leftEaveH, 0.35), postMat);
-      postG.position.set(-halfW, leftEaveH / 2, z);
-      postG.castShadow = true;
-      buildingGroup.add(postG);
-
-      // Poteau Droit
-      const postD = new THREE.Mesh(new THREE.BoxGeometry(0.35, rightEaveH, 0.35), postMat);
-      postD.position.set(halfW, rightEaveH / 2, z);
-      postD.castShadow = true;
-      buildingGroup.add(postD);
-
-      // Arbalétrier Gauche
-      const lenG = Math.sqrt(Math.pow(apexX - (-halfW), 2) + Math.pow(ridgeH - leftEaveH, 2));
-      const rafterG = new THREE.Mesh(new THREE.BoxGeometry(lenG, 0.25, 0.2), rafterMat);
-      rafterG.position.set((-halfW + apexX) / 2, (leftEaveH + ridgeH) / 2, z);
-      rafterG.rotation.z = Math.atan2(ridgeH - leftEaveH, apexX - (-halfW));
-      rafterG.castShadow = true;
-      buildingGroup.add(rafterG);
-
-      // Arbalétrier Droit
-      if (!isMonopente) {
-        const lenD = Math.sqrt(Math.pow(halfW - apexX, 2) + Math.pow(ridgeH - rightEaveH, 2));
-        const rafterD = new THREE.Mesh(new THREE.BoxGeometry(lenD, 0.25, 0.2), rafterMat);
-        rafterD.position.set((apexX + halfW) / 2, (ridgeH + rightEaveH) / 2, z);
-        rafterD.rotation.z = Math.atan2(rightEaveH - ridgeH, halfW - apexX);
-        rafterD.castShadow = true;
-        buildingGroup.add(rafterD);
-      }
-
-      // Auvent / Appentis
-      if (rightSide === 'auvent' || rightSide === 'appentis') {
-        const extLen = 4.0;
-        const rafterExt = new THREE.Mesh(new THREE.BoxGeometry(extLen, 0.2, 0.15), rafterMat);
-        rafterExt.position.set(halfW + extLen / 2, rightEaveH - 0.2, z);
-        rafterExt.rotation.z = -0.15;
-        buildingGroup.add(rafterExt);
-      }
-    }
-
-    // Couverture Solaire Principale
-    const lenMainRoof = Math.sqrt(Math.pow(halfW - apexX, 2) + Math.pow(ridgeH - rightEaveH, 2)) + 0.4;
-    const roofMain = new THREE.Mesh(new THREE.BoxGeometry(lenMainRoof, 0.08, lg + 0.4), solarMat);
-    roofMain.position.set((apexX + halfW) / 2, (ridgeH + rightEaveH) / 2 + 0.1, 0);
-    roofMain.rotation.z = Math.atan2(rightEaveH - ridgeH, halfW - apexX);
-    roofMain.castShadow = true;
-    buildingGroup.add(roofMain);
-
-    // Couverture Versant Court
-    if (!isMonopente) {
-      const lenLeftRoof = Math.sqrt(Math.pow(apexX - (-halfW), 2) + Math.pow(ridgeH - leftEaveH, 2)) + 0.4;
-      const roofLeft = new THREE.Mesh(new THREE.BoxGeometry(lenLeftRoof, 0.08, lg + 0.4), rafterMat);
-      roofLeft.position.set((-halfW + apexX) / 2, (leftEaveH + ridgeH) / 2 + 0.1, 0);
-      roofLeft.rotation.z = Math.atan2(ridgeH - leftEaveH, apexX - (-halfW));
-      roofLeft.castShadow = true;
-      buildingGroup.add(roofLeft);
-    }
-
-    // Couverture Auvent
-    if (rightSide === 'auvent' || rightSide === 'appentis') {
-      const roofAuvent = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.06, lg + 0.4), rafterMat);
-      roofAuvent.position.set(halfW + 2.0, rightEaveH - 0.1, 0);
-      roofAuvent.rotation.z = -0.15;
-      buildingGroup.add(roofAuvent);
-    }
-
-    scene.add(buildingGroup);
-
-    threeRef.current = {
-      scene,
-      camera,
-      renderer,
-      buildingGroup,
-      shadowPlane,
-      dirLight,
-      isDragging: false,
-      dragButton: 0,
-      dragStart: { x: 0, y: 0 }
-    };
-
-    const animate = () => {
-      threeRef.current.animationId = requestAnimationFrame(animate);
-      renderer.render(scene, camera);
-    };
-    animate();
-
-    const handleResize = () => {
-      if (!containerRef.current || !renderer || !camera) return;
-      const nw = containerRef.current.clientWidth;
-      const nh = containerRef.current.clientHeight;
-      camera.aspect = nw / nh;
-      camera.updateProjectionMatrix();
-      renderer.setSize(nw, nh);
-    };
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      cancelAnimationFrame(threeRef.current.animationId);
-      renderer.dispose();
-    };
-  }, [isOpen, photoSrc, projectDimensions]);
-
-  useEffect(() => {
-    const { buildingGroup, shadowPlane, dirLight } = threeRef.current;
-    if (!buildingGroup) return;
-
-    buildingGroup.position.set(transform.posX, transform.posY, transform.posZ);
-    buildingGroup.rotation.set(transform.rotX, transform.rotY, transform.rotZ);
-    buildingGroup.scale.set(transform.scale, transform.scale, transform.scale);
-
-    if (shadowPlane) {
-      shadowPlane.position.set(transform.posX, transform.posY - 0.05, transform.posZ);
-      shadowPlane.rotation.z = transform.rotY;
-    }
-
-    if (dirLight) {
-      const rad = (transform.sunAngle * Math.PI) / 180;
-      dirLight.position.set(Math.cos(rad) * 60, 60, Math.sin(rad) * 60);
-    }
-  }, [transform]);
-
-  // Interaction directe à la souris (Drag / Rotate orbital naturel)
+  // Direct mouse drag controls on photo
   const handleMouseDown = (e) => {
-    threeRef.current.isDragging = true;
-    threeRef.current.dragButton = e.button;
-    threeRef.current.dragStart = { x: e.clientX, y: e.clientY };
+    isDraggingRef.current = true;
+    dragButtonRef.current = e.button;
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
   };
 
   const handleMouseMove = (e) => {
-    if (!threeRef.current.isDragging) return;
-    const dx = e.clientX - threeRef.current.dragStart.x;
-    const dy = e.clientY - threeRef.current.dragStart.y;
+    if (!isDraggingRef.current) return;
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
 
-    if (e.shiftKey || threeRef.current.dragButton === 2) {
+    if (e.shiftKey || dragButtonRef.current === 2) {
+      // Déplacement Translation
       setTransform(prev => ({
         ...prev,
         posX: prev.posX + dx * 0.04,
         posY: prev.posY - dy * 0.04,
       }));
     } else {
+      // Rotation Orbitale
       setTransform(prev => ({
         ...prev,
         rotY: prev.rotY + dx * 0.01,
@@ -300,11 +124,11 @@ export default function LandscapeIntegrationModal({
       }));
     }
 
-    threeRef.current.dragStart = { x: e.clientX, y: e.clientY };
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
   };
 
   const handleMouseUp = () => {
-    threeRef.current.isDragging = false;
+    isDraggingRef.current = false;
   };
 
   const handleWheel = (e) => {
@@ -317,7 +141,7 @@ export default function LandscapeIntegrationModal({
   };
 
   const handleSaveAndExport = async () => {
-    if (!containerRef.current || !photoSrc) return;
+    if (!containerRef.current || !photoSrc || !threeContextRef.current) return;
     setIsSaving(true);
 
     try {
@@ -331,6 +155,7 @@ export default function LandscapeIntegrationModal({
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
 
+      // 1. Fond photo du terrain
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.src = photoSrc;
@@ -338,13 +163,13 @@ export default function LandscapeIntegrationModal({
         img.onload = resolve;
         img.onerror = reject;
       });
-
       ctx.drawImage(img, 0, 0, exportCanvas.width, exportCanvas.height);
 
-      const { renderer, scene, camera } = threeRef.current;
-      if (renderer && scene && camera) {
-        renderer.render(scene, camera);
-        ctx.drawImage(renderer.domElement, 0, 0, exportCanvas.width, exportCanvas.height);
+      // 2. Modèle 3D rendu par Three.js
+      const { gl, scene, camera } = threeContextRef.current;
+      if (gl && scene && camera) {
+        gl.render(scene, camera);
+        ctx.drawImage(gl.domElement, 0, 0, exportCanvas.width, exportCanvas.height);
       }
 
       const finalDataUrl = exportCanvas.toDataURL('image/jpeg', 0.95);
@@ -377,7 +202,7 @@ export default function LandscapeIntegrationModal({
                 Incrustation 3D du Projet Solaire sur photo de terrain (PC6)
               </h3>
               <p className="text-xs text-slate-400">
-                Structure {projectDimensions.largeur || '20.0'}m × {projectDimensions.longueur || '30.0'}m • Glissez sur la photo pour tourner et orienter le bâtiment
+                Structure {config.width || '20.0'}m × {config.length || '30.0'}m • Glissez sur la photo pour tourner et orienter le bâtiment
               </p>
             </div>
           </div>
@@ -419,10 +244,19 @@ export default function LandscapeIntegrationModal({
                   className="absolute inset-0 w-full h-full object-cover pointer-events-none"
                 />
 
-                <canvas
-                  ref={canvas3DRef}
-                  className="absolute inset-0 w-full h-full pointer-events-none"
-                />
+                <div className="absolute inset-0 pointer-events-none">
+                  <Canvas
+                    shadows
+                    gl={{ preserveDrawingBuffer: true, antialias: true, alpha: true }}
+                    style={{ width: '100%', height: '100%' }}
+                  >
+                    <LandscapeThreeBridge
+                      onReady={(ctx) => { threeContextRef.current = ctx; }}
+                      transform={transform}
+                      sunAngle={transform.sunAngle}
+                    />
+                  </Canvas>
+                </div>
 
                 <div className="absolute bottom-4 left-4 bg-slate-900/85 backdrop-blur-md px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 border border-slate-700 pointer-events-none flex items-center gap-2">
                   <span>🖱️ <strong>Glisser souris :</strong> Faire pivoter le bâtiment (Orbital 3D)</span>
@@ -446,7 +280,7 @@ export default function LandscapeIntegrationModal({
                 <Sliders className="w-4 h-4 text-blue-400" /> Réglages 3D
               </span>
               <button
-                onClick={() => setTransform({ posX: 0, posY: -2, posZ: 0, rotY: 0.35, rotX: 0.15, rotZ: 0, scale: 1.0, sunAngle: 45 })}
+                onClick={() => setTransform({ posX: 0, posY: -2, posZ: 0, rotY: 0.35, rotX: 0.15, rotZ: 0, scale: 0.85, sunAngle: 45 })}
                 className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1"
               >
                 <RefreshCw className="w-3 h-3" /> Réinitialiser

@@ -62,7 +62,7 @@ const ImageUploadZone = ({ isInteractive, photo, onUpload, defaultText = "Clique
             <img 
                 src={photo} 
                 alt={label} 
-                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} 
+                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', maxWidth: '100%', maxHeight: '100%' }} 
             />
         );
     }
@@ -70,7 +70,7 @@ const ImageUploadZone = ({ isInteractive, photo, onUpload, defaultText = "Clique
     return (
         <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {photo ? (
-                <img src={photo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                <img src={photo} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain', maxWidth: '100%', maxHeight: '100%' }} />
             ) : (
                 <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '9pt', padding: '10px' }}>
                     <div style={{ fontSize: '18pt', marginBottom: '4px' }}>📷</div>
@@ -216,7 +216,7 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
 
 /**
  * PLANCHE COMBINÉE PC3 / PC4 : COUPE TRANSVERSALE DYNAMIQUE FIDÈLE AU MODÈLE & NOTICE DESCRIPTIVE
- * Directive 3 : Reproduction exacte de la coupe (Asymétrique, Symétrique, Monopente, Ombrière, Auvents, etc.)
+ * Directive 3 : Reproduction exacte de la coupe transversale avec panneaux solaires sur toute la toiture
  */
 export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isInteractive }) => {
     const longueur = project?.longueur || '30.0';
@@ -231,9 +231,8 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const isAsym = bType.includes('asymetrique');
     const isSym = bType.includes('symetrique');
     const isMonopente = bType.includes('monopente');
-    const isOmbriere = bType.includes('ombriere');
 
-    // Calculs de hauteurs réelles
+    // Calculs dimensionnels stricts
     let ridgeHeight = hauteurEgout + (largeur * 0.75 * Math.tan((pente * Math.PI) / 180));
     let leftEaveHeight = hauteurEgout;
     let rightEaveHeight = hauteurEgout;
@@ -252,15 +251,14 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
         rightEaveHeight = hauteurEgout;
     }
 
-    // Coordonnées SVG (Base largeur X: 150 -> 530, Largeur graphique = 380px)
+    // Coordonnées SVG
     const groundYLeft = 142 + Math.sin((terrainSlopeDeg * Math.PI) / 180) * 110;
     const groundYRight = 142 - Math.sin((terrainSlopeDeg * Math.PI) / 180) * 110;
 
-    // Calcul des points SVG de toiture
-    let apexSvgX = 245; // Asymétrique 1 zone : Faîtage décalé à gauche
-    let apexSvgY = 22;  // Haut faîtage
-    let leftEaveSvgY = 56;
-    let rightEaveSvgY = 56;
+    let apexSvgX = 245; // Faîtage décalé à 25% de la largeur (Asymétrique 1 zone)
+    let apexSvgY = 22;
+    let leftEaveSvgY = 48;
+    let rightEaveSvgY = 58;
 
     if (isSym) {
         apexSvgX = 340;
@@ -306,27 +304,47 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                             <rect x="150" y={leftEaveSvgY} width="9" height={groundYLeft - leftEaveSvgY} fill="#334155" />
                             <rect x="521" y={rightEaveSvgY} width="9" height={groundYRight - rightEaveSvgY} fill="#334155" />
 
-                            {/* 3. Portique / Arbalétriers & Toiture photovoltaïque */}
+                            {/* 3. Portique & Panneaux Solaires sur TOUTE LA TOITURE */}
                             {isAsym ? (
                                 <>
-                                    {/* Versant gauche court */}
+                                    {/* Versant court gauche */}
                                     <line x1="150" y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="5" />
-                                    {/* Versant droit long (Solaire PV) */}
-                                    <line x1={apexSvgX} y1={apexSvgY} x2="530" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
                                     <polygon points={`146,${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 6} 146,${leftEaveSvgY - 6}`} fill="#334155" />
-                                    <polygon points={`${apexSvgX},${apexSvgY - 2} 534,${rightEaveSvgY - 2} 534,${rightEaveSvgY - 7} ${apexSvgX},${apexSvgY - 7}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                    
+                                    {/* Versant long droit entièrement couvert de modules PV solaires */}
+                                    <line x1={apexSvgX} y1={apexSvgY} x2="530" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
+                                    <polygon points={`${apexSvgX},${apexSvgY - 2} 534,${rightEaveSvgY - 2} 534,${rightEaveSvgY - 8} ${apexSvgX},${apexSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                    
+                                    {/* Lignes de division des modules solaires photovoltaïques */}
+                                    {[0.15, 0.3, 0.45, 0.6, 0.75, 0.9].map((ratio, idx) => {
+                                        const px = apexSvgX + (530 - apexSvgX) * ratio;
+                                        const py = apexSvgY + (rightEaveSvgY - apexSvgY) * ratio;
+                                        return <line key={idx} x1={px} y1={py - 8} x2={px} y2={py - 2} stroke="#93c5fd" strokeWidth="1" />;
+                                    })}
                                 </>
                             ) : isSym ? (
                                 <>
                                     <line x1="150" y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="5" />
                                     <line x1={apexSvgX} y1={apexSvgY} x2="530" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
-                                    <polygon points={`146,${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 7} 146,${leftEaveSvgY - 7}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
-                                    <polygon points={`${apexSvgX},${apexSvgY - 2} 534,${rightEaveSvgY - 2} 534,${rightEaveSvgY - 7} ${apexSvgX},${apexSvgY - 7}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                    <polygon points={`146,${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 8} 146,${leftEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                    <polygon points={`${apexSvgX},${apexSvgY - 2} 534,${rightEaveSvgY - 2} 534,${rightEaveSvgY - 8} ${apexSvgX},${apexSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                    {[0.25, 0.5, 0.75].map((ratio, idx) => {
+                                        const px1 = 150 + (apexSvgX - 150) * ratio;
+                                        const py1 = leftEaveSvgY + (apexSvgY - leftEaveSvgY) * ratio;
+                                        const px2 = apexSvgX + (530 - apexSvgX) * ratio;
+                                        const py2 = apexSvgY + (rightEaveSvgY - apexSvgY) * ratio;
+                                        return (
+                                            <React.Fragment key={idx}>
+                                                <line x1={px1} y1={py1 - 8} x2={px1} y2={py1 - 2} stroke="#93c5fd" strokeWidth="1" />
+                                                <line x1={px2} y1={py2 - 8} x2={px2} y2={py2 - 2} stroke="#93c5fd" strokeWidth="1" />
+                                            </React.Fragment>
+                                        );
+                                    })}
                                 </>
                             ) : (
                                 <>
                                     <line x1="150" y1={leftEaveSvgY} x2="530" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
-                                    <polygon points={`146,${leftEaveSvgY - 2} 534,${rightEaveSvgY - 2} 534,${rightEaveSvgY - 7} 146,${leftEaveSvgY - 7}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                    <polygon points={`146,${leftEaveSvgY - 2} 534,${rightEaveSvgY - 2} 534,${rightEaveSvgY - 8} 146,${leftEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
                                 </>
                             )}
 
@@ -340,7 +358,7 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                                 </>
                             )}
 
-                            {/* 4. Information PENTE : AU-DESSUS DU VERSANT */}
+                            {/* 4. Information PENTE : STRICTEMENT AU-DESSUS DU VERSANT */}
                             <text x={isAsym ? 385 : apexSvgX} y={apexSvgY - 10} textAnchor="middle" fill="#1e3a8a" fontSize="9.5" fontWeight="bold">
                                 ▲ Pente toiture : {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%)
                             </text>
@@ -359,7 +377,7 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                                 H. Faîtage : {ridgeHeight.toFixed(2)}m
                             </text>
 
-                            {/* 7. Largeur d'emprise au sol placée STRICTEMENT AU-DESSUS du trait bleu */}
+                            {/* 7. Largeur d'emprise au sol STRICTEMENT AU-DESSUS du trait bleu */}
                             <text x="340" y="122" textAnchor="middle" fill="#0284c7" fontSize="10.5" fontWeight="bold">
                                 ▼ Largeur : {largeur.toFixed(2)} m (Emprise au sol)
                             </text>
@@ -405,7 +423,7 @@ export const PlateNotice = (props) => <PlateSectionAndNotice {...props} />;
 
 /**
  * PLANCHE PC5 : PLAN DES FAÇADES ET TOITURES (5 VUES 3D)
- * Directive 4 : Vue Toiture élargie en format paysage horizontal, fonds blancs purs neutres
+ * Directive 4 : Vues 3, 4 et 5 avec proportions respectées sans compression ni distorsion
  */
 export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => {
     const sud = captures?.facade_sud || captures?.facades_projet;
@@ -417,10 +435,10 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
     return (
         <div style={PAGE_STYLE} id="pc-plate-facades">
             <PlateHeader title="PC5 : PLAN DES FAÇADES ET TOITURES (5 VUES 3D)" project={project} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3mm', maxHeight: '135mm', marginBottom: '5mm' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3.5mm', maxHeight: '135mm', marginBottom: '5mm' }}>
                 
                 {/* Ligne 1 : Façades Longs Pans (Sud & Nord) */}
-                <div style={{ flex: 1, display: 'flex', gap: '3.5mm' }}>
+                <div style={{ flex: 1, display: 'flex', gap: '4mm' }}>
                     {/* Façade Sud */}
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
                         <div style={{ padding: '1.8mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
@@ -454,10 +472,10 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                     </div>
                 </div>
 
-                {/* Ligne 2 : Pignons (Est & Ouest réduits) et Vue Toiture (Élargie en format paysage horizontal) */}
-                <div style={{ flex: 1.15, display: 'flex', gap: '3.5mm' }}>
+                {/* Ligne 2 : Pignons (Est & Ouest) et Vue Toiture sans compression */}
+                <div style={{ flex: 1.15, display: 'flex', gap: '4mm' }}>
                     {/* Façade Est */}
-                    <div style={{ flex: 0.85, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
                         <div style={{ padding: '1.8mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
                             3. FAÇADE EST (PIGNON GAUCHE)
                         </div>
@@ -473,7 +491,7 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                     </div>
 
                     {/* Façade Ouest */}
-                    <div style={{ flex: 0.85, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
                         <div style={{ padding: '1.8mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
                             4. FAÇADE OUEST (PIGNON DROIT)
                         </div>
@@ -489,7 +507,7 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                     </div>
 
                     {/* Vue Couverture (Toiture Élargie) */}
-                    <div style={{ flex: 1.8, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+                    <div style={{ flex: 1.4, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
                         <div style={{ padding: '1.8mm', background: '#dbeafe', borderBottom: '1px solid #93c5fd', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#1e40af' }}>
                             5. VUE COUVERTURE (PLAN TOITURE PHOTOVOLTAÏQUE)
                         </div>
@@ -549,12 +567,17 @@ export const PlateInsertion = ({ project, photos, isInteractive, onUpload }) => 
     </div>
 );
 
+/**
+ * PLANCHE PC7 & PC8 : ENVIRONNEMENT PROCHE ET LOINTAIN (SUR LA MÊME LIGNE)
+ * Directive : Mettre PC7 et PC8 sur la même ligne (Side-by-Side)
+ */
 export const PlateEnv = ({ project, photos, isInteractive, onUpload }) => (
     <div style={PAGE_STYLE} id="pc-plate-env">
         <PlateHeader title="PC7 & PC8 : ENVIRONNEMENT PROCHE ET LOINTAIN" project={project} />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3.5mm', maxHeight: '135mm', marginBottom: '5mm' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: '135mm', marginBottom: '5mm' }}>
+            {/* PC7 à gauche */}
             <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
-                <div style={{ padding: '2mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                <div style={{ padding: '2.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
                     PC7 — Photographie dans l'environnement proche
                 </div>
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
@@ -568,8 +591,9 @@ export const PlateEnv = ({ project, photos, isInteractive, onUpload }) => (
                 </div>
             </div>
 
+            {/* PC8 à droite */}
             <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
-                <div style={{ padding: '2mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                <div style={{ padding: '2.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
                     PC8 — Photographie dans le paysage lointain
                 </div>
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
