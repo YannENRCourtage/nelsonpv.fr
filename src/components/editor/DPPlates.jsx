@@ -318,3 +318,36 @@ export const PlateInsertionNotice = ({ project }) => {
         </div>
     );
 };
+
+export const PlateAspect = ({ project, batteryPhoto }) => {
+    return (
+        <div style={PAGE_STYLE} id="dp-plate-aspect">
+            <PlateHeader title="DP5 : REPRÉSENTATION DE L'ASPECT EXTÉRIEUR" project={project} />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8mm', padding: '5mm' }}>
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden', flex: 1 }}>
+                    <img 
+                        src={batteryPhoto || project?.urbanisme_captures?.facades_projet || "https://nelsonpv.fr/mercury_product_photo.jpg"} 
+                        style={{ width: '100%', height: '100%', objectFit: 'contain', backgroundColor: '#f8fafc' }} 
+                        alt="Aspect extérieur" 
+                    />
+                </div>
+            </div>
+            <Footer project={project} />
+        </div>
+    );
+};
+
+export const PlateEnvLointain = ({ project, captures, photos }) => (
+    <div style={PAGE_STYLE} id="dp-plate-env-lointain">
+        <PlateHeader title="DP8 : PHOTOGRAPHIE DE L'ENVIRONNEMENT LOINTAIN" project={project} />
+        <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img src={photos?.lointain || captures?.env_lointain || captures?.satellite || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Lointain" crossOrigin="anonymous" />
+        </div>
+        <Footer project={project} />
+    </div>
+);
+
+export const PlateNotice = ({ project, captures }) => (
+    <PlateInsertionNotice project={project} />
+);
+
