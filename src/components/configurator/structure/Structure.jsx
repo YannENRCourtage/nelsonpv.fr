@@ -46,7 +46,7 @@ const RidgeFlashing = ({ len, h, angle, x = 0 }) => {
     );
 };
 
-export function Structure() {
+export function Structure({ hideBracing = false } = {}) {
     const config = useConfiguratorValues();
     const { buildingType, width, length, bayCount, baySpacing, eaveHeight, roofPitch, ridgeHeight, leftSide, rightSide, showDimensions, configMode, customParams, customSpans } = config;
 
@@ -147,20 +147,22 @@ export function Structure() {
                 ridgeHeight={calculatedRidgeHeight}
                 buildingType={config.buildingType}
             />
-            <Bracing
-                width={width}
-                length={length}
-                bayCount={bayCount}
-                baySpacing={baySpacing}
-                eaveHeight={eaveHeight}
-                ridgeHeight={calculatedRidgeHeight} // Pass Ridge Height
-                roofPitch={roofPitch}
-                buildingType={config.buildingType} // Pass Type
-                leftSide={leftSide}
-                rightSide={rightSide}
-                leftWidth={config.leftWidth}
-                rightWidth={config.rightWidth}
-            />
+            {!hideBracing && (
+                <Bracing
+                    width={width}
+                    length={length}
+                    bayCount={bayCount}
+                    baySpacing={baySpacing}
+                    eaveHeight={eaveHeight}
+                    ridgeHeight={calculatedRidgeHeight} // Pass Ridge Height
+                    roofPitch={roofPitch}
+                    buildingType={config.buildingType} // Pass Type
+                    leftSide={leftSide}
+                    rightSide={rightSide}
+                    leftWidth={config.leftWidth}
+                    rightWidth={config.rightWidth}
+                />
+            )}
 
             {/* REMOVED RidgeCap */}
             {/* Added Longitudinal Beams (Sablière/Faitière) */}

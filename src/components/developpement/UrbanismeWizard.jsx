@@ -78,12 +78,13 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       if (isOmbriere) {
         configActions.setBuildingType('ombriere_vl_double');
       } else {
-        configActions.setBuildingType('symetrique');
+        configActions.setBuildingType('asymetrique_1');
       }
 
       const initProj = {
         ...project,
         type: isOmbriere ? 'ombriere' : 'batiment_solaire',
+        buildingType: isOmbriere ? 'ombriere_vl_double' : 'asymetrique_1',
         lastName: cleanDemandeur,
         firstName: names.firstName || '',
         demandeur: cleanDemandeur,
@@ -97,9 +98,11 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         birthDept: project.birthDept || (projZip ? projZip.substring(0, 2) : '32'),
         description: project.description || `Construction d'un bâtiment agricole à charpente métallique avec centrale photovoltaïque en toiture de ${project.kwc || 100} kWc`,
         longueur: String(config.length || 30.0),
-        largeur: String(config.width || 18.6),
-        hauteur_egout: String(config.eaveHeight || 5.5),
-        pente: String(config.roofPitch || 10),
+        largeur: String(config.width || 20.0),
+        hauteur_egout: String(config.buildingType?.startsWith('asymetrique') ? 4.0 : (config.eaveHeight || 4.0)),
+        pente: String(config.buildingType?.startsWith('asymetrique') ? 15 : (config.roofPitch || 15)),
+        leftSide: config.leftSide || 'none',
+        rightSide: config.rightSide || 'none',
         pente_terrain: project.pente_terrain || '3',
         cotation_bati: project.cotation_bati || '12.50',
         cotation_voie: project.cotation_voie || '8.00',
@@ -233,6 +236,16 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const finalProject = {
       ...editedProject,
       ...fieldValues,
+      buildingType: config.buildingType || 'asymetrique_1',
+      largeur: String(config.width || 20.0),
+      longueur: String(config.length || 30.0),
+      hauteur_egout: String(config.buildingType?.startsWith('asymetrique') ? 4.0 : (config.eaveHeight || 4.0)),
+      pente: String(config.buildingType?.startsWith('asymetrique') ? 15 : (config.roofPitch || 15)),
+      leftSide: config.leftSide || 'none',
+      rightSide: config.rightSide || 'none',
+      bayCount: config.bayCount,
+      baySpacing: config.baySpacing,
+      kwc: config.solarStats?.power ? Math.round(config.solarStats.power) : (editedProject.kwc || 100),
       urbanisme_captures: captures,
       pc_photos: photos,
     };

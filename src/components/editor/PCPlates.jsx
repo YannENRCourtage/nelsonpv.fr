@@ -363,21 +363,30 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                                 ▲ Pente toiture : {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%)
                             </text>
 
-                            {/* 5. Rappel Hauteur Égout à gauche */}
+                            {/* 5. Rappel Hauteurs d'égout et Faîtage */}
+                            {/* Égout gauche */}
                             <line x1="125" y1={leftEaveSvgY} x2="125" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
                             <line x1="120" y1={leftEaveSvgY} x2="130" y2={leftEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
                             <line x1="120" y1={groundYLeft} x2="130" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
-                            <text x="115" y={leftEaveSvgY + (groundYLeft - leftEaveSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="8.5" fontWeight="bold">
-                                H. Égout : {hauteurEgout.toFixed(2)}m
+                            <text x="115" y={leftEaveSvgY + (groundYLeft - leftEaveSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="8" fontWeight="bold">
+                                {isAsym ? `H. Égout Gauche : ${leftEaveHeight.toFixed(2)}m` : `H. Égout : ${hauteurEgout.toFixed(2)}m`}
                             </text>
 
-                            {/* 6. Rappel Hauteur Faîtage */}
+                            {/* Égout droit */}
+                            <line x1="555" y1={rightEaveSvgY} x2="555" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
+                            <line x1="550" y1={rightEaveSvgY} x2="560" y2={rightEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
+                            <line x1="550" y1={groundYRight} x2="560" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
+                            <text x="565" y={rightEaveSvgY + (groundYRight - rightEaveSvgY) / 2 + 3} textAnchor="start" fill="#ef4444" fontSize="8" fontWeight="bold">
+                                {isAsym ? `H. Égout Droit : ${rightEaveHeight.toFixed(2)}m` : `H. Égout : ${hauteurEgout.toFixed(2)}m`}
+                            </text>
+
+                            {/* Faîtage */}
                             <line x1={apexSvgX} y1={apexSvgY} x2={apexSvgX} y2={groundYLeft} stroke="#ef4444" strokeWidth="1" strokeDasharray="3 2" />
-                            <text x={apexSvgX + 6} y={apexSvgY + 30} fill="#ef4444" fontSize="8.5" fontWeight="bold">
+                            <text x={apexSvgX + 6} y={apexSvgY + 26} fill="#ef4444" fontSize="8.5" fontWeight="bold">
                                 H. Faîtage : {ridgeHeight.toFixed(2)}m
                             </text>
 
-                            {/* 7. Largeur d'emprise au sol STRICTEMENT AU-DESSUS du trait bleu */}
+                            {/* 6. Largeur d'emprise au sol STRICTEMENT AU-DESSUS du trait bleu */}
                             <text x="340" y="122" textAnchor="middle" fill="#0284c7" fontSize="10.5" fontWeight="bold">
                                 ▼ Largeur : {largeur.toFixed(2)} m (Emprise au sol)
                             </text>

@@ -34,36 +34,40 @@ function SceneCameraController({ activeSlot, onReady, controlsRef }) {
 
     camera.up.set(0, 1, 0);
 
+    // Distance dynamique pour cadrer TOUTE la longueur (52.5m ou plus) sans couper les extrémités
+    const distLong = Math.max(length * 1.18, width * 1.5, 40);
+    const distGable = Math.max(width * 1.35, 25);
+    const distRoof = Math.max(length, width) * 1.28;
+
     if (activeSlot === 'facade_sud') {
-      // Vue de face (Façade Sud / Bas de pente solaire)
-      // Building extends along Z (0 to -length). South slope is facing +X or +Z depending on orientation
-      camera.position.set(width * 1.5, targetY, targetZ);
+      // 1. Façade Sud (Long Pan Solaire) : cadrage intégral
+      camera.position.set(distLong, targetY, targetZ);
       ctrl.target.set(targetX, targetY, targetZ);
       camera.lookAt(targetX, targetY, targetZ);
     } else if (activeSlot === 'facade_nord') {
-      // Vue arrière (Façade Nord / Haut de pente)
-      camera.position.set(-width * 1.5, targetY, targetZ);
+      // 2. Façade Nord (Long Pan Arrière) : cadrage intégral
+      camera.position.set(-distLong, targetY, targetZ);
       ctrl.target.set(targetX, targetY, targetZ);
       camera.lookAt(targetX, targetY, targetZ);
     } else if (activeSlot === 'facade_est') {
-      // Pignon Est (Gable gauche Z=0)
-      camera.position.set(0, targetY, length * 0.7);
+      // 3. Pignon Est (Gable gauche Z=0) : cadrage avec proportions exactes
+      camera.position.set(0, targetY, distGable);
       ctrl.target.set(targetX, targetY, targetZ);
       camera.lookAt(targetX, targetY, targetZ);
     } else if (activeSlot === 'facade_ouest') {
-      // Pignon Ouest (Gable droit Z=-length)
-      camera.position.set(0, targetY, -length * 1.7);
+      // 4. Pignon Ouest (Gable droit Z=-length) : cadrage avec proportions exactes
+      camera.position.set(0, targetY, -length - distGable);
       ctrl.target.set(targetX, targetY, targetZ);
       camera.lookAt(targetX, targetY, targetZ);
     } else if (activeSlot === 'vue_couverture') {
-      // Vue Toiture Plan (Format Paysage horizontal)
-      camera.up.set(1, 0, 0); // Rend la longueur (axe Z) parfaitement horizontale de gauche à droite
-      camera.position.set(0, maxDim * 1.65, targetZ);
+      // 5. Vue Toiture Plan (Format Paysage horizontal) : cadrage intégral
+      camera.up.set(1, 0, 0);
+      camera.position.set(0, distRoof, targetZ);
       ctrl.target.set(targetX, targetY, targetZ);
       camera.lookAt(targetX, targetY, targetZ);
     } else {
-      // Vue 3D Perspective générale
-      camera.position.set(maxDim * 0.9, maxDim * 0.65, maxDim * 0.75);
+      // Vue 3D Libre
+      camera.position.set(maxDim * 0.85, maxDim * 0.6, maxDim * 0.7);
       ctrl.target.set(targetX, targetY, targetZ);
       camera.lookAt(targetX, targetY, targetZ);
     }
@@ -178,7 +182,7 @@ export default function Building3DViewer({
             minDistance={2}
           />
 
-          <Structure />
+          <Structure hideBracing={true} />
 
           <ContactShadows
             position={[0, 0, targetZ]}

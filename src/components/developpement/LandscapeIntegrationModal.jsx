@@ -48,15 +48,7 @@ function LandscapeThreeBridge({ onReady, transform, sunAngle }) {
         rotation={[transform.rotX, transform.rotY, transform.rotZ]}
         scale={transform.scale}
       >
-        <Structure />
-        <ContactShadows
-          position={[0, -0.05, targetZ]}
-          opacity={0.5}
-          scale={Math.max(config.length || 30, config.width || 20, 40) * 1.6}
-          blur={2.5}
-          far={20}
-          color="#000000"
-        />
+        <Structure hideBracing={true} />
       </group>
     </>
   );
