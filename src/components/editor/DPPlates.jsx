@@ -115,7 +115,11 @@ export const PlateCover = ({ project, installationType }) => {
 
             </div>
             <Footer project={project} />
- /**
+        </div>
+    );
+};
+
+/**
  * PLANCHE DP1 : PLAN DE SITUATION (Hauteur légèrement réduite et mentions sur 2 lignes)
  */
 export const PlateSituation = ({ project, captures }) => {
