@@ -579,10 +579,12 @@ export const PlateEnv = ({ project, photos, isInteractive, onUpload }) => (
                         onUpload={(data) => onUpload && onUpload('lointain', data)} 
                         defaultText="Photo paysage lointain (vue panoramique du site)" 
                         label="Env. Lointain"
-                    />
-                </div>
             </div>
         </div>
+        <Footer project={project} />
+    </div>
+);
+
 export const PlateEnvProche = (props) => <PlateEnv {...props} />;
 export const PlateEnvLointain = (props) => <PlateEnv {...props} />;
 export const PlateImpact = (props) => <PlateNotice {...props} />;
