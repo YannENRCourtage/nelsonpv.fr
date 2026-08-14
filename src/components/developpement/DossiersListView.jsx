@@ -5,6 +5,7 @@ import {
   CheckCircle2, Clock, AlertCircle, XCircle, Calendar, MessageSquare,
   Filter, Sparkles, Check
 } from 'lucide-react';
+import { getUserColor } from '@/lib/utils';
 
 /**
  * DossiersListView — Vue Monday.com des dossiers de développement (sur 2 lignes par projet)
@@ -357,14 +358,14 @@ export default function DossiersListView({
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1 text-xs text-slate-700 font-bold min-w-0">
-                        <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-black flex-shrink-0">
-                          {commercialName.charAt(0)}
-                        </div>
-                        <span className="truncate" title={`Commercial : ${commercialName}`}>
+                      {commercialName && (
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full ${getUserColor(commercialName)} text-xs font-bold truncate max-w-[110px] text-center shadow-2xs`}
+                          title={`Commercial : ${commercialName}`}
+                        >
                           {commercialName}
                         </span>
-                      </div>
+                      )}
                     </div>
 
                     {/* Ligne 2 : Type de projet | Nom du Chef de projet */}

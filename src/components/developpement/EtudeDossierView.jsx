@@ -7,6 +7,7 @@ import {
   FolderKanban, ExternalLink
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { getUserColor } from '@/lib/utils';
 
 /**
  * EtudeDossierView — Vue détaillée du workflow de développement d'un projet solaire
@@ -379,7 +380,7 @@ export default function EtudeDossierView({
                   </span>
                 </div>
                 {commercialName && (
-                  <span className="px-3.5 py-1 bg-slate-100 border border-slate-200/90 text-slate-800 text-xs font-extrabold rounded-xl shadow-2xs">
+                  <span className={`px-3.5 py-1 ${getUserColor(commercialName)} text-xs font-extrabold rounded-full shadow-2xs`}>
                     {commercialName}
                   </span>
                 )}

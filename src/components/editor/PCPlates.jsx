@@ -270,40 +270,73 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const scaleTotalWidth = 10 * pxPerMeter; // Largeur exacte de la barre 10m
     const scaleSegWidth = 2 * pxPerMeter; // Largeur segment 2m
     const scaleStartX = 660 - scaleTotalWidth; // Ancré en bas à droite sous TN Amont
-    const scaleY = 146; // Abaissé dans le coin inférieur droit
+    const scaleY = 153; // Abaissé de 0.3cm en bas à droite
 
     const roofTypeLabel = isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque';
+
+    const projectCity = project?.city || project?.cadastre_commune || project?.commune || 'SAINT ARAILLES';
+    const projectZip = project?.zip || project?.zipCode || project?.postalCode || '32100';
+    const projectAddress = project?.address || project?.clientAddress || project?.siteAddress || '2810 Chemin de l\'osse';
+    const projectCadastre = (project?.cadastre_section ? `${project.cadastre_section} ` : '') + (project?.cadastre_parcel || project?.parcel || project?.parcelle || '000 B 633');
+    const projectSurface = project?.surface_terrain ? `${project.surface_terrain} m²` : (project?.cadastre_surface ? `${project.cadastre_surface} m²` : '18 384m²');
+    const projectAltitude = project?.altitude || '140.62m';
+    const totalSurface = (largeur * longueur).toFixed(2);
+    const bayCount = project?.bayCount || 5;
+    const baySpacing = project?.baySpacing || 6;
+
+    const default5PointsNotice = `NOTICE D'INSERTION
+
+1- OBJET DE LA DEMANDE
+La demande de permis de construire porte sur la construction d'un hangar à usage agricole avec toiture photovoltaïque. Il servira de stockage de matériel et céréales (${totalSurface}m²).
+
+2- LE SITE
+Le projet se situe sur la commune de ${projectCity} (${projectZip}) au ${projectAddress}. Le terrain concerné par le projet est cadastré sous le numéro ${projectCadastre} (surface : ${projectSurface}). Le terrain est globalement plat et se trouve à une altitude de ${projectAltitude} au-dessus du niveau de la mer. Le site s'inscrit dans un paysage à identité rurale. L'accès du site se fait par le Sud de la parcelle via la voie d'accès existante.
+
+3- LE PROJET
+Le projet a pour objet la construction d'un hangar de forme rectangulaire (longueur : ${longueur}m, largeur : ${largeur.toFixed(2)}m${hasAuvent ? ' + Auvent 4.00m' : ''}) en structure métallique (RAL 7016 / 7005), composé de ${bayCount} travées de ${baySpacing}m d'entraxe. La toiture sera constituée d'une double pente ${roofTypeLabel} (${pente}°) avec pour couverture un bac acier anti condensation sur les deux versants (RAL 7016). Des panneaux photovoltaïques (RAL 9005) viendront recouvrir le bac acier sur l'ensemble de la toiture, permettant de créer une centrale de production d'électricité photovoltaïque de ${displayKwc} kWc.
+Ce bâtiment sera ouvert et non clos. Les façades Est, Ouest, Nord et Sud seront ouvertes.
+Un terrassement sera réalisé pour la mise en oeuvre d'une plateforme en grave compactée.
+Des tranchées drainantes seront réalisées tout autour du bâtiment projet afin d'évacuer les eaux pluviales par infiltration dans le sol.
+
+4- RACCORDEMENT AUX RESEAUX
+Le bâtiment ne sera pas raccordé aux réseaux d'eau, ni d'assainissement, ni d'électricité. Il n'y a donc pas de besoins en alimentation à ces niveaux là.
+Seule l'électricité produite par la centrale photovoltaïque est renvoyée dans le réseau ENEDIS via un point de livraison situé sur la parcelle au Sud de la parcelle (PDL).
+L'emplacement du point de livraison indiqué dans les pièces graphiques de l'autorisation d'urbanisme n'apparaît qu'à titre indicatif.
+Le positionnement du point de livraison et d'un transformateur (le cas échéant) demeure à l'appréciation finale du gestionnaire de réseau en fonction du site et des équipements déjà existants.
+
+5- SECURITE INCENDIE
+Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf PC 02 - Plan de masse).`;
 
     return (
         <div style={PAGE_STYLE} id="pc-plate-section-notice">
             <PlateHeader title="PC3 : PLAN EN COUPE & PC4 : NOTICE DESCRIPTIVE" project={project} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3.5mm', maxHeight: '138mm', marginBottom: '5mm' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2.5mm', maxHeight: '142mm', marginBottom: '4mm' }}>
                 
-                {/* ── HAUT : PC3 PLAN EN COUPE TRANSVERSALE DYNAMIQUE FIDÈLE ── */}
-                <div style={{ height: '84mm', border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '2mm 5mm', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1mm' }}>
-                        <span style={{ fontSize: '9pt', fontWeight: 'bold', color: '#0f172a' }}>
+                {/* ── HAUT : PC3 PLAN EN COUPE TRANSVERSALE DYNAMIQUE (CADRE RÉDUIT) ── */}
+                <div style={{ height: '56mm', border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '1.5mm 4mm', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5mm' }}>
+                        <span style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#0f172a' }}>
                             PC3 — COUPE DE TERRAIN & DU BÂTIMENT (COUPE TRANSVERSALE AA')
                         </span>
-                        <span style={{ fontSize: '7.5pt', color: '#64748b' }}>
+                        <span style={{ fontSize: '7pt', color: '#64748b' }}>
                             Dimensions : {largeur.toFixed(2)}m × {longueur}m (+ Auvent 4.00m) • Échelle indicative
                         </span>
                     </div>
 
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg width="680" height="156" viewBox="0 0 680 156" style={{ width: '100%', height: '100%', maxHeight: '74mm' }}>
+                        <svg width="680" height="162" viewBox="0 0 680 162" style={{ width: '100%', height: '100%', maxHeight: '48mm' }}>
                             
                             {/* Badges d'Orientation NORD / SUD */}
-                            <rect x="70" y="8" width="46" height="15" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
-                            <text x="93" y="19" textAnchor="middle" fill="#2563eb" fontSize="8" fontWeight="bold">NORD</text>
+                            <rect x="70" y="6" width="44" height="14" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.2" />
+                            <text x="92" y="16" textAnchor="middle" fill="#2563eb" fontSize="7.5" fontWeight="bold">NORD</text>
 
-                            <rect x="585" y="8" width="40" height="15" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
-                            <text x="605" y="19" textAnchor="middle" fill="#2563eb" fontSize="8" fontWeight="bold">SUD</text>
+                            <rect x="585" y="6" width="38" height="14" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.2" />
+                            <text x="604" y="16" textAnchor="middle" fill="#2563eb" fontSize="7.5" fontWeight="bold">SUD</text>
 
                             {/* 1. Ligne de Terrain Naturel (TN) */}
                             <line x1="20" y1={groundYLeft} x2="660" y2={groundYRight} stroke="#94a3b8" strokeWidth="2" strokeDasharray="6 3" />
-                            <text x="35" y={groundYLeft + 12} fill="#64748b" fontSize="8" fontStyle="italic">Terrain naturel conservé (TN Aval)</text>
-                            <text x="655" y={groundYRight - 4} textAnchor="end" fill="#64748b" fontSize="8" fontStyle="italic">TN Amont</text>
+                            <text x="35" y={groundYLeft + 12} fill="#64748b" fontSize="7.5" fontStyle="italic">Terrain naturel conservé (TN Aval)</text>
+                            <text x="655" y={groundYRight - 4} textAnchor="end" fill="#64748b" fontSize="7.5" fontStyle="italic">TN Amont</text>
 
                             {/* 2. Poteaux métalliques principaux */}
                             <rect x="130" y={leftEaveSvgY} width="9" height={groundYLeft - leftEaveSvgY} fill="#334155" />
@@ -350,7 +383,7 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                             )}
 
                             {/* 4. Mentions de Toiture & PENTE REMONTÉE AU-DESSUS DE LA COUVERTURE */}
-                            <text x={350} y={8} textAnchor="middle" fill="#1e3a8a" fontSize="8.5" fontWeight="bold">
+                            <text x={350} y={8} textAnchor="middle" fill="#1e3a8a" fontSize="8" fontWeight="bold">
                                 Toiture {roofTypeLabel} : pente {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%) • Bac acier RAL 7016 + Modules solaires
                             </text>
 
@@ -358,24 +391,38 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                             <line x1="108" y1={leftEaveSvgY} x2="108" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
                             <line x1="104" y1={leftEaveSvgY} x2="112" y2={leftEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
                             <line x1="104" y1={groundYLeft} x2="112" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
-                            <text x="100" y={leftEaveSvgY + (groundYLeft - leftEaveSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="8" fontWeight="bold">
+                            <text x="100" y={leftEaveSvgY + (groundYLeft - leftEaveSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="7.5" fontWeight="bold">
                                 Égout Nord : {leftEaveHeight.toFixed(2)}m
                             </text>
 
-                            <line x1="502" y1={rightEaveSvgY} x2="502" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
-                            <line x1="498" y1={rightEaveSvgY} x2="506" y2={rightEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
-                            <line x1="498" y1={groundYRight} x2="506" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
-                            <text x="510" y={rightEaveSvgY + (groundYRight - rightEaveSvgY) / 2 + 3} textAnchor="start" fill="#ef4444" fontSize="8" fontWeight="bold">
-                                Égout Sud : {rightEaveHeight.toFixed(2)}m
-                            </text>
+                            {/* Égout Sud au point le plus bas (si auvent / appentis, en bas de la couverture à 3.00m) */}
+                            {hasAuvent || hasAppentis ? (
+                                <>
+                                    <line x1={auventTipSvgX + 16} y1={auventTipSvgY} x2={auventTipSvgX + 16} y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
+                                    <line x1={auventTipSvgX + 12} y1={auventTipSvgY} x2={auventTipSvgX + 20} y2={auventTipSvgY} stroke="#ef4444" strokeWidth="1.2" />
+                                    <line x1={auventTipSvgX + 12} y1={groundYRight} x2={auventTipSvgX + 20} y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
+                                    <text x={auventTipSvgX + 24} y={auventTipSvgY + (groundYRight - auventTipSvgY) / 2 + 3} textAnchor="start" fill="#ef4444" fontSize="7.5" fontWeight="bold">
+                                        Égout Sud : 3.00m
+                                    </text>
+                                </>
+                            ) : (
+                                <>
+                                    <line x1="502" y1={rightEaveSvgY} x2="502" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
+                                    <line x1="498" y1={rightEaveSvgY} x2="506" y2={rightEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
+                                    <line x1="498" y1={groundYRight} x2="506" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
+                                    <text x="510" y={rightEaveSvgY + (groundYRight - rightEaveSvgY) / 2 + 3} textAnchor="start" fill="#ef4444" fontSize="7.5" fontWeight="bold">
+                                        Égout Sud : {rightEaveHeight.toFixed(2)}m
+                                    </text>
+                                </>
+                            )}
 
                             <line x1={apexSvgX} y1={apexSvgY} x2={apexSvgX} y2={groundYLeft} stroke="#ef4444" strokeWidth="1" strokeDasharray="3 2" />
-                            <text x={apexSvgX + 6} y={apexSvgY + 24} fill="#ef4444" fontSize="8.5" fontWeight="bold">
+                            <text x={apexSvgX + 6} y={apexSvgY + 22} fill="#ef4444" fontSize="8" fontWeight="bold">
                                 Faîtage : {ridgeHeight.toFixed(2)}m
                             </text>
 
                             {/* 6. Largeur d'emprise au sol AU-DESSUS du trait bleu */}
-                            <text x="305" y="118" textAnchor="middle" fill="#0284c7" fontSize="9.5" fontWeight="bold">
+                            <text x="305" y="118" textAnchor="middle" fill="#0284c7" fontSize="9" fontWeight="bold">
                                 ▼ Largeur : {largeur.toFixed(2)} m (Emprise au sol)
                             </text>
                             <line x1="130" y1="125" x2="480" y2="125" stroke="#0284c7" strokeWidth="1.5" />
@@ -391,44 +438,61 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                                 </>
                             )}
 
-                            {/* Barre d'échelle métrique EXACTE (0 à 10m) en bas à droite sous TN Amont */}
+                            {/* Barre d'échelle métrique EXACTE (0 à 10m) abaissée de 0.3cm en bas à droite sous TN Amont */}
                             <g transform={`translate(${scaleStartX}, ${scaleY})`}>
-                                <rect x={0} y={0} width={scaleSegWidth} height={4} fill="#0f172a" />
-                                <rect x={scaleSegWidth} y={0} width={scaleSegWidth} height={4} fill="#cbd5e1" />
-                                <rect x={scaleSegWidth * 2} y={0} width={scaleSegWidth} height={4} fill="#0f172a" />
-                                <rect x={scaleSegWidth * 3} y={0} width={scaleSegWidth} height={4} fill="#cbd5e1" />
-                                <rect x={scaleSegWidth * 4} y={0} width={scaleSegWidth} height={4} fill="#0f172a" />
+                                <rect x={0} y={0} width={scaleSegWidth} height={3.5} fill="#0f172a" />
+                                <rect x={scaleSegWidth} y={0} width={scaleSegWidth} height={3.5} fill="#cbd5e1" />
+                                <rect x={scaleSegWidth * 2} y={0} width={scaleSegWidth} height={3.5} fill="#0f172a" />
+                                <rect x={scaleSegWidth * 3} y={0} width={scaleSegWidth} height={3.5} fill="#cbd5e1" />
+                                <rect x={scaleSegWidth * 4} y={0} width={scaleSegWidth} height={3.5} fill="#0f172a" />
                                 
-                                <text x={0} y={8} fill="#475569" fontSize="6" textAnchor="middle">0</text>
-                                <text x={scaleSegWidth} y={8} fill="#475569" fontSize="6" textAnchor="middle">2</text>
-                                <text x={scaleSegWidth * 2} y={8} fill="#475569" fontSize="6" textAnchor="middle">4</text>
-                                <text x={scaleSegWidth * 3} y={8} fill="#475569" fontSize="6" textAnchor="middle">6</text>
-                                <text x={scaleSegWidth * 4} y={8} fill="#475569" fontSize="6" textAnchor="middle">8</text>
-                                <text x={scaleTotalWidth} y={8} fill="#0f172a" fontSize="6.5" fontWeight="bold" textAnchor="middle">10m</text>
+                                <text x={0} y={7} fill="#475569" fontSize="5.5" textAnchor="middle">0</text>
+                                <text x={scaleSegWidth} y={7} fill="#475569" fontSize="5.5" textAnchor="middle">2</text>
+                                <text x={scaleSegWidth * 2} y={7} fill="#475569" fontSize="5.5" textAnchor="middle">4</text>
+                                <text x={scaleSegWidth * 3} y={7} fill="#475569" fontSize="5.5" textAnchor="middle">6</text>
+                                <text x={scaleSegWidth * 4} y={7} fill="#475569" fontSize="5.5" textAnchor="middle">8</text>
+                                <text x={scaleTotalWidth} y={7} fill="#0f172a" fontSize="6" fontWeight="bold" textAnchor="middle">10m</text>
                             </g>
                         </svg>
                     </div>
                 </div>
 
-                {/* ── BAS : PC4 NOTICE DESCRIPTIVE DU PROJET ── */}
-                <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '3mm 5mm', background: '#fff', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ fontSize: '9pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1mm' }}>
-                        PC4 — Notice descriptive du projet & Caractéristiques architecturales
+                {/* ── BAS : PC4 NOTICE DESCRIPTIVE DU PROJET (SYNTHÈSE EN 5 POINTS) ── */}
+                <div style={{ height: '84mm', border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '2.5mm 4.5mm', background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <div style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5mm', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        NOTICE D'INSERTION & DESCRIPTIVE DU PROJET
                     </div>
-                    <div style={{ flex: 1, overflow: 'hidden', fontSize: '8pt', lineHeight: '1.35', color: '#334155' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', fontSize: '6.8pt', lineHeight: '1.28', color: '#334155' }}>
                         {isInteractive ? (
                             <textarea 
-                                style={{ width: '100%', height: '100%', border: 'none', resize: 'none', outline: 'none', fontSize: '8pt', fontFamily: 'Arial, sans-serif' }}
-                                value={noticeText || project?.description || ''}
+                                style={{ width: '100%', height: '100%', border: 'none', resize: 'none', outline: 'none', fontSize: '6.8pt', fontFamily: 'Arial, sans-serif', lineHeight: '1.3' }}
+                                value={noticeText || default5PointsNotice}
                                 onChange={(e) => onNoticeChange && onNoticeChange(e.target.value)}
                                 placeholder="Notice descriptive du projet..."
                             />
                         ) : (
-                            <div style={{ whiteSpace: 'pre-wrap' }}>
-                                {noticeText || project?.description || `Construction d'un bâtiment agricole à charpente métallique recevant une centrale solaire photovoltaïque intégrée en toiture de ${displayKwc} kWc.
-• Dimensions de l'ouvrage : Longueur ${longueur}m, Largeur ${largeur.toFixed(2)}m (+ Auvent 4.00m), Hauteur égout ${hauteurEgout.toFixed(2)}m, Hauteur faîtage ${ridgeHeight.toFixed(2)}m, Pente toiture ${pente}°.
-• Matériaux : Structure acier galvanisé RAL 7016, toiture bac acier avec modules photovoltaïques monocristallins foncés traités anti-reflets.
-• Destination : Activité agricole, stockage et production d'énergie solaire photovoltaïque renouvelable raccordée au réseau ENEDIS.`}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5mm' }}>
+                                <div>
+                                    <strong style={{ color: '#0f172a' }}>1- OBJET DE LA DEMANDE</strong>
+                                    <div>La demande de permis de construire porte sur la construction d'un hangar à usage agricole avec toiture photovoltaïque. Il servira de stockage de matériel et céréales ({totalSurface}m²).</div>
+                                </div>
+                                <div>
+                                    <strong style={{ color: '#0f172a' }}>2- LE SITE</strong>
+                                    <div>Le projet se situe sur la commune de {projectCity} ({projectZip}) au {projectAddress}. Le terrain concerné par le projet est cadastré sous le numéro {projectCadastre} (surface : {projectSurface}). Le terrain est globalement plat et se trouve à une altitude de {projectAltitude} au-dessus du niveau de la mer. Le site s'inscrit dans un paysage à identité rurale. L'accès du site se fait par le Sud de la parcelle via la voie d'accès existante.</div>
+                                </div>
+                                <div>
+                                    <strong style={{ color: '#0f172a' }}>3- LE PROJET</strong>
+                                    <div>Le projet a pour objet la construction d'un hangar de forme rectangulaire (longueur : {longueur}m, largeur : {largeur.toFixed(2)}m{hasAuvent ? ' + Auvent 4.00m' : ''}) en structure métallique (RAL 7016 / 7005), composé de {bayCount} travées de {baySpacing}m d'entraxe. La toiture sera constituée d'une double pente {roofTypeLabel} ({pente}°) avec pour couverture un bac acier anti condensation sur les deux versants (RAL 7016). Des panneaux photovoltaïques (RAL 9005) viendront recouvrir le bac acier sur l'ensemble de la toiture, permettant de créer une centrale de production d'électricité photovoltaïque de {displayKwc} kWc.</div>
+                                    <div>Ce bâtiment sera ouvert et non clos. Les façades Est, Ouest, Nord et Sud seront ouvertes. Un terrassement sera réalisé pour la mise en oeuvre d'une plateforme en grave compactée. Des tranchées drainantes seront réalisées tout autour du bâtiment projet afin d'évacuer les eaux pluviales par infiltration dans le sol.</div>
+                                </div>
+                                <div>
+                                    <strong style={{ color: '#0f172a' }}>4- RACCORDEMENT AUX RESEAUX</strong>
+                                    <div>Le bâtiment ne sera pas raccordé aux réseaux d'eau, ni d'assainissement, ni d'électricité. Il n'y a donc pas de besoins en alimentation à ces niveaux là. Seule l'électricité produite par la centrale photovoltaïque est renvoyée dans le réseau ENEDIS via un point de livraison situé sur la parcelle au Sud de la parcelle (PDL). L'emplacement du point de livraison indiqué dans les pièces graphiques de l'autorisation d'urbanisme n'apparaît qu'à titre indicatif.</div>
+                                </div>
+                                <div>
+                                    <strong style={{ color: '#0f172a' }}>5- SECURITE INCENDIE</strong>
+                                    <div>Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf PC 02 - Plan de masse).</div>
+                                </div>
                             </div>
                         )}
                     </div>

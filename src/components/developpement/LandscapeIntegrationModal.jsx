@@ -100,7 +100,7 @@ export default function LandscapeIntegrationModal({
     const dx = e.clientX - dragStartRef.current.x;
     const dy = e.clientY - dragStartRef.current.y;
 
-    if (e.shiftKey || dragButtonRef.current === 2) {
+    if (e.ctrlKey || e.shiftKey || dragButtonRef.current === 2) {
       // Déplacement Translation
       setTransform(prev => ({
         ...prev,
@@ -245,7 +245,7 @@ export default function LandscapeIntegrationModal({
                 <div className="absolute bottom-4 left-4 bg-slate-900/85 backdrop-blur-md px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 border border-slate-700 pointer-events-none flex items-center gap-2">
                   <span>🖱️ <strong>Glisser souris :</strong> Faire pivoter le bâtiment (Orbital 3D)</span>
                   <span>•</span>
-                  <span><strong>Shift + Glisser :</strong> Déplacer</span>
+                  <span><strong>Ctrl + Glisser :</strong> Déplacer</span>
                   <span>•</span>
                   <span><strong>Molette :</strong> Échelle</span>
                 </div>
