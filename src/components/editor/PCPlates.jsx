@@ -579,6 +579,8 @@ export const PlateEnv = ({ project, photos, isInteractive, onUpload }) => (
                         onUpload={(data) => onUpload && onUpload('lointain', data)} 
                         defaultText="Photo paysage lointain (vue panoramique du site)" 
                         label="Env. Lointain"
+                    />
+                </div>
             </div>
         </div>
         <Footer project={project} />
