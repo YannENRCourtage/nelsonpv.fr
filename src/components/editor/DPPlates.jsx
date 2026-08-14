@@ -301,6 +301,8 @@ export const PlateCoupe = ({ project }) => {
     );
 };
 
+export const PlateSection = PlateCoupe;
+
 /**
  * PLANCHE DP4 : FAÇADES ET TOITURES (5 Vues 3D)
  */
