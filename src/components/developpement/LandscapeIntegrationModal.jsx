@@ -7,8 +7,9 @@ import {
 
 /**
  * LandscapeIntegrationModal — Incrustation 3D interactive sur photo de terrain (PC6)
- * Injecte directement le modèle 3D du bâtiment / ombrière configuré en sur-imposition sur la photo de terrain.
- * L'utilisateur peut déplacer, orienter, incliner et redimensionner le bâtiment librement sur la photo.
+ * Directive 2 :
+ * - Chargement exact du bâtiment configuré (symétrique, asymétrique, monopente, ombrière, auvent, etc.)
+ * - Interaction directe à la souris (Drag / Rotate) identique à la visionneuse principale du configurateur
  */
 export default function LandscapeIntegrationModal({
   isOpen,
@@ -21,16 +22,16 @@ export default function LandscapeIntegrationModal({
   const [photoSrc, setPhotoSrc] = useState(initialPhoto || null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Paramètres de transformation 3D du bâtiment sur la photo
+  // Transformations 3D
   const [transform, setTransform] = useState({
-    posX: 0,       // Déplacement horizontal (-50 à 50)
-    posY: -2,      // Déplacement vertical / altitude (-30 à 30)
-    posZ: 0,       // Profondeur (-50 à 50)
-    rotY: 0.35,    // Orientation Azimut (0 à 2*PI)
-    rotX: 0.05,    // Inclinaison perspective Pitch (-0.5 à 0.5)
-    rotZ: 0.0,     // Dévers Roll (-0.3 à 0.3)
-    scale: 1.0,    // Échelle / Taille du bâtiment (0.2 à 3.0)
-    sunAngle: 45,  // Angle de la lumière solaire (ombres)
+    posX: 0,       // Position X
+    posY: -2,      // Altitude Y
+    posZ: 0,       // Profondeur Z
+    rotY: 0.35,    // Azimut / Rotation Y (modifié directement au glisser-déplacer souris)
+    rotX: 0.15,    // Inclinaison perspective X (modifié directement au glisser vertical)
+    rotZ: 0.0,     // Dévers Roll Z
+    scale: 1.0,    // Taille / Échelle
+    sunAngle: 45,  // Ensoleillement
   });
 
   const containerRef = useRef(null);
@@ -42,6 +43,7 @@ export default function LandscapeIntegrationModal({
     buildingGroup: null,
     dirLight: null,
     isDragging: false,
+    dragButton: 0, // 0 = left click (rotate), 2 = right click (pan)
     dragStart: { x: 0, y: 0 },
     animationId: null
   });
@@ -50,7 +52,6 @@ export default function LandscapeIntegrationModal({
     if (initialPhoto) setPhotoSrc(initialPhoto);
   }, [initialPhoto]);
 
-  // Initialisation et boucle de rendu Three.js
   useEffect(() => {
     if (!isOpen || !photoSrc || !canvas3DRef.current) return;
     const canvas = canvas3DRef.current;
@@ -68,7 +69,7 @@ export default function LandscapeIntegrationModal({
     camera.position.set(0, 5, 38);
     camera.lookAt(0, 3, 0);
 
-    // 3. Renderer avec canal alpha transparent
+    // 3. Renderer WebGL transparent
     const renderer = new THREE.WebGLRenderer({
       canvas,
       alpha: true,
@@ -80,7 +81,7 @@ export default function LandscapeIntegrationModal({
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    // 4. Lumières réalistes
+    // 4. Lumières
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
     scene.add(ambientLight);
 
@@ -96,7 +97,7 @@ export default function LandscapeIntegrationModal({
     fillLight.position.set(-30, 20, -30);
     scene.add(fillLight);
 
-    // 5. Plan d'ombres portées sous le bâtiment (Shadow Catcher discret)
+    // 5. Shadow Catcher sous le bâtiment
     const shadowPlaneGeo = new THREE.PlaneGeometry(120, 120);
     const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.35 });
     const shadowPlane = new THREE.Mesh(shadowPlaneGeo, shadowPlaneMat);
@@ -105,14 +106,41 @@ export default function LandscapeIntegrationModal({
     shadowPlane.receiveShadow = true;
     scene.add(shadowPlane);
 
-    // 6. Modélisation 3D exacte du bâtiment / ombrière configuré
+    // 6. Modélisation 3D exacte du bâtiment configuré
     const buildingGroup = new THREE.Group();
 
     const lg = Number(projectDimensions.longueur || 30.0);
     const lr = Number(projectDimensions.largeur || 18.6);
     const ht = Number(projectDimensions.hauteur_egout || 4.0);
     const penteDeg = Number(projectDimensions.pente || 15);
-    const ridgeHt = ht + lr * Math.tan((penteDeg * Math.PI) / 180);
+    const buildingType = projectDimensions.buildingType || projectDimensions.type || 'asymetrique_1';
+    const leftSide = projectDimensions.leftSide || 'none';
+    const rightSide = projectDimensions.rightSide || 'none';
+
+    const isAsym = buildingType.includes('asymetrique');
+    const isMonopente = buildingType === 'monopente';
+    const isOmbriere = buildingType.includes('ombriere');
+
+    let ridgeX = 0;
+    let ridgeHeight = ht + (lr / 2) * Math.tan((penteDeg * Math.PI) / 180);
+    let eaveLeftH = ht;
+    let eaveRightH = ht;
+
+    if (isAsym) {
+      ridgeX = lr * 0.2;
+      ridgeHeight = ht + (lr * 0.7) * Math.tan((penteDeg * Math.PI) / 180);
+      eaveRightH = Math.max(3.0, ht - 0.5);
+    } else if (isMonopente) {
+      ridgeX = lr / 2;
+      ridgeHeight = ht + lr * Math.tan((penteDeg * Math.PI) / 180);
+      eaveLeftH = ht;
+      eaveRightH = ridgeHeight;
+    } else if (isOmbriere) {
+      ridgeX = 0;
+      ridgeHeight = ht + 0.8;
+      eaveLeftH = ht;
+      eaveRightH = ht - 0.4;
+    }
 
     const postMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.35, metalness: 0.75 });
     const rafterMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.3, metalness: 0.8 });
@@ -127,41 +155,62 @@ export default function LandscapeIntegrationModal({
     for (let i = 0; i <= bayCount; i++) {
       const z = -halfL + i * baySpacing;
 
-      // Poteau Bas (Egout)
-      const postBas = new THREE.Mesh(new THREE.BoxGeometry(0.35, ht, 0.35), postMat);
-      postBas.position.set(-halfW, ht / 2, z);
-      postBas.castShadow = true;
-      buildingGroup.add(postBas);
+      // Poteau Gauche
+      const postG = new THREE.Mesh(new THREE.BoxGeometry(0.35, eaveLeftH, 0.35), postMat);
+      postG.position.set(-halfW, eaveLeftH / 2, z);
+      postG.castShadow = true;
+      buildingGroup.add(postG);
 
-      // Poteau Haut (Faîtage)
-      const postHaut = new THREE.Mesh(new THREE.BoxGeometry(0.35, ridgeHt, 0.35), postMat);
-      postHaut.position.set(halfW, ridgeHt / 2, z);
-      postHaut.castShadow = true;
-      buildingGroup.add(postHaut);
+      // Poteau Droit
+      const postD = new THREE.Mesh(new THREE.BoxGeometry(0.35, eaveRightH, 0.35), postMat);
+      postD.position.set(halfW, eaveRightH / 2, z);
+      postD.castShadow = true;
+      buildingGroup.add(postD);
 
-      // Traverse / Arbalétrier
-      const rafterLen = Math.sqrt(Math.pow(lr, 2) + Math.pow(ridgeHt - ht, 2));
-      const rafter = new THREE.Mesh(new THREE.BoxGeometry(rafterLen, 0.25, 0.2), rafterMat);
-      rafter.position.set(0, (ht + ridgeHt) / 2, z);
-      rafter.rotation.z = Math.atan2(ridgeHt - ht, lr);
-      rafter.castShadow = true;
-      buildingGroup.add(rafter);
+      // Arbalétrier Versant Sud (Principal)
+      const lenSud = Math.sqrt(Math.pow(ridgeX - (-halfW), 2) + Math.pow(ridgeHeight - eaveLeftH, 2));
+      const rafterSud = new THREE.Mesh(new THREE.BoxGeometry(lenSud, 0.25, 0.2), rafterMat);
+      rafterSud.position.set((-halfW + ridgeX) / 2, (eaveLeftH + ridgeHeight) / 2, z);
+      rafterSud.rotation.z = Math.atan2(ridgeHeight - eaveLeftH, ridgeX - (-halfW));
+      rafterSud.castShadow = true;
+      buildingGroup.add(rafterSud);
+
+      // Arbalétrier Versant Nord (si bi-pente)
+      if (!isMonopente) {
+        const lenNord = Math.sqrt(Math.pow(halfW - ridgeX, 2) + Math.pow(ridgeHeight - eaveRightH, 2));
+        const rafterNord = new THREE.Mesh(new THREE.BoxGeometry(lenNord, 0.25, 0.2), rafterMat);
+        rafterNord.position.set((ridgeX + halfW) / 2, (ridgeHeight + eaveRightH) / 2, z);
+        rafterNord.rotation.z = Math.atan2(eaveRightH - ridgeHeight, halfW - ridgeX);
+        rafterNord.castShadow = true;
+        buildingGroup.add(rafterNord);
+      }
+
+      // Extension auvent/appentis
+      if (rightSide === 'auvent' || rightSide === 'appentis') {
+        const extLen = 4.0;
+        const rafterExt = new THREE.Mesh(new THREE.BoxGeometry(extLen, 0.2, 0.15), rafterMat);
+        rafterExt.position.set(halfW + extLen / 2, eaveRightH - 0.2, z);
+        rafterExt.rotation.z = -0.15;
+        buildingGroup.add(rafterExt);
+      }
     }
 
-    // Toiture et Panneaux photovoltaïques
-    const roofLen = Math.sqrt(Math.pow(lr, 2) + Math.pow(ridgeHt - ht, 2)) + 0.4;
-    const roofMesh = new THREE.Mesh(new THREE.BoxGeometry(roofLen, 0.08, lg + 0.4), rafterMat);
-    roofMesh.position.set(0, (ht + ridgeHt) / 2 + 0.1, 0);
-    roofMesh.rotation.z = Math.atan2(ridgeHt - ht, lr);
-    roofMesh.castShadow = true;
-    buildingGroup.add(roofMesh);
+    // Couverture photovoltaïque Toiture
+    const lenSudRoof = Math.sqrt(Math.pow(ridgeX - (-halfW), 2) + Math.pow(ridgeHeight - eaveLeftH, 2)) + 0.4;
+    const roofSud = new THREE.Mesh(new THREE.BoxGeometry(lenSudRoof, 0.08, lg + 0.4), solarMat);
+    roofSud.position.set((-halfW + ridgeX) / 2, (eaveLeftH + ridgeHeight) / 2 + 0.1, 0);
+    roofSud.rotation.z = Math.atan2(ridgeHeight - eaveLeftH, ridgeX - (-halfW));
+    roofSud.castShadow = true;
+    buildingGroup.add(roofSud);
 
-    // Panneaux Solaires Bleus
-    const solarArray = new THREE.Mesh(new THREE.BoxGeometry(roofLen - 0.2, 0.04, lg - 0.2), solarMat);
-    solarArray.position.set(0, (ht + ridgeHt) / 2 + 0.16, 0);
-    solarArray.rotation.z = Math.atan2(ridgeHt - ht, lr);
-    solarArray.castShadow = true;
-    buildingGroup.add(solarArray);
+    if (!isMonopente) {
+      const lenNordRoof = Math.sqrt(Math.pow(halfW - ridgeX, 2) + Math.pow(ridgeHeight - eaveRightH, 2)) + 0.4;
+      const roofNord = new THREE.Mesh(new THREE.BoxGeometry(lenNordRoof, 0.08, lg + 0.4), rafterMat);
+      roofNord.position.set((ridgeX + halfW) / 2, (ridgeHeight + eaveRightH) / 2 + 0.1, 0);
+      roofNord.rotation.z = Math.atan2(eaveRightH - ridgeHeight, halfW - ridgeX);
+      roofNord.castShadow = true;
+      buildingGroup.add(roofNord);
+    }
 
     scene.add(buildingGroup);
 
@@ -173,6 +222,7 @@ export default function LandscapeIntegrationModal({
       dirLight,
       shadowPlane,
       isDragging: false,
+      dragButton: 0,
       dragStart: { x: 0, y: 0 }
     };
 
@@ -220,9 +270,10 @@ export default function LandscapeIntegrationModal({
     }
   }, [transform]);
 
-  // Interaction Drag à la souris sur la photo
+  // ── DIRECTIVE 2 : INTERACTION DIRECTE SOURIS (DRAG / ROTATE ORBITAL NATUREL) ──
   const handleMouseDown = (e) => {
     threeRef.current.isDragging = true;
+    threeRef.current.dragButton = e.button; // 0 = gauche (rotation), 2 = droite (déplacement)
     threeRef.current.dragStart = { x: e.clientX, y: e.clientY };
   };
 
@@ -231,11 +282,21 @@ export default function LandscapeIntegrationModal({
     const dx = e.clientX - threeRef.current.dragStart.x;
     const dy = e.clientY - threeRef.current.dragStart.y;
 
-    setTransform(prev => ({
-      ...prev,
-      posX: prev.posX + dx * 0.04,
-      posY: prev.posY - dy * 0.04,
-    }));
+    if (e.shiftKey || threeRef.current.dragButton === 2) {
+      // Déplacement Translation (Pan) avec Shift ou clic droit
+      setTransform(prev => ({
+        ...prev,
+        posX: prev.posX + dx * 0.04,
+        posY: prev.posY - dy * 0.04,
+      }));
+    } else {
+      // Rotation Orbitale naturelle (identique à la visionneuse du configurateur)
+      setTransform(prev => ({
+        ...prev,
+        rotY: prev.rotY + dx * 0.01,
+        rotX: Math.max(-0.5, Math.min(0.5, prev.rotX + dy * 0.006)),
+      }));
+    }
 
     threeRef.current.dragStart = { x: e.clientX, y: e.clientY };
   };
@@ -269,7 +330,7 @@ export default function LandscapeIntegrationModal({
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
 
-      // 1. Dessiner la photo de terrain en fond
+      // 1. Photo de terrain en fond
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.src = photoSrc;
@@ -280,7 +341,7 @@ export default function LandscapeIntegrationModal({
 
       ctx.drawImage(img, 0, 0, exportCanvas.width, exportCanvas.height);
 
-      // 2. Dessiner le rendu 3D du bâtiment par-dessus
+      // 2. Modèle 3D superposé
       const { renderer, scene, camera } = threeRef.current;
       if (renderer && scene && camera) {
         renderer.render(scene, camera);
@@ -317,7 +378,7 @@ export default function LandscapeIntegrationModal({
                 Incrustation 3D du Projet Solaire sur photo de terrain (PC6)
               </h3>
               <p className="text-xs text-slate-400">
-                Structure {projectDimensions.largeur || '18.6'}m × {projectDimensions.longueur || '30.0'}m • Déplacez et ajustez le modèle librement sur le terrain
+                Structure {projectDimensions.largeur || '18.6'}m × {projectDimensions.longueur || '30.0'}m • Glissez sur la photo pour tourner et orienter le bâtiment
               </p>
             </div>
           </div>
@@ -340,36 +401,38 @@ export default function LandscapeIntegrationModal({
           </div>
         </div>
 
-        {/* Corps principal : Photo + Canvas 3D superposé + Panneau de réglages */}
+        {/* Visualisation + Panneau latéral */}
         <div className="flex-1 flex overflow-hidden">
           
           {/* ZONE DE VISUALISATION (PHOTO + 3D OVERLAY) */}
           <div
             ref={containerRef}
-            className="flex-1 relative bg-black flex items-center justify-center overflow-hidden select-none cursor-move"
+            className="flex-1 relative bg-black flex items-center justify-center overflow-hidden select-none cursor-grab active:cursor-grabbing"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onWheel={handleWheel}
+            onContextMenu={e => e.preventDefault()}
           >
             {photoSrc ? (
               <>
-                {/* Photo de fond */}
                 <img
                   src={photoSrc}
                   alt="Terrain initial"
                   className="absolute inset-0 w-full h-full object-cover pointer-events-none"
                 />
 
-                {/* Canvas Three.js transparent superposé */}
                 <canvas
                   ref={canvas3DRef}
                   className="absolute inset-0 w-full h-full pointer-events-none"
                 />
 
-                {/* Badge d'aide contextuelle */}
-                <div className="absolute bottom-4 left-4 bg-slate-900/85 backdrop-blur-md px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 border border-slate-700 pointer-events-none">
-                  🖱️ Glissez pour déplacer le bâtiment • Molette pour ajuster la taille / échelle
+                <div className="absolute bottom-4 left-4 bg-slate-900/85 backdrop-blur-md px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 border border-slate-700 pointer-events-none flex items-center gap-2">
+                  <span>🖱️ <strong>Glisser souris :</strong> Faire pivoter le bâtiment (Orbital 3D)</span>
+                  <span>•</span>
+                  <span><strong>Shift + Glisser :</strong> Déplacer</span>
+                  <span>•</span>
+                  <span><strong>Molette :</strong> Échelle</span>
                 </div>
               </>
             ) : (
@@ -379,22 +442,22 @@ export default function LandscapeIntegrationModal({
             )}
           </div>
 
-          {/* PANNEAU DE CONTRÔLE DES AXES & TRANSFORMATIONS */}
+          {/* PANNEAU DE CONTRÔLE */}
           <div className="w-80 bg-slate-950/95 border-l border-slate-800 p-5 flex flex-col gap-4 overflow-y-auto text-xs">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="font-extrabold text-white flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
-                <Sliders className="w-4 h-4 text-blue-400" /> Réglages du modèle 3D
+                <Sliders className="w-4 h-4 text-blue-400" /> Contrôles 3D
               </span>
               <button
-                onClick={() => setTransform({ posX: 0, posY: -2, posZ: 0, rotY: 0.35, rotX: 0.05, rotZ: 0, scale: 1.0, sunAngle: 45 })}
+                onClick={() => setTransform({ posX: 0, posY: -2, posZ: 0, rotY: 0.35, rotX: 0.15, rotZ: 0, scale: 1.0, sunAngle: 45 })}
                 className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1"
-                title="Réinitialiser la position"
+                title="Réinitialiser"
               >
                 <RefreshCw className="w-3 h-3" /> Réinitialiser
               </button>
             </div>
 
-            {/* 1. Taille / Échelle */}
+            {/* Taille / Échelle */}
             <div>
               <div className="flex justify-between text-slate-300 mb-1 font-semibold">
                 <span>Taille / Échelle</span>
@@ -408,10 +471,10 @@ export default function LandscapeIntegrationModal({
               />
             </div>
 
-            {/* 2. Orientation Azimut (Rotation Y) */}
+            {/* Azimut / Orientation Y */}
             <div>
               <div className="flex justify-between text-slate-300 mb-1 font-semibold">
-                <span className="flex items-center gap-1"><Compass className="w-3.5 h-3.5 text-blue-400" /> Azimut / Orientation</span>
+                <span className="flex items-center gap-1"><Compass className="w-3.5 h-3.5 text-blue-400" /> Azimut (Rotation 360°)</span>
                 <span className="text-blue-400 font-bold">{Math.round((transform.rotY * 180) / Math.PI)}°</span>
               </div>
               <input
@@ -422,10 +485,10 @@ export default function LandscapeIntegrationModal({
               />
             </div>
 
-            {/* 3. Inclinaison Terrain / Perspective (Pitch) */}
+            {/* Inclinaison Terrain X */}
             <div>
               <div className="flex justify-between text-slate-300 mb-1 font-semibold">
-                <span>Inclinaison Terrain (Pente)</span>
+                <span>Inclinaison Terrain</span>
                 <span className="text-blue-400 font-bold">{Math.round((transform.rotX * 180) / Math.PI)}°</span>
               </div>
               <input
@@ -436,21 +499,21 @@ export default function LandscapeIntegrationModal({
               />
             </div>
 
-            {/* 4. Dévers latéral (Roll) */}
+            {/* Position X (Horizontal) */}
             <div>
               <div className="flex justify-between text-slate-300 mb-1 font-semibold">
-                <span>Dévers latéral</span>
-                <span className="text-blue-400 font-bold">{Math.round((transform.rotZ * 180) / Math.PI)}°</span>
+                <span>Position Horizontale (X)</span>
+                <span className="text-blue-400 font-bold">{transform.posX.toFixed(1)} m</span>
               </div>
               <input
-                type="range" min="-0.3" max="0.3" step="0.02"
-                value={transform.rotZ}
-                onChange={e => setTransform(t => ({ ...t, rotZ: parseFloat(e.target.value) }))}
+                type="range" min="-30" max="30" step="0.5"
+                value={transform.posX}
+                onChange={e => setTransform(t => ({ ...t, posX: parseFloat(e.target.value) }))}
                 className="w-full accent-blue-500 cursor-pointer"
               />
             </div>
 
-            {/* 5. Hauteur / Élévation */}
+            {/* Hauteur sol Y */}
             <div>
               <div className="flex justify-between text-slate-300 mb-1 font-semibold">
                 <span>Hauteur sol (Altitude)</span>
@@ -464,10 +527,10 @@ export default function LandscapeIntegrationModal({
               />
             </div>
 
-            {/* 6. Ensoleillement & Ombres */}
+            {/* Angle Soleil */}
             <div>
               <div className="flex justify-between text-slate-300 mb-1 font-semibold">
-                <span className="flex items-center gap-1"><Sun className="w-3.5 h-3.5 text-amber-400" /> Angle du Soleil</span>
+                <span className="flex items-center gap-1"><Sun className="w-3.5 h-3.5 text-amber-400" /> Ensoleillement & Ombres</span>
                 <span className="text-amber-400 font-bold">{transform.sunAngle}°</span>
               </div>
               <input
@@ -478,33 +541,33 @@ export default function LandscapeIntegrationModal({
               />
             </div>
 
-            {/* Boutons d'angles rapides */}
+            {/* Vues rapides */}
             <div className="pt-2 border-t border-slate-800">
-              <span className="text-slate-400 text-[10.5px] font-bold block mb-2 uppercase">Vues rapides</span>
+              <span className="text-slate-400 text-[10.5px] font-bold block mb-2 uppercase">Vues d'orientation</span>
               <div className="grid grid-cols-2 gap-1.5">
                 <button
                   onClick={() => setTransform(t => ({ ...t, rotY: 0 }))}
                   className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200"
                 >
-                  Face
+                  Pignon Est
                 </button>
                 <button
-                  onClick={() => setTransform(t => ({ ...t, rotY: Math.PI / 2 }))}
+                  onClick={() => setTransform(t => ({ ...t, rotY: -Math.PI / 2 }))}
                   className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200"
                 >
-                  Pignon
+                  Façade Sud
                 </button>
                 <button
                   onClick={() => setTransform(t => ({ ...t, rotY: 0.5 }))}
                   className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200"
                 >
-                  3/4 Droit
+                  Perspective 3/4
                 </button>
                 <button
-                  onClick={() => setTransform(t => ({ ...t, rotY: -0.5 }))}
+                  onClick={() => setTransform(t => ({ ...t, rotY: Math.PI / 2 }))}
                   className="py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10.5px] font-bold text-slate-200"
                 >
-                  3/4 Gauche
+                  Façade Nord
                 </button>
               </div>
             </div>

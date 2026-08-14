@@ -628,6 +628,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
                             largeur: config.width,
                             hauteur_egout: config.eaveHeight,
                             pente: config.roofPitch,
+                            buildingType: config.buildingType,
+                            leftSide: config.leftSide,
+                            rightSide: config.rightSide,
                             type: editedProject.type
                           }}
                           onCaptureSnapshot={handleCaptureSnapshotPC5}
@@ -800,6 +803,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
               largeur: config.width,
               hauteur_egout: config.eaveHeight,
               pente: config.roofPitch,
+              buildingType: config.buildingType,
+              leftSide: config.leftSide,
+              rightSide: config.rightSide,
               type: editedProject.type
             }}
             installationType={editedProject.type}

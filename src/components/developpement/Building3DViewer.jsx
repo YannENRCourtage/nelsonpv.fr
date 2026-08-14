@@ -3,14 +3,9 @@ import * as THREE from 'three';
 import { Camera, RotateCw, ZoomIn, Box, Sparkles, Check, RefreshCw, Eye, Layers } from 'lucide-react';
 
 /**
- * Building3DViewer — Visionneuse 3D interactive du bâtiment / ombrière solaire
- * Fond neutre sans quadrillage (Directive 3)
- * Angles de prise de vue 3D :
- * - Façade Sud
- * - Façade Nord
- * - Façade Est (Pignon)
- * - Façade Ouest (Pignon)
- * - Vue Couverture (Toiture orientée en format PAYSAGE horizontal)
+ * Building3DViewer — Visionneuse 3D interactive fidèle à 100% au bâtiment configuré
+ * Directive 1 : Persistance intégrale des paramètres (Asymétrique, Symétrique, Monopente, Ombrière, Travées, Auvents, etc.)
+ * Directive 3 : Angles de caméra corrigés pour cibler le VRAI Sud, Nord, Est, Ouest et Toiture
  */
 export default function Building3DViewer({
   buildingConfig = {},
@@ -40,7 +35,9 @@ export default function Building3DViewer({
   const width = parseFloat(buildingConfig.largeur || 18.6);
   const eaveHeight = parseFloat(buildingConfig.hauteur_egout || 4.0);
   const pitchDeg = parseFloat(buildingConfig.pente || 15);
-  const type = buildingConfig.type || 'batiment_solaire';
+  const buildingType = buildingConfig.buildingType || buildingConfig.type || 'asymetrique_1';
+  const leftSide = buildingConfig.leftSide || 'none';
+  const rightSide = buildingConfig.rightSide || 'none';
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -53,7 +50,7 @@ export default function Building3DViewer({
     scene.background = new THREE.Color(0xffffff);
 
     // 2. Camera
-    const camera = new THREE.PerspectiveCamera(45, w / h, 0.5, 1000);
+    const camera = new THREE.PerspectiveCamera(42, w / h, 0.5, 1000);
     const updateCameraPos = () => {
       const { rotation, distance } = threeRef.current;
       camera.position.x = distance * Math.sin(rotation.y) * Math.cos(rotation.x);
@@ -98,10 +95,10 @@ export default function Building3DViewer({
     floor.receiveShadow = true;
     scene.add(floor);
 
-    // 6. Construction 3D Bâtiment / Structure
+    // 6. Construction 3D Bâtiment / Structure exacte
     const meshGroup = new THREE.Group();
 
-    // Matériaux
+    // Matériaux métalliques et photovoltaïques
     const steelMat = new THREE.MeshStandardMaterial({
       color: 0x334155, // RAL 7016 Gris Anthracite
       roughness: 0.35,
@@ -123,58 +120,125 @@ export default function Building3DViewer({
     const halfL = length / 2;
     const bayCount = Math.max(3, Math.round(length / 6));
     const baySpacing = length / bayCount;
-    const ridgeHeight = eaveHeight + width * Math.tan((pitchDeg * Math.PI) / 180);
 
-    // Poteaux et Portiques métalliques
+    // Calcul géométrie selon type (Symétrique, Asymétrique, Monopente, Ombrière)
+    const isAsym = buildingType.includes('asymetrique');
+    const isSym = buildingType === 'symetrique';
+    const isMonopente = buildingType === 'monopente';
+    const isOmbriere = buildingType.includes('ombriere');
+
+    // Positions de faîtage et égout
+    let ridgeX = 0;
+    let ridgeHeight = eaveHeight + (width / 2) * Math.tan((pitchDeg * Math.PI) / 180);
+    let eaveLeftH = eaveHeight;
+    let eaveRightH = eaveHeight;
+
+    if (isAsym) {
+      ridgeX = width * 0.2; // Faîtage décalé
+      ridgeHeight = eaveHeight + (width * 0.7) * Math.tan((pitchDeg * Math.PI) / 180);
+      eaveRightH = Math.max(3.0, eaveHeight - 0.5);
+    } else if (isMonopente) {
+      ridgeX = halfW;
+      ridgeHeight = eaveHeight + width * Math.tan((pitchDeg * Math.PI) / 180);
+      eaveLeftH = eaveHeight;
+      eaveRightH = ridgeHeight;
+    } else if (isOmbriere) {
+      ridgeX = 0;
+      ridgeHeight = eaveHeight + 0.8;
+      eaveLeftH = eaveHeight;
+      eaveRightH = eaveHeight - 0.4;
+    }
+
+    // Portiques métalliques le long de la longueur Z
     for (let i = 0; i <= bayCount; i++) {
       const z = -halfL + i * baySpacing;
 
-      // Poteau Bas (Egout)
-      const postBasGeo = new THREE.BoxGeometry(0.35, eaveHeight, 0.35);
-      const postBas = new THREE.Mesh(postBasGeo, steelMat);
-      postBas.position.set(-halfW, eaveHeight / 2, z);
-      postBas.castShadow = true;
-      meshGroup.add(postBas);
+      // Poteau Gauche / Sud
+      const postGGeo = new THREE.BoxGeometry(0.35, eaveLeftH, 0.35);
+      const postG = new THREE.Mesh(postGGeo, steelMat);
+      postG.position.set(-halfW, eaveLeftH / 2, z);
+      postG.castShadow = true;
+      meshGroup.add(postG);
 
-      // Poteau Haut (Faîtage / Sablière Haute)
-      const postHautGeo = new THREE.BoxGeometry(0.35, ridgeHeight, 0.35);
-      const postHaut = new THREE.Mesh(postHautGeo, steelMat);
-      postHaut.position.set(halfW, ridgeHeight / 2, z);
-      postHaut.castShadow = true;
-      meshGroup.add(postHaut);
+      // Poteau Droit / Nord
+      const postDGeo = new THREE.BoxGeometry(0.35, eaveRightH, 0.35);
+      const postD = new THREE.Mesh(postDGeo, steelMat);
+      postD.position.set(halfW, eaveRightH / 2, z);
+      postD.castShadow = true;
+      meshGroup.add(postD);
 
-      // Traverse / Arbalétrier
-      const rafterLen = Math.sqrt(Math.pow(width, 2) + Math.pow(ridgeHeight - eaveHeight, 2));
-      const rafterGeo = new THREE.BoxGeometry(rafterLen, 0.3, 0.25);
-      const rafter = new THREE.Mesh(rafterGeo, steelMat);
-      rafter.position.set(0, (eaveHeight + ridgeHeight) / 2, z);
-      rafter.rotation.z = Math.atan2(ridgeHeight - eaveHeight, width);
-      rafter.castShadow = true;
-      meshGroup.add(rafter);
+      // Poteau central sous faîtage si grande portée
+      if (width > 22 && !isMonopente) {
+        const postC = new THREE.Mesh(new THREE.BoxGeometry(0.3, ridgeHeight, 0.3), steelMat);
+        postC.position.set(ridgeX, ridgeHeight / 2, z);
+        postC.castShadow = true;
+        meshGroup.add(postC);
+      }
+
+      // Arbalétrier versant Sud (Gauche -> Faîtage)
+      const lenSud = Math.sqrt(Math.pow(ridgeX - (-halfW), 2) + Math.pow(ridgeHeight - eaveLeftH, 2));
+      const rafterSud = new THREE.Mesh(new THREE.BoxGeometry(lenSud, 0.25, 0.2), steelMat);
+      rafterSud.position.set((-halfW + ridgeX) / 2, (eaveLeftH + ridgeHeight) / 2, z);
+      rafterSud.rotation.z = Math.atan2(ridgeHeight - eaveLeftH, ridgeX - (-halfW));
+      rafterSud.castShadow = true;
+      meshGroup.add(rafterSud);
+
+      // Arbalétrier versant Nord (Faîtage -> Droite)
+      if (!isMonopente) {
+        const lenNord = Math.sqrt(Math.pow(halfW - ridgeX, 2) + Math.pow(ridgeHeight - eaveRightH, 2));
+        const rafterNord = new THREE.Mesh(new THREE.BoxGeometry(lenNord, 0.25, 0.2), steelMat);
+        rafterNord.position.set((ridgeX + halfW) / 2, (ridgeHeight + eaveRightH) / 2, z);
+        rafterNord.rotation.z = Math.atan2(eaveRightH - ridgeHeight, halfW - ridgeX);
+        rafterNord.castShadow = true;
+        meshGroup.add(rafterNord);
+      }
+
+      // Extension AUVENT / APPENTIS si configurée
+      if (rightSide === 'auvent' || rightSide === 'appentis') {
+        const extLen = 4.0;
+        const rafterExt = new THREE.Mesh(new THREE.BoxGeometry(extLen, 0.2, 0.15), steelMat);
+        rafterExt.position.set(halfW + extLen / 2, eaveRightH - 0.2, z);
+        rafterExt.rotation.z = -0.15;
+        meshGroup.add(rafterExt);
+
+        if (rightSide === 'appentis') {
+          const postExt = new THREE.Mesh(new THREE.BoxGeometry(0.3, eaveRightH - 0.8, 0.3), steelMat);
+          postExt.position.set(halfW + extLen, (eaveRightH - 0.8) / 2, z);
+          meshGroup.add(postExt);
+        }
+      }
     }
 
-    // Panneaux Solaires en Toiture
-    const roofLen = Math.sqrt(Math.pow(width, 2) + Math.pow(ridgeHeight - eaveHeight, 2)) + 0.6;
-    const roofGeo = new THREE.BoxGeometry(roofLen, 0.08, length + 0.6);
-    const roofMesh = new THREE.Mesh(roofGeo, panelMat);
-    roofMesh.position.set(0, (eaveHeight + ridgeHeight) / 2 + 0.12, 0);
-    roofMesh.rotation.z = Math.atan2(ridgeHeight - eaveHeight, width);
-    roofMesh.castShadow = true;
-    roofMesh.receiveShadow = true;
-    meshGroup.add(roofMesh);
+    // Couverture photovoltaïque Toiture Versant Sud (Principal)
+    const lenSudRoof = Math.sqrt(Math.pow(ridgeX - (-halfW), 2) + Math.pow(ridgeHeight - eaveLeftH, 2)) + 0.4;
+    const roofSud = new THREE.Mesh(new THREE.BoxGeometry(lenSudRoof, 0.08, length + 0.4), panelMat);
+    roofSud.position.set((-halfW + ridgeX) / 2, (eaveLeftH + ridgeHeight) / 2 + 0.1, 0);
+    roofSud.rotation.z = Math.atan2(ridgeHeight - eaveLeftH, ridgeX - (-halfW));
+    roofSud.castShadow = true;
+    roofSud.receiveShadow = true;
+    meshGroup.add(roofSud);
 
-    // Lignes de modules photovoltaïques discrètes
-    const gridTextureMat = new THREE.MeshBasicMaterial({ color: 0x60a5fa, wireframe: true, opacity: 0.4, transparent: true });
-    const wireRoof = new THREE.Mesh(roofGeo, gridTextureMat);
-    wireRoof.position.set(0, (eaveHeight + ridgeHeight) / 2 + 0.13, 0);
-    wireRoof.rotation.z = Math.atan2(ridgeHeight - eaveHeight, width);
-    meshGroup.add(wireRoof);
+    // Lignes de séparation de panneaux photovoltaïques
+    const gridTextureMat = new THREE.MeshBasicMaterial({ color: 0x60a5fa, wireframe: true, opacity: 0.35, transparent: true });
+    const wireRoofSud = new THREE.Mesh(new THREE.BoxGeometry(lenSudRoof, 0.08, length + 0.4), gridTextureMat);
+    wireRoofSud.position.set((-halfW + ridgeX) / 2, (eaveLeftH + ridgeHeight) / 2 + 0.11, 0);
+    wireRoofSud.rotation.z = Math.atan2(ridgeHeight - eaveLeftH, ridgeX - (-halfW));
+    meshGroup.add(wireRoofSud);
 
-    // Gouttière
-    const gutterGeo = new THREE.BoxGeometry(0.2, 0.2, length + 0.8);
-    const gutter = new THREE.Mesh(gutterGeo, gutterMat);
-    gutter.position.set(-halfW - 0.2, eaveHeight, 0);
-    meshGroup.add(gutter);
+    // Couverture versant Nord (si bi-pente)
+    if (!isMonopente) {
+      const lenNordRoof = Math.sqrt(Math.pow(halfW - ridgeX, 2) + Math.pow(ridgeHeight - eaveRightH, 2)) + 0.4;
+      const roofNord = new THREE.Mesh(new THREE.BoxGeometry(lenNordRoof, 0.08, length + 0.4), steelMat);
+      roofNord.position.set((ridgeX + halfW) / 2, (ridgeHeight + eaveRightH) / 2 + 0.1, 0);
+      roofNord.rotation.z = Math.atan2(eaveRightH - ridgeHeight, halfW - ridgeX);
+      roofNord.castShadow = true;
+      meshGroup.add(roofNord);
+    }
+
+    // Gouttière sablière Sud
+    const gutterSud = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, length + 0.6), gutterMat);
+    gutterSud.position.set(-halfW - 0.15, eaveLeftH, 0);
+    meshGroup.add(gutterSud);
 
     scene.add(meshGroup);
 
@@ -190,7 +254,7 @@ export default function Building3DViewer({
     };
     animate();
 
-    // Mouse Interaction (Orbiting)
+    // Mouse Orbit Controls
     const onMouseDown = (e) => {
       threeRef.current.isMouseDown = true;
       threeRef.current.prevMousePos = { x: e.clientX, y: e.clientY };
@@ -234,16 +298,25 @@ export default function Building3DViewer({
         container.removeChild(renderer.domElement);
       }
     };
-  }, [length, width, eaveHeight, pitchDeg, type, height]);
+  }, [length, width, eaveHeight, pitchDeg, buildingType, leftSide, rightSide, height]);
 
-  // Positions préconfigurées pour les 5 façades et toiture
-  // Directive 3 : Vue Toiture orientée de façon horizontale (format paysage)
+  // ── DIRECTIVE 3 : CORRECTION EXACTE DES ANGLES DE CAMÉRA ────────────────────
+  // Le bâtiment a sa longueur sur Z et sa largeur sur X (Sud = -X, Nord = +X, Est = +Z, Ouest = -Z)
   const CAMERA_PRESETS = {
-    facade_sud: { rotation: { x: 0.12, y: 0 }, distance: 45, label: 'Façade Sud' },
-    facade_nord: { rotation: { x: 0.12, y: Math.PI }, distance: 45, label: 'Façade Nord' },
-    facade_est: { rotation: { x: 0.12, y: -Math.PI / 2 }, distance: 40, label: 'Façade Est' },
-    facade_ouest: { rotation: { x: 0.12, y: Math.PI / 2 }, distance: 40, label: 'Façade Ouest' },
-    vue_couverture: { rotation: { x: Math.PI / 2 - 0.02, y: -Math.PI / 2 }, distance: 48, label: 'Vue Toiture (Paysage)' },
+    // 1. Vrai Sud (Long pan avant / Sablière basse) : Caméra sur l'axe -X regardant vers +X
+    facade_sud: { rotation: { x: 0.10, y: -Math.PI / 2 }, distance: Math.max(length, width) * 1.35, label: 'Façade Sud' },
+    
+    // 2. Vrai Nord (Long pan arrière / Faîtage) : Caméra sur l'axe +X regardant vers -X
+    facade_nord: { rotation: { x: 0.10, y: Math.PI / 2 }, distance: Math.max(length, width) * 1.35, label: 'Façade Nord' },
+    
+    // 3. Vrai Est (Pignon gauche) : Caméra sur l'axe +Z regardant vers -Z
+    facade_est: { rotation: { x: 0.10, y: 0 }, distance: Math.max(length, width) * 1.25, label: 'Façade Est' },
+    
+    // 4. Vrai Ouest (Pignon droit) : Caméra sur l'axe -Z regardant vers +Z
+    facade_ouest: { rotation: { x: 0.10, y: Math.PI }, distance: Math.max(length, width) * 1.25, label: 'Façade Ouest' },
+    
+    // 5. Vue Couverture (Toiture orientée paysage horizontalement de gauche à droite)
+    vue_couverture: { rotation: { x: Math.PI / 2 - 0.01, y: 0 }, distance: Math.max(length, width) * 1.5, label: 'Vue Toiture (Paysage)' },
   };
 
   const applyPreset = (presetKey) => {
@@ -261,7 +334,7 @@ export default function Building3DViewer({
     camera.lookAt(0, eaveHeight / 2, 0);
   };
 
-  // Capture du Snapshot de la vue active
+  // Capture Snapshot HD de la vue active
   const handleTakeSnapshot = () => {
     if (!threeRef.current.renderer || !threeRef.current.scene || !threeRef.current.camera) return;
     threeRef.current.renderer.render(threeRef.current.scene, threeRef.current.camera);
@@ -283,7 +356,7 @@ export default function Building3DViewer({
 
     for (const key of keys) {
       applyPreset(key);
-      await new Promise(r => setTimeout(r, 140));
+      await new Promise(r => setTimeout(r, 150));
       threeRef.current.renderer.render(threeRef.current.scene, threeRef.current.camera);
       const dataUrl = threeRef.current.renderer.domElement.toDataURL('image/jpeg', 0.95);
       results[key] = dataUrl;
@@ -296,7 +369,7 @@ export default function Building3DViewer({
       onCaptureSnapshot(results.facade_sud, 'facade_sud');
     }
 
-    // Revenir en vue 3D perspective libre
+    // Revenir en vue 3D libre
     threeRef.current.rotation = { x: 0.35, y: -0.65 };
     threeRef.current.distance = 40;
     const { camera } = threeRef.current;
@@ -310,10 +383,10 @@ export default function Building3DViewer({
 
   return (
     <div className={`relative rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-xs flex flex-col ${className}`}>
-      {/* 3D Canvas Mount (Fond neutre blanc sans grille) */}
+      {/* Canvas 3D */}
       <div ref={mountRef} style={{ width: '100%', height }} className="cursor-grab active:cursor-grabbing flex-1 bg-white" />
 
-      {/* Top Bar : Sélecteur des 5 angles prédéfinis */}
+      {/* Top Bar : Sélecteur des 5 angles avec correction Sud/Nord/Est/Ouest */}
       <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none flex-wrap gap-1">
         <div className="flex items-center gap-1 pointer-events-auto bg-white/95 backdrop-blur-md p-1 rounded-xl border border-slate-200 shadow-sm">
           {[
@@ -357,7 +430,7 @@ export default function Building3DViewer({
         </button>
       </div>
 
-      {/* Bottom Bar : Actions de capture instantanée */}
+      {/* Bottom Bar : Actions de capture */}
       <div className="absolute bottom-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none">
         <span className="text-[10px] text-slate-500 font-semibold bg-white/85 backdrop-blur-xs px-2 py-0.5 rounded-lg pointer-events-auto">
           Faites glisser pour tourner • Molette pour zoomer

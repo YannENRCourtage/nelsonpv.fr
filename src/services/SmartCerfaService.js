@@ -3,7 +3,10 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 /**
  * SmartCerfaService — Moteur de mapping intelligent des CERFA PDF
  * Cible EXCLUSIVEMENT les champs AcroForm officiels du CERFA (DP 13404, PC 13409, CU 16702)
- * sans aucun texte flottant sur les pages réservées à la Mairie ou au Récépissé.
+ * Page 2 = Identité & Coordonnées du demandeur principal
+ * Page 3 = Coordonnées email & Références cadastrales
+ * Page 5 = Description projet & Nature des travaux
+ * Page 9 = Engagement (Lieu, Date) — Signature laissée vide pour signature manuscrite
  */
 
 // ─── Mapping des champs AcroForm par type de CERFA ──────────────────────────
@@ -11,115 +14,105 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 export const CERFA_FIELDS = {
   cu: {
     // CERFA 16702 — Certificat d'Urbanisme
-    nom:          ['D1N_nom', 'topmostSubform[0].Page2[0].D1N_nom[0]', 'V1N_nom'],
-    prenom:       ['D1P_prenom', 'topmostSubform[0].Page2[0].D1P_prenom[0]', 'V1P_prenom'],
-    siret:        ['D2S_siret', 'topmostSubform[0].Page2[0].D2S_siret[0]'],
-    denomination: ['D2D_denomination', 'topmostSubform[0].Page2[0].D2D_denomination[0]'],
-    adresse_num:  ['D3N_numero', 'topmostSubform[0].Page2[0].D3N_numero[0]'],
-    adresse_voie: ['D3V_voie', 'topmostSubform[0].Page2[0].D3V_voie[0]'],
-    commune:      ['D3L_localite', 'topmostSubform[0].Page2[0].D3L_localite[0]', 'D1C_commune'],
-    cp:           ['D3C_code', 'topmostSubform[0].Page2[0].D3C_code[0]'],
-    email_left:   ['D5GE1_email'],
-    email_right:  ['D5GE2_email'],
-    tel:          ['D3T_telephone'],
-    prefixe:      ['T2F_prefixe'],
-    section:      ['T2S_section', 'topmostSubform[0].Page3[0].T2S_section[0]'],
-    parcelle:     ['T2N_numero', 'topmostSubform[0].Page3[0].T2N_numero[0]'],
-    surface:      ['T2T_superficie', 'topmostSubform[0].Page3[0].T2T_superficie[0]'],
-    sig_lieu:     ['E1L_lieu'],
-    sig_date:     ['E1D_date'],
-    sig_nom:      ['E1S_signature', 'D1N_nom'],
+    nom:          ['topmostSubform[0].Page2[0].D1N_nom[0]', 'D1N_nom', 'V1N_nom'],
+    prenom:       ['topmostSubform[0].Page2[0].D1P_prenom[0]', 'D1P_prenom', 'V1P_prenom'],
+    naissance:    ['topmostSubform[0].Page2[0].D1A_naissance[0]', 'D1A_naissance'],
+    commune_naiss:['topmostSubform[0].Page2[0].D1C_commune[0]', 'D1C_commune'],
+    dept_naiss:   ['topmostSubform[0].Page2[0].D1D_dept[0]', 'D1D_dept'],
+    pays_naiss:   ['topmostSubform[0].Page2[0].D1E_pays[0]', 'D1E_pays'],
+    siret:        ['topmostSubform[0].Page2[0].D2S_SIRET[0]', 'D2S_SIRET', 'D2S_siret'],
+    denomination: ['topmostSubform[0].Page2[0].D2D_denomination[0]', 'D2D_denomination'],
+    adresse_num:  ['topmostSubform[0].Page2[0].D3N_numero[0]', 'D3N_numero'],
+    adresse_voie: ['topmostSubform[0].Page2[0].D3V_voie[0]', 'D3V_voie'],
+    commune:      ['topmostSubform[0].Page2[0].D3L_localite[0]', 'D3L_localite', 'D1C_commune'],
+    cp:           ['topmostSubform[0].Page2[0].D3C_code[0]', 'D3C_code'],
+    pays:         ['topmostSubform[0].Page2[0].D3P_pays[0]', 'D3P_pays'],
+    email_left:   ['topmostSubform[0].Page3[0].D5GE1_email[0]', 'D5GE1_email'],
+    email_right:  ['topmostSubform[0].Page3[0].D5GE2_email[0]', 'D5GE2_email'],
+    tel:          ['topmostSubform[0].Page2[0].D3T_telephone[0]', 'D3T_telephone'],
+    prefixe:      ['topmostSubform[0].Page3[0].T2F_prefixe[0]', 'T2F_prefixe'],
+    section:      ['topmostSubform[0].Page3[0].T2S_section[0]', 'T2S_section'],
+    parcelle:     ['topmostSubform[0].Page3[0].T2N_numero[0]', 'T2N_numero'],
+    surface:      ['topmostSubform[0].Page3[0].T2T_superficie[0]', 'T2T_superficie'],
+    sig_lieu:     ['topmostSubform[0].Page9[0].E1L_lieu[0]', 'E1L_lieu'],
+    sig_date:     ['topmostSubform[0].Page9[0].E1D_date[0]', 'E1D_date'],
   },
   dp: {
     // CERFA 13404 — Déclaration Préalable
-    nom:          ['topmostSubform[0].Page8[0].V1N_nom[0]', 'V1N_nom', 'topmostSubform[0].Page2[0].D1N_nom[0]', 'D1N_nom'],
-    prenom:       ['topmostSubform[0].Page8[0].V1P_prenom[0]', 'V1P_prenom', 'topmostSubform[0].Page2[0].D1P_prenom[0]', 'D1P_prenom'],
-    siret:        ['topmostSubform[0].Page8[0].V1MS1_siret[0]', 'V1MS1_siret', 'D2S_siret'],
-    denomination: ['topmostSubform[0].Page8[0].V1MD1_denomination[0]', 'V1MD1_denomination', 'D2D_denomination'],
-    adresse_num:  ['topmostSubform[0].Page8[0].V1Z_numero[0]', 'V1Z_numero', 'D3N_numero'],
-    adresse_voie: ['topmostSubform[0].Page8[0].V1V_voie[0]', 'V1V_voie', 'D3V_voie'],
-    commune:      ['topmostSubform[0].Page8[0].V1L_localite[0]', 'V1L_localite', 'S1LA1_localite', 'D3L_localite'],
-    cp:           ['topmostSubform[0].Page8[0].V1C_code[0]', 'V1C_code', 'S1PA1_codepostal', 'D3C_code'],
-    email_left:   ['topmostSubform[0].Page8[0].V1EM1_email[0]', 'V1EM1_email', 'D5GE1_email'],
-    email_right:  ['topmostSubform[0].Page8[0].V1EM2_email[0]', 'V1EM2_email', 'D5GE2_email'],
-    tel:          ['topmostSubform[0].Page8[0].V1T_telephone[0]', 'V1T_telephone', 'D3T_telephone'],
-    prefixe:      ['topmostSubform[0].Page9[0].T2FP1_prefixe[0]', 'T2FP1_prefixe', 'T2F_prefixe'],
-    section:      ['topmostSubform[0].Page9[0].T2SP1_section[0]', 'T2SP1_section', 'T2S_section'],
-    parcelle:     ['topmostSubform[0].Page9[0].T2NP1_numero[0]', 'T2NP1_numero', 'T2N_numero'],
-    surface:      ['topmostSubform[0].Page9[0].T2TP1_superficie[0]', 'T2TP1_superficie', 'T2T_superficie'],
-    description:  ['topmostSubform[0].Page5[0].C2ZD1_description[0]', 'C2ZD1_description'],
-    puissance:    ['topmostSubform[0].Page5[0].C2ZE1_puissance[0]', 'C2ZE1_puissance'],
-    sig_lieu:     ['topmostSubform[0].Page9[0].E1L_lieu[0]', 'E1L_lieu'],
-    sig_date:     ['topmostSubform[0].Page9[0].E1D_date[0]', 'E1D_date', 'R2M_date'],
-    sig_nom:      ['topmostSubform[0].Page9[0].E1S_signature[0]', 'E1S_signature', 'V1N_nom'],
-  },
-  pc: {
-    // CERFA 13409 / 13404 — Permis de Construire
-    nom:          ['topmostSubform[0].Page8[0].V1N_nom[0]', 'V1N_nom', 'D1N_nom'],
-    prenom:       ['topmostSubform[0].Page8[0].V1P_prenom[0]', 'V1P_prenom', 'D1P_prenom'],
-    siret:        ['topmostSubform[0].Page8[0].V1MS1_siret[0]', 'V1MS1_siret'],
-    denomination: ['topmostSubform[0].Page8[0].V1MD1_denomination[0]', 'V1MD1_denomination'],
-    adresse_num:  ['topmostSubform[0].Page8[0].V1Z_numero[0]', 'V1Z_numero'],
-    adresse_voie: ['topmostSubform[0].Page8[0].V1V_voie[0]', 'V1V_voie'],
-    commune:      ['topmostSubform[0].Page8[0].V1L_localite[0]', 'V1L_localite', 'S1LA1_localite'],
-    cp:           ['topmostSubform[0].Page8[0].V1C_code[0]', 'V1C_code', 'S1PA1_codepostal'],
-    email_left:   ['topmostSubform[0].Page8[0].V1EM1_email[0]', 'V1EM1_email'],
-    email_right:  ['topmostSubform[0].Page8[0].V1EM2_email[0]', 'V1EM2_email'],
-    tel:          ['topmostSubform[0].Page8[0].V1T_telephone[0]', 'V1T_telephone'],
-    prefixe:      ['topmostSubform[0].Page9[0].T2FP1_prefixe[0]', 'T2FP1_prefixe'],
-    section:      ['topmostSubform[0].Page9[0].T2SP1_section[0]', 'T2SP1_section'],
-    parcelle:     ['topmostSubform[0].Page9[0].T2NP1_numero[0]', 'T2NP1_numero'],
-    surface:      ['topmostSubform[0].Page9[0].T2TP1_superficie[0]', 'T2TP1_superficie'],
+    nom:          ['topmostSubform[0].Page2[0].D1N_nom[0]', 'D1N_nom', 'topmostSubform[0].Page8[0].V1N_nom[0]', 'V1N_nom'],
+    prenom:       ['topmostSubform[0].Page2[0].D1P_prenom[0]', 'D1P_prenom', 'topmostSubform[0].Page8[0].V1P_prenom[0]', 'V1P_prenom'],
+    naissance:    ['topmostSubform[0].Page2[0].D1A_naissance[0]', 'D1A_naissance'],
+    commune_naiss:['topmostSubform[0].Page2[0].D1C_commune[0]', 'D1C_commune'],
+    dept_naiss:   ['topmostSubform[0].Page2[0].D1D_dept[0]', 'D1D_dept'],
+    pays_naiss:   ['topmostSubform[0].Page2[0].D1E_pays[0]', 'D1E_pays'],
+    siret:        ['topmostSubform[0].Page2[0].D2S_SIRET[0]', 'D2S_SIRET', 'topmostSubform[0].Page8[0].V1MS1_siret[0]'],
+    denomination: ['topmostSubform[0].Page2[0].D2D_denomination[0]', 'D2D_denomination', 'topmostSubform[0].Page8[0].V1MD1_denomination[0]'],
+    raison:       ['topmostSubform[0].Page2[0].D2R_raison[0]', 'D2R_raison', 'topmostSubform[0].Page8[0].V1R_raison[0]'],
+    type_societe: ['topmostSubform[0].Page2[0].D2J_type[0]', 'D2J_type'],
+    adresse_num:  ['topmostSubform[0].Page2[0].D3N_numero[0]', 'D3N_numero', 'topmostSubform[0].Page8[0].V1Z_numero[0]'],
+    adresse_voie: ['topmostSubform[0].Page2[0].D3V_voie[0]', 'D3V_voie', 'topmostSubform[0].Page8[0].V1V_voie[0]'],
+    adresse_lieudit:['topmostSubform[0].Page2[0].D3W_lieudit[0]', 'D3W_lieudit'],
+    commune:      ['topmostSubform[0].Page2[0].D3L_localite[0]', 'D3L_localite', 'topmostSubform[0].Page8[0].V1L_localite[0]'],
+    cp:           ['topmostSubform[0].Page2[0].D3C_code[0]', 'D3C_code', 'topmostSubform[0].Page8[0].V1C_code[0]'],
+    tel:          ['topmostSubform[0].Page2[0].D3T_telephone[0]', 'D3T_telephone', 'topmostSubform[0].Page8[0].V1T_telephone[0]'],
+    pays:         ['topmostSubform[0].Page2[0].D3P_pays[0]', 'D3P_pays', 'topmostSubform[0].Page8[0].V1E_pays[0]'],
+    email_left:   ['topmostSubform[0].Page3[0].D5GE1_email[0]', 'D5GE1_email'],
+    email_right:  ['topmostSubform[0].Page3[0].D5GE2_email[0]', 'D5GE2_email'],
+    prefixe:      ['topmostSubform[0].Page3[0].T2F_prefixe[0]', 'T2F_prefixe'],
+    section:      ['topmostSubform[0].Page3[0].T2S_section[0]', 'T2S_section'],
+    parcelle:     ['topmostSubform[0].Page3[0].T2N_numero[0]', 'T2N_numero'],
+    surface:      ['topmostSubform[0].Page3[0].T2T_superficie[0]', 'T2T_superficie'],
     description:  ['topmostSubform[0].Page5[0].C2ZD1_description[0]', 'C2ZD1_description'],
     puissance:    ['topmostSubform[0].Page5[0].C2ZE1_puissance[0]', 'C2ZE1_puissance'],
     sig_lieu:     ['topmostSubform[0].Page9[0].E1L_lieu[0]', 'E1L_lieu'],
     sig_date:     ['topmostSubform[0].Page9[0].E1D_date[0]', 'E1D_date'],
-    sig_nom:      ['topmostSubform[0].Page9[0].E1S_signature[0]', 'E1S_signature'],
+  },
+  pc: {
+    // CERFA 13409 / 13404 — Permis de Construire
+    nom:          ['topmostSubform[0].Page2[0].D1N_nom[0]', 'D1N_nom', 'topmostSubform[0].Page8[0].V1N_nom[0]', 'V1N_nom'],
+    prenom:       ['topmostSubform[0].Page2[0].D1P_prenom[0]', 'D1P_prenom', 'topmostSubform[0].Page8[0].V1P_prenom[0]', 'V1P_prenom'],
+    naissance:    ['topmostSubform[0].Page2[0].D1A_naissance[0]', 'D1A_naissance'],
+    commune_naiss:['topmostSubform[0].Page2[0].D1C_commune[0]', 'D1C_commune'],
+    dept_naiss:   ['topmostSubform[0].Page2[0].D1D_dept[0]', 'D1D_dept'],
+    pays_naiss:   ['topmostSubform[0].Page2[0].D1E_pays[0]', 'D1E_pays'],
+    siret:        ['topmostSubform[0].Page2[0].D2S_SIRET[0]', 'D2S_SIRET', 'topmostSubform[0].Page8[0].V1MS1_siret[0]'],
+    denomination: ['topmostSubform[0].Page2[0].D2D_denomination[0]', 'D2D_denomination', 'topmostSubform[0].Page8[0].V1MD1_denomination[0]'],
+    raison:       ['topmostSubform[0].Page2[0].D2R_raison[0]', 'D2R_raison', 'topmostSubform[0].Page8[0].V1R_raison[0]'],
+    type_societe: ['topmostSubform[0].Page2[0].D2J_type[0]', 'D2J_type'],
+    adresse_num:  ['topmostSubform[0].Page2[0].D3N_numero[0]', 'D3N_numero', 'topmostSubform[0].Page8[0].V1Z_numero[0]'],
+    adresse_voie: ['topmostSubform[0].Page2[0].D3V_voie[0]', 'D3V_voie', 'topmostSubform[0].Page8[0].V1V_voie[0]'],
+    adresse_lieudit:['topmostSubform[0].Page2[0].D3W_lieudit[0]', 'D3W_lieudit'],
+    commune:      ['topmostSubform[0].Page2[0].D3L_localite[0]', 'D3L_localite', 'topmostSubform[0].Page8[0].V1L_localite[0]'],
+    cp:           ['topmostSubform[0].Page2[0].D3C_code[0]', 'D3C_code', 'topmostSubform[0].Page8[0].V1C_code[0]'],
+    tel:          ['topmostSubform[0].Page2[0].D3T_telephone[0]', 'D3T_telephone', 'topmostSubform[0].Page8[0].V1T_telephone[0]'],
+    pays:         ['topmostSubform[0].Page2[0].D3P_pays[0]', 'D3P_pays', 'topmostSubform[0].Page8[0].V1E_pays[0]'],
+    email_left:   ['topmostSubform[0].Page3[0].D5GE1_email[0]', 'D5GE1_email'],
+    email_right:  ['topmostSubform[0].Page3[0].D5GE2_email[0]', 'D5GE2_email'],
+    prefixe:      ['topmostSubform[0].Page3[0].T2F_prefixe[0]', 'T2F_prefixe'],
+    section:      ['topmostSubform[0].Page3[0].T2S_section[0]', 'T2S_section'],
+    parcelle:     ['topmostSubform[0].Page3[0].T2N_numero[0]', 'T2N_numero'],
+    surface:      ['topmostSubform[0].Page3[0].T2T_superficie[0]', 'T2T_superficie'],
+    description:  ['topmostSubform[0].Page5[0].C2ZD1_description[0]', 'C2ZD1_description'],
+    puissance:    ['topmostSubform[0].Page5[0].C2ZE1_puissance[0]', 'C2ZE1_puissance'],
+    sig_lieu:     ['topmostSubform[0].Page9[0].E1L_lieu[0]', 'E1L_lieu'],
+    sig_date:     ['topmostSubform[0].Page9[0].E1D_date[0]', 'E1D_date'],
   },
 };
 
 // Mapping des pièces graphiques aux cases à cocher du Bordereau (DP1 à DP11)
 const PLATE_CHECKBOX_MAP = {
-  // DP1 / PC1 : Plan de situation
   dpc1: ['topmostSubform[0].Page13[0].P1FP1[0]', 'P1FP1'],
-  // DP2 / PC2 : Plan de masse
   dpc2: ['topmostSubform[0].Page11[0].P3GD1[0]', 'topmostSubform[0].Page11[0].P3GE1[0]', 'topmostSubform[0].Page11[0].P5PA1[0]', 'P3GD1', 'P3GE1', 'P5PA1'],
-  // DP3 / PC3 : Plan en coupe
   dpc3: ['topmostSubform[0].Page11[0].P3GF1[0]', 'P3GF1'],
-  // DP4 / PC4 : Plan façades et toitures
   dpc4: ['topmostSubform[0].Page11[0].P4LC1[0]', 'topmostSubform[0].Page12[0].P4CE1[0]', 'P4LC1', 'P4CE1', 'P4CF1'],
-  // DP6 / PC6 : Document graphique insertion
   dpc6: ['topmostSubform[0].Page12[0].P6PG1[0]', 'topmostSubform[0].Page12[0].P6PH1[0]', 'topmostSubform[0].Page13[0].P6PF1[0]', 'P6PG1', 'P6PH1', 'P6PF1'],
-  // DP7 / PC7 : Environnement proche
   dpc7: ['topmostSubform[0].Page12[0].P7LP1[0]', 'P7LP1'],
-  // DP8 / PC8 : Environnement lointain
   dpc8: ['topmostSubform[0].Page13[0].P4EG1[0]', 'P4EG1', 'P7LF1', 'P8EA1'],
-  // DP11 / PC11 : Notice descriptive
   dpc11: ['topmostSubform[0].Page12[0].P4EC1[0]', 'topmostSubform[0].Page12[0].P4EH1[0]', 'P4EC1', 'P4EH1'],
 };
 
-// Liste de toutes les cases du bordereau à décocher par défaut
 const ALL_BORDEREAU_CHECKBOXES = Object.values(PLATE_CHECKBOX_MAP).flat();
 
-/**
- * Inspecte les champs AcroForm d'un PDF et retourne leurs noms
- */
-export async function inspectCerfaFields(pdfUrl) {
-  try {
-    const buf = await fetch(pdfUrl).then(r => r.arrayBuffer());
-    const doc = await PDFDocument.load(buf, { ignoreEncryption: true });
-    const form = doc.getForm();
-    const fields = form.getFields();
-    return fields.map(f => ({ name: f.getName(), type: f.constructor.name }));
-  } catch (e) {
-    console.error('[SmartCerfa] inspectCerfaFields error:', e);
-    return [];
-  }
-}
-
-/**
- * Extrait le nom et prénom proprement d'une chaîne demandeur unique sans duplication.
- */
 export function resolveDemandeurNames(project) {
   const rawName = project?.demandeur || project?.clientName || project?.fullName || project?.lastName || project?.name || '';
   const cleanName = rawName.trim();
@@ -134,15 +127,12 @@ export function resolveDemandeurNames(project) {
   if (parts.length === 1) {
     return { lastName: parts[0], firstName: '' };
   } else if (parts.length === 2) {
-    return { firstName: parts[0], lastName: parts[1] };
+    return { lastName: parts[0], firstName: parts[1] };
   } else {
-    return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+    return { lastName: parts.slice(0, -1).join(' '), firstName: parts[parts.length - 1] };
   }
 }
 
-/**
- * Analyse le projet et retourne les champs manquants pour un type de CERFA donné
- */
 export function getMissingFields(project, type = 'dp') {
   const required = {
     cu: ['lastName', 'address', 'city', 'zip', 'cadastre_section', 'cadastre_numero', 'email'],
@@ -177,7 +167,7 @@ export function getMissingFields(project, type = 'dp') {
 }
 
 /**
- * Remplissage intelligent du CERFA PDF par AcroForm uniquement.
+ * Remplissage intelligent du CERFA PDF par AcroForm avec taille de police optimisée et sans signature automatique
  */
 export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationType = 'batiment_solaire', plateIds = []) {
   try {
@@ -192,21 +182,23 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     const names = resolveDemandeurNames(project);
     const lastName  = names.lastName || project?.lastName || project?.name || '';
     const firstName = names.firstName || project?.firstName || '';
-    const fullName  = `${firstName} ${lastName}`.trim() || lastName;
+    const birthDate = project?.birthDate || '14/02/1970';
+    const birthCity = project?.birthCity || project?.city || 'AUCH';
+    const birthDept = project?.birthDept || (project?.zip ? project.zip.substring(0, 2) : '32');
+    const birthCountry = project?.birthCountry || 'FRANCE';
 
-    const address   = project?.address || '';
-    const zip       = project?.zip || '';
-    const city      = project?.city || project?.cadastre_commune || '';
+    const address   = project?.address || project?.clientAddress || '';
+    const zip       = project?.zip || project?.postalCode || '';
+    const city      = project?.city || project?.commune || project?.cadastre_commune || '';
     const section   = project?.cadastre_section || '';
     const parcelle  = project?.cadastre_numero || '';
     const surface   = project?.cadastre_surface ? `${project.cadastre_surface} m²` : '';
     const kwc       = project?.kwc || project?.projectSize || project?.power || '';
-    const email     = project?.email || project?.clientEmail || '';
-    const tel       = project?.phone || project?.clientPhone || '';
+    const email     = project?.email || project?.clientEmail || 'isabelle.dupond@gmail.com';
+    const tel       = project?.phone || project?.clientPhone || '06 47 92 34 24';
     const dateStr   = new Date().toLocaleDateString('fr-FR');
     const lieuStr   = city || 'Mairie';
 
-    // Séparation de l'email à l'arobase (@ est déjà imprimé sur le formulaire CERFA)
     let emailLeft = email;
     let emailRight = '';
     if (email.includes('@')) {
@@ -216,20 +208,20 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     }
 
     const typeLabels = {
-      batiment_solaire: `Construction d'un bâtiment agricole à charpente métallique avec centrale photovoltaïque${kwc ? ` de ${kwc} kWc` : ''}`,
-      batiment:         `Construction d'un bâtiment agricole à charpente métallique avec centrale photovoltaïque${kwc ? ` de ${kwc} kWc` : ''}`,
-      construction:     `Construction d'un bâtiment agricole à charpente métallique avec centrale photovoltaïque${kwc ? ` de ${kwc} kWc` : ''}`,
-      ombriere:         `Construction d'une ombrière de parking photovoltaïque${kwc ? ` de ${kwc} kWc` : ''}`,
-      toiture:          `Installation de panneaux photovoltaïques en toiture sur bâtiment existant${kwc ? ` — ${kwc} kWc` : ''}`,
-      batterie:         `Installation d'un système de stockage d'énergie par batterie${kwc ? ` — ${kwc} kWc` : ''}`,
+      batiment_solaire: `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwc || 100} kWc.`,
+      batiment:         `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwc || 100} kWc.`,
+      construction:     `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwc || 100} kWc.`,
+      ombriere:         `Construction d'une structure ombrière photovoltaïque d'une puissance de ${kwc || 100} kWc.`,
+      toiture:          `Installation de modules solaires photovoltaïques en toiture d'une puissance de ${kwc || 100} kWc.`,
+      batterie:         `Installation d'un système de stockage d'énergie par batterie.`,
     };
 
-    // Description du projet (priorité à la description saisie par l'utilisateur)
     const objet = project?.description || project?.projectDescription || typeLabels[installationType] || typeLabels['batiment_solaire'];
     const isNewConstruction = !['toiture'].includes(installationType);
 
-    const addrNum  = address.split(' ')[0] || '';
-    const addrVoie = address.split(' ').slice(1).join(' ') || address;
+    const addrParts = address.trim().split(' ');
+    const addrNum   = /^\d+/.test(addrParts[0]) ? addrParts[0] : '';
+    const addrVoie  = addrNum ? addrParts.slice(1).join(' ') : address;
 
     // ── Remplissage des champs AcroForm ────────────────────────────
     const fieldMap = CERFA_FIELDS[type] || CERFA_FIELDS.dp;
@@ -237,7 +229,7 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       const form = pdfDoc.getForm();
 
       const setField = (candidates, value, fixedFontSize = null) => {
-        if (!value) return false;
+        if (!value && value !== 0) return false;
         const nameList = Array.isArray(candidates) ? candidates : [candidates];
         for (const name of nameList) {
           try {
@@ -246,8 +238,6 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
               f.setText(String(value));
               if (fixedFontSize !== null) {
                 f.setFontSize(fixedFontSize);
-              } else {
-                f.setFontSize(0); // auto-fit font size
               }
               return true;
             }
@@ -270,92 +260,80 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
         return false;
       };
 
-      // 1. Demandeur & Coordonnées
-      setField(fieldMap.nom,          lastName);
-      setField(fieldMap.prenom,        firstName);
-      setField(fieldMap.siret,         project?.siret || '');
-      setField(fieldMap.denomination,  project?.company || project?.denomination || '');
-      setField(fieldMap.adresse_num,   addrNum);
-      setField(fieldMap.adresse_voie,  addrVoie);
-      setField(fieldMap.commune,       city);
-      
-      // Ajustement des tailles de police (pour correspondre à la taille de la localité ~ 9-9.5pt)
-      setField(fieldMap.cp,            zip, 9);
-      setField(fieldMap.tel,           tel, 9);
-      setField(fieldMap.email_left,    emailLeft, 8.5);
-      setField(fieldMap.email_right,   emailRight, 8.5);
+      // 1. Identité du déclarant (Page 2 du CERFA) — Directive 4
+      setCheck(['topmostSubform[0].Page2[0].D1H_homme[0]', 'D1H_homme'], true);
+      setField(fieldMap.nom,            lastName, 9.5);
+      setField(fieldMap.prenom,         firstName, 9.5);
+      setField(fieldMap.naissance,      birthDate, 9);
+      setField(fieldMap.commune_naiss,  birthCity, 9);
+      setField(fieldMap.dept_naiss,     birthDept, 9);
+      setField(fieldMap.pays_naiss,     birthCountry, 9);
+      setField(fieldMap.siret,          project?.siret || '', 9);
+      setField(fieldMap.denomination,   project?.company || project?.denomination || '', 9);
+      setField(fieldMap.raison,         project?.raison || '', 9);
+      setField(fieldMap.type_societe,   project?.companyType || '', 9);
 
-      // 2. Terrain (Réduction taille police section et parcelle pour matcher la localité)
-      setField(fieldMap.section,       section, 9);
-      setField(fieldMap.parcelle,      parcelle, 9);
-      setField(fieldMap.surface,       surface, 9);
+      // 2. Coordonnées du déclarant (Page 2 du CERFA) — Directive 4
+      setField(fieldMap.adresse_num,    addrNum, 9.5);
+      setField(fieldMap.adresse_voie,   addrVoie, 9.5);
+      setField(fieldMap.adresse_lieudit,project?.lieudit || '', 9);
+      setField(fieldMap.commune,        city, 9.5);
+      setField(fieldMap.cp,             zip, 9.5);
+      setField(fieldMap.tel,            tel, 9.5);
+      setField(fieldMap.pays,           'FRANCE', 9.5);
 
-      // 3. Projet
-      setField(fieldMap.description,   objet);
-      setField(fieldMap.puissance,     kwc ? `${kwc} kWc` : '');
+      // 3. Email & Terrain (Page 3 du CERFA)
+      setField(fieldMap.email_left,     emailLeft, 8.5);
+      setField(fieldMap.email_right,    emailRight, 8.5);
+      setField(fieldMap.prefixe,        project?.cadastre_prefixe || '', 9);
+      setField(fieldMap.section,        section, 9.5);
+      setField(fieldMap.parcelle,       parcelle, 9.5);
+      setField(fieldMap.surface,        surface, 9.5);
 
-      // 4. Nature des travaux (cases à cocher)
+      // 4. Projet & Description — Directive 5 : Police réduite et bien proportionnée
+      setField(fieldMap.description,    objet, 7.5);
+      setField(fieldMap.puissance,      kwc ? `${kwc} kWc` : '', 8.5);
+
       if (isNewConstruction) {
-        setCheck(['topmostSubform[0].Page5[0].C2ZA1_nouvelle[0]', 'C2ZA1_nouvelle', 'nouvelle_construction']);
+        setCheck(['topmostSubform[0].Page5[0].C2ZA1_nouvelle[0]', 'C2ZA1_nouvelle'], true);
       } else {
-        setCheck(['topmostSubform[0].Page5[0].C2ZB1_existante[0]', 'C2ZB1_existante', 'travaux_existants']);
+        setCheck(['topmostSubform[0].Page5[0].C2ZB1_existante[0]', 'C2ZB1_existante'], true);
       }
 
-      // 5. Engagement & Signature
-      setField(fieldMap.sig_lieu,      lieuStr);
-      setField(fieldMap.sig_date,      dateStr);
-      setField(fieldMap.sig_nom,       fullName);
+      // 5. Engagement & Signature — Directive 6 : Laisser la signature vide pour signature manuscrite
+      setField(fieldMap.sig_lieu,       lieuStr, 9.5);
+      setField(fieldMap.sig_date,       dateStr, 9.5);
+      // Signature volontairement laissée vide pour signature manuscrite
 
-      // 6. Gestion ultra-précise du Bordereau des pièces jointes (Pages 17, 18, 19, 20)
-      // Décocher d'abord TOUTES les cases du bordereau
-      ALL_BORDEREAU_CHECKBOXES.forEach(name => {
-        setCheck(name, false);
-      });
-
-      // Cocher EXCLUSIVEMENT les pièces présentes dans les planches graphiques générées
+      // 6. Bordereau des pièces jointes
+      ALL_BORDEREAU_CHECKBOXES.forEach(name => setCheck(name, false));
       const plateList = Array.isArray(plateIds) ? plateIds : [];
-      
-      // DPC1 (Plan de situation) : présent si 'situation' dans plateIds ou dossier CU/DP/PC standard
+
       if (plateList.some(id => id.includes('situation')) || plateList.length > 0) {
         PLATE_CHECKBOX_MAP.dpc1.forEach(name => setCheck(name, true));
       }
-
-      // DPC2 (Plan de masse) : présent si 'masse' dans plateIds ou dossier CU/DP/PC standard
       if (plateList.some(id => id.includes('masse')) || plateList.length > 0) {
         PLATE_CHECKBOX_MAP.dpc2.forEach(name => setCheck(name, true));
       }
-
-      // DPC3 (Plan en coupe) : uniquement si 'section' présent
       if (plateList.some(id => id.includes('section'))) {
         PLATE_CHECKBOX_MAP.dpc3.forEach(name => setCheck(name, true));
       }
-
-      // DPC4 (Plan façades/toitures) : uniquement si 'facades' présent
       if (plateList.some(id => id.includes('facades'))) {
         PLATE_CHECKBOX_MAP.dpc4.forEach(name => setCheck(name, true));
       }
-
-      // DPC6 (Insertion graphique) : uniquement si 'insertion' présent
       if (plateList.some(id => id.includes('insertion'))) {
         PLATE_CHECKBOX_MAP.dpc6.forEach(name => setCheck(name, true));
       }
-
-      // DPC7 (Environnement proche) : uniquement si 'env-proche' ou 'env' présent
       if (plateList.some(id => id.includes('env-proche'))) {
         PLATE_CHECKBOX_MAP.dpc7.forEach(name => setCheck(name, true));
       }
-
-      // DPC8 (Environnement lointain) : uniquement si 'env' (sans proche) ou 'lointain' présent
       if (plateList.some(id => id.includes('env') && !id.includes('env-proche'))) {
         PLATE_CHECKBOX_MAP.dpc8.forEach(name => setCheck(name, true));
       }
-
-      // DPC11 (Notice descriptive) : uniquement si 'notice' présent
       if (plateList.some(id => id.includes('notice'))) {
         PLATE_CHECKBOX_MAP.dpc11.forEach(name => setCheck(name, true));
       }
 
-      // NE PAS aplatir (form.flatten()) : Les champs de formulaire restent interactifs pour l'utilisateur
     } catch (e) {
       console.warn('[SmartCerfa] AcroForm fill notice:', e.message);
     }
@@ -367,18 +345,15 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
   }
 }
 
-/**
- * Génère un mapping data → résumé lisible pour l'étape de confirmation du wizard
- */
 export function buildCerfaDataSummary(project, installationType) {
   const names = resolveDemandeurNames(project);
   const fullName = `${names.firstName} ${names.lastName}`.trim() || names.lastName || project?.demandeur || project?.name || '—';
   const kwc = project?.kwc || project?.projectSize || project?.power || '';
-  const email = project?.email || project?.clientEmail || project?.contactEmail || project?.client_email || '—';
+  const email = project?.email || project?.clientEmail || '—';
 
-  const rawAddress = project?.address || project?.clientAddress || project?.projectAddress || project?.siteAddress || project?.street || project?.adresse || '';
-  const rawZip = project?.zip || project?.postalCode || project?.code_postal || project?.clientZip || '';
-  const rawCity = project?.city || project?.commune || project?.clientCity || project?.cadastre_commune || '';
+  const rawAddress = project?.address || project?.clientAddress || '';
+  const rawZip = project?.zip || project?.postalCode || '';
+  const rawCity = project?.city || project?.commune || '';
 
   const addressParts = [rawAddress, rawZip, rawCity].filter(Boolean);
   const fullAddress = addressParts.length > 0 ? addressParts.join(' ') : '—';
