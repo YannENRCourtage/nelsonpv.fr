@@ -48,7 +48,7 @@ function LandscapeThreeBridge({ onReady, transform, sunAngle }) {
         rotation={[transform.rotX, transform.rotY, transform.rotZ]}
         scale={transform.scale}
       >
-        <Structure hideBracing={true} />
+        <Structure hideBracing={true} forceHideDimensions={true} />
       </group>
     </>
   );

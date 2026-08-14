@@ -343,6 +343,7 @@ export default function EtudeDossierView({
   const fullProjectTitle = getFullProjectName(project);
   const powerDisplay = project?.kwc ? (project.kwc.toString().toLowerCase().includes('kwc') ? project.kwc : `${project.kwc} kWc`) : (project?.projectSize ? `${project.projectSize} kWc` : '-');
   const chefProjetName = project?.assignedUser || project?.chef_projet || project?.chefProjet || project?.project_manager || project?.manager || 'Yann';
+  const commercialName = project?.commercial || project?.commercial_name || project?.salesRep || 'Yann';
 
   return (
     <div className="w-full space-y-6">
@@ -369,12 +370,19 @@ export default function EtudeDossierView({
           {/* GAUCHE (8/12) : Informations Clés du Projet */}
           <div className="lg:col-span-8 space-y-4">
             <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">{fullProjectTitle}</h2>
-                <span className="px-3 py-0.5 rounded-full text-xs font-black bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
-                  <Zap className="w-3.5 h-3.5 fill-blue-600 text-blue-600" />
-                  {powerDisplay}
-                </span>
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">{fullProjectTitle}</h2>
+                  <span className="px-3 py-0.5 rounded-full text-xs font-black bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+                    <Zap className="w-3.5 h-3.5 fill-blue-600 text-blue-600" />
+                    {powerDisplay}
+                  </span>
+                </div>
+                {commercialName && (
+                  <span className="px-3.5 py-1 bg-slate-100 border border-slate-200/90 text-slate-800 text-xs font-extrabold rounded-xl shadow-2xs">
+                    {commercialName}
+                  </span>
+                )}
               </div>
               <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
                 <MapPin className="w-4 h-4 text-rose-500 flex-shrink-0" />

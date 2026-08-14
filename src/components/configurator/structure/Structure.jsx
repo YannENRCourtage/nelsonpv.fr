@@ -46,7 +46,7 @@ const RidgeFlashing = ({ len, h, angle, x = 0 }) => {
     );
 };
 
-export function Structure({ hideBracing = false } = {}) {
+export function Structure({ hideBracing = false, forceHideDimensions = false } = {}) {
     const config = useConfiguratorValues();
     const { buildingType, width, length, bayCount, baySpacing, eaveHeight, roofPitch, ridgeHeight, leftSide, rightSide, showDimensions, configMode, customParams, customSpans } = config;
 
@@ -237,7 +237,7 @@ export function Structure({ hideBracing = false } = {}) {
                 roofPitch={roofPitch}
                 leftSide={leftSide}
                 rightSide={rightSide}
-                showDimensions={showDimensions}
+                showDimensions={forceHideDimensions ? false : showDimensions}
                 buildingType={config.buildingType} // Pass Type
             />
         </group>

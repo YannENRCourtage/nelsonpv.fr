@@ -220,7 +220,7 @@ export const PlateCoupe = ({ project }) => {
     const scaleTotalWidth = 10 * pxPerM;
     const scaleSegWidth = 2 * pxPerM;
     const scaleStartX = 660 - scaleTotalWidth;
-    const scaleY = 142;
+    const scaleY = 146;
 
     const roofTypeLabel = isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque';
 
@@ -238,7 +238,7 @@ export const PlateCoupe = ({ project }) => {
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="680" height="152" viewBox="0 0 680 152" style={{ width: '100%', height: '100%', maxHeight: '85mm' }}>
+                    <svg width="680" height="156" viewBox="0 0 680 156" style={{ width: '100%', height: '100%', maxHeight: '85mm' }}>
                         {/* Badges d'Orientation NORD / SUD */}
                         <rect x="70" y="8" width="46" height="15" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
                         <text x="93" y="19" textAnchor="middle" fill="#2563eb" fontSize="8" fontWeight="bold">NORD</text>
@@ -315,12 +315,12 @@ export const PlateCoupe = ({ project }) => {
                             <rect x={scaleSegWidth * 3} y={0} width={scaleSegWidth} height={4} fill="#cbd5e1" />
                             <rect x={scaleSegWidth * 4} y={0} width={scaleSegWidth} height={4} fill="#0f172a" />
                             
-                            <text x={0} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">0</text>
-                            <text x={scaleSegWidth} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">2</text>
-                            <text x={scaleSegWidth * 2} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">4</text>
-                            <text x={scaleSegWidth * 3} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">6</text>
-                            <text x={scaleSegWidth * 4} y={10} fill="#475569" fontSize="6.5" textAnchor="middle">8</text>
-                            <text x={scaleTotalWidth} y={10} fill="#0f172a" fontSize="7" fontWeight="bold" textAnchor="middle">10m</text>
+                            <text x={0} y={8} fill="#475569" fontSize="6" textAnchor="middle">0</text>
+                            <text x={scaleSegWidth} y={8} fill="#475569" fontSize="6" textAnchor="middle">2</text>
+                            <text x={scaleSegWidth * 2} y={8} fill="#475569" fontSize="6.5" textAnchor="middle">4</text>
+                            <text x={scaleSegWidth * 3} y={8} fill="#475569" fontSize="6.5" textAnchor="middle">6</text>
+                            <text x={scaleSegWidth * 4} y={8} fill="#475569" fontSize="6.5" textAnchor="middle">8</text>
+                            <text x={scaleTotalWidth} y={8} fill="#0f172a" fontSize="6.5" fontWeight="bold" textAnchor="middle">10m</text>
                         </g>
                     </svg>
                 </div>
@@ -348,37 +348,43 @@ export const PlateFacades = ({ project, captures }) => {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3mm', maxHeight: '135mm', marginBottom: '5mm' }}>
                 <div style={{ flex: 1, display: 'flex', gap: '3mm' }}>
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE SUD</div>
+                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>1. FAÇADE SUD</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <img src={sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Sud" />
                         </div>
                     </div>
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE NORD</div>
+                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>2. FAÇADE NORD</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <img src={nord || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Nord" />
                         </div>
                     </div>
                 </div>
 
-                <div style={{ flex: 1.15, display: 'flex', gap: '3mm' }}>
-                    {/* Est : dimensions d'encart initiales avec image compressée de 10% en hauteur */}
-                    <div style={{ flex: 0.85, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE EST</div>
+                <div style={{ flex: 1.15, display: 'flex', gap: '3mm', alignItems: 'center' }}>
+                    {/* Est : cadre à hauteur réduite avec titre sur 2 lignes */}
+                    <div style={{ flex: 0.85, height: '88%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                        <div style={{ padding: '1.2mm 1mm', background: '#f1f5f9', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center', lineHeight: '1.2' }}>
+                            <div>3. FAÇADE EST</div>
+                            <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON GAUCHE)</div>
+                        </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <img src={est || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scaleY(0.9)', transformOrigin: 'center' }} alt="Est" />
                         </div>
                     </div>
-                    {/* Ouest : dimensions d'encart initiales avec image compressée de 10% en hauteur */}
-                    <div style={{ flex: 0.85, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-                        <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center' }}>FAÇADE OUEST</div>
+                    {/* Ouest : cadre à hauteur réduite avec titre sur 2 lignes */}
+                    <div style={{ flex: 0.85, height: '88%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                        <div style={{ padding: '1.2mm 1mm', background: '#f1f5f9', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center', lineHeight: '1.2' }}>
+                            <div>4. FAÇADE OUEST</div>
+                            <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON DROIT)</div>
+                        </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <img src={ouest || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scaleY(0.9)', transformOrigin: 'center' }} alt="Ouest" />
                         </div>
                     </div>
-                    {/* Toiture : dimensions d'encart initiales avec image compressée de 10% en hauteur */}
-                    <div style={{ flex: 1.8, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
-                        <div style={{ padding: '1.5mm', background: '#dbeafe', color: '#1e40af', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>VUE COUVERTURE (PAYSAGE)</div>
+                    {/* Toiture */}
+                    <div style={{ flex: 1.8, height: '100%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                        <div style={{ padding: '1.5mm', background: '#dbeafe', color: '#1e40af', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>5. VUE COUVERTURE (PAYSAGE)</div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <img src={toiture || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scaleY(0.9)', transformOrigin: 'center' }} alt="Toiture" />
                         </div>

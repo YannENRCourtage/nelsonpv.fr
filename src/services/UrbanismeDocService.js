@@ -230,13 +230,15 @@ async function captureplate(doc, elementId, landscape = true) {
 
 // ─── Génération complète du dossier ──────────────────────────────────────────
 
-export async function generateFullUrbanismePDF({ type, project, installationType, plateIds = [], onProgress }) {
+export async function generateFullUrbanismePDF({ type, project, installationType, plateIds = [], includeCover = true, includeCerfa = true, onProgress }) {
   try {
     const finalDoc = await PDFDocument.create();
 
     // 1. Page de couverture qualité architecte
-    if (onProgress) onProgress('Génération de la page de couverture...');
-    await drawCoverPage(finalDoc, project, type, installationType || 'batiment_solaire');
+    if (includeCover) {
+      if (onProgress) onProgress('Génération de la page de couverture...');
+      await drawCoverPage(finalDoc, project, type, installationType || 'batiment_solaire');
+    }
 
     // 2. Capture des planches graphiques
     for (let i = 0; i < plateIds.length; i++) {
@@ -246,25 +248,27 @@ export async function generateFullUrbanismePDF({ type, project, installationType
     }
 
     // 3. CERFA pré-rempli via SmartCerfaService (avec fallback robuste)
-    if (onProgress) onProgress('Pré-remplissage du formulaire CERFA...');
+    if (includeCerfa) {
+      if (onProgress) onProgress('Pré-remplissage du formulaire CERFA...');
 
-    try {
-      const cerfaUrl = type === 'pc'
-        ? '/templates/cerfa_13404.pdf'
-        : type === 'dp'
+      try {
+        const cerfaUrl = type === 'pc'
           ? '/templates/cerfa_13404.pdf'
-          : '/cerfa_16702-02.pdf';
+          : type === 'dp'
+            ? '/templates/cerfa_13404.pdf'
+            : '/cerfa_16702-02.pdf';
 
-      const cerfaType = type === 'cu' ? 'cu' : type === 'pc' ? 'pc' : 'dp';
+        const cerfaType = type === 'cu' ? 'cu' : type === 'pc' ? 'pc' : 'dp';
 
-      const filledCerfaBytes = await smartFillCerfa(cerfaUrl, project, cerfaType, installationType || 'batiment_solaire', plateIds);
-      if (filledCerfaBytes) {
-        const cerfaDoc = await PDFDocument.load(filledCerfaBytes);
-        const cerfaPages = await finalDoc.copyPages(cerfaDoc, cerfaDoc.getPageIndices());
-        cerfaPages.forEach(p => finalDoc.addPage(p));
+        const filledCerfaBytes = await smartFillCerfa(cerfaUrl, project, cerfaType, installationType || 'batiment_solaire', plateIds);
+        if (filledCerfaBytes) {
+          const cerfaDoc = await PDFDocument.load(filledCerfaBytes);
+          const cerfaPages = await finalDoc.copyPages(cerfaDoc, cerfaDoc.getPageIndices());
+          cerfaPages.forEach(p => finalDoc.addPage(p));
+        }
+      } catch (cerfaErr) {
+        console.warn('[UrbanismeDoc] Erreur pré-remplissage CERFA, continuation avec les planches graphiques:', cerfaErr);
       }
-    } catch (cerfaErr) {
-      console.warn('[UrbanismeDoc] Erreur pré-remplissage CERFA, continuation avec les planches graphiques:', cerfaErr);
     }
 
     // 4. Finalisation

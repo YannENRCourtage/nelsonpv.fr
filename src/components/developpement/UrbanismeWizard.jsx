@@ -57,6 +57,17 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [generatingMaps, setGeneratingMaps] = useState(false);
   const [fieldValues, setFieldValues] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedPages, setSelectedPages] = useState({
+    cover: true,
+    situation: true,
+    masse: true,
+    section_notice: true,
+    section: true,
+    facades: true,
+    insertion: true,
+    env: true,
+    cerfa: true,
+  });
 
   // Modales
   const [cropModal, setCropModal] = useState({ open: false, src: null, category: null, key: null, title: '' });
@@ -260,7 +271,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       pc_photos: photos,
     };
     try {
-      await onGenerate(type, editedProject.type || 'batiment_solaire', finalProject);
+      await onGenerate(type, editedProject.type || 'batiment_solaire', finalProject, selectedPages);
     } finally {
       setIsGenerating(false);
       onClose();
@@ -845,39 +856,124 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
                 </motion.div>
               )}
 
-              {/* ÉTAPE 4 — Validation */}
+              {/* ÉTAPE 4 — Validation & Sélection des pages du PDF */}
               {step === 4 && (
                 <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                  className="p-6 space-y-4">
+                  className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                   <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-emerald-900 flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                    <div>
+                    <div className="flex-1">
                       <h4 className="font-extrabold text-sm text-emerald-950">Dossier prêt pour la génération PDF !</h4>
-                      <p className="text-xs text-emerald-800 mt-0.5">La page de garde architecte, PC1, PC2, PC3+PC4 fusionnés, PC5 (5 vues), PC6 et le CERFA interactif sont configurés.</p>
+                      <p className="text-xs text-emerald-800 mt-0.5">Cochez les pages et pièces graphiques que vous souhaitez inclure dans le fichier PDF final.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPages({
+                          cover: true,
+                          situation: true,
+                          masse: true,
+                          section_notice: true,
+                          section: true,
+                          facades: true,
+                          insertion: true,
+                          env: true,
+                          cerfa: true,
+                        })}
+                        className="px-2.5 py-1 bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-100 rounded-lg text-xs font-bold transition-all shadow-2xs"
+                      >
+                        Tout cocher
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPages({
+                          cover: false,
+                          situation: false,
+                          masse: false,
+                          section_notice: false,
+                          section: false,
+                          facades: false,
+                          insertion: false,
+                          env: false,
+                          cerfa: false,
+                        })}
+                        className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all shadow-2xs"
+                      >
+                        Tout décocher
+                      </button>
                     </div>
                   </div>
 
-                  {/* Vignettes */}
-                  <div className="grid grid-cols-4 gap-2.5">
-                    {[
-                      { title: 'PC1 - Situation IGN', ready: true },
-                      { title: 'PC2 - Masse OSM 19', ready: true },
-                      { title: 'PC3+PC4 - Coupe & Notice', ready: true },
-                      { title: 'PC5 - Façades & Toiture (5 vues)', ready: !!captures?.facade_sud },
-                      { title: 'PC6 - Insertion (Avant/Après)', ready: !!(photos?.avant || photos?.apres) },
-                      { title: 'PC7 - Env. Proche', ready: !!photos?.proche },
-                      { title: 'PC8 - Env. Lointain', ready: !!photos?.lointain },
-                    ].map((item, idx) => (
-                      <div key={idx} className="bg-gray-50 rounded-xl p-2 border border-gray-200 text-center">
-                        <div className="w-full h-10 bg-white rounded-lg border border-gray-200 mb-1 flex items-center justify-center text-gray-400">
-                          <Layers className="w-4 h-4 text-blue-500" />
-                        </div>
-                        <p className="text-[10px] font-bold text-gray-800 truncate">{item.title}</p>
-                        <span className={`text-[9px] font-bold inline-block px-1.5 py-0.2 rounded-full ${item.ready ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-500'}`}>
-                          {item.ready ? '✓ Prêt' : 'Optionnel'}
-                        </span>
-                      </div>
-                    ))}
+                  {/* Sélection interactive des planches */}
+                  <div>
+                    <h5 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <Layers className="w-4 h-4 text-blue-600" />
+                      Sélection des pièces et planches du dossier ({type.toUpperCase()})
+                    </h5>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                      {(type === 'pc' ? [
+                        { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte & synthèse', badge: 'Recommandé', color: 'blue' },
+                        { id: 'situation', code: 'PC1', title: 'Plan de situation', desc: 'IGN cartographique & Satellite', badge: 'Obligatoire', color: 'indigo' },
+                        { id: 'masse', code: 'PC2', title: 'Plan de masse', desc: 'Emprise de la construction', badge: 'Obligatoire', color: 'indigo' },
+                        { id: 'section_notice', code: 'PC3+PC4', title: 'Coupe & Notice', desc: 'Coupe transversale & notice descriptive', badge: 'Obligatoire', color: 'indigo' },
+                        { id: 'facades', code: 'PC5', title: 'Façades & Toitures', desc: '5 vues 3D (Sud, Nord, Est, Ouest, Toit)', badge: !!captures?.facade_sud ? 'Prêt' : '3D', color: 'emerald' },
+                        { id: 'insertion', code: 'PC6', title: 'Insertion paysagère', desc: 'Vue avant / simulation 3D après', badge: (photos?.avant || photos?.apres) ? 'Prêt' : 'Photo 3D', color: 'emerald' },
+                        { id: 'env', code: 'PC7+PC8', title: 'Env. Proche & Lointain', desc: 'Photos dans le paysage proche et lointain', badge: (photos?.proche || photos?.lointain) ? 'Prêt' : 'Optionnel', color: 'purple' },
+                        { id: 'cerfa', code: 'CERFA', title: 'Formulaire CERFA', desc: 'CERFA 13404 officiel pré-rempli', badge: 'Administratif', color: 'amber' },
+                      ] : type === 'dp' ? [
+                        { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte & synthèse', badge: 'Recommandé', color: 'blue' },
+                        { id: 'situation', code: 'DP1', title: 'Plan de situation', desc: 'IGN cartographique & Satellite', badge: 'Obligatoire', color: 'indigo' },
+                        { id: 'masse', code: 'DP2', title: 'Plan de masse', desc: 'Plan de masse des constructions', badge: 'Obligatoire', color: 'indigo' },
+                        { id: 'section', code: 'DP3', title: 'Plan en coupe', desc: 'Coupe transversale du bâtiment', badge: 'Obligatoire', color: 'indigo' },
+                        { id: 'facades', code: 'DP4', title: 'Façades & Toitures', desc: 'Vues des élévations et toiture', badge: '3D', color: 'emerald' },
+                        { id: 'insertion', code: 'DP6', title: 'Insertion paysagère', desc: 'Simulation d\'intégration paysagère', badge: 'Photo 3D', color: 'emerald' },
+                        { id: 'env', code: 'DP7+DP8', title: 'Env. Proche & Lointain', desc: 'Photographies d\'ambiance', badge: 'Optionnel', color: 'purple' },
+                        { id: 'cerfa', code: 'CERFA', title: 'Formulaire CERFA DP', desc: 'Déclaration préalable officielle', badge: 'Administratif', color: 'amber' },
+                      ] : [
+                        { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte', badge: 'Recommandé', color: 'blue' },
+                        { id: 'situation', code: 'CU1', title: 'Plan de situation', desc: 'Localisation du terrain', badge: 'Obligatoire', color: 'indigo' },
+                        { id: 'masse', code: 'CU2', title: 'Plan de masse', desc: 'Plan d\'emprise', badge: 'Obligatoire', color: 'indigo' },
+                        { id: 'cerfa', code: 'CERFA', title: 'Formulaire CERFA CU', desc: 'Certificat d\'urbanisme', badge: 'Administratif', color: 'amber' },
+                      ]).map(item => {
+                        const isChecked = selectedPages[item.id] !== false;
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => setSelectedPages(prev => ({ ...prev, [item.id]: !isChecked }))}
+                            className={`p-3 rounded-2xl border-2 transition-all cursor-pointer select-none flex flex-col justify-between ${
+                              isChecked
+                                ? 'bg-white border-blue-600 shadow-sm ring-2 ring-blue-500/10'
+                                : 'bg-slate-50/70 border-slate-200 opacity-60 hover:opacity-80'
+                            }`}
+                          >
+                            <div>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                                  isChecked ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-600'
+                                }`}>
+                                  {item.code}
+                                </span>
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {}}
+                                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer pointer-events-none"
+                                />
+                              </div>
+                              <h6 className="text-xs font-black text-slate-900 leading-tight">{item.title}</h6>
+                              <p className="text-[10.5px] text-slate-500 mt-1 leading-snug">{item.desc}</p>
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+                              <span className="text-[9.5px] font-bold text-slate-400">{item.badge}</span>
+                              <span className={`text-[10px] font-extrabold ${isChecked ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                {isChecked ? '✓ Inclus' : '✕ Exclu'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Synthèse */}

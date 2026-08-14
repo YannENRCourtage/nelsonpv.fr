@@ -187,7 +187,7 @@ export default function Building3DViewer({
             minDistance={2}
           />
 
-          <Structure hideBracing={true} />
+          <Structure hideBracing={true} forceHideDimensions={true} />
 
           <ContactShadows
             position={[0, 0, targetZ]}

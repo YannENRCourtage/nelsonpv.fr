@@ -270,7 +270,7 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const scaleTotalWidth = 10 * pxPerMeter; // Largeur exacte de la barre 10m
     const scaleSegWidth = 2 * pxPerMeter; // Largeur segment 2m
     const scaleStartX = 660 - scaleTotalWidth; // Ancré en bas à droite sous TN Amont
-    const scaleY = 142;
+    const scaleY = 146; // Abaissé dans le coin inférieur droit
 
     const roofTypeLabel = isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque';
 
@@ -291,7 +291,7 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                     </div>
 
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg width="680" height="154" viewBox="0 0 680 154" style={{ width: '100%', height: '100%', maxHeight: '74mm' }}>
+                        <svg width="680" height="156" viewBox="0 0 680 156" style={{ width: '100%', height: '100%', maxHeight: '74mm' }}>
                             
                             {/* Badges d'Orientation NORD / SUD */}
                             <rect x="70" y="8" width="46" height="15" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
@@ -399,12 +399,12 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
                                 <rect x={scaleSegWidth * 3} y={0} width={scaleSegWidth} height={4} fill="#cbd5e1" />
                                 <rect x={scaleSegWidth * 4} y={0} width={scaleSegWidth} height={4} fill="#0f172a" />
                                 
-                                <text x={0} y={9} fill="#475569" fontSize="6.5" textAnchor="middle">0</text>
-                                <text x={scaleSegWidth} y={9} fill="#475569" fontSize="6.5" textAnchor="middle">2</text>
-                                <text x={scaleSegWidth * 2} y={9} fill="#475569" fontSize="6.5" textAnchor="middle">4</text>
-                                <text x={scaleSegWidth * 3} y={9} fill="#475569" fontSize="6.5" textAnchor="middle">6</text>
-                                <text x={scaleSegWidth * 4} y={9} fill="#475569" fontSize="6.5" textAnchor="middle">8</text>
-                                <text x={scaleTotalWidth} y={9} fill="#0f172a" fontSize="7" fontWeight="bold" textAnchor="middle">10m</text>
+                                <text x={0} y={8} fill="#475569" fontSize="6" textAnchor="middle">0</text>
+                                <text x={scaleSegWidth} y={8} fill="#475569" fontSize="6" textAnchor="middle">2</text>
+                                <text x={scaleSegWidth * 2} y={8} fill="#475569" fontSize="6" textAnchor="middle">4</text>
+                                <text x={scaleSegWidth * 3} y={8} fill="#475569" fontSize="6" textAnchor="middle">6</text>
+                                <text x={scaleSegWidth * 4} y={8} fill="#475569" fontSize="6" textAnchor="middle">8</text>
+                                <text x={scaleTotalWidth} y={8} fill="#0f172a" fontSize="6.5" fontWeight="bold" textAnchor="middle">10m</text>
                             </g>
                         </svg>
                     </div>
@@ -445,7 +445,7 @@ export const PlateNotice = (props) => <PlateSectionAndNotice {...props} />;
 
 /**
  * PLANCHE PC5 : PLAN DES FAÇADES ET TOITURES (5 VUES 3D)
- * Directive : Encarts aux dimensions initiales, images Façade Est, Ouest et Couverture compressées de 10% en hauteur sans modifier la largeur
+ * Directive : Titres Pignon Gauche et Droit sur 2 lignes, hauteur de cadre Est et Ouest réduite, images à 90% hauteur
  */
 export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => {
     const sud = captures?.facade_sud || captures?.facades_projet;
@@ -496,12 +496,13 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                     </div>
                 </div>
 
-                {/* Ligne 2 : Pignons (Est & Ouest) et Vue Toiture avec hauteur d'image compressée de 10% */}
-                <div style={{ flex: 1.15, display: 'flex', gap: '4mm', minHeight: '54mm' }}>
-                    {/* Façade Est : Encart initial, image compressée de 10% en hauteur */}
-                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
-                        <div style={{ padding: '1.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
-                            3. FAÇADE EST (PIGNON GAUCHE)
+                {/* Ligne 2 : Pignons (Est & Ouest à hauteur de cadre réduite) et Vue Toiture avec hauteur d'image compressée de 10% */}
+                <div style={{ flex: 1.15, display: 'flex', gap: '4mm', minHeight: '54mm', alignItems: 'center' }}>
+                    {/* Façade Est : Cadre à hauteur réduite, sous-titre sur 2e ligne, image compressée de 10% */}
+                    <div style={{ flex: 0.95, height: '88%', border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+                        <div style={{ padding: '1.2mm 1mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a', lineHeight: '1.2' }}>
+                            <div>3. FAÇADE EST</div>
+                            <div style={{ fontSize: '6.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '0.5px' }}>(PIGNON GAUCHE)</div>
                         </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
                             <ImageUploadZone 
@@ -515,10 +516,11 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                         </div>
                     </div>
 
-                    {/* Façade Ouest : Encart initial, image compressée de 10% en hauteur */}
-                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
-                        <div style={{ padding: '1.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
-                            4. FAÇADE OUEST (PIGNON DROIT)
+                    {/* Façade Ouest : Cadre à hauteur réduite, sous-titre sur 2e ligne, image compressée de 10% */}
+                    <div style={{ flex: 0.95, height: '88%', border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+                        <div style={{ padding: '1.2mm 1mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a', lineHeight: '1.2' }}>
+                            <div>4. FAÇADE OUEST</div>
+                            <div style={{ fontSize: '6.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '0.5px' }}>(PIGNON DROIT)</div>
                         </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
                             <ImageUploadZone 
@@ -532,8 +534,8 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                         </div>
                     </div>
 
-                    {/* Vue Couverture : Encart initial, image compressée de 10% en hauteur */}
-                    <div style={{ flex: 1.5, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+                    {/* Vue Couverture : Cadre standard, image compressée de 10% */}
+                    <div style={{ flex: 1.5, height: '100%', border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
                         <div style={{ padding: '1.8mm', background: '#dbeafe', borderBottom: '1px solid #93c5fd', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#1e40af' }}>
                             5. VUE COUVERTURE (PLAN TOITURE PHOTOVOLTAÏQUE)
                         </div>

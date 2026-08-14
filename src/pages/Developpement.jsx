@@ -232,7 +232,7 @@ export default function Developpement() {
   };
 
   // ── Handlers Génération Document Urbanisme (PDF CERFA) ──────────
-  const handleUrbanismeGenerate = async (docType, chosenType, finalProject) => {
+  const handleUrbanismeGenerate = async (docType, chosenType, finalProject, selectedPages) => {
     if (!selectedProject) return;
     setIsGenerating(true);
     setCaptureStep('Initialisation du dossier...');
@@ -253,35 +253,34 @@ export default function Developpement() {
       const isCU = docType === 'cu';
       const prefix = isPC ? 'dev-pc-' : 'dev-';
 
-      const plateIds = isPC
-        ? [
-            `${prefix}plate-situation`,
-            `${prefix}plate-masse`,
-            `${prefix}plate-section-notice`,
-            `${prefix}plate-facades`,
-            `${prefix}plate-insertion`,
-            `${prefix}plate-env`
-          ]
-        : isCU
-        ? [
-            `dev-plate-situation`,
-            `dev-plate-masse`
-          ]
-        : [
-            `dev-plate-situation`,
-            `dev-plate-masse`,
-            `dev-plate-section`,
-            `dev-plate-facades`,
-            `dev-plate-insertion`,
-            `dev-plate-env-proche`,
-            `dev-plate-notice`
-          ];
+      let plateIds = [];
+      if (isPC) {
+        if (!selectedPages || selectedPages.situation) plateIds.push(`${prefix}plate-situation`);
+        if (!selectedPages || selectedPages.masse) plateIds.push(`${prefix}plate-masse`);
+        if (!selectedPages || selectedPages.section_notice) plateIds.push(`${prefix}plate-section-notice`);
+        if (!selectedPages || selectedPages.facades) plateIds.push(`${prefix}plate-facades`);
+        if (!selectedPages || selectedPages.insertion) plateIds.push(`${prefix}plate-insertion`);
+        if (!selectedPages || selectedPages.env) plateIds.push(`${prefix}plate-env`);
+      } else if (isCU) {
+        if (!selectedPages || selectedPages.situation) plateIds.push(`dev-plate-situation`);
+        if (!selectedPages || selectedPages.masse) plateIds.push(`dev-plate-masse`);
+      } else {
+        if (!selectedPages || selectedPages.situation) plateIds.push(`dev-plate-situation`);
+        if (!selectedPages || selectedPages.masse) plateIds.push(`dev-plate-masse`);
+        if (!selectedPages || selectedPages.section) plateIds.push(`dev-plate-section`);
+        if (!selectedPages || selectedPages.facades) plateIds.push(`dev-plate-facades`);
+        if (!selectedPages || selectedPages.insertion) plateIds.push(`dev-plate-insertion`);
+        if (!selectedPages || selectedPages.env) plateIds.push(`dev-plate-env-proche`);
+        if (!selectedPages || selectedPages.notice) plateIds.push(`dev-plate-notice`);
+      }
 
       await generateFullUrbanismePDF({
         type: docType,
         project: projectToUse,
         installationType: chosenType || projectToUse.type || 'batiment_solaire',
         plateIds: plateIds,
+        includeCover: selectedPages ? !!selectedPages.cover : true,
+        includeCerfa: selectedPages ? !!selectedPages.cerfa : true,
         onProgress: (msg) => setCaptureStep(msg)
       });
 
