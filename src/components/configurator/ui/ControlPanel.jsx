@@ -73,9 +73,8 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
         <div className="control-panel bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-2xl border border-slate-200">
 
             {/* HEADER */}
-            <div className="mb-6 border-b pb-4">
-                <h2 className="text-2xl font-bold text-slate-900">Configurateur 2D/3D</h2>
-                <div className="flex gap-2 mt-4">
+            <div className="mb-4 border-b border-slate-100 pb-3">
+                <div className="flex gap-2">
                     <button
                         onClick={() => setConfigMode('predefined')}
                         className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${configMode === 'predefined' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}

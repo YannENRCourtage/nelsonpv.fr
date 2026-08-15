@@ -252,26 +252,35 @@ export default function Developpement() {
       const isPC = docType === 'pc';
       const isCU = docType === 'cu';
       const prefix = isPC ? 'dev-pc-' : 'dev-';
+      const bList = (projectToUse.buildings && projectToUse.buildings.length > 0) ? projectToUse.buildings : [projectToUse];
 
       let plateIds = [];
       if (isPC) {
         if (!selectedPages || selectedPages.situation) plateIds.push(`${prefix}plate-situation`);
         if (!selectedPages || selectedPages.masse) plateIds.push(`${prefix}plate-masse`);
-        if (!selectedPages || selectedPages.section_notice) plateIds.push(`${prefix}plate-section-notice`);
-        if (!selectedPages || selectedPages.facades) plateIds.push(`${prefix}plate-facades`);
-        if (!selectedPages || selectedPages.insertion) plateIds.push(`${prefix}plate-insertion`);
-        if (!selectedPages || selectedPages.env) plateIds.push(`${prefix}plate-env`);
+        
+        // Répéter PC3/PC4, PC5, PC6, PC7/PC8 pour chaque bâtiment configuré dans l'unique PDF
+        for (let bIdx = 0; bIdx < bList.length; bIdx++) {
+          const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+          if (!selectedPages || selectedPages.section_notice) plateIds.push(`${prefix}plate-section-notice${suffix}`);
+          if (!selectedPages || selectedPages.facades) plateIds.push(`${prefix}plate-facades${suffix}`);
+          if (!selectedPages || selectedPages.insertion) plateIds.push(`${prefix}plate-insertion${suffix}`);
+          if (!selectedPages || selectedPages.env) plateIds.push(`${prefix}plate-env${suffix}`);
+        }
       } else if (isCU) {
         if (!selectedPages || selectedPages.situation) plateIds.push(`dev-plate-situation`);
         if (!selectedPages || selectedPages.masse) plateIds.push(`dev-plate-masse`);
       } else {
         if (!selectedPages || selectedPages.situation) plateIds.push(`dev-plate-situation`);
         if (!selectedPages || selectedPages.masse) plateIds.push(`dev-plate-masse`);
-        if (!selectedPages || selectedPages.section) plateIds.push(`dev-plate-section`);
-        if (!selectedPages || selectedPages.facades) plateIds.push(`dev-plate-facades`);
-        if (!selectedPages || selectedPages.insertion) plateIds.push(`dev-plate-insertion`);
-        if (!selectedPages || selectedPages.env) plateIds.push(`dev-plate-env-proche`);
-        if (!selectedPages || selectedPages.notice) plateIds.push(`dev-plate-notice`);
+        for (let bIdx = 0; bIdx < bList.length; bIdx++) {
+          const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+          if (!selectedPages || selectedPages.section) plateIds.push(`dev-plate-section${suffix}`);
+          if (!selectedPages || selectedPages.facades) plateIds.push(`dev-plate-facades${suffix}`);
+          if (!selectedPages || selectedPages.insertion) plateIds.push(`dev-plate-insertion${suffix}`);
+          if (!selectedPages || selectedPages.env) plateIds.push(`dev-plate-env-proche${suffix}`);
+          if (!selectedPages || selectedPages.notice) plateIds.push(`dev-plate-notice${suffix}`);
+        }
       }
 
       await generateFullUrbanismePDF({
@@ -530,20 +539,69 @@ export default function Developpement() {
           <div id="dev-plate-cover"><PlateCover project={selectedProject} installationType={selectedProject.type || 'batiment_solaire'} /></div>
           <div id="dev-plate-situation"><PlateSituation project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
           <div id="dev-plate-masse"><PlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
-          <div id="dev-plate-section"><PlateSection project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
-          <div id="dev-plate-facades"><PlateFacades project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
-          <div id="dev-plate-insertion"><DPPlateInsertion project={selectedProject} captures={selectedProject.urbanisme_captures || {}} photos={selectedProject.pc_photos || {}} /></div>
-          <div id="dev-plate-env-proche"><PlateEnvProche project={selectedProject} captures={selectedProject.urbanisme_captures || {}} photos={selectedProject.pc_photos || {}} /></div>
-          <div id="dev-plate-notice"><PlateInsertionNotice project={selectedProject} /></div>
 
-          {/* PC Plates */}
+          {((selectedProject.buildings && selectedProject.buildings.length > 0) ? selectedProject.buildings : [selectedProject]).map((b, bIdx) => {
+            const bProj = {
+              ...selectedProject,
+              ...b,
+              largeur: String(b.width || b.largeur || selectedProject.largeur || 20.0),
+              longueur: String(b.length || b.longueur || selectedProject.longueur || 30.0),
+              hauteur_egout: String(b.eaveHeight || b.hauteur_egout || selectedProject.hauteur_egout || 4.0),
+              pente: String(b.roofPitch || b.pente || selectedProject.pente || 15),
+              buildingType: b.buildingType || selectedProject.buildingType || 'asymetrique_1',
+              leftSide: b.leftSide || selectedProject.leftSide || 'none',
+              rightSide: b.rightSide || selectedProject.rightSide || 'none',
+              buildingName: b.name || `Bâtiment ${bIdx + 1}`,
+              urbanisme_captures: { ...(selectedProject.urbanisme_captures || {}), ...(b.captures || {}) },
+              pc_photos: { ...(selectedProject.pc_photos || {}), ...(b.photos || {}) },
+            };
+            const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+            return (
+              <React.Fragment key={`dp-b-${b.id || bIdx}`}>
+                <div id={`dev-plate-section${suffix}`}><PlateSection project={bProj} captures={bProj.urbanisme_captures || {}} /></div>
+                <div id={`dev-plate-facades${suffix}`}><PlateFacades project={bProj} captures={bProj.urbanisme_captures || {}} /></div>
+                <div id={`dev-plate-insertion${suffix}`}><DPPlateInsertion project={bProj} captures={bProj.urbanisme_captures || {}} photos={bProj.pc_photos || {}} /></div>
+                <div id={`dev-plate-env-proche${suffix}`}><PlateEnvProche project={bProj} captures={bProj.urbanisme_captures || {}} photos={bProj.pc_photos || {}} /></div>
+                <div id={`dev-plate-notice${suffix}`}><PlateInsertionNotice project={bProj} /></div>
+              </React.Fragment>
+            );
+          })}
+
+          {/* PC Plates — Multi-Bâtiments */}
           <div id="dev-pc-plate-cover"><PCPlateCover project={selectedProject} installationType={selectedProject.type || 'batiment_solaire'} /></div>
           <div id="dev-pc-plate-situation"><PCPlateSituation project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
           <div id="dev-pc-plate-masse"><PCPlateMasse project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
-          <div id="dev-pc-plate-section-notice"><PCPlateSectionAndNotice project={selectedProject} noticeText={selectedProject.description || selectedProject.pc_notice} /></div>
-          <div id="dev-pc-plate-facades"><PCPlateFacades project={selectedProject} captures={selectedProject.urbanisme_captures || {}} /></div>
-          <div id="dev-pc-plate-insertion"><PCPlateInsertion project={selectedProject} photos={selectedProject.pc_photos || {}} /></div>
-          <div id="dev-pc-plate-env"><PCPlateEnv project={selectedProject} photos={selectedProject.pc_photos || {}} /></div>
+
+          {((selectedProject.buildings && selectedProject.buildings.length > 0) ? selectedProject.buildings : [selectedProject]).map((b, bIdx) => {
+            const bProj = {
+              ...selectedProject,
+              ...b,
+              largeur: String(b.width || b.largeur || selectedProject.largeur || 20.0),
+              longueur: String(b.length || b.longueur || selectedProject.longueur || 30.0),
+              hauteur_egout: String(b.eaveHeight || b.hauteur_egout || selectedProject.hauteur_egout || 4.0),
+              pente: String(b.roofPitch || b.pente || selectedProject.pente || 15),
+              buildingType: b.buildingType || selectedProject.buildingType || 'asymetrique_1',
+              leftSide: b.leftSide || selectedProject.leftSide || 'none',
+              rightSide: b.rightSide || selectedProject.rightSide || 'none',
+              buildingName: b.name || `Bâtiment ${bIdx + 1}`,
+              urbanisme_captures: { ...(selectedProject.urbanisme_captures || {}), ...(b.captures || {}) },
+              pc_photos: { ...(selectedProject.pc_photos || {}), ...(b.photos || {}) },
+            };
+            const suffix = bIdx === 0 ? '' : `-${bIdx}`;
+            return (
+              <React.Fragment key={`pc-b-${b.id || bIdx}`}>
+                <div id={`dev-pc-plate-section-notice${suffix}`}>
+                  <PCPlateSectionAndNotice 
+                    project={bProj} 
+                    noticeText={selectedProject.noticeText || selectedProject.noticeAgricole || selectedProject.pc_notice || selectedProject.description} 
+                  />
+                </div>
+                <div id={`dev-pc-plate-facades${suffix}`}><PCPlateFacades project={bProj} captures={bProj.urbanisme_captures || {}} /></div>
+                <div id={`dev-pc-plate-insertion${suffix}`}><PCPlateInsertion project={bProj} photos={bProj.pc_photos || {}} /></div>
+                <div id={`dev-pc-plate-env${suffix}`}><PCPlateEnv project={bProj} photos={bProj.pc_photos || {}} /></div>
+              </React.Fragment>
+            );
+          })}
         </div>
       )}
     </div>

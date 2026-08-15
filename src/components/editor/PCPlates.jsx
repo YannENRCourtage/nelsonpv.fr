@@ -24,7 +24,9 @@ const PlateHeader = ({ title, project }) => (
             <div style={{ fontSize: '7pt', color: '#666' }}>L'énergie solaire simplifiée</div>
         </div>
         <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '10.5pt', fontWeight: 'bold', color: '#00429d' }}>{title}</div>
+            <div style={{ fontSize: '10.5pt', fontWeight: 'bold', color: '#00429d' }}>
+                {title}{project?.buildingName && project.buildingName !== 'Bâtiment 1 (Principal)' ? ` — ${project.buildingName.toUpperCase()}` : ''}
+            </div>
             <div style={{ fontSize: '7.5pt', color: '#333' }}>
                 Projet : {project?.lastName || project?.name || 'Solaire'} {project?.firstName || ''} — {project?.city || project?.commune || 'Cadastre'} ({project?.zip || project?.zipCode || '32'})
             </div>
@@ -228,7 +230,18 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const pente = parseFloat(project?.pente || 15);
     const terrainSlopeDeg = parseFloat(project?.pente_terrain || project?.terrain_slope || 3);
     const displayKwc = project?.kwc || project?.puissance || project?.projectSize || 256;
-    const effectiveNoticeText = noticeText || project?.noticeText || project?.description;
+    
+    // Priorité absolue à la notice descriptive structurée en 5 points
+    const candidateNotice = (noticeText && noticeText.includes("1- OBJET"))
+      ? noticeText
+      : (project?.noticeText && project.noticeText.includes("1- OBJET"))
+        ? project.noticeText
+        : (project?.noticeAgricole && project.noticeAgricole.includes("1- OBJET"))
+          ? project.noticeAgricole
+          : (project?.pc_notice && project.pc_notice.includes("1- OBJET"))
+            ? project.pc_notice
+            : (noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.notice_descriptive);
+    const effectiveNoticeText = (candidateNotice && candidateNotice.length > 50) ? candidateNotice : null;
     
     // Détection stricte : asymétrique par défaut (ne pas confondre avec symétrique)
     const rawType = (project?.buildingType || project?.installationType || project?.type || 'asymetrique_1').toLowerCase();

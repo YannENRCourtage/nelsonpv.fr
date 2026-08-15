@@ -233,7 +233,7 @@ async function captureplate(doc, elementId, landscape = true) {
     page.drawImage(img, { x: 0, y: 0, width: dims[0], height: dims[1] });
 
     // Rendre la zone notice descriptive interactive et modifiable dans le PDF généré
-    if (elementId === 'pc-plate-section-notice') {
+    if (elementId.includes('plate-section-notice')) {
       try {
         const form = doc.getForm();
         const noticeField = form.createTextField(`notice_descriptive_field_${Math.floor(Math.random() * 10000)}`);
@@ -243,7 +243,7 @@ async function captureplate(doc, elementId, landscape = true) {
         const textareaEl = el.querySelector('textarea');
         let textVal = textareaEl ? textareaEl.value : '';
         if (!textVal) {
-          const noticeEl = el.querySelector('#pc-plate-section-notice > div > div:last-child');
+          const noticeEl = el.querySelector('div[style*="pre-line"]') || el.querySelector('div > div:last-child');
           if (noticeEl) textVal = noticeEl.innerText || '';
         }
 

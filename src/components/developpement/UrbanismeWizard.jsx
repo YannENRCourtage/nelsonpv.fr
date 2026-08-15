@@ -456,6 +456,27 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       ? `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque de ${clientKwc} kWc`
       : `Certificat d'urbanisme opérationnel pour centrale photovoltaïque de ${clientKwc} kWc`;
 
+    const effectiveNotice = noticeText || editedProject.noticeText || project?.noticeText || buildAutoNoticeText();
+
+    // Mettre à jour la liste des bâtiments avec le bâtiment actif courant
+    const updatedBuildings = [...buildings];
+    if (updatedBuildings[activeBuildingIndex]) {
+      updatedBuildings[activeBuildingIndex] = {
+        ...updatedBuildings[activeBuildingIndex],
+        length: config.length,
+        width: config.width,
+        eaveHeight: config.eaveHeight,
+        roofPitch: config.roofPitch,
+        buildingType: config.buildingType,
+        leftSide: config.leftSide,
+        rightSide: config.rightSide,
+        bayCount: config.bayCount,
+        baySpacing: config.baySpacing,
+        captures: { ...captures },
+        photos: { ...photos },
+      };
+    }
+
     const finalProject = {
       ...editedProject,
       ...fieldValues,
@@ -473,10 +494,13 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       puissance: clientKwc,
       objet_travaux: shortObjet,
       description: shortObjet,
-      noticeText: noticeText || editedProject.noticeText || project?.noticeText || buildAutoNoticeText(),
+      noticeText: effectiveNotice,
+      noticeAgricole: effectiveNotice,
+      pc_notice: effectiveNotice,
+      notice_descriptive: effectiveNotice,
       urbanisme_captures: captures,
       pc_photos: photos,
-      buildings: buildings,
+      buildings: updatedBuildings,
       additionalRoof: additionalRoof,
       batteryStorage: batteryStorage,
     };
