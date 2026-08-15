@@ -5,7 +5,7 @@ import {
   ChevronRight, ChevronLeft, Loader2, FileCheck, Zap,
   Hash, Ruler, Info, RefreshCw, Mail, Phone, FileText,
   Upload, Image as ImageIcon, Check, Camera, Eye, Sparkles, Layers,
-  Crop, HelpCircle, ArrowRight, Box, Sliders, Trash2
+  Crop, HelpCircle, ArrowRight, Box, Sliders, Trash2, Battery, Sun, Plus
 } from 'lucide-react';
 import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames } from '@/services/SmartCerfaService';
 import { cadastreService } from '@/services/CadastreService';
@@ -43,12 +43,57 @@ const DOSSIER_INFO = {
 };
 
 export default function UrbanismeWizard({ isOpen, onClose, type, project, onGenerate }) {
-  const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes PC1/PC2, 2=Configurateur 2D/3D (Clone page Configurateur), 3=Photos/3D, 4=Validation
+  const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes PC1/PC2, 2=Configurateur 2D/3D, 3=Photos/3D, 4=Notice Descriptive, 5=Validation
   const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D_FRONT'
   
   // Zustand Store du Configurateur Nelson
   const config = useConfiguratorValues();
   const configActions = useConfiguratorActions();
+
+  // Multi-Bâtiments
+  const [buildings, setBuildings] = useState([
+    {
+      id: 'bat-1',
+      name: 'Bâtiment 1 (Principal)',
+      length: 30,
+      width: 20,
+      eaveHeight: 4,
+      roofPitch: 15,
+      buildingType: 'asymetrique_1',
+      leftSide: 'none',
+      rightSide: 'none',
+      bayCount: 5,
+      baySpacing: 6,
+      captures: {},
+      photos: {}
+    }
+  ]);
+  const [activeBuildingIndex, setActiveBuildingIndex] = useState(0);
+
+  // Configuration additionnelle Toiture & Batterie
+  const [additionalRoof, setAdditionalRoof] = useState({
+    enabled: false,
+    name: 'Toiture solaire existante',
+    surface: 500,
+    kwc: 100,
+    roofType: 'Bac acier',
+    pitch: 15,
+    orientation: 'Sud'
+  });
+
+  const [batteryStorage, setBatteryStorage] = useState({
+    enabled: false,
+    name: 'Système de stockage par batterie',
+    model: 'CESC Mercury 261',
+    quantity: 1,
+    capacityKwh: 261,
+    powerKw: 125,
+    footprint: '3.50m × 2.20m',
+    fireSafety: 'Bâche à eau 120m³, rétention intégrée, distance de sécurité 5m'
+  });
+
+  const [showRoofModal, setShowRoofModal] = useState(false);
+  const [showBatteryModal, setShowBatteryModal] = useState(false);
 
   const [editedProject, setEditedProject] = useState(project || {});
   const [captures, setCaptures] = useState(project?.urbanisme_captures || {});
@@ -80,10 +125,12 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const projectCadastre = `${rawSection ? `${rawSection} ` : ''}${rawNumero}`.trim();
     const projectSurface = editedProject?.surface_terrain ? `${editedProject.surface_terrain} m²` : (editedProject?.cadastre_surface ? `${editedProject.cadastre_surface} m²` : '18 384 m²');
     const projectAltitude = editedProject?.altitude || '140.62 m';
+    
+    // Bâtiment 1
     const longueur = config.length || 30;
     const largeur = Number(config.width || 20);
     const totalSurface = (largeur * longueur).toFixed(2);
-    const hasAuvent = config.rightSide === 'auvent' || config.leftSide === 'auvent' || true;
+    const hasAuvent = Boolean(config.rightSide === 'auvent' || config.leftSide === 'auvent');
     const isAsym = config.buildingType?.startsWith('asym');
     const isSym = config.buildingType?.startsWith('sym');
     const roofTypeLabel = isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque';
@@ -92,29 +139,121 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const baySpacing = config.baySpacing || 6;
     const displayKwc = editedProject?.kwc || editedProject?.puissance || editedProject?.projectSize || 256;
 
+    // Bâtiments secondaires
+    const secondaryBuildings = buildings.slice(1);
+    const hasMultiBuildings = secondaryBuildings.length > 0;
+
+    let batimentDesc = `Le projet a pour objet la construction d'un hangar${hasMultiBuildings ? ' principal (Bâtiment 1)' : ''} de forme rectangulaire (longueur : ${longueur}m, largeur : ${largeur.toFixed(2)}m${hasAuvent ? ' + Auvent 4.00m' : ''}) en structure métallique (RAL 7016 / 7005), composé de ${bayCount} travées de ${baySpacing}m d'entraxe. La toiture sera constituée d'une double pente ${roofTypeLabel} (${pente}°) avec pour couverture un bac acier anti condensation sur les deux versants (RAL 7016). Des panneaux photovoltaïques (RAL 9005) viendront recouvrir le bac acier sur l'ensemble de la toiture, permettant de créer une centrale de production d'électricité photovoltaïque de ${displayKwc} kWc.`;
+
+    if (hasMultiBuildings) {
+      secondaryBuildings.forEach((b, idx) => {
+        const bSurface = (Number(b.width || 20) * Number(b.length || 25)).toFixed(2);
+        const bAuvent = b.rightSide === 'auvent' || b.leftSide === 'auvent';
+        batimentDesc += `\nIl comprend également la construction d'un second hangar (Bâtiment ${idx + 2}) de dimensions ${b.length}m × ${Number(b.width).toFixed(2)}m${bAuvent ? ' (+ Auvent)' : ''} d'une emprise de ${bSurface} m² en structure métallique similaire.`;
+      });
+    }
+
+    if (additionalRoof.enabled) {
+      batimentDesc += `\nLe projet intègre par ailleurs l'équipement photovoltaïque d'une toiture existante (${additionalRoof.name}) d'une surface de ${additionalRoof.surface} m² développant ${additionalRoof.kwc} kWc supplémentaires en couverture ${additionalRoof.roofType}.`;
+    }
+
+    if (batteryStorage.enabled) {
+      batimentDesc += `\nLe site sera également équipé d'un système de stockage d'énergie par batterie stationnaire (${batteryStorage.quantity} unité(s) ${batteryStorage.model}) d'une capacité de ${batteryStorage.capacityKwh} kWh (${batteryStorage.powerKw} kW) implantée sur une dalle béton dédiée (${batteryStorage.footprint}).`;
+    }
+
+    let objetDemande = `La demande de permis de construire porte sur la construction d'un hangar à usage agricole avec toiture photovoltaïque. Il servira de stockage de matériel et céréales (${totalSurface} m²).`;
+    if (hasMultiBuildings || additionalRoof.enabled || batteryStorage.enabled) {
+      const totalGlobalSurface = (parseFloat(totalSurface) + secondaryBuildings.reduce((acc, b) => acc + (Number(b.width || 20) * Number(b.length || 25)), 0)).toFixed(2);
+      objetDemande = `La demande de permis de construire porte sur la réalisation d'un ensemble agrivoltaïque comprenant ${1 + secondaryBuildings.length} bâtiment(s) agricole(s) (${totalGlobalSurface} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${batteryStorage.enabled ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`;
+    }
+
     return `NOTICE D'INSERTION & DESCRIPTIVE DU PROJET
 
 1- OBJET DE LA DEMANDE
-La demande de permis de construire porte sur la construction d'un hangar à usage agricole avec toiture photovoltaïque. Il servira de stockage de matériel et céréales (${totalSurface} m²).
+${objetDemande}
 
 2- LE SITE
 Le projet se situe sur la commune de ${projectCity} (${projectZip}) au ${projectAddress}. Le terrain concerné par le projet est cadastré sous le numéro ${projectCadastre} (surface : ${projectSurface}). Le terrain est globalement plat et se trouve à une altitude de ${projectAltitude} au-dessus du niveau de la mer. Le site s'inscrit dans un paysage à identité rurale. L'accès du site se fait par le Sud de la parcelle via la voie d'accès existante.
 
 3- LE PROJET
-Le projet a pour objet la construction d'un hangar de forme rectangulaire (longueur : ${longueur}m, largeur : ${largeur.toFixed(2)}m${hasAuvent ? ' + Auvent 4.00m' : ''}) en structure métallique (RAL 7016 / 7005), composé de ${bayCount} travées de ${baySpacing}m d'entraxe. La toiture sera constituée d'une double pente ${roofTypeLabel} (${pente}°) avec pour couverture un bac acier anti condensation sur les deux versants (RAL 7016). Des panneaux photovoltaïques (RAL 9005) viendront recouvrir le bac acier sur l'ensemble de la toiture, permettant de créer une centrale de production d'électricité photovoltaïque de ${displayKwc} kWc.
+${batimentDesc}
 Ce bâtiment sera ouvert et non clos. Les façades Est, Ouest, Nord et Sud seront ouvertes.
 Un terrassement sera réalisé pour la mise en oeuvre d'une plateforme en grave compactée.
 Des tranchées drainantes seront réalisées tout autour du bâtiment projet afin d'évacuer les eaux pluviales par infiltration dans le sol.
 
 4- RACCORDEMENT AUX RESEAUX
 Le bâtiment ne sera pas raccordé aux réseaux d'eau, ni d'assainissement, ni d'électricité. Il n'y a donc pas de besoins en alimentation à ces niveaux là.
-Seule l'électricité produite par la centrale photovoltaïque est renvoyée dans le réseau ENEDIS via un point de livraison situé sur la parcelle au Sud de la parcelle (PDL).
+Seule l'électricité produite par la centrale photovoltaïque${batteryStorage.enabled ? ' et le système de stockage batterie' : ''} est renvoyée dans le réseau ENEDIS via un point de livraison situé sur la parcelle au Sud de la parcelle (PDL).
 L'emplacement du point de livraison indiqué dans les pièces graphiques de l'autorisation d'urbanisme n'apparaît qu'à titre indicatif.
 Le positionnement du point de livraison et d'un transformateur (le cas échéant) demeure à l'appréciation finale du gestionnaire de réseau en fonction du site et des équipements déjà existants.
 
 5- SECURITE INCENDIE
-Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf PC 02 - Plan de masse).`;
-  }, [editedProject, config]);
+Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf PC 02 - Plan de masse).${batteryStorage.enabled ? `\nLe système de stockage batterie est équipé de ses dispositifs de sécurité autonomes conformes aux prescriptions SDIS (détection thermique, coupure automatique d'urgence, système d'extinction dédié et bac de rétention).` : ''}`;
+  }, [editedProject, config, buildings, additionalRoof, batteryStorage]);
+
+  // Gestion des bâtiments multiples
+  const handleAddBuilding = () => {
+    const newIdx = buildings.length + 1;
+    const newBuilding = {
+      id: `bat-${newIdx}`,
+      name: `Bâtiment ${newIdx} (Secondaire)`,
+      length: 25,
+      width: 16.4,
+      eaveHeight: 4,
+      roofPitch: 15,
+      buildingType: 'asymetrique_1',
+      leftSide: 'none',
+      rightSide: 'none',
+      bayCount: 4,
+      baySpacing: 6,
+      captures: {},
+      photos: {}
+    };
+    const updated = [...buildings, newBuilding];
+    setBuildings(updated);
+    setActiveBuildingIndex(updated.length - 1);
+  };
+
+  const handleSelectBuilding = (index) => {
+    if (index === activeBuildingIndex) return;
+    // 1. Sauvegarder bâtiment actuel
+    const updated = [...buildings];
+    updated[activeBuildingIndex] = {
+      ...updated[activeBuildingIndex],
+      length: config.length,
+      width: config.width,
+      eaveHeight: config.eaveHeight,
+      roofPitch: config.roofPitch,
+      buildingType: config.buildingType,
+      leftSide: config.leftSide,
+      rightSide: config.rightSide,
+      bayCount: config.bayCount,
+      baySpacing: config.baySpacing,
+    };
+    setBuildings(updated);
+    setActiveBuildingIndex(index);
+
+    // 2. Charger nouveau bâtiment
+    const target = updated[index];
+    if (target) {
+      if (configActions.setDimensions) configActions.setDimensions({ length: target.length || 30, width: target.width || 20 });
+      if (configActions.setBuildingType) configActions.setBuildingType(target.buildingType || 'asymetrique_1');
+      if (configActions.setRoofPitch) configActions.setRoofPitch(target.roofPitch || 15);
+      if (configActions.setEaveHeight) configActions.setEaveHeight(target.eaveHeight || 4);
+    }
+  };
+
+  const handleRemoveBuilding = (index, e) => {
+    e.stopPropagation();
+    if (buildings.length <= 1) return;
+    const updated = buildings.filter((_, i) => i !== index);
+    setBuildings(updated);
+    setActiveBuildingIndex(0);
+    const first = updated[0];
+    if (first && configActions.setDimensions) {
+      configActions.setDimensions({ length: first.length, width: first.width });
+    }
+  };
 
   // Modales
   const [cropModal, setCropModal] = useState({ open: false, src: null, category: null, key: null, title: '' });
@@ -139,8 +278,13 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
         configActions.setBuildingType('asymetrique_1');
       }
 
-      const initialNotice = project?.noticeText || project?.description || buildAutoNoticeText();
+      const initialNotice = project?.noticeText || buildAutoNoticeText();
       setNoticeText(initialNotice);
+
+      const clientKwc = project.kwc || project.puissance || project.projectSize || 256;
+      const shortObjet = (type === 'pc' || type === 'dp')
+        ? `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque de ${clientKwc} kWc`
+        : `Certificat d'urbanisme opérationnel pour centrale photovoltaïque de ${clientKwc} kWc`;
 
       const initProj = {
         ...project,
@@ -157,11 +301,12 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
         birthDate: project.birthDate || '14/02/1970',
         birthCity: project.birthCity || projCity || 'AUCH',
         birthDept: project.birthDept || (projZip ? projZip.substring(0, 2) : '32'),
-        kwc: project.kwc || project.puissance || project.projectSize || 256,
-        projectSize: project.projectSize || project.kwc || project.puissance || 256,
-        puissance: project.puissance || project.kwc || project.projectSize || 256,
+        kwc: clientKwc,
+        projectSize: clientKwc,
+        puissance: clientKwc,
+        objet_travaux: shortObjet,
+        description: shortObjet,
         noticeText: initialNotice,
-        description: initialNotice,
         longueur: String(config.length || 30.0),
         largeur: String(config.width || 20.0),
         hauteur_egout: String(config.buildingType?.startsWith('asymetrique') ? 4.0 : (config.eaveHeight || 4.0)),
@@ -226,13 +371,15 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
           longueur: String(config.length.toFixed(2)),
           hauteur_egout: String(config.eaveHeight.toFixed(2)),
           pente: String(config.roofPitch),
+          leftSide: config.leftSide || 'none',
+          rightSide: config.rightSide || 'none',
           kwc: clientKwc,
           projectSize: clientKwc,
           puissance: clientKwc,
         };
       });
     }
-  }, [config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.solarStats, project?.kwc, project?.puissance, project?.projectSize]);
+  }, [config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.leftSide, config.rightSide, config.solarStats, project?.kwc, project?.puissance, project?.projectSize]);
 
   // Sauvegarde simulation 3D après projet (PC6)
   const handleSaveSimulation = (simulatedDataUrl) => {
@@ -303,6 +450,12 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     if (!onGenerate) return;
     setIsGenerating(true);
     const clientKwc = project?.kwc || project?.puissance || project?.projectSize || editedProject?.kwc || 256;
+    
+    // Objet synthétique pour Page 1
+    const shortObjet = (type === 'pc' || type === 'dp')
+      ? `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque de ${clientKwc} kWc`
+      : `Certificat d'urbanisme opérationnel pour centrale photovoltaïque de ${clientKwc} kWc`;
+
     const finalProject = {
       ...editedProject,
       ...fieldValues,
@@ -318,10 +471,14 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       kwc: clientKwc,
       projectSize: clientKwc,
       puissance: clientKwc,
-      noticeText: noticeText || editedProject.noticeText || project?.noticeText || '',
-      description: noticeText || editedProject.description || project?.description || '',
+      objet_travaux: shortObjet,
+      description: shortObjet,
+      noticeText: noticeText || editedProject.noticeText || project?.noticeText || buildAutoNoticeText(),
       urbanisme_captures: captures,
       pc_photos: photos,
+      buildings: buildings,
+      additionalRoof: additionalRoof,
+      batteryStorage: batteryStorage,
     };
     try {
       await onGenerate(type, editedProject.type || 'batiment_solaire', finalProject, selectedPages);
@@ -397,13 +554,13 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-hidden flex flex-col">
             <AnimatePresence mode="wait">
 
               {/* ÉTAPE 0 — Identité & Coordonnées du déclarant */}
               {step === 0 && (
                 <motion.div key="step0" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                  className="p-6 space-y-4">
+                  className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
                   <div>
                     <h3 className="text-sm font-bold text-gray-800">Étape 1 : Identité & Coordonnées du déclarant</h3>
                     <p className="text-xs text-gray-500">Ces informations sont préremplies automatiquement et restent modifiables.</p>
@@ -448,47 +605,51 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
                       <div>
                         <label className="text-gray-600 font-semibold block mb-1">Code Postal & Ville</label>
-                        <div className="flex gap-2">
+                        <div className="grid grid-cols-2 gap-2">
                           <input
-                            type="text" placeholder="32000"
+                            type="text"
                             value={editedProject?.zip || ''}
                             onChange={e => handleFieldChange('zip', e.target.value)}
-                            className="w-24 px-2.5 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 bg-white text-center"
+                            placeholder="32100"
+                            className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-white outline-none focus:ring-2 focus:ring-blue-500"
                           />
                           <input
-                            type="text" placeholder="AUCH"
+                            type="text"
                             value={editedProject?.city || ''}
                             onChange={e => handleFieldChange('city', e.target.value)}
-                            className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 bg-white"
+                            placeholder="AUCH"
+                            className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-white outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="text-gray-600 font-semibold block mb-1">Téléphone</label>
+                        <label className="text-gray-600 font-semibold block mb-1">Téléphone de contact</label>
                         <input
                           type="text"
                           value={editedProject?.phone || ''}
                           onChange={e => handleFieldChange('phone', e.target.value)}
-                          placeholder="Ex: 06 47 92 34 24"
+                          placeholder="06 00 00 00 00"
                           className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-white outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
 
                       <div>
-                        <label className="text-gray-600 font-semibold block mb-1">Commune & Dép. de naissance</label>
-                        <div className="flex gap-2">
+                        <label className="text-gray-600 font-semibold block mb-1">Date et Lieu de Naissance</label>
+                        <div className="grid grid-cols-2 gap-2">
                           <input
-                            type="text" placeholder="AUCH"
-                            value={editedProject?.birthCity || ''}
-                            onChange={e => handleFieldChange('birthCity', e.target.value)}
-                            className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-white"
+                            type="text"
+                            value={editedProject?.birthDate || ''}
+                            onChange={e => handleFieldChange('birthDate', e.target.value)}
+                            placeholder="14/02/1970"
+                            className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-white outline-none focus:ring-2 focus:ring-blue-500"
                           />
                           <input
-                            type="text" placeholder="32"
-                            value={editedProject?.birthDept || ''}
-                            onChange={e => handleFieldChange('birthDept', e.target.value)}
-                            className="w-16 px-2.5 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 bg-white text-center"
+                            type="text"
+                            value={editedProject?.birthCity || ''}
+                            onChange={e => handleFieldChange('birthCity', e.target.value)}
+                            placeholder="AUCH (32)"
+                            className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-white outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
                       </div>
@@ -497,67 +658,31 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                 </motion.div>
               )}
 
-              {/* ÉTAPE 1 — Localisation & Cartes automatiques PC1 & PC2 */}
+              {/* ÉTAPE 1 — Cartes PC1 / PC2 */}
               {step === 1 && (
                 <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                  className="p-6 space-y-4">
-                  <div>
-                    <h3 className="text-sm font-bold text-gray-800">Étape 2 : Cadastre & Cartographie PC1 / PC2 Automatique</h3>
-                    <p className="text-xs text-gray-500">Les cartes IGN, Géoportail et le plan de masse sont générés automatiquement.</p>
+                  className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-800">Étape 2 : Cartographie PC1 & PC2 (IGN Cadastre & Satellite)</h3>
+                      <p className="text-xs text-gray-500">Les cartes sont générées automatiquement à partir des coordonnées GPS du terrain.</p>
+                    </div>
+                    {generatingMaps && (
+                      <span className="flex items-center gap-1.5 text-xs text-blue-600 font-bold bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200 animate-pulse">
+                        <Loader2 className="w-4 h-4 animate-spin" /> Génération des cartes IGN...
+                      </span>
+                    )}
                   </div>
 
-                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-bold text-gray-700 flex items-center gap-1">
-                        <Hash className="w-4 h-4 text-blue-600" /> Références cadastrales du terrain
-                      </p>
-                      {fetchingCadastre && (
-                        <span className="text-[11px] text-blue-600 font-semibold flex items-center gap-1">
-                          <Loader2 className="w-3 h-3 animate-spin" /> Récupération cadastre IGN...
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3 text-xs">
-                      <div>
-                        <label className="text-gray-400 block mb-0.5">Section (ex: AL)</label>
-                        <input
-                          type="text" placeholder="AL"
-                          value={editedProject?.cadastre_section || ''}
-                          onChange={e => handleFieldChange('cadastre_section', e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-800 bg-white text-center"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-gray-400 block mb-0.5">Numéro parcelle (ex: 0026)</label>
-                        <input
-                          type="text" placeholder="0026"
-                          value={editedProject?.cadastre_numero || ''}
-                          onChange={e => handleFieldChange('cadastre_numero', e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-800 bg-white text-center"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-gray-400 block mb-0.5">Surface parcelle (m²)</label>
-                        <input
-                          type="number"
-                          value={editedProject?.cadastre_surface || ''}
-                          onChange={e => handleFieldChange('cadastre_surface', e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-800 bg-white"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    {/* Carte IGN PC1 */}
-                    <div className="border border-gray-200 rounded-2xl p-2.5 bg-gray-50 text-center relative overflow-hidden">
-                      <p className="text-[11px] font-bold text-gray-600 mb-1.5">PC1 — Plan Cartographique (IGN)</p>
-                      {captures?.ign ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center">
+                      <span className="text-xs font-bold text-gray-700 block mb-2">PC1 — Plan de Situation (IGN Cartographique)</span>
+                      {captures?.situation_ign ? (
                         <div className="relative group rounded-xl overflow-hidden aspect-video border border-gray-200">
-                          <img src={captures.ign} alt="Plan IGN" className="w-full h-full object-cover" />
+                          <img src={captures.situation_ign} alt="Situation IGN" className="w-full h-full object-cover" />
                           <button
-                            onClick={() => setCropModal({ open: true, src: captures.ign, category: 'captures', key: 'ign', title: 'Recadrer Plan IGN' })}
+                            type="button"
+                            onClick={() => setCropModal({ open: true, src: captures.situation_ign, category: 'captures', key: 'situation_ign', title: 'Recadrer Plan de Situation' })}
                             className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-opacity"
                           >
                             <Crop className="w-4 h-4 mr-1" /> Recadrer / Ajuster
@@ -570,33 +695,13 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                       )}
                     </div>
 
-                    {/* Vue Aérienne Satellite PC1 */}
-                    <div className="border border-gray-200 rounded-2xl p-2.5 bg-gray-50 text-center relative overflow-hidden">
-                      <p className="text-[11px] font-bold text-gray-600 mb-1.5">PC1 — Vue Aérienne (Géoportail)</p>
-                      {captures?.satellite ? (
-                        <div className="relative group rounded-xl overflow-hidden aspect-video border border-gray-200">
-                          <img src={captures.satellite} alt="Vue Satellite" className="w-full h-full object-cover" />
-                          <button
-                            onClick={() => setCropModal({ open: true, src: captures.satellite, category: 'captures', key: 'satellite', title: 'Recadrer Vue Satellite' })}
-                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-opacity"
-                          >
-                            <Crop className="w-4 h-4 mr-1" /> Recadrer / Ajuster
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="aspect-video rounded-xl border border-dashed border-gray-300 flex items-center justify-center bg-white">
-                          <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Plan de Masse PC2 */}
-                    <div className="border border-gray-200 rounded-2xl p-2.5 bg-gray-50 text-center relative overflow-hidden">
-                      <p className="text-[11px] font-bold text-gray-600 mb-1.5">PC2 — Plan de Masse</p>
+                    <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center">
+                      <span className="text-xs font-bold text-gray-700 block mb-2">PC2 — Plan de Masse (IGN Cadastre / Ortho)</span>
                       {captures?.masse_projet ? (
                         <div className="relative group rounded-xl overflow-hidden aspect-video border border-gray-200">
-                          <img src={captures.masse_projet} alt="Plan de masse" className="w-full h-full object-cover" />
+                          <img src={captures.masse_projet} alt="Plan de Masse" className="w-full h-full object-cover" />
                           <button
+                            type="button"
                             onClick={() => setCropModal({ open: true, src: captures.masse_projet, category: 'captures', key: 'masse_projet', title: 'Recadrer Plan de Masse' })}
                             className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-opacity"
                           >
@@ -613,73 +718,116 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                 </motion.div>
               )}
 
-              {/* ÉTAPE 2 — Configurateur 2D/3D (Exact Clone de la page Configurateur - Directive 1) */}
+              {/* ÉTAPE 2 — Configurateur 2D/3D avec support Multi-Bâtiments */}
               {step === 2 && (
                 <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                  className="p-3 flex flex-col lg:flex-row gap-3.5 h-[64vh] overflow-hidden bg-slate-100/70 rounded-2xl">
+                  className="p-3 flex flex-col h-[64vh] overflow-hidden bg-slate-100/70 rounded-2xl gap-2">
                   
-                  {/* Panneau de contrôle gauche (Composant officiel ControlPanel de la page Configurateur) */}
-                  <div className="w-full lg:w-[410px] h-full overflow-y-auto pr-1">
-                    <ControlPanel isAcama={false} selectedProject={editedProject} />
+                  {/* Sélecteur multi-bâtiments */}
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 flex-shrink-0">
+                    <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1 flex items-center gap-1">
+                        <Building2 className="w-3.5 h-3.5 text-blue-600" /> Bâtiments :
+                      </span>
+                      {buildings.map((b, idx) => (
+                        <button
+                          key={b.id || idx}
+                          type="button"
+                          onClick={() => handleSelectBuilding(idx)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs ${
+                            activeBuildingIndex === idx
+                              ? 'bg-blue-600 text-white ring-2 ring-blue-400'
+                              : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+                          }`}
+                        >
+                          <span>{b.name || `Bâtiment ${idx + 1}`}</span>
+                          <span className="text-[10px] opacity-75 font-normal">
+                            ({(b.width || config.width).toFixed(1)}m × {(b.length || config.length).toFixed(1)}m)
+                          </span>
+                          {idx > 0 && (
+                            <span
+                              onClick={(e) => handleRemoveBuilding(idx, e)}
+                              className="ml-1 p-0.5 hover:bg-red-500 hover:text-white rounded text-slate-400 transition-colors"
+                              title="Supprimer ce bâtiment secondaire"
+                            >
+                              <X className="w-3 h-3" />
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={handleAddBuilding}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-all flex items-center gap-1 shadow-2xs"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                        Ajouter un bâtiment
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Scène 3D droite (Composant officiel BuildingScene de la page Configurateur) */}
-                  <div className="flex-1 relative h-full rounded-2xl overflow-hidden border border-slate-200 bg-gradient-to-b from-slate-50 to-slate-200 shadow-sm isolate">
-                    
-                    {/* Badge dimensions top-left & bouton côtes */}
-                    <div className="absolute top-3 left-3 z-20 flex flex-col gap-2 pointer-events-auto">
-                      <div className="bg-white/95 backdrop-blur px-3 py-1.5 rounded-lg shadow-sm border border-slate-200">
-                        <span className="text-slate-800 font-bold text-sm whitespace-nowrap">
-                          {config.length.toFixed(2)}m × {config.width.toFixed(2)}m — {Math.round(config.width * config.length)}m²
-                        </span>
-                      </div>
+                  {/* Scène & Panneau */}
+                  <div className="flex-1 flex flex-col lg:flex-row gap-3.5 min-h-0 overflow-hidden">
+                    {/* Panneau de contrôle gauche */}
+                    <div className="w-full lg:w-[410px] h-full overflow-y-auto pr-1">
+                      <ControlPanel isAcama={false} selectedProject={editedProject} />
+                    </div>
 
-                      {config.hasSolar && (
-                        <div className="bg-yellow-50/95 backdrop-blur px-3 py-1 rounded-lg shadow-sm border border-yellow-200">
-                          <span className="text-yellow-800 font-bold text-xs whitespace-nowrap">
-                            ⚡ {config.solarStats?.power?.toFixed(2)} kWc
+                    {/* Scène 3D droite */}
+                    <div className="flex-1 relative h-full rounded-2xl overflow-hidden border border-slate-200 bg-gradient-to-b from-slate-50 to-slate-200 shadow-sm isolate">
+                      <div className="absolute top-3 left-3 z-20 flex flex-col gap-2 pointer-events-auto">
+                        <div className="bg-white/95 backdrop-blur px-3 py-1.5 rounded-lg shadow-sm border border-slate-200">
+                          <span className="text-slate-800 font-bold text-sm whitespace-nowrap">
+                            {config.length.toFixed(2)}m × {config.width.toFixed(2)}m — {Math.round(config.width * config.length)}m²
                           </span>
                         </div>
-                      )}
 
-                      <button
-                        onClick={configActions.toggleDimensions}
-                        className={`px-3 py-1.5 rounded-lg font-semibold text-xs shadow-sm border transition-all flex items-center justify-between gap-2.5 ${
-                          config.showDimensions ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                        }`}
-                      >
-                        <span>Afficher les côtes</span>
-                        <div className={`w-8 h-4 rounded-full relative transition-colors ${config.showDimensions ? 'bg-white/30' : 'bg-slate-300'}`}>
-                          <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${config.showDimensions ? 'left-4' : 'left-0.5'}`} />
-                        </div>
-                      </button>
+                        {config.hasSolar && (
+                          <div className="bg-yellow-50/95 backdrop-blur px-3 py-1 rounded-lg shadow-sm border border-yellow-200">
+                            <span className="text-yellow-800 font-bold text-xs whitespace-nowrap">
+                              ⚡ {config.solarStats?.power?.toFixed(2)} kWc
+                            </span>
+                          </div>
+                        )}
+
+                        <button
+                          onClick={configActions.toggleDimensions}
+                          className={`px-3 py-1.5 rounded-lg font-semibold text-xs shadow-sm border transition-all flex items-center justify-between gap-2.5 ${
+                            config.showDimensions ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span>Afficher les côtes</span>
+                          <div className={`w-8 h-4 rounded-full relative transition-colors ${config.showDimensions ? 'bg-white/30' : 'bg-slate-300'}`}>
+                            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${config.showDimensions ? 'left-4' : 'left-0.5'}`} />
+                          </div>
+                        </button>
+                      </div>
+
+                      {/* Toggles Vue 3D / 2D */}
+                      <div className="absolute top-3 right-3 z-20 flex gap-1.5 bg-white/90 backdrop-blur p-1 rounded-xl border border-slate-200 shadow-sm pointer-events-auto">
+                        <button
+                          onClick={() => setViewMode('3D')}
+                          className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
+                            viewMode === '3D' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          Vue 3D
+                        </button>
+                        <button
+                          onClick={() => setViewMode('2D_FRONT')}
+                          className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
+                            viewMode === '2D_FRONT' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          Vue 2D
+                        </button>
+                      </div>
+
+                      {/* Rendu Canvas BuildingScene */}
+                      <div className="w-full h-full">
+                        <BuildingScene viewMode={viewMode} />
+                      </div>
                     </div>
-
-                    {/* Vue 3D / 2D Toggles top-right */}
-                    <div className="absolute top-3 right-3 z-20 flex gap-1.5 bg-white/90 backdrop-blur p-1 rounded-xl border border-slate-200 shadow-sm pointer-events-auto">
-                      <button
-                        onClick={() => setViewMode('3D')}
-                        className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
-                          viewMode === '3D' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
-                        }`}
-                      >
-                        Vue 3D
-                      </button>
-                      <button
-                        onClick={() => setViewMode('2D_FRONT')}
-                        className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
-                          viewMode === '2D_FRONT' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
-                        }`}
-                      >
-                        Vue 2D
-                      </button>
-                    </div>
-
-                    {/* Rendu Canvas BuildingScene */}
-                    <div className="w-full h-full">
-                      <BuildingScene viewMode={viewMode} />
-                    </div>
-
                   </div>
                 </motion.div>
               )}
@@ -687,10 +835,29 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
               {/* ÉTAPE 3 — Visionneuse 3D (PC5 5 VUES) & Insertion Paysagère 3D (PC6) */}
               {step === 3 && (
                 <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                  className="p-5 space-y-4">
-                  <div>
-                    <h3 className="text-sm font-bold text-gray-800">Étape 4 : PC5 (5 vues Façades & Toiture) & PC6 (Insertion paysagère 3D)</h3>
-                    <p className="text-xs text-gray-500">Capturez les 5 vues de façades pour la PC5 et positionnez le modèle 3D sur votre photo de terrain pour la PC6.</p>
+                  className="p-5 space-y-3 overflow-y-auto max-h-[70vh]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-800">Étape 4 : PC5 (5 vues Façades & Toiture) & PC6 (Insertion paysagère 3D)</h3>
+                      <p className="text-xs text-gray-500">Capturez les 5 vues de façades pour la PC5 et positionnez le modèle 3D sur votre photo de terrain pour la PC6.</p>
+                    </div>
+
+                    {buildings.length > 1 && (
+                      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        {buildings.map((b, idx) => (
+                          <button
+                            key={b.id || idx}
+                            type="button"
+                            onClick={() => handleSelectBuilding(idx)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                              activeBuildingIndex === idx ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-white'
+                            }`}
+                          >
+                            {b.name || `Bâtiment ${idx + 1}`}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -748,7 +915,6 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                 <img src={photos.avant} alt="Avant" className="w-full h-full object-cover" />
                                 <span className="absolute top-1 left-1 bg-black/60 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">Avant</span>
                                 
-                                {/* Boutons d'action Photo Avant */}
                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
                                   <label title="Remplacer la photo" className="cursor-pointer p-1.5 bg-white/90 hover:bg-white text-slate-800 rounded-lg shadow-sm transition-all hover:scale-105">
                                     <Upload className="w-3.5 h-3.5" />
@@ -909,18 +1075,18 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                 </motion.div>
               )}
 
-              {/* ÉTAPE 4 — Notice d'insertion & Descriptive du projet */}
+              {/* ÉTAPE 4 — Notice d'insertion & Descriptive du projet (PLEINE HAUTEUR) */}
               {step === 4 && (
                 <motion.div
                   key="step4-notice"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="p-6 space-y-4 max-h-[70vh] overflow-y-auto"
+                  className="p-5 h-full flex flex-col gap-3 overflow-hidden"
                 >
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs flex-shrink-0">
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                      <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
                         <FileText className="w-5 h-5" />
                       </div>
                       <div>
@@ -933,26 +1099,48 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
+                    <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setShowRoofModal(true)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 ${
+                          additionalRoof.enabled ? 'bg-amber-500 text-white' : 'bg-white border border-amber-300 text-amber-800 hover:bg-amber-50'
+                        }`}
+                      >
+                        <Sun className="w-3.5 h-3.5" />
+                        {additionalRoof.enabled ? `⚡ Toiture (${additionalRoof.kwc} kWc)` : '+ Ajouter une Toiture'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowBatteryModal(true)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 ${
+                          batteryStorage.enabled ? 'bg-purple-600 text-white' : 'bg-white border border-purple-300 text-purple-800 hover:bg-purple-50'
+                        }`}
+                      >
+                        <Battery className="w-3.5 h-3.5" />
+                        {batteryStorage.enabled ? `🔋 Batterie (${batteryStorage.capacityKwh} kWh)` : '+ Ajouter une Batterie'}
+                      </button>
+
                       <button
                         type="button"
                         onClick={() => {
                           const auto = buildAutoNoticeText();
                           setNoticeText(auto);
-                          setEditedProject(prev => ({ ...prev, noticeText: auto, description: auto }));
+                          setEditedProject(prev => ({ ...prev, noticeText: auto }));
                         }}
                         className="px-3 py-1.5 bg-white border border-blue-300 text-blue-700 hover:bg-blue-50 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5"
                         title="Régénérer le texte selon les paramètres actuels du projet"
                       >
                         <RefreshCw className="w-3.5 h-3.5" />
-                        Réinitialiser au texte automatique
+                        Réinitialiser
                       </button>
                     </div>
                   </div>
 
-                  {/* Éditeur de Notice avec compteur */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-700 pb-2 border-b border-slate-100">
+                  {/* Éditeur de Notice prenant TOUTE la hauteur du cadre */}
+                  <div className="flex-1 flex flex-col min-h-0 bg-white rounded-2xl border border-slate-200 p-3.5 shadow-xs overflow-hidden">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-700 pb-2 border-b border-slate-100 flex-shrink-0">
                       <span className="flex items-center gap-1.5 text-indigo-700">
                         <Sparkles className="w-4 h-4" />
                         Texte de la notice descriptive (5 points structurés)
@@ -963,37 +1151,36 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                     </div>
 
                     <textarea
-                      rows={15}
                       value={noticeText}
                       onChange={(e) => {
                         setNoticeText(e.target.value);
-                        setEditedProject(prev => ({ ...prev, noticeText: e.target.value, description: e.target.value }));
+                        setEditedProject(prev => ({ ...prev, noticeText: e.target.value }));
                       }}
                       placeholder="Rédigez ou personnalisez la notice descriptive du projet..."
-                      className="w-full p-4 bg-slate-50/70 border border-slate-200 rounded-xl text-xs leading-relaxed text-slate-800 font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y transition-all"
+                      className="flex-1 w-full min-h-0 p-3.5 mt-2 bg-slate-50/70 border border-slate-200 rounded-xl text-xs leading-relaxed text-slate-800 font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all"
                     />
 
                     {/* Rappel des 5 points clés */}
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2 text-[10px]">
-                      <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2.5 text-[10px] flex-shrink-0">
+                      <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
                         <strong className="block text-slate-800 mb-0.5">1- Objet</strong>
                         <span className="text-slate-500">Destination agricole & surface</span>
                       </div>
-                      <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
                         <strong className="block text-slate-800 mb-0.5">2- Le Site</strong>
                         <span className="text-slate-500">Commune, parcelle, altitude</span>
                       </div>
-                      <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
                         <strong className="block text-slate-800 mb-0.5">3- Le Projet</strong>
-                        <span className="text-slate-500">Dimensions, structure, kWc, RAL</span>
+                        <span className="text-slate-500">Bâtiment(s), structure, kWc</span>
                       </div>
-                      <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
                         <strong className="block text-slate-800 mb-0.5">4- Réseaux</strong>
                         <span className="text-slate-500">Raccordement Enedis (PDL)</span>
                       </div>
-                      <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
                         <strong className="block text-slate-800 mb-0.5">5- Incendie</strong>
-                        <span className="text-slate-500">Bâche 120m³, aire 4×8m</span>
+                        <span className="text-slate-500">Bâche 120m³, sécurité</span>
                       </div>
                     </div>
                   </div>
@@ -1003,7 +1190,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
               {/* ÉTAPE 5 — Validation & Sélection des pages du PDF */}
               {step === 5 && (
                 <motion.div key="step5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                  className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                  className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
                   <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-emerald-900 flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
@@ -1045,6 +1232,71 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                       >
                         Tout décocher
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Modules d'Ajout Optionnel Toiture & Batterie avant validation */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-blue-600" />
+                        Composants du projet configurés
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowRoofModal(true)}
+                          className="px-2.5 py-1 rounded-lg bg-white border border-amber-300 text-amber-800 hover:bg-amber-50 text-xs font-bold transition-all flex items-center gap-1"
+                        >
+                          <Sun className="w-3.5 h-3.5" />
+                          {additionalRoof.enabled ? 'Modifier Toiture' : '+ Toiture'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowBatteryModal(true)}
+                          className="px-2.5 py-1 rounded-lg bg-white border border-purple-300 text-purple-800 hover:bg-purple-50 text-xs font-bold transition-all flex items-center gap-1"
+                        >
+                          <Battery className="w-3.5 h-3.5" />
+                          {batteryStorage.enabled ? 'Modifier Batterie' : '+ Batterie'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                        <div className="flex items-center justify-between font-bold text-slate-800 mb-1">
+                          <span className="flex items-center gap-1 text-blue-600"><Building2 className="w-3.5 h-3.5" /> {buildings.length} Bâtiment(s)</span>
+                          <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">Configuré</span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">
+                          {config.length.toFixed(1)}m × {config.width.toFixed(1)}m ({Math.round(config.length * config.width)} m²)
+                          {buildings.length > 1 && ` + ${buildings.length - 1} secondaire(s)`}
+                        </p>
+                      </div>
+
+                      <div className={`p-2.5 rounded-xl border transition-all ${additionalRoof.enabled ? 'bg-amber-50/70 border-amber-200 shadow-2xs' : 'bg-white/60 border-slate-200 opacity-60'}`}>
+                        <div className="flex items-center justify-between font-bold mb-1">
+                          <span className="flex items-center gap-1 text-amber-800"><Sun className="w-3.5 h-3.5" /> Toiture existante</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${additionalRoof.enabled ? 'bg-amber-200 text-amber-900' : 'bg-slate-200 text-slate-600'}`}>
+                            {additionalRoof.enabled ? `${additionalRoof.kwc} kWc` : 'Non ajouté'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">
+                          {additionalRoof.enabled ? `${additionalRoof.surface} m² • ${additionalRoof.roofType}` : 'Centrale en toiture existante optionnelle'}
+                        </p>
+                      </div>
+
+                      <div className={`p-2.5 rounded-xl border transition-all ${batteryStorage.enabled ? 'bg-purple-50/70 border-purple-200 shadow-2xs' : 'bg-white/60 border-slate-200 opacity-60'}`}>
+                        <div className="flex items-center justify-between font-bold mb-1">
+                          <span className="flex items-center gap-1 text-purple-800"><Battery className="w-3.5 h-3.5" /> Stockage Batterie</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${batteryStorage.enabled ? 'bg-purple-200 text-purple-900' : 'bg-slate-200 text-slate-600'}`}>
+                            {batteryStorage.enabled ? `${batteryStorage.capacityKwh} kWh` : 'Non ajouté'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">
+                          {batteryStorage.enabled ? `${batteryStorage.model} (${batteryStorage.powerKw} kW)` : 'Armoires de stockage stationnaire optionnelles'}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
@@ -1095,7 +1347,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                               <div className="flex items-center justify-between mb-1.5">
                                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
                                   isChecked ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-600'
-                                }}`}>
+                                }`}>
                                   {item.code}
                                 </span>
                                 <input
@@ -1135,6 +1387,203 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
             </AnimatePresence>
           </div>
 
+          {/* Modal Configuration Toiture */}
+          {showRoofModal && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-60 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-amber-200 space-y-4">
+                <div className="flex items-center justify-between border-b pb-3 border-amber-100">
+                  <h4 className="text-sm font-extrabold text-amber-900 flex items-center gap-2">
+                    <Sun className="w-5 h-5 text-amber-500" />
+                    Configuration Toiture Solaire
+                  </h4>
+                  <button onClick={() => setShowRoofModal(false)} className="text-slate-400 hover:text-slate-600">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Désignation / Nom de la toiture</label>
+                    <input
+                      type="text"
+                      value={additionalRoof.name}
+                      onChange={(e) => setAdditionalRoof(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Ex: Toiture Hangar Nord existante"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Surface toiture (m²)</label>
+                      <input
+                        type="number"
+                        value={additionalRoof.surface}
+                        onChange={(e) => setAdditionalRoof(prev => ({ ...prev, surface: Number(e.target.value) }))}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Puissance (kWc)</label>
+                      <input
+                        type="number"
+                        value={additionalRoof.kwc}
+                        onChange={(e) => setAdditionalRoof(prev => ({ ...prev, kwc: Number(e.target.value) }))}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Type de couverture</label>
+                      <input
+                        type="text"
+                        value={additionalRoof.roofType}
+                        onChange={(e) => setAdditionalRoof(prev => ({ ...prev, roofType: e.target.value }))}
+                        placeholder="Bac acier, tuiles..."
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Orientation</label>
+                      <input
+                        type="text"
+                        value={additionalRoof.orientation}
+                        onChange={(e) => setAdditionalRoof(prev => ({ ...prev, orientation: e.target.value }))}
+                        placeholder="Sud, Est-Ouest..."
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                  {additionalRoof.enabled && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdditionalRoof(prev => ({ ...prev, enabled: false }));
+                        setShowRoofModal(false);
+                      }}
+                      className="px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                    >
+                      Désactiver
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdditionalRoof(prev => ({ ...prev, enabled: true }));
+                      setShowRoofModal(false);
+                    }}
+                    className="ml-auto px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition-all shadow-sm"
+                  >
+                    Valider la Toiture
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal Configuration Batterie */}
+          {showBatteryModal && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-60 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-purple-200 space-y-4">
+                <div className="flex items-center justify-between border-b pb-3 border-purple-100">
+                  <h4 className="text-sm font-extrabold text-purple-900 flex items-center gap-2">
+                    <Battery className="w-5 h-5 text-purple-600" />
+                    Configuration Système Batterie
+                  </h4>
+                  <button onClick={() => setShowBatteryModal(false)} className="text-slate-400 hover:text-slate-600">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Modèle / Fabricant batterie</label>
+                    <input
+                      type="text"
+                      value={batteryStorage.model}
+                      onChange={(e) => setBatteryStorage(prev => ({ ...prev, model: e.target.value }))}
+                      placeholder="Ex: CESC Mercury 261, Tesla..."
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Capacité de stockage (kWh)</label>
+                      <input
+                        type="number"
+                        value={batteryStorage.capacityKwh}
+                        onChange={(e) => setBatteryStorage(prev => ({ ...prev, capacityKwh: Number(e.target.value) }))}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Puissance onduleur (kW)</label>
+                      <input
+                        type="number"
+                        value={batteryStorage.powerKw}
+                        onChange={(e) => setBatteryStorage(prev => ({ ...prev, powerKw: Number(e.target.value) }))}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Nombre d'armoires</label>
+                      <input
+                        type="number"
+                        value={batteryStorage.quantity}
+                        onChange={(e) => setBatteryStorage(prev => ({ ...prev, quantity: Number(e.target.value) }))}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Emprise au sol (dalle)</label>
+                      <input
+                        type="text"
+                        value={batteryStorage.footprint}
+                        onChange={(e) => setBatteryStorage(prev => ({ ...prev, footprint: e.target.value }))}
+                        placeholder="3.50m × 2.20m"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl font-semibold"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                  {batteryStorage.enabled && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBatteryStorage(prev => ({ ...prev, enabled: false }));
+                        setShowBatteryModal(false);
+                      }}
+                      className="px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                    >
+                      Désactiver
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBatteryStorage(prev => ({ ...prev, enabled: true }));
+                      setShowBatteryModal(false);
+                    }}
+                    className="ml-auto px-5 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl transition-all shadow-sm"
+                  >
+                    Valider la Batterie
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Modales */}
           <ImageCropModal
             isOpen={cropModal.open}
@@ -1163,7 +1612,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
           />
 
           {/* Footer */}
-          <div className="px-6 py-3.5 border-t border-gray-100 flex items-center justify-between bg-gray-50/80">
+          <div className="px-6 py-3.5 border-t border-gray-100 flex items-center justify-between bg-gray-50/80 flex-shrink-0">
             <button
               onClick={step === 0 ? onClose : () => setStep(s => Math.max(0, s - 1))}
               className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all"

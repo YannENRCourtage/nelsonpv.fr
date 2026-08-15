@@ -235,10 +235,9 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const isOmbriere = rawType.includes('ombriere');
     const isMonopente = rawType.includes('monopente');
     const isSym = rawType.includes('symetrique') && !rawType.includes('asym');
-    const isAsym = !isOmbriere && !isMonopente && !isSym; // Bâtiment agricole asymétrique 1 zone
-    
-    const hasAuvent = project?.rightSide === 'auvent' || project?.leftSide === 'auvent' || isAsym || true;
-    const hasAppentis = project?.rightSide === 'appentis' || project?.leftSide === 'appentis';
+    const isAsym = !isOmbriere && !isMonopente && !isSym;
+    const hasAuvent = Boolean(project?.rightSide === 'auvent' || project?.leftSide === 'auvent' || project?.hasAuvent || (project?.auvent && project?.auvent !== 'none' && project?.auvent !== false));
+    const hasAppentis = Boolean(project?.rightSide === 'appentis' || project?.leftSide === 'appentis' || project?.hasAppentis || (project?.appentis && project?.appentis !== 'none' && project?.appentis !== false));
 
     // Calculs dimensionnels fidèles au configurateur
     let rightEaveHeight = hauteurEgout;
@@ -331,7 +330,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             PC3 — COUPE DE TERRAIN & DU BÂTIMENT (COUPE TRANSVERSALE AA')
                         </span>
                         <span style={{ fontSize: '7pt', color: '#64748b' }}>
-                            Dimensions : {largeur.toFixed(2)}m × {longueur}m (+ Auvent 4.00m) • Échelle indicative
+                            Dimensions : {largeur.toFixed(2)}m × {longueur}m{hasAuvent ? ' (+ Auvent 4.00m)' : hasAppentis ? ' (+ Appentis)' : ''} • Échelle indicative
                         </span>
                     </div>
 

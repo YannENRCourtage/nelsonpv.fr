@@ -188,7 +188,8 @@ export const PlateCoupe = ({ project }) => {
     const isSym = rawType.includes('symetrique') && !rawType.includes('asym');
     const isAsym = !isOmbriere && !isMonopente && !isSym;
     
-    const hasAuvent = project?.rightSide === 'auvent' || project?.leftSide === 'auvent' || isAsym;
+    const hasAuvent = Boolean(project?.rightSide === 'auvent' || project?.leftSide === 'auvent' || project?.hasAuvent || (project?.auvent && project?.auvent !== 'none' && project?.auvent !== false));
+    const hasAppentis = Boolean(project?.rightSide === 'appentis' || project?.leftSide === 'appentis' || project?.hasAppentis || (project?.appentis && project?.appentis !== 'none' && project?.appentis !== false));
 
     let rightEaveHeight = hauteurEgout;
     let ridgeHeight = 7.40;
@@ -242,7 +243,7 @@ export const PlateCoupe = ({ project }) => {
                         Coupe transversale AA' — Bâtiment photovoltaïque & Terrain naturel
                     </span>
                     <span style={{ fontSize: '8.5pt', color: '#64748b' }}>
-                        Dimensions : {largeur.toFixed(2)}m × {longueur}m • Échelle indicative
+                        Dimensions : {largeur.toFixed(2)}m × {longueur}m{hasAuvent ? ' (+ Auvent 4.00m)' : hasAppentis ? ' (+ Appentis)' : ''} • Échelle indicative
                     </span>
                 </div>
 

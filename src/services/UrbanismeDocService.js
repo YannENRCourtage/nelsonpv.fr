@@ -184,8 +184,16 @@ async function drawCoverPage(doc, project, type, installationType) {
 
   // ── Description (objet des travaux) ──────────────────────────
   page.drawText('OBJET DES TRAVAUX', { x: cx + 16, y: H - 285, size: 7.5, font: fontB, color: C.gray });
-  const descLines = wrapText(project?.description || typeInfo.cerfaText, 72);
-  descLines.forEach((line, i) => {
+  
+  // Utiliser le texte synthétique Cerfa / nature des travaux et non la notice PC4 complète
+  const objetText = (project?.objet_travaux || project?.objetTravaux)
+    ? (project.objet_travaux || project.objetTravaux)
+    : (project?.description && !project.description.includes("NOTICE D'INSERTION") && !project.description.includes('1- OBJET') && project.description.length < 250)
+      ? project.description
+      : typeInfo.cerfaText;
+
+  const descLines = wrapText(objetText, 72);
+  descLines.slice(0, 6).forEach((line, i) => {
     page.drawText(line, { x: cx + 16, y: H - 300 - i * 13, size: 9.5, font: fontR, color: C.dark });
   });
 
