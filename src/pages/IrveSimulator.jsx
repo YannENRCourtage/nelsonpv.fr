@@ -267,7 +267,7 @@ export default function IrveSimulator() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-slate-100 overflow-hidden font-sans">
+    <div className="flex h-[calc(100vh-64px)] bg-slate-100 overflow-hidden font-sans text-[15px]">
       
       {/* ═══════════════════════════════════════════════════════════════════════
           BARRE LATÉRALE GAUCHE (FOND BLEU CRM #0e2b4d) — TYPO AGRANDIE DE 2PT

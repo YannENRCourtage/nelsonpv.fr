@@ -256,9 +256,8 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                                 >
                                     −
                                 </button>
-                                <div className="text-center">
+                                <div className="text-center px-1">
                                     <span className="text-base font-bold text-slate-900 leading-none">{bayCount}</span>
-                                    <p className="text-[8.5px] text-slate-400 leading-none">travées</p>
                                 </div>
                                 <button
                                     onClick={incrementBayCount}
@@ -272,59 +271,66 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                 )
             }
 
-            {/* ========== PARAMÈTRES FIXES ========== */}
-            <div className="fixed-params mb-6 p-4 bg-slate-100 rounded-lg border border-slate-300">
-                <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">
+            {/* ========== PARAMÈTRES FIXES (COMPACT) ========== */}
+            <div className="fixed-params mb-3 p-2.5 bg-slate-100/90 rounded-lg border border-slate-200">
+                <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
                     Paramètres Fixes
                 </h3>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                        <span className="text-slate-700">Pente: <strong>{isAcamaTalian4 ? 6 : (isAcamaTalian1 ? 14 : (buildingType?.startsWith('asymetrique') ? 15 : roofPitch))}°</strong></span>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 bg-orange-500 rounded-full shrink-0"></div>
+                        <span className="text-slate-700 text-xs">Pente: <strong>{isAcamaTalian4 ? 6 : (isAcamaTalian1 ? 14 : (buildingType?.startsWith('asymetrique') ? 15 : roofPitch))}°</strong></span>
                     </div>
                     {!buildingType?.startsWith('ombriere') && (
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                            <span className="text-slate-700">H. Égout: <strong>{buildingType?.startsWith('asymetrique') ? 4 : eaveHeight}m</strong></span>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full shrink-0"></div>
+                            <span className="text-slate-700 text-xs">H. Égout: <strong>{buildingType?.startsWith('asymetrique') ? 4 : eaveHeight}m</strong></span>
                         </div>
                     )}
                     {isAcama && (
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                            <span className="text-slate-700">Panneau: <strong>460 Wc</strong></span>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 bg-yellow-500 rounded-full shrink-0"></div>
+                            <span className="text-slate-700 text-xs">Panneau: <strong>460 Wc</strong></span>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* ========== OPTION SOLAIRE ========== */}
-            <div className="param-group mb-4">
-                <label className="block text-[10px] font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
+            {/* ========== OPTION SOLAIRE (COMPACT SANS SCROLL VERTICAL) ========== */}
+            <div className="param-group mb-2">
+                <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">
                     Option Solaire
                 </label>
-                <button
-                    onClick={toggleSolar}
-                    className={`
-                        w-full sm:w-64 lg:w-full py-2 px-3 rounded-lg font-bold text-xs transition-all duration-200 shadow-sm border
-                        ${hasSolar
-                            ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                        }
-                    `}
-                >
-                    Couverture Solaire PV
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={toggleSolar}
+                        className={`
+                            w-1/2 py-2 px-2 rounded-lg font-bold text-xs leading-snug transition-all duration-200 shadow-xs border text-center
+                            ${hasSolar
+                                ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
+                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                            }
+                        `}
+                    >
+                        Couverture<br />Solaire PV
+                    </button>
 
-                {hasSolar && (
-                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-100 rounded-lg">
-                        <div className="text-xs text-yellow-800 uppercase font-semibold mb-1">Puissance Installée</div>
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-bold text-yellow-900">{solarStats?.power?.toFixed(2)}</span>
-                            <span className="text-sm font-medium text-yellow-700">kWc</span>
+                    {hasSolar ? (
+                        <div className="w-1/2 py-1.5 px-2 bg-amber-50 border border-amber-200 rounded-lg flex flex-col justify-center text-center">
+                            <div className="text-sm font-black text-amber-950 leading-tight">
+                                {solarStats?.power?.toFixed(2)} <span className="text-[10px] font-bold text-amber-800">kWc</span>
+                            </div>
+                            <div className="text-[10px] font-semibold text-amber-700 leading-none mt-0.5">
+                                {solarStats?.count} panneaux
+                            </div>
                         </div>
-                        <div className="text-xs text-yellow-600 mt-1">{solarStats?.count} panneaux</div>
-                    </div>
-                )}
+                    ) : (
+                        <div className="w-1/2 py-2.5 px-2 bg-slate-50 border border-slate-200 rounded-lg text-center text-slate-400 text-[11px] font-semibold">
+                            Sans PV
+                        </div>
+                    )}
+                </div>
             </div>
 
                 </>
