@@ -5,8 +5,8 @@ import { db } from '@/config/firebase.js';
 import { collection, doc, setDoc, getDocs, deleteDoc, query, orderBy } from 'firebase/firestore';
 import {
   Calculator, FolderOpen, Database, Zap, Sun, Building2,
-  Sliders, Search, X, ChevronLeft, ChevronRight, FileDown,
-  Layers, CheckCircle2, UserCircle, Briefcase
+  Sliders, Search, X, ChevronLeft, ChevronRight, FileDown, Save,
+  Briefcase
 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast.js';
 
@@ -19,7 +19,7 @@ import SimulatorDatabaseTab from '@/components/simulator/SimulatorDatabaseTab';
 import SimulatorArchivesTab from '@/components/simulator/SimulatorArchivesTab';
 import { generateCommercialOfferPDF } from '@/components/simulator/CommercialOfferPDF';
 
-// ─── Composant ProjectSelect dans la barre latérale ─────────────────────────
+// ─── Sélecteur de projet CRM dans la barre latérale ─────────────────────────
 const ProjectSelect = ({ projects, activeProjectId, onSelect }) => {
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -50,11 +50,11 @@ const ProjectSelect = ({ projects, activeProjectId, onSelect }) => {
     <div className="relative" ref={dropdownRef}>
       <button
         type="button"
-        className="w-full flex items-center gap-2 px-3 py-2 bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white rounded-xl text-xs transition-all border border-slate-700/60 text-left shadow-2xs"
+        className="w-full flex items-center gap-2 px-3 py-2 bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition-all border border-slate-700/60 text-left shadow-2xs"
         onClick={() => setShowSearch(!showSearch)}
       >
-        <Search className="w-3.5 h-3.5 shrink-0 text-blue-400" />
-        <span className="truncate flex-1 font-semibold">
+        <Search className="w-4 h-4 shrink-0 text-blue-400" />
+        <span className="truncate flex-1">
           {activeProject ? activeProject.name : 'Sélectionner un projet CRM...'}
         </span>
       </button>
@@ -100,7 +100,7 @@ const ProjectSelect = ({ projects, activeProjectId, onSelect }) => {
                 >
                   <span className="font-bold text-slate-900 truncate">{project.name}</span>
                   {(project.address || project.city) && (
-                    <span className="text-[10px] text-slate-500 truncate">
+                    <span className="text-[11px] text-slate-500 truncate">
                       {[project.address, project.zip, project.city].filter(Boolean).join(' ')}
                     </span>
                   )}
@@ -118,27 +118,28 @@ export default function IrveSimulator() {
   const { user } = useAuth();
   const { projects } = useProjects();
 
-  // ─── Onglet principal (côté GAUCHE) : 'simulateurs' | 'archives' | 'database' ─
+  // ─── Navigation Principale Gauche : 'simulateurs' | 'archives' | 'database' ─
   const [activeMainTab, setActiveMainTab] = useState('simulateurs');
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // ─── Sous-solution active dans l'onglet 'simulateurs' : 'irve' | 'autoconso' | 'toiture' | 'structure' ─
+  // ─── Sous-solution active : 'autoconso' | 'toiture' | 'structure' | 'irve' ──
   const [activeSolution, setActiveSolution] = useState('autoconso');
 
-  // ─── Projet CRM lié & Simulations enregistrées ─────────────────────────────
+  // ─── Projet CRM lié & Simulations ──────────────────────────────────────────
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [simulations, setSimulations] = useState([]);
   const [isLoadingSimulations, setIsLoadingSimulations] = useState(false);
 
+  // ─── État dynamique de la simulation en cours pour actions globales ────────
+  const [activeSimulationState, setActiveSimulationState] = useState(null);
+
   const selectedProject = (projects || []).find(p => p.id === selectedProjectId);
 
-  // Collection Firebase
   const getSimulationsCollection = useCallback(() => {
     const tenantId = user?.activeTenantId || user?.tenantId || 'enr-courtage-energie';
     return collection(db, 'tenants', tenantId, 'unified_simulations');
   }, [user]);
 
-  // Chargement des simulations depuis Firebase & LocalStorage
   const loadSimulations = useCallback(async () => {
     setIsLoadingSimulations(true);
     try {
@@ -162,14 +163,19 @@ export default function IrveSimulator() {
     loadSimulations();
   }, [loadSimulations]);
 
-  // Sauvegarde d'une simulation
-  const handleSaveSimulation = async (simData) => {
+  // Sauvegarde
+  const handleSaveCurrentSimulation = async (customData = null) => {
+    const dataToSave = customData || activeSimulationState || {
+      type: activeSolution,
+      title: `Simulation ${activeSolution.toUpperCase()} — ${selectedProject?.name || 'Étude'}`
+    };
+
     const simId = `sim_${Date.now()}`;
     const payload = {
       id: simId,
-      ...simData,
+      ...dataToSave,
       clientProjectId: selectedProjectId || null,
-      clientName: selectedProject?.name || selectedProject?.lastName || simData.cityName || 'Client Privé',
+      clientName: selectedProject?.name || selectedProject?.lastName || dataToSave.cityName || 'Client Privé',
       createdAt: new Date().toISOString()
     };
 
@@ -189,12 +195,12 @@ export default function IrveSimulator() {
     });
 
     toast({
-      title: 'Simulation enregistrée dans les Archives !',
-      description: payload.title || 'Votre étude est prête et archivée.',
+      title: 'Simulation enregistrée !',
+      description: payload.title || 'Votre étude est sauvegardée dans les archives.',
     });
   };
 
-  // Suppression d'une simulation
+  // Suppression
   const handleDeleteSimulation = async (simId) => {
     try {
       const col = getSimulationsCollection();
@@ -217,7 +223,7 @@ export default function IrveSimulator() {
     });
   };
 
-  // Charger une simulation depuis les archives vers le simulateur
+  // Charger depuis les archives
   const handleLoadSimulation = (sim) => {
     if (sim.type === 'autoconsommation' || sim.projectType === 'solar') {
       setActiveSolution('autoconso');
@@ -236,9 +242,9 @@ export default function IrveSimulator() {
     });
   };
 
-  // Export PDF A4 Offre Commerciale
+  // Export PDF A4 Portrait
   const handleExportPDF = async (simToExport = null) => {
-    const targetSim = simToExport || {
+    const targetSim = simToExport || activeSimulationState || {
       type: activeSolution === 'autoconso' ? 'autoconsommation'
         : activeSolution === 'toiture' ? 'toiture_pv'
         : activeSolution === 'structure' ? 'structure_metallique'
@@ -264,42 +270,39 @@ export default function IrveSimulator() {
     <div className="flex h-[calc(100vh-64px)] bg-slate-100 overflow-hidden font-sans">
       
       {/* ═══════════════════════════════════════════════════════════════════════
-          BARRE LATÉRALE GAUCHE — FOND BLEU CRM (#0e2b4d / #0f172a)
-          3 ONGLETS VERTICAUX : "Simulateurs", "Archives", "Base de données"
+          BARRE LATÉRALE GAUCHE (FOND BLEU CRM #0e2b4d) — TYPO AGRANDIE DE 2PT
          ═══════════════════════════════════════════════════════════════════════ */}
       <aside className={`bg-[#0e2b4d] text-white flex flex-col shrink-0 transition-all duration-300 ease-in-out border-r border-slate-800 ${
         sidebarOpen ? 'w-72' : 'w-16'
       }`}>
         
-        {/* Titre / En-tête Sidebar */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between min-h-[64px]">
           {sidebarOpen ? (
             <div>
-              <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-                <Calculator className="w-4 h-4 text-amber-400" />
+              <h2 className="text-base font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <Calculator className="w-5 h-5 text-amber-400" />
                 Simulateurs Pro
               </h2>
-              <p className="text-[10.5px] text-slate-400 font-semibold">ENR Courtage Énergie</p>
+              <p className="text-xs text-slate-400 font-semibold">ENR Courtage Énergie</p>
             </div>
           ) : (
-            <Calculator className="w-5 h-5 text-amber-400 mx-auto" />
+            <Calculator className="w-6 h-6 text-amber-400 mx-auto" />
           )}
 
           <button
             type="button"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors ml-auto"
+            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors ml-auto"
             title={sidebarOpen ? 'Réduire le menu' : 'Agrandir le menu'}
           >
             {sidebarOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>
         </div>
 
-        {/* Projet CRM lié */}
         {sidebarOpen && (
           <div className="p-4 border-b border-white/10 bg-slate-900/40">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 flex items-center gap-1.5">
-              <Briefcase className="w-3.5 h-3.5 text-blue-400" />
+            <span className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-1.5 flex items-center gap-1.5">
+              <Briefcase className="w-4 h-4 text-blue-400" />
               Projet CRM Associé
             </span>
             <ProjectSelect
@@ -308,21 +311,21 @@ export default function IrveSimulator() {
               onSelect={setSelectedProjectId}
             />
             {selectedProject && (
-              <div className="mt-2 bg-blue-950/70 border border-blue-800/60 rounded-xl p-2 text-[11px]">
+              <div className="mt-2 bg-blue-950/70 border border-blue-800/60 rounded-xl p-2.5 text-xs">
                 <p className="font-bold text-blue-200 truncate">{selectedProject.name}</p>
-                <p className="text-slate-400 text-[10px] truncate">{selectedProject.address || selectedProject.city || 'Aucune adresse'}</p>
+                <p className="text-slate-400 text-xs truncate">{selectedProject.address || selectedProject.city || 'Aucune adresse'}</p>
               </div>
             )}
           </div>
         )}
 
-        {/* 3 ONGLETS DE NAVIGATION DISPOSÉS VERTICALEMENT (STYLE CRM) */}
-        <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
+        {/* 3 ONGLETS VERTICAUX */}
+        <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
           {[
             {
               id: 'simulateurs',
               label: 'Simulateurs',
-              desc: '4 outils de simulation',
+              desc: '4 solutions clés en main',
               icon: Calculator,
               color: 'from-blue-600 to-indigo-600',
               activeRing: 'ring-blue-400'
@@ -330,7 +333,7 @@ export default function IrveSimulator() {
             {
               id: 'archives',
               label: 'Archives',
-              desc: `${simulations.length} dossier(s) sauvegardé(s)`,
+              desc: `${simulations.length} étude(s) sauvegardée(s)`,
               icon: FolderOpen,
               color: 'from-amber-500 to-amber-600',
               activeRing: 'ring-amber-400'
@@ -360,8 +363,8 @@ export default function IrveSimulator() {
                 <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                 {sidebarOpen && (
                   <div className="min-w-0 flex-1">
-                    <span className="font-extrabold text-xs block leading-tight">{item.label}</span>
-                    <span className="text-[10px] text-white/70 block mt-0.5 truncate">{item.desc}</span>
+                    <span className="font-black text-sm block leading-tight">{item.label}</span>
+                    <span className="text-xs text-white/80 block mt-0.5 truncate">{item.desc}</span>
                   </div>
                 )}
               </button>
@@ -369,9 +372,8 @@ export default function IrveSimulator() {
           })}
         </nav>
 
-        {/* Footer Sidebar */}
         {sidebarOpen && (
-          <div className="p-4 border-t border-white/10 text-center text-[10px] text-slate-400">
+          <div className="p-4 border-t border-white/10 text-center text-xs text-slate-400">
             <p className="font-bold text-slate-300">NELSON Platform</p>
             <p>© {new Date().getFullYear()} ENR Courtage</p>
           </div>
@@ -379,57 +381,86 @@ export default function IrveSimulator() {
       </aside>
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          ZONE DE CONTENU PRINCIPALE (DROITE)
+          ZONE DE CONTENU PRINCIPALE (SANS SCROLL INUTILE)
          ═══════════════════════════════════════════════════════════════════════ */}
       <main className="flex-1 overflow-y-auto flex flex-col">
         
-        {/* Barre supérieure */}
-        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-3.5 flex items-center justify-between shadow-2xs">
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-black text-slate-900">
-              {activeMainTab === 'simulateurs' && 'Interface de Simulation'}
-              {activeMainTab === 'archives' && 'Archives des Études Commerciales'}
-              {activeMainTab === 'database' && 'Paramétrage & Base de Données des 4 Solutions'}
-            </h1>
-            {selectedProject && (
-              <span className="text-xs font-bold bg-blue-50 text-blue-800 px-3 py-1 rounded-xl border border-blue-200">
-                Client : {selectedProject.name}
-              </span>
+        {/* BARRE SUPÉRIEURE AVEC LES 4 SOLUTIONS ET LES BOUTONS SAUVEGARDER / PDF */}
+        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-3 shadow-2xs flex flex-col gap-2">
+          
+          {/* Ligne 1 : Titre et Sélecteur des 4 solutions */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-black text-slate-900">
+                {activeMainTab === 'simulateurs' && 'Interface de Simulation'}
+                {activeMainTab === 'archives' && 'Archives des Études Commerciales'}
+                {activeMainTab === 'database' && 'Base de Données & Paramétrage'}
+              </h1>
+              {selectedProject && (
+                <span className="text-xs font-bold bg-blue-50 text-blue-800 px-3 py-1 rounded-xl border border-blue-200">
+                  Dossier : {selectedProject.name}
+                </span>
+              )}
+            </div>
+
+            {activeMainTab === 'simulateurs' && (
+              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl border border-slate-200">
+                {[
+                  { id: 'autoconso', label: 'Autoconsommation', icon: Sun, color: 'text-amber-500' },
+                  { id: 'toiture', label: 'Toiture PV', icon: Building2, color: 'text-blue-500' },
+                  { id: 'structure', label: 'Structure Métallique', icon: Sliders, color: 'text-indigo-500' },
+                  { id: 'irve', label: 'Borne IRVE', icon: Zap, color: 'text-emerald-500' },
+                ].map(sol => {
+                  const Icon = sol.icon;
+                  const isSelected = activeSolution === sol.id;
+                  return (
+                    <button
+                      key={sol.id}
+                      type="button"
+                      onClick={() => setActiveSolution(sol.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                        isSelected
+                          ? 'bg-[#0e2b4d] text-white shadow-md'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 ${isSelected ? 'text-amber-400' : sol.color}`} />
+                      <span>{sol.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
 
+          {/* Ligne 2 : BOUTONS SAUVEGARDER ET PDF ALIGNÉS EN HAUT À DROITE SOUS LES BOUTONS SOLUTIONS */}
           {activeMainTab === 'simulateurs' && (
-            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl border border-slate-200">
-              {[
-                { id: 'autoconso', label: 'Autoconsommation', icon: Sun, color: 'text-amber-500' },
-                { id: 'toiture', label: 'Toiture PV', icon: Building2, color: 'text-blue-500' },
-                { id: 'structure', label: 'Structure Métallique', icon: Sliders, color: 'text-indigo-500' },
-                { id: 'irve', label: 'Borne IRVE', icon: Zap, color: 'text-emerald-500' },
-              ].map(sol => {
-                const Icon = sol.icon;
-                const isSelected = activeSolution === sol.id;
-                return (
-                  <button
-                    key={sol.id}
-                    type="button"
-                    onClick={() => setActiveSolution(sol.id)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                      isSelected
-                        ? 'bg-[#0e2b4d] text-white shadow-md'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
-                    }`}
-                  >
-                    <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-amber-400' : sol.color}`} />
-                    <span>{sol.label}</span>
-                  </button>
-                );
-              })}
+            <div className="flex items-center justify-end gap-2.5 pt-0.5">
+              <button
+                type="button"
+                onClick={() => handleSaveCurrentSimulation()}
+                className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all hover:scale-105"
+                title="Sauvegarder l'étude en cours dans les archives"
+              >
+                <Save className="w-3.5 h-3.5 text-emerald-400" />
+                Sauvegarder
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleExportPDF()}
+                className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/30 transition-all hover:scale-105"
+                title="Générer l'Offre Commerciale au format PDF A4 Portrait"
+              >
+                <FileDown className="w-3.5 h-3.5" />
+                PDF
+              </button>
             </div>
           )}
         </div>
 
-        {/* Contenu de l'onglet actif */}
-        <div className="flex-1 p-6">
+        {/* CONTENU PRINCIPAL */}
+        <div className="flex-1 p-5">
           
           {/* ═══ ONGLET 1 : SIMULATEURS (FRONT-OFFICE) ═══════════════════════ */}
           {activeMainTab === 'simulateurs' && (
@@ -437,32 +468,36 @@ export default function IrveSimulator() {
               {activeSolution === 'autoconso' && (
                 <SolarAutoconsoSimulator
                   selectedProject={selectedProject}
-                  onSaveSimulation={handleSaveSimulation}
+                  onSaveSimulation={handleSaveCurrentSimulation}
                   onExportPDF={() => handleExportPDF()}
+                  onStateUpdate={setActiveSimulationState}
                 />
               )}
 
               {activeSolution === 'toiture' && (
                 <SolarRoofSimulator
                   selectedProject={selectedProject}
-                  onSaveSimulation={handleSaveSimulation}
+                  onSaveSimulation={handleSaveCurrentSimulation}
                   onExportPDF={() => handleExportPDF()}
+                  onStateUpdate={setActiveSimulationState}
                 />
               )}
 
               {activeSolution === 'structure' && (
                 <BuildingStructureSimulator
                   selectedProject={selectedProject}
-                  onSaveSimulation={handleSaveSimulation}
+                  onSaveSimulation={handleSaveCurrentSimulation}
                   onExportPDF={() => handleExportPDF()}
+                  onStateUpdate={setActiveSimulationState}
                 />
               )}
 
               {activeSolution === 'irve' && (
                 <IrveFrontSimulator
                   selectedProject={selectedProject}
-                  onSaveSimulation={handleSaveSimulation}
+                  onSaveSimulation={handleSaveCurrentSimulation}
                   onExportPDF={() => handleExportPDF()}
+                  onStateUpdate={setActiveSimulationState}
                 />
               )}
             </div>

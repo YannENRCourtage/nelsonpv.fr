@@ -1,28 +1,45 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Building2, Sliders, Sun, Euro, TrendingUp,
-  Save, FileDown, Box, CheckCircle2, ShieldCheck, Ruler
+  Save, FileDown, Box, CheckCircle2, ShieldCheck, Ruler, Rotate3d
 } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
 import { useSimulatorSettingsStore } from '@/stores/useSimulatorSettingsStore';
-import Building3DViewer from '@/components/developpement/Building3DViewer';
+import { useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
+import BuildingScene from '@/components/configurator/BuildingScene.jsx';
 
 export default function BuildingStructureSimulator({
   selectedProject,
   onSaveSimulation,
-  onExportPDF
+  onExportPDF,
+  onStateUpdate
 }) {
   const { settings } = useSimulatorSettingsStore();
   const structSettings = settings.structure;
 
-  // Dimensions du bâtiment
-  const [length, setLength] = useState(30); // 30m
-  const [width, setWidth] = useState(20);   // 20m
-  const [eaveHeight, setEaveHeight] = useState(4); // 4m
-  const [roofPitch, setRoofPitch] = useState(15);  // 15°
-  const [buildingType, setBuildingType] = useState('asymetrique_1');
-  const [hasAuvent, setHasAuvent] = useState(false);
+  // Accès au store 3D du Configurateur
+  const config = useConfiguratorValues();
+  const actions = useConfiguratorActions();
+
+  // Dimensions éditables locales reliées au store 3D
+  const [length, setLength] = useState(config.length || 30);
+  const [width, setWidth] = useState(config.width || 20);
+  const [eaveHeight, setEaveHeight] = useState(config.eaveHeight || 5.0);
+  const [roofPitch, setRoofPitch] = useState(config.roofPitch || 15);
+  const [buildingType, setBuildingType] = useState(config.buildingType || 'asymetrique_1');
+
+  // Synchronisation avec le store 3D du configurateur
+  useEffect(() => {
+    actions.setBuildingType(buildingType);
+    actions.setWidth(width);
+    actions.setEaveHeight(eaveHeight);
+    actions.setSlope(roofPitch);
+    // Calcul du nombre de travées pour correspondre à la longueur
+    const spacing = config.baySpacing || 6;
+    const bays = Math.max(4, Math.round(length / spacing));
+    actions.setBayCount(bays);
+  }, [length, width, eaveHeight, roofPitch, buildingType, actions, config.baySpacing]);
 
   // Surface au sol & toiture
   const floorArea = useMemo(() => length * width, [length, width]);
@@ -53,9 +70,8 @@ export default function BuildingStructureSimulator({
 
   // Revenus annuels (EDF OA ~0.114 €/kWh)
   const annualRevenue = useMemo(() => Math.round(annualProductionKwh * 0.114), [annualProductionKwh]);
-  const annualNetCashflow = useMemo(() => Math.round(annualRevenue - (installedKwc * 22)), [annualRevenue, installedKwc]); // TURPE + maintenance
+  const annualNetCashflow = useMemo(() => Math.round(annualRevenue - (installedKwc * 22)), [annualRevenue, installedKwc]);
 
-  // Modèle Tiers-Investisseur : Soulte versée ou Reste à charge
   const soulteInvestisseur = useMemo(() => Math.round(installedKwc * 180), [installedKwc]);
   const resteAChargeAgriculteur = Math.max(0, totalBuildingCost - soulteInvestisseur);
 
@@ -74,65 +90,74 @@ export default function BuildingStructureSimulator({
     return data;
   }, [totalProjectInvestment, annualNetCashflow]);
 
-  const handleSaveToArchives = () => {
-    const simData = {
-      type: 'structure_metallique',
-      title: `Hangar Solaire ${length}m × ${width}m (${installedKwc} kWc)`,
-      length,
-      width,
-      eaveHeight,
-      roofPitch,
-      floorArea,
-      roofArea,
-      kwc: installedKwc,
-      annualProductionKwh,
-      totalBuildingCost,
-      totalProjectInvestment,
-      soulteInvestisseur,
-      resteAChargeAgriculteur,
-      annualRevenue,
-      annualNetCashflow,
-      createdAt: new Date().toISOString(),
-      projectId: selectedProject?.id || null
-    };
+  const paybackYear = useMemo(() => {
+    const item = chartData.find(d => d.cumul >= 0);
+    return item ? item.year.replace('An ', '') : '9';
+  }, [chartData]);
 
-    if (onSaveSimulation) onSaveSimulation(simData);
-  };
+  // Synchronisation avec l'état global du parent
+  useEffect(() => {
+    if (onStateUpdate) {
+      onStateUpdate({
+        type: 'structure_metallique',
+        title: `Hangar Solaire ${length}m × ${width}m (${installedKwc} kWc)`,
+        length,
+        width,
+        eaveHeight,
+        roofPitch,
+        floorArea,
+        roofArea,
+        kwc: installedKwc,
+        annualProductionKwh,
+        totalBuildingCost,
+        totalProjectInvestment,
+        soulteInvestisseur,
+        resteAChargeAgriculteur,
+        annualRevenue,
+        annualNetCashflow,
+        paybackYear
+      });
+    }
+  }, [
+    length, width, eaveHeight, roofPitch, floorArea, roofArea, installedKwc,
+    annualProductionKwh, totalBuildingCost, totalProjectInvestment,
+    soulteInvestisseur, resteAChargeAgriculteur, annualRevenue,
+    annualNetCashflow, paybackYear, onStateUpdate
+  ]);
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-6 pb-12">
+    <div className="w-full max-w-5xl mx-auto space-y-4">
       
       {/* Header */}
-      <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-white/10 pb-4 mb-4">
+      <div className="bg-[#0e2b4d] text-white rounded-3xl p-5 shadow-2xl relative overflow-hidden">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-white/10 pb-3 mb-3">
           <div>
-            <span className="text-[11px] font-black tracking-widest uppercase text-blue-400 block mb-1">
+            <span className="text-xs font-black tracking-widest uppercase text-blue-400 block mb-0.5">
               Simulateur Bâtiment &amp; Hangar Agricole
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               Structure Métallique <span className="text-amber-400">Sur-Mesure</span>
             </h2>
-            <p className="text-xs text-slate-300 mt-1 max-w-2xl">
+            <p className="text-xs text-slate-300 mt-0.5 max-w-2xl">
               Dimensionnez votre hangar ou bâtiment à charpente métallique financé par sa toiture photovoltaïque.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-white/10 self-end md:self-auto">
+          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 self-end md:self-auto">
             <Ruler className="w-4 h-4 text-amber-400 shrink-0" />
             <span className="text-xs font-bold text-white">
-              {length}m × {width}m = {floorArea} m²
+              {length}m × {width}m = {floorArea} m² ({installedKwc} kWc)
             </span>
           </div>
         </div>
       </div>
 
-      {/* Contenu principal en 2 colonnes */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Contenu principal */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         
         {/* Colonne Gauche : Paramètres de dimensionnement */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <div className="lg:col-span-5 space-y-3">
+          <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
             <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
               <Sliders className="w-4 h-4 text-blue-600" />
               Dimensions du Bâtiment
@@ -141,7 +166,7 @@ export default function BuildingStructureSimulator({
             <div>
               <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
                 <span>Longueur du bâtiment</span>
-                <span className="text-blue-600">{length} m</span>
+                <span className="text-blue-600 font-black">{length} m</span>
               </div>
               <input
                 type="range"
@@ -157,7 +182,7 @@ export default function BuildingStructureSimulator({
             <div>
               <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
                 <span>Largeur / Portée</span>
-                <span className="text-blue-600">{width} m</span>
+                <span className="text-blue-600 font-black">{width} m</span>
               </div>
               <input
                 type="range"
@@ -170,18 +195,17 @@ export default function BuildingStructureSimulator({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">Hauteur égout</label>
                 <select
                   value={eaveHeight}
                   onChange={(e) => setEaveHeight(Number(e.target.value))}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold"
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold"
                 >
                   <option value={3.5}>3.50 m</option>
-                  <option value={4.0}>4.00 m (Standard)</option>
-                  <option value={4.5}>4.50 m</option>
-                  <option value={5.0}>5.00 m</option>
+                  <option value={4.0}>4.00 m</option>
+                  <option value={5.0}>5.00 m (Standard)</option>
                   <option value={6.0}>6.00 m</option>
                 </select>
               </div>
@@ -191,7 +215,7 @@ export default function BuildingStructureSimulator({
                 <select
                   value={roofPitch}
                   onChange={(e) => setRoofPitch(Number(e.target.value))}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold"
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold"
                 >
                   <option value={10}>10°</option>
                   <option value={15}>15° (Standard)</option>
@@ -201,23 +225,23 @@ export default function BuildingStructureSimulator({
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-100">
+            <div className="pt-1 border-t border-slate-100">
               <label className="text-xs font-bold text-slate-700 block mb-1">Type de structure</label>
               <select
                 value={buildingType}
                 onChange={(e) => setBuildingType(e.target.value)}
-                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold"
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold"
               >
                 <option value="asymetrique_1">Asymétrique (Optimisé Sud)</option>
-                <option value="symetrique">Symétrique (2 pans égaux)</option>
-                <option value="monopente">Monopente (1 seul pan Sud)</option>
+                <option value="symetrique">Symétrique (2 pans)</option>
+                <option value="monopente">Monopente (1 pan Sud)</option>
               </select>
             </div>
           </div>
 
           {/* Décomposition Financière */}
-          <div className="bg-slate-50 rounded-3xl p-5 border border-slate-200 space-y-2 text-xs">
-            <h4 className="font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-2">
+          <div className="bg-slate-50 rounded-3xl p-4 border border-slate-200 space-y-1.5 text-xs">
+            <h4 className="font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1.5">
               Budget Estimatif Prévisionnel
             </h4>
             <div className="flex justify-between py-1 border-b border-slate-200">
@@ -225,86 +249,75 @@ export default function BuildingStructureSimulator({
               <strong className="text-slate-800">{charpenteCost.toLocaleString('fr-FR')} €</strong>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-200">
-              <span className="text-slate-500">Couverture Bac Acier Anti-condensation</span>
+              <span className="text-slate-500">Couverture Bac Acier</span>
               <strong className="text-slate-800">{couvertureCost.toLocaleString('fr-FR')} €</strong>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-200">
               <span className="text-slate-500">Fondations &amp; Plots Béton</span>
               <strong className="text-slate-800">{fondationsCost.toLocaleString('fr-FR')} €</strong>
             </div>
-            <div className="flex justify-between py-1.5 font-bold text-slate-900 border-t border-slate-300">
-              <span>Coût Total Bâtiment</span>
+            <div className="flex justify-between py-1 font-bold text-slate-900 border-t border-slate-300">
+              <span>Total Gros-Œuvre Bâtiment</span>
               <span className="text-blue-700">{totalBuildingCost.toLocaleString('fr-FR')} € HT</span>
             </div>
           </div>
         </div>
 
-        {/* Colonne Droite : Vue 3D & KPIs de Rentabilité */}
-        <div className="lg:col-span-7 space-y-4">
+        {/* Colonne Droite : Visionneuse 3D du Configurateur & KPIs */}
+        <div className="lg:col-span-7 space-y-3">
           
-          {/* Rendu 3D interactif du bâtiment */}
-          <div className="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between mb-2 px-2">
+          {/* Rendu 3D du Configurateur */}
+          <div className="bg-white rounded-3xl p-3 border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between mb-1.5 px-2">
               <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
                 <Box className="w-4 h-4 text-blue-600" />
-                Visualisation 3D Bâtiment &amp; Centrale ({length}m × {width}m)
+                Modèle 3D Dynamique ({length}m × {width}m)
               </span>
-              <span className="text-[11px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">
-                ⚡ {installedKwc} kWc
+              <span className="text-[11px] font-bold bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                <Rotate3d className="w-3.5 h-3.5" />
+                Interactif 360°
               </span>
             </div>
 
-            <div className="w-full h-[240px] rounded-2xl overflow-hidden bg-slate-900 border border-slate-200">
-              <Building3DViewer
-                buildingConfig={{
-                  longueur: length,
-                  largeur: width,
-                  hauteur_egout: eaveHeight,
-                  pente: roofPitch,
-                  buildingType: buildingType,
-                  leftSide: 'none',
-                  rightSide: 'none',
-                  type: 'batiment_solaire'
-                }}
-                height={240}
-              />
+            <div className="w-full h-[220px] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 relative">
+              <BuildingScene viewMode="3D" isCapturing={false} />
             </div>
           </div>
 
           {/* KPIs */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">Production / an</span>
-              <span className="text-xl font-black text-blue-600 block my-1">
-                {annualProductionKwh.toLocaleString('fr-FR')} <span className="text-xs text-slate-500 font-semibold">kWh</span>
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">Production Solaire</span>
+              <span className="text-xl font-black text-blue-600 block my-0.5">
+                {annualProductionKwh.toLocaleString('fr-FR')} <span className="text-xs text-slate-500 font-semibold">kWh/an</span>
               </span>
               <span className="text-[10px] text-slate-400">Centrale {installedKwc} kWc</span>
             </div>
 
-            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">Soulte Tiers-Investisseur</span>
-              <span className="text-xl font-black text-emerald-600 block my-1">
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">Soulte Tiers-Invest.</span>
+              <span className="text-xl font-black text-emerald-600 block my-0.5">
                 +{soulteInvestisseur.toLocaleString('fr-FR')} <span className="text-xs text-slate-500 font-semibold">€</span>
               </span>
               <span className="text-[10px] text-slate-400">Aide au financement</span>
             </div>
 
-            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs">
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs">
               <span className="text-[10px] font-bold text-slate-400 uppercase block">Reste à Charge Net</span>
-              <span className="text-xl font-black text-purple-600 block my-1">
+              <span className="text-xl font-black text-purple-600 block my-0.5">
                 {resteAChargeAgriculteur.toLocaleString('fr-FR')} <span className="text-xs text-slate-500 font-semibold">€</span>
               </span>
-              <span className="text-[10px] text-slate-400">Pour le bâtiment complet</span>
+              <span className="text-[10px] text-slate-400">Amorti en {paybackYear} ans</span>
             </div>
           </div>
 
-          {/* Graphique de Cashflow 20 ans */}
-          <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
+          {/* Cashflow 20 ans avec point d'amortissement */}
+          <div className="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm space-y-2">
             <div className="flex items-center justify-between text-xs font-bold text-slate-700">
               <span>Amortissement de l'investissement global (20 ans)</span>
               <span className="text-emerald-600">Revenus nets : +{annualNetCashflow.toLocaleString('fr-FR')} €/an</span>
             </div>
-            <div className="h-44 w-full">
+            <div className="h-36 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -314,34 +327,11 @@ export default function BuildingStructureSimulator({
                     formatter={(val) => [`${Number(val).toLocaleString('fr-FR')} €`, 'Cumul net']}
                     contentStyle={{ borderRadius: 10, fontSize: 11 }}
                   />
+                  <ReferenceLine x={`An ${paybackYear}`} stroke="#ef4444" strokeDasharray="4 4" strokeWidth={2} />
                   <Bar dataKey="cumul" fill="#3b82f6" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </div>
-
-          {/* Boutons d'action */}
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={handleSaveToArchives}
-              className="px-5 py-2.5 rounded-2xl bg-slate-900 hover:bg-black text-white font-bold text-xs flex items-center gap-2 shadow-sm transition-all"
-            >
-              <Save className="w-4 h-4 text-blue-400" />
-              Sauvegarder
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                handleSaveToArchives();
-                if (onExportPDF) onExportPDF();
-              }}
-              className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs flex items-center gap-2 shadow-lg shadow-blue-600/30 transition-all hover:scale-105"
-            >
-              <FileDown className="w-4 h-4" />
-              Exporter Dossier Bâtiment (PDF A4)
-            </button>
           </div>
         </div>
 
