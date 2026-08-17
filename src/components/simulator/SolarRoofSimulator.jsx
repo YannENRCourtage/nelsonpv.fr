@@ -230,7 +230,7 @@ export default function SolarRoofSimulator({
   ]);
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-4">
+    <div className="w-full space-y-4">
       
       {/* Header */}
       <div className="bg-[#0e2b4d] text-white rounded-3xl p-5 shadow-2xl relative overflow-hidden">

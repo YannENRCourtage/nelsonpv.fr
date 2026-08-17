@@ -41,6 +41,19 @@ export const getProductionForDepartment = (deptCode) => {
   return 1250;
 };
 
+// ─── Catalogue Gamme ECO & EVO Bâtiments Standards ───────────────────────────
+export const DEFAULT_ECO_EVO_CATALOG = [
+  { id: 'eco_12x18', gamme: 'ECO', name: 'ECO 12×18 (216 m²)', length: 18, width: 12, eaveHeight: 4.5, roofPitch: 10, kwc: 36, charpentePrice: 17280, couverturePrice: 6480, fondationsPrice: 5400, pvPrice: 19800, soulte: 6480, resteACharge: 22680 },
+  { id: 'eco_15x24', gamme: 'ECO', name: 'ECO 15×24 (360 m²)', length: 24, width: 15, eaveHeight: 5.0, roofPitch: 10, kwc: 60, charpentePrice: 27000, couverturePrice: 10800, fondationsPrice: 9000, pvPrice: 33000, soulte: 10800, resteACharge: 36000 },
+  { id: 'eco_18x30', gamme: 'ECO', name: 'ECO 18×30 (540 m²)', length: 30, width: 18, eaveHeight: 5.0, roofPitch: 10, kwc: 100, charpentePrice: 40500, couverturePrice: 16200, fondationsPrice: 13500, pvPrice: 55000, soulte: 18000, resteACharge: 52200 },
+  { id: 'eco_20x36', gamme: 'ECO', name: 'ECO 20×36 (720 m²)', length: 36, width: 20, eaveHeight: 5.5, roofPitch: 10, kwc: 140, charpentePrice: 54000, couverturePrice: 21600, fondationsPrice: 18000, pvPrice: 77000, soulte: 25200, resteACharge: 68400 },
+  { id: 'eco_24x42', gamme: 'ECO', name: 'ECO 24×42 (1008 m²)', length: 42, width: 24, eaveHeight: 6.0, roofPitch: 10, kwc: 200, charpentePrice: 75600, couverturePrice: 30240, fondationsPrice: 25200, pvPrice: 110000, soulte: 36000, resteACharge: 95040 },
+  { id: 'evo_15x30', gamme: 'EVO', name: 'EVO 15×30 (450 m²)', length: 30, width: 15, eaveHeight: 5.0, roofPitch: 15, kwc: 85, charpentePrice: 36000, couverturePrice: 13950, fondationsPrice: 11250, pvPrice: 46750, soulte: 15300, resteACharge: 45900 },
+  { id: 'evo_18x36', gamme: 'EVO', name: 'EVO 18×36 (648 m²)', length: 36, width: 18, eaveHeight: 5.5, roofPitch: 15, kwc: 125, charpentePrice: 51840, couverturePrice: 20088, fondationsPrice: 16200, pvPrice: 68750, soulte: 22500, resteACharge: 65628 },
+  { id: 'evo_20x42', gamme: 'EVO', name: 'EVO 20×42 (840 m²)', length: 42, width: 20, eaveHeight: 6.0, roofPitch: 15, kwc: 165, charpentePrice: 67200, couverturePrice: 26040, fondationsPrice: 21000, pvPrice: 90750, soulte: 29700, resteACharge: 84540 },
+  { id: 'evo_24x48', gamme: 'EVO', name: 'EVO 24×48 (1152 m²)', length: 48, width: 24, eaveHeight: 6.0, roofPitch: 15, kwc: 230, charpentePrice: 92160, couverturePrice: 35712, fondationsPrice: 28800, pvPrice: 126500, soulte: 41400, resteACharge: 115272 }
+];
+
 // ─── Valeurs par défaut pour la Base de Données ──────────────────────────────
 export const DEFAULT_DATABASE_SETTINGS = {
   // 1. Borne IRVE
@@ -88,10 +101,10 @@ export const DEFAULT_DATABASE_SETTINGS = {
       { kwc: 22, pricePerKwc: 1.15, totalPriceHT: 25300, defaultAutoconsoRate: 45 },
       { kwc: 36, pricePerKwc: 0.98, totalPriceHT: 35280, defaultAutoconsoRate: 40 },
     ],
-    defaultValorisationAutoconso: 0.26, // €/kWh autoconsommé valorisé
-    defaultValorisationSurplus: 0.13,    // €/kWh surplus vendu
-    defaultElectricityInflation: 3.5,   // % par an
-    defaultNationalYield: 1250,         // kWh/kWc/an
+    defaultValorisationAutoconso: 0.26,
+    defaultValorisationSurplus: 0.13,
+    defaultElectricityInflation: 3.5,
+    defaultNationalYield: 1250,
     orientationCoefficients: {
       south: { label: 'Plein Sud (180°)', coeff: 1.00 },
       south_east: { label: 'Sud-Est (135°)', coeff: 0.95 },
@@ -109,32 +122,33 @@ export const DEFAULT_DATABASE_SETTINGS = {
     }
   },
 
-  // 3. Toiture Photovoltaïque (Revente Totale & Location)
+  // 3. Toiture Photovoltaïque
   toiturePv: {
     tarifsAchatEdfOa: [
       { maxKwc: 36, label: 'Inférieur à 36 kWc', tarifAchatKwh: 0.1312, primeInjectionKwh: 0.04 },
       { maxKwc: 100, label: '36 kWc à 100 kWc', tarifAchatKwh: 0.1141, primeInjectionKwh: 0.03 },
       { maxKwc: 500, label: '100 kWc à 500 kWc', tarifAchatKwh: 0.1085, primeInjectionKwh: 0.02 },
     ],
-    surfaceToPowerRatio: 5.0, // 5.0 m² par kWc (ex: 500 m² = 100 kWc)
-    installationCostPerKwc: 950, // €/kWc
+    surfaceToPowerRatio: 5.0,
+    installationCostPerKwc: 950,
     raccordementCostBase: 12000,
-    turpeAnnualPerKwc: 12.0, // €/kWc/an
+    turpeAnnualPerKwc: 12.0,
     maintenanceAnnualPerKwc: 10.0,
-    loyerAnnuelM2Toiture: 5.5, // €/m²/an en location
-    soulteM2Toiture: 45.0, // €/m² en versement unique
+    loyerAnnuelM2Toiture: 5.5,
+    soulteM2Toiture: 45.0,
   },
 
-  // 4. Structure Métallique Sur-Mesure
+  // 4. Structure Métallique & Gamme ECO-EVO
   structure: {
-    charpenteCostM2: 75.0, // €/m²
-    couvertureBacAcierM2: 28.0, // €/m²
-    fondationsCostM2: 25.0, // €/m²
-    pvIntegrationPerWc: 0.55, // €/Wc
+    charpenteCostM2: 75.0,
+    couvertureBacAcierM2: 28.0,
+    fondationsCostM2: 25.0,
+    pvIntegrationPerWc: 0.55,
     raccordementStandard: 15000,
     fraisDeveloppement: 5000,
-    defaultEaveHeight: 4.0,
-    defaultRoofPitch: 15,
+    defaultEaveHeight: 4.5,
+    defaultRoofPitch: 10,
+    ecoEvoCatalog: DEFAULT_ECO_EVO_CATALOG
   }
 };
 
@@ -143,7 +157,7 @@ export const useSimulatorSettingsStore = create(
     (set, get) => ({
       settings: DEFAULT_DATABASE_SETTINGS,
 
-      // Mise à jour de section
+      // Mise à jour de section avec auto-save
       updateIrveSettings: (newIrve) => set((state) => ({
         settings: { ...state.settings, irve: { ...state.settings.irve, ...newIrve } }
       })),
@@ -160,39 +174,52 @@ export const useSimulatorSettingsStore = create(
         settings: { ...state.settings, structure: { ...state.settings.structure, ...newStruct } }
       })),
 
-      // Réinitialiser une section ou tout
-      resetToDefaults: (section = null) => set((state) => {
-        if (!section) return { settings: DEFAULT_DATABASE_SETTINGS };
+      updateEcoEvoItem: (id, updatedItem) => set((state) => {
+        const catalog = state.settings.structure.ecoEvoCatalog || DEFAULT_ECO_EVO_CATALOG;
+        const newCatalog = catalog.map(item => item.id === id ? { ...item, ...updatedItem } : item);
         return {
           settings: {
             ...state.settings,
-            [section]: DEFAULT_DATABASE_SETTINGS[section]
+            structure: {
+              ...state.settings.structure,
+              ecoEvoCatalog: newCatalog
+            }
           }
         };
       }),
 
-      // Helper de calcul de prix pour l'autoconsommation
-      getSolarPriceForKwc: (kwc) => {
-        const grid = get().settings.autoconsommation.pricePerKwcGrid;
-        const exact = grid.find(g => g.kwc === kwc);
-        if (exact) return exact.totalPriceHT;
-        // Interpolation ou formule standard
-        const basePrice = 0.98 * Math.pow(1.02, Math.max(0, 36 - kwc));
-        return Math.round(basePrice * kwc * 1000);
+      // Réinitialisation par défaut
+      resetToDefaults: (section = null) => {
+        if (!section) {
+          set({ settings: DEFAULT_DATABASE_SETTINGS });
+        } else {
+          set((state) => ({
+            settings: {
+              ...state.settings,
+              [section]: DEFAULT_DATABASE_SETTINGS[section]
+            }
+          }));
+        }
       },
 
-      // Helper de taux d'autoconsommation par défaut
+      // Getters pratiques
+      getSolarPriceForKwc: (kwc) => {
+        const grid = get().settings.autoconsommation.pricePerKwcGrid || [];
+        const match = grid.find(g => g.kwc === kwc);
+        if (match) return match.totalPriceHT;
+        // Interpolation
+        return Math.round(kwc * 1500);
+      },
+
       getDefaultAutoconsoRate: (kwc) => {
-        if (kwc <= 3) return 85;
-        if (kwc <= 6) return 65;
-        if (kwc <= 9) return 55;
-        if (kwc <= 15) return 50;
-        if (kwc <= 22) return 45;
-        return 40;
+        const grid = get().settings.autoconsommation.pricePerKwcGrid || [];
+        const match = grid.find(g => g.kwc === kwc);
+        if (match) return match.defaultAutoconsoRate;
+        return 60;
       }
     }),
     {
-      name: 'nelson-simulator-database-settings-v1',
+      name: 'nelson_simulator_database_v3',
     }
   )
 );
