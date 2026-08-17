@@ -127,7 +127,7 @@ export default function IrveFrontSimulator({
   ]);
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-4">
+    <div className="w-full space-y-4">
       
       {/* Header élargi de 30% */}
       <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-2xl relative overflow-hidden">

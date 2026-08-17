@@ -66,7 +66,7 @@ export default function SimulatorDatabaseTab() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveSubTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all whitespace-nowrap ${
                   isActive
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'bg-white/10 text-slate-300 hover:bg-white/20'

@@ -272,7 +272,7 @@ export default function SolarRoofSimulator({
                 key={item.step}
                 type="button"
                 onClick={() => setCurrentStep(item.step)}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-black transition-all whitespace-nowrap ${
                   isCurrent
                     ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/40 ring-2 ring-amber-300'
                     : isDone
@@ -280,7 +280,7 @@ export default function SolarRoofSimulator({
                     : 'bg-white/5 text-slate-400 hover:text-white'
                 }`}
               >
-                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs font-black ${isCurrent ? 'bg-white text-amber-950' : 'bg-white/20 text-white'}`}>
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-black ${isCurrent ? 'bg-white text-amber-950' : 'bg-white/20 text-white'}`}>
                   {isDone ? '✓' : item.step}
                 </span>
                 <span>{item.label}</span>

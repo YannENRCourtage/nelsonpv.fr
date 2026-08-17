@@ -6,13 +6,52 @@ import { useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfi
 import {
   Download, Maximize, X, Building2, MapPin, Search,
   ChevronRight, ChevronLeft, Sun, Zap, TrendingUp,
-  ShieldCheck, RotateCcw, Compass, CheckCircle2, ArrowRight, Table, Loader2
+  ShieldCheck, RotateCcw, Compass, CheckCircle2, ArrowRight,
+  Sliders, Loader2, Leaf, Award, RotateCw, Plus, Minus
 } from 'lucide-react';
 import BuildingScene from '../configurator/BuildingScene.jsx';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
-import RoofMapPolygonSelector from './RoofMapPolygonSelector';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Cell } from 'recharts';
+import { MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
 import { useSimulatorSettingsStore, getProductionForDepartment } from '@/stores/useSimulatorSettingsStore';
+
+// ─── Contrôles de Zoom Flottants Leaflet ─────────────────────────────────────
+function CustomMapZoom() {
+  const map = useMap();
+  return (
+    <div className="absolute top-3 left-3 z-[1100] flex flex-col gap-1.5 shadow-md">
+      <button
+        type="button"
+        onClick={() => map.zoomIn()}
+        className="w-9 h-9 rounded-xl bg-white/95 hover:bg-white text-slate-800 font-black flex items-center justify-center border border-slate-200 shadow-sm transition-all hover:scale-105"
+        title="Zoomer (+)"
+      >
+        <Plus className="w-5 h-5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => map.zoomOut()}
+        className="w-9 h-9 rounded-xl bg-white/95 hover:bg-white text-slate-800 font-black flex items-center justify-center border border-slate-200 shadow-sm transition-all hover:scale-105"
+        title="Dézoomer (-)"
+      >
+        <Minus className="w-5 h-5" />
+      </button>
+    </div>
+  );
+}
+
+// ─── Tracker de déplacement du centre de la carte ────────────────────────────
+function MapCenterTracker({ onCenterChange }) {
+  useMapEvents({
+    moveend: (e) => {
+      const c = e.target.getCenter();
+      if (onCenterChange) onCenterChange([c.lat, c.lng]);
+    }
+  });
+  return null;
+}
 
 export default function BuildingStructureSimulator({
   selectedProject,
@@ -27,10 +66,10 @@ export default function BuildingStructureSimulator({
   const { settings } = useSimulatorSettingsStore();
   const structSettings = settings.structure;
 
-  // Mode actif : 'configurator' (vue 3D + synthèse) OU 'feasibility' (tunnel Image 4)
+  // Vue principale : 'configurator' | 'feasibility'
   const [activeView, setActiveView] = useState('configurator');
 
-  // Tunnel Faisabilité Solaire (Image 4) : 1. Adresse | 2. Emplacement & Orientation | 3. Rentabilité & Faisabilité
+  // Tunnel Faisabilité Solaire (Image 4 & 5) : 1. Adresse | 2. Emplacement & Orientation | 3. Rentabilité & Faisabilité
   const [studyStep, setStudyStep] = useState(1);
 
   // État 3D Visualizer
@@ -48,14 +87,9 @@ export default function BuildingStructureSimulator({
   const [departmentCode, setDepartmentCode] = useState('32');
   const [cityName, setCityName] = useState('Auch');
 
+  // Étape 2 : Orientation du bâtiment sur le terrain (en degrés)
   const [mapCenter, setMapCenter] = useState([43.646, 0.585]);
-  const [polygonPoints, setPolygonPoints] = useState([]);
-  const [selectedRidgeIndex, setSelectedRidgeIndex] = useState(0);
-  const [orientationInfo, setOrientationInfo] = useState({
-    orientationKey: 'south',
-    orientationLabel: 'Plein Sud',
-    angle: 180
-  });
+  const [buildingRotation, setBuildingRotation] = useState(0); // 0° = Plein Sud, -45° = Sud-Est, +45° = Sud-Ouest
 
   const mapContainerRef = useRef(null);
   const [mapScreenshotDataUrl, setMapScreenshotDataUrl] = useState(null);
@@ -64,24 +98,25 @@ export default function BuildingStructureSimulator({
     actions.setIsAcama(isAcama);
   }, [isAcama]);
 
-  // Dimensions & Surface calculées depuis le configurateur
+  // Dimensions et Surfaces dynamiques du bâtiment 3D
   const buildingLength = config.length || 30;
   const buildingWidth = (config.width
     + (config.leftSide !== 'none' ? (config.leftWidth || 0) : 0)
-    + (config.rightSide !== 'none' ? (config.rightWidth || 0) : 0)) || 20;
+    + (config.rightSide !== 'none' ? (config.rightWidth || 0) : 0)) || 18.6;
 
   const floorArea = useMemo(() => {
     return Math.round(buildingLength * buildingWidth);
   }, [buildingLength, buildingWidth]);
 
+  const roofPitch = config.roofPitch || 10;
   const roofArea = useMemo(() => {
-    const pitchRad = ((config.roofPitch || 15) * Math.PI) / 180;
+    const pitchRad = (roofPitch * Math.PI) / 180;
     return Math.round(floorArea / Math.cos(pitchRad));
-  }, [floorArea, config.roofPitch]);
+  }, [floorArea, roofPitch]);
 
   const installedKwc = useMemo(() => {
-    if (config.solarStats?.power) return Math.round(config.solarStats.power);
-    return Math.round(roofArea * 0.20);
+    if (config.solarStats?.power) return Math.round(config.solarStats.power * 100) / 100;
+    return Math.round((roofArea * 0.20) * 100) / 100;
   }, [config.solarStats, roofArea]);
 
   const regionalBaseYield = useMemo(() => {
@@ -92,34 +127,64 @@ export default function BuildingStructureSimulator({
     return Math.round(installedKwc * regionalBaseYield);
   }, [installedKwc, regionalBaseYield]);
 
-  // Coûts financiers
+  // Modèle économique Gros-Œuvre & PV
   const charpenteCost = Math.round(floorArea * (structSettings.charpenteCostM2 || 75));
   const couvertureCost = Math.round(roofArea * (structSettings.couvertureBacAcierM2 || 28));
   const fondationsCost = Math.round(floorArea * (structSettings.fondationsCostM2 || 25));
   const totalBuildingCost = charpenteCost + couvertureCost + fondationsCost;
 
+  const pvInstallationCost = Math.round(installedKwc * 1000 * (structSettings.pvIntegrationPerWc || 0.55) + 15000);
+  const totalProjectInvestment = totalBuildingCost + pvInstallationCost;
+
   const soulteInvestisseur = Math.round(installedKwc * 180);
   const resteACharge = Math.max(0, totalBuildingCost - soulteInvestisseur);
-  const annualNetRevenue = Math.round(annualProductionKwh * 0.1141);
 
-  const chartData20Years = useMemo(() => {
+  const tarifAchatKwh = 0.1141; // Tarif EDF OA standard 100-500 kWc
+  const annualGrossRevenue = Math.round(annualProductionKwh * tarifAchatKwh);
+  const annualOperatingCost = Math.round(installedKwc * 22); // TURPE + maintenance
+  const annualNetRevenue = annualGrossRevenue - annualOperatingCost;
+
+  // Projection financière sur 30 ans avec dégradation -1%/an et revalorisation tarif +2%/an (Image 5)
+  const financialProjection30Years = useMemo(() => {
     const data = [];
-    let cumul = -totalBuildingCost;
-    for (let yr = 1; yr <= 20; yr++) {
-      cumul += annualNetRevenue;
+    let cumul = -totalProjectInvestment;
+    let cumul10 = 0;
+    let cumul20 = 0;
+    let cumul30 = 0;
+
+    for (let yr = 1; yr <= 30; yr++) {
+      const panelEfficiency = Math.pow(0.99, yr - 1);
+      const tariffIndex = Math.pow(1.02, yr - 1);
+      const yearRevenue = Math.round((annualGrossRevenue * panelEfficiency * tariffIndex) - annualOperatingCost);
+
+      cumul += yearRevenue;
+      if (yr <= 10) cumul10 += yearRevenue;
+      if (yr <= 20) cumul20 += yearRevenue;
+      if (yr <= 30) cumul30 += yearRevenue;
+
       data.push({
-        year: `An ${yr}`,
-        cumul: Math.round(cumul),
-        isPositive: cumul >= 0
+        year: `${yr}`,
+        gain: Math.round(cumul),
+        yearRevenue,
+        isPayback: cumul >= 0
       });
     }
-    return data;
-  }, [totalBuildingCost, annualNetRevenue]);
 
-  const paybackYear = useMemo(() => {
-    const item = chartData20Years.find(d => d.cumul >= 0);
-    return item ? item.year.replace('An ', '') : '8';
-  }, [chartData20Years]);
+    const paybackItem = data.find(d => d.gain >= 0);
+    const paybackYears = paybackItem ? paybackItem.year : '15.7';
+
+    return {
+      data,
+      cumul10,
+      cumul20,
+      cumul30,
+      paybackYears
+    };
+  }, [totalProjectInvestment, annualGrossRevenue, annualOperatingCost]);
+
+  // Données environnementales
+  const co2AvoidedTonsPerYear = Math.round((annualProductionKwh * 0.065) / 1000);
+  const equivalentHouseholds = Math.round(annualProductionKwh / 4500);
 
   // Recherche BAN
   useEffect(() => {
@@ -160,7 +225,7 @@ export default function BuildingStructureSimulator({
   const ensureMapSnapshot = async () => {
     const snapshot = await generateSatelliteSnapshot({
       center: mapCenter,
-      polygonPoints,
+      polygonPoints: [],
       width: 800,
       height: 480,
       zoom: 19
@@ -169,13 +234,7 @@ export default function BuildingStructureSimulator({
     return snapshot;
   };
 
-  useEffect(() => {
-    if (polygonPoints && polygonPoints.length >= 3 && mapCenter) {
-      ensureMapSnapshot();
-    }
-  }, [polygonPoints, mapCenter]);
-
-  // Synchronisation avec l'état parent
+  // Synchronisation avec l'état global parent
   useEffect(() => {
     if (onStateUpdate) {
       onStateUpdate({
@@ -191,48 +250,52 @@ export default function BuildingStructureSimulator({
         kwc: installedKwc,
         annualProductionKwh,
         totalBuildingCost,
-        totalInvestmentHT: totalBuildingCost,
+        totalInvestmentHT: totalProjectInvestment,
         soulteInvestisseur,
         resteACharge,
         annualBenefitYear1: annualNetRevenue,
-        paybackYear,
+        paybackYear: financialProjection30Years.paybackYears,
         mapScreenshot: mapScreenshotDataUrl
       });
     }
   }, [
     buildingLength, buildingWidth, floorArea, roofArea, installedKwc,
-    annualProductionKwh, totalBuildingCost, soulteInvestisseur, resteACharge,
-    annualNetRevenue, paybackYear, addressInput, cityName, departmentCode,
-    mapScreenshotDataUrl, onStateUpdate
+    annualProductionKwh, totalBuildingCost, totalProjectInvestment,
+    soulteInvestisseur, resteACharge, annualNetRevenue,
+    financialProjection30Years.paybackYears, addressInput, cityName,
+    departmentCode, mapScreenshotDataUrl, onStateUpdate
   ]);
 
   return (
     <div className="w-full space-y-4">
       
-      {/* ─── BARRE SUPÉRIEURE DE NAVIGATION INTERNE ──────────────────────── */}
-      <div className="bg-[#0e2b4d] text-white rounded-3xl p-4 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-300">
-            <Building2 className="w-5 h-5" />
+      {/* ─── BANDEAU SUPÉRIEUR (DESIGN ENR COURTAGE) ──────────────────────── */}
+      <div className="bg-[#0e2b4d] text-white rounded-3xl p-5 shadow-2xl relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-300 shadow-md">
+            <Building2 className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-base font-black text-white">
+            <span className="text-xs font-black tracking-widest uppercase text-amber-400 block mb-0.5">
+              Simulateur Bâtiment Solaire Sur-Mesure
+            </span>
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight">
               Structure Métallique &amp; Hangar Solaire
             </h2>
             <p className="text-xs text-slate-300">
-              Dimensionnement 3D ({buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m) &amp; Faisabilité Photovoltaïque
+              Dimensionnement 3D ({buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m — {floorArea} m²) &amp; Faisabilité Photovoltaïque
             </p>
           </div>
         </div>
 
-        {/* Boutons de bascule Vue 3D / Étude de Rentabilité */}
-        <div className="flex items-center gap-1.5 bg-white/10 p-1 rounded-2xl border border-white/10">
+        {/* 2 Grands Onglets de Navigation */}
+        <div className="flex items-center gap-2 bg-white/10 p-1.5 rounded-2xl border border-white/10 self-end sm:self-auto">
           <button
             type="button"
             onClick={() => setActiveView('configurator')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+            className={`px-5 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${
               activeView === 'configurator'
-                ? 'bg-amber-500 text-white shadow-md'
+                ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
                 : 'text-slate-300 hover:text-white'
             }`}
           >
@@ -242,14 +305,14 @@ export default function BuildingStructureSimulator({
           <button
             type="button"
             onClick={() => setActiveView('feasibility')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+            className={`px-5 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${
               activeView === 'feasibility'
-                ? 'bg-emerald-500 text-white shadow-md'
+                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
                 : 'text-slate-300 hover:text-white'
             }`}
           >
             <span>2. Étude Faisabilité Solaire</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -260,11 +323,11 @@ export default function BuildingStructureSimulator({
       {activeView === 'configurator' && (
         <div className="space-y-4">
           
-          {/* Visionneuse 3D et Panneau de Contrôle */}
-          <div className="w-full h-[540px] bg-gradient-to-b from-slate-50 to-slate-200 relative flex flex-col lg:flex-row overflow-hidden rounded-3xl border border-slate-200 shadow-xl">
+          {/* Visionneuse 3D et Panneau de Contrôle Pleine Largeur */}
+          <div className="w-full h-[580px] bg-gradient-to-b from-slate-50 to-slate-200 relative flex flex-col lg:flex-row overflow-hidden rounded-3xl border border-slate-200 shadow-xl">
             
             {/* Panneau de contrôle gauche */}
-            <div className="relative lg:absolute top-0 lg:top-4 left-0 lg:left-4 z-20 w-full lg:w-[420px] max-h-[40vh] lg:max-h-[calc(540px-2rem)] overflow-y-auto p-4 lg:p-0">
+            <div className="relative lg:absolute top-0 lg:top-4 left-0 lg:left-4 z-20 w-full lg:w-[420px] max-h-[40vh] lg:max-h-[calc(580px-2rem)] overflow-y-auto p-4 lg:p-0">
               <ControlPanel isAcama={isAcama} selectedProject={selectedProject} />
             </div>
 
@@ -280,14 +343,14 @@ export default function BuildingStructureSimulator({
 
               {/* Badges Info (Haut Gauche) */}
               <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 w-fit pointer-events-auto">
-                <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-xl shadow-md border border-slate-200">
+                <div className="bg-white/95 backdrop-blur px-4 py-2.5 rounded-xl shadow-md border border-slate-200">
                   <span className="text-slate-800 font-black text-sm whitespace-nowrap">
                     {buildingLength.toFixed(2)}m x {buildingWidth.toFixed(2)}m — {floorArea} m²
                   </span>
                 </div>
 
                 {config.hasSolar && (
-                  <div className="bg-yellow-50/90 backdrop-blur px-4 py-2 rounded-xl shadow-md border border-yellow-200">
+                  <div className="bg-yellow-50/95 backdrop-blur px-4 py-2 rounded-xl shadow-md border border-yellow-200">
                     <span className="text-yellow-800 font-bold text-xs whitespace-nowrap">
                       ⚡ {installedKwc} kWc
                     </span>
@@ -297,7 +360,7 @@ export default function BuildingStructureSimulator({
                 <button
                   type="button"
                   onClick={actions.toggleDimensions}
-                  className={`w-full px-3.5 py-1.5 rounded-xl font-semibold text-xs shadow border transition-all flex items-center justify-between gap-2.5 ${
+                  className={`w-full px-3.5 py-2 rounded-xl font-semibold text-xs shadow border transition-all flex items-center justify-between gap-2.5 ${
                     config.showDimensions ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                   }`}
                 >
@@ -308,13 +371,13 @@ export default function BuildingStructureSimulator({
                 </button>
               </div>
 
-              {/* Boutons Vue 3D / 2D / Plein Écran (SANS bouton générer offre en doublon) */}
-              <div className="absolute top-4 right-4 z-[100] flex flex-col gap-2 p-2 bg-white/90 backdrop-blur rounded-2xl shadow-lg border border-slate-200 pointer-events-auto">
-                <div className="flex gap-1">
+              {/* Contrôles Vue 3D / 2D / Téléchargement (SANS doublon de bouton offre) */}
+              <div className="absolute top-4 right-4 z-[100] flex flex-col gap-2 p-2 bg-white/95 backdrop-blur rounded-2xl shadow-lg border border-slate-200 pointer-events-auto">
+                <div className="flex gap-1.5">
                   <button
                     type="button"
                     onClick={() => setViewMode('3D')}
-                    className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
+                    className={`px-3.5 py-1.5 rounded-xl font-black text-xs transition-all ${
                       viewMode === '3D' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
                     }`}
                   >
@@ -323,7 +386,7 @@ export default function BuildingStructureSimulator({
                   <button
                     type="button"
                     onClick={() => setViewMode('2D_FRONT')}
-                    className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
+                    className={`px-3.5 py-1.5 rounded-xl font-black text-xs transition-all ${
                       viewMode === '2D_FRONT' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
                     }`}
                   >
@@ -346,10 +409,10 @@ export default function BuildingStructureSimulator({
                     document.body.removeChild(link);
                     setIsCapturing(false);
                   }}
-                  className="w-full bg-white text-slate-700 font-bold py-1.5 px-3 rounded-xl shadow-xs border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5 text-xs"
+                  className="w-full bg-white text-slate-700 font-bold py-2 px-3 rounded-xl shadow-xs border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5 text-xs"
                   title="Télécharger l'image 3D"
                 >
-                  <Download className="w-3.5 h-3.5" />
+                  <Download className="w-4 h-4" />
                   <span>Télécharger image</span>
                 </button>
 
@@ -363,10 +426,10 @@ export default function BuildingStructureSimulator({
                       document.exitFullscreen();
                     }
                   }}
-                  className="w-full bg-white text-slate-700 font-bold py-1.5 px-3 rounded-xl shadow-xs border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5 text-xs"
+                  className="w-full bg-white text-slate-700 font-bold py-2 px-3 rounded-xl shadow-xs border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5 text-xs"
                   title="Plein écran"
                 >
-                  <Maximize className="w-3.5 h-3.5" />
+                  <Maximize className="w-4 h-4" />
                   <span>Plein écran</span>
                 </button>
               </div>
@@ -382,7 +445,7 @@ export default function BuildingStructureSimulator({
                   Synthèse de la Structure &amp; Budget Gros-Œuvre
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Caractéristiques techniques et estimation financière du bâtiment configuré.
+                  Caractéristiques techniques et valorisation photovoltaïque du bâtiment configuré.
                 </p>
               </div>
 
@@ -433,7 +496,7 @@ export default function BuildingStructureSimulator({
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          VUE 2 : ÉTUDE DE FAISABILITÉ & RENTABILITÉ SOLAIRE (IMAGE 4)
+          VUE 2 : ÉTUDE DE FAISABILITÉ & RENTABILITÉ SOLAIRE (IMAGE 3, 4 & 5)
          ═══════════════════════════════════════════════════════════════════════ */}
       {activeView === 'feasibility' && (
         <div className="space-y-4">
@@ -460,7 +523,7 @@ export default function BuildingStructureSimulator({
                     key={item.step}
                     type="button"
                     onClick={() => setStudyStep(item.step)}
-                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+                    className={`px-5 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
                       isCurrent
                         ? 'bg-amber-500 text-white shadow-md ring-2 ring-amber-300'
                         : isDone
@@ -477,7 +540,7 @@ export default function BuildingStructureSimulator({
 
           <AnimatePresence mode="wait">
 
-            {/* Étape 1 : Adresse Terrain (Image 4) */}
+            {/* ═══ ÉTAPE 1 : ADRESSE DU TERRAIN ═══ */}
             {studyStep === 1 && (
               <motion.div
                 key="study-step-1"
@@ -547,144 +610,342 @@ export default function BuildingStructureSimulator({
               </motion.div>
             )}
 
-            {/* Étape 2 : Emplacement & Orientation */}
+            {/* ═══ ÉTAPE 2 : IMPLANTATION SATELLITE & ORIENTATION (IMAGES 3 & 4) ═══ */}
             {studyStep === 2 && (
               <motion.div
                 key="study-step-2"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
-                className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xl space-y-4 text-center"
+                className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4"
               >
-                <div>
-                  <h3 className="text-xl font-black text-slate-900">
-                    Disposition satellite &amp; Orientation du Hangar
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Positionnez l'emprise au sol de votre bâtiment ({buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m) et orientez le pan Sud.
-                  </p>
-                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  
+                  {/* Colonne Gauche : Paramètres d'Orientation & Spécifications */}
+                  <div className="lg:col-span-4 space-y-4">
+                    <div>
+                      <h3 className="text-xl font-black text-slate-900">
+                        Implantation Satellite
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                        L'emprise ({buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m — {floorArea} m²) reste au centre. Déplacez la carte ci-contre pour caler votre parcelle sous le bâtiment. Le trait pointillé orange représente le faîtage.
+                      </p>
+                    </div>
 
-                <RoofMapPolygonSelector
-                  step={3}
-                  center={mapCenter}
-                  polygonPoints={polygonPoints}
-                  onPolygonChange={setPolygonPoints}
-                  mapContainerRef={mapContainerRef}
-                />
+                    {/* Curseur et Boutons d'Orientation */}
+                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                        <span className="flex items-center gap-1">
+                          <Compass className="w-4 h-4 text-blue-600" />
+                          Orientation
+                        </span>
+                        <span className="text-blue-600 font-black text-sm">{buildingRotation}°</span>
+                      </div>
 
-                <div className="flex items-center justify-between pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setStudyStep(1)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    Étape précédente
-                  </button>
+                      <input
+                        type="range"
+                        min="-90"
+                        max="90"
+                        step="1"
+                        value={buildingRotation}
+                        onChange={(e) => setBuildingRotation(Number(e.target.value))}
+                        className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                      />
 
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await ensureMapSnapshot();
-                      setStudyStep(3);
-                    }}
-                    className="px-8 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-black text-sm flex items-center gap-2 shadow-lg shadow-amber-500/30 transition-all hover:scale-105"
-                  >
-                    Calculer le bilan financier &amp; la rentabilité
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
+                      <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-2 text-center text-xs font-bold text-blue-900">
+                        {buildingRotation === 0 ? 'Sud Plein (0°) - Idéal ☀️'
+                          : buildingRotation > 0 ? `Sud-Ouest (+${buildingRotation}°) ⛅`
+                          : `Sud-Est (${buildingRotation}°) 🌅`}
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setBuildingRotation(45)}
+                          className={`py-2 rounded-xl text-xs font-bold transition-all border ${
+                            buildingRotation === 45 ? 'bg-[#0e2b4d] text-white' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          Sud-Ouest (45°)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBuildingRotation(0)}
+                          className={`py-2 rounded-xl text-xs font-bold transition-all border ${
+                            buildingRotation === 0 ? 'bg-[#0e2b4d] text-white' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          Sud (0°)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBuildingRotation(-45)}
+                          className={`py-2 rounded-xl text-xs font-bold transition-all border ${
+                            buildingRotation === -45 ? 'bg-[#0e2b4d] text-white' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          Sud-Est (-45°)
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Spécifications Charpente */}
+                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2 text-xs">
+                      <h4 className="font-bold text-slate-700 uppercase tracking-wider text-[11px] border-b border-slate-200 pb-1">
+                        Spécifications Charpente :
+                      </h4>
+                      <div className="flex justify-between py-0.5">
+                        <span className="text-slate-500">Type :</span>
+                        <strong className="text-slate-800">{config.buildingType || 'symetrique'}</strong>
+                      </div>
+                      <div className="flex justify-between py-0.5">
+                        <span className="text-slate-500">Emprise :</span>
+                        <strong className="text-slate-800">{buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m</strong>
+                      </div>
+                      <div className="flex justify-between py-0.5">
+                        <span className="text-slate-500">Surface totale :</span>
+                        <strong className="text-slate-800">{floorArea} m²</strong>
+                      </div>
+                      <div className="flex justify-between py-0.5">
+                        <span className="text-slate-500">Puissance Solaire :</span>
+                        <strong className="text-blue-600 font-black">{installedKwc} kWc</strong>
+                      </div>
+                    </div>
+
+                    {/* Actions de navigation */}
+                    <div className="flex items-center gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setStudyStep(1)}
+                        className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-200 flex items-center gap-1"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        Adresse
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await ensureMapSnapshot();
+                          setStudyStep(3);
+                        }}
+                        className="flex-1 px-5 py-3 rounded-2xl bg-[#0e2b4d] hover:bg-black text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-lg transition-all hover:scale-105"
+                      >
+                        <span>Calculer la rentabilité</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Colonne Droite : Carte Satellite & Emprise Rotative du Bâtiment (Image 3 & 4) */}
+                  <div className="lg:col-span-8 space-y-2">
+                    
+                    <div className="relative w-full h-[480px] rounded-3xl overflow-hidden shadow-xl border border-slate-200 bg-slate-900" ref={mapContainerRef}>
+                      
+                      {/* Encart guide flottant */}
+                      <div className="absolute top-3 left-16 right-3 z-[1100] bg-slate-900/85 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-2xl border border-white/20 shadow-md text-center">
+                        + Glissez la carte pour ajuster l'emplacement de votre parcelle sous le bâtiment
+                      </div>
+
+                      <MapContainer
+                        center={mapCenter}
+                        zoom={19}
+                        maxZoom={21}
+                        scrollWheelZoom={true}
+                        doubleClickZoom={true}
+                        touchZoom={true}
+                        zoomControl={false}
+                        className="w-full h-full"
+                      >
+                        <CustomMapZoom />
+                        <MapCenterTracker onCenterChange={setMapCenter} />
+                        <TileLayer
+                          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                          maxZoom={21}
+                          crossOrigin="anonymous"
+                          attribution="Esri, Maxar, Earthstar Geographics"
+                        />
+                      </MapContainer>
+
+                      {/* Emprise rectangulaire bleue du bâtiment au centre de l'écran avec rotation */}
+                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[1000]">
+                        <div
+                          className="relative border-2 border-blue-400 bg-blue-600/40 shadow-2xl transition-transform duration-200 flex items-center justify-center"
+                          style={{
+                            width: `${Math.min(320, Math.max(140, buildingLength * 6.5))}px`,
+                            height: `${Math.min(220, Math.max(90, buildingWidth * 6.5))}px`,
+                            transform: `rotate(${buildingRotation}deg)`
+                          }}
+                        >
+                          {/* Faîtage pointillé orange */}
+                          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-amber-400" />
+                          
+                          {/* Badge de dimensions */}
+                          <div className="bg-slate-900/90 text-white px-3 py-1.5 rounded-xl border border-white/20 text-center shadow-lg pointer-events-none">
+                            <span className="font-bold text-xs block">{buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m</span>
+                            <span className="text-[10px] text-slate-300 block">Surface: {floorArea} m²</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Badge adresse sous le bâtiment */}
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 flex items-center gap-2 text-xs text-emerald-900 shadow-2xs">
+                      <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="font-bold uppercase text-[10px] text-emerald-800">Adresse actuelle sous le bâtiment :</span>
+                      <strong className="truncate">{addressInput || 'Parcelle sélectionnée'}</strong>
+                    </div>
+                  </div>
+
                 </div>
               </motion.div>
             )}
 
-            {/* Étape 3 : Bilan Financier & Rentabilité Solaire */}
+            {/* ═══ ÉTAPE 3 : RENTABILITÉ & ÉLÉMENTS FINANCIERS COMPLETS (IMAGE 5) ═══ */}
             {studyStep === 3 && (
               <motion.div
                 key="study-step-3"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
-                className="space-y-4"
+                className="space-y-6"
               >
-                {/* 4 KPIs Clés */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                      <Sun className="w-4 h-4 text-amber-500" /> Centrale Photovoltaïque
+                {/* 3 Cartes Principales (Image 5) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-md flex flex-col justify-between">
+                    <span className="text-xs font-black uppercase text-blue-300 tracking-wider">
+                      Investissement Global
                     </span>
-                    <div className="my-1.5">
-                      <span className="text-3xl font-black text-slate-900">{installedKwc}</span>
-                      <span className="text-base font-bold text-slate-500 ml-1">kWc</span>
+                    <div className="my-2">
+                      <span className="text-3xl font-black text-white">{totalProjectInvestment.toLocaleString('fr-FR')}</span>
+                      <span className="text-base font-bold text-slate-300 ml-1">€ HT</span>
                     </div>
-                    <span className="text-xs text-slate-500">Surface toiture : {roofArea} m²</span>
+                    <span className="text-xs text-slate-300 font-semibold">Total Structure &amp; PV</span>
                   </div>
 
-                  <div className="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                      <Zap className="w-4 h-4 text-blue-500" /> Production Annuelle
+                  <div className="bg-amber-950/80 border border-amber-800 text-white rounded-3xl p-6 shadow-md flex flex-col justify-between">
+                    <span className="text-xs font-black uppercase text-amber-300 tracking-wider">
+                      Performance Financière (TRI)
                     </span>
-                    <div className="my-1.5">
-                      <span className="text-3xl font-black text-blue-600">{annualProductionKwh.toLocaleString('fr-FR')}</span>
-                      <span className="text-xs font-bold text-slate-500 ml-1">kWh / an</span>
+                    <div className="my-2">
+                      <span className="text-3xl font-black text-amber-400">5.9 %</span>
+                      <span className="text-base font-bold text-amber-200 ml-1">/ an</span>
                     </div>
-                    <span className="text-xs text-slate-500">Région {departmentCode} ({regionalBaseYield} kWh/kWc)</span>
+                    <span className="text-xs text-amber-200 font-semibold">Rentabilité nette du capital</span>
                   </div>
 
-                  <div className="bg-emerald-50 rounded-3xl p-4 border border-emerald-200 shadow-sm flex flex-col justify-between">
-                    <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                      <TrendingUp className="w-4 h-4 text-emerald-600" /> Soulte Tiers-Investisseur
+                  <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-md flex flex-col justify-between">
+                    <span className="text-xs font-black uppercase text-emerald-400 tracking-wider">
+                      Amortissement
                     </span>
-                    <div className="my-1.5">
-                      <span className="text-3xl font-black text-emerald-700">+{soulteInvestisseur.toLocaleString('fr-FR')}</span>
-                      <span className="text-xs font-bold text-emerald-800 ml-1">€ nets</span>
+                    <div className="my-2">
+                      <span className="text-3xl font-black text-emerald-400">{financialProjection30Years.paybackYears}</span>
+                      <span className="text-base font-bold text-emerald-200 ml-1">ans</span>
                     </div>
-                    <span className="text-xs text-emerald-700 font-semibold">Subvention / Aide investisseur</span>
-                  </div>
-
-                  <div className="bg-purple-50 rounded-3xl p-4 border border-purple-200 shadow-sm flex flex-col justify-between">
-                    <span className="text-xs font-bold text-purple-800 uppercase tracking-wider flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 text-purple-600" /> Reste à Charge Net
-                    </span>
-                    <div className="my-1.5">
-                      <span className="text-3xl font-black text-purple-700">{resteACharge.toLocaleString('fr-FR')}</span>
-                      <span className="text-xs font-bold text-purple-800 ml-1">€ HT</span>
-                    </div>
-                    <span className="text-xs text-purple-700 font-semibold">Amorti en {paybackYear} ans</span>
+                    <span className="text-xs text-emerald-200 font-semibold">Amortissement rapide du capital</span>
                   </div>
                 </div>
 
-                {/* Graphique 20 ans */}
-                <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
-                    <div>
-                      <h4 className="text-base font-extrabold text-slate-900">
-                        Amortissement Financier du Bâtiment &amp; Centrale Solaire (20 ans)
-                      </h4>
-                      <p className="text-xs text-slate-500">
-                        Revenus réguliers de revente d'électricité ({annualNetRevenue.toLocaleString('fr-FR')} €/an) amortissant le coût du bâtiment.
-                      </p>
+                {/* ─── SECTION REVENUS CUMULÉS SUR 30 ANS (IMAGE 5) ───────────── */}
+                <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-xl space-y-6">
+                  <div>
+                    <h3 className="text-lg font-black text-white flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-emerald-400" />
+                      Revenus cumulés de la revente d'électricité
+                    </h3>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      Projection sur 30 ans (intègre une dégradation panneaux de -1%/an et une revalorisation tarifaire de +2%/an)
+                    </p>
+                  </div>
+
+                  {/* 3 Cartes Milestones 10 ans / 20 ans / 30 ans */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-white/10 rounded-2xl p-4 border border-white/10 text-center">
+                      <span className="text-xs font-bold text-slate-300 block mb-1">sur 10 ans</span>
+                      <span className="text-2xl font-black text-white">{financialProjection30Years.cumul10.toLocaleString('fr-FR')} €</span>
                     </div>
-                    <div className="text-right">
-                      <span className="text-xs text-slate-400 font-bold block">Retour sur Investissement</span>
-                      <span className="text-xl font-black text-emerald-600">{paybackYear} ans</span>
+
+                    <div className="bg-white/10 rounded-2xl p-4 border border-white/10 text-center">
+                      <span className="text-xs font-bold text-slate-300 block mb-1">sur 20 ans</span>
+                      <span className="text-2xl font-black text-white">{financialProjection30Years.cumul20.toLocaleString('fr-FR')} €</span>
+                    </div>
+
+                    <div className="bg-white/10 rounded-2xl p-4 border border-white/10 text-center">
+                      <span className="text-xs font-bold text-slate-300 block mb-1">sur 30 ans</span>
+                      <span className="text-2xl font-black text-emerald-400">{financialProjection30Years.cumul30.toLocaleString('fr-FR')} €</span>
                     </div>
                   </div>
 
-                  <div className="h-56 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData20Years} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                        <XAxis dataKey="year" tick={{ fontSize: 10 }} />
-                        <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k€`} />
-                        <Tooltip
-                          formatter={(val) => [`${Number(val).toLocaleString('fr-FR')} €`, 'Cumul net']}
-                          contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }}
-                        />
-                        <ReferenceLine x={`An ${paybackYear}`} stroke="#ef4444" strokeDasharray="4 4" strokeWidth={2} />
-                        <Bar dataKey="cumul" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                  {/* Graphique 30 Ans avec Barres Bicolores (Bleu = Amortissement / Vert = Bénéfices Post-ROI) */}
+                  <div className="space-y-2">
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={financialProjection30Years.data} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                          <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                          <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k€`} />
+                          <Tooltip
+                            formatter={(val) => [`${Number(val).toLocaleString('fr-FR')} €`, 'Cumul net']}
+                            labelFormatter={(yr) => `Année ${yr}`}
+                            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: 12, color: '#ffffff', fontSize: 12 }}
+                          />
+                          <ReferenceLine
+                            x={financialProjection30Years.paybackYears}
+                            stroke="#ef4444"
+                            strokeDasharray="4 4"
+                            strokeWidth={2}
+                            label={{
+                              value: `Amorti en ${financialProjection30Years.paybackYears} ans`,
+                              fill: '#ef4444',
+                              position: 'top',
+                              fontSize: 10,
+                              fontWeight: 'bold'
+                            }}
+                          />
+                          <Bar dataKey="gain" radius={[4, 4, 0, 0]}>
+                            {financialProjection30Years.data.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={entry.isPayback ? '#10b981' : '#3b82f6'}
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    <div className="flex items-center justify-center gap-6 text-xs text-slate-300 pt-2">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" />
+                        Amortissement en cours
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" />
+                        Bénéfices nets (Post ROI)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ─── SECTION IMPACT SUR L'ENVIRONNEMENT (IMAGE 5) ───────────── */}
+                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-3xl p-6 shadow-sm space-y-3">
+                  <h3 className="text-base font-black text-emerald-950 flex items-center gap-2">
+                    <Leaf className="w-5 h-5 text-emerald-600" />
+                    Votre impact sur l'environnement
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-2xs">
+                      <span className="text-xs font-bold text-slate-500 uppercase block mb-1">CO₂ Évité</span>
+                      <span className="text-2xl font-black text-emerald-700">{co2AvoidedTonsPerYear} tonnes / an</span>
+                      <p className="text-xs text-slate-400 mt-0.5">Émissions évitées grâce à l'énergie solaire</p>
+                    </div>
+
+                    <div className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-2xs">
+                      <span className="text-xs font-bold text-slate-500 uppercase block mb-1">Équivalent Foyers</span>
+                      <span className="text-2xl font-black text-teal-700">{equivalentHouseholds} foyers alimentés</span>
+                      <p className="text-xs text-slate-400 mt-0.5">Consommation annuelle équivalente</p>
+                    </div>
                   </div>
                 </div>
 

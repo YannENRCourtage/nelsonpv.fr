@@ -363,8 +363,8 @@ export default function IrveSimulator() {
                 <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
                 {sidebarOpen && (
                   <div className="min-w-0 flex-1">
-                    <span className="font-black text-sm block leading-tight">{item.label}</span>
-                    <span className="text-xs text-white/80 block mt-0.5 truncate">{item.desc}</span>
+                    <span className="font-black text-base block leading-tight">{item.label}</span>
+                    <span className="text-xs font-semibold text-white/80 block mt-1 truncate">{item.desc}</span>
                   </div>
                 )}
               </button>
@@ -404,7 +404,7 @@ export default function IrveSimulator() {
             </div>
 
             {activeMainTab === 'simulateurs' && (
-              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl border border-slate-200">
+              <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
                 {[
                   { id: 'autoconso', label: 'Autoconsommation', icon: Sun, color: 'text-amber-500' },
                   { id: 'toiture', label: 'Toiture PV', icon: Building2, color: 'text-blue-500' },
@@ -418,7 +418,7 @@ export default function IrveSimulator() {
                       key={sol.id}
                       type="button"
                       onClick={() => setActiveSolution(sol.id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black transition-all ${
                         isSelected
                           ? 'bg-[#0e2b4d] text-white shadow-md'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
