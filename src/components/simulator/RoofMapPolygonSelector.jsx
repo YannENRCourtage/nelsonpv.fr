@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Polygon, Polyline, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { RotateCcw, Plus, Minus, Compass } from 'lucide-react';
-import html2canvas from 'html2canvas';
 
 // ─── Calcul de Surface Géodésique (Formule Sphérique WGS84) ──────────────────
-function calculatePolygonArea(latlngs) {
+export function calculatePolygonArea(latlngs) {
   if (!latlngs || latlngs.length < 3) return 0;
   const EARTH_RADIUS = 6378137;
   let total = 0;
@@ -26,7 +25,7 @@ function calculatePolygonArea(latlngs) {
 }
 
 // ─── Calcul d'orientation selon le faîtage ───────────────────────────────────
-function calculateOrientationFromRidge(p1, p2) {
+export function calculateOrientationFromRidge(p1, p2) {
   const dLng = (p2.lng - p1.lng) * Math.cos(((p1.lat + p2.lat) / 2 * Math.PI) / 180);
   const dLat = p2.lat - p1.lat;
   
@@ -66,15 +65,15 @@ function calculateOrientationFromRidge(p1, p2) {
   return { orientationKey, orientationLabel, angle: Math.round(bestAngle) };
 }
 
-// ─── Icône Marker 1, 2, 3, 4 Style ENR Courtage ──────────────────────────────
-const createNumberedIcon = (number, isSelected = false) => {
+// ─── Créateur d'icône HTML pour les 4 coins ─────────────────────────────────
+const createCornerIcon = (number) => {
   return L.divIcon({
-    className: 'custom-roof-corner-marker-container',
+    className: 'custom-corner-icon',
     html: `
       <div style="
         width: 36px;
         height: 36px;
-        background: ${isSelected ? '#00e699' : '#00b875'};
+        background: #00b875;
         color: #ffffff;
         border-radius: 50%;
         display: flex;
@@ -84,10 +83,9 @@ const createNumberedIcon = (number, isSelected = false) => {
         font-size: 16px;
         font-family: Arial, sans-serif;
         border: 3px solid #ffffff;
-        box-shadow: 0 0 14px rgba(0, 230, 153, 0.95), 0 4px 8px rgba(0,0,0,0.5);
+        box-shadow: 0 0 14px rgba(0, 230, 153, 0.95), 0 4px 10px rgba(0,0,0,0.5);
         cursor: grab;
         user-select: none;
-        touch-action: none;
       ">
         ${number}
       </div>
@@ -97,26 +95,19 @@ const createNumberedIcon = (number, isSelected = false) => {
   });
 };
 
-// ─── Contrôleur de centrage intelligent lors du changement d'étape ───────────
+// ─── Contrôleur de centrage automatique sur le polygone au changement d'étape
 function StepTransitionController({ step, center, polygonPoints }) {
   const map = useMap();
   const prevStepRef = useRef(step);
 
   useEffect(() => {
-    // Si l'étape change, centrer la carte sur le polygone ou sur le repère
     if (prevStepRef.current !== step) {
       prevStepRef.current = step;
 
-      if ((step === 3 || step === 4 || step === 6) && polygonPoints && polygonPoints.length >= 4) {
-        // Centrer sur le polygone
-        const lats = polygonPoints.map(p => p.lat);
-        const lngs = polygonPoints.map(p => p.lng);
-        const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
-        const centerLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
+      if ((step === 3 || step === 4 || step === 5 || step === 6) && polygonPoints && polygonPoints.length >= 4) {
         const bounds = L.latLngBounds(polygonPoints.map(p => [p.lat, p.lng]));
-        
         map.fitBounds(bounds, {
-          padding: [50, 50],
+          padding: [60, 60],
           maxZoom: 20,
           animate: true
         });
@@ -154,12 +145,12 @@ function CustomZoomControls() {
   );
 }
 
-// ─── Gestionnaire de déplacement de la carte (Étape 2) sans forcer de zoom ──
+// ─── Suivi du déplacement de la carte (Étape 2) sans forcer le zoom ──────────
 function MapDragTracker({ onCenterChange, enabled }) {
-  const map = useMapEvents({
-    moveend: () => {
+  useMapEvents({
+    moveend: (e) => {
       if (enabled && onCenterChange) {
-        const c = map.getCenter();
+        const c = e.target.getCenter();
         onCenterChange([c.lat, c.lng]);
       }
     }
@@ -167,38 +158,139 @@ function MapDragTracker({ onCenterChange, enabled }) {
   return null;
 }
 
-// ─── Marqueur 1, 2, 3, 4 Natif Leaflet (Drag fluide sans perte de curseur) ────
-function NativeDraggableCorner({ index, initialPosition, onPositionChanged, onLiveDrag, map }) {
-  const markerRef = useRef(null);
+// ─── GESTIONNAIRE NATIF LEAFLET DES 4 COINS (SANS RELÂCHEMENT INTEMPESTIF) ──
+function NativeCornerMarkersLayer({
+  step,
+  points,
+  onPolygonChange,
+  onLiveSurfaceUpdate,
+  selectedRidgeIndex,
+  onRidgeSelect,
+  onOrientationChange
+}) {
+  const map = useMap();
+  const markersRef = useRef([]);
+  const polygonLayerRef = useRef(null);
+  const polylinesRef = useRef([]);
+  const pointsRef = useRef(points);
 
-  const eventHandlers = useMemo(
-    () => ({
-      dragstart() {
-        if (map) map.dragging.disable();
-      },
-      drag(e) {
-        const newPos = e.target.getLatLng();
-        if (onLiveDrag) onLiveDrag(index, newPos);
-      },
-      dragend(e) {
-        if (map) map.dragging.enable();
-        const newPos = e.target.getLatLng();
-        if (onPositionChanged) onPositionChanged(index, newPos);
-      },
-    }),
-    [index, onLiveDrag, onPositionChanged, map]
-  );
+  useEffect(() => {
+    pointsRef.current = points;
+  }, [points]);
 
-  return (
-    <Marker
-      ref={markerRef}
-      position={initialPosition}
-      draggable={true}
-      icon={createNumberedIcon(index + 1)}
-      eventHandlers={eventHandlers}
-      autoPan={false}
-    />
-  );
+  // Initialisation et gestion du polygone + arêtes + 4 marqueurs
+  useEffect(() => {
+    if (!map) return;
+
+    // Nettoyage des anciens éléments
+    markersRef.current.forEach(m => map.removeLayer(m));
+    markersRef.current = [];
+
+    if (polygonLayerRef.current) {
+      map.removeLayer(polygonLayerRef.current);
+      polygonLayerRef.current = null;
+    }
+
+    polylinesRef.current.forEach(pl => map.removeLayer(pl));
+    polylinesRef.current = [];
+
+    if (step < 3 || !points || points.length < 4) return;
+
+    // 1. Création du polygone vert
+    const latlngs = points.map(p => [p.lat, p.lng]);
+    const polygon = L.polygon(latlngs, {
+      color: '#00e699',
+      weight: 3.5,
+      fillColor: '#00b875',
+      fillOpacity: 0.38,
+      dashArray: step === 4 ? '4, 4' : null
+    }).addTo(map);
+    polygonLayerRef.current = polygon;
+
+    // 2. Création des arêtes cliquables (Étape 4)
+    if (step === 4) {
+      for (let i = 0; i < 4; i++) {
+        const p1 = points[i];
+        const p2 = points[(i + 1) % 4];
+        const isSelected = selectedRidgeIndex === i;
+
+        const polyline = L.polyline([[p1.lat, p1.lng], [p2.lat, p2.lng]], {
+          color: isSelected ? '#ef4444' : '#00e699',
+          weight: isSelected ? 6.5 : 4,
+          opacity: 0.95
+        }).addTo(map);
+
+        polyline.on('click', () => {
+          if (onRidgeSelect) onRidgeSelect(i);
+          const currentPts = pointsRef.current;
+          const ptA = currentPts[i];
+          const ptB = currentPts[(i + 1) % 4];
+          const res = calculateOrientationFromRidge(ptA, ptB);
+          if (onOrientationChange) onOrientationChange(res);
+        });
+
+        polylinesRef.current.push(polyline);
+      }
+    }
+
+    // 3. Création des 4 Marqueurs Déplaçables (Étape 3)
+    if (step === 3) {
+      points.forEach((pt, index) => {
+        const marker = L.marker([pt.lat, pt.lng], {
+          draggable: true,
+          icon: createCornerIcon(index + 1),
+          autoPan: false
+        }).addTo(map);
+
+        // Au début du glissement : désactiver le pan de la carte
+        marker.on('dragstart', () => {
+          map.dragging.disable();
+        });
+
+        // Pendant le glissement : mise à jour instantanée du tracé sans re-render React
+        marker.on('drag', () => {
+          const newPos = marker.getLatLng();
+          const currentPts = [...pointsRef.current];
+          currentPts[index] = { lat: newPos.lat, lng: newPos.lng };
+          pointsRef.current = currentPts;
+
+          // Mise à jour de la forme géométrique en temps réel à 60fps
+          if (polygonLayerRef.current) {
+            polygonLayerRef.current.setLatLngs(currentPts.map(p => [p.lat, p.lng]));
+          }
+
+          const currentArea = calculatePolygonArea(currentPts);
+          if (onLiveSurfaceUpdate) onLiveSurfaceUpdate(currentArea);
+        });
+
+        // Au relâchement définitif : réactiver la carte et sauvegarder les points
+        marker.on('dragend', () => {
+          map.dragging.enable();
+          const newPos = marker.getLatLng();
+          const currentPts = [...pointsRef.current];
+          currentPts[index] = { lat: newPos.lat, lng: newPos.lng };
+          pointsRef.current = currentPts;
+
+          if (onPolygonChange) onPolygonChange(currentPts);
+        });
+
+        markersRef.current.push(marker);
+      });
+    }
+
+    return () => {
+      markersRef.current.forEach(m => map.removeLayer(m));
+      markersRef.current = [];
+      if (polygonLayerRef.current) {
+        map.removeLayer(polygonLayerRef.current);
+        polygonLayerRef.current = null;
+      }
+      polylinesRef.current.forEach(pl => map.removeLayer(pl));
+      polylinesRef.current = [];
+    };
+  }, [map, step, points, selectedRidgeIndex, onPolygonChange, onLiveSurfaceUpdate, onRidgeSelect, onOrientationChange]);
+
+  return null;
 }
 
 export default function RoofMapPolygonSelector({
@@ -214,7 +306,6 @@ export default function RoofMapPolygonSelector({
   mapContainerRef
 }) {
   const [mapInstance, setMapInstance] = useState(null);
-  const polygonLayerRef = useRef(null);
 
   // Initialisation d'un rectangle de 4 points par défaut
   const initializeDefaultPolygon = useCallback((lat, lng) => {
@@ -240,57 +331,25 @@ export default function RoofMapPolygonSelector({
     return initializeDefaultPolygon(center[0], center[1]);
   }, [polygonPoints, center, initializeDefaultPolygon]);
 
-  // Points locaux dynamiques pour mise à jour fluide du polygone
-  const [livePoints, setLivePoints] = useState(currentPoints);
+  // Surface dynamique affichée
+  const [liveSurface, setLiveSurface] = useState(() => calculatePolygonArea(currentPoints));
 
   useEffect(() => {
-    setLivePoints(currentPoints);
+    setLiveSurface(calculatePolygonArea(currentPoints));
   }, [currentPoints]);
-
-  // Déplacement en direct (met à jour le tracé visuel sans re-créer les marqueurs)
-  const handleLiveDrag = (index, newLatLng) => {
-    setLivePoints(prev => {
-      const updated = [...prev];
-      updated[index] = { lat: newLatLng.lat, lng: newLatLng.lng };
-      return updated;
-    });
-  };
-
-  // Fin de déplacement : engagement définitif de la position
-  const handlePositionChanged = (index, newLatLng) => {
-    const updated = [...currentPoints];
-    updated[index] = { lat: newLatLng.lat, lng: newLatLng.lng };
-    setLivePoints(updated);
-    if (onPolygonChange) onPolygonChange(updated);
-  };
-
-  const calculatedSurface = useMemo(() => {
-    return calculatePolygonArea(livePoints);
-  }, [livePoints]);
 
   const handleResetRectangle = () => {
     if (center && center[0] && center[1]) {
       const reset = initializeDefaultPolygon(center[0], center[1]);
-      setLivePoints(reset);
       if (onPolygonChange) onPolygonChange(reset);
-    }
-  };
-
-  const handleEdgeClick = (edgeIdx) => {
-    if (step !== 4) return;
-    if (onRidgeSelect) onRidgeSelect(edgeIdx);
-    const p1 = livePoints[edgeIdx];
-    const p2 = livePoints[(edgeIdx + 1) % 4];
-    const res = calculateOrientationFromRidge(p1, p2);
-    if (onOrientationChange) {
-      onOrientationChange(res);
+      setLiveSurface(calculatePolygonArea(reset));
     }
   };
 
   return (
     <div className="relative w-full rounded-3xl overflow-hidden shadow-xl border border-slate-200 bg-slate-900" ref={mapContainerRef}>
       
-      {/* Conteneur Leaflet Agrandie (420px de hauteur) */}
+      {/* Conteneur Leaflet Agrandie (440px de hauteur) */}
       <div className="relative w-full h-[400px] sm:h-[440px] z-0">
         <MapContainer
           center={center}
@@ -307,7 +366,7 @@ export default function RoofMapPolygonSelector({
           <MapDragTracker enabled={step === 2} onCenterChange={onCenterChange} />
           <CustomZoomControls />
 
-          {/* Tuile Satellite Esri World Imagery (CORS activé pour capture PDF garantie) */}
+          {/* Tuile Satellite Esri World Imagery (CORS garanti) */}
           <TileLayer
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             maxZoom={21}
@@ -315,58 +374,19 @@ export default function RoofMapPolygonSelector({
             attribution="Esri World Imagery"
           />
 
-          {/* Polygone et Arêtes */}
-          {(step === 3 || step === 4 || step === 5 || step === 6) && livePoints.length >= 4 && (
-            <>
-              <Polygon
-                ref={polygonLayerRef}
-                positions={livePoints.map(p => [p.lat, p.lng])}
-                pathOptions={{
-                  color: '#00e699',
-                  weight: 4,
-                  fillColor: '#00b875',
-                  fillOpacity: 0.38,
-                  dashArray: step === 4 ? '4, 4' : null
-                }}
-              />
-
-              {/* Lignes du faîtage pour l'étape 4 */}
-              {livePoints.map((p, idx) => {
-                const nextP = livePoints[(idx + 1) % 4];
-                const isSelectedRidge = step === 4 && selectedRidgeIndex === idx;
-                return (
-                  <Polyline
-                    key={`edge-${idx}`}
-                    positions={[[p.lat, p.lng], [nextP.lat, nextP.lng]]}
-                    eventHandlers={{
-                      click: () => handleEdgeClick(idx)
-                    }}
-                    pathOptions={{
-                      color: isSelectedRidge ? '#ef4444' : '#00e699',
-                      weight: isSelectedRidge ? 6.5 : 4,
-                      opacity: 0.95,
-                      cursor: step === 4 ? 'pointer' : 'default'
-                    }}
-                  />
-                );
-              })}
-
-              {/* 4 Marqueurs Déplaçables SANS interruption React */}
-              {step === 3 && currentPoints.map((p, idx) => (
-                <NativeDraggableCorner
-                  key={`corner-marker-${idx}`}
-                  index={idx}
-                  initialPosition={[p.lat, p.lng]}
-                  onLiveDrag={handleLiveDrag}
-                  onPositionChanged={handlePositionChanged}
-                  map={mapInstance}
-                />
-              ))}
-            </>
-          )}
+          {/* Gestionnaire natif Leaflet sans interruption de drag */}
+          <NativeCornerMarkersLayer
+            step={step}
+            points={currentPoints}
+            onPolygonChange={onPolygonChange}
+            onLiveSurfaceUpdate={setLiveSurface}
+            selectedRidgeIndex={selectedRidgeIndex}
+            onRidgeSelect={onRidgeSelect}
+            onOrientationChange={onOrientationChange}
+          />
         </MapContainer>
 
-        {/* Étape 2 : Curseur vert clignotant sans texte */}
+        {/* Étape 2 : Curseur vert clignotant épuré */}
         {step === 2 && (
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[1000]">
             <div className="relative flex items-center justify-center animate-pulse">
@@ -378,7 +398,7 @@ export default function RoofMapPolygonSelector({
         )}
       </div>
 
-      {/* Barre d'informations */}
+      {/* Barre d'informations Étape 3 */}
       {step === 3 && (
         <div className="p-3.5 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
           <button
@@ -395,7 +415,7 @@ export default function RoofMapPolygonSelector({
               Nous estimons la surface de toiture à :
             </span>
             <span className="text-2xl font-black text-emerald-700 tracking-tight">
-              {calculatedSurface} m²
+              {liveSurface} m²
             </span>
           </div>
 
@@ -405,6 +425,7 @@ export default function RoofMapPolygonSelector({
         </div>
       )}
 
+      {/* Barre d'informations Étape 4 */}
       {step === 4 && (
         <div className="p-3.5 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-xs text-slate-600 font-medium">

@@ -1,6 +1,7 @@
 import React from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
 
 export const generateCommercialOfferPDF = async ({ simulation, selectedProject }) => {
   if (!simulation) return;
@@ -19,6 +20,22 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject }
   const clientName = selectedProject?.name || selectedProject?.lastName || sim.cityName || 'Client Privé';
   const clientAddress = sim.address || selectedProject?.address || (sim.cityName ? `${sim.cityName} (${sim.departmentCode || 'France'})` : 'Adresse du projet');
 
+  // Si capture satellite manquante, la générer automatiquement à la volée
+  let finalMapScreenshot = sim.mapScreenshot;
+  if (!finalMapScreenshot) {
+    try {
+      finalMapScreenshot = await generateSatelliteSnapshot({
+        center: sim.mapCenter || [43.6047, 1.4442],
+        polygonPoints: sim.polygonPoints || [],
+        width: 800,
+        height: 480,
+        zoom: 19
+      });
+    } catch (e) {
+      console.warn('Génération satellite de secours:', e);
+    }
+  }
+
   // Format A4 Portrait : 210mm x 297mm
   const container = document.createElement('div');
   container.style.width = '210mm';
@@ -35,6 +52,16 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject }
   const autoconsoDisplay = sim.autoconsoRate
     ? (sim.autoconsoKwh && sim.autoconsoKwh > 0 ? `${sim.autoconsoRate} % (${sim.autoconsoKwh.toLocaleString('fr-FR')} kWh)` : `${sim.autoconsoRate} %`)
     : '65 %';
+
+  const annualGainFormatted = sim.annualBenefitYear1
+    ? `+${sim.annualBenefitYear1.toLocaleString('fr-FR')} €`
+    : sim.annualRevenueReventeTotale
+    ? `+${sim.annualRevenueReventeTotale.toLocaleString('fr-FR')} €`
+    : sim.annualRentLoyer
+    ? `+${sim.annualRentLoyer.toLocaleString('fr-FR')} €`
+    : sim.annualRevenue
+    ? `+${sim.annualRevenue.toLocaleString('fr-FR')} €`
+    : `+${(Math.round((sim.annualProductionKwh || 11250) * 0.20)).toLocaleString('fr-FR')} €`;
 
   container.innerHTML = `
     <div style="display: flex; flex-direction: column; min-height: 273mm; justify-content: space-between;">
@@ -71,21 +98,21 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject }
 
           <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 12px; padding: 10px 8px; text-align: center;">
             <div style="font-size: 7.5pt; font-weight: bold; color: #166534; text-transform: uppercase;">Gains / an (An 1)</div>
-            <div style="font-size: 15pt; font-weight: 900; color: #16a34a; margin: 3px 0;">+${sim.annualBenefitYear1 ? sim.annualBenefitYear1.toLocaleString('fr-FR') : sim.annualRevenue ? sim.annualRevenue.toLocaleString('fr-FR') : '-'} €</div>
-            <div style="font-size: 7.5pt; color: #166534;">Économies annuelles</div>
+            <div style="font-size: 15pt; font-weight: 900; color: #16a34a; margin: 3px 0;">${annualGainFormatted}</div>
+            <div style="font-size: 7.5pt; color: #166534;">Économies / Revenus</div>
           </div>
 
           <div style="background: #faf5ff; border: 1.5px solid #e9d5ff; border-radius: 12px; padding: 10px 8px; text-align: center;">
             <div style="font-size: 7.5pt; font-weight: bold; color: #6b21a8; text-transform: uppercase;">Amortissement</div>
-            <div style="font-size: 15pt; font-weight: 900; color: #9333ea; margin: 3px 0;">${sim.paybackYear || 8} ans</div>
+            <div style="font-size: 15pt; font-weight: 900; color: #9333ea; margin: 3px 0;">${sim.paybackYear || 8} ${typeof sim.paybackYear === 'number' || !isNaN(Number(sim.paybackYear)) ? 'ans' : ''}</div>
             <div style="font-size: 7.5pt; color: #6b21a8;">Invest. : ${sim.totalInvestmentHT ? sim.totalInvestmentHT.toLocaleString('fr-FR') : sim.resteACharge ? sim.resteACharge.toLocaleString('fr-FR') : '-'} € HT</div>
           </div>
         </div>
 
-        <!-- VISUEL SATELLITE HAUTE DÉFINITION -->
+        <!-- VISUEL SATELLITE HAUTE DÉFINITION GARANTI -->
         <div style="border: 2px solid #cbd5e1; border-radius: 14px; overflow: hidden; background: #0f172a; margin-bottom: 16px; height: 230px; display: flex; align-items: center; justify-content: center; position: relative;">
-          ${sim.mapScreenshot ? `
-            <img src="${sim.mapScreenshot}" style="width: 100%; height: 100%; object-fit: cover;" alt="Vue toiture satellite" />
+          ${finalMapScreenshot ? `
+            <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover;" alt="Vue toiture satellite" />
           ` : `
             <div style="color: #94a3b8; font-size: 11pt; text-align: center; padding: 20px;">
               <div style="font-size: 24pt; margin-bottom: 6px;">🛰️</div>

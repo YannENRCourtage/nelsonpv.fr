@@ -8,7 +8,7 @@ import {
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine } from 'recharts';
 import { useSimulatorSettingsStore, getProductionForDepartment } from '@/stores/useSimulatorSettingsStore';
 import RoofMapPolygonSelector from './RoofMapPolygonSelector';
-import html2canvas from 'html2canvas';
+import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
 
 export default function SolarRoofSimulator({
   selectedProject,
@@ -26,6 +26,7 @@ export default function SolarRoofSimulator({
   );
   const [suggestions, setSuggestions] = useState([]);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const [isAddressSelected, setIsAddressSelected] = useState(false);
   const [departmentCode, setDepartmentCode] = useState('32');
   const [cityName, setCityName] = useState('Auch');
 
@@ -52,6 +53,7 @@ export default function SolarRoofSimulator({
     if (selectedProject) {
       if (selectedProject.address || selectedProject.city) {
         setAddressInput([selectedProject.address, selectedProject.zip, selectedProject.city].filter(Boolean).join(', '));
+        setIsAddressSelected(true);
       }
       if (selectedProject.zip) setDepartmentCode(selectedProject.zip.substring(0, 2));
       if (selectedProject.city) setCityName(selectedProject.city);
@@ -63,7 +65,7 @@ export default function SolarRoofSimulator({
   }, [selectedProject]);
 
   useEffect(() => {
-    if (!addressInput || addressInput.length < 3 || currentStep !== 1) {
+    if (isAddressSelected || !addressInput || addressInput.length < 3 || currentStep !== 1) {
       setSuggestions([]);
       return;
     }
@@ -80,7 +82,7 @@ export default function SolarRoofSimulator({
       }
     }, 250);
     return () => clearTimeout(timer);
-  }, [addressInput, currentStep]);
+  }, [addressInput, isAddressSelected, currentStep]);
 
   const handleSelectSuggestion = (feat) => {
     const label = feat.properties.label;
@@ -90,6 +92,7 @@ export default function SolarRoofSimulator({
     const city = feat.properties.city || '';
 
     setAddressInput(label);
+    setIsAddressSelected(true);
     setMapCenter([lat, lng]);
     if (dept) setDepartmentCode(dept);
     if (city) setCityName(city);
@@ -177,24 +180,23 @@ export default function SolarRoofSimulator({
     return item ? item.year.replace('An ', '') : '9';
   }, [chartData20Years]);
 
-  const takeMapSnapshot = async () => {
-    if (mapContainerRef.current) {
-      try {
-        const canvas = await html2canvas(mapContainerRef.current, {
-          scale: 2,
-          useCORS: true,
-          allowTaint: true,
-          logging: false
-        });
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-        setMapScreenshotDataUrl(dataUrl);
-        return dataUrl;
-      } catch (err) {
-        console.warn('Screenshot error:', err);
-      }
-    }
-    return null;
+  const ensureMapSnapshot = async () => {
+    const snapshot = await generateSatelliteSnapshot({
+      center: mapCenter,
+      polygonPoints,
+      width: 800,
+      height: 480,
+      zoom: 19
+    });
+    if (snapshot) setMapScreenshotDataUrl(snapshot);
+    return snapshot;
   };
+
+  useEffect(() => {
+    if (polygonPoints && polygonPoints.length >= 3 && mapCenter) {
+      ensureMapSnapshot();
+    }
+  }, [polygonPoints, mapCenter]);
 
   useEffect(() => {
     if (onStateUpdate) {
@@ -318,7 +320,10 @@ export default function SolarRoofSimulator({
                 <input
                   type="text"
                   value={addressInput}
-                  onChange={(e) => setAddressInput(e.target.value)}
+                  onChange={(e) => {
+                    setAddressInput(e.target.value);
+                    setIsAddressSelected(false);
+                  }}
                   placeholder="Saisissez une adresse ou une commune..."
                   className="w-full pl-12 pr-10 py-3.5 rounded-2xl border-2 border-slate-200 text-base font-semibold text-slate-800 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all shadow-sm"
                 />
@@ -327,7 +332,7 @@ export default function SolarRoofSimulator({
                 )}
               </div>
 
-              {suggestions.length > 0 && (
+              {!isAddressSelected && suggestions.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-slate-200 shadow-2xl z-50 overflow-hidden divide-y divide-slate-100">
                   {suggestions.map((s, idx) => (
                     <button
@@ -523,7 +528,7 @@ export default function SolarRoofSimulator({
               </p>
             </div>
 
-            {/* Triangle dynamique SANS texte sous le triangle */}
+            {/* Schéma dynamique */}
             <div className="w-64 h-32 mx-auto flex items-end justify-center pb-2 transition-all duration-300">
               <svg viewBox="0 0 160 80" className="w-full h-full text-amber-500 stroke-current fill-none">
                 <line x1="10" y1="70" x2="150" y2="70" strokeWidth="2.5" stroke="#cbd5e1" />
@@ -578,7 +583,6 @@ export default function SolarRoofSimulator({
               ))}
             </div>
 
-            {/* Encart avec retour à la ligne */}
             <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl max-w-lg mx-auto text-xs text-slate-600 leading-relaxed">
               💡 <em>Si vous ne connaissez pas l'inclinaison exacte de votre toiture, choisissez 30°.<br />Il s'agit de la configuration la plus courante en France.</em>
             </div>
@@ -596,7 +600,7 @@ export default function SolarRoofSimulator({
               <button
                 type="button"
                 onClick={async () => {
-                  await takeMapSnapshot();
+                  await ensureMapSnapshot();
                   setCurrentStep(6);
                 }}
                 className="px-8 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-black text-base flex items-center gap-2 shadow-lg shadow-amber-500/30 transition-all hover:scale-105"
