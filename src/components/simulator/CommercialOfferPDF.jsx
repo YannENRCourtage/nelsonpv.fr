@@ -4,7 +4,7 @@ import html2canvas from 'html2canvas';
 import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
 
 // ─── Générateur de Graphique Financier Haute Résolution pour le PDF ──────────
-const generateFinancialChartImage = ({ sim, width = 700, height = 220 }) => {
+const generateFinancialChartImage = ({ sim, width = 750, height = 270 }) => {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -105,13 +105,13 @@ const generateFinancialChartImage = ({ sim, width = 700, height = 220 }) => {
 
   // Label Point d'amortissement
   ctx.fillStyle = '#ef4444';
-  ctx.font = 'bold 11px Arial';
+  ctx.font = 'bold 12px Arial';
   ctx.textAlign = 'center';
   ctx.fillText(`Amortissement (${paybackYear} ans)`, pbX, 16);
 
   // Labels Axes X
   ctx.fillStyle = '#64748b';
-  ctx.font = '10px Arial';
+  ctx.font = '11px Arial';
   ctx.textAlign = 'center';
   [1, 5, 10, 15, 20, 25].forEach(yr => {
     ctx.fillText(`An ${yr}`, getX(yr), height - 12);
@@ -137,7 +137,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   const clientName = customClientName || selectedProject?.name || selectedProject?.lastName || sim.clientName || sim.cityName || 'Client Privé';
   const clientAddress = sim.address || selectedProject?.address || (sim.cityName ? `${sim.cityName} (${sim.departmentCode || 'France'})` : 'Adresse du projet');
 
-  // Vue satellite
+  // Vue satellite haute résolution (+20% hauteur)
   let finalMapScreenshot = sim.mapScreenshot;
   if (!finalMapScreenshot) {
     try {
@@ -145,7 +145,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         center: sim.mapCenter || [43.6047, 1.4442],
         polygonPoints: sim.polygonPoints || [],
         width: 800,
-        height: 480,
+        height: 576,
         zoom: 19
       });
     } catch (e) {
@@ -153,8 +153,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
     }
   }
 
-  // Graphique financier haute définition (sans le label textuel An 25)
-  const financialChartImg = generateFinancialChartImage({ sim, width: 700, height: 210 });
+  // Graphique financier haute définition (+30% hauteur)
+  const financialChartImg = generateFinancialChartImage({ sim, width: 750, height: 270 });
 
   // Calculs financiers pour les 3 cartes de cumuls
   const totalInv = sim.totalInvestmentHT || sim.resteACharge || 10800;
@@ -228,38 +228,40 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
         </div>
 
-        <!-- 2. TABLEAU DES HYPOTHÈSES TECHNIQUES DE DIMENSIONNEMENT (MIS AU DESSUS) -->
-        <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 7px 10px; margin-bottom: 8px;">
-          <div style="font-size: 7.5pt; font-weight: 800; color: #00429d; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px;">
+        <!-- 2. TABLEAU DES HYPOTHÈSES TECHNIQUES DE DIMENSIONNEMENT (AU-DESSUS) -->
+        <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; margin-bottom: 12px;">
+          <div style="font-size: 8pt; font-weight: 800; color: #00429d; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 5px;">
             Hypothèses Techniques de Dimensionnement
           </div>
 
-          <table style="width: 100%; font-size: 7pt; border-collapse: collapse;">
+          <table style="width: 100%; font-size: 7.5pt; border-collapse: collapse;">
             <tr style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 2px 0; color: #64748b;">Adresse du site :</td>
-              <td style="padding: 2px 0; text-align: right; font-weight: bold;">${clientAddress}</td>
-              <td style="padding: 2px 0 2px 15px; color: #64748b;">Orientation du pan :</td>
-              <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.orientationLabel || 'Plein Sud'}</td>
+              <td style="padding: 2.5px 0; color: #64748b;">Adresse du site :</td>
+              <td style="padding: 2.5px 0; text-align: right; font-weight: bold;">${clientAddress}</td>
+              <td style="padding: 2.5px 0 2.5px 15px; color: #64748b;">Orientation du pan :</td>
+              <td style="padding: 2.5px 0; text-align: right; font-weight: bold;">${sim.orientationLabel || 'Plein Sud'}</td>
             </tr>
             <tr style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 2px 0; color: #64748b;">Productible solaire :</td>
-              <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #0284c7;">
+              <td style="padding: 2.5px 0; color: #64748b;">Productible solaire :</td>
+              <td style="padding: 2.5px 0; text-align: right; font-weight: bold; color: #0284c7;">
                 ${sim.annualProductionKwh ? `${sim.annualProductionKwh.toLocaleString('fr-FR')} kWh / an` : '7 125 kWh / an'}
               </td>
-              <td style="padding: 2px 0 2px 15px; color: #64748b;">Inclinaison de toiture :</td>
-              <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.pitch || 30}°</td>
+              <td style="padding: 2.5px 0 2.5px 15px; color: #64748b;">Inclinaison de toiture :</td>
+              <td style="padding: 2.5px 0; text-align: right; font-weight: bold;">${sim.pitch || 30}°</td>
             </tr>
             <tr>
-              <td style="padding: 2px 0; color: #64748b;">Taux autoconsommation :</td>
-              <td style="padding: 2px 0; text-align: right; font-weight: bold;">${autoconsoDisplay}</td>
-              <td style="padding: 2px 0 2px 15px; color: #64748b;">Gisement régional :</td>
-              <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.regionalBaseYield || 1250} kWh/kWc</td>
+              <td style="padding: 2.5px 0; color: #64748b;">Taux autoconsommation :</td>
+              <td style="padding: 2.5px 0; text-align: right; font-weight: bold;">${autoconsoDisplay}</td>
+              <td style="padding: 2.5px 0 2.5px 15px; color: #64748b;">Gisement régional :</td>
+              <td style="padding: 2.5px 0; text-align: right; font-weight: bold;">${sim.regionalBaseYield || 1250} kWh/kWc</td>
             </tr>
           </table>
         </div>
 
+        <!-- ESPACE ENTRE HYPOTHÈSES TECHNIQUES ET LES 4 ENCARTS -->
+
         <!-- 3. SYNTHÈSE DES 4 KPIS -->
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px;">
           <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 6px; text-align: center;">
             <div style="font-size: 6.5pt; font-weight: bold; color: #64748b; text-transform: uppercase;">Puissance</div>
             <div style="font-size: 13pt; font-weight: 900; color: #00429d; margin: 1px 0;">${sim.kwc ? `${sim.kwc} kWc` : sim.power ? `${sim.power} kW` : '-'}</div>
@@ -285,8 +287,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
         </div>
 
-        <!-- 4. VISUEL SATELLITE HAUTE DÉFINITION (+10% HAUTEUR : 198px) -->
-        <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 8px; height: 198px; display: flex; align-items: center; justify-content: center; position: relative;">
+        <!-- 4. VISUEL SATELLITE HAUTE DÉFINITION (+20% HAUTEUR : 238px) -->
+        <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 10px; height: 238px; display: flex; align-items: center; justify-content: center; position: relative;">
           ${finalMapScreenshot ? `
             <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover;" alt="Vue toiture satellite" />
           ` : `
@@ -295,17 +297,17 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               <div style="font-size: 8pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
             </div>
           `}
-          <div style="position: absolute; bottom: 5px; right: 6px; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 6px; border-radius: 4px; font-size: 6.5pt; font-weight: bold;">
+          <div style="position: absolute; bottom: 6px; right: 8px; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-radius: 4px; font-size: 7pt; font-weight: bold;">
             Délimitation toiture : ${sim.roofSurface || 83} m²
           </div>
         </div>
 
-        <!-- 5. GRAPHIQUE FINANCIER D'AMORTISSEMENT (+5% HAUTEUR : 126px) -->
-        <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 7px 10px; margin-bottom: 8px;">
+        <!-- 5. GRAPHIQUE FINANCIER D'AMORTISSEMENT (+30% HAUTEUR : 164px) -->
+        <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; margin-bottom: 8px;">
           <div style="font-size: 8pt; font-weight: 800; color: #00429d; text-transform: uppercase; margin-bottom: 2px;">
             Projection Financière des Gains Cumulés (25 ans)
           </div>
-          <div style="height: 126px; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <div style="height: 164px; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
             <img src="${financialChartImg}" style="width: 100%; height: 100%; object-fit: contain;" alt="Graphique Amortissement" />
           </div>
 
@@ -328,7 +330,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
         </div>
 
-        <!-- 6. ZONE VOTRE IMPACT SUR L'ENVIRONNEMENT (IMAGE 2) -->
+        <!-- 6. ZONE VOTRE IMPACT SUR L'ENVIRONNEMENT -->
         <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: 6px 10px; margin-bottom: 4px;">
           <div style="font-size: 7.5pt; font-weight: 800; color: #166534; text-transform: uppercase; margin-bottom: 4px;">
             🌱 Votre Impact sur l'Environnement

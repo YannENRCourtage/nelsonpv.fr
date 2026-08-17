@@ -431,39 +431,39 @@ export default function BuildingStructureSimulator({
                 </button>
               </div>
 
-              {/* Encart flottant "Synthèse de la structure" en bas à droite de la visionneuse 3D (comme sur enr-courtage.fr) */}
-              <div className="absolute bottom-4 right-4 z-20 bg-slate-900/90 backdrop-blur-md text-white p-3.5 rounded-2xl border border-white/20 shadow-2xl max-w-xs pointer-events-auto space-y-1.5 text-xs">
-                <div className="flex items-center justify-between border-b border-white/20 pb-1">
-                  <span className="font-black text-amber-400 uppercase text-[10px] tracking-wider">Synthèse Structure &amp; PV</span>
-                  <span className="font-bold text-[10px] text-slate-300">{buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m</span>
+              {/* Encart flottant "Synthèse de la structure" en bas à droite de la visionneuse 3D (agrandi de 30% avec typographie renforcée) */}
+              <div className="absolute bottom-4 right-4 z-20 bg-slate-900/95 backdrop-blur-md text-white p-5 rounded-2xl border border-white/20 shadow-2xl w-80 max-w-sm pointer-events-auto space-y-2.5 text-sm">
+                <div className="flex items-center justify-between border-b border-white/20 pb-2">
+                  <span className="font-black text-amber-400 uppercase text-xs tracking-wider">Synthèse Structure &amp; PV</span>
+                  <span className="font-black text-xs text-white">{buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m</span>
                 </div>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                   <div>
-                    <span className="text-slate-400 block text-[9px] uppercase">Surface au sol</span>
-                    <strong className="text-white font-bold">{floorArea} m²</strong>
+                    <span className="text-slate-400 block text-[10px] font-semibold uppercase">Surface au sol</span>
+                    <strong className="text-white font-black text-sm">{floorArea} m²</strong>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[9px] uppercase">Centrale PV</span>
-                    <strong className="text-blue-400 font-bold">{installedKwc} kWc</strong>
+                    <span className="text-slate-400 block text-[10px] font-semibold uppercase">Centrale PV</span>
+                    <strong className="text-blue-400 font-black text-sm">{installedKwc} kWc</strong>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[9px] uppercase">Budget Gros-Œuvre</span>
-                    <strong className="text-white font-bold">{totalBuildingCost.toLocaleString('fr-FR')} €</strong>
+                    <span className="text-slate-400 block text-[10px] font-semibold uppercase">Budget Gros-Œuvre</span>
+                    <strong className="text-white font-black text-sm">{totalBuildingCost.toLocaleString('fr-FR')} €</strong>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[9px] uppercase">Reste à charge</span>
-                    <strong className="text-purple-300 font-bold">{resteACharge.toLocaleString('fr-FR')} €</strong>
+                    <span className="text-slate-400 block text-[10px] font-semibold uppercase">Reste à charge</span>
+                    <strong className="text-purple-300 font-black text-sm">{resteACharge.toLocaleString('fr-FR')} €</strong>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* ─── ENCART SYNTHÈSE DE LA STRUCTURE (IMAGE 5) ─────────────────── */}
+          {/* ─── ENCART SYNTHÈSE DE LA STRUCTURE (IMAGE 5) — TYPOGRAPHIE AUGMENTÉE DE 2PT ─── */}
           <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
                   <Building2 className="w-5 h-5 text-blue-600" />
                   Synthèse de la Structure &amp; Budget Gros-Œuvre
                 </h3>
@@ -483,34 +483,34 @@ export default function BuildingStructureSimulator({
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Dimensions</span>
-                <strong className="text-sm font-black text-slate-900">{buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m</strong>
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+                <span className="text-xs font-bold text-slate-500 uppercase block">Dimensions</span>
+                <strong className="text-base font-black text-slate-900">{buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m</strong>
               </div>
 
-              <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Surface au Sol</span>
-                <strong className="text-sm font-black text-slate-900">{floorArea} m²</strong>
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+                <span className="text-xs font-bold text-slate-500 uppercase block">Surface au Sol</span>
+                <strong className="text-base font-black text-slate-900">{floorArea} m²</strong>
               </div>
 
-              <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Puissance Solaire</span>
-                <strong className="text-sm font-black text-blue-600">{installedKwc} kWc</strong>
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+                <span className="text-xs font-bold text-slate-500 uppercase block">Puissance Solaire</span>
+                <strong className="text-base font-black text-blue-600">{installedKwc} kWc</strong>
               </div>
 
-              <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Budget Gros-Œuvre</span>
-                <strong className="text-sm font-black text-slate-900">{totalBuildingCost.toLocaleString('fr-FR')} € HT</strong>
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+                <span className="text-xs font-bold text-slate-500 uppercase block">Budget Gros-Œuvre</span>
+                <strong className="text-base font-black text-slate-900">{totalBuildingCost.toLocaleString('fr-FR')} € HT</strong>
               </div>
 
-              <div className="bg-emerald-50 rounded-2xl p-3.5 border border-emerald-200">
-                <span className="text-[10px] font-bold text-emerald-800 uppercase block">Soulte Tiers-Invest.</span>
-                <strong className="text-sm font-black text-emerald-700">+{soulteInvestisseur.toLocaleString('fr-FR')} €</strong>
+              <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200">
+                <span className="text-xs font-bold text-emerald-800 uppercase block">Soulte Tiers-Invest.</span>
+                <strong className="text-base font-black text-emerald-700">+{soulteInvestisseur.toLocaleString('fr-FR')} €</strong>
               </div>
 
-              <div className="bg-purple-50 rounded-2xl p-3.5 border border-purple-200">
-                <span className="text-[10px] font-bold text-purple-800 uppercase block">Reste à Charge</span>
-                <strong className="text-sm font-black text-purple-700">{resteACharge.toLocaleString('fr-FR')} € HT</strong>
+              <div className="bg-purple-50 rounded-2xl p-4 border border-purple-200">
+                <span className="text-xs font-bold text-purple-800 uppercase block">Reste à Charge</span>
+                <strong className="text-base font-black text-purple-700">{resteACharge.toLocaleString('fr-FR')} € HT</strong>
               </div>
             </div>
           </div>
@@ -644,25 +644,25 @@ export default function BuildingStructureSimulator({
               >
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   
-                  {/* Colonne Gauche : Paramètres d'Orientation & Spécifications */}
+                  {/* Colonne Gauche : Paramètres d'Orientation & Spécifications (Typo agrandie) */}
                   <div className="lg:col-span-4 space-y-4">
                     <div>
-                      <h3 className="text-xl font-black text-slate-900">
+                      <h3 className="text-2xl font-black text-slate-900">
                         Implantation Satellite
                       </h3>
-                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      <p className="text-sm text-slate-600 mt-1 leading-relaxed">
                         L'emprise ({buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m — {floorArea} m²) reste au centre. Déplacez la carte ci-contre pour caler votre parcelle sous le bâtiment. Le trait pointillé orange représente le faîtage.
                       </p>
                     </div>
 
                     {/* Curseur et Boutons d'Orientation */}
                     <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3">
-                      <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                        <span className="flex items-center gap-1">
-                          <Compass className="w-4 h-4 text-blue-600" />
+                      <div className="flex items-center justify-between text-sm font-bold text-slate-800">
+                        <span className="flex items-center gap-1.5">
+                          <Compass className="w-5 h-5 text-blue-600" />
                           Orientation
                         </span>
-                        <span className="text-blue-600 font-black text-sm">{buildingRotation}°</span>
+                        <span className="text-blue-600 font-black text-base">{buildingRotation}°</span>
                       </div>
 
                       <input
@@ -672,10 +672,10 @@ export default function BuildingStructureSimulator({
                         step="1"
                         value={buildingRotation}
                         onChange={(e) => setBuildingRotation(Number(e.target.value))}
-                        className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                       />
 
-                      <div className="bg-blue-50/80 border border-blue-200 rounded-xl p-2 text-center text-xs font-bold text-blue-900">
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-2.5 text-center text-sm font-bold text-blue-900">
                         {buildingRotation === 0 ? 'Sud Plein (0°) - Idéal ☀️'
                           : buildingRotation > 0 ? `Sud-Ouest (+${buildingRotation}°) ⛅`
                           : `Sud-Est (${buildingRotation}°) 🌅`}
@@ -685,7 +685,7 @@ export default function BuildingStructureSimulator({
                         <button
                           type="button"
                           onClick={() => setBuildingRotation(45)}
-                          className={`py-2 rounded-xl text-xs font-bold transition-all border ${
+                          className={`py-2 rounded-xl text-xs font-black transition-all border ${
                             buildingRotation === 45 ? 'bg-[#0e2b4d] text-white' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
@@ -694,7 +694,7 @@ export default function BuildingStructureSimulator({
                         <button
                           type="button"
                           onClick={() => setBuildingRotation(0)}
-                          className={`py-2 rounded-xl text-xs font-bold transition-all border ${
+                          className={`py-2 rounded-xl text-xs font-black transition-all border ${
                             buildingRotation === 0 ? 'bg-[#0e2b4d] text-white' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
@@ -703,7 +703,7 @@ export default function BuildingStructureSimulator({
                         <button
                           type="button"
                           onClick={() => setBuildingRotation(-45)}
-                          className={`py-2 rounded-xl text-xs font-bold transition-all border ${
+                          className={`py-2 rounded-xl text-xs font-black transition-all border ${
                             buildingRotation === -45 ? 'bg-[#0e2b4d] text-white' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
@@ -713,25 +713,25 @@ export default function BuildingStructureSimulator({
                     </div>
 
                     {/* Spécifications Charpente */}
-                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2 text-xs">
-                      <h4 className="font-bold text-slate-700 uppercase tracking-wider text-[11px] border-b border-slate-200 pb-1">
+                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2 text-sm">
+                      <h4 className="font-black text-slate-800 uppercase tracking-wider text-xs border-b border-slate-200 pb-1.5">
                         Spécifications Charpente :
                       </h4>
-                      <div className="flex justify-between py-0.5">
-                        <span className="text-slate-500">Type :</span>
-                        <strong className="text-slate-800">{config.buildingType || 'symetrique'}</strong>
+                      <div className="flex justify-between py-1">
+                        <span className="text-slate-600 font-medium">Type :</span>
+                        <strong className="text-slate-900 font-bold capitalize">{config.buildingType || 'symetrique'}</strong>
                       </div>
-                      <div className="flex justify-between py-0.5">
-                        <span className="text-slate-500">Emprise :</span>
-                        <strong className="text-slate-800">{buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m</strong>
+                      <div className="flex justify-between py-1">
+                        <span className="text-slate-600 font-medium">Emprise :</span>
+                        <strong className="text-slate-900 font-bold">{buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m</strong>
                       </div>
-                      <div className="flex justify-between py-0.5">
-                        <span className="text-slate-500">Surface totale :</span>
-                        <strong className="text-slate-800">{floorArea} m²</strong>
+                      <div className="flex justify-between py-1">
+                        <span className="text-slate-600 font-medium">Surface totale :</span>
+                        <strong className="text-slate-900 font-bold">{floorArea} m²</strong>
                       </div>
-                      <div className="flex justify-between py-0.5">
-                        <span className="text-slate-500">Puissance Solaire :</span>
-                        <strong className="text-blue-600 font-black">{installedKwc} kWc</strong>
+                      <div className="flex justify-between py-1">
+                        <span className="text-slate-600 font-medium">Puissance Solaire :</span>
+                        <strong className="text-blue-600 font-black text-base">{installedKwc} kWc</strong>
                       </div>
                     </div>
 
@@ -903,10 +903,10 @@ export default function BuildingStructureSimulator({
                   <div className="space-y-2">
                     <div className="h-64 w-full">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={financialProjection30Years.data} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                          <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-                          <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k€`} />
+                        <BarChart data={financialProjection30Years.data} margin={{ top: 20, right: 15, left: -10, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.15)" />
+                          <XAxis dataKey="year" tick={{ fill: '#ffffff', fontSize: 11, fontWeight: 'bold' }} />
+                          <YAxis tick={{ fill: '#ffffff', fontSize: 11, fontWeight: 'bold' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k€`} />
                           <Tooltip
                             formatter={(val) => [`${Number(val).toLocaleString('fr-FR')} €`, 'Cumul net']}
                             labelFormatter={(yr) => `Année ${yr}`}
@@ -916,12 +916,12 @@ export default function BuildingStructureSimulator({
                             x={financialProjection30Years.paybackYears}
                             stroke="#ef4444"
                             strokeDasharray="4 4"
-                            strokeWidth={2}
+                            strokeWidth={2.5}
                             label={{
                               value: `Amorti en ${financialProjection30Years.paybackYears} ans`,
                               fill: '#ef4444',
                               position: 'top',
-                              fontSize: 10,
+                              fontSize: 13,
                               fontWeight: 'bold'
                             }}
                           />

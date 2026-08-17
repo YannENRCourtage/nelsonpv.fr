@@ -93,182 +93,54 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
             {configMode === 'predefined' ? (
                 <>
 
-            {/* ========== TYPE DE BÂTIMENT ========== */}
-            <div className="param-group mb-4">
-                <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
-                    Type de Bâtiment
-                </label>
-                <select
-                    value={isAcama ? (isAcamaAsymetrique ? 'asymetrique' : 'symetrique') : buildingType}
-                    onChange={(e) => isAcama ? handleAcamaBuildingType(e.target.value) : setBuildingType(e.target.value)}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg font-semibold text-sm bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                >
-                    <option value="symetrique">Symétrique</option>
-                    {isAcama ? (
-                        <option value="asymetrique">Asymétrique</option>
-                    ) : (
-                        <>
-                            <option value="asymetrique_1">Asymétrique 1 zone</option>
-                            <option value="asymetrique_2">Asymétrique 2 zones</option>
-                            <option value="monopente">Monopente</option>
-                            <option value="ombriere_vl_simple_gauche">Ombrière VL simple gauche</option>
-                            <option value="ombriere_vl_simple_droite">Ombrière VL simple droite</option>
-                            <option value="ombriere_vl_double">Ombrière VL double</option>
-                            <option value="ombriere_pl">Ombrière PL</option>
-                        </>
-                    )}
+            {/* ========== TYPE (2/3) ET LARGEUR (1/3) SUR UNE SEULE LIGNE ========== */}
+            <div className="param-group mb-4 grid grid-cols-3 gap-2">
+                {/* TYPE DE BÂTIMENT (2/3) */}
+                <div className="col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                        Type
+                    </label>
+                    <select
+                        value={isAcama ? (isAcamaAsymetrique ? 'asymetrique' : 'symetrique') : buildingType}
+                        onChange={(e) => isAcama ? handleAcamaBuildingType(e.target.value) : setBuildingType(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-slate-300 rounded-lg font-semibold text-xs bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                    >
+                        <option value="symetrique">Symétrique</option>
+                        {isAcama ? (
+                            <option value="asymetrique">Asymétrique</option>
+                        ) : (
+                            <>
+                                <option value="asymetrique_1">Asymétrique 1 zone</option>
+                                <option value="asymetrique_2">Asymétrique 2 zones</option>
+                                <option value="monopente">Monopente</option>
+                                <option value="ombriere_vl_simple_gauche">Ombrière VL simple gauche</option>
+                                <option value="ombriere_vl_simple_droite">Ombrière VL simple droite</option>
+                                <option value="ombriere_vl_double">Ombrière VL double</option>
+                                <option value="ombriere_pl">Ombrière PL</option>
+                            </>
+                        )}
+                    </select>
+                </div>
 
-
-                </select>
+                {/* LARGEUR DU BÂTIMENT (1/3) */}
+                <div className="col-span-1">
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                        Largeur
+                    </label>
+                    <select
+                        value={width}
+                        onChange={(e) => setWidth(Number(e.target.value))}
+                        disabled={isAcama}
+                        className={`w-full px-3 py-2.5 border border-slate-300 rounded-lg font-semibold text-xs bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all ${
+                            isAcama ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : ''
+                        }`}
+                    >
+                        {availableWidths?.map((w) => (
+                            <option key={w} value={w}>{w} m</option>
+                        ))}
+                    </select>
+                </div>
             </div>
-
-            {/* ========== ACAMA: MODÈLE BÂTIMENT (EPONA/TALIAN 5) ========== */}
-            {isAcamaAsymetrique && (
-                <div className="param-group mb-6">
-                    <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
-                        Modèle Bâtiment
-                    </label>
-
-                    {/* Model Switcher for Asymetrique (EPONA vs TALIAN 5) */}
-                    <div className="flex gap-2 mb-4">
-                        <button
-                            onClick={() => setEponaModel(selectedEponaModel)}
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all border ${isAcamaEpona ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}
-                        >
-                            EPONA
-                        </button>
-                        <button
-                            onClick={() => setTalian5Model(selectedTalian5Model)}
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all border ${isAcamaTalian5 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}
-                        >
-                            TALIAN 5
-                        </button>
-                    </div>
-
-                    <select
-                        value={isAcamaEpona ? selectedEponaModel : selectedTalian5Model}
-                        onChange={(e) => {
-                            if (isAcamaEpona) setEponaModel(e.target.value);
-                            else setTalian5Model(e.target.value);
-                        }}
-                        className="w-full px-4 py-3 border border-slate-300 rounded-lg font-semibold text-sm bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                    >
-                        {isAcamaEpona && Object.entries(EPONA_MODELS || {}).map(([key, model]) => (
-                            <option key={key} value={key}>{model.label}</option>
-                        ))}
-                        {isAcamaTalian5 && Object.entries(TALIAN_5_MODELS || {}).map(([key, model]) => (
-                            <option key={key} value={key}>{model.label}</option>
-                        ))}
-                    </select>
-
-                    {/* Display fixed model characteristics */}
-                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100 text-xs text-blue-800 space-y-1">
-                        <div className="font-bold text-blue-900 mb-1">
-                            {isAcamaEpona ? EPONA_MODELS[selectedEponaModel]?.label : TALIAN_5_MODELS[selectedTalian5Model]?.label}
-                        </div>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-                            <span>Longueur : <strong>{isAcamaEpona ? EPONA_MODELS[selectedEponaModel]?.fixedLength : TALIAN_5_MODELS[selectedTalian5Model]?.fixedLength}m</strong></span>
-                            <span>Largeur totale : <strong>35.3m</strong></span>
-                            <span>Travées : <strong>{isAcamaEpona ? `${EPONA_MODELS[selectedEponaModel]?.bayCount} × ${EPONA_MODELS[selectedEponaModel]?.baySpacing}m` : `${TALIAN_5_MODELS[selectedTalian5Model]?.bayCount} × ${TALIAN_5_MODELS[selectedTalian5Model]?.baySpacing}m`}</strong></span>
-                            <span>Pente : <strong>{isAcamaEpona ? '17°' : '10°'}</strong></span>
-                            <span>Faîtage : <strong>{isAcamaEpona ? '9.4m' : '8.1m'}</strong></span>
-                            <span>Sablière G : <strong>{isAcamaEpona ? '5m' : '7.9m'}</strong></span>
-                            <span>Sablière D : <strong>{isAcamaEpona ? '3.5m' : '4.3m'}</strong></span>
-                            {!isAcamaEpona && !isAcamaTalian5 && <span>Appentis D : 9.3m</span>}
-                            {isAcamaEpona && <span>Auvent D : <strong>2.5m</strong></span>}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {isAcamaTalian && (
-                <div className="param-group mb-6">
-                    <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
-                        Modèle Bâtiment
-                    </label>
-
-                    {/* Model Switcher for TALIAN */}
-                    <div className="flex gap-2 mb-4">
-                        <button
-                            onClick={() => setTalianModel(selectedTalianModel)}
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all border ${isAcamaTalian4 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}
-                        >
-                            TALIAN 4
-                        </button>
-                        <button
-                            onClick={() => setTalian1Model(selectedTalian1Model)}
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all border ${isAcamaTalian1 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}
-                        >
-                            TALIAN 1
-                        </button>
-                        <button
-                            onClick={() => setTalian3Model(selectedTalian3Model)}
-                            className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all border ${isAcamaTalian3 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}
-                        >
-                            TALIAN 3
-                        </button>
-                    </div>
-
-                    <select
-                        value={isAcamaTalian4 ? selectedTalianModel : (isAcamaTalian1 ? selectedTalian1Model : selectedTalian3Model)}
-                        onChange={(e) => {
-                            if (isAcamaTalian4) setTalianModel(e.target.value);
-                            else if (isAcamaTalian1) setTalian1Model(e.target.value);
-                            else if (isAcamaTalian3) setTalian3Model(e.target.value);
-                        }}
-                        className="w-full px-4 py-3 border border-slate-300 rounded-lg font-semibold text-sm bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                    >
-                        {isAcamaTalian4 && Object.entries(TALIAN_MODELS || {}).map(([key, model]) => (
-                            <option key={key} value={key}>{model.label}</option>
-                        ))}
-                        {isAcamaTalian1 && Object.entries(TALIAN_1_MODELS || {}).map(([key, model]) => (
-                            <option key={key} value={key}>{model.label}</option>
-                        ))}
-                        {isAcamaTalian3 && Object.entries(TALIAN_3_MODELS || {}).map(([key, model]) => (
-                            <option key={key} value={key}>{model.label}</option>
-                        ))}
-                    </select>
-
-                    {/* Display fixed model characteristics */}
-                    {(isAcamaTalian4 || isAcamaTalian1 || isAcamaTalian3) && (
-                        <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100 text-xs text-blue-800 space-y-1">
-                            <div className="font-bold text-blue-900 mb-1">
-                                {isAcamaTalian4 ? TALIAN_MODELS[selectedTalianModel]?.label : (isAcamaTalian1 ? TALIAN_1_MODELS[selectedTalian1Model]?.label : TALIAN_3_MODELS[selectedTalian3Model]?.label)}
-                            </div>
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-                                <span>Longueur : <strong>{isAcamaTalian4 ? TALIAN_MODELS[selectedTalianModel]?.fixedLength : (isAcamaTalian1 ? TALIAN_1_MODELS[selectedTalian1Model]?.fixedLength : TALIAN_3_MODELS[selectedTalian3Model]?.fixedLength)}m</strong></span>
-                                <span>Largeur totale : <strong>{isAcamaTalian4 ? '37.5m' : (isAcamaTalian1 ? '23.5m' : '21.1m')}</strong></span>
-                                <span>Travées : <strong>{isAcamaTalian4 ? TALIAN_MODELS[selectedTalianModel]?.bayCount : (isAcamaTalian1 ? TALIAN_1_MODELS[selectedTalian1Model]?.bayCount : TALIAN_3_MODELS[selectedTalian3Model]?.bayCount)}</strong></span>
-                                <span>Pente : <strong>{isAcamaTalian4 ? '6°' : (isAcamaTalian1 ? '14°' : '12°')}</strong></span>
-                                <span>Faîtage : <strong>{isAcamaTalian4 ? '5.23m' : (isAcamaTalian1 ? '6.7m' : '4.5m')}</strong></span>
-                                <span>Sablière G/D : <strong>{isAcamaTalian4 ? '4.5m' : (isAcamaTalian1 ? '4.36m' : '2.8m')}</strong></span>
-                                <span>{isAcamaTalian4 ? 'Appentis G/D' : 'Auvent G/D'} : <strong>{isAcamaTalian4 ? '11.2m' : (isAcamaTalian1 ? '2.3m' : '1.8m')}</strong></span>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )
-            }
-
-            {
-                !isAcama && (
-                    /* ========== GREEN INVEST: LARGEUR DU BÂTIMENT ========== */
-                    <div className="param-group mb-6">
-                        <label className="block text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wider">
-                            Largeur du Bâtiment
-                        </label>
-                        <select
-                            value={width}
-                            onChange={(e) => setWidth(Number(e.target.value))}
-                            className="w-full px-4 py-3 border border-slate-300 rounded-lg font-semibold text-sm bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                        >
-                            {availableWidths?.map((w) => (
-                                <option key={w} value={w}>{w} m</option>
-                            ))}
-                        </select>
-                    </div>
-                )
-            }
 
             {/* ========== OPTIONS STRUCTURE - EXTENSIONS (Compact) — masqué pour ACAMA EPONA/TALIAN ========== */}
             {
@@ -292,13 +164,17 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                                         Auvent
                                     </button>
                                     <button
-                                        onClick={() => setLeftSide(leftSide === 'appentis' ? 'none' : 'appentis')}
-                                        disabled={buildingType === 'monopente'}
-
+                                        type="button"
+                                        onClick={() => {
+                                            if (buildingType !== 'monopente' && !buildingType.startsWith('asymetrique')) {
+                                                setLeftSide(leftSide === 'appentis' ? 'none' : 'appentis');
+                                            }
+                                        }}
+                                        disabled={buildingType === 'monopente' || buildingType.startsWith('asymetrique')}
                                         className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase border transition-all ${leftSide === 'appentis'
                                             ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
                                             : (buildingType === 'monopente' || buildingType.startsWith('asymetrique'))
-                                                ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
+                                                ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed pointer-events-none opacity-60'
                                                 : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
                                             }`}
                                     >
@@ -311,6 +187,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                                 <span className="text-[10px] font-bold text-slate-400 w-8 uppercase">Drt</span>
                                 <div className="flex-1 flex gap-1">
                                     <button
+                                        type="button"
                                         onClick={() => setRightSide(rightSide === 'auvent' ? 'none' : 'auvent')}
                                         className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase border transition-all ${rightSide === 'auvent'
                                             ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
@@ -320,13 +197,17 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                                         Auvent
                                     </button>
                                     <button
-                                        onClick={() => setRightSide(rightSide === 'appentis' ? 'none' : 'appentis')}
-                                        disabled={buildingType === 'monopente'}
-
+                                        type="button"
+                                        onClick={() => {
+                                            if (buildingType !== 'monopente' && !buildingType.startsWith('asymetrique')) {
+                                                setRightSide(rightSide === 'appentis' ? 'none' : 'appentis');
+                                            }
+                                        }}
+                                        disabled={buildingType === 'monopente' || buildingType.startsWith('asymetrique')}
                                         className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase border transition-all ${rightSide === 'appentis'
                                             ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
                                             : (buildingType === 'monopente' || buildingType.startsWith('asymetrique'))
-                                                ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed'
+                                                ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed pointer-events-none opacity-60'
                                                 : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
                                             }`}
                                     >
