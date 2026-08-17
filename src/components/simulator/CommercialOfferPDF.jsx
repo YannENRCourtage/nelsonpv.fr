@@ -83,7 +83,7 @@ const generateFinancialChartImage = ({ sim, width = 700, height = 220 }) => {
 
   // Point d'amortissement rouge
   const paybackPt = points.find(p => p.yr === paybackYear) || points[7];
-  const pbX = getX(paybackPt.yr);
+  const pbX = getX(paybackPt ? paybackPt.yr : 8);
   const pbY = getY(0);
 
   ctx.strokeStyle = '#ef4444';
@@ -117,12 +117,6 @@ const generateFinancialChartImage = ({ sim, width = 700, height = 220 }) => {
     ctx.fillText(`An ${yr}`, getX(yr), height - 12);
   });
 
-  // Titre & Max
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#10b981';
-  ctx.font = 'bold 11px Arial';
-  ctx.fillText(`Gain cumulé An 25 : +${maxCumul.toLocaleString('fr-FR')} €`, width - 35, 18);
-
   return canvas.toDataURL('image/jpeg', 0.92);
 };
 
@@ -151,7 +145,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         center: sim.mapCenter || [43.6047, 1.4442],
         polygonPoints: sim.polygonPoints || [],
         width: 800,
-        height: 400,
+        height: 480,
         zoom: 19
       });
     } catch (e) {
@@ -159,14 +153,40 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
     }
   }
 
-  // Graphique financier haute définition
+  // Graphique financier haute définition (sans le label textuel An 25)
   const financialChartImg = generateFinancialChartImage({ sim, width: 700, height: 210 });
+
+  // Calculs financiers pour les 3 cartes de cumuls
+  const totalInv = sim.totalInvestmentHT || sim.resteACharge || 10800;
+  const annualGain = sim.annualBenefitYear1 || sim.annualRevenueReventeTotale || sim.annualRentLoyer || 1528;
+  const inflation = 0.035;
+
+  let cumul10 = -totalInv;
+  let cumul20 = -totalInv;
+  let cumul25 = -totalInv;
+
+  for (let yr = 1; yr <= 25; yr++) {
+    const yrGain = Math.round(annualGain * Math.pow(1 + inflation, yr - 1));
+    if (yr <= 10) cumul10 += yrGain;
+    if (yr <= 20) cumul20 += yrGain;
+    if (yr <= 25) cumul25 += yrGain;
+  }
+
+  const dispCumul10 = Math.max(0, cumul10);
+  const dispCumul20 = Math.max(0, cumul20);
+  const dispCumul25 = Math.max(0, cumul25);
+
+  // Impact écologique
+  const annualProd = sim.annualProductionKwh || 7125;
+  const co2Avoided = (Math.round((annualProd * 0.0005) * 10) / 10).toLocaleString('fr-FR');
+  const treesPlanted = Math.round(annualProd * 0.00143);
+  const householdsFed = (Math.round((annualProd / 4500) * 10) / 10).toLocaleString('fr-FR');
 
   // Format A4 Portrait : 210mm x 297mm
   const container = document.createElement('div');
   container.style.width = '210mm';
   container.style.minHeight = '297mm';
-  container.style.padding = '10mm 12mm';
+  container.style.padding = '8mm 12mm';
   container.style.background = '#ffffff';
   container.style.fontFamily = 'Arial, sans-serif';
   container.style.position = 'fixed';
@@ -190,53 +210,83 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
     : `+${(Math.round((sim.annualProductionKwh || 11250) * 0.20)).toLocaleString('fr-FR')} €`;
 
   container.innerHTML = `
-    <div style="display: flex; flex-direction: column; min-height: 277mm; justify-content: space-between;">
+    <div style="display: flex; flex-direction: column; min-height: 281mm; justify-content: space-between;">
       
       <div>
-        <!-- EN-TÊTE PROFESSIONNEL -->
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2.5px solid #00429d; padding-bottom: 8px; margin-bottom: 12px;">
+        <!-- 1. EN-TÊTE PROFESSIONNEL -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2.5px solid #00429d; padding-bottom: 6px; margin-bottom: 8px;">
           <div>
-            <div style="font-size: 20pt; font-weight: 900; color: #00429d; letter-spacing: 0.5px;">NELSON</div>
-            <div style="font-size: 8pt; color: #64748b; font-weight: bold; text-transform: uppercase; margin-top: 1px;">Étude de Faisabilité &amp; Offre Commerciale</div>
+            <div style="font-size: 18pt; font-weight: 900; color: #00429d; letter-spacing: 0.5px;">NELSON</div>
+            <div style="font-size: 7.5pt; color: #64748b; font-weight: bold; text-transform: uppercase; margin-top: 1px;">Étude de Faisabilité &amp; Offre Commerciale</div>
           </div>
           <div style="text-align: right;">
-            <div style="font-size: 12pt; font-weight: 800; color: #0f172a;">${typeTitle}</div>
-            <div style="font-size: 9pt; color: #475569; margin-top: 2px;">
+            <div style="font-size: 11pt; font-weight: 800; color: #0f172a;">${typeTitle}</div>
+            <div style="font-size: 8.5pt; color: #475569; margin-top: 2px;">
               <strong>Client :</strong> ${clientName} &nbsp;|&nbsp; <strong>Date :</strong> ${new Date().toLocaleDateString('fr-FR')}
             </div>
-            <div style="font-size: 8pt; color: #64748b; margin-top: 1px;"><strong>Adresse :</strong> ${clientAddress}</div>
+            <div style="font-size: 7.5pt; color: #64748b; margin-top: 1px;"><strong>Adresse :</strong> ${clientAddress}</div>
           </div>
         </div>
 
-        <!-- SYNTHÈSE DES 4 KPIS -->
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;">
-          <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 8px; text-align: center;">
-            <div style="font-size: 7pt; font-weight: bold; color: #64748b; text-transform: uppercase;">Puissance</div>
-            <div style="font-size: 14pt; font-weight: 900; color: #00429d; margin: 2px 0;">${sim.kwc ? `${sim.kwc} kWc` : sim.power ? `${sim.power} kW` : '-'}</div>
-            <div style="font-size: 7pt; color: #64748b;">${sim.roofSurface ? `${sim.roofSurface} m² toiture` : sim.quantity ? `${sim.quantity} borne(s)` : ''}</div>
+        <!-- 2. TABLEAU DES HYPOTHÈSES TECHNIQUES DE DIMENSIONNEMENT (MIS AU DESSUS) -->
+        <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 7px 10px; margin-bottom: 8px;">
+          <div style="font-size: 7.5pt; font-weight: 800; color: #00429d; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px;">
+            Hypothèses Techniques de Dimensionnement
           </div>
 
-          <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 8px; text-align: center;">
-            <div style="font-size: 7pt; font-weight: bold; color: #64748b; text-transform: uppercase;">Production Annuelle</div>
-            <div style="font-size: 14pt; font-weight: 900; color: #0284c7; margin: 2px 0;">${sim.annualProductionKwh ? `${sim.annualProductionKwh.toLocaleString('fr-FR')} kWh` : sim.annualRevenue ? `${sim.annualRevenue.toLocaleString('fr-FR')} €` : '-'}</div>
-            <div style="font-size: 7pt; color: #64748b;">Gisement ${sim.regionalBaseYield || 1250} kWh/kWc</div>
+          <table style="width: 100%; font-size: 7pt; border-collapse: collapse;">
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+              <td style="padding: 2px 0; color: #64748b;">Adresse du site :</td>
+              <td style="padding: 2px 0; text-align: right; font-weight: bold;">${clientAddress}</td>
+              <td style="padding: 2px 0 2px 15px; color: #64748b;">Orientation du pan :</td>
+              <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.orientationLabel || 'Plein Sud'}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+              <td style="padding: 2px 0; color: #64748b;">Productible solaire :</td>
+              <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #0284c7;">
+                ${sim.annualProductionKwh ? `${sim.annualProductionKwh.toLocaleString('fr-FR')} kWh / an` : '7 125 kWh / an'}
+              </td>
+              <td style="padding: 2px 0 2px 15px; color: #64748b;">Inclinaison de toiture :</td>
+              <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.pitch || 30}°</td>
+            </tr>
+            <tr>
+              <td style="padding: 2px 0; color: #64748b;">Taux autoconsommation :</td>
+              <td style="padding: 2px 0; text-align: right; font-weight: bold;">${autoconsoDisplay}</td>
+              <td style="padding: 2px 0 2px 15px; color: #64748b;">Gisement régional :</td>
+              <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.regionalBaseYield || 1250} kWh/kWc</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- 3. SYNTHÈSE DES 4 KPIS -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px;">
+          <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 6px; text-align: center;">
+            <div style="font-size: 6.5pt; font-weight: bold; color: #64748b; text-transform: uppercase;">Puissance</div>
+            <div style="font-size: 13pt; font-weight: 900; color: #00429d; margin: 1px 0;">${sim.kwc ? `${sim.kwc} kWc` : sim.power ? `${sim.power} kW` : '-'}</div>
+            <div style="font-size: 6.5pt; color: #64748b;">${sim.roofSurface ? `${sim.roofSurface} m² toiture` : sim.quantity ? `${sim.quantity} borne(s)` : ''}</div>
           </div>
 
-          <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: 8px; text-align: center;">
-            <div style="font-size: 7pt; font-weight: bold; color: #166534; text-transform: uppercase;">Gains / an (An 1)</div>
-            <div style="font-size: 14pt; font-weight: 900; color: #16a34a; margin: 2px 0;">${annualGainFormatted}</div>
-            <div style="font-size: 7pt; color: #166534;">Économies / Revenus</div>
+          <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 6px; text-align: center;">
+            <div style="font-size: 6.5pt; font-weight: bold; color: #64748b; text-transform: uppercase;">Production Annuelle</div>
+            <div style="font-size: 13pt; font-weight: 900; color: #0284c7; margin: 1px 0;">${sim.annualProductionKwh ? `${sim.annualProductionKwh.toLocaleString('fr-FR')} kWh` : sim.annualRevenue ? `${sim.annualRevenue.toLocaleString('fr-FR')} €` : '-'}</div>
+            <div style="font-size: 6.5pt; color: #64748b;">Gisement ${sim.regionalBaseYield || 1250} kWh/kWc</div>
           </div>
 
-          <div style="background: #faf5ff; border: 1.5px solid #e9d5ff; border-radius: 10px; padding: 8px; text-align: center;">
-            <div style="font-size: 7pt; font-weight: bold; color: #6b21a8; text-transform: uppercase;">Amortissement</div>
-            <div style="font-size: 14pt; font-weight: 900; color: #9333ea; margin: 2px 0;">${sim.paybackYear || 8} ${typeof sim.paybackYear === 'number' || !isNaN(Number(sim.paybackYear)) ? 'ans' : ''}</div>
-            <div style="font-size: 7pt; color: #6b21a8;">Invest. : ${sim.totalInvestmentHT ? sim.totalInvestmentHT.toLocaleString('fr-FR') : sim.resteACharge ? sim.resteACharge.toLocaleString('fr-FR') : '-'} € HT</div>
+          <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 8px; padding: 6px; text-align: center;">
+            <div style="font-size: 6.5pt; font-weight: bold; color: #166534; text-transform: uppercase;">Gains / an (An 1)</div>
+            <div style="font-size: 13pt; font-weight: 900; color: #16a34a; margin: 1px 0;">${annualGainFormatted}</div>
+            <div style="font-size: 6.5pt; color: #166534;">Économies &amp; Vente</div>
+          </div>
+
+          <div style="background: #faf5ff; border: 1.5px solid #e9d5ff; border-radius: 8px; padding: 6px; text-align: center;">
+            <div style="font-size: 6.5pt; font-weight: bold; color: #6b21a8; text-transform: uppercase;">Amortissement</div>
+            <div style="font-size: 13pt; font-weight: 900; color: #9333ea; margin: 1px 0;">${sim.paybackYear || 8} ${typeof sim.paybackYear === 'number' || !isNaN(Number(sim.paybackYear)) ? 'ans' : ''}</div>
+            <div style="font-size: 6.5pt; color: #6b21a8;">Invest. : ${sim.totalInvestmentHT ? sim.totalInvestmentHT.toLocaleString('fr-FR') : sim.resteACharge ? sim.resteACharge.toLocaleString('fr-FR') : '-'} € HT</div>
           </div>
         </div>
 
-        <!-- VISUEL SATELLITE HAUTE DÉFINITION -->
-        <div style="border: 2px solid #cbd5e1; border-radius: 12px; overflow: hidden; background: #0f172a; margin-bottom: 12px; height: 180px; display: flex; align-items: center; justify-content: center; position: relative;">
+        <!-- 4. VISUEL SATELLITE HAUTE DÉFINITION (+10% HAUTEUR : 198px) -->
+        <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 8px; height: 198px; display: flex; align-items: center; justify-content: center; position: relative;">
           ${finalMapScreenshot ? `
             <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover;" alt="Vue toiture satellite" />
           ` : `
@@ -245,60 +295,66 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               <div style="font-size: 8pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
             </div>
           `}
-          <div style="position: absolute; bottom: 6px; right: 6px; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-radius: 5px; font-size: 7pt; font-weight: bold;">
-            Délimitation géodésique : ${sim.roofSurface || 83} m²
+          <div style="position: absolute; bottom: 5px; right: 6px; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 6px; border-radius: 4px; font-size: 6.5pt; font-weight: bold;">
+            Délimitation toiture : ${sim.roofSurface || 83} m²
           </div>
         </div>
 
-        <!-- GRAPHIQUE FINANCIER D'AMORTISSEMENT (25 ANS) -->
-        <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 10px; margin-bottom: 12px;">
-          <div style="font-size: 8.5pt; font-weight: 800; color: #00429d; text-transform: uppercase; margin-bottom: 4px;">
+        <!-- 5. GRAPHIQUE FINANCIER D'AMORTISSEMENT (+5% HAUTEUR : 126px) -->
+        <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 7px 10px; margin-bottom: 8px;">
+          <div style="font-size: 8pt; font-weight: 800; color: #00429d; text-transform: uppercase; margin-bottom: 2px;">
             Projection Financière des Gains Cumulés (25 ans)
           </div>
-          <div style="height: 120px; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <div style="height: 126px; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
             <img src="${financialChartImg}" style="width: 100%; height: 100%; object-fit: contain;" alt="Graphique Amortissement" />
+          </div>
+
+          <!-- 3 CARTES DE CUMULS DE GAIN EN DESSOUS DU GRAPHIQUE -->
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; text-align: center;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px;">
+              <span style="font-size: 6pt; color: #64748b; font-weight: bold; text-transform: uppercase;">sur 10 ans</span>
+              <div style="font-size: 9.5pt; font-weight: 900; color: #0f172a;">+${dispCumul10.toLocaleString('fr-FR')} €</div>
+            </div>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px;">
+              <span style="font-size: 6pt; color: #64748b; font-weight: bold; text-transform: uppercase;">sur 20 ans</span>
+              <div style="font-size: 9.5pt; font-weight: 900; color: #0f172a;">+${dispCumul20.toLocaleString('fr-FR')} €</div>
+            </div>
+
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 4px;">
+              <span style="font-size: 6pt; color: #166534; font-weight: bold; text-transform: uppercase;">sur 25 ans</span>
+              <div style="font-size: 9.5pt; font-weight: 900; color: #16a34a;">+${dispCumul25.toLocaleString('fr-FR')} €</div>
+            </div>
           </div>
         </div>
 
-        <!-- TABLEAU DES HYPOTHÈSES TECHNIQUES DE DIMENSIONNEMENT -->
-        <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 10px 12px;">
-          <div style="font-size: 8.5pt; font-weight: 800; color: #00429d; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 6px;">
-            Hypothèses Techniques de Dimensionnement
+        <!-- 6. ZONE VOTRE IMPACT SUR L'ENVIRONNEMENT (IMAGE 2) -->
+        <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: 6px 10px; margin-bottom: 4px;">
+          <div style="font-size: 7.5pt; font-weight: 800; color: #166534; text-transform: uppercase; margin-bottom: 4px;">
+            🌱 Votre Impact sur l'Environnement
           </div>
 
-          <table style="width: 100%; font-size: 8pt; border-collapse: collapse;">
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 3px 0; color: #64748b;">Adresse du site :</td>
-              <td style="padding: 3px 0; text-align: right; font-weight: bold;">${clientAddress}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 3px 0; color: #64748b;">Productible solaire calculé :</td>
-              <td style="padding: 3px 0; text-align: right; font-weight: bold; color: #0284c7;">
-                ${sim.annualProductionKwh ? `${sim.annualProductionKwh.toLocaleString('fr-FR')} kWh / an` : '11 250 kWh / an'}
-              </td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 3px 0; color: #64748b;">Orientation du pan :</td>
-              <td style="padding: 3px 0; text-align: right; font-weight: bold;">${sim.orientationLabel || 'Plein Sud'}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 3px 0; color: #64748b;">Inclinaison de toiture :</td>
-              <td style="padding: 3px 0; text-align: right; font-weight: bold;">${sim.pitch || 30}°</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 3px 0; color: #64748b;">Taux d'autoconsommation :</td>
-              <td style="padding: 3px 0; text-align: right; font-weight: bold;">${autoconsoDisplay}</td>
-            </tr>
-            <tr>
-              <td style="padding: 3px 0; color: #64748b;">Coût de l'énergie consommée :</td>
-              <td style="padding: 3px 0; text-align: right; font-weight: bold;">0.26 € / kWh (Hypothèse)</td>
-            </tr>
-          </table>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center;">
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; padding: 4px;">
+              <div style="font-size: 9.5pt; font-weight: 900; color: #16a34a;">${co2Avoided} tonnes</div>
+              <div style="font-size: 6pt; color: #64748b;">de CO₂ évitées par an</div>
+            </div>
+
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; padding: 4px;">
+              <div style="font-size: 9.5pt; font-weight: 900; color: #16a34a;">${treesPlanted}</div>
+              <div style="font-size: 6pt; color: #64748b;">arbres plantés par an</div>
+            </div>
+
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 6px; padding: 4px;">
+              <div style="font-size: 9.5pt; font-weight: 900; color: #0d9488;">${householdsFed}</div>
+              <div style="font-size: 6pt; color: #64748b;">foyer(s) alimenté(s) en électricité</div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- PIED DE PAGE PROFESSIONNEL (SANS TÉLÉPHONE) -->
-      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #00429d; padding-top: 6px; font-size: 7.5pt; color: #475569;">
+      <!-- 7. PIED DE PAGE PROFESSIONNEL -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #00429d; padding-top: 4px; font-size: 7pt; color: #475569;">
         <span style="font-weight: bold; color: #00429d;">NELSON — nelsonpv.fr</span>
         <span>Courtage en Énergies Renouvelables &amp; Ingénierie Solaire</span>
         <span>contact@enr-courtage.fr</span>

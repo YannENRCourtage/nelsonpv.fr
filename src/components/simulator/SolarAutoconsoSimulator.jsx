@@ -447,7 +447,18 @@ export default function SolarAutoconsoSimulator({
 
               <button
                 type="button"
-                onClick={() => setCurrentStep(3)}
+                onClick={() => {
+                  const offsetLat = 0.00008;
+                  const offsetLng = 0.00012;
+                  const recentered = [
+                    { lat: mapCenter[0] + offsetLat, lng: mapCenter[1] - offsetLng },
+                    { lat: mapCenter[0] + offsetLat, lng: mapCenter[1] + offsetLng },
+                    { lat: mapCenter[0] - offsetLat, lng: mapCenter[1] + offsetLng },
+                    { lat: mapCenter[0] - offsetLat, lng: mapCenter[1] - offsetLng },
+                  ];
+                  setPolygonPoints(recentered);
+                  setCurrentStep(3);
+                }}
                 className="px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-105"
               >
                 Valider mon emplacement

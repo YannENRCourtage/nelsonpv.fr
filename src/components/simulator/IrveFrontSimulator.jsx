@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Zap, Car, ShieldCheck, Lightbulb, TrendingUp,
-  Save, FileDown, CheckCircle2, ChevronRight, Sliders, Euro, Calculator
+  Save, FileDown, CheckCircle2, ChevronRight, Sliders, Euro, Calculator,
+  MapPin, Search, Loader2
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
 import { useSimulatorSettingsStore } from '@/stores/useSimulatorSettingsStore';
@@ -16,6 +17,61 @@ export default function IrveFrontSimulator({
 }) {
   const { settings } = useSimulatorSettingsStore();
   const irveSettings = settings.irve;
+
+  // Adresse du projet
+  const [addressInput, setAddressInput] = useState(
+    selectedProject ? [selectedProject.address, selectedProject.zip, selectedProject.city].filter(Boolean).join(', ') : ''
+  );
+  const [suggestions, setSuggestions] = useState([]);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const [isAddressSelected, setIsAddressSelected] = useState(false);
+  const [departmentCode, setDepartmentCode] = useState('33');
+  const [cityName, setCityName] = useState('Bordeaux');
+
+  useEffect(() => {
+    if (selectedProject) {
+      if (selectedProject.address || selectedProject.city) {
+        setAddressInput([selectedProject.address, selectedProject.zip, selectedProject.city].filter(Boolean).join(', '));
+        setIsAddressSelected(true);
+      }
+      if (selectedProject.zip) setDepartmentCode(selectedProject.zip.substring(0, 2));
+      if (selectedProject.city) setCityName(selectedProject.city);
+    }
+  }, [selectedProject]);
+
+  // Recherche BAN lors de la saisie
+  useEffect(() => {
+    if (isAddressSelected || !addressInput || addressInput.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearchingAddress(true);
+      try {
+        const resp = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(addressInput)}&limit=5`);
+        const data = await resp.json();
+        if (data && data.features) setSuggestions(data.features);
+      } catch (err) {
+        console.error('Erreur API BAN IRVE:', err);
+      } finally {
+        setIsSearchingAddress(false);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [addressInput, isAddressSelected]);
+
+  const handleSelectSuggestion = (feat) => {
+    const label = feat.properties.label;
+    const postcode = feat.properties.postcode || '';
+    const dept = postcode.substring(0, 2);
+    const city = feat.properties.city || '';
+
+    setAddressInput(label);
+    setIsAddressSelected(true);
+    if (dept) setDepartmentCode(dept);
+    if (city) setCityName(city);
+    setSuggestions([]);
+  };
 
   const products = irveSettings.products || [];
   const [selectedPower, setSelectedPower] = useState(22);
@@ -160,6 +216,47 @@ export default function IrveFrontSimulator({
         {/* Colonne Gauche */}
         <div className="lg:col-span-5 space-y-3">
           <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+            
+            {/* Recherche d'adresse d'implantation */}
+            <div className="space-y-1.5 border-b border-slate-100 pb-3">
+              <label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-emerald-600" />
+                Adresse du site d'implantation
+              </label>
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                <input
+                  type="text"
+                  value={addressInput}
+                  onChange={(e) => {
+                    setAddressInput(e.target.value);
+                    setIsAddressSelected(false);
+                  }}
+                  placeholder="Saisissez l'adresse de votre parking ou entreprise..."
+                  className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500 shadow-2xs"
+                />
+                {isSearchingAddress && (
+                  <Loader2 className="w-4 h-4 absolute right-3 top-3 text-emerald-600 animate-spin" />
+                )}
+              </div>
+
+              {!isAddressSelected && suggestions.length > 0 && (
+                <div className="bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden divide-y divide-slate-100 mt-1">
+                  {suggestions.map((s, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSelectSuggestion(s)}
+                      className="w-full px-3 py-2 text-left hover:bg-emerald-50 transition-colors flex items-center gap-2 text-xs font-semibold text-slate-800"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>{s.properties.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <h3 className="text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
               <Sliders className="w-5 h-5 text-blue-600" />
               Configuration de la Station

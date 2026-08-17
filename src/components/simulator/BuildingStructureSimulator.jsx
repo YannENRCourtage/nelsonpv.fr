@@ -276,9 +276,6 @@ export default function BuildingStructureSimulator({
             <Building2 className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-xs font-black tracking-widest uppercase text-amber-400 block mb-0.5">
-              Simulateur Bâtiment Solaire Sur-Mesure
-            </span>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight">
               Structure Métallique &amp; Hangar Solaire
             </h2>
@@ -432,6 +429,32 @@ export default function BuildingStructureSimulator({
                   <Maximize className="w-4 h-4" />
                   <span>Plein écran</span>
                 </button>
+              </div>
+
+              {/* Encart flottant "Synthèse de la structure" en bas à droite de la visionneuse 3D (comme sur enr-courtage.fr) */}
+              <div className="absolute bottom-4 right-4 z-20 bg-slate-900/90 backdrop-blur-md text-white p-3.5 rounded-2xl border border-white/20 shadow-2xl max-w-xs pointer-events-auto space-y-1.5 text-xs">
+                <div className="flex items-center justify-between border-b border-white/20 pb-1">
+                  <span className="font-black text-amber-400 uppercase text-[10px] tracking-wider">Synthèse Structure &amp; PV</span>
+                  <span className="font-bold text-[10px] text-slate-300">{buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+                  <div>
+                    <span className="text-slate-400 block text-[9px] uppercase">Surface au sol</span>
+                    <strong className="text-white font-bold">{floorArea} m²</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[9px] uppercase">Centrale PV</span>
+                    <strong className="text-blue-400 font-bold">{installedKwc} kWc</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[9px] uppercase">Budget Gros-Œuvre</span>
+                    <strong className="text-white font-bold">{totalBuildingCost.toLocaleString('fr-FR')} €</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[9px] uppercase">Reste à charge</span>
+                    <strong className="text-purple-300 font-bold">{resteACharge.toLocaleString('fr-FR')} €</strong>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
