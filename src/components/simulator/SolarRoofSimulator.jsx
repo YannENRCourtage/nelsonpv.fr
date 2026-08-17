@@ -19,10 +19,8 @@ export default function SolarRoofSimulator({
   const { settings } = useSimulatorSettingsStore();
   const toitureSettings = settings.toiturePv;
 
-  // ─── État du tunnel ───
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Étape 1 : Adresse (Vide par défaut si pas de projet CRM)
   const [addressInput, setAddressInput] = useState(
     selectedProject ? [selectedProject.address, selectedProject.zip, selectedProject.city].filter(Boolean).join(', ') : ''
   );
@@ -31,14 +29,11 @@ export default function SolarRoofSimulator({
   const [departmentCode, setDepartmentCode] = useState('32');
   const [cityName, setCityName] = useState('Auch');
 
-  // Coordonnées GPS
   const [mapCenter, setMapCenter] = useState([43.646, 0.585]);
 
-  // Étape 3 : Polygone & Surface
   const [polygonPoints, setPolygonPoints] = useState([]);
   const [roofSurface, setRoofSurface] = useState(500);
 
-  // Étape 4 : Orientation
   const [selectedRidgeIndex, setSelectedRidgeIndex] = useState(0);
   const [orientationInfo, setOrientationInfo] = useState({
     orientationKey: 'south',
@@ -46,10 +41,7 @@ export default function SolarRoofSimulator({
     angle: 180
   });
 
-  // Étape 5 : Inclinaison
   const [selectedPitch, setSelectedPitch] = useState(15);
-
-  // Étape 6 : Modèle Économique
   const [businessModel, setBusinessModel] = useState('revente_totale');
   const [customKwc, setCustomKwc] = useState(100);
 
@@ -188,8 +180,13 @@ export default function SolarRoofSimulator({
   const takeMapSnapshot = async () => {
     if (mapContainerRef.current) {
       try {
-        const canvas = await html2canvas(mapContainerRef.current, { scale: 1.5, useCORS: true, allowTaint: true });
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const canvas = await html2canvas(mapContainerRef.current, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          logging: false
+        });
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
         setMapScreenshotDataUrl(dataUrl);
         return dataUrl;
       } catch (err) {
@@ -231,7 +228,7 @@ export default function SolarRoofSimulator({
   ]);
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-4">
+    <div className="w-full max-w-6xl mx-auto space-y-4">
       
       {/* Header */}
       <div className="bg-[#0e2b4d] text-white rounded-3xl p-5 shadow-2xl relative overflow-hidden">
@@ -250,7 +247,7 @@ export default function SolarRoofSimulator({
 
           <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 self-end md:self-auto">
             <Building2 className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="text-xs font-bold text-white truncate max-w-[220px]">
+            <span className="text-xs font-bold text-white truncate max-w-[240px]">
               {cityName} ({departmentCode}) — {regionalBaseYield} kWh/kWc
             </span>
           </div>
@@ -281,7 +278,7 @@ export default function SolarRoofSimulator({
                     : 'bg-white/5 text-slate-400 hover:text-white'
                 }`}
               >
-                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs font-black ${isCurrent ? 'bg-white text-amber-950 font-black' : 'bg-white/20 text-white'}`}>
+                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs font-black ${isCurrent ? 'bg-white text-amber-950' : 'bg-white/20 text-white'}`}>
                   {isDone ? '✓' : item.step}
                 </span>
                 <span>{item.label}</span>
@@ -360,7 +357,7 @@ export default function SolarRoofSimulator({
           </motion.div>
         )}
 
-        {/* Étape 2 : Repérage */}
+        {/* Étape 2 : Emplacement */}
         {currentStep === 2 && (
           <motion.div
             key="roof-step-2"
@@ -374,7 +371,7 @@ export default function SolarRoofSimulator({
                 Repérons votre toiture
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Faites glisser la carte pour positionner votre toiture sous le curseur vert clignotant.
+                Faites glisser la carte et zoomez librement pour positionner votre toiture sous le curseur vert clignotant.
               </p>
             </div>
 
@@ -508,7 +505,7 @@ export default function SolarRoofSimulator({
           </motion.div>
         )}
 
-        {/* Étape 5 : Inclinaison avec Triangle Dynamique */}
+        {/* Étape 5 : Inclinaison */}
         {currentStep === 5 && (
           <motion.div
             key="roof-step-5"
@@ -526,7 +523,7 @@ export default function SolarRoofSimulator({
               </p>
             </div>
 
-            {/* Triangle dynamique */}
+            {/* Triangle dynamique SANS texte sous le triangle */}
             <div className="w-64 h-32 mx-auto flex items-end justify-center pb-2 transition-all duration-300">
               <svg viewBox="0 0 160 80" className="w-full h-full text-amber-500 stroke-current fill-none">
                 <line x1="10" y1="70" x2="150" y2="70" strokeWidth="2.5" stroke="#cbd5e1" />
@@ -555,9 +552,6 @@ export default function SolarRoofSimulator({
                     />
                   </>
                 )}
-                <text x="80" y="78" textAnchor="middle" fill="#0e2b4d" fontSize="8" fontWeight="bold">
-                  {selectedPitch}° d'inclinaison
-                </text>
               </svg>
             </div>
 
@@ -582,6 +576,11 @@ export default function SolarRoofSimulator({
                   <span className="text-xs font-normal opacity-85 block">{item.desc}</span>
                 </button>
               ))}
+            </div>
+
+            {/* Encart avec retour à la ligne */}
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl max-w-lg mx-auto text-xs text-slate-600 leading-relaxed">
+              💡 <em>Si vous ne connaissez pas l'inclinaison exacte de votre toiture, choisissez 30°.<br />Il s'agit de la configuration la plus courante en France.</em>
             </div>
 
             <div className="flex items-center justify-between pt-2 max-w-xl mx-auto">
@@ -618,7 +617,7 @@ export default function SolarRoofSimulator({
             exit={{ opacity: 0, y: -15 }}
             className="space-y-4"
           >
-            {/* Sélecteur Modèle Économique */}
+            {/* Sélecteur Modèle */}
             <div className="bg-slate-100 p-1.5 rounded-2xl flex items-center gap-2 max-w-lg mx-auto">
               <button
                 type="button"

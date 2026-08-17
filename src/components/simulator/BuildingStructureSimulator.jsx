@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Building2, Sliders, Sun, Euro, TrendingUp,
@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
 import { useSimulatorSettingsStore } from '@/stores/useSimulatorSettingsStore';
-import { useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
+import { useConfiguratorStore } from '@/stores/useConfiguratorStore.js';
 import BuildingScene from '@/components/configurator/BuildingScene.jsx';
 
 export default function BuildingStructureSimulator({
@@ -18,28 +18,31 @@ export default function BuildingStructureSimulator({
   const { settings } = useSimulatorSettingsStore();
   const structSettings = settings.structure;
 
-  // Accès au store 3D du Configurateur
-  const config = useConfiguratorValues();
-  const actions = useConfiguratorActions();
+  // Dimensions éditables locales
+  const [length, setLength] = useState(30);
+  const [width, setWidth] = useState(20);
+  const [eaveHeight, setEaveHeight] = useState(5.0);
+  const [roofPitch, setRoofPitch] = useState(15);
+  const [buildingType, setBuildingType] = useState('asymetrique_1');
 
-  // Dimensions éditables locales reliées au store 3D
-  const [length, setLength] = useState(config.length || 30);
-  const [width, setWidth] = useState(config.width || 20);
-  const [eaveHeight, setEaveHeight] = useState(config.eaveHeight || 5.0);
-  const [roofPitch, setRoofPitch] = useState(config.roofPitch || 15);
-  const [buildingType, setBuildingType] = useState(config.buildingType || 'asymetrique_1');
-
-  // Synchronisation avec le store 3D du configurateur
+  // Mise à jour directe et sécurisée du store 3D du Configurateur (sans fonction indéfinie)
   useEffect(() => {
-    actions.setBuildingType(buildingType);
-    actions.setWidth(width);
-    actions.setEaveHeight(eaveHeight);
-    actions.setSlope(roofPitch);
-    // Calcul du nombre de travées pour correspondre à la longueur
-    const spacing = config.baySpacing || 6;
-    const bays = Math.max(4, Math.round(length / spacing));
-    actions.setBayCount(bays);
-  }, [length, width, eaveHeight, roofPitch, buildingType, actions, config.baySpacing]);
+    try {
+      const baySpacing = 6;
+      const bayCount = Math.max(4, Math.round(length / baySpacing));
+      useConfiguratorStore.setState({
+        buildingType,
+        width: Number(width),
+        eaveHeight: Number(eaveHeight),
+        roofPitch: Number(roofPitch),
+        baySpacing,
+        bayCount,
+        hasSolar: true
+      });
+    } catch (err) {
+      console.warn('Erreur mise à jour 3D configurateur:', err);
+    }
+  }, [length, width, eaveHeight, roofPitch, buildingType]);
 
   // Surface au sol & toiture
   const floorArea = useMemo(() => length * width, [length, width]);
@@ -68,14 +71,13 @@ export default function BuildingStructureSimulator({
   const totalPvCost = pvCost + raccordementCost + devCost;
   const totalProjectInvestment = totalBuildingCost + totalPvCost;
 
-  // Revenus annuels (EDF OA ~0.114 €/kWh)
+  // Revenus annuels
   const annualRevenue = useMemo(() => Math.round(annualProductionKwh * 0.114), [annualProductionKwh]);
   const annualNetCashflow = useMemo(() => Math.round(annualRevenue - (installedKwc * 22)), [annualRevenue, installedKwc]);
 
   const soulteInvestisseur = useMemo(() => Math.round(installedKwc * 180), [installedKwc]);
   const resteAChargeAgriculteur = Math.max(0, totalBuildingCost - soulteInvestisseur);
 
-  // Projection sur 20 ans
   const chartData = useMemo(() => {
     const data = [];
     let cumul = -totalProjectInvestment;
@@ -95,7 +97,6 @@ export default function BuildingStructureSimulator({
     return item ? item.year.replace('An ', '') : '9';
   }, [chartData]);
 
-  // Synchronisation avec l'état global du parent
   useEffect(() => {
     if (onStateUpdate) {
       onStateUpdate({
@@ -126,7 +127,7 @@ export default function BuildingStructureSimulator({
   ]);
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-4">
+    <div className="w-full max-w-6xl mx-auto space-y-4">
       
       {/* Header */}
       <div className="bg-[#0e2b4d] text-white rounded-3xl p-5 shadow-2xl relative overflow-hidden">
@@ -263,10 +264,9 @@ export default function BuildingStructureSimulator({
           </div>
         </div>
 
-        {/* Colonne Droite : Visionneuse 3D du Configurateur & KPIs */}
+        {/* Colonne Droite : Visionneuse 3D du Configurateur */}
         <div className="lg:col-span-7 space-y-3">
           
-          {/* Rendu 3D du Configurateur */}
           <div className="bg-white rounded-3xl p-3 border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             <div className="flex items-center justify-between mb-1.5 px-2">
               <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
@@ -279,12 +279,11 @@ export default function BuildingStructureSimulator({
               </span>
             </div>
 
-            <div className="w-full h-[220px] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 relative">
+            <div className="w-full h-[240px] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 relative">
               <BuildingScene viewMode="3D" isCapturing={false} />
             </div>
           </div>
 
-          {/* KPIs */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs">
               <span className="text-[10px] font-bold text-slate-400 uppercase block">Production Solaire</span>
@@ -311,7 +310,6 @@ export default function BuildingStructureSimulator({
             </div>
           </div>
 
-          {/* Cashflow 20 ans avec point d'amortissement */}
           <div className="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm space-y-2">
             <div className="flex items-center justify-between text-xs font-bold text-slate-700">
               <span>Amortissement de l'investissement global (20 ans)</span>

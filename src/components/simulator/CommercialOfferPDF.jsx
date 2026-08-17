@@ -152,6 +152,24 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject }
   document.body.appendChild(container);
 
   try {
+    // Attente du chargement de toutes les images pour garantir l'affichage de la vue satellite
+    const images = Array.from(container.querySelectorAll('img'));
+    if (images.length > 0) {
+      await Promise.all(
+        images.map(
+          (img) =>
+            new Promise((resolve) => {
+              if (img.complete) {
+                resolve();
+              } else {
+                img.onload = resolve;
+                img.onerror = resolve;
+              }
+            })
+        )
+      );
+    }
+
     const canvas = await html2canvas(container, {
       scale: 2,
       useCORS: true,

@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Polygon, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { RotateCcw, Plus, Minus, Compass, Eye } from 'lucide-react';
+import { RotateCcw, Plus, Minus, Compass } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
 // ─── Calcul de Surface Géodésique (Formule Sphérique WGS84) ──────────────────
 function calculatePolygonArea(latlngs) {
   if (!latlngs || latlngs.length < 3) return 0;
-  const EARTH_RADIUS = 6378137; // mètres
+  const EARTH_RADIUS = 6378137;
   let total = 0;
   const numPoints = latlngs.length;
 
@@ -25,7 +25,7 @@ function calculatePolygonArea(latlngs) {
   return Math.round(area);
 }
 
-// ─── Calcul d'orientation selon le faîtage sélectionné ───────────────────────
+// ─── Calcul d'orientation selon le faîtage ───────────────────────────────────
 function calculateOrientationFromRidge(p1, p2) {
   const dLng = (p2.lng - p1.lng) * Math.cos(((p1.lat + p2.lat) / 2 * Math.PI) / 180);
   const dLat = p2.lat - p1.lat;
@@ -66,14 +66,14 @@ function calculateOrientationFromRidge(p1, p2) {
   return { orientationKey, orientationLabel, angle: Math.round(bestAngle) };
 }
 
-// ─── Icône Marker 1, 2, 3, 4 Style ENR Courtage (Centré sans décalage CSS) ───
+// ─── Icône Marker 1, 2, 3, 4 Style ENR Courtage ──────────────────────────────
 const createNumberedIcon = (number, isSelected = false) => {
   return L.divIcon({
     className: 'custom-roof-corner-marker-container',
     html: `
       <div style="
-        width: 34px;
-        height: 34px;
+        width: 36px;
+        height: 36px;
         background: ${isSelected ? '#00e699' : '#00b875'};
         color: #ffffff;
         border-radius: 50%;
@@ -81,7 +81,7 @@ const createNumberedIcon = (number, isSelected = false) => {
         align-items: center;
         justify-content: center;
         font-weight: 900;
-        font-size: 15px;
+        font-size: 16px;
         font-family: Arial, sans-serif;
         border: 3px solid #ffffff;
         box-shadow: 0 0 14px rgba(0, 230, 153, 0.95), 0 4px 8px rgba(0,0,0,0.5);
@@ -92,23 +92,44 @@ const createNumberedIcon = (number, isSelected = false) => {
         ${number}
       </div>
     `,
-    iconSize: [34, 34],
-    iconAnchor: [17, 17]
+    iconSize: [36, 36],
+    iconAnchor: [18, 18]
   });
 };
 
-// ─── Contrôleur de mise à jour du centre de carte ────────────────────────────
-function MapCenterController({ center, zoom }) {
+// ─── Contrôleur de centrage intelligent lors du changement d'étape ───────────
+function StepTransitionController({ step, center, polygonPoints }) {
   const map = useMap();
+  const prevStepRef = useRef(step);
+
   useEffect(() => {
-    if (center && center[0] && center[1]) {
-      map.setView(center, zoom || 19, { animate: true });
+    // Si l'étape change, centrer la carte sur le polygone ou sur le repère
+    if (prevStepRef.current !== step) {
+      prevStepRef.current = step;
+
+      if ((step === 3 || step === 4 || step === 6) && polygonPoints && polygonPoints.length >= 4) {
+        // Centrer sur le polygone
+        const lats = polygonPoints.map(p => p.lat);
+        const lngs = polygonPoints.map(p => p.lng);
+        const centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
+        const centerLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
+        const bounds = L.latLngBounds(polygonPoints.map(p => [p.lat, p.lng]));
+        
+        map.fitBounds(bounds, {
+          padding: [50, 50],
+          maxZoom: 20,
+          animate: true
+        });
+      } else if (center && center[0] && center[1]) {
+        map.setView(center, map.getZoom() || 19, { animate: true });
+      }
     }
-  }, [center, zoom, map]);
+  }, [step, center, polygonPoints, map]);
+
   return null;
 }
 
-// ─── Contrôles de Zoom personnalisés ─────────────────────────────────────────
+// ─── Contrôles de Zoom Flottants ─────────────────────────────────────────────
 function CustomZoomControls() {
   const map = useMap();
   return (
@@ -116,24 +137,24 @@ function CustomZoomControls() {
       <button
         type="button"
         onClick={() => map.zoomIn()}
-        className="w-8 h-8 rounded-xl bg-white/95 hover:bg-white text-slate-800 font-black flex items-center justify-center border border-slate-200 shadow-sm transition-all hover:scale-105 active:scale-95"
+        className="w-9 h-9 rounded-xl bg-white/95 hover:bg-white text-slate-800 font-black flex items-center justify-center border border-slate-200 shadow-sm transition-all hover:scale-105 active:scale-95"
         title="Zoomer (+)"
       >
-        <Plus className="w-4 h-4" />
+        <Plus className="w-5 h-5" />
       </button>
       <button
         type="button"
         onClick={() => map.zoomOut()}
-        className="w-8 h-8 rounded-xl bg-white/95 hover:bg-white text-slate-800 font-black flex items-center justify-center border border-slate-200 shadow-sm transition-all hover:scale-105 active:scale-95"
+        className="w-9 h-9 rounded-xl bg-white/95 hover:bg-white text-slate-800 font-black flex items-center justify-center border border-slate-200 shadow-sm transition-all hover:scale-105 active:scale-95"
         title="Dézoomer (-)"
       >
-        <Minus className="w-4 h-4" />
+        <Minus className="w-5 h-5" />
       </button>
     </div>
   );
 }
 
-// ─── Gestionnaire de déplacement de la carte (Étape 2) ───────────────────────
+// ─── Gestionnaire de déplacement de la carte (Étape 2) sans forcer de zoom ──
 function MapDragTracker({ onCenterChange, enabled }) {
   const map = useMapEvents({
     moveend: () => {
@@ -146,8 +167,8 @@ function MapDragTracker({ onCenterChange, enabled }) {
   return null;
 }
 
-// ─── Composant Marqueur Déplaçable avec gestion du drag Leaflet ───────────────
-function DraggableRoofCorner({ position, index, onDragEnd, onDrag, map }) {
+// ─── Marqueur 1, 2, 3, 4 Natif Leaflet (Drag fluide sans perte de curseur) ────
+function NativeDraggableCorner({ index, initialPosition, onPositionChanged, onLiveDrag, map }) {
   const markerRef = useRef(null);
 
   const eventHandlers = useMemo(
@@ -156,24 +177,22 @@ function DraggableRoofCorner({ position, index, onDragEnd, onDrag, map }) {
         if (map) map.dragging.disable();
       },
       drag(e) {
-        const marker = e.target;
-        const newPos = marker.getLatLng();
-        if (onDrag) onDrag(index, newPos);
+        const newPos = e.target.getLatLng();
+        if (onLiveDrag) onLiveDrag(index, newPos);
       },
       dragend(e) {
         if (map) map.dragging.enable();
-        const marker = e.target;
-        const newPos = marker.getLatLng();
-        if (onDragEnd) onDragEnd(index, newPos);
+        const newPos = e.target.getLatLng();
+        if (onPositionChanged) onPositionChanged(index, newPos);
       },
     }),
-    [index, onDrag, onDragEnd, map]
+    [index, onLiveDrag, onPositionChanged, map]
   );
 
   return (
     <Marker
       ref={markerRef}
-      position={position}
+      position={initialPosition}
       draggable={true}
       icon={createNumberedIcon(index + 1)}
       eventHandlers={eventHandlers}
@@ -183,7 +202,7 @@ function DraggableRoofCorner({ position, index, onDragEnd, onDrag, map }) {
 }
 
 export default function RoofMapPolygonSelector({
-  step = 2, // 2: Repérage, 3: Surface, 4: Orientation, 6: Vue récap
+  step = 2,
   center = [43.6047, 1.4442],
   onCenterChange,
   polygonPoints = [],
@@ -195,11 +214,12 @@ export default function RoofMapPolygonSelector({
   mapContainerRef
 }) {
   const [mapInstance, setMapInstance] = useState(null);
+  const polygonLayerRef = useRef(null);
 
-  // Initialisation d'un rectangle de 4 points par défaut autour du centre
+  // Initialisation d'un rectangle de 4 points par défaut
   const initializeDefaultPolygon = useCallback((lat, lng) => {
-    const offsetLat = 0.00008; // env 9m
-    const offsetLng = 0.00012; // env 9m
+    const offsetLat = 0.00008;
+    const offsetLng = 0.00012;
     return [
       { lat: lat + offsetLat, lng: lng - offsetLng }, // 1: Haut Gauche
       { lat: lat + offsetLat, lng: lng + offsetLng }, // 2: Haut Droit
@@ -220,39 +240,47 @@ export default function RoofMapPolygonSelector({
     return initializeDefaultPolygon(center[0], center[1]);
   }, [polygonPoints, center, initializeDefaultPolygon]);
 
-  // Calcul de surface en direct
-  const calculatedSurface = useMemo(() => {
-    return calculatePolygonArea(currentPoints);
+  // Points locaux dynamiques pour mise à jour fluide du polygone
+  const [livePoints, setLivePoints] = useState(currentPoints);
+
+  useEffect(() => {
+    setLivePoints(currentPoints);
   }, [currentPoints]);
 
-  // Déplacement fluide en direct (drag)
-  const handlePointDrag = (index, newLatLng) => {
+  // Déplacement en direct (met à jour le tracé visuel sans re-créer les marqueurs)
+  const handleLiveDrag = (index, newLatLng) => {
+    setLivePoints(prev => {
+      const updated = [...prev];
+      updated[index] = { lat: newLatLng.lat, lng: newLatLng.lng };
+      return updated;
+    });
+  };
+
+  // Fin de déplacement : engagement définitif de la position
+  const handlePositionChanged = (index, newLatLng) => {
     const updated = [...currentPoints];
     updated[index] = { lat: newLatLng.lat, lng: newLatLng.lng };
+    setLivePoints(updated);
     if (onPolygonChange) onPolygonChange(updated);
   };
 
-  // Fin de drag
-  const handlePointDragEnd = (index, newLatLng) => {
-    const updated = [...currentPoints];
-    updated[index] = { lat: newLatLng.lat, lng: newLatLng.lng };
-    if (onPolygonChange) onPolygonChange(updated);
-  };
+  const calculatedSurface = useMemo(() => {
+    return calculatePolygonArea(livePoints);
+  }, [livePoints]);
 
-  // Réinitialiser le rectangle
   const handleResetRectangle = () => {
     if (center && center[0] && center[1]) {
       const reset = initializeDefaultPolygon(center[0], center[1]);
+      setLivePoints(reset);
       if (onPolygonChange) onPolygonChange(reset);
     }
   };
 
-  // Gestion de la sélection du faîtage (Étape 4)
   const handleEdgeClick = (edgeIdx) => {
     if (step !== 4) return;
     if (onRidgeSelect) onRidgeSelect(edgeIdx);
-    const p1 = currentPoints[edgeIdx];
-    const p2 = currentPoints[(edgeIdx + 1) % 4];
+    const p1 = livePoints[edgeIdx];
+    const p2 = livePoints[(edgeIdx + 1) % 4];
     const res = calculateOrientationFromRidge(p1, p2);
     if (onOrientationChange) {
       onOrientationChange(res);
@@ -260,10 +288,10 @@ export default function RoofMapPolygonSelector({
   };
 
   return (
-    <div className="relative w-full rounded-2xl overflow-hidden shadow-xl border border-slate-200 bg-slate-900" ref={mapContainerRef}>
+    <div className="relative w-full rounded-3xl overflow-hidden shadow-xl border border-slate-200 bg-slate-900" ref={mapContainerRef}>
       
-      {/* Conteneur Leaflet */}
-      <div className="relative w-full h-[320px] sm:h-[350px] z-0">
+      {/* Conteneur Leaflet Agrandie (420px de hauteur) */}
+      <div className="relative w-full h-[400px] sm:h-[440px] z-0">
         <MapContainer
           center={center}
           zoom={19}
@@ -275,37 +303,36 @@ export default function RoofMapPolygonSelector({
           className="w-full h-full"
           ref={setMapInstance}
         >
-          <MapCenterController center={center} zoom={19} />
+          <StepTransitionController step={step} center={center} polygonPoints={currentPoints} />
           <MapDragTracker enabled={step === 2} onCenterChange={onCenterChange} />
           <CustomZoomControls />
 
-          {/* Tuiles Satellite Google Hybride / Esri avec crossOrigin pour capture PDF */}
+          {/* Tuile Satellite Esri World Imagery (CORS activé pour capture PDF garantie) */}
           <TileLayer
-            url="https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-            subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             maxZoom={21}
             crossOrigin="anonymous"
-            attribution="Google Maps Satellite"
+            attribution="Esri World Imagery"
           />
 
-          {/* ═══ ÉTAPE 3, 4 & 6 : Polygone & Marqueurs 1, 2, 3, 4 ═══════════════ */}
-          {(step === 3 || step === 4 || step === 5 || step === 6) && currentPoints.length >= 4 && (
+          {/* Polygone et Arêtes */}
+          {(step === 3 || step === 4 || step === 5 || step === 6) && livePoints.length >= 4 && (
             <>
-              {/* Remplissage vert translucide du pan de toiture */}
               <Polygon
-                positions={currentPoints.map(p => [p.lat, p.lng])}
+                ref={polygonLayerRef}
+                positions={livePoints.map(p => [p.lat, p.lng])}
                 pathOptions={{
                   color: '#00e699',
-                  weight: 3.5,
+                  weight: 4,
                   fillColor: '#00b875',
-                  fillOpacity: 0.35,
+                  fillOpacity: 0.38,
                   dashArray: step === 4 ? '4, 4' : null
                 }}
               />
 
-              {/* Arêtes cliquables pour l'Étape 4 (Orientation / Faîtage) */}
-              {currentPoints.map((p, idx) => {
-                const nextP = currentPoints[(idx + 1) % 4];
+              {/* Lignes du faîtage pour l'étape 4 */}
+              {livePoints.map((p, idx) => {
+                const nextP = livePoints[(idx + 1) % 4];
                 const isSelectedRidge = step === 4 && selectedRidgeIndex === idx;
                 return (
                   <Polyline
@@ -316,22 +343,22 @@ export default function RoofMapPolygonSelector({
                     }}
                     pathOptions={{
                       color: isSelectedRidge ? '#ef4444' : '#00e699',
-                      weight: isSelectedRidge ? 6 : 3.5,
-                      opacity: 0.9,
+                      weight: isSelectedRidge ? 6.5 : 4,
+                      opacity: 0.95,
                       cursor: step === 4 ? 'pointer' : 'default'
                     }}
                   />
                 );
               })}
 
-              {/* 4 Marqueurs vert fluo déplaçables (Étape 3) */}
+              {/* 4 Marqueurs Déplaçables SANS interruption React */}
               {step === 3 && currentPoints.map((p, idx) => (
-                <DraggableRoofCorner
-                  key={`point-${idx}`}
+                <NativeDraggableCorner
+                  key={`corner-marker-${idx}`}
                   index={idx}
-                  position={[p.lat, p.lng]}
-                  onDrag={handlePointDrag}
-                  onDragEnd={handlePointDragEnd}
+                  initialPosition={[p.lat, p.lng]}
+                  onLiveDrag={handleLiveDrag}
+                  onPositionChanged={handlePositionChanged}
                   map={mapInstance}
                 />
               ))}
@@ -339,31 +366,31 @@ export default function RoofMapPolygonSelector({
           )}
         </MapContainer>
 
-        {/* ═══ ÉTAPE 2 : Cible Verte Centrale de Repérage (Sans texte) ═════════ */}
+        {/* Étape 2 : Curseur vert clignotant sans texte */}
         {step === 2 && (
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[1000]">
             <div className="relative flex items-center justify-center animate-pulse">
-              <div className="w-12 h-12 rounded-full border-4 border-emerald-400 bg-emerald-500/40 shadow-lg shadow-emerald-500/50 flex items-center justify-center">
-                <div className="w-3.5 h-3.5 rounded-full bg-emerald-200 ring-2 ring-emerald-600" />
+              <div className="w-14 h-14 rounded-full border-4 border-emerald-400 bg-emerald-500/40 shadow-lg shadow-emerald-500/60 flex items-center justify-center">
+                <div className="w-4 h-4 rounded-full bg-emerald-200 ring-2 ring-emerald-600" />
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* ═══ BARRE INFÉRIEURE D'INFORMATIONS EN DIRECT ═══════════════════════════ */}
+      {/* Barre d'informations */}
       {step === 3 && (
-        <div className="p-3 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="p-3.5 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
           <button
             type="button"
             onClick={handleResetRectangle}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors shadow-2xs"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors shadow-2xs"
           >
             <RotateCcw className="w-4 h-4" />
             Réinitialiser le rectangle
           </button>
 
-          <div className="px-5 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl text-center shadow-xs">
+          <div className="px-6 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl text-center shadow-xs">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
               Nous estimons la surface de toiture à :
             </span>
@@ -379,12 +406,12 @@ export default function RoofMapPolygonSelector({
       )}
 
       {step === 4 && (
-        <div className="p-3 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="p-3.5 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-xs text-slate-600 font-medium">
             <span className="font-bold text-red-600">Ligne rouge :</span> Côté sélectionné comme faîtage
           </div>
 
-          <div className="px-5 py-1.5 bg-amber-50 border border-amber-200 rounded-2xl text-center shadow-xs">
+          <div className="px-6 py-2 bg-amber-50 border border-amber-200 rounded-2xl text-center shadow-xs">
             <span className="text-xs font-bold text-amber-800 uppercase tracking-wider block">
               Votre toiture est exposée :
             </span>

@@ -127,11 +127,11 @@ export default function IrveFrontSimulator({
   ]);
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-4">
+    <div className="w-full max-w-7xl mx-auto space-y-4">
       
-      {/* Header */}
-      <div className="bg-[#0e2b4d] text-white rounded-3xl p-5 shadow-2xl relative overflow-hidden">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-white/10 pb-3 mb-3">
+      {/* Header élargi de 30% */}
+      <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-2xl relative overflow-hidden">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-white/10 pb-4 mb-3">
           <div>
             <span className="text-xs font-black tracking-widest uppercase text-blue-400 block mb-0.5">
               Simulateur de Rentabilité IRVE
@@ -139,14 +139,14 @@ export default function IrveFrontSimulator({
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               Infrastructures de <span className="text-emerald-400">Recharge Électrique</span>
             </h2>
-            <p className="text-xs text-slate-300 mt-0.5 max-w-2xl">
-              Estimez le retour sur investissement de l'installation de bornes de recharge pour votre parking ou votre flotte.
+            <p className="text-sm text-slate-300 mt-0.5 max-w-3xl">
+              Estimez le retour sur investissement de l'installation de bornes de recharge pour votre parking ou votre flotte d'entreprise.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 self-end md:self-auto">
-            <Zap className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span className="text-xs font-bold text-white">
+          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-white/10 self-end md:self-auto">
+            <Zap className="w-5 h-5 text-emerald-400 shrink-0" />
+            <span className="text-sm font-bold text-white">
               {quantity} × Borne {selectedPower} kW ({currentProduct.price.toLocaleString('fr-FR')} € HT)
             </span>
           </div>
@@ -155,32 +155,32 @@ export default function IrveFrontSimulator({
 
       <EvComparator />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         
         {/* Colonne Gauche */}
         <div className="lg:col-span-5 space-y-3">
-          <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
-            <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-blue-600" />
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <h3 className="text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <Sliders className="w-5 h-5 text-blue-600" />
               Configuration de la Station
             </h3>
 
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Puissance de la borne</label>
-              <div className="grid grid-cols-3 gap-2">
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">Puissance de la borne</label>
+              <div className="grid grid-cols-3 gap-2.5">
                 {products.map(p => (
                   <button
                     key={p.id || p.power}
                     type="button"
                     onClick={() => setSelectedPower(p.power)}
-                    className={`p-2 rounded-xl text-xs font-black transition-all border ${
+                    className={`p-2.5 rounded-xl text-xs font-black transition-all border ${
                       selectedPower === p.power
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-md scale-105'
                         : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                     }`}
                   >
                     <span className="block text-sm">{p.power} kW</span>
-                    <span className="text-[10px] font-normal opacity-80 block">{p.price.toLocaleString('fr-FR')} €</span>
+                    <span className="text-[11px] font-normal opacity-85 block">{p.price.toLocaleString('fr-FR')} €</span>
                   </button>
                 ))}
               </div>
@@ -188,8 +188,8 @@ export default function IrveFrontSimulator({
 
             <div>
               <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
-                <span>Nombre de bornes</span>
-                <span className="text-blue-600 font-black">{quantity} borne(s)</span>
+                <span>Nombre de points de charge</span>
+                <span className="text-blue-600 font-black text-sm">{quantity} borne(s)</span>
               </div>
               <input
                 type="range"
@@ -197,7 +197,7 @@ export default function IrveFrontSimulator({
                 max="10"
                 value={quantity}
                 onChange={(e) => setQuantity(Number(e.target.value))}
-                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
               />
             </div>
 
@@ -206,7 +206,7 @@ export default function IrveFrontSimulator({
               <select
                 value={targetTypology}
                 onChange={(e) => handleTypologyChange(e.target.value)}
-                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
               >
                 {Object.entries(typologies).map(([k, v]) => (
                   <option key={k} value={k}>{v.label} {v.estimate ? `(~${v.estimate} rech./mois)` : ''}</option>
@@ -217,7 +217,7 @@ export default function IrveFrontSimulator({
             <div>
               <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
                 <span>Recharges estimées par mois</span>
-                <span className="text-emerald-600 font-black">{rechargesPerMonth} recharges</span>
+                <span className="text-emerald-600 font-black text-sm">{rechargesPerMonth} recharges</span>
               </div>
               <input
                 type="range"
@@ -226,14 +226,14 @@ export default function IrveFrontSimulator({
                 step="10"
                 value={rechargesPerMonth}
                 onChange={(e) => setRechargesPerMonth(Number(e.target.value))}
-                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
               />
             </div>
 
             <div>
               <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
                 <span>Marge nette par session</span>
-                <span className="text-emerald-600 font-black">{marginPerRecharge.toFixed(2)} € / recharge</span>
+                <span className="text-emerald-600 font-black text-sm">{marginPerRecharge.toFixed(2)} € / recharge</span>
               </div>
               <input
                 type="range"
@@ -242,7 +242,7 @@ export default function IrveFrontSimulator({
                 step="0.5"
                 value={marginPerRecharge}
                 onChange={(e) => setMarginPerRecharge(Number(e.target.value))}
-                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
               />
             </div>
           </div>
@@ -251,28 +251,28 @@ export default function IrveFrontSimulator({
         {/* Colonne Droite */}
         <div className="lg:col-span-7 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">Revenus Mensuels</span>
+            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs">
+              <span className="text-xs font-bold text-slate-400 uppercase block">Revenus Mensuels</span>
               <span className="text-2xl font-black text-emerald-600 block my-1">
                 +{monthlyRevenue.toLocaleString('fr-FR')} <span className="text-xs text-slate-500 font-semibold">€/mois</span>
               </span>
-              <span className="text-[10px] text-slate-400">+{annualRevenue.toLocaleString('fr-FR')} € / an</span>
+              <span className="text-xs text-slate-400">+{annualRevenue.toLocaleString('fr-FR')} € / an</span>
             </div>
 
-            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">Investissement Net</span>
+            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs">
+              <span className="text-xs font-bold text-slate-400 uppercase block">Investissement Net</span>
               <span className="text-2xl font-black text-slate-900 block my-1">
                 {resteACharge.toLocaleString('fr-FR')} <span className="text-xs text-slate-500 font-semibold">€ HT</span>
               </span>
-              <span className="text-[10px] text-slate-400">Matériel + Pose ({totalInvestment} €)</span>
+              <span className="text-xs text-slate-400">Matériel + Pose ({totalInvestment} €)</span>
             </div>
 
-            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase block">Retour sur Invest.</span>
+            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs">
+              <span className="text-xs font-bold text-slate-400 uppercase block">Retour sur Invest.</span>
               <span className="text-2xl font-black text-blue-600 block my-1">
                 {breakEvenMonths < 12 ? `${Math.round(breakEvenMonths)} mois` : `${breakEvenYears} ans`}
               </span>
-              <span className="text-[10px] text-slate-400">Amorti à M{Math.round(breakEvenMonths)}</span>
+              <span className="text-xs text-slate-400">Amorti à M{Math.round(breakEvenMonths)}</span>
             </div>
           </div>
 
@@ -281,15 +281,15 @@ export default function IrveFrontSimulator({
               <span>Évolution du résultat financier net</span>
               <span className="text-emerald-600">Bénéfice net cumulé</span>
             </div>
-            <div className="h-44 w-full">
+            <div className="h-48 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="month" tick={{ fontSize: 9 }} />
-                  <YAxis tick={{ fontSize: 9 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k€`} />
+                  <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k€`} />
                   <Tooltip
                     formatter={(val) => [`${Number(val).toLocaleString('fr-FR')} €`, 'Résultat net']}
-                    contentStyle={{ borderRadius: 10, fontSize: 11 }}
+                    contentStyle={{ borderRadius: 10, fontSize: 12 }}
                   />
                   <ReferenceLine x={`M${Math.round(breakEvenMonths)}`} stroke="#ef4444" strokeDasharray="4 4" strokeWidth={2} />
                   <Bar dataKey="profit" fill="#10b981" radius={[3, 3, 0, 0]} />

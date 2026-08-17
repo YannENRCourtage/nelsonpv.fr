@@ -8,7 +8,6 @@ import {
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceDot, ReferenceLine } from 'recharts';
 import { useSimulatorSettingsStore, getProductionForDepartment } from '@/stores/useSimulatorSettingsStore';
 import RoofMapPolygonSelector from './RoofMapPolygonSelector';
-import { toast } from '@/components/ui/use-toast';
 import html2canvas from 'html2canvas';
 
 export default function SolarAutoconsoSimulator({
@@ -20,10 +19,9 @@ export default function SolarAutoconsoSimulator({
   const { settings, getSolarPriceForKwc, getDefaultAutoconsoRate } = useSimulatorSettingsStore();
   const autoSettings = settings.autoconsommation;
 
-  // ─── État du tunnel (1: Adresse, 2: Emplacement, 3: Surface, 4: Orientation, 5: Inclinaison, 6: Résultat) ───
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Étape 1 : Adresse (Pas d'adresse par défaut)
+  // Étape 1 : Adresse (Pas d'adresse par défaut si aucun projet)
   const [addressInput, setAddressInput] = useState(
     selectedProject ? [selectedProject.address, selectedProject.zip, selectedProject.city].filter(Boolean).join(', ') : ''
   );
@@ -32,12 +30,11 @@ export default function SolarAutoconsoSimulator({
   const [departmentCode, setDepartmentCode] = useState('32');
   const [cityName, setCityName] = useState('Auch');
 
-  // Coordonnées GPS
   const [mapCenter, setMapCenter] = useState([43.646, 0.585]);
 
-  // Étape 3 : Polygone de toiture
+  // Étape 3 : Polygone
   const [polygonPoints, setPolygonPoints] = useState([]);
-  const [roofSurface, setRoofSurface] = useState(83); // m²
+  const [roofSurface, setRoofSurface] = useState(83);
 
   // Étape 4 : Orientation
   const [selectedRidgeIndex, setSelectedRidgeIndex] = useState(0);
@@ -48,25 +45,21 @@ export default function SolarAutoconsoSimulator({
   });
 
   // Étape 5 : Inclinaison
-  const [selectedPitch, setSelectedPitch] = useState(30); // 0, 15, 30, 45
+  const [selectedPitch, setSelectedPitch] = useState(30);
 
-  // Étape 6 : Choix de puissance / Dimensionnement
+  // Étape 6 : Puissance
   const [customKwc, setCustomKwc] = useState(6);
   const [customAutoconsoRate, setCustomAutoconsoRate] = useState(65);
 
-  // Capture de carte pour l'export PDF
   const mapContainerRef = useRef(null);
   const [mapScreenshotDataUrl, setMapScreenshotDataUrl] = useState(null);
 
-  // Initialisation à partir du projet sélectionné (si dispo)
   useEffect(() => {
     if (selectedProject) {
       if (selectedProject.address || selectedProject.city) {
         setAddressInput([selectedProject.address, selectedProject.zip, selectedProject.city].filter(Boolean).join(', '));
       }
-      if (selectedProject.zip) {
-        setDepartmentCode(selectedProject.zip.substring(0, 2));
-      }
+      if (selectedProject.zip) setDepartmentCode(selectedProject.zip.substring(0, 2));
       if (selectedProject.city) setCityName(selectedProject.city);
       if (selectedProject.lat && selectedProject.lng) {
         setMapCenter([Number(selectedProject.lat), Number(selectedProject.lng)]);
@@ -75,7 +68,6 @@ export default function SolarAutoconsoSimulator({
     }
   }, [selectedProject]);
 
-  // Autocomplétion API Adresse (BAN France)
   useEffect(() => {
     if (!addressInput || addressInput.length < 3 || currentStep !== 1) {
       setSuggestions([]);
@@ -112,7 +104,6 @@ export default function SolarAutoconsoSimulator({
     setSuggestions([]);
   };
 
-  // Puissance recommandée selon la surface : ~200 Wc / m² (5 m² par kWc)
   const recommendedKwc = useMemo(() => {
     const raw = Math.round((roofSurface / 5.0) * 10) / 10;
     if (raw <= 3.5) return 3;
@@ -128,7 +119,6 @@ export default function SolarAutoconsoSimulator({
     setCustomAutoconsoRate(getDefaultAutoconsoRate(recommendedKwc));
   }, [recommendedKwc, getDefaultAutoconsoRate]);
 
-  // ─── MOTEUR DE CALCUL RIGOUREUX ──────────────────────────────────────────────
   const regionalBaseYield = useMemo(() => {
     return getProductionForDepartment(departmentCode);
   }, [departmentCode]);
@@ -172,7 +162,6 @@ export default function SolarAutoconsoSimulator({
     return getSolarPriceForKwc(customKwc);
   }, [customKwc, getSolarPriceForKwc]);
 
-  // Projection sur 25 ans avec inflation (3.5%/an)
   const chartData25Years = useMemo(() => {
     const data = [];
     let cumulativeGain = -totalInvestmentHT;
@@ -202,22 +191,26 @@ export default function SolarAutoconsoSimulator({
     return last ? last.gain : 0;
   }, [chartData25Years]);
 
-  // Prise de vue automatique de la carte
+  // Prise de vue fiable de la carte avec canvas
   const takeMapSnapshot = async () => {
     if (mapContainerRef.current) {
       try {
-        const canvas = await html2canvas(mapContainerRef.current, { scale: 1.5, useCORS: true, allowTaint: true });
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const canvas = await html2canvas(mapContainerRef.current, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          logging: false
+        });
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
         setMapScreenshotDataUrl(dataUrl);
         return dataUrl;
       } catch (err) {
-        console.warn('Screenshot map capture:', err);
+        console.warn('Screenshot map capture error:', err);
       }
     }
     return null;
   };
 
-  // Synchronisation avec l'état global du simulateur parent
   useEffect(() => {
     if (onStateUpdate) {
       onStateUpdate({
@@ -250,9 +243,9 @@ export default function SolarAutoconsoSimulator({
   ]);
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-4">
+    <div className="w-full max-w-6xl mx-auto space-y-4">
       
-      {/* ═══ BANDEAU SUPÉRIEUR ENR COURTAGE ════════════════════════════════════ */}
+      {/* Bandeau Supérieur */}
       <div className="bg-[#0e2b4d] text-white rounded-3xl p-5 shadow-2xl relative overflow-hidden">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-white/10 pb-3 mb-3">
           <div>
@@ -269,13 +262,13 @@ export default function SolarAutoconsoSimulator({
 
           <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 self-end md:self-auto">
             <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="text-xs font-bold text-white truncate max-w-[220px]">
+            <span className="text-xs font-bold text-white truncate max-w-[240px]">
               {cityName} ({departmentCode}) — {regionalBaseYield} kWh/kWc
             </span>
           </div>
         </div>
 
-        {/* Stepper horizontal */}
+        {/* Stepper */}
         <div className="flex items-center justify-between gap-1 sm:gap-2 overflow-x-auto py-1">
           {[
             { step: 1, label: '1. Adresse' },
@@ -310,10 +303,10 @@ export default function SolarAutoconsoSimulator({
         </div>
       </div>
 
-      {/* ═══ CONTENU DU TUNNEL ══════════════════════════════════════════════════ */}
+      {/* Contenu du Tunnel */}
       <AnimatePresence mode="wait">
 
-        {/* ── ÉTAPE 1 : ADRESSE (Sans adresse par défaut) ─────────────────────── */}
+        {/* Étape 1 : Adresse */}
         {currentStep === 1 && (
           <motion.div
             key="step-1"
@@ -350,7 +343,6 @@ export default function SolarAutoconsoSimulator({
                 )}
               </div>
 
-              {/* Suggestions d'adresses */}
               {suggestions.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-slate-200 shadow-2xl z-50 overflow-hidden divide-y divide-slate-100">
                   {suggestions.map((s, idx) => (
@@ -381,7 +373,7 @@ export default function SolarAutoconsoSimulator({
           </motion.div>
         )}
 
-        {/* ── ÉTAPE 2 : REPÉRAGE TOITURE (SATELLITE) ─────────────────────────── */}
+        {/* Étape 2 : Emplacement (Carte agrandie) */}
         {currentStep === 2 && (
           <motion.div
             key="step-2"
@@ -395,7 +387,7 @@ export default function SolarAutoconsoSimulator({
                 Repérons votre toiture
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Faites glisser la carte pour positionner le pan de toiture à équiper sous le curseur vert clignotant.
+                Faites glisser la carte et zoomez librement pour positionner votre toiture sous le curseur vert clignotant.
               </p>
             </div>
 
@@ -430,7 +422,7 @@ export default function SolarAutoconsoSimulator({
           </motion.div>
         )}
 
-        {/* ── ÉTAPE 3 : SURFACE DE TOITURE (4 COINS VERT FLUO) ───────────────── */}
+        {/* Étape 3 : Surface */}
         {currentStep === 3 && (
           <motion.div
             key="step-3"
@@ -478,7 +470,7 @@ export default function SolarAutoconsoSimulator({
           </motion.div>
         )}
 
-        {/* ── ÉTAPE 4 : ORIENTATION DE LA TOITURE ───────────────────────────── */}
+        {/* Étape 4 : Orientation */}
         {currentStep === 4 && (
           <motion.div
             key="step-4"
@@ -529,7 +521,7 @@ export default function SolarAutoconsoSimulator({
           </motion.div>
         )}
 
-        {/* ── ÉTAPE 5 : INCLINAISON AVEC TRIANGLE DYNAMIQUE ─────────────────── */}
+        {/* Étape 5 : Inclinaison */}
         {currentStep === 5 && (
           <motion.div
             key="step-5"
@@ -547,13 +539,11 @@ export default function SolarAutoconsoSimulator({
               </p>
             </div>
 
-            {/* SCHÉMA DU TRIANGLE DYNAMIQUE ANIMÉ */}
+            {/* Triangle dynamique SANS texte sous le triangle */}
             <div className="w-64 h-32 mx-auto flex items-end justify-center pb-2 transition-all duration-300">
               <svg viewBox="0 0 160 80" className="w-full h-full text-emerald-600 stroke-current fill-none">
-                {/* Ligne de sol / base */}
                 <line x1="10" y1="70" x2="150" y2="70" strokeWidth="2.5" stroke="#cbd5e1" />
                 
-                {/* Toiture dynamique selon la pente */}
                 {selectedPitch === 0 ? (
                   <>
                     <line x1="15" y1="64" x2="145" y2="64" strokeWidth="4.5" stroke="#00b875" />
@@ -561,7 +551,6 @@ export default function SolarAutoconsoSimulator({
                   </>
                 ) : (
                   <>
-                    {/* Triangle de pente */}
                     <path
                       d={`M 15 70 L 80 ${70 - (selectedPitch === 15 ? 18 : selectedPitch === 30 ? 38 : 56)} L 145 70 Z`}
                       strokeWidth="3.5"
@@ -569,7 +558,6 @@ export default function SolarAutoconsoSimulator({
                       fill="rgba(0, 184, 117, 0.15)"
                       strokeLinejoin="round"
                     />
-                    {/* Faîtage en pointillés */}
                     <line
                       x1="80"
                       y1={70 - (selectedPitch === 15 ? 18 : selectedPitch === 30 ? 38 : 56)}
@@ -581,11 +569,6 @@ export default function SolarAutoconsoSimulator({
                     />
                   </>
                 )}
-
-                {/* Indicateur de degré */}
-                <text x="80" y="78" textAnchor="middle" fill="#0e2b4d" fontSize="8" fontWeight="bold">
-                  {selectedPitch}° d'inclinaison
-                </text>
               </svg>
             </div>
 
@@ -613,8 +596,9 @@ export default function SolarAutoconsoSimulator({
               ))}
             </div>
 
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl max-w-lg mx-auto text-xs text-slate-500">
-              💡 <em>Si vous ne connaissez pas l'inclinaison exacte de votre toiture, choisissez 30°. Il s'agit de la configuration la plus courante en France.</em>
+            {/* Encart avec retour à la ligne */}
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl max-w-lg mx-auto text-xs text-slate-600 leading-relaxed">
+              💡 <em>Si vous ne connaissez pas l'inclinaison exacte de votre toiture, choisissez 30°.<br />Il s'agit de la configuration la plus courante en France.</em>
             </div>
 
             <div className="flex items-center justify-between pt-2 max-w-xl mx-auto">
@@ -642,7 +626,7 @@ export default function SolarAutoconsoSimulator({
           </motion.div>
         )}
 
-        {/* ── ÉTAPE 6 : RÉSULTATS & BILAN AVEC POINT D'AMORTISSEMENT ─────────── */}
+        {/* Étape 6 : Résultats */}
         {currentStep === 6 && (
           <motion.div
             key="step-6"
@@ -651,7 +635,6 @@ export default function SolarAutoconsoSimulator({
             exit={{ opacity: 0, y: -15 }}
             className="space-y-4"
           >
-            {/* KPIs Principaux */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm flex flex-col justify-between">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -720,7 +703,6 @@ export default function SolarAutoconsoSimulator({
               </div>
             </div>
 
-            {/* Graphique de rentabilité avec POINT D'AMORTISSEMENT VISIBLE */}
             <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
                 <div>
@@ -755,7 +737,6 @@ export default function SolarAutoconsoSimulator({
                       contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }}
                     />
                     
-                    {/* POINT D'AMORTISSEMENT ROUGE VIF SUR LE GRAPHIQUE */}
                     <ReferenceLine x={`An ${paybackYear}`} stroke="#ef4444" strokeDasharray="4 4" strokeWidth={2} />
                     <ReferenceDot
                       x={`An ${paybackYear}`}
@@ -779,7 +760,6 @@ export default function SolarAutoconsoSimulator({
               </div>
             </div>
 
-            {/* Hypothèses techniques */}
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 flex items-center justify-between gap-4 text-xs">
               <div>
                 <span className="text-slate-400 block font-semibold">Surface délimitée</span>
