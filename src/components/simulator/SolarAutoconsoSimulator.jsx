@@ -4,7 +4,7 @@ import {
   MapPin, Search, ChevronRight, ChevronLeft, Sun, Zap,
   Compass, ArrowUpRight, TrendingUp, CheckCircle2, RotateCcw,
   Sparkles, Save, FileDown, ShieldCheck, HelpCircle, Loader2,
-  ArrowRight, Euro, Car, Award
+  ArrowRight, Euro, Car, Award, Leaf
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceDot, ReferenceLine } from 'recharts';
 import { useSimulatorSettingsStore, getProductionForDepartment } from '@/stores/useSimulatorSettingsStore';
@@ -282,9 +282,6 @@ export default function SolarAutoconsoSimulator({
       <div className="bg-[#0e2b4d] text-white rounded-3xl p-5 shadow-2xl relative overflow-hidden">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-white/10 pb-3 mb-3">
           <div>
-            <span className="text-xs font-black tracking-widest uppercase text-emerald-400 block mb-0.5">
-              Simulateur de Rentabilité Solaire
-            </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               Autoconsommation <span className="text-amber-400">Photovoltaïque</span>
             </h2>
@@ -881,19 +878,44 @@ export default function SolarAutoconsoSimulator({
             </div>
 
             {/* Graphique Financier 25 ans */}
-            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
+            <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-xl space-y-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-white/10 pb-4">
                 <div>
-                  <h4 className="text-base font-extrabold text-slate-900">
+                  <h4 className="text-lg font-black text-white flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-emerald-400" />
                     Projection Financière des Gains Cumulés (25 ans)
                   </h4>
-                  <p className="text-xs text-slate-500">
-                    Calcul intégrant une inflation de l'électricité de {autoSettings.defaultElectricityInflation}%/an et le rachat surplus garanti.
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    Calcul intégrant une inflation de l'électricité de {autoSettings.defaultElectricityInflation}%/an et le rachat du surplus garanti EDF OA.
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs text-slate-400 font-bold block">Gains cumulés sur 25 ans</span>
-                  <span className="text-xl font-black text-emerald-600">+{totalGains25Years.toLocaleString('fr-FR')} €</span>
+                  <span className="text-xs text-slate-300 font-bold block">Gains cumulés sur 25 ans</span>
+                  <span className="text-2xl font-black text-emerald-400">+{totalGains25Years.toLocaleString('fr-FR')} €</span>
+                </div>
+              </div>
+
+              {/* 3 Cartes Milestones 10 ans / 20 ans / 25 ans */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white/10 rounded-2xl p-4 border border-white/10 text-center">
+                  <span className="text-xs font-bold text-slate-300 block mb-1">sur 10 ans</span>
+                  <span className="text-2xl font-black text-white">
+                    +{(chartData25Years[9]?.gain > 0 ? chartData25Years[9]?.gain : 0).toLocaleString('fr-FR')} €
+                  </span>
+                </div>
+
+                <div className="bg-white/10 rounded-2xl p-4 border border-white/10 text-center">
+                  <span className="text-xs font-bold text-slate-300 block mb-1">sur 20 ans</span>
+                  <span className="text-2xl font-black text-white">
+                    +{(chartData25Years[19]?.gain > 0 ? chartData25Years[19]?.gain : 0).toLocaleString('fr-FR')} €
+                  </span>
+                </div>
+
+                <div className="bg-white/10 rounded-2xl p-4 border border-white/10 text-center">
+                  <span className="text-xs font-bold text-slate-300 block mb-1">sur 25 ans</span>
+                  <span className="text-2xl font-black text-emerald-400">
+                    +{totalGains25Years.toLocaleString('fr-FR')} €
+                  </span>
                 </div>
               </div>
 
@@ -906,13 +928,13 @@ export default function SolarAutoconsoSimulator({
                         <stop offset="95%" stopColor="#10b981" stopOpacity={0.0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="year" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k€`} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                    <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k€`} />
                     <Tooltip
                       formatter={(val) => [`${val.toLocaleString('fr-FR')} €`, 'Gain net cumulé']}
                       labelFormatter={(label) => `Échéance : ${label}`}
-                      contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }}
+                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: 12, color: '#ffffff', fontSize: 12 }}
                     />
                     
                     <ReferenceLine x={`An ${paybackYear}`} stroke="#ef4444" strokeDasharray="4 4" strokeWidth={2} />
@@ -935,6 +957,37 @@ export default function SolarAutoconsoSimulator({
                     <Area type="monotone" dataKey="gain" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#gainGradient)" />
                   </AreaChart>
                 </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* ─── SECTION IMPACT SUR L'ENVIRONNEMENT ───────────── */}
+            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-3xl p-6 shadow-sm space-y-4">
+              <h3 className="text-base font-black text-emerald-950 flex items-center gap-2">
+                <Leaf className="w-5 h-5 text-emerald-600" />
+                Votre impact sur l'environnement
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-2xs text-center">
+                  <span className="text-2xl font-black text-emerald-700 block">
+                    {(Math.round((annualProductionKwh * 0.0005) * 10) / 10).toLocaleString('fr-FR')} tonnes
+                  </span>
+                  <span className="text-xs text-slate-500 font-semibold">de CO₂ évitées par an</span>
+                </div>
+
+                <div className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-2xs text-center">
+                  <span className="text-2xl font-black text-emerald-700 block">
+                    {Math.round(annualProductionKwh * 0.00143)}
+                  </span>
+                  <span className="text-xs text-slate-500 font-semibold">arbres plantés par an</span>
+                </div>
+
+                <div className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-2xs text-center">
+                  <span className="text-2xl font-black text-teal-700 block">
+                    {(Math.round((annualProductionKwh / 4500) * 10) / 10).toLocaleString('fr-FR')}
+                  </span>
+                  <span className="text-xs text-slate-500 font-semibold">foyer(s) alimenté(s) en électricité</span>
+                </div>
               </div>
             </div>
 
