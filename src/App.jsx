@@ -82,16 +82,14 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          {/* Route Simulateur masquée
           <Route
             path="simulator"
             element={
-              <ProtectedRoute requiredPermission="canAccessSimulator">
-                <ProfitabilitySimulator />
+              <ProtectedRoute>
+                <IrveSimulator />
               </ProtectedRoute>
             }
           />
-          */}
           <Route
             path="configurateur"
             element={

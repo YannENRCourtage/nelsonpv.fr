@@ -454,8 +454,8 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
             )}
             */}
 
-            {/* Simulateur (IRVE + Solaire) - exclusif ENR COURTAGE ENERGIE */}
-            {activeTenantId === 'enr-courtage-energie' && (
+            {/* Simulateur (4 solutions unifiées) */}
+            {(activeTenantId === 'enr-courtage-energie' || user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessSimulator) && (
               <NavLink to="/irve" className={({ isActive }) => isActive ? 'nav-link active simulateur' : 'nav-link simulateur'}>
                 Simulateur
               </NavLink>
@@ -723,14 +723,14 @@ export default function AppLayout() {
             )}
             */}
 
-            {/* Nouveau Simulateur IRVE (exclusif ENR COURTAGE ENERGIE) */}
-            {activeTenantId === 'enr-courtage-energie' && (
+            {/* Simulateur (Mobile) */}
+            {(activeTenantId === 'enr-courtage-energie' || user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessSimulator) && (
               <NavLink
                 to="/irve"
                 className={({ isActive }) => isActive ? 'mobile-nav-link active simulateur' : 'mobile-nav-link simulateur'}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Simulateur IRVE
+                Simulateur
               </NavLink>
             )}
 
