@@ -104,7 +104,7 @@ export default function PCAttachmentManager({ project, onSaveAttachments }) {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Modèle de Bâtiment Barconnière</label>
+              <label className="block font-bold text-slate-700 mb-1">Modèle de Bâtiment Standard</label>
               <select value={modelSelect} onChange={(e) => setModelSelect(e.target.value)} className="w-full h-10 px-3 bg-white border border-slate-200 rounded-lg outline-none font-medium">
                 <option value="AS 7.2">AS 7.2 (30x16m + 2 auvents)</option>
                 <option value="AS 8.0">AS 8.0 (36x18m)</option>

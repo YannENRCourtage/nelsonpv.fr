@@ -153,6 +153,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 
   const [showRoofModal, setShowRoofModal] = useState(false);
   const [showBatteryModal, setShowBatteryModal] = useState(false);
+  const isSwitchingBuildingRef = React.useRef(false);
 
   const [editedProject, setEditedProject] = useState(project || {});
   const [captures, setCaptures] = useState(project?.urbanisme_captures || {});
@@ -176,14 +177,14 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 
   // Helper pour générer automatiquement la notice structurée en 5 points
   const buildAutoNoticeText = useCallback(() => {
-    const projectCity = editedProject?.city || editedProject?.cadastre_commune || editedProject?.commune || 'SAINT ARAILLES';
-    const projectZip = editedProject?.zip || editedProject?.zipCode || editedProject?.postalCode || '32100';
-    const projectAddress = editedProject?.address || editedProject?.clientAddress || editedProject?.siteAddress || '2810 Chemin de l\'osse';
-    const rawSection = editedProject?.cadastre_section || editedProject?.cadastreSection || '';
-    const rawNumero = editedProject?.cadastre_numero || editedProject?.cadastreNumero || editedProject?.cadastre_parcel || editedProject?.parcelle || '000 B 633';
+    const projectCity = editedProject?.city || editedProject?.cadastre_commune || editedProject?.commune || editedProject?.ville || project?.city || project?.cadastre_commune || project?.commune || project?.ville || 'SAINT AVIT SAINT NAZAIRE';
+    const projectZip = editedProject?.zip || editedProject?.zipCode || editedProject?.postalCode || editedProject?.code_postal || project?.zip || project?.zipCode || project?.postalCode || project?.code_postal || '33220';
+    const projectAddress = editedProject?.address || editedProject?.clientAddress || editedProject?.siteAddress || editedProject?.street || editedProject?.adresse || project?.address || project?.clientAddress || project?.siteAddress || project?.street || project?.adresse || '2069 Route de la Catine';
+    const rawSection = editedProject?.cadastre_section || editedProject?.cadastreSection || project?.cadastre_section || '';
+    const rawNumero = editedProject?.cadastre_numero || editedProject?.cadastreNumero || editedProject?.cadastre_parcel || editedProject?.parcelle || project?.cadastre_numero || '000 B 633';
     const projectCadastre = `${rawSection ? `${rawSection} ` : ''}${rawNumero}`.trim();
-    const projectSurface = editedProject?.surface_terrain ? `${editedProject.surface_terrain} m²` : (editedProject?.cadastre_surface ? `${editedProject.cadastre_surface} m²` : '18 384 m²');
-    const projectAltitude = editedProject?.altitude || '140.62 m';
+    const projectSurface = editedProject?.surface_terrain ? `${editedProject.surface_terrain} m²` : (editedProject?.cadastre_surface ? `${editedProject.cadastre_surface} m²` : (project?.surface_terrain ? `${project.surface_terrain} m²` : '18 384 m²'));
+    const projectAltitude = editedProject?.altitude || project?.altitude || '140.62 m';
     
     // Bâtiment 1
     const b1 = buildings[0] || {};
@@ -200,7 +201,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const b1Bays = Number(b1.bayCount || config.bayCount || 5);
     const b1Spacing = Number(b1.baySpacing || config.baySpacing || 6);
     const b1Auvent = Boolean(b1.rightSide === 'auvent' || b1.leftSide === 'auvent' || config.rightSide === 'auvent' || config.leftSide === 'auvent');
-    const displayKwc = editedProject?.kwc || editedProject?.puissance || editedProject?.projectSize || '';
+    
+    const rawKwc = editedProject?.kwc || editedProject?.puissance || editedProject?.projectSize || project?.kwc || project?.puissance || project?.projectSize;
+    const displayKwc = (rawKwc !== undefined && rawKwc !== null && rawKwc !== '' && rawKwc !== '0') ? String(rawKwc) : '0';
 
     // Bâtiments secondaires
     const secondaryBuildings = buildings.slice(1);
@@ -208,7 +211,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 
     let batimentDesc = isB1Ombriere
       ? `Le projet a pour objet l'implantation d'une ombrière de parking photovoltaïque${hasMultiBuildings ? ' (Bâtiment 1)' : ''} de dimensions ${longueur1}m × ${largeur1.toFixed(2)}m (surface couverte : ${totalSurface1} m²) à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à 10°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire.`
-      : `Le projet a pour objet la construction d'un bâtiment agricole à charpente métallique${hasMultiBuildings ? ' principal (Bâtiment 1)' : ''} de forme rectangulaire (longueur : ${longueur1}m, largeur : ${largeur1.toFixed(2)}m${b1Auvent ? ' + Auvent 4.00m' : ''}, hauteur sablière : ${b1Eave.toFixed(2)}m) en structure métallique (RAL 7016 / 7005), composé de ${b1Bays} travées de ${b1Spacing}m d'entraxe. La toiture sera constituée d'une couverture ${b1RoofLabel} avec bac acier anti-condensation (RAL 7016) et panneaux solaires photovoltaïques intégrés (RAL 9005)${displayKwc ? `, développant une puissance installée de ${displayKwc} kWc` : ''}.`;
+      : `Le projet a pour objet la construction d'un bâtiment agricole à charpente métallique${hasMultiBuildings ? ' principal (Bâtiment 1)' : ''} de forme rectangulaire (longueur : ${longueur1}m, largeur : ${largeur1.toFixed(2)}m${b1Auvent ? ' + Auvent 4.00m' : ''}, hauteur sablière : ${b1Eave.toFixed(2)}m) en structure métallique (RAL 7016 / 7005), composé de ${b1Bays} travées de ${b1Spacing}m d'entraxe. La toiture sera constituée d'une couverture ${b1RoofLabel} avec bac acier anti-condensation (RAL 7016) et panneaux solaires photovoltaïques intégrés (RAL 9005), développant une puissance installée de ${displayKwc} kWc.`;
 
     if (hasMultiBuildings) {
       secondaryBuildings.forEach((b, idx) => {
@@ -266,10 +269,11 @@ Le positionnement du point de livraison et d'un transformateur (le cas échéant
 
 5- SECURITE INCENDIE
 Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf PC 02 - Plan de masse).${batteryStorage.enabled ? `\nLe système de stockage batterie est équipé de ses dispositifs de sécurité autonomes conformes aux prescriptions SDIS (détection thermique, coupure automatique d'urgence, système d'extinction dédié et bac de rétention).` : ''}`;
-  }, [editedProject, config, buildings, additionalRoof, batteryStorage]);
+  }, [editedProject, project, config, buildings, additionalRoof, batteryStorage]);
 
   // Synchronisation continue des paramètres de configuration vers le bâtiment actif
   useEffect(() => {
+    if (isSwitchingBuildingRef.current) return;
     setBuildings(prev => {
       if (!prev[activeBuildingIndex]) return prev;
       const cur = prev[activeBuildingIndex];
@@ -302,7 +306,6 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       return upd;
     });
   }, [
-    activeBuildingIndex,
     config.length,
     config.width,
     config.eaveHeight,
@@ -320,11 +323,11 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     const newBuilding = {
       id: `bat-${newIdx}`,
       name: `Bâtiment ${newIdx} (Secondaire)`,
-      length: 25,
-      width: 16.4,
-      eaveHeight: 4,
-      roofPitch: 15,
-      buildingType: 'asymetrique_1',
+      length: 24,
+      width: 9.1,
+      eaveHeight: 3,
+      roofPitch: 10,
+      buildingType: 'ombriere_vl_double',
       leftSide: 'none',
       rightSide: 'none',
       bayCount: 4,
@@ -335,16 +338,18 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     };
     const updated = [...buildings, newBuilding];
     setBuildings(updated);
+    isSwitchingBuildingRef.current = true;
+    useConfiguratorStore.getState().loadBuildingConfig(newBuilding);
     setActiveBuildingIndex(updated.length - 1);
-    if (configActions.loadBuildingConfig) {
-      configActions.loadBuildingConfig(newBuilding);
-    }
+    setTimeout(() => {
+      isSwitchingBuildingRef.current = false;
+    }, 60);
   };
 
   const handleSelectBuilding = (index) => {
     if (index === activeBuildingIndex) return;
 
-    // 1. Sauvegarder bâtiment actuel
+    // 1. Sauvegarder bâtiment actuel avec les valeurs courantes du store
     const updated = [...buildings];
     if (updated[activeBuildingIndex]) {
       updated[activeBuildingIndex] = {
@@ -362,24 +367,15 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       setBuildings(updated);
     }
 
-    setActiveBuildingIndex(index);
-
     // 2. Charger le nouveau bâtiment sans altération ni écrasement de largeur
     const target = updated[index];
     if (target) {
-      if (configActions.loadBuildingConfig) {
-        configActions.loadBuildingConfig(target);
-      } else {
-        if (configActions.setBuildingType) configActions.setBuildingType(target.buildingType || 'asymetrique_1');
-        if (configActions.setWidth) configActions.setWidth(target.width || 20);
-        if (configActions.setDimensions) configActions.setDimensions({ length: target.length || 30, width: target.width || 20 });
-        if (configActions.setRoofPitch) configActions.setRoofPitch(target.roofPitch || 15);
-        if (configActions.setEaveHeight) configActions.setEaveHeight(target.eaveHeight || 4);
-        if (configActions.setBayCount) configActions.setBayCount(target.bayCount || 5);
-        if (configActions.setBaySpacing) configActions.setBaySpacing(target.baySpacing || 6);
-        if (configActions.setLeftSide) configActions.setLeftSide(target.leftSide || 'none');
-        if (configActions.setRightSide) configActions.setRightSide(target.rightSide || 'none');
-      }
+      isSwitchingBuildingRef.current = true;
+      useConfiguratorStore.getState().loadBuildingConfig(target);
+      setActiveBuildingIndex(index);
+      setTimeout(() => {
+        isSwitchingBuildingRef.current = false;
+      }, 60);
     }
   };
 
@@ -521,44 +517,14 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     }
   }, [config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.leftSide, config.rightSide, config.solarStats, project?.kwc, project?.puissance, project?.projectSize]);
 
-  // Synchronisation continue des valeurs du configurateur vers le bâtiment actif
+  // Mise à jour automatique de la notice si elle contient encore l'ancien template ou si on arrive sur l'étape 5
   useEffect(() => {
-    if (step === 2 && config) {
-      setBuildings(prev => {
-        const updated = [...prev];
-        if (updated[activeBuildingIndex]) {
-          updated[activeBuildingIndex] = {
-            ...updated[activeBuildingIndex],
-            length: config.length,
-            width: config.width,
-            eaveHeight: config.eaveHeight,
-            roofPitch: config.roofPitch,
-            buildingType: config.buildingType,
-            leftSide: config.leftSide,
-            rightSide: config.rightSide,
-            bayCount: config.bayCount,
-            baySpacing: config.baySpacing,
-          };
-        }
-        return updated;
-      });
+    if (step === 5 && (noticeText.includes("SAINT ARAILLES") || !noticeText)) {
+      const auto = buildAutoNoticeText();
+      setNoticeText(auto);
+      setEditedProject(prev => ({ ...prev, noticeText: auto }));
     }
-  }, [step, activeBuildingIndex, config.length, config.width, config.eaveHeight, config.roofPitch, config.buildingType, config.leftSide, config.rightSide, config.bayCount, config.baySpacing]);
-
-  // Load building to config when step changes to step 2
-  useEffect(() => {
-    if (step === 2 && buildings[activeBuildingIndex]) {
-      const target = buildings[activeBuildingIndex];
-      if (configActions.setDimensions) configActions.setDimensions({ length: target.length || 30, width: target.width || 20 });
-      if (configActions.setBuildingType) configActions.setBuildingType(target.buildingType || 'asymetrique_1');
-      if (configActions.setRoofPitch) configActions.setRoofPitch(target.roofPitch || 15);
-      if (configActions.setEaveHeight) configActions.setEaveHeight(target.eaveHeight || 4);
-      if (configActions.setBayCount) configActions.setBayCount(target.bayCount || 5);
-      if (configActions.setBaySpacing) configActions.setBaySpacing(target.baySpacing || 6);
-      if (configActions.setLeftSide) configActions.setLeftSide(target.leftSide || 'none');
-      if (configActions.setRightSide) configActions.setRightSide(target.rightSide || 'none');
-    }
-  }, [step, activeBuildingIndex]);
+  }, [step, buildAutoNoticeText, noticeText]);
 
   // Sauvegarde simulation 3D après projet (PC6)
   const handleSaveSimulation = (simulatedDataUrl) => {
@@ -572,51 +538,39 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
   };
 
   // Sauvegarde des 5 captures de façades pour PC5
-  const handleCaptureSnapshotPC5 = (dataUrl, slotKey = 'facade_sud') => {
-    setBuildings(prev => {
-      const updated = [...prev];
-      if (updated[activeBuildingIndex]) {
-        updated[activeBuildingIndex].captures = { ...updated[activeBuildingIndex].captures, [slotKey]: dataUrl, facades_projet: dataUrl };
-      }
-      return updated;
-    });
-  };
-
-  const handleCaptureAll5ViewsPC5 = (fiveViewsObj) => {
+  const handleSaveFacadeCaptures = (facadeViews) => {
+    if (!facadeViews) return;
     setBuildings(prev => {
       const updated = [...prev];
       if (updated[activeBuildingIndex]) {
         updated[activeBuildingIndex].captures = {
           ...updated[activeBuildingIndex].captures,
-          ...fiveViewsObj,
-          facades_projet: fiveViewsObj.facade_sud || fiveViewsObj.vue_couverture
+          ...facadeViews,
+          facades_projet: facadeViews.facade_sud || facadeViews.facade_nord || updated[activeBuildingIndex].captures?.facades_projet
         };
       }
       return updated;
     });
   };
 
-  // Recadrage
-  const handleFileSelectForCrop = (category, key, title, event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setCropModal({
-        open: true,
-        src: e.target.result,
-        category,
-        key,
-        title: `Recadrer : ${title}`,
-      });
-    };
-    reader.readAsDataURL(file);
-    event.target.value = '';
+  const handleOpenCrop = (src, category, key, title) => {
+    setCropModal({ open: true, src, category, key, title });
   };
 
   const handleCropComplete = (croppedDataUrl) => {
     const { category, key } = cropModal;
+    if (category === 'photos') {
+      const updated = { ...photos, [key]: croppedDataUrl };
+      setPhotos(updated);
+      setEditedProject(prev => ({ ...prev, pc_photos: updated }));
+      setBuildings(prev => {
+        const updated = [...prev];
+        if (updated[activeBuildingIndex]) {
+          updated[activeBuildingIndex].photos = { ...updated[activeBuildingIndex].photos, [key]: croppedDataUrl };
+        }
+        return updated;
+      });
+    }
     if (category === 'captures') {
       if (key === 'situation_ign' || key === 'satellite' || key === 'masse_projet') {
         const updated = { ...captures, [key]: croppedDataUrl };
@@ -631,14 +585,6 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
           return updated;
         });
       }
-    } else if (category === 'photos') {
-      setBuildings(prev => {
-        const updated = [...prev];
-        if (updated[activeBuildingIndex]) {
-          updated[activeBuildingIndex].photos = { ...updated[activeBuildingIndex].photos, [key]: croppedDataUrl };
-        }
-        return updated;
-      });
     }
   };
 
@@ -649,7 +595,25 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
   const handleGpsUpdate = useCallback((lat, lng) => {
     setEditedProject(prev => ({ ...prev, lat, lng, gps: `${lat},${lng}` }));
-  }, []);
+    generateStaticMapImage(lat, lng, 'map', 16).then(ign => {
+      if (ign) {
+        setCaptures(c => ({ ...c, ign }));
+        setEditedProject(p => ({ ...p, urbanisme_captures: { ...(p.urbanisme_captures || {}), ign } }));
+      }
+    });
+    generateStaticMapImage(lat, lng, 'satellite', 17).then(satellite => {
+      if (satellite) {
+        setCaptures(c => ({ ...c, satellite }));
+        setEditedProject(p => ({ ...p, urbanisme_captures: { ...(p.urbanisme_captures || {}), satellite } }));
+      }
+    });
+    generateStaticMapImage(lat, lng, 'map', 19, buildings).then(masse => {
+      if (masse) {
+        setCaptures(c => ({ ...c, masse_projet: masse }));
+        setEditedProject(p => ({ ...p, urbanisme_captures: { ...(p.urbanisme_captures || {}), masse_projet: masse } }));
+      }
+    });
+  }, [buildings]);
 
   const handleGenerate = async () => {
     if (!onGenerate) return;
@@ -687,6 +651,20 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     const isMultiOrOmbriere = updatedBuildings.length > 1 || updatedBuildings.some(b => (b.buildingType || '').includes('ombriere'));
     const finalTypeLabel = isMultiOrOmbriere ? 'Bâtiment et Ombrière' : (editedProject.type || 'batiment_solaire');
 
+    // Régénérer les cartes PC1 et PC2 avec le dernier GPS et les bâtiments orientés
+    const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
+    const [lat, lng] = gps.split(',').map(Number);
+    const ignMap = await generateStaticMapImage(lat, lng, 'map', 16);
+    const satMap = await generateStaticMapImage(lat, lng, 'satellite', 17);
+    const masseMap = await generateStaticMapImage(lat, lng, 'map', 19, updatedBuildings);
+
+    const finalCaptures = {
+      ...captures,
+      ...(ignMap ? { ign: ignMap } : {}),
+      ...(satMap ? { satellite: satMap } : {}),
+      ...(masseMap ? { masse_projet: masseMap } : {}),
+    };
+
     const finalProject = {
       ...editedProject,
       ...fieldValues,
@@ -710,7 +688,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       noticeAgricole: effectiveNotice,
       pc_notice: effectiveNotice,
       notice_descriptive: effectiveNotice,
-      urbanisme_captures: captures,
+      urbanisme_captures: finalCaptures,
       pc_photos: photos,
       buildings: updatedBuildings,
       additionalRoof: additionalRoof,

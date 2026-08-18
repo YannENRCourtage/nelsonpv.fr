@@ -428,9 +428,12 @@ export const useConfiguratorStore = create(
 
     loadBuildingConfig: (data) => {
         if (!data) return;
+        const validWidth = (data.width !== undefined && data.width !== null && !isNaN(Number(data.width))) 
+            ? Number(data.width) 
+            : 20.0;
         set({
             buildingType: data.buildingType || 'asymetrique_1',
-            width: Number(data.width) || 20.0,
+            width: validWidth,
             length: Number(data.length) || 30.0,
             eaveHeight: Number(data.eaveHeight) || 4.0,
             roofPitch: Number(data.roofPitch) || 15,
@@ -895,6 +898,7 @@ export const useConfiguratorValues = () => {
 
 export const useConfiguratorActions = () => {
     return React.useMemo(() => ({
+        loadBuildingConfig: (data) => useConfiguratorStore.getState().loadBuildingConfig(data),
         setWidth: (w) => useConfiguratorStore.getState().setWidth(w),
         setBaySpacing: (s) => useConfiguratorStore.getState().setBaySpacing(s),
         setBayCount: (c) => useConfiguratorStore.getState().setBayCount(c),

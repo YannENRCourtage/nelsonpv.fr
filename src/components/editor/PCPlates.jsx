@@ -307,15 +307,16 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const roofTypeLabel = isOmbriere ? 'monopente (ombrière VL/PL)' : isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque';
     const displayPitch = isOmbriere ? 10 : pente;
 
-    const projectCity = project?.city || project?.cadastre_commune || project?.commune || 'SAINT ARAILLES';
-    const projectZip = project?.zip || project?.zipCode || project?.postalCode || '32100';
-    const projectAddress = project?.address || project?.clientAddress || project?.siteAddress || '2810 Chemin de l\'osse';
+    const projectCity = project?.city || project?.cadastre_commune || project?.commune || project?.ville || 'SAINT AVIT SAINT NAZAIRE';
+    const projectZip = project?.zip || project?.zipCode || project?.postalCode || project?.code_postal || '33220';
+    const projectAddress = project?.address || project?.clientAddress || project?.siteAddress || project?.street || project?.adresse || '2069 Route de la Catine';
     const projectCadastre = (project?.cadastre_section ? `${project.cadastre_section} ` : '') + (project?.cadastre_parcel || project?.parcel || project?.parcelle || '000 B 633');
     const projectSurface = project?.surface_terrain ? `${project.surface_terrain} m²` : (project?.cadastre_surface ? `${project.cadastre_surface} m²` : '18 384m²');
     const projectAltitude = project?.altitude || '140.62m';
     const totalSurface = (largeur * longueur).toFixed(2);
     const bayCount = project?.bayCount || 5;
     const baySpacing = project?.baySpacing || 6;
+    const displayKwcStr = displayKwc ? `${displayKwc} kWc` : '0 kWc';
 
     const default5PointsNotice = `NOTICE D'INSERTION
 
@@ -326,7 +327,7 @@ La demande de permis de construire porte sur la construction d'un hangar à usag
 Le projet se situe sur la commune de ${projectCity} (${projectZip}) au ${projectAddress}. Le terrain concerné par le projet est cadastré sous le numéro ${projectCadastre} (surface : ${projectSurface}). Le terrain est globalement plat et se trouve à une altitude de ${projectAltitude} au-dessus du niveau de la mer. Le site s'inscrit dans un paysage à identité rurale. L'accès du site se fait par le Sud de la parcelle via la voie d'accès existante.
 
 3- LE PROJET
-Le projet a pour objet la construction d'un hangar de forme rectangulaire (longueur : ${longueur}m, largeur : ${largeur.toFixed(2)}m${hasAuvent ? ' + Auvent 4.00m' : ''}) en structure métallique (RAL 7016 / 7005), composé de ${bayCount} travées de ${baySpacing}m d'entraxe. La toiture sera constituée d'une double pente ${roofTypeLabel} (${pente}°) avec pour couverture un bac acier anti condensation sur les deux versants (RAL 7016). Des panneaux photovoltaïques (RAL 9005) viendront recouvrir le bac acier sur l'ensemble de la toiture, permettant de créer une centrale de production d'électricité photovoltaïque de ${displayKwc} kWc.
+Le projet a pour objet la construction d'un hangar de forme rectangulaire (longueur : ${longueur}m, largeur : ${largeur.toFixed(2)}m${hasAuvent ? ' + Auvent 4.00m' : ''}) en structure métallique (RAL 7016 / 7005), composé de ${bayCount} travées de ${baySpacing}m d'entraxe. La toiture sera constituée d'une double pente ${roofTypeLabel} (${pente}°) avec pour couverture un bac acier anti condensation sur les deux versants (RAL 7016). Des panneaux photovoltaïques (RAL 9005) viendront recouvrir le bac acier sur l'ensemble de la toiture, permettant de créer une centrale de production d'électricité photovoltaïque de ${displayKwcStr}.
 Ce bâtiment sera ouvert et non clos. Les façades Est, Ouest, Nord et Sud seront ouvertes.
 Un terrassement sera réalisé pour la mise en oeuvre d'une plateforme en grave compactée.
 Des tranchées drainantes seront réalisées tout autour du bâtiment projet afin d'évacuer les eaux pluviales par infiltration dans le sol.
@@ -409,9 +410,9 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                         return <line key={idx} x1={px} y1={py - 10} x2={px} y2={py - 2} stroke="#93c5fd" strokeWidth="1.2" />;
                                     })}
 
-                                    {/* Badge explicatif structure Barconnière */}
+                                    {/* Badge explicatif structure ombrière */}
                                     <text x="305" y={groundYLeft - 42} textAnchor="middle" fill="#1e40af" fontSize="7" fontWeight="bold">
-                                        Poteau Y/V (Barconnière)
+                                        Poteau central en Y/V
                                     </text>
                                 </>
                             ) : isAsym ? (

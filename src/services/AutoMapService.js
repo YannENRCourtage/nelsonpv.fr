@@ -25,7 +25,7 @@ function latLngToTile(lat, lng, zoom) {
  * @param {number} zoom Level de zoom (16-17 pour situation, 19 pour plan de masse)
  * @returns {Promise<string>} Data URL Image JPEG (data:image/jpeg;base64,...)
  */
-export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16) {
+export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, buildings = null) {
   return new Promise((resolve) => {
     try {
       const width = 800;
@@ -96,14 +96,55 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16) 
         const my = centerY;
 
         if (zoom >= 18) {
-          // Repère Plan de Masse (Emprise indicative / rectangle de projet)
-          ctx.strokeStyle = '#ef4444';
-          ctx.lineWidth = 3;
-          ctx.setLineDash([6, 4]);
-          ctx.strokeRect(mx - 35, my - 25, 70, 50);
-          ctx.setLineDash([]);
-          ctx.fillStyle = 'rgba(239, 68, 68, 0.2)';
-          ctx.fillRect(mx - 35, my - 25, 70, 50);
+          // Repère Plan de Masse avec emprise exacte et rotation de chaque bâtiment
+          const bList = (buildings && Array.isArray(buildings) && buildings.length > 0)
+            ? buildings
+            : [{ length: 30, width: 20, rotation: 0, name: 'Bâtiment 1' }];
+
+          // Facteur d'échelle mètres -> pixels à zoom 19
+          const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom + 8);
+          const pxPerMeter = metersPerPx > 0 ? (1 / metersPerPx) : 2.0;
+
+          bList.forEach((b, bIdx) => {
+            const bLength = Number(b.length || b.longueur || 30);
+            const bWidth = Number(b.width || b.largeur || 20);
+            const bRot = Number(b.rotation || 0);
+            const rectW = Math.max(30, bLength * pxPerMeter);
+            const rectH = Math.max(20, bWidth * pxPerMeter);
+
+            // Décalage visuel si multi-bâtiments
+            const xOffset = bList.length > 1 ? (bIdx * 80 - ((bList.length - 1) * 40)) : 0;
+
+            ctx.save();
+            ctx.translate(mx + xOffset, my);
+            ctx.rotate((bRot * Math.PI) / 180);
+
+            // Emprise au sol colorée
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.3)';
+            ctx.fillRect(-rectW / 2, -rectH / 2, rectW, rectH);
+            ctx.strokeStyle = '#dc2626';
+            ctx.lineWidth = 2.5;
+            ctx.strokeRect(-rectW / 2, -rectH / 2, rectW, rectH);
+
+            // Faîtage médian
+            ctx.beginPath();
+            ctx.setLineDash([4, 3]);
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 2;
+            ctx.moveTo(-rectW / 2, 0);
+            ctx.lineTo(rectW / 2, 0);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Dimensions et libellé
+            ctx.fillStyle = '#991b1b';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${b.name || `Bâtiment ${bIdx + 1}`}`, 0, -rectH / 2 - 5);
+            ctx.fillText(`${bLength.toFixed(1)}m × ${bWidth.toFixed(1)}m`, 0, 4);
+
+            ctx.restore();
+          });
         }
 
         // Halo
@@ -232,7 +273,7 @@ export async function getOrGenerateProjectMaps(project) {
 
   // 3. PC2 Plan de masse OSM Zoom 19
   if (!result.masse_projet) {
-    const masseData = await generateStaticMapImage(lat, lng, 'map', 19);
+    const masseData = await generateStaticMapImage(lat, lng, 'map', 19, project?.buildings);
     if (masseData) result.masse_projet = masseData;
   }
 
