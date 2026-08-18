@@ -17,6 +17,51 @@ import ImageCropModal from './ImageCropModal';
 import DimensionsModal from './DimensionsModal';
 import LandscapeIntegrationModal from './LandscapeIntegrationModal';
 import Building3DViewer from './Building3DViewer';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
+function DraggableLocationMarker({ lat, lng, setGps }) {
+  const [position, setPosition] = useState({ lat, lng });
+  const map = useMap();
+  const markerRef = React.useRef(null);
+  
+  useEffect(() => {
+    setPosition({ lat, lng });
+    map.setView([lat, lng]);
+  }, [lat, lng, map]);
+
+  const eventHandlers = useMemo(
+    () => ({
+      dragend() {
+        const marker = markerRef.current;
+        if (marker != null) {
+          const newPos = marker.getLatLng();
+          setPosition(newPos);
+          setGps(newPos.lat, newPos.lng);
+        }
+      },
+    }),
+    [setGps],
+  );
+
+  return (
+    <Marker
+      draggable={true}
+      eventHandlers={eventHandlers}
+      position={position}
+      ref={markerRef}
+    />
+  );
+}
 
 const DOSSIER_INFO = {
   cu: {
@@ -143,7 +188,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const secondaryBuildings = buildings.slice(1);
     const hasMultiBuildings = secondaryBuildings.length > 0;
 
-    let batimentDesc = `Le projet a pour objet la construction d'un hangar${hasMultiBuildings ? ' principal (Bâtiment 1)' : ''} de forme rectangulaire (longueur : ${longueur}m, largeur : ${largeur.toFixed(2)}m${hasAuvent ? ' + Auvent 4.00m' : ''}) en structure métallique (RAL 7016 / 7005), composé de ${bayCount} travées de ${baySpacing}m d'entraxe. La toiture sera constituée d'une double pente ${roofTypeLabel} (${pente}°) avec pour couverture un bac acier anti condensation sur les deux versants (RAL 7016). Des panneaux photovoltaïques (RAL 9005) viendront recouvrir le bac acier sur l'ensemble de la toiture, permettant de créer une centrale de production d'électricité photovoltaïque de ${displayKwc} kWc.`;
+    let batimentDesc = `Le projet a pour objet la construction d'un hangar${hasMultiBuildings ? ' principal (Bâtiment 1)' : ''} de forme rectangulaire (longueur : ${longueur}m, largeur : ${largeur.toFixed(2)}m${hasAuvent ? ' + Auvent 4.00m' : ''}) en structure métallique (RAL 7016 / 7005), composé de ${bayCount} travées de ${baySpacing}m d'entraxe. La toiture sera constituée d'une double pente ${roofTypeLabel} (${pente}°) avec pour couverture un bac acier anti condensation sur les deux versants (RAL 7016). Des panneaux photovoltaïques (RAL 9005) viendront recouvrir le bac acier sur l'ensemble de la toiture${displayKwc ? `, permettant de créer une centrale de production d'électricité photovoltaïque de ${displayKwc} kWc` : ''}.`;
 
     if (hasMultiBuildings) {
       secondaryBuildings.forEach((b, idx) => {
@@ -385,32 +430,79 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     }
   }, [config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.leftSide, config.rightSide, config.solarStats, project?.kwc, project?.puissance, project?.projectSize]);
 
+  // Synchronisation continue des valeurs du configurateur vers le bâtiment actif
+  useEffect(() => {
+    if (step === 2 && config) {
+      setBuildings(prev => {
+        const updated = [...prev];
+        if (updated[activeBuildingIndex]) {
+          updated[activeBuildingIndex] = {
+            ...updated[activeBuildingIndex],
+            length: config.length,
+            width: config.width,
+            eaveHeight: config.eaveHeight,
+            roofPitch: config.roofPitch,
+            buildingType: config.buildingType,
+            leftSide: config.leftSide,
+            rightSide: config.rightSide,
+            bayCount: config.bayCount,
+            baySpacing: config.baySpacing,
+          };
+        }
+        return updated;
+      });
+    }
+  }, [step, activeBuildingIndex, config.length, config.width, config.eaveHeight, config.roofPitch, config.buildingType, config.leftSide, config.rightSide, config.bayCount, config.baySpacing]);
+
+  // Load building to config when step changes to step 2
+  useEffect(() => {
+    if (step === 2 && buildings[activeBuildingIndex]) {
+      const target = buildings[activeBuildingIndex];
+      if (configActions.setDimensions) configActions.setDimensions({ length: target.length || 30, width: target.width || 20 });
+      if (configActions.setBuildingType) configActions.setBuildingType(target.buildingType || 'asymetrique_1');
+      if (configActions.setRoofPitch) configActions.setRoofPitch(target.roofPitch || 15);
+      if (configActions.setEaveHeight) configActions.setEaveHeight(target.eaveHeight || 4);
+      if (configActions.setBayCount) configActions.setBayCount(target.bayCount || 5);
+      if (configActions.setBaySpacing) configActions.setBaySpacing(target.baySpacing || 6);
+      if (configActions.setLeftSide) configActions.setLeftSide(target.leftSide || 'none');
+      if (configActions.setRightSide) configActions.setRightSide(target.rightSide || 'none');
+    }
+  }, [step, activeBuildingIndex]);
+
   // Sauvegarde simulation 3D après projet (PC6)
   const handleSaveSimulation = (simulatedDataUrl) => {
-    const updatedPhotos = { ...photos, apres: simulatedDataUrl };
-    setPhotos(updatedPhotos);
-    setEditedProject(prev => ({ ...prev, pc_photos: updatedPhotos }));
+    setBuildings(prev => {
+      const updated = [...prev];
+      if (updated[activeBuildingIndex]) {
+        updated[activeBuildingIndex].photos = { ...updated[activeBuildingIndex].photos, apres: simulatedDataUrl };
+      }
+      return updated;
+    });
   };
 
   // Sauvegarde des 5 captures de façades pour PC5
   const handleCaptureSnapshotPC5 = (dataUrl, slotKey = 'facade_sud') => {
-    const updated = {
-      ...captures,
-      [slotKey]: dataUrl,
-      facades_projet: dataUrl
-    };
-    setCaptures(updated);
-    setEditedProject(prev => ({ ...prev, urbanisme_captures: updated }));
+    setBuildings(prev => {
+      const updated = [...prev];
+      if (updated[activeBuildingIndex]) {
+        updated[activeBuildingIndex].captures = { ...updated[activeBuildingIndex].captures, [slotKey]: dataUrl, facades_projet: dataUrl };
+      }
+      return updated;
+    });
   };
 
   const handleCaptureAll5ViewsPC5 = (fiveViewsObj) => {
-    const updated = {
-      ...captures,
-      ...fiveViewsObj,
-      facades_projet: fiveViewsObj.facade_sud || fiveViewsObj.vue_couverture
-    };
-    setCaptures(updated);
-    setEditedProject(prev => ({ ...prev, urbanisme_captures: updated }));
+    setBuildings(prev => {
+      const updated = [...prev];
+      if (updated[activeBuildingIndex]) {
+        updated[activeBuildingIndex].captures = {
+          ...updated[activeBuildingIndex].captures,
+          ...fiveViewsObj,
+          facades_projet: fiveViewsObj.facade_sud || fiveViewsObj.vue_couverture
+        };
+      }
+      return updated;
+    });
   };
 
   // Recadrage
@@ -435,13 +527,27 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
   const handleCropComplete = (croppedDataUrl) => {
     const { category, key } = cropModal;
     if (category === 'captures') {
-      const updated = { ...captures, [key]: croppedDataUrl };
-      setCaptures(updated);
-      setEditedProject(prev => ({ ...prev, urbanisme_captures: updated }));
+      if (key === 'situation_ign' || key === 'satellite' || key === 'masse_projet') {
+        const updated = { ...captures, [key]: croppedDataUrl };
+        setCaptures(updated);
+        setEditedProject(prev => ({ ...prev, urbanisme_captures: updated }));
+      } else {
+        setBuildings(prev => {
+          const updated = [...prev];
+          if (updated[activeBuildingIndex]) {
+            updated[activeBuildingIndex].captures = { ...updated[activeBuildingIndex].captures, [key]: croppedDataUrl };
+          }
+          return updated;
+        });
+      }
     } else if (category === 'photos') {
-      const updated = { ...photos, [key]: croppedDataUrl };
-      setPhotos(updated);
-      setEditedProject(prev => ({ ...prev, pc_photos: updated }));
+      setBuildings(prev => {
+        const updated = [...prev];
+        if (updated[activeBuildingIndex]) {
+          updated[activeBuildingIndex].photos = { ...updated[activeBuildingIndex].photos, [key]: croppedDataUrl };
+        }
+        return updated;
+      });
     }
   };
 
@@ -449,6 +555,10 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     setFieldValues(prev => ({ ...prev, [field]: value }));
     setEditedProject(prev => ({ ...prev, [field]: value }));
   };
+
+  const handleGpsUpdate = useCallback((lat, lng) => {
+    setEditedProject(prev => ({ ...prev, lat, lng, gps: `${lat},${lng}` }));
+  }, []);
 
   const handleGenerate = async () => {
     if (!onGenerate) return;
@@ -519,7 +629,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
   if (!isOpen) return null;
 
   const summary = buildCerfaDataSummary({ ...editedProject, ...fieldValues }, editedProject.type || 'batiment_solaire');
-  const STEPS = ['Déclarant', 'Cartes PC1', 'Cotations & Côtes', 'Photos (Crop)', 'Notice Descriptive', 'Validation'];
+  const STEPS = ['Déclarant', 'Cartes PC1', 'Cotations & Côtes', '4 Photos', 'Carte PC2', 'Notice Descriptive', 'Validation'];
 
   return (
     <AnimatePresence>
@@ -686,189 +796,54 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                 </motion.div>
               )}
 
-              {/* ÉTAPE 1 — Cartes PC1 / PC2 */}
+              {/* ÉTAPE 1 — Cartes PC1 */}
               {step === 1 && (
                 <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                   className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-sm font-bold text-gray-800">Étape 2 : Cartographie PC1 & PC2 (IGN Cadastre & Satellite)</h3>
-                      <p className="text-xs text-gray-500">Les cartes sont générées automatiquement à partir des coordonnées GPS du terrain.</p>
+                      <h3 className="text-sm font-bold text-gray-800">Étape 2 : Cartographie PC1 (Plan de Situation & Satellite)</h3>
+                      <p className="text-xs text-gray-500">Déplacez le marqueur sur une des cartes pour ajuster l'emplacement du projet.</p>
                     </div>
-                    {generatingMaps && (
-                      <span className="flex items-center gap-1.5 text-xs text-blue-600 font-bold bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200 animate-pulse">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Génération des cartes IGN...
-                      </span>
-                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center">
+                    <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center flex flex-col">
                       <span className="text-xs font-bold text-gray-700 block mb-2">PC1 — Plan de Situation (IGN Cartographique)</span>
-                      {captures?.situation_ign ? (
-                        <div className="relative group rounded-xl overflow-hidden aspect-video border border-gray-200">
-                          <img src={captures.situation_ign} alt="Situation IGN" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
-                            <button
-                              type="button"
-                              onClick={() => setCropModal({ open: true, src: captures.situation_ign, category: 'captures', key: 'situation_ign', title: 'Recadrer Plan de Situation' })}
-                              className="p-2 bg-white/90 hover:bg-white text-slate-800 rounded-lg shadow-sm transition-all hover:scale-105 flex items-center gap-1 text-xs font-bold"
-                            >
-                              <Crop className="w-3.5 h-3.5" /> Recadrer
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
-                                const [lat, lng] = gps.split(',').map(Number);
-                                generateStaticMapImage(lat, lng, 'map', 16).then(dataUrl => {
-                                  if (dataUrl) {
-                                    setCaptures(prev => ({ ...prev, situation_ign: dataUrl }));
-                                    setEditedProject(prev => ({ ...prev, urbanisme_captures: { ...(prev.urbanisme_captures || {}), situation_ign: dataUrl } }));
-                                  }
-                                });
-                              }}
-                              className="p-2 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-sm transition-all hover:scale-105 flex items-center gap-1 text-xs font-bold"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" /> Régénérer
-                            </button>
-                          </div>
-                        </div>
-                      ) : generatingMaps ? (
-                        <div className="aspect-video rounded-xl border border-dashed border-blue-300 flex flex-col items-center justify-center bg-blue-50/50 gap-1">
-                          <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                          <span className="text-[10px] text-blue-600 font-semibold">Génération en cours...</span>
-                        </div>
-                      ) : (
-                        <div className="aspect-video rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-white gap-1">
-                          <AlertCircle className="w-5 h-5 text-amber-500" />
-                          <span className="text-[10px] text-gray-500 font-semibold">Carte non disponible</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
-                              const [lat, lng] = gps.split(',').map(Number);
-                              setGeneratingMaps(true);
-                              generateStaticMapImage(lat, lng, 'map', 16).then(dataUrl => {
-                                if (dataUrl) {
-                                  setCaptures(prev => ({ ...prev, situation_ign: dataUrl }));
-                                  setEditedProject(prev => ({ ...prev, urbanisme_captures: { ...(prev.urbanisme_captures || {}), situation_ign: dataUrl } }));
-                                }
-                                setGeneratingMaps(false);
-                              });
-                            }}
-                            className="px-2.5 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-bold hover:bg-blue-700 transition-all"
-                          >
-                            Générer la carte
-                          </button>
-                        </div>
-                      )}
+                      <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 z-10 flex-1">
+                        {(() => {
+                          const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
+                          const [lat, lng] = gps.split(',').map(Number);
+                          return (
+                            <MapContainer center={[lat, lng]} zoom={16} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+                              <TileLayer
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                attribution="&copy; OpenStreetMap contributors"
+                              />
+                              <DraggableLocationMarker lat={lat} lng={lng} setGps={handleGpsUpdate} />
+                            </MapContainer>
+                          );
+                        })()}
+                      </div>
                     </div>
 
-                    <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center">
+                    <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center flex flex-col">
                       <span className="text-xs font-bold text-gray-700 block mb-2">PC1 — Vue Aérienne Satellite</span>
-                      {captures?.satellite ? (
-                        <div className="relative group rounded-xl overflow-hidden aspect-video border border-gray-200">
-                          <img src={captures.satellite} alt="Vue Satellite" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
-                            <button
-                              type="button"
-                              onClick={() => setCropModal({ open: true, src: captures.satellite, category: 'captures', key: 'satellite', title: 'Recadrer Vue Satellite' })}
-                              className="p-2 bg-white/90 hover:bg-white text-slate-800 rounded-lg shadow-sm transition-all hover:scale-105 flex items-center gap-1 text-xs font-bold"
-                            >
-                              <Crop className="w-3.5 h-3.5" /> Recadrer
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
-                                const [lat, lng] = gps.split(',').map(Number);
-                                generateStaticMapImage(lat, lng, 'satellite', 17).then(dataUrl => {
-                                  if (dataUrl) {
-                                    setCaptures(prev => ({ ...prev, satellite: dataUrl }));
-                                    setEditedProject(prev => ({ ...prev, urbanisme_captures: { ...(prev.urbanisme_captures || {}), satellite: dataUrl } }));
-                                  }
-                                });
-                              }}
-                              className="p-2 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-sm transition-all hover:scale-105 flex items-center gap-1 text-xs font-bold"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" /> Régénérer
-                            </button>
-                          </div>
-                        </div>
-                      ) : generatingMaps ? (
-                        <div className="aspect-video rounded-xl border border-dashed border-blue-300 flex flex-col items-center justify-center bg-blue-50/50 gap-1">
-                          <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                          <span className="text-[10px] text-blue-600 font-semibold">Génération en cours...</span>
-                        </div>
-                      ) : (
-                        <div className="aspect-video rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-white gap-1">
-                          <AlertCircle className="w-5 h-5 text-amber-500" />
-                          <span className="text-[10px] text-gray-500 font-semibold">Vue non disponible</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
-                              const [lat, lng] = gps.split(',').map(Number);
-                              setGeneratingMaps(true);
-                              generateStaticMapImage(lat, lng, 'satellite', 17).then(dataUrl => {
-                                if (dataUrl) {
-                                  setCaptures(prev => ({ ...prev, satellite: dataUrl }));
-                                  setEditedProject(prev => ({ ...prev, urbanisme_captures: { ...(prev.urbanisme_captures || {}), satellite: dataUrl } }));
-                                }
-                                setGeneratingMaps(false);
-                              });
-                            }}
-                            className="px-2.5 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-bold hover:bg-blue-700 transition-all"
-                          >
-                            Générer la vue
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center">
-                      <span className="text-xs font-bold text-gray-700 block mb-2">PC2 — Plan de Masse (OSM Zoom 19)</span>
-                      {captures?.masse_projet ? (
-                        <div className="relative group rounded-xl overflow-hidden aspect-video border border-gray-200">
-                          <img src={captures.masse_projet} alt="Plan de Masse" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
-                            <button
-                              type="button"
-                              onClick={() => setCropModal({ open: true, src: captures.masse_projet, category: 'captures', key: 'masse_projet', title: 'Recadrer Plan de Masse' })}
-                              className="p-2 bg-white/90 hover:bg-white text-slate-800 rounded-lg shadow-sm transition-all hover:scale-105 flex items-center gap-1 text-xs font-bold"
-                            >
-                              <Crop className="w-3.5 h-3.5" /> Recadrer
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
-                                const [lat, lng] = gps.split(',').map(Number);
-                                generateStaticMapImage(lat, lng, 'map', 19).then(dataUrl => {
-                                  if (dataUrl) {
-                                    setCaptures(prev => ({ ...prev, masse_projet: dataUrl }));
-                                    setEditedProject(prev => ({ ...prev, urbanisme_captures: { ...(prev.urbanisme_captures || {}), masse_projet: dataUrl } }));
-                                  }
-                                });
-                              }}
-                              className="p-2 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-sm transition-all hover:scale-105 flex items-center gap-1 text-xs font-bold"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" /> Régénérer
-                            </button>
-                          </div>
-                        </div>
-                      ) : generatingMaps ? (
-                        <div className="aspect-video rounded-xl border border-dashed border-blue-300 flex flex-col items-center justify-center bg-blue-50/50 gap-1">
-                          <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                          <span className="text-[10px] text-blue-600 font-semibold">Génération en cours...</span>
-                        </div>
-                      ) : (
-                        <div className="aspect-video rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-white gap-1">
-                          <AlertCircle className="w-5 h-5 text-amber-500" />
-                          <span className="text-[10px] text-gray-500 font-semibold">Plan non disponible</span>
-                        </div>
-                      )}
+                      <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 z-10 flex-1">
+                        {(() => {
+                          const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
+                          const [lat, lng] = gps.split(',').map(Number);
+                          return (
+                            <MapContainer center={[lat, lng]} zoom={17} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+                              <TileLayer
+                                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                                attribution="Tiles &copy; Esri"
+                              />
+                              <DraggableLocationMarker lat={lat} lng={lng} setGps={handleGpsUpdate} />
+                            </MapContainer>
+                          );
+                        })()}
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -989,12 +964,15 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
               )}
 
               {/* ÉTAPE 3 — Visionneuse 3D (PC5 5 VUES) & Insertion Paysagère 3D (PC6) */}
-              {step === 3 && (
+              {step === 3 && (() => {
+                const currentPhotos = buildings[activeBuildingIndex]?.photos || {};
+                const currentCaptures = buildings[activeBuildingIndex]?.captures || {};
+                return (
                 <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                   className="p-5 space-y-3 overflow-y-auto max-h-[70vh]">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-sm font-bold text-gray-800">Étape 4 : PC5 (5 vues Façades & Toiture) & PC6 (Insertion paysagère 3D)</h3>
+                      <h3 className="text-sm font-bold text-gray-800">Étape 4 : 4 Photos, Façades & Insertion Paysagère 3D</h3>
                       <p className="text-xs text-gray-500">Capturez les 5 vues de façades pour la PC5 et positionnez le modèle 3D sur votre photo de terrain pour la PC6.</p>
                     </div>
 
@@ -1023,7 +1001,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                         <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
                           <Box className="w-4 h-4 text-blue-600" /> PC5 — Plan des Façades & Toitures (5 Vues 3D)
                         </span>
-                        {captures?.facade_sud ? (
+                        {currentCaptures?.facade_sud ? (
                           <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">✓ 5 Vues Prêtes</span>
                         ) : (
                           <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">À capturer</span>
@@ -1055,7 +1033,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                         <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
                           <Sparkles className="w-4 h-4 text-indigo-600" /> PC6 — Insertion Paysagère 3D ({config.width}m × {config.length}m)
                         </span>
-                        {photos?.apres ? (
+                        {currentPhotos?.apres ? (
                           <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">✓ Simulation Prête</span>
                         ) : (
                           <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">À ajuster</span>
@@ -1063,12 +1041,12 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                       </div>
 
                       <div className="flex-1 flex flex-col justify-center">
-                        {photos?.avant ? (
+                        {currentPhotos?.avant ? (
                           <div className="space-y-2">
                             <div className="grid grid-cols-2 gap-2">
                               {/* Photo Avant */}
                               <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 group">
-                                <img src={photos.avant} alt="Avant" className="w-full h-full object-cover" />
+                                <img src={currentPhotos.avant} alt="Avant" className="w-full h-full object-cover" />
                                 <span className="absolute top-1 left-1 bg-black/60 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">Avant</span>
                                 
                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
@@ -1079,7 +1057,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                   <button
                                     type="button"
                                     title="Recadrer la photo"
-                                    onClick={() => setCropModal({ open: true, src: photos.avant, category: 'photos', key: 'avant', title: 'Recadrer Photo Terrain Avant' })}
+                                    onClick={() => setCropModal({ open: true, src: currentPhotos.avant, category: 'photos', key: 'avant', title: 'Recadrer Photo Terrain Avant' })}
                                     className="p-1.5 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
                                   >
                                     <Crop className="w-3.5 h-3.5" />
@@ -1087,7 +1065,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                   <button
                                     type="button"
                                     title="Supprimer la photo"
-                                    onClick={() => setPhotos(prev => ({ ...prev, avant: null, apres: null }))}
+                                    onClick={() => setBuildings(prev => { const upd = [...prev]; if (upd[activeBuildingIndex]) upd[activeBuildingIndex].photos = { ...upd[activeBuildingIndex].photos,  }; return upd; })}
                                     className="p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -1097,16 +1075,16 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
                               {/* Photo Après */}
                               <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 bg-gray-100 flex items-center justify-center group">
-                                {photos?.apres ? (
+                                {currentPhotos?.apres ? (
                                   <>
-                                    <img src={photos.apres} alt="Après" className="w-full h-full object-cover" />
+                                    <img src={currentPhotos.apres} alt="Après" className="w-full h-full object-cover" />
                                     <span className="absolute top-1 left-1 bg-emerald-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">Après (3D)</span>
                                     
                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
                                       <button
                                         type="button"
                                         title="Recadrer l'insertion"
-                                        onClick={() => setCropModal({ open: true, src: photos.apres, category: 'photos', key: 'apres', title: 'Recadrer Simulation 3D' })}
+                                        onClick={() => setCropModal({ open: true, src: currentPhotos.apres, category: 'photos', key: 'apres', title: 'Recadrer Simulation 3D' })}
                                         className="p-1.5 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
                                       >
                                         <Crop className="w-3.5 h-3.5" />
@@ -1114,7 +1092,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                       <button
                                         type="button"
                                         title="Réinitialiser l'incrustation"
-                                        onClick={() => setPhotos(prev => ({ ...prev, apres: null }))}
+                                        onClick={() => setBuildings(prev => { const upd = [...prev]; if (upd[activeBuildingIndex]) upd[activeBuildingIndex].photos = { ...upd[activeBuildingIndex].photos,  }; return upd; })}
                                         className="p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
@@ -1151,11 +1129,11 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                     <div className="border border-gray-200 rounded-2xl p-2.5 bg-gray-50 text-center">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-[11px] font-bold text-gray-700">PC7 — Environnement Proche</span>
-                        {photos?.proche ? <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">✓ Chargée</span> : <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Optionnel</span>}
+                        {currentPhotos?.proche ? <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">✓ Chargée</span> : <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Optionnel</span>}
                       </div>
-                      {photos?.proche ? (
+                      {currentPhotos?.proche ? (
                         <div className="relative group rounded-xl overflow-hidden aspect-video border border-gray-200">
-                          <img src={photos.proche} alt="Env Proche" className="w-full h-full object-cover" />
+                          <img src={currentPhotos.proche} alt="Env Proche" className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
                             <label title="Remplacer la photo" className="cursor-pointer p-1.5 bg-white/90 hover:bg-white text-slate-800 rounded-lg shadow-sm transition-all hover:scale-105">
                               <Upload className="w-3.5 h-3.5" />
@@ -1164,7 +1142,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             <button
                               type="button"
                               title="Recadrer"
-                              onClick={() => setCropModal({ open: true, src: photos.proche, category: 'photos', key: 'proche', title: 'Recadrer Environnement Proche' })}
+                              onClick={() => setCropModal({ open: true, src: currentPhotos.proche, category: 'photos', key: 'proche', title: 'Recadrer Environnement Proche' })}
                               className="p-1.5 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
                             >
                               <Crop className="w-3.5 h-3.5" />
@@ -1172,7 +1150,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             <button
                               type="button"
                               title="Supprimer"
-                              onClick={() => setPhotos(prev => ({ ...prev, proche: null }))}
+                              onClick={() => setBuildings(prev => { const upd = [...prev]; if (upd[activeBuildingIndex]) upd[activeBuildingIndex].photos = { ...upd[activeBuildingIndex].photos,  }; return upd; })}
                               className="p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1191,11 +1169,11 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                     <div className="border border-gray-200 rounded-2xl p-2.5 bg-gray-50 text-center">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-[11px] font-bold text-gray-700">PC8 — Environnement Lointain</span>
-                        {photos?.lointain ? <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">✓ Chargée</span> : <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Optionnel</span>}
+                        {currentPhotos?.lointain ? <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">✓ Chargée</span> : <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Optionnel</span>}
                       </div>
-                      {photos?.lointain ? (
+                      {currentPhotos?.lointain ? (
                         <div className="relative group rounded-xl overflow-hidden aspect-video border border-gray-200">
-                          <img src={photos.lointain} alt="Env Lointain" className="w-full h-full object-cover" />
+                          <img src={currentPhotos.lointain} alt="Env Lointain" className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
                             <label title="Remplacer la photo" className="cursor-pointer p-1.5 bg-white/90 hover:bg-white text-slate-800 rounded-lg shadow-sm transition-all hover:scale-105">
                               <Upload className="w-3.5 h-3.5" />
@@ -1204,7 +1182,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             <button
                               type="button"
                               title="Recadrer"
-                              onClick={() => setCropModal({ open: true, src: photos.lointain, category: 'photos', key: 'lointain', title: 'Recadrer Environnement Lointain' })}
+                              onClick={() => setCropModal({ open: true, src: currentPhotos.lointain, category: 'photos', key: 'lointain', title: 'Recadrer Environnement Lointain' })}
                               className="p-1.5 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
                             >
                               <Crop className="w-3.5 h-3.5" />
@@ -1212,7 +1190,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             <button
                               type="button"
                               title="Supprimer"
-                              onClick={() => setPhotos(prev => ({ ...prev, lointain: null }))}
+                              onClick={() => setBuildings(prev => { const upd = [...prev]; if (upd[activeBuildingIndex]) upd[activeBuildingIndex].photos = { ...upd[activeBuildingIndex].photos,  }; return upd; })}
                               className="p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1229,12 +1207,86 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                     </div>
                   </div>
                 </motion.div>
-              )}
+                );
+              })()}
 
-              {/* ÉTAPE 4 — Notice d'insertion & Descriptive du projet (PLEINE HAUTEUR) */}
+              {/* ÉTAPE 4 — Carte PC2 (Plan de masse dynamique par bâtiment) */}
               {step === 4 && (
                 <motion.div
-                  key="step4-notice"
+                  key="step4-pc2"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="p-6 space-y-4 overflow-y-auto max-h-[70vh]"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-800">
+                        Étape 5 : PC2 — Plan de Masse ({buildings.length} bâtiment{buildings.length > 1 ? 's' : ''})
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        Visualisez et ajustez l'emprise au sol de chaque bâtiment à l'échelle sur le plan cadastral (OSM Zoom 19).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={`grid ${buildings.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                    {buildings.map((b, bIdx) => {
+                      const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
+                      const [lat, lng] = gps.split(',').map(Number);
+                      const bLength = Number(b.length || config.length || 30);
+                      const bWidth = Number(b.width || config.width || 20);
+                      return (
+                        <div key={b.id || bIdx} className="border border-gray-200 rounded-2xl p-4 bg-gray-50 flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                              <Building2 className="w-4 h-4 text-blue-600" />
+                              PC2 — Plan de Masse : {b.name || `Bâtiment ${bIdx + 1}`}
+                            </span>
+                            <span className="text-[11px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                              {bLength.toFixed(1)}m × {bWidth.toFixed(1)}m ({Math.round(bLength * bWidth)} m²)
+                            </span>
+                          </div>
+
+                          <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 z-10 flex-1 min-h-[260px]">
+                            <MapContainer center={[lat, lng]} zoom={19} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+                              <TileLayer
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                attribution="&copy; OpenStreetMap contributors"
+                                maxZoom={21}
+                              />
+                              <DraggableLocationMarker lat={lat} lng={lng} setGps={handleGpsUpdate} />
+                            </MapContainer>
+
+                            {/* Emprise rectangulaire centrée du bâtiment */}
+                            <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[1000]">
+                              <div
+                                className="border-2 border-red-500 border-dashed bg-red-500/20 rounded shadow-md flex items-center justify-center text-center p-1"
+                                style={{
+                                  width: `${Math.min(260, Math.max(70, bLength * 4))}px`,
+                                  height: `${Math.min(180, Math.max(50, bWidth * 4))}px`,
+                                }}
+                              >
+                                <span className="text-[10px] font-bold text-red-900 bg-white/80 px-1 py-0.5 rounded shadow-2xs">
+                                  {b.name || `Bâtiment ${bIdx + 1}`}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-gray-500 text-center">
+                            Zoom et dézoom libres • Déplacez le repère pour ajuster l'implantation
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ÉTAPE 5 — Notice d'insertion & Descriptive du projet (PLEINE HAUTEUR) */}
+              {step === 5 && (
+                <motion.div
+                  key="step5-notice"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
@@ -1247,7 +1299,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                       </div>
                       <div>
                         <h4 className="font-extrabold text-sm text-slate-900">
-                          Étape 5 : Notice d'insertion & Descriptive du projet (PC4)
+                          Étape 6 : Notice d'insertion & Descriptive du projet (PC4)
                         </h4>
                         <p className="text-xs text-slate-600 mt-0.5">
                           Complétez et personnalisez les 5 points de la notice. Ce texte est injecté dans la planche PC4 et restera modifiable dans le PDF final.
@@ -1321,9 +1373,9 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                 </motion.div>
               )}
 
-              {/* ÉTAPE 5 — Validation & Sélection des pages du PDF */}
-              {step === 5 && (
-                <motion.div key="step5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+              {/* ÉTAPE 6 — Validation & Sélection des pages du PDF */}
+              {step === 6 && (
+                <motion.div key="step6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                   className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
                   <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-emerald-900 flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
@@ -1755,9 +1807,9 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
               {step === 0 ? 'Annuler' : 'Précédent'}
             </button>
 
-            {step < 5 ? (
+            {step < STEPS.length - 1 ? (
               <button
-                onClick={() => setStep(s => Math.min(5, s + 1))}
+                onClick={() => setStep(s => Math.min(STEPS.length - 1, s + 1))}
                 className={`flex items-center gap-2 px-5 py-2 text-xs font-bold text-white rounded-xl transition-all shadow-sm ${dossierInfo.accentColor} hover:opacity-90`}
               >
                 Suivant

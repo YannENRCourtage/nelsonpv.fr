@@ -122,8 +122,8 @@ export const PlateGarde = ({ project }) => {
                         Nature et Caractéristiques du Projet
                     </h3>
                     <p style={{ fontSize: '10pt', lineHeight: '1.5', color: '#333', margin: 0 }}>
-                        <strong>Type d'ouvrage :</strong> {project?.description || `Construction d'un bâtiment agricole avec centrale solaire photovoltaïque intégrée en toiture de ${displayKwc} kWc.`}<br />
-                        <strong>Puissance de l'installation :</strong> {displayKwc} kWc<br />
+                        <strong>Type d'ouvrage :</strong> {project?.description || `Construction d'un bâtiment agricole avec centrale solaire photovoltaïque intégrée en toiture${displayKwc ? ` de ${displayKwc} kWc` : ''}.`}<br />
+                        <strong>Puissance de l'installation :</strong> {displayKwc ? `${displayKwc} kWc` : ''}<br />
                         <strong>Dimensions principales :</strong> Longueur {project?.longueur || '30.0'} m × Largeur {project?.largeur || '20.0'} m<br />
                         <strong>Surface au sol (Emprise) :</strong> {project?.largeur && project?.longueur ? Math.round(parseFloat(project.largeur) * parseFloat(project.longueur)) : 600} m²
                     </p>
@@ -249,7 +249,9 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const isMonopente = rawType.includes('monopente');
     const isSym = rawType.includes('symetrique') && !rawType.includes('asym');
     const isAsym = !isOmbriere && !isMonopente && !isSym;
-    const hasAuvent = Boolean(project?.rightSide === 'auvent' || project?.leftSide === 'auvent' || project?.hasAuvent || (project?.auvent && project?.auvent !== 'none' && project?.auvent !== false));
+    const hasAuventLeft = Boolean(project?.leftSide === 'auvent');
+    const hasAuventRight = Boolean(project?.rightSide === 'auvent');
+    const hasAuvent = hasAuventLeft || hasAuventRight || Boolean(project?.hasAuvent || (project?.auvent && project?.auvent !== 'none' && project?.auvent !== false));
     const hasAppentis = Boolean(project?.rightSide === 'appentis' || project?.leftSide === 'appentis' || project?.hasAppentis || (project?.appentis && project?.appentis !== 'none' && project?.appentis !== false));
 
     // Calculs dimensionnels fidèles au configurateur
@@ -368,8 +370,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             <text x="655" y={groundYRight - 4} textAnchor="end" fill="#64748b" fontSize="7.5" fontStyle="italic">TN Amont</text>
 
                             {/* 2. Poteaux métalliques principaux */}
-                            <rect x="130" y={leftEaveSvgY} width="9" height={groundYLeft - leftEaveSvgY} fill="#334155" />
-                            <rect x="472" y={rightEaveSvgY} width="9" height={groundYRight - rightEaveSvgY} fill="#334155" />
+                            {!isOmbriere && <rect x="130" y={leftEaveSvgY} width="9" height={groundYLeft - leftEaveSvgY} fill="#334155" />}
+                            {!isOmbriere && <rect x="472" y={rightEaveSvgY} width="9" height={groundYRight - rightEaveSvgY} fill="#334155" />}
 
                             {hasAppentis && (
                                 <rect x="545" y={auventTipSvgY} width="6" height={groundYRight - auventTipSvgY} fill="#334155" />
@@ -378,18 +380,19 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             {/* 3. Portique & PANNEAUX SOLAIRES SUR TOUTE LA TOITURE */}
                             {isOmbriere ? (
                                 <>
-                                    {/* Ombrière : 4 poteaux fins + toiture monopente + modules solaires */}
-                                    <rect x="130" y={leftEaveSvgY} width="5" height={groundYLeft - leftEaveSvgY} fill="#475569" />
-                                    <rect x="220" y={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.25} width="5" height={groundYLeft - (leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.25)} fill="#475569" />
-                                    <rect x="360" y={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.65} width="5" height={groundYRight - (leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.65)} fill="#475569" />
-                                    <rect x="472" y={rightEaveSvgY} width="5" height={groundYRight - rightEaveSvgY} fill="#475569" />
+                                    {/* Ombrière : structure Façade EST (Pignon) avec poteau central incliné et bras de support */}
+                                    <rect x="295" y="110" width="20" height={groundYLeft - 110} fill="#334155" /> {/* Poteau central base */}
+                                    <polygon points={`295,110 315,110 325,${leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.5 + 20} 305,${leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.5 + 20}`} fill="#475569" /> {/* Poteau central montant */}
+                                    <line x1="305" y1="110" x2="180" y2={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.15 + 10} stroke="#475569" strokeWidth="8" /> {/* Bras de support gauche */}
+                                    <line x1="305" y1="110" x2="430" y2={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.85 + 10} stroke="#475569" strokeWidth="8" /> {/* Bras de support droit */}
+                                    <rect x="270" y={groundYLeft - 6} width="70" height="6" fill="#94a3b8" /> {/* Plot de fondation central */}
                                     {/* Toiture monopente */}
-                                    <line x1="126" y1={leftEaveSvgY} x2="480" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
-                                    <polygon points={`122,${leftEaveSvgY - 2} 484,${rightEaveSvgY - 2} 484,${rightEaveSvgY - 8} 122,${leftEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                    <line x1="126" y1={leftEaveSvgY} x2="480" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="6" />
+                                    <polygon points={`122,${leftEaveSvgY - 3} 484,${rightEaveSvgY - 3} 484,${rightEaveSvgY - 11} 122,${leftEaveSvgY - 11}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
                                     {[0.2, 0.4, 0.6, 0.8].map((ratio, idx) => {
                                         const px = 130 + (480 - 130) * ratio;
                                         const py = leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * ratio;
-                                        return <line key={idx} x1={px} y1={py - 8} x2={px} y2={py - 2} stroke="#93c5fd" strokeWidth="1" />;
+                                        return <line key={idx} x1={px} y1={py - 11} x2={px} y2={py - 3} stroke="#93c5fd" strokeWidth="1.5" />;
                                     })}
                                 </>
                             ) : isAsym ? (
@@ -408,13 +411,29 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                         return <line key={idx} x1={px} y1={py - 8} x2={px} y2={py - 2} stroke="#93c5fd" strokeWidth="1" />;
                                     })}
 
-                                    {/* Auvent Sud (+4m) */}
-                                    {hasAuvent && (
+                                    {/* Auvent */}
+                                    {hasAuvent && hasAuventRight && (
                                         <>
                                             <line x1="480" y1={rightEaveSvgY} x2={auventTipSvgX} y2={auventTipSvgY} stroke="#1e293b" strokeWidth="4" />
                                             <polygon points={`480,${rightEaveSvgY - 2} ${auventTipSvgX + 4},${auventTipSvgY - 2} ${auventTipSvgX + 4},${auventTipSvgY - 8} 480,${rightEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
                                             <line x1={480 + (auventTipSvgX - 480) * 0.5} y1={rightEaveSvgY + (auventTipSvgY - rightEaveSvgY) * 0.5 - 8} x2={480 + (auventTipSvgX - 480) * 0.5} y2={rightEaveSvgY + (auventTipSvgY - rightEaveSvgY) * 0.5 - 2} stroke="#93c5fd" strokeWidth="1" />
                                             <text x={(480 + auventTipSvgX) / 2} y={rightEaveSvgY - 14} textAnchor="middle" fill="#0284c7" fontSize="7.5" fontWeight="bold">Auvent +4.00m</text>
+                                        </>
+                                    )}
+                                    {hasAuvent && hasAuventLeft && (
+                                        <>
+                                            {(() => {
+                                                const tipX = 130 - (auventTipSvgX - 480);
+                                                const tipY = leftEaveSvgY + (auventTipSvgY - rightEaveSvgY); // Approximation of height
+                                                return (
+                                                    <>
+                                                        <line x1="130" y1={leftEaveSvgY} x2={tipX} y2={tipY} stroke="#1e293b" strokeWidth="4" />
+                                                        <polygon points={`130,${leftEaveSvgY - 2} ${tipX - 4},${tipY - 2} ${tipX - 4},${tipY - 8} 130,${leftEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                                        <line x1={130 + (tipX - 130) * 0.5} y1={leftEaveSvgY + (tipY - leftEaveSvgY) * 0.5 - 8} x2={130 + (tipX - 130) * 0.5} y2={leftEaveSvgY + (tipY - leftEaveSvgY) * 0.5 - 2} stroke="#93c5fd" strokeWidth="1" />
+                                                        <text x={(130 + tipX) / 2} y={leftEaveSvgY - 14} textAnchor="middle" fill="#0284c7" fontSize="7.5" fontWeight="bold">Auvent +4.00m</text>
+                                                    </>
+                                                )
+                                            })()}
                                         </>
                                     )}
                                 </>
@@ -429,19 +448,40 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
                             {/* 4. Mentions de Toiture & PENTE REMONTÉE AU-DESSUS DE LA COUVERTURE */}
                             <text x={350} y={8} textAnchor="middle" fill="#1e3a8a" fontSize="8" fontWeight="bold">
-                                Toiture {roofTypeLabel} : pente {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%) • Bac acier RAL 7016 + Modules solaires
+                                Toiture {roofTypeLabel} : pente {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%) {isOmbriere ? '• Façade EST (Pignon) ' : ''}• {isOmbriere ? 'Structure métallique & Modules solaires' : 'Bac acier RAL 7016 + Modules solaires'}
                             </text>
 
                             {/* 5. Rappel Hauteurs d'égout et Faîtage */}
-                            <line x1="108" y1={leftEaveSvgY} x2="108" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
-                            <line x1="104" y1={leftEaveSvgY} x2="112" y2={leftEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
-                            <line x1="104" y1={groundYLeft} x2="112" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
-                            <text x="100" y={leftEaveSvgY + (groundYLeft - leftEaveSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="7.5" fontWeight="bold">
-                                Sablière Nord : {leftEaveHeight.toFixed(2)}m
-                            </text>
+                            {hasAuvent && hasAuventLeft ? (
+                                <>
+                                    {(() => {
+                                        const tipX = 130 - (auventTipSvgX - 480);
+                                        const tipY = leftEaveSvgY + (auventTipSvgY - rightEaveSvgY);
+                                        return (
+                                            <>
+                                                <line x1={tipX - 16} y1={tipY} x2={tipX - 16} y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
+                                                <line x1={tipX - 20} y1={tipY} x2={tipX - 12} y2={tipY} stroke="#ef4444" strokeWidth="1.2" />
+                                                <line x1={tipX - 20} y1={groundYLeft} x2={tipX - 12} y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
+                                                <text x={tipX - 24} y={tipY + (groundYLeft - tipY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="7.5" fontWeight="bold">
+                                                    Égout Nord : 3.00m
+                                                </text>
+                                            </>
+                                        )
+                                    })()}
+                                </>
+                            ) : (
+                                <>
+                                    <line x1="108" y1={leftEaveSvgY} x2="108" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
+                                    <line x1="104" y1={leftEaveSvgY} x2="112" y2={leftEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
+                                    <line x1="104" y1={groundYLeft} x2="112" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
+                                    <text x="100" y={leftEaveSvgY + (groundYLeft - leftEaveSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="7.5" fontWeight="bold">
+                                        Sablière Nord : {leftEaveHeight.toFixed(2)}m
+                                    </text>
+                                </>
+                            )}
 
                             {/* Égout Sud au point le plus bas (si auvent / appentis, en bas de la couverture à 3.00m) */}
-                            {hasAuvent || hasAppentis ? (
+                            {hasAuventRight || hasAppentis ? (
                                 <>
                                     <line x1={auventTipSvgX + 16} y1={auventTipSvgY} x2={auventTipSvgX + 16} y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
                                     <line x1={auventTipSvgX + 12} y1={auventTipSvgY} x2={auventTipSvgX + 20} y2={auventTipSvgY} stroke="#ef4444" strokeWidth="1.2" />
@@ -475,11 +515,25 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             <line x1="480" y1="120" x2="480" y2="130" stroke="#0284c7" strokeWidth="1.5" />
 
                             {/* Cote de l'auvent au sol */}
-                            {hasAuvent && (
+                            {hasAuvent && hasAuventRight && (
                                 <>
                                     <line x1="480" y1="125" x2={auventTipSvgX} y2="125" stroke="#0284c7" strokeWidth="1.5" strokeDasharray="4 2" />
                                     <line x1={auventTipSvgX} y1="120" x2={auventTipSvgX} y2="130" stroke="#0284c7" strokeWidth="1.5" />
                                     <text x={(480 + auventTipSvgX) / 2} y="133" textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">+4.00m</text>
+                                </>
+                            )}
+                            {hasAuvent && hasAuventLeft && (
+                                <>
+                                    {(() => {
+                                        const tipX = 130 - (auventTipSvgX - 480);
+                                        return (
+                                            <>
+                                                <line x1="130" y1="125" x2={tipX} y2="125" stroke="#0284c7" strokeWidth="1.5" strokeDasharray="4 2" />
+                                                <line x1={tipX} y1="120" x2={tipX} y2="130" stroke="#0284c7" strokeWidth="1.5" />
+                                                <text x={(130 + tipX) / 2} y="133" textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">+4.00m</text>
+                                            </>
+                                        )
+                                    })()}
                                 </>
                             )}
 
@@ -503,20 +557,20 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                 </div>
 
                 {/* ── BAS : PC4 NOTICE DESCRIPTIVE DU PROJET (SYNTHÈSE EN 5 POINTS) ── */}
-                <div style={{ height: '84mm', border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '2.5mm 4.5mm', background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <div style={{ height: '94mm', border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '2.5mm 4.5mm', background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5mm', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         NOTICE D'INSERTION & DESCRIPTIVE DU PROJET
                     </div>
-                    <div style={{ flex: 1, overflow: 'hidden', fontSize: '6.3pt', lineHeight: '1.22', color: '#334155' }}>
+                    <div style={{ flex: 1, overflow: 'hidden', fontSize: '8.5pt', lineHeight: '1.35', color: '#334155' }}>
                         {isInteractive ? (
                             <textarea 
-                                style={{ width: '100%', height: '100%', border: 'none', resize: 'none', outline: 'none', fontSize: '6.3pt', fontFamily: 'Arial, sans-serif', lineHeight: '1.22' }}
+                                style={{ width: '100%', height: '100%', border: 'none', resize: 'none', outline: 'none', fontSize: '8.5pt', fontFamily: 'Arial, sans-serif', lineHeight: '1.35' }}
                                 value={effectiveNoticeText || default5PointsNotice}
                                 onChange={(e) => onNoticeChange && onNoticeChange(e.target.value)}
                                 placeholder="Notice descriptive du projet..."
                             />
                         ) : effectiveNoticeText ? (
-                            <div style={{ whiteSpace: 'pre-line', fontSize: '6.3pt', lineHeight: '1.22', color: '#334155' }}>
+                            <div style={{ whiteSpace: 'pre-line', fontSize: '8.5pt', lineHeight: '1.35', color: '#334155' }}>
                                 {effectiveNoticeText}
                             </div>
                         ) : (
@@ -531,7 +585,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                 </div>
                                 <div>
                                     <strong style={{ color: '#0f172a' }}>3- LE PROJET</strong>
-                                    <div>Le projet a pour objet la construction d'un hangar de forme rectangulaire (longueur : {longueur}m, largeur : {largeur.toFixed(2)}m{hasAuvent ? ' + Auvent 4.00m' : ''}) en structure métallique (RAL 7016 / 7005), composé de {bayCount} travées de {baySpacing}m d'entraxe. La toiture sera constituée d'une double pente {roofTypeLabel} ({pente}°) avec pour couverture un bac acier anti condensation sur les deux versants (RAL 7016). Des panneaux photovoltaïques (RAL 9005) viendront recouvrir le bac acier sur l'ensemble de la toiture, permettant de créer une centrale de production d'électricité photovoltaïque de {displayKwc} kWc.</div>
+                                    <div>Le projet a pour objet la construction d'un hangar de forme rectangulaire (longueur : {longueur}m, largeur : {largeur.toFixed(2)}m{hasAuvent ? ' + Auvent 4.00m' : ''}) en structure métallique (RAL 7016 / 7005), composé de {bayCount} travées de {baySpacing}m d'entraxe. La toiture sera constituée d'une double pente {roofTypeLabel} ({pente}°) avec pour couverture un bac acier anti condensation sur les deux versants (RAL 7016). Des panneaux photovoltaïques (RAL 9005) viendront recouvrir le bac acier sur l'ensemble de la toiture{displayKwc ? `, permettant de créer une centrale de production d'électricité photovoltaïque de ${displayKwc} kWc` : ''}.</div>
                                     <div>Ce bâtiment sera ouvert et non clos. Les façades Est, Ouest, Nord et Sud seront ouvertes. Un terrassement sera réalisé pour la mise en oeuvre d'une plateforme en grave compactée. Des tranchées drainantes seront réalisées tout autour du bâtiment projet afin d'évacuer les eaux pluviales par infiltration dans le sol.</div>
                                 </div>
                                 <div>

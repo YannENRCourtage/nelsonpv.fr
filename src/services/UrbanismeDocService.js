@@ -114,7 +114,7 @@ async function drawCoverPage(doc, project, type, installationType) {
   const sectionVal = (project?.cadastre_section || project?.section) ? `${project.cadastre_section || project.section} n° ${project.cadastre_numero || project.numero || '—'}` : '—';
   const surfaceVal = (project?.cadastre_surface || project?.surface) ? `${project.cadastre_surface || project.surface} m²` : '—';
   const rawKwc = project?.kwc || project?.projectSize;
-  const puissanceVal = rawKwc ? (String(rawKwc).includes('kWc') ? String(rawKwc) : `${rawKwc} kWc`) : '—';
+  const puissanceVal = rawKwc ? (String(rawKwc).includes('kWc') ? String(rawKwc) : `${rawKwc} kWc`) : '';
   // Dynamic type label based on configured buildings
   let installCode;
   const projectBuildings = project?.buildings || [];
@@ -311,8 +311,7 @@ export async function generateFullUrbanismePDF({ type, project, installationType
     link.download = `${typeUpper}_${clientName}_${new Date().toISOString().slice(0, 10)}.pdf`;
     link.click();
 
-    // Ouverture dans un nouvel onglet
-    try { window.open(url, '_blank'); } catch (e) { /* silent */ }
+    // Removed secondary window.open to prevent duplicate files
 
     return true;
   } catch (err) {
