@@ -786,7 +786,7 @@ export default function BuildingStructureSimulator({
                   {/* Colonne Droite : Carte Satellite & Emprise Rotative du Bâtiment (Image 3 & 4) */}
                   <div className="lg:col-span-8 space-y-2">
                     
-                    <div className="relative w-full h-[480px] rounded-3xl overflow-hidden shadow-xl border border-slate-200 bg-slate-900" ref={mapContainerRef}>
+                    <div className="relative w-full h-[480px] sm:h-[580px] rounded-3xl overflow-hidden shadow-xl border border-slate-200 bg-slate-900" ref={mapContainerRef}>
                       
                       {/* Encart guide flottant */}
                       <div className="absolute top-3 left-16 right-3 z-[1100] bg-slate-900/85 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-2xl border border-white/20 shadow-md text-center">

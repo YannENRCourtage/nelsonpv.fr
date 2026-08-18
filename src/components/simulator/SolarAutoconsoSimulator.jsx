@@ -535,10 +535,10 @@ export default function SolarAutoconsoSimulator({
               center={mapCenter}
               polygonPoints={polygonPoints}
               onPolygonChange={setPolygonPoints}
-              ridgeIndices={ridgeIndices}
-              onRidgeChange={setRidgeIndices}
-              roofPitch={roofPitch}
-              onPitchChange={setRoofPitch}
+              selectedRidgeIndex={selectedRidgeIndex}
+              onRidgeSelect={setSelectedRidgeIndex}
+              orientationInfo={orientationInfo}
+              onOrientationChange={setOrientationInfo}
               mapContainerRef={mapContainerRef}
             />
           </motion.div>

@@ -371,8 +371,8 @@ export default function RoofMapPolygonSelector({
   return (
     <div className="relative w-full rounded-3xl overflow-hidden shadow-xl border border-slate-200 bg-slate-900" ref={mapContainerRef}>
       
-      {/* Conteneur Leaflet Agrandie (480px de hauteur) */}
-      <div className="relative w-full h-[440px] sm:h-[480px] z-0">
+      {/* Conteneur Leaflet Agrandie (+20% de hauteur : 530px / 580px) */}
+      <div className={`relative w-full z-0 transition-all duration-300 ${step === 2 ? 'h-[530px] sm:h-[580px]' : 'h-[480px] sm:h-[520px]'}`}>
         <MapContainer
           center={center}
           zoom={19}
