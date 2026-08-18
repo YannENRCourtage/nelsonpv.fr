@@ -24,45 +24,67 @@ export function calculatePolygonArea(latlngs) {
   return Math.round(area);
 }
 
-// ─── Calcul d'orientation selon le faîtage ───────────────────────────────────
-export function calculateOrientationFromRidge(p1, p2) {
-  const dLng = (p2.lng - p1.lng) * Math.cos(((p1.lat + p2.lat) / 2 * Math.PI) / 180);
-  const dLat = p2.lat - p1.lat;
+// ─── Calcul d'orientation selon le faîtage (Toiture orientée à l'opposé du faîtage) ──
+export function calculateOrientationFromRidge(p1, p2, allPoints = []) {
+  // 1. Calcul du milieu du faîtage (p1, p2)
+  const ridgeMidLat = (p1.lat + p2.lat) / 2;
+  const ridgeMidLng = (p1.lng + p2.lng) / 2;
   
-  let ridgeAngle = (Math.atan2(dLng, dLat) * 180) / Math.PI;
-  if (ridgeAngle < 0) ridgeAngle += 360;
+  // 2. Calcul du barycentre de la toiture
+  let polyCenterLat = 0;
+  let polyCenterLng = 0;
+  const pts = (allPoints && allPoints.length >= 3) ? allPoints : [p1, p2];
+  pts.forEach(p => {
+    polyCenterLat += p.lat;
+    polyCenterLng += p.lng;
+  });
+  polyCenterLat /= pts.length;
+  polyCenterLng /= pts.length;
 
-  let slopeAngle1 = (ridgeAngle + 90) % 360;
-  let slopeAngle2 = (ridgeAngle + 270) % 360;
+  // 3. Vecteur du faîtage vers le centre de la toiture (direction de la pente vers le bas)
+  const midLatRad = (ridgeMidLat * Math.PI) / 180;
+  const dLng = (polyCenterLng - ridgeMidLng) * Math.cos(midLatRad) * 111320; // Est en mètres (>0 si centre à l'Est)
+  const dLat = (polyCenterLat - ridgeMidLat) * 110574; // Nord en mètres (>0 si centre au Nord)
 
-  const diff1 = Math.abs(slopeAngle1 - 180);
-  const diff2 = Math.abs(slopeAngle2 - 180);
-  const bestAngle = diff1 <= diff2 ? slopeAngle1 : slopeAngle2;
+  // Boussole : Sud = 0°, Ouest = +90°, Est = -90°, Nord = 180°
+  // Math.atan2(-dLng, -dLat) :
+  // - Sud (dLat < 0, dLng = 0) -> Math.atan2(0, +1) = 0°
+  // - Nord (dLat > 0, dLng = 0) -> Math.atan2(0, -1) = 180°
+  // - Ouest (dLat = 0, dLng < 0) -> Math.atan2(+1, 0) = +90°
+  // - Est (dLat = 0, dLng > 0) -> Math.atan2(-1, 0) = -90°
+  let deg = Math.round((Math.atan2(-dLng, -dLat) * 180) / Math.PI);
+  if (deg === -180) deg = 180;
 
   let orientationKey = 'south';
   let orientationLabel = 'Plein Sud';
 
-  if (bestAngle >= 157.5 && bestAngle <= 202.5) {
+  if (Math.abs(deg) <= 22.5) {
     orientationKey = 'south';
-    orientationLabel = 'Plein Sud';
-  } else if (bestAngle > 112.5 && bestAngle < 157.5) {
-    orientationKey = 'south_east';
-    orientationLabel = 'Sud-Est';
-  } else if (bestAngle > 202.5 && bestAngle < 247.5) {
+    orientationLabel = 'Plein Sud (0°)';
+  } else if (deg > 22.5 && deg < 67.5) {
     orientationKey = 'south_west';
-    orientationLabel = 'Sud-Ouest';
-  } else if (bestAngle >= 67.5 && bestAngle <= 112.5) {
-    orientationKey = 'east';
-    orientationLabel = 'Est';
-  } else if (bestAngle >= 247.5 && bestAngle <= 292.5) {
+    orientationLabel = 'Sud-Ouest (+45°)';
+  } else if (deg >= 67.5 && deg <= 112.5) {
     orientationKey = 'west';
-    orientationLabel = 'Ouest';
+    orientationLabel = 'Plein Ouest (+90°)';
+  } else if (deg > 112.5 && deg < 157.5) {
+    orientationKey = 'north_west';
+    orientationLabel = 'Nord-Ouest (+135°)';
+  } else if (deg < -22.5 && deg > -67.5) {
+    orientationKey = 'south_east';
+    orientationLabel = 'Sud-Est (-45°)';
+  } else if (deg <= -67.5 && deg >= -112.5) {
+    orientationKey = 'east';
+    orientationLabel = 'Plein Est (-90°)';
+  } else if (deg < -112.5 && deg > -157.5) {
+    orientationKey = 'north_east';
+    orientationLabel = 'Nord-Est (-135°)';
   } else {
     orientationKey = 'north';
-    orientationLabel = 'Nord';
+    orientationLabel = 'Plein Nord (180°)';
   }
 
-  return { orientationKey, orientationLabel, angle: Math.round(bestAngle) };
+  return { orientationKey, orientationLabel, angle: deg };
 }
 
 // ─── Créateur d'icône HTML pour les 4 coins ─────────────────────────────────
@@ -225,7 +247,7 @@ function NativeCornerMarkersLayer({
           const currentPts = pointsRef.current;
           const ptA = currentPts[i];
           const ptB = currentPts[(i + 1) % 4];
-          const res = calculateOrientationFromRidge(ptA, ptB);
+          const res = calculateOrientationFromRidge(ptA, ptB, currentPts);
           if (onOrientationChange) onOrientationChange(res);
         });
 
@@ -354,7 +376,7 @@ export default function RoofMapPolygonSelector({
         <MapContainer
           center={center}
           zoom={19}
-          maxZoom={21}
+          maxZoom={22}
           scrollWheelZoom={true}
           doubleClickZoom={true}
           touchZoom={true}
@@ -369,7 +391,7 @@ export default function RoofMapPolygonSelector({
           {/* Tuile Satellite Esri World Imagery (CORS garanti) */}
           <TileLayer
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            maxZoom={21}
+            maxZoom={22}
             crossOrigin="anonymous"
             attribution="Esri World Imagery"
           />

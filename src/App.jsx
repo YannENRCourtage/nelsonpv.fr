@@ -83,12 +83,16 @@ function AppContent() {
             }
           />
           <Route
-            path="simulator"
+            path="simulateur"
             element={
               <ProtectedRoute>
                 <IrveSimulator />
               </ProtectedRoute>
             }
+          />
+          <Route
+            path="simulator"
+            element={<Navigate to="/simulateur" replace />}
           />
           <Route
             path="configurateur"
@@ -138,16 +142,6 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          {/* Route Finance masquée
-          <Route
-            path="finance"
-            element={
-              <ProtectedRoute requiredPermission="canAccessFinance">
-                <Finance />
-              </ProtectedRoute>
-            }
-          />
-          */}
           <Route
             path="tracking"
             element={
@@ -182,11 +176,7 @@ function AppContent() {
           />
           <Route
             path="irve"
-            element={
-              <ProtectedRoute>
-                <IrveSimulator />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/simulateur" replace />}
           />
         </Route>
 

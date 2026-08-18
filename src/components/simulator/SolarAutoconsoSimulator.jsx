@@ -187,16 +187,16 @@ export default function SolarAutoconsoSimulator({
 
   const totalAnnualBenefitYear1 = annualSavingsAutoconso + annualRevenueSurplus;
 
-  const totalInvestmentHT = useMemo(() => {
-    return getSolarPriceForKwc(customKwc);
-  }, [customKwc, getSolarPriceForKwc]);
+  // Nom du client dynamique
+  const [clientNameInput, setClientNameInput] = useState(selectedProject?.name || selectedProject?.lastName || '');
 
-  const chartData25Years = useMemo(() => {
+  // 30 ans de projection financière
+  const chartData30Years = useMemo(() => {
     const data = [];
     let cumulativeGain = -totalInvestmentHT;
     const inflation = (autoSettings.defaultElectricityInflation || 3.5) / 100;
 
-    for (let year = 1; year <= 25; year++) {
+    for (let year = 1; year <= 30; year++) {
       const yearFactor = Math.pow(1 + inflation, year - 1);
       const yearBenefit = (annualSavingsAutoconso * yearFactor) + annualRevenueSurplus;
       cumulativeGain += yearBenefit;
@@ -211,14 +211,14 @@ export default function SolarAutoconsoSimulator({
   }, [totalInvestmentHT, annualSavingsAutoconso, annualRevenueSurplus, autoSettings]);
 
   const paybackYear = useMemo(() => {
-    const item = chartData25Years.find(d => d.gain >= 0);
+    const item = chartData30Years.find(d => d.gain >= 0);
     return item ? item.year.replace('An ', '') : '8';
-  }, [chartData25Years]);
+  }, [chartData30Years]);
 
-  const totalGains25Years = useMemo(() => {
-    const last = chartData25Years[chartData25Years.length - 1];
+  const totalGains30Years = useMemo(() => {
+    const last = chartData30Years[chartData30Years.length - 1];
     return last ? last.gain : 0;
-  }, [chartData25Years]);
+  }, [chartData30Years]);
 
   // Génération automatique et fiable de la vue satellite
   const ensureMapSnapshot = async () => {
@@ -243,7 +243,8 @@ export default function SolarAutoconsoSimulator({
     if (onStateUpdate) {
       onStateUpdate({
         type: 'autoconsommation',
-        title: `Autoconsommation ${customKwc} kWc — ${cityName || 'Projet'}`,
+        title: `Autoconsommation ${customKwc} kWc — ${clientNameInput || cityName || 'Projet'}`,
+        clientName: clientNameInput || cityName,
         address: addressInput,
         cityName,
         departmentCode,
@@ -263,16 +264,17 @@ export default function SolarAutoconsoSimulator({
         annualBenefitYear1: totalAnnualBenefitYear1,
         totalInvestmentHT,
         paybackYear,
-        totalGains25Years,
+        totalGains30Years,
+        totalGains25Years: totalGains30Years,
         mapScreenshot: mapScreenshotDataUrl
       });
     }
   }, [
-    customKwc, cityName, addressInput, departmentCode, roofSurface, selectedPitch,
+    customKwc, cityName, clientNameInput, addressInput, departmentCode, roofSurface, selectedPitch,
     orientationInfo, consoKwh, annualBillEuro, evCount, recommendedKwc,
     regionalBaseYield, annualProductionKwh, customAutoconsoRate, autoconsoKwh,
     surplusKwh, totalAnnualBenefitYear1, totalInvestmentHT, paybackYear,
-    totalGains25Years, mapScreenshotDataUrl, onStateUpdate
+    totalGains30Years, mapScreenshotDataUrl, onStateUpdate
   ]);
 
   return (
@@ -285,16 +287,28 @@ export default function SolarAutoconsoSimulator({
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               Autoconsommation <span className="text-amber-400">Photovoltaïque</span>
             </h2>
-            <p className="text-xs text-slate-300 mt-0.5 max-w-2xl">
+            <p className="text-sm text-slate-300 mt-0.5 max-w-2xl">
               Réduisez vos factures d'électricité et valorisez le surplus de production de votre toiture.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 self-end md:self-auto">
-            <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="text-xs font-bold text-white truncate max-w-[240px]">
-              {cityName} ({departmentCode}) — {regionalBaseYield} kWh/kWc
-            </span>
+          <div className="flex flex-wrap items-center gap-2 self-end md:self-auto">
+            <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/20">
+              <span className="text-xs text-amber-300 font-bold">Client :</span>
+              <input
+                type="text"
+                value={clientNameInput}
+                onChange={(e) => setClientNameInput(e.target.value)}
+                placeholder="Nom du client..."
+                className="bg-transparent text-xs font-extrabold text-white placeholder:text-white/50 focus:outline-none w-32 sm:w-40 border-b border-white/30 focus:border-amber-400 transition-all"
+              />
+            </div>
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10">
+              <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="text-xs font-bold text-white truncate max-w-[240px]">
+                {cityName} ({departmentCode}) — {regionalBaseYield} kWh/kWc
+              </span>
+            </div>
           </div>
         </div>
 
@@ -377,7 +391,6 @@ export default function SolarAutoconsoSimulator({
                 )}
               </div>
 
-              {/* Suggestions BAN affichées uniquement lors de la frappe */}
               {!isAddressSelected && suggestions.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-slate-200 shadow-2xl z-50 overflow-hidden divide-y divide-slate-100">
                   {suggestions.map((s, idx) => (
@@ -415,15 +428,49 @@ export default function SolarAutoconsoSimulator({
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
-            className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xl space-y-3 text-center"
+            className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xl space-y-3"
           >
-            <div>
-              <h3 className="text-xl font-black text-slate-900">
-                Repérons votre toiture
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Faites glisser la carte et zoomez librement pour positionner votre toiture sous le curseur vert clignotant.
-              </p>
+            {/* Titre et Boutons d'Action Alignés en Haut */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-1 border-b border-slate-100">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 leading-tight">
+                  Repérons votre toiture
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Faites glisser la carte et zoomez librement pour positionner votre toiture sous le curseur vert.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(1)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Précédent
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const offsetLat = 0.00008;
+                    const offsetLng = 0.00012;
+                    const recentered = [
+                      { lat: mapCenter[0] + offsetLat, lng: mapCenter[1] - offsetLng },
+                      { lat: mapCenter[0] + offsetLat, lng: mapCenter[1] + offsetLng },
+                      { lat: mapCenter[0] - offsetLat, lng: mapCenter[1] + offsetLng },
+                      { lat: mapCenter[0] - offsetLat, lng: mapCenter[1] - offsetLng },
+                    ];
+                    setPolygonPoints(recentered);
+                    setCurrentStep(3);
+                  }}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all hover:scale-105"
+                >
+                  Valider l'emplacement
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <RoofMapPolygonSelector
@@ -434,37 +481,6 @@ export default function SolarAutoconsoSimulator({
               onPolygonChange={setPolygonPoints}
               mapContainerRef={mapContainerRef}
             />
-
-            <div className="flex items-center justify-between pt-1">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(1)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Étape précédente
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const offsetLat = 0.00008;
-                  const offsetLng = 0.00012;
-                  const recentered = [
-                    { lat: mapCenter[0] + offsetLat, lng: mapCenter[1] - offsetLng },
-                    { lat: mapCenter[0] + offsetLat, lng: mapCenter[1] + offsetLng },
-                    { lat: mapCenter[0] - offsetLat, lng: mapCenter[1] + offsetLng },
-                    { lat: mapCenter[0] - offsetLat, lng: mapCenter[1] - offsetLng },
-                  ];
-                  setPolygonPoints(recentered);
-                  setCurrentStep(3);
-                }}
-                className="px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-105"
-              >
-                Valider mon emplacement
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
           </motion.div>
         )}
 
@@ -475,44 +491,51 @@ export default function SolarAutoconsoSimulator({
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
-            className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xl space-y-3 text-center"
+            className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xl space-y-3"
           >
-            <div>
-              <h3 className="text-xl font-black text-slate-900">
-                Calculons la surface de votre toiture
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Déplacez les 4 coins vert fluo (1, 2, 3, 4) du pan de toiture pouvant accueillir des panneaux solaires.
-              </p>
+            {/* Titre et Boutons d'Action Alignés en Haut */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-1 border-b border-slate-100">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 leading-tight">
+                  Calculons la surface de votre toiture
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Déplacez les 4 coins vert fluo (1, 2, 3, 4) du pan de toiture pouvant accueillir des panneaux solaires.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(2)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Précédent
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(4)}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all hover:scale-105"
+                >
+                  Valider la surface
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <RoofMapPolygonSelector
               step={3}
               center={mapCenter}
               polygonPoints={polygonPoints}
-              onPolygonChange={(pts) => setPolygonPoints(pts)}
+              onPolygonChange={setPolygonPoints}
+              ridgeIndices={ridgeIndices}
+              onRidgeChange={setRidgeIndices}
+              roofPitch={roofPitch}
+              onPitchChange={setRoofPitch}
               mapContainerRef={mapContainerRef}
             />
-
-            <div className="flex items-center justify-between pt-1">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(2)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Étape précédente
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCurrentStep(4)}
-                className="px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-105"
-              >
-                Valider la surface de ma toiture
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
           </motion.div>
         )}
 
@@ -523,15 +546,38 @@ export default function SolarAutoconsoSimulator({
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
-            className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xl space-y-3 text-center"
+            className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xl space-y-3"
           >
-            <div>
-              <h3 className="text-xl font-black text-slate-900">
-                Déterminons l'orientation de votre toiture
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Cliquez sur le faîtage (côté le plus haut en rouge) pour orienter la pente.
-              </p>
+            {/* Titre et Boutons d'Action Alignés en Haut */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-1 border-b border-slate-100">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 leading-tight">
+                  Déterminons l'orientation de votre toiture
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Cliquez sur le faîtage (côté le plus haut en rouge) pour orienter la pente.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(3)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Précédent
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(5)}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all hover:scale-105"
+                >
+                  Valider l'orientation
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <RoofMapPolygonSelector
@@ -544,26 +590,6 @@ export default function SolarAutoconsoSimulator({
               onOrientationChange={setOrientationInfo}
               mapContainerRef={mapContainerRef}
             />
-
-            <div className="flex items-center justify-between pt-1">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(3)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Étape précédente
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCurrentStep(5)}
-                className="px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-105"
-              >
-                Valider l'orientation
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
           </motion.div>
         )}
 
@@ -574,15 +600,38 @@ export default function SolarAutoconsoSimulator({
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
-            className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xl space-y-5 text-center"
+            className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xl space-y-5"
           >
-            <div>
-              <h3 className="text-2xl font-black text-slate-900">
-                Quelle est l'inclinaison de votre toiture ?
-              </h3>
-              <p className="text-sm text-slate-500 mt-1">
-                Sélectionnez l'angle de pente le plus proche de votre toiture.
-              </p>
+            {/* Titre et Boutons d'Action Alignés en Haut */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 leading-tight">
+                  Quelle est l'inclinaison de votre toiture ?
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Sélectionnez l'angle de pente le plus proche de votre toiture.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(4)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Précédent
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(6)}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all hover:scale-105"
+                >
+                  Passer à la consommation
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Schéma Dynamique */}
@@ -640,28 +689,8 @@ export default function SolarAutoconsoSimulator({
               ))}
             </div>
 
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl max-w-lg mx-auto text-xs text-slate-600 leading-relaxed">
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl max-w-lg mx-auto text-xs text-slate-600 leading-relaxed text-center">
               💡 <em>Si vous ne connaissez pas l'inclinaison exacte de votre toiture, choisissez 30°.<br />Il s'agit de la configuration la plus courante en France.</em>
-            </div>
-
-            <div className="flex items-center justify-between pt-2 max-w-xl mx-auto">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(4)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Étape précédente
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCurrentStep(6)}
-                className="px-8 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-base flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-105"
-              >
-                Passer à la consommation
-                <ChevronRight className="w-5 h-5" />
-              </button>
             </div>
           </motion.div>
         )}
@@ -673,15 +702,41 @@ export default function SolarAutoconsoSimulator({
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
-            className="bg-white rounded-3xl p-8 border border-slate-200 shadow-xl space-y-6 text-center max-w-2xl mx-auto"
+            className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xl space-y-5"
           >
-            <div>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-                Quelle est votre consommation d'électricité ?
-              </h3>
-              <p className="text-sm text-slate-500 mt-1">
-                Indiquez votre consommation annuelle en kWh ou le montant de votre facture pour recevoir un conseil personnalisé.
-              </p>
+            {/* Titre et Boutons d'Action Alignés en Haut */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 leading-tight">
+                  Quelle est votre consommation d'électricité ?
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Indiquez votre consommation annuelle en kWh ou le montant de votre facture.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(5)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Précédent
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await ensureMapSnapshot();
+                    setCurrentStep(7);
+                  }}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all hover:scale-105"
+                >
+                  Valider ma consommation
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-4 max-w-md mx-auto">
@@ -760,29 +815,6 @@ export default function SolarAutoconsoSimulator({
                 </div>
               </div>
 
-            </div>
-
-            <div className="flex items-center justify-between pt-2 max-w-md mx-auto">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(5)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Étape précédente
-              </button>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  await ensureMapSnapshot();
-                  setCurrentStep(7);
-                }}
-                className="px-8 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-base flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-105"
-              >
-                Valider ma consommation
-                <ChevronRight className="w-5 h-5" />
-              </button>
             </div>
           </motion.div>
         )}
@@ -888,51 +920,51 @@ export default function SolarAutoconsoSimulator({
               </div>
             </div>
 
-            {/* Graphique Financier 25 ans */}
+            {/* Graphique Financier 30 ans */}
             <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-xl space-y-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-white/10 pb-4">
                 <div>
                   <h4 className="text-lg font-black text-white flex items-center gap-2">
                     <TrendingUp className="w-5 h-5 text-emerald-400" />
-                    Projection Financière des Gains Cumulés (25 ans)
+                    Projection Financière des Gains Cumulés (30 ans)
                   </h4>
                   <p className="text-xs text-slate-300 mt-0.5">
                     Calcul intégrant une inflation de l'électricité de {autoSettings.defaultElectricityInflation}%/an et le rachat du surplus garanti EDF OA.
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs text-slate-300 font-bold block">Gains cumulés sur 25 ans</span>
-                  <span className="text-2xl font-black text-emerald-400">+{totalGains25Years.toLocaleString('fr-FR')} €</span>
+                  <span className="text-xs text-slate-300 font-bold block">Gains cumulés sur 30 ans</span>
+                  <span className="text-2xl font-black text-emerald-400">+{totalGains30Years.toLocaleString('fr-FR')} €</span>
                 </div>
               </div>
 
-              {/* 3 Cartes Milestones 10 ans / 20 ans / 25 ans */}
+              {/* 3 Cartes Milestones 10 ans / 20 ans / 30 ans sans padding inutile au-dessus */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white/10 rounded-2xl p-4 border border-white/10 text-center">
-                  <span className="text-xs font-bold text-slate-300 block mb-1">sur 10 ans</span>
-                  <span className="text-2xl font-black text-white">
-                    +{(chartData25Years[9]?.gain > 0 ? chartData25Years[9]?.gain : 0).toLocaleString('fr-FR')} €
+                <div className="bg-white/10 rounded-2xl px-4 py-3 border border-white/10 text-center">
+                  <span className="text-xs font-bold text-slate-300 block">sur 10 ans</span>
+                  <span className="text-2xl font-black text-white block mt-0.5">
+                    +{(chartData30Years[9]?.gain > 0 ? chartData30Years[9]?.gain : 0).toLocaleString('fr-FR')} €
                   </span>
                 </div>
 
-                <div className="bg-white/10 rounded-2xl p-4 border border-white/10 text-center">
-                  <span className="text-xs font-bold text-slate-300 block mb-1">sur 20 ans</span>
-                  <span className="text-2xl font-black text-white">
-                    +{(chartData25Years[19]?.gain > 0 ? chartData25Years[19]?.gain : 0).toLocaleString('fr-FR')} €
+                <div className="bg-white/10 rounded-2xl px-4 py-3 border border-white/10 text-center">
+                  <span className="text-xs font-bold text-slate-300 block">sur 20 ans</span>
+                  <span className="text-2xl font-black text-white block mt-0.5">
+                    +{(chartData30Years[19]?.gain > 0 ? chartData30Years[19]?.gain : 0).toLocaleString('fr-FR')} €
                   </span>
                 </div>
 
-                <div className="bg-white/10 rounded-2xl p-4 border border-white/10 text-center">
-                  <span className="text-xs font-bold text-slate-300 block mb-1">sur 25 ans</span>
-                  <span className="text-2xl font-black text-emerald-400">
-                    +{totalGains25Years.toLocaleString('fr-FR')} €
+                <div className="bg-white/10 rounded-2xl px-4 py-3 border border-white/10 text-center">
+                  <span className="text-xs font-bold text-slate-300 block">sur 30 ans</span>
+                  <span className="text-2xl font-black text-emerald-400 block mt-0.5">
+                    +{totalGains30Years.toLocaleString('fr-FR')} €
                   </span>
                 </div>
               </div>
 
-              <div className="h-56 w-full">
+              <div className="h-60 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData25Years} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
+                  <AreaChart data={chartData30Years} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
                     <defs>
                       <linearGradient id="gainGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>

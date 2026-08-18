@@ -59,16 +59,16 @@ export const DEFAULT_DATABASE_SETTINGS = {
   // 1. Borne IRVE
   irve: {
     products: [
-      { id: 1, power: 7.4, price: 2600, target: 'Hôtels, restaurants, TPE', position: 'Entrée de gamme' },
-      { id: 2, power: 11, price: 2960, target: 'PME, bureaux, commerces', position: 'Standard triphasé' },
-      { id: 3, power: 22, price: 2960, target: 'Hôtels, restaurants, flottes', position: 'Rapide AC' },
-      { id: 4, power: 60, price: 21062, target: 'Parkings publics, aires, grands hôtels', position: 'Recharge rapide DC' },
-      { id: 5, power: 120, price: 39365, target: 'Autoroutes, grands complexes', position: 'Ultra-rapide DC' },
+      { id: 'prod_7', power: 7.4, price: 2600, target: 'Hôtels, restaurants, TPE', position: 'Entrée de gamme' },
+      { id: 'prod_11', power: 11.0, price: 2960, target: 'PME, bureaux, commerces', position: 'Standard triphasé' },
+      { id: 'prod_22', power: 22.0, price: 2960, target: 'Hôtels, restaurants, flottes', position: 'Rapide AC' },
+      { id: 'prod_60', power: 60.0, price: 21062, target: 'Parkings publics, aires, grands hôtels', position: 'Recharge rapide DC' },
+      { id: 'prod_120', power: 120.0, price: 39365, target: 'Autoroutes, grands complexes', position: 'Ultra-rapide DC' },
     ],
     defaultInstallFeePerPoint: 1000,
-    defaultMarginPerRecharge: 4.0,
-    defaultSalePriceKwh: 0.40,
-    defaultElectricityCostKwh: 0.20,
+    defaultMarginPerRecharge: 4.000,
+    defaultSalePriceKwh: 0.400,
+    defaultElectricityCostKwh: 0.200,
     financeInterestRate: 8.0,
     defaultFinanceYears: 5,
     defaultMaintenanceAnnual: 200,
@@ -91,59 +91,60 @@ export const DEFAULT_DATABASE_SETTINGS = {
     }
   },
 
-  // 2. Autoconsommation Solaire
+  // 2. Autoconsommation Solaire (Tranches de puissance dynamiques avec tarifs ENR-Courtage)
   autoconsommation: {
-    pricePerKwcGrid: [
-      { kwc: 3, pricePerKwc: 2.30, totalPriceHT: 6900, defaultAutoconsoRate: 85 },
-      { kwc: 6, pricePerKwc: 1.80, totalPriceHT: 10800, defaultAutoconsoRate: 65 },
-      { kwc: 9, pricePerKwc: 1.50, totalPriceHT: 13500, defaultAutoconsoRate: 55 },
-      { kwc: 15, pricePerKwc: 1.30, totalPriceHT: 19500, defaultAutoconsoRate: 50 },
-      { kwc: 22, pricePerKwc: 1.15, totalPriceHT: 25300, defaultAutoconsoRate: 45 },
-      { kwc: 36, pricePerKwc: 0.98, totalPriceHT: 35280, defaultAutoconsoRate: 40 },
+    priceTiers: [
+      { id: 'tier_0_3', minKwc: 0, maxKwc: 3, label: '0 à 3 kWc', pricePerWc: 2.300, defaultAutoconsoRate: 85 },
+      { id: 'tier_3_6', minKwc: 3, maxKwc: 6, label: '3 à 6 kWc', pricePerWc: 1.800, defaultAutoconsoRate: 65 },
+      { id: 'tier_6_9', minKwc: 6, maxKwc: 9, label: '6 à 9 kWc', pricePerWc: 1.500, defaultAutoconsoRate: 55 },
+      { id: 'tier_9_15', minKwc: 9, maxKwc: 15, label: '9 à 15 kWc', pricePerWc: 1.300, defaultAutoconsoRate: 50 },
+      { id: 'tier_15_22', minKwc: 15, maxKwc: 22, label: '15 à 22 kWc', pricePerWc: 1.150, defaultAutoconsoRate: 45 },
+      { id: 'tier_22_36', minKwc: 22, maxKwc: 36, label: '22 à 36 kWc', pricePerWc: 0.980, defaultAutoconsoRate: 40 },
+      { id: 'tier_36_100', minKwc: 36, maxKwc: 100, label: '36 à 100 kWc', pricePerWc: 0.920, defaultAutoconsoRate: 35 },
     ],
-    defaultValorisationAutoconso: 0.26,
-    defaultValorisationSurplus: 0.13,
+    defaultValorisationAutoconso: 0.260,
+    defaultValorisationSurplus: 0.130,
     defaultElectricityInflation: 3.5,
     defaultNationalYield: 1250,
     orientationCoefficients: {
-      south: { label: 'Plein Sud (180°)', coeff: 1.00 },
-      south_east: { label: 'Sud-Est (135°)', coeff: 0.95 },
-      south_west: { label: 'Sud-Ouest (225°)', coeff: 0.95 },
-      east: { label: 'Est (90°)', coeff: 0.85 },
-      west: { label: 'Ouest (270°)', coeff: 0.85 },
-      north: { label: 'Nord / Nord-Est / Nord-Ouest', coeff: 0.75 }
+      south: { label: 'Plein Sud (0°)', coeff: 1.000 },
+      south_east: { label: 'Sud-Est (-45°)', coeff: 0.950 },
+      south_west: { label: 'Sud-Ouest (+45°)', coeff: 0.950 },
+      east: { label: 'Plein Est (-90°)', coeff: 0.850 },
+      west: { label: 'Plein Ouest (+90°)', coeff: 0.850 },
+      north: { label: 'Plein Nord (180°)', coeff: 0.750 }
     },
     inclinationCoefficients: {
-      deg30: { label: '30° (Optimal standard)', coeff: 1.00 },
-      deg15: { label: '15° (Pente faible)', coeff: 0.96 },
-      deg45: { label: '45° (Pente forte)', coeff: 0.96 },
-      deg0: { label: '0° (Toit plat terrasse)', coeff: 0.90 },
-      deg60: { label: '>45° (Forte inclinaison)', coeff: 0.90 }
+      deg30: { label: '30° (Optimal standard)', coeff: 1.000 },
+      deg15: { label: '15° (Pente faible)', coeff: 0.960 },
+      deg45: { label: '45° (Pente forte)', coeff: 0.960 },
+      deg0: { label: '0° (Toit plat terrasse)', coeff: 0.900 },
+      deg60: { label: '>45° (Forte inclinaison)', coeff: 0.900 }
     }
   },
 
-  // 3. Toiture Photovoltaïque
+  // 3. Toiture Photovoltaïque (Tarifs EDF OA avec 3 chiffres après la virgule)
   toiturePv: {
     tarifsAchatEdfOa: [
-      { maxKwc: 36, label: 'Inférieur à 36 kWc', tarifAchatKwh: 0.1312, primeInjectionKwh: 0.04 },
-      { maxKwc: 100, label: '36 kWc à 100 kWc', tarifAchatKwh: 0.1141, primeInjectionKwh: 0.03 },
-      { maxKwc: 500, label: '100 kWc à 500 kWc', tarifAchatKwh: 0.1085, primeInjectionKwh: 0.02 },
+      { id: 'edf_36', minKwc: 0, maxKwc: 36, label: '0 à 36 kWc', tarifAchatKwh: 0.131, primeInjectionKwh: 0.040 },
+      { id: 'edf_100', minKwc: 36, maxKwc: 100, label: '36 à 100 kWc', tarifAchatKwh: 0.114, primeInjectionKwh: 0.030 },
+      { id: 'edf_500', minKwc: 100, maxKwc: 500, label: '100 à 500 kWc', tarifAchatKwh: 0.085, primeInjectionKwh: 0.020 },
     ],
     surfaceToPowerRatio: 5.0,
-    installationCostPerKwc: 950,
+    installationCostPerKwc: 950.000,
     raccordementCostBase: 12000,
-    turpeAnnualPerKwc: 12.0,
-    maintenanceAnnualPerKwc: 10.0,
-    loyerAnnuelM2Toiture: 5.5,
-    soulteM2Toiture: 45.0,
+    turpeAnnualPerKwc: 12.000,
+    maintenanceAnnualPerKwc: 10.000,
+    loyerAnnuelM2Toiture: 5.500,
+    soulteM2Toiture: 45.000,
   },
 
   // 4. Structure Métallique & Gamme ECO-EVO
   structure: {
-    charpenteCostM2: 75.0,
-    couvertureBacAcierM2: 28.0,
-    fondationsCostM2: 25.0,
-    pvIntegrationPerWc: 0.55,
+    charpenteCostM2: 75.000,
+    couvertureBacAcierM2: 28.000,
+    fondationsCostM2: 25.000,
+    pvIntegrationPerWc: 0.550,
     raccordementStandard: 15000,
     fraisDeveloppement: 5000,
     defaultEaveHeight: 4.5,
@@ -174,8 +175,182 @@ export const useSimulatorSettingsStore = create(
         settings: { ...state.settings, structure: { ...state.settings.structure, ...newStruct } }
       })),
 
+      // ─── Actions CRUD Autoconsommation Tiers ───
+      addAutoconsoTier: (tier) => set((state) => {
+        const tiers = state.settings.autoconsommation?.priceTiers || DEFAULT_DATABASE_SETTINGS.autoconsommation.priceTiers;
+        const newTier = {
+          id: `tier_${Date.now()}`,
+          minKwc: tier?.minKwc || 0,
+          maxKwc: tier?.maxKwc || 10,
+          label: tier?.label || `${tier?.minKwc || 0} à ${tier?.maxKwc || 10} kWc`,
+          pricePerWc: tier?.pricePerWc || 1.500,
+          defaultAutoconsoRate: tier?.defaultAutoconsoRate || 50,
+        };
+        return {
+          settings: {
+            ...state.settings,
+            autoconsommation: {
+              ...state.settings.autoconsommation,
+              priceTiers: [...tiers, newTier]
+            }
+          }
+        };
+      }),
+
+      updateAutoconsoTier: (id, updatedFields) => set((state) => {
+        const tiers = state.settings.autoconsommation?.priceTiers || DEFAULT_DATABASE_SETTINGS.autoconsommation.priceTiers;
+        const newTiers = tiers.map(t => t.id === id ? { ...t, ...updatedFields } : t);
+        return {
+          settings: {
+            ...state.settings,
+            autoconsommation: {
+              ...state.settings.autoconsommation,
+              priceTiers: newTiers
+            }
+          }
+        };
+      }),
+
+      deleteAutoconsoTier: (id) => set((state) => {
+        const tiers = state.settings.autoconsommation?.priceTiers || DEFAULT_DATABASE_SETTINGS.autoconsommation.priceTiers;
+        return {
+          settings: {
+            ...state.settings,
+            autoconsommation: {
+              ...state.settings.autoconsommation,
+              priceTiers: tiers.filter(t => t.id !== id)
+            }
+          }
+        };
+      }),
+
+      // ─── Actions CRUD Toiture PV Tarifs OA ───
+      addToitureTarifOa: (tarif) => set((state) => {
+        const tarifs = state.settings.toiturePv?.tarifsAchatEdfOa || DEFAULT_DATABASE_SETTINGS.toiturePv.tarifsAchatEdfOa;
+        const newTarif = {
+          id: `oa_${Date.now()}`,
+          minKwc: tarif?.minKwc || 0,
+          maxKwc: tarif?.maxKwc || 100,
+          label: tarif?.label || `${tarif?.minKwc || 0} à ${tarif?.maxKwc || 100} kWc`,
+          tarifAchatKwh: tarif?.tarifAchatKwh || 0.114,
+          primeInjectionKwh: tarif?.primeInjectionKwh || 0.030,
+        };
+        return {
+          settings: {
+            ...state.settings,
+            toiturePv: {
+              ...state.settings.toiturePv,
+              tarifsAchatEdfOa: [...tarifs, newTarif]
+            }
+          }
+        };
+      }),
+
+      updateToitureTarifOa: (id, updatedFields) => set((state) => {
+        const tarifs = state.settings.toiturePv?.tarifsAchatEdfOa || DEFAULT_DATABASE_SETTINGS.toiturePv.tarifsAchatEdfOa;
+        return {
+          settings: {
+            ...state.settings,
+            toiturePv: {
+              ...state.settings.toiturePv,
+              tarifsAchatEdfOa: tarifs.map(t => t.id === id ? { ...t, ...updatedFields } : t)
+            }
+          }
+        };
+      }),
+
+      deleteToitureTarifOa: (id) => set((state) => {
+        const tarifs = state.settings.toiturePv?.tarifsAchatEdfOa || DEFAULT_DATABASE_SETTINGS.toiturePv.tarifsAchatEdfOa;
+        return {
+          settings: {
+            ...state.settings,
+            toiturePv: {
+              ...state.settings.toiturePv,
+              tarifsAchatEdfOa: tarifs.filter(t => t.id !== id)
+            }
+          }
+        };
+      }),
+
+      // ─── Actions CRUD IRVE Products ───
+      addIrveProduct: (prod) => set((state) => {
+        const products = state.settings.irve?.products || DEFAULT_DATABASE_SETTINGS.irve.products;
+        const newProd = {
+          id: `prod_${Date.now()}`,
+          power: prod?.power || 22.0,
+          price: prod?.price || 3000,
+          target: prod?.target || 'Bureaux, commerces',
+          position: prod?.position || 'Standard'
+        };
+        return {
+          settings: {
+            ...state.settings,
+            irve: {
+              ...state.settings.irve,
+              products: [...products, newProd]
+            }
+          }
+        };
+      }),
+
+      updateIrveProduct: (id, updatedFields) => set((state) => {
+        const products = state.settings.irve?.products || DEFAULT_DATABASE_SETTINGS.irve.products;
+        return {
+          settings: {
+            ...state.settings,
+            irve: {
+              ...state.settings.irve,
+              products: products.map(p => p.id === id ? { ...p, ...updatedFields } : p)
+            }
+          }
+        };
+      }),
+
+      deleteIrveProduct: (id) => set((state) => {
+        const products = state.settings.irve?.products || DEFAULT_DATABASE_SETTINGS.irve.products;
+        return {
+          settings: {
+            ...state.settings,
+            irve: {
+              ...state.settings.irve,
+              products: products.filter(p => p.id !== id)
+            }
+          }
+        };
+      }),
+
+      // ─── Actions CRUD ECO & EVO ───
+      addEcoEvoItem: (item) => set((state) => {
+        const catalog = state.settings.structure?.ecoEvoCatalog || DEFAULT_ECO_EVO_CATALOG;
+        const newItem = {
+          id: `eco_${Date.now()}`,
+          gamme: item?.gamme || 'ECO',
+          name: item?.name || 'Nouveau Hangar Standard',
+          length: item?.length || 30,
+          width: item?.width || 15,
+          eaveHeight: item?.eaveHeight || 5.0,
+          roofPitch: item?.roofPitch || 10,
+          kwc: item?.kwc || 80,
+          charpentePrice: item?.charpentePrice || 35000,
+          couverturePrice: item?.couverturePrice || 14000,
+          fondationsPrice: item?.fondationsPrice || 11000,
+          pvPrice: item?.pvPrice || 44000,
+          soulte: item?.soulte || 14000,
+          resteACharge: item?.resteACharge || 46000
+        };
+        return {
+          settings: {
+            ...state.settings,
+            structure: {
+              ...state.settings.structure,
+              ecoEvoCatalog: [...catalog, newItem]
+            }
+          }
+        };
+      }),
+
       updateEcoEvoItem: (id, updatedItem) => set((state) => {
-        const catalog = state.settings.structure.ecoEvoCatalog || DEFAULT_ECO_EVO_CATALOG;
+        const catalog = state.settings.structure?.ecoEvoCatalog || DEFAULT_ECO_EVO_CATALOG;
         const newCatalog = catalog.map(item => item.id === id ? { ...item, ...updatedItem } : item);
         return {
           settings: {
@@ -183,6 +358,19 @@ export const useSimulatorSettingsStore = create(
             structure: {
               ...state.settings.structure,
               ecoEvoCatalog: newCatalog
+            }
+          }
+        };
+      }),
+
+      deleteEcoEvoItem: (id) => set((state) => {
+        const catalog = state.settings.structure?.ecoEvoCatalog || DEFAULT_ECO_EVO_CATALOG;
+        return {
+          settings: {
+            ...state.settings,
+            structure: {
+              ...state.settings.structure,
+              ecoEvoCatalog: catalog.filter(item => item.id !== id)
             }
           }
         };
@@ -204,22 +392,38 @@ export const useSimulatorSettingsStore = create(
 
       // Getters pratiques
       getSolarPriceForKwc: (kwc) => {
-        const grid = get().settings.autoconsommation.pricePerKwcGrid || [];
-        const match = grid.find(g => g.kwc === kwc);
-        if (match) return match.totalPriceHT;
-        // Interpolation
-        return Math.round(kwc * 1500);
+        const tiers = get().settings.autoconsommation?.priceTiers || DEFAULT_DATABASE_SETTINGS.autoconsommation.priceTiers;
+        const numKwc = Number(kwc) || 3;
+        const match = tiers.find(t => numKwc > Number(t.minKwc || 0) && numKwc <= Number(t.maxKwc || 1000));
+        if (match && match.pricePerWc) {
+          return Math.round(numKwc * 1000 * Number(match.pricePerWc));
+        }
+        // Fallback standard
+        if (numKwc <= 3) return Math.round(numKwc * 1000 * 2.300);
+        if (numKwc <= 6) return Math.round(numKwc * 1000 * 1.800);
+        if (numKwc <= 9) return Math.round(numKwc * 1000 * 1.500);
+        if (numKwc <= 15) return Math.round(numKwc * 1000 * 1.300);
+        if (numKwc <= 22) return Math.round(numKwc * 1000 * 1.150);
+        if (numKwc <= 36) return Math.round(numKwc * 1000 * 0.980);
+        return Math.round(numKwc * 1000 * 0.920);
       },
 
       getDefaultAutoconsoRate: (kwc) => {
-        const grid = get().settings.autoconsommation.pricePerKwcGrid || [];
-        const match = grid.find(g => g.kwc === kwc);
-        if (match) return match.defaultAutoconsoRate;
-        return 60;
+        const tiers = get().settings.autoconsommation?.priceTiers || DEFAULT_DATABASE_SETTINGS.autoconsommation.priceTiers;
+        const numKwc = Number(kwc) || 3;
+        const match = tiers.find(t => numKwc > Number(t.minKwc || 0) && numKwc <= Number(t.maxKwc || 1000));
+        if (match && match.defaultAutoconsoRate) return Number(match.defaultAutoconsoRate);
+        if (numKwc <= 3) return 85;
+        if (numKwc <= 6) return 65;
+        if (numKwc <= 9) return 55;
+        if (numKwc <= 15) return 50;
+        if (numKwc <= 22) return 45;
+        if (numKwc <= 36) return 40;
+        return 35;
       }
     }),
     {
-      name: 'nelson_simulator_database_v3',
+      name: 'nelson_simulator_database_v4',
     }
   )
 );

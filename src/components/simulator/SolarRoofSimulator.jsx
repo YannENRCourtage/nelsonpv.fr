@@ -20,9 +20,12 @@ export default function SolarRoofSimulator({
   const { settings } = useSimulatorSettingsStore();
   const toitureSettings = settings.toiturePv;
 
-  // 1: Adresse | 2: Emplacement | 3: Toiture | 4: Résultats
+  // 1: Adresse | 2: Emplacement | 3: Surface | 4: Orientation | 5: Inclinaison | 6: Résultats
   const [currentStep, setCurrentStep] = useState(1);
 
+  const [clientNameInput, setClientNameInput] = useState(
+    selectedProject?.name || selectedProject?.lastName || ''
+  );
   const [addressInput, setAddressInput] = useState(
     selectedProject ? [selectedProject.address, selectedProject.zip, selectedProject.city].filter(Boolean).join(', ') : ''
   );
@@ -32,15 +35,27 @@ export default function SolarRoofSimulator({
   const [departmentCode, setDepartmentCode] = useState('59');
   const [cityName, setCityName] = useState('Lille');
 
-  const [mapCenter, setMapCenter] = useState([50.6292, 3.0573]); // Lille par défaut comme sur l'image
+  const [mapCenter, setMapCenter] = useState([50.6292, 3.0573]);
   const [polygonPoints, setPolygonPoints] = useState([]);
   const [roofSurface, setRoofSurface] = useState(1179);
+
+  // Orientation & Pente
+  const [selectedRidgeIndex, setSelectedRidgeIndex] = useState(null);
+  const [orientationInfo, setOrientationInfo] = useState({
+    orientationLabel: 'Plein Sud (0°)',
+    azimuthDeg: 0,
+    ridgeIndex: null
+  });
+  const [selectedPitch, setSelectedPitch] = useState(30);
 
   const mapContainerRef = useRef(null);
   const [mapScreenshotDataUrl, setMapScreenshotDataUrl] = useState(null);
 
   useEffect(() => {
     if (selectedProject) {
+      if (selectedProject.name || selectedProject.lastName) {
+        setClientNameInput(selectedProject.name || selectedProject.lastName);
+      }
       if (selectedProject.address || selectedProject.city) {
         setAddressInput([selectedProject.address, selectedProject.zip, selectedProject.city].filter(Boolean).join(', '));
         setIsAddressSelected(true);
@@ -53,7 +68,7 @@ export default function SolarRoofSimulator({
     }
   }, [selectedProject]);
 
-  // Recherche BAN : propositions uniquement lors de la frappe
+  // Recherche BAN
   useEffect(() => {
     if (isAddressSelected || !addressInput || addressInput.length < 3 || currentStep !== 1) {
       setSuggestions([]);
@@ -89,7 +104,7 @@ export default function SolarRoofSimulator({
     setSuggestions([]);
   };
 
-  // Calcul Puissance (ex: 1179 m² / 6.0 = 196.5 kWc)
+  // Calcul Puissance
   const installedKwc = useMemo(() => {
     const ratio = toitureSettings.surfaceToPowerRatio || 6.0;
     const kwc = Math.round((roofSurface / ratio) * 10) / 10;
@@ -104,21 +119,24 @@ export default function SolarRoofSimulator({
     return Math.round(installedKwc * regionalBaseYield);
   }, [installedKwc, regionalBaseYield]);
 
-  // Tarif EDF OA (ex: 0.085 €/kWh pour 100-500 kWc)
+  // Tarif EDF OA avec tranches dynamiques
   const tarifEdfOaKwh = useMemo(() => {
+    const oaTarifs = toitureSettings?.tarifsAchatEdfOa || [];
+    const match = oaTarifs.find(t => installedKwc > (t.minKwc || 0) && installedKwc <= (t.maxKwc || 1000));
+    if (match && match.tarifAchatKwh) return Number(match.tarifAchatKwh);
     if (installedKwc > 100) return 0.085;
-    if (installedKwc > 36) return 0.1141;
-    return 0.1312;
-  }, [installedKwc]);
+    if (installedKwc > 36) return 0.114;
+    return 0.131;
+  }, [installedKwc, toitureSettings]);
 
   const annualRevenueReventeTotale = useMemo(() => {
     return Math.round(annualProductionKwh * tarifEdfOaKwh);
   }, [annualProductionKwh, tarifEdfOaKwh]);
 
   const totalInvestmentHT = useMemo(() => {
-    const costKwc = 920;
+    const costKwc = toitureSettings?.installationCostPerKwc || 920;
     return Math.round(installedKwc * costKwc);
-  }, [installedKwc]);
+  }, [installedKwc, toitureSettings]);
 
   const paybackReventeYear = useMemo(() => {
     if (annualRevenueReventeTotale <= 0) return '10.3';
@@ -126,7 +144,7 @@ export default function SolarRoofSimulator({
     return (Math.round(yrs * 10) / 10).toFixed(1);
   }, [totalInvestmentHT, annualRevenueReventeTotale]);
 
-  // Projection financière sur 30 ans avec cumul 10 / 20 / 30 ans (Image 5)
+  // Projection financière sur 30 ans avec cumul 10 / 20 / 30 ans
   const financialProjection30Years = useMemo(() => {
     const data = [];
     let cumul = -totalInvestmentHT;
@@ -159,7 +177,7 @@ export default function SolarRoofSimulator({
     };
   }, [totalInvestmentHT, annualRevenueReventeTotale]);
 
-  // Données environnementales (Image 5)
+  // Données environnementales
   const co2AvoidedTonsPerYear = useMemo(() => {
     return (Math.round((annualProductionKwh * 0.0005) * 10) / 10).toLocaleString('fr-FR');
   }, [annualProductionKwh]);
@@ -190,70 +208,101 @@ export default function SolarRoofSimulator({
     }
   }, [polygonPoints, mapCenter]);
 
+  // Notification d'état parent (propre sans "taux d'autoconsommation" ni "gisement régional")
   useEffect(() => {
     if (onStateUpdate) {
       onStateUpdate({
         type: 'toiture_pv',
-        title: `Toiture Photovoltaïque ${installedKwc} kWc (${roofSurface} m²) — ${cityName || 'Projet'}`,
+        title: `Toiture Photovoltaïque ${installedKwc} kWc (${roofSurface} m²) — ${clientNameInput || cityName || 'Projet'}`,
+        clientName: clientNameInput || cityName,
         address: addressInput,
         cityName,
         departmentCode,
         kwc: installedKwc,
         roofSurface,
-        regionalBaseYield,
+        pitch: selectedPitch,
+        orientationLabel: orientationInfo.orientationLabel,
         annualProductionKwh,
         tarifEdfOaKwh,
         annualRevenueReventeTotale,
         annualBenefitYear1: annualRevenueReventeTotale,
         totalInvestmentHT,
         paybackYear: paybackReventeYear,
+        totalGains30Years: financialProjection30Years.cumul30,
+        cumul10: financialProjection30Years.cumul10,
+        cumul20: financialProjection30Years.cumul20,
+        cumul30: financialProjection30Years.cumul30,
         mapScreenshot: mapScreenshotDataUrl
       });
     }
   }, [
-    installedKwc, roofSurface, cityName, addressInput, departmentCode,
-    regionalBaseYield, annualProductionKwh, tarifEdfOaKwh, annualRevenueReventeTotale,
-    totalInvestmentHT, paybackReventeYear, mapScreenshotDataUrl, onStateUpdate
+    installedKwc, roofSurface, clientNameInput, cityName, addressInput, departmentCode,
+    selectedPitch, orientationInfo, annualProductionKwh, tarifEdfOaKwh, annualRevenueReventeTotale,
+    totalInvestmentHT, paybackReventeYear, financialProjection30Years, mapScreenshotDataUrl, onStateUpdate
   ]);
 
   return (
     <div className="w-full space-y-4">
       
-      {/* ─── EN-TÊTE DU SIMULATEUR TOITURE PV (CONFORME ENR-COURTAGE.FR) ─────── */}
-      <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Valorisez votre toiture photovoltaïque
-          </h2>
-          <p className="text-xs text-slate-300 mt-1">
-            Estimez la puissance installable et les revenus générés par la revente d'électricité
-          </p>
+      {/* ─── EN-TÊTE DU SIMULATEUR TOITURE PV ───────────────────────────────── */}
+      <div className="bg-[#0e2b4d] text-white rounded-3xl p-5 shadow-2xl relative overflow-hidden">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-white/10 pb-3 mb-3">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              Toiture <span className="text-amber-400">Photovoltaïque</span>
+            </h2>
+            <p className="text-sm text-slate-300 mt-0.5 max-w-2xl">
+              Estimez la puissance installable et les revenus générés par la revente d'électricité sur votre toiture.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 self-end md:self-auto">
+            <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/20">
+              <span className="text-xs text-amber-300 font-bold">Client :</span>
+              <input
+                type="text"
+                value={clientNameInput}
+                onChange={(e) => setClientNameInput(e.target.value)}
+                placeholder="Nom du client..."
+                className="bg-transparent text-xs font-extrabold text-white placeholder:text-white/50 focus:outline-none w-32 sm:w-40 border-b border-white/30 focus:border-amber-400 transition-all"
+              />
+            </div>
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10">
+              <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="text-xs font-bold text-white truncate max-w-[240px]">
+                {cityName} ({departmentCode})
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Stepper épuré 1. Adresse / 2. Emplacement / 3. Toiture */}
-        <div className="flex items-center gap-3">
+        {/* Stepper complet à 6 étapes cliquables */}
+        <div className="flex items-center justify-between gap-1 sm:gap-2 overflow-x-auto py-1">
           {[
             { step: 1, label: '1. Adresse' },
             { step: 2, label: '2. Emplacement' },
-            { step: 3, label: '3. Toiture' }
+            { step: 3, label: '3. Surface' },
+            { step: 4, label: '4. Orientation' },
+            { step: 5, label: '5. Inclinaison' },
+            { step: 6, label: '6. Résultat' }
           ].map((item) => {
             const isCurrent = currentStep === item.step;
-            const isDone = currentStep > item.step || currentStep === 4;
+            const isDone = currentStep > item.step;
             return (
               <button
                 key={item.step}
                 type="button"
                 onClick={() => setCurrentStep(item.step)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-black transition-all whitespace-nowrap ${
                   isCurrent
                     ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/40 ring-2 ring-emerald-300'
                     : isDone
-                    ? 'bg-white/20 text-white'
-                    : 'bg-white/5 text-slate-400'
+                    ? 'bg-white/20 text-white hover:bg-white/30'
+                    : 'bg-white/5 text-slate-400 hover:text-white'
                 }`}
               >
                 <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-black ${isCurrent ? 'bg-white text-emerald-700' : 'bg-white/20 text-white'}`}>
-                  {isDone && currentStep > item.step ? '✓' : item.step}
+                  {isDone ? '✓' : item.step}
                 </span>
                 <span>{item.label}</span>
               </button>
@@ -262,10 +311,10 @@ export default function SolarRoofSimulator({
         </div>
       </div>
 
-      {/* ─── CONTENU DES ÉTAPES (IMAGES 1, 2, 3, 4, 5) ──────────────────────── */}
+      {/* ─── CONTENU DU TUNNEL INTERACTIF ──────────────────────────────────── */}
       <AnimatePresence mode="wait">
 
-        {/* ═══ ÉTAPE 1 : ADRESSE (IMAGE 1) ═══ */}
+        {/* ═══ ÉTAPE 1 : ADRESSE ═══ */}
         {currentStep === 1 && (
           <motion.div
             key="step-1"
@@ -282,7 +331,7 @@ export default function SolarRoofSimulator({
               <h3 className="text-2xl font-black text-slate-900 tracking-tight">
                 Où se situe votre bâtiment ou toiture ?
               </h3>
-              <p className="text-xs text-slate-500 mt-1 max-w-lg mx-auto">
+              <p className="text-sm text-slate-500 mt-1 max-w-lg mx-auto">
                 Renseignez l'adresse de votre bâtiment (hangar, entrepôt, usine, local commercial ou copropriété) pour simuler son potentiel photovoltaïque.
               </p>
             </div>
@@ -297,8 +346,8 @@ export default function SolarRoofSimulator({
                     setAddressInput(e.target.value);
                     setIsAddressSelected(false);
                   }}
-                  placeholder="Saisissez votre adresse postale (ex: 52 Rue de la Victoire, Paris)..."
-                  className="w-full pl-12 pr-10 py-3.5 rounded-2xl border-2 border-slate-200 text-sm font-semibold text-slate-800 focus:outline-none focus:border-emerald-500 shadow-sm"
+                  placeholder="Saisissez votre adresse postale ou commune..."
+                  className="w-full pl-12 pr-10 py-3.5 rounded-2xl border-2 border-slate-200 text-base font-semibold text-slate-800 focus:outline-none focus:border-emerald-500 shadow-sm"
                 />
                 {isSearchingAddress && (
                   <Loader2 className="w-5 h-5 absolute right-4 top-3.5 text-emerald-600 animate-spin" />
@@ -312,7 +361,7 @@ export default function SolarRoofSimulator({
                       key={idx}
                       type="button"
                       onClick={() => handleSelectSuggestion(s)}
-                      className="w-full px-4 py-3 text-left hover:bg-emerald-50 transition-colors flex items-center gap-3 text-xs font-semibold text-slate-800"
+                      className="w-full px-4 py-3 text-left hover:bg-emerald-50 transition-colors flex items-center gap-3 text-sm font-semibold text-slate-800"
                     >
                       <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>{s.properties.label}</span>
@@ -326,14 +375,14 @@ export default function SolarRoofSimulator({
               <button
                 type="button"
                 onClick={() => setCurrentStep(2)}
-                className="px-8 py-3.5 rounded-2xl bg-[#0e2b4d] hover:bg-slate-900 text-white font-black text-sm flex items-center gap-2 shadow-lg transition-all hover:scale-105"
+                className="px-8 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-base flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-105"
               >
-                Valider l'adresse &amp; passer à l'emplacement
-                <ChevronRight className="w-4 h-4" />
+                Localiser sur la carte satellite
+                <ChevronRight className="w-5 h-5" />
               </button>
             </div>
 
-            {/* 3 Cartes Avantages (Image 1) */}
+            {/* 3 Cartes Avantages */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4 border-t border-slate-100 text-left">
               <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100 flex items-center gap-2.5">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
@@ -341,7 +390,7 @@ export default function SolarRoofSimulator({
               </div>
               <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100 flex items-center gap-2.5">
                 <Building2 className="w-5 h-5 text-blue-600 shrink-0" />
-                <span className="text-xs font-bold text-slate-700">Pour tous types de bâtiments professionnels ou copropriétés</span>
+                <span className="text-xs font-bold text-slate-700">Pour tous types de bâtiments professionnels</span>
               </div>
               <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100 flex items-center gap-2.5">
                 <Euro className="w-5 h-5 text-amber-600 shrink-0" />
@@ -351,22 +400,58 @@ export default function SolarRoofSimulator({
           </motion.div>
         )}
 
-        {/* ═══ ÉTAPE 2 : EMPLACEMENT (IMAGE 2) ═══ */}
+        {/* ═══ ÉTAPE 2 : EMPLACEMENT ═══ */}
         {currentStep === 2 && (
           <motion.div
             key="step-2"
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
-            className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4"
+            className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xl space-y-3"
           >
-            {/* Notice jaune d'instruction (Image 2) */}
-            <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl p-3.5 text-xs font-bold flex items-center gap-2">
-              <HelpCircle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Positionnez le curseur sur votre toiture en le faisant glisser ou en double-cliquant sur la carte</span>
+            {/* Titre et Boutons d'Action Alignés en Haut */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-1 border-b border-slate-100">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 leading-tight">
+                  Positionnez votre bâtiment
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Faites glisser la carte et zoomez librement pour centrer votre toiture sous le curseur.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(1)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Précédent
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const offsetLat = 0.00012;
+                    const offsetLng = 0.00020;
+                    const recentered = [
+                      { lat: mapCenter[0] + offsetLat, lng: mapCenter[1] - offsetLng },
+                      { lat: mapCenter[0] + offsetLat, lng: mapCenter[1] + offsetLng },
+                      { lat: mapCenter[0] - offsetLat, lng: mapCenter[1] + offsetLng },
+                      { lat: mapCenter[0] - offsetLat, lng: mapCenter[1] - offsetLng },
+                    ];
+                    setPolygonPoints(recentered);
+                    setCurrentStep(3);
+                  }}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all hover:scale-105"
+                >
+                  Valider l'emplacement
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            {/* Visionneuse satellite */}
             <RoofMapPolygonSelector
               step={2}
               center={mapCenter}
@@ -374,49 +459,50 @@ export default function SolarRoofSimulator({
               onCenterChange={setMapCenter}
               mapContainerRef={mapContainerRef}
             />
-
-            <div className="flex items-center justify-between pt-2">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(1)}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Modifier l'adresse
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCurrentStep(3)}
-                className="px-8 py-3 rounded-2xl bg-[#84cc16] hover:bg-[#65a30d] text-white font-black text-sm uppercase tracking-wide flex items-center gap-2 shadow-lg shadow-lime-500/30 transition-all hover:scale-105"
-              >
-                VALIDEZ VOTRE EMPLACEMENT →
-              </button>
-            </div>
           </motion.div>
         )}
 
-        {/* ═══ ÉTAPE 3 : TOITURE (IMAGE 3) ═══ */}
+        {/* ═══ ÉTAPE 3 : SURFACE ═══ */}
         {currentStep === 3 && (
           <motion.div
             key="step-3"
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
-            className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xl space-y-4"
+            className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xl space-y-3"
           >
-            {/* Notice verte d'instruction & badge surface (Image 3) */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl p-3.5">
-              <div className="flex items-center gap-2 text-xs font-bold">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Sélectionnez les 4 coins de votre toiture pouvant accueillir des panneaux photovoltaïques</span>
+            {/* Titre et Boutons d'Action Alignés en Haut */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-1 border-b border-slate-100">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 leading-tight">
+                  Délimitez la surface de toiture
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Déplacez les 4 coins vert fluo pour couvrir le pan de toiture utile.
+                </p>
               </div>
-              <div className="bg-white border border-emerald-300 text-emerald-800 px-3.5 py-1 rounded-xl text-xs font-black shadow-2xs self-end sm:self-auto">
-                Surface mesurée : {roofSurface} m²
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(2)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Précédent
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(4)}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all hover:scale-105"
+                >
+                  Valider la surface
+                  <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
             </div>
 
-            {/* Carte satellite avec coins 1, 2, 3, 4 */}
             <RoofMapPolygonSelector
               step={3}
               center={mapCenter}
@@ -425,46 +511,183 @@ export default function SolarRoofSimulator({
               onSurfaceCalculated={(m2) => setRoofSurface(Math.round(m2))}
               mapContainerRef={mapContainerRef}
             />
-
-            <div className="flex items-center justify-between pt-2">
-              <button
-                type="button"
-                onClick={() => setCurrentStep(2)}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors flex items-center gap-1.5"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Ajuster l'emplacement
-              </button>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  await ensureMapSnapshot();
-                  setCurrentStep(4);
-                }}
-                className="px-8 py-3 rounded-2xl bg-[#84cc16] hover:bg-[#65a30d] text-white font-black text-sm uppercase tracking-wide flex items-center gap-2 shadow-lg shadow-lime-500/30 transition-all hover:scale-105"
-              >
-                VALIDEZ LA SÉLECTION ✓
-              </button>
-            </div>
           </motion.div>
         )}
 
-        {/* ═══ ÉTAPE 4 : RÉSULTATS DE L'ÉTUDE (IMAGES 4 & 5) ═══ */}
+        {/* ═══ ÉTAPE 4 : ORIENTATION ═══ */}
         {currentStep === 4 && (
           <motion.div
             key="step-4"
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
+            className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xl space-y-3"
+          >
+            {/* Titre et Boutons d'Action Alignés en Haut */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-1 border-b border-slate-100">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 leading-tight">
+                  Orientation de la toiture
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Cliquez sur le faîtage (ligne rouge) pour déterminer l'exposition du pan.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(3)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Précédent
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(5)}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all hover:scale-105"
+                >
+                  Valider l'orientation
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <RoofMapPolygonSelector
+              step={4}
+              center={mapCenter}
+              polygonPoints={polygonPoints}
+              selectedRidgeIndex={selectedRidgeIndex}
+              onRidgeSelect={setSelectedRidgeIndex}
+              orientationInfo={orientationInfo}
+              onOrientationChange={setOrientationInfo}
+              mapContainerRef={mapContainerRef}
+            />
+          </motion.div>
+        )}
+
+        {/* ═══ ÉTAPE 5 : INCLINAISON ═══ */}
+        {currentStep === 5 && (
+          <motion.div
+            key="step-5"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xl space-y-5"
+          >
+            {/* Titre et Boutons d'Action Alignés en Haut */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 leading-tight">
+                  Inclinaison de la toiture
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Sélectionnez la pente de votre toiture professionnelle.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(4)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Précédent
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await ensureMapSnapshot();
+                    setCurrentStep(6);
+                  }}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all hover:scale-105"
+                >
+                  Voir les résultats
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Schéma Dynamique */}
+            <div className="w-64 h-32 mx-auto flex items-end justify-center pb-2 transition-all duration-300">
+              <svg viewBox="0 0 160 80" className="w-full h-full text-emerald-600 stroke-current fill-none">
+                <line x1="10" y1="70" x2="150" y2="70" strokeWidth="2.5" stroke="#cbd5e1" />
+                {selectedPitch === 0 ? (
+                  <>
+                    <line x1="15" y1="64" x2="145" y2="64" strokeWidth="4.5" stroke="#00b875" />
+                    <rect x="25" y="60" width="110" height="4" fill="#00e699" opacity="0.4" />
+                  </>
+                ) : (
+                  <>
+                    <path
+                      d={`M 15 70 L 80 ${70 - (selectedPitch === 15 ? 18 : selectedPitch === 30 ? 38 : 56)} L 145 70 Z`}
+                      strokeWidth="3.5"
+                      stroke="#00b875"
+                      fill="rgba(0, 184, 117, 0.15)"
+                      strokeLinejoin="round"
+                    />
+                    <line
+                      x1="80"
+                      y1={70 - (selectedPitch === 15 ? 18 : selectedPitch === 30 ? 38 : 56)}
+                      x2="80"
+                      y2="70"
+                      stroke="#00b875"
+                      strokeWidth="2"
+                      strokeDasharray="3 3"
+                    />
+                  </>
+                )}
+              </svg>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-lg mx-auto">
+              {[
+                { pitch: 0, label: '0°', desc: 'Toit plat terrasse' },
+                { pitch: 15, label: '15°', desc: 'Pente faible (Hangar)' },
+                { pitch: 30, label: '30°', desc: 'Standard recommandé' },
+                { pitch: 45, label: '45°', desc: 'Pente forte' }
+              ].map((item) => (
+                <button
+                  key={item.pitch}
+                  type="button"
+                  onClick={() => setSelectedPitch(item.pitch)}
+                  className={`py-3.5 px-4 rounded-2xl font-black text-base transition-all border-2 ${
+                    selectedPitch === item.pitch
+                      ? 'bg-[#0e2b4d] border-[#0e2b4d] text-white shadow-xl scale-105 ring-4 ring-blue-500/20'
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="block text-xl">{item.label}</span>
+                  <span className="text-xs font-normal opacity-85 block">{item.desc}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl max-w-lg mx-auto text-xs text-slate-600 leading-relaxed text-center">
+              💡 <em>Pour les hangars et bâtiments industriels, la pente standard se situe généralement entre 10° et 15°.</em>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ═══ ÉTAPE 6 : RÉSULTATS DE L'ÉTUDE (30 ANS) ═══ */}
+        {currentStep === 6 && (
+          <motion.div
+            key="step-6"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
             className="space-y-6"
           >
-            {/* Barre de récapitulatif adresse (Image 4) */}
+            {/* Barre de récapitulatif */}
             <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
                 <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span className="truncate">{addressInput || 'Adresse du projet'}</span>
-                <span className="text-slate-400 font-semibold">({roofSurface} m² sélectionnés)</span>
+                <span className="text-slate-400 font-semibold">({roofSurface} m² • {orientationInfo.orientationLabel})</span>
               </div>
               <button
                 type="button"
@@ -486,7 +709,7 @@ export default function SolarRoofSimulator({
               </h3>
             </div>
 
-            {/* Grille des 5 Cartes de Résultats (Image 4) */}
+            {/* Grille des 5 Cartes de Résultats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
               
               {/* Carte 1 : Puissance Installable */}
@@ -512,7 +735,7 @@ export default function SolarRoofSimulator({
                   <span className="text-2xl font-black text-blue-600">{annualProductionKwh.toLocaleString('fr-FR')}</span>
                   <span className="text-sm font-bold text-slate-500 ml-1">kWh</span>
                 </div>
-                <div className="text-[10px] text-slate-400">Région {departmentCode} ({regionalBaseYield} kWh/kWc)</div>
+                <div className="text-[10px] text-slate-400">{orientationInfo.orientationLabel}</div>
               </div>
 
               {/* Carte 3 : Revenus 1ère Année */}
@@ -560,7 +783,7 @@ export default function SolarRoofSimulator({
               La production et les revenus affichés sont limités à 500 kWc, conformément aux tarifs conventionnés.
             </p>
 
-            {/* ─── SECTION REVENUS CUMULÉS SUR 30 ANS (IMAGE 5) ───────────── */}
+            {/* ─── SECTION REVENUS CUMULÉS SUR 30 ANS ───────────── */}
             <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-xl space-y-6">
               <div>
                 <h3 className="text-lg font-black text-white flex items-center gap-2">
@@ -572,21 +795,21 @@ export default function SolarRoofSimulator({
                 </p>
               </div>
 
-              {/* 3 Cartes Milestones 10 ans / 20 ans / 30 ans (Image 5) */}
+              {/* 3 Cartes Milestones 10 ans / 20 ans / 30 ans sans padding inutile au-dessus */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white/10 rounded-2xl p-4 border border-white/10 text-center">
-                  <span className="text-xs font-bold text-slate-300 block mb-1">sur 10 ans</span>
-                  <span className="text-2xl font-black text-white">{financialProjection30Years.cumul10.toLocaleString('fr-FR')} €</span>
+                <div className="bg-white/10 rounded-2xl px-4 py-3 border border-white/10 text-center">
+                  <span className="text-xs font-bold text-slate-300 block">sur 10 ans</span>
+                  <span className="text-2xl font-black text-white block mt-0.5">{financialProjection30Years.cumul10.toLocaleString('fr-FR')} €</span>
                 </div>
 
-                <div className="bg-white/10 rounded-2xl p-4 border border-white/10 text-center">
-                  <span className="text-xs font-bold text-slate-300 block mb-1">sur 20 ans</span>
-                  <span className="text-2xl font-black text-white">{financialProjection30Years.cumul20.toLocaleString('fr-FR')} €</span>
+                <div className="bg-white/10 rounded-2xl px-4 py-3 border border-white/10 text-center">
+                  <span className="text-xs font-bold text-slate-300 block">sur 20 ans</span>
+                  <span className="text-2xl font-black text-white block mt-0.5">{financialProjection30Years.cumul20.toLocaleString('fr-FR')} €</span>
                 </div>
 
-                <div className="bg-white/10 rounded-2xl p-4 border border-white/10 text-center">
-                  <span className="text-xs font-bold text-slate-300 block mb-1">sur 30 ans</span>
-                  <span className="text-2xl font-black text-emerald-400">{financialProjection30Years.cumul30.toLocaleString('fr-FR')} €</span>
+                <div className="bg-white/10 rounded-2xl px-4 py-3 border border-white/10 text-center">
+                  <span className="text-xs font-bold text-slate-300 block">sur 30 ans</span>
+                  <span className="text-2xl font-black text-emerald-400 block mt-0.5">{financialProjection30Years.cumul30.toLocaleString('fr-FR')} €</span>
                 </div>
               </div>
 
@@ -641,7 +864,7 @@ export default function SolarRoofSimulator({
               </div>
             </div>
 
-            {/* ─── SECTION IMPACT SUR L'ENVIRONNEMENT (IMAGE 5) ───────────── */}
+            {/* ─── SECTION IMPACT SUR L'ENVIRONNEMENT ───────────── */}
             <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-3xl p-6 shadow-sm space-y-4">
               <h3 className="text-base font-black text-emerald-950 flex items-center gap-2">
                 <Leaf className="w-5 h-5 text-emerald-600" />

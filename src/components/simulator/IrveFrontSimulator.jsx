@@ -1,13 +1,54 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Zap, Car, ShieldCheck, Lightbulb, TrendingUp,
   Save, FileDown, CheckCircle2, ChevronRight, Sliders, Euro, Calculator,
-  MapPin, Search, Loader2
+  MapPin, Search, Loader2, Plus, Minus, Trash2
 } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Cell } from 'recharts';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useSimulatorSettingsStore } from '@/stores/useSimulatorSettingsStore';
+import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
 import EvComparator from '@/components/simulator/EvComparator';
+
+// ─── Icône personnalisée Carrée pour les Bornes IRVE ───────────────────────────
+const createStationIcon = (number) => {
+  return L.divIcon({
+    className: 'custom-irve-pin',
+    html: `
+      <div style="
+        width: 32px;
+        height: 32px;
+        background-color: #059669;
+        color: #ffffff;
+        border: 2.5px solid #ffffff;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 900;
+        font-size: 13px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      ">
+        ⚡${number}
+      </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -18]
+  });
+};
+
+function MapClickHandler({ onMapClick }) {
+  useMapEvents({
+    click: (e) => {
+      if (onMapClick) onMapClick(e.latlng);
+    }
+  });
+  return null;
+}
 
 export default function IrveFrontSimulator({
   selectedProject,
@@ -17,6 +58,11 @@ export default function IrveFrontSimulator({
 }) {
   const { settings } = useSimulatorSettingsStore();
   const irveSettings = settings.irve;
+
+  // Nom du client dynamique
+  const [clientNameInput, setClientNameInput] = useState(
+    selectedProject?.name || selectedProject?.lastName || ''
+  );
 
   // Adresse du projet
   const [addressInput, setAddressInput] = useState(
@@ -28,14 +74,47 @@ export default function IrveFrontSimulator({
   const [departmentCode, setDepartmentCode] = useState('33');
   const [cityName, setCityName] = useState('Bordeaux');
 
+  // Coordonnées & Carte Interactive
+  const [mapCenter, setMapCenter] = useState([44.8378, -0.5792]);
+  const [stationMarkers, setStationMarkers] = useState([
+    { id: 1, lat: 44.8378 + 0.0001, lng: -0.5792 + 0.0001 }
+  ]);
+  const mapContainerRef = useRef(null);
+  const [mapScreenshotDataUrl, setMapScreenshotDataUrl] = useState(null);
+
+  // Configuration Matériel
+  const products = irveSettings.products || [];
+  const [selectedPower, setSelectedPower] = useState(22);
+  const [targetTypology, setTargetTypology] = useState('personnalise');
+  const [usageType, setUsageType] = useState('NonEligible');
+  const [pricingMode, setPricingMode] = useState('margin');
+  const [marginPerRecharge, setMarginPerRecharge] = useState(irveSettings.defaultMarginPerRecharge || 4.000);
+  const [salePrice, setSalePrice] = useState(irveSettings.defaultSalePriceKwh || 0.400);
+  const [electricityCostPerKwh, setElectricityCostPerKwh] = useState(irveSettings.defaultElectricityCostKwh || 0.200);
+  const [rechargesPerMonth, setRechargesPerMonth] = useState(205);
+  
+  // Taux de consommation personnelle (0 à 100%, marge = 0 € sur cette part)
+  const [personalConsoRate, setPersonalConsoRate] = useState(0);
+
+  const quantity = stationMarkers.length > 0 ? stationMarkers.length : 1;
+
   useEffect(() => {
     if (selectedProject) {
+      if (selectedProject.name || selectedProject.lastName) {
+        setClientNameInput(selectedProject.name || selectedProject.lastName);
+      }
       if (selectedProject.address || selectedProject.city) {
         setAddressInput([selectedProject.address, selectedProject.zip, selectedProject.city].filter(Boolean).join(', '));
         setIsAddressSelected(true);
       }
       if (selectedProject.zip) setDepartmentCode(selectedProject.zip.substring(0, 2));
       if (selectedProject.city) setCityName(selectedProject.city);
+      if (selectedProject.lat && selectedProject.lng) {
+        const lat = Number(selectedProject.lat);
+        const lng = Number(selectedProject.lng);
+        setMapCenter([lat, lng]);
+        setStationMarkers([{ id: 1, lat, lng }]);
+      }
     }
   }, [selectedProject]);
 
@@ -62,29 +141,37 @@ export default function IrveFrontSimulator({
 
   const handleSelectSuggestion = (feat) => {
     const label = feat.properties.label;
+    const [lng, lat] = feat.geometry.coordinates;
     const postcode = feat.properties.postcode || '';
     const dept = postcode.substring(0, 2);
     const city = feat.properties.city || '';
 
     setAddressInput(label);
     setIsAddressSelected(true);
+    setMapCenter([lat, lng]);
+    setStationMarkers([{ id: 1, lat, lng }]);
     if (dept) setDepartmentCode(dept);
     if (city) setCityName(city);
     setSuggestions([]);
   };
 
-  const products = irveSettings.products || [];
-  const [selectedPower, setSelectedPower] = useState(22);
-  const [quantity, setQuantity] = useState(1);
-  const [targetTypology, setTargetTypology] = useState('personnalise');
-  const [usageType, setUsageType] = useState('NonEligible');
-  const [pricingMode, setPricingMode] = useState('margin');
-  const [marginPerRecharge, setMarginPerRecharge] = useState(irveSettings.defaultMarginPerRecharge || 4.0);
-  const [salePrice, setSalePrice] = useState(irveSettings.defaultSalePriceKwh || 0.40);
-  const [electricityCostPerKwh, setElectricityCostPerKwh] = useState(irveSettings.defaultElectricityCostKwh || 0.20);
-  const [rechargesPerMonth, setRechargesPerMonth] = useState(205);
-  const [financeYears, setFinanceYears] = useState(irveSettings.defaultFinanceYears || 5);
-  const [clientDeposit, setClientDeposit] = useState(0);
+  const handleAddMarker = () => {
+    const newId = stationMarkers.length + 1;
+    const offset = (stationMarkers.length * 0.0001);
+    setStationMarkers([
+      ...stationMarkers,
+      { id: newId, lat: mapCenter[0] + offset, lng: mapCenter[1] + offset }
+    ]);
+  };
+
+  const handleMarkerDrag = (id, newLatLng) => {
+    setStationMarkers(stationMarkers.map(m => m.id === id ? { ...m, lat: newLatLng.lat, lng: newLatLng.lng } : m));
+  };
+
+  const handleRemoveMarker = (id) => {
+    if (stationMarkers.length <= 1) return;
+    setStationMarkers(stationMarkers.filter(m => m.id !== id));
+  };
 
   const currentProduct = useMemo(() => {
     return products.find(p => p.power === selectedPower) || products[0] || { power: 22, price: 2960 };
@@ -103,7 +190,7 @@ export default function IrveFrontSimulator({
   const handleTypologyChange = (val) => {
     setTargetTypology(val);
     if (typologies[val]?.estimate !== null && typologies[val]?.estimate !== undefined) {
-      setRechargesPerMonth(typologies[val].estimate);
+      setRechargesPerMonth(typologies[val].estimate * quantity);
     }
   };
 
@@ -126,85 +213,138 @@ export default function IrveFrontSimulator({
     return marginPerRecharge;
   }, [pricingMode, salePrice, electricityCostPerKwh, marginPerRecharge]);
 
-  const monthlyRevenue = effectiveMargin * rechargesPerMonth;
+  // Calcul intégrant le taux de consommation personnelle (marge = 0 sur la part personnelle)
+  const commercialRechargeFraction = Math.max(0, (100 - personalConsoRate) / 100);
+  const monthlyCommercialRecharges = rechargesPerMonth * commercialRechargeFraction;
+  const monthlyRevenue = Math.round(effectiveMargin * monthlyCommercialRecharges);
   const annualRevenue = monthlyRevenue * 12;
+
   const breakEvenMonths = monthlyRevenue > 0 ? (resteACharge / monthlyRevenue) : 0;
   const breakEvenYears = (breakEvenMonths / 12).toFixed(1);
 
-  const actualFinanced = Math.max(0, resteACharge - clientDeposit);
-  const monthlyRate = ((irveSettings.financeInterestRate || 8.0) / 100) / 12;
-  const totalMonths = financeYears * 12;
-  const monthlyLease = actualFinanced > 0
-    ? (actualFinanced * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -totalMonths))
-    : 0;
-
-  const chartData = useMemo(() => {
+  // Projection financière sur 30 ans avec cumul 10 / 20 / 30 ans
+  const financialProjection30Years = useMemo(() => {
     const data = [];
-    let currentProfit = -resteACharge;
-    const dynamicMonths = Math.max(24, Math.min(60, Math.ceil((breakEvenMonths + 12) / 6) * 6));
+    let cumul = -resteACharge;
+    let cumul10 = 0;
+    let cumul20 = 0;
+    let cumul30 = 0;
 
-    for (let m = 1; m <= dynamicMonths; m++) {
-      currentProfit += monthlyRevenue;
+    for (let yr = 1; yr <= 30; yr++) {
+      const yearRevenue = annualRevenue;
+      cumul += yearRevenue;
+      if (yr <= 10) cumul10 += yearRevenue;
+      if (yr <= 20) cumul20 += yearRevenue;
+      if (yr <= 30) cumul30 += yearRevenue;
+
       data.push({
-        month: `M${m}`,
-        profit: Math.round(currentProfit),
-        isPositive: currentProfit >= 0
+        year: `${yr}`,
+        gain: Math.round(cumul),
+        yearRevenue,
+        isPayback: cumul >= 0
       });
     }
-    return data;
-  }, [resteACharge, monthlyRevenue, breakEvenMonths]);
+
+    return {
+      data,
+      cumul10,
+      cumul20,
+      cumul30
+    };
+  }, [resteACharge, annualRevenue]);
+
+  const ensureMapSnapshot = async () => {
+    const snapshot = await generateSatelliteSnapshot({
+      center: mapCenter,
+      polygonPoints: [],
+      width: 800,
+      height: 480,
+      zoom: 19
+    });
+    if (snapshot) setMapScreenshotDataUrl(snapshot);
+    return snapshot;
+  };
+
+  useEffect(() => {
+    if (mapCenter) {
+      ensureMapSnapshot();
+    }
+  }, [mapCenter, stationMarkers]);
 
   useEffect(() => {
     if (onStateUpdate) {
       onStateUpdate({
         type: 'irve',
-        title: `Bornes IRVE ${quantity}x ${selectedPower} kW — ${currentProduct.position || ''}`,
+        title: `Bornes IRVE ${quantity}x ${selectedPower} kW — ${clientNameInput || cityName || 'Projet'}`,
+        clientName: clientNameInput || cityName,
+        address: addressInput,
+        cityName,
+        departmentCode,
         power: selectedPower,
         quantity,
         targetTypology,
+        personalConsoRate,
         rechargesPerMonth,
         pricingMode,
         effectiveMargin,
         monthlyRevenue,
         annualRevenue,
+        annualBenefitYear1: annualRevenue,
         totalInvestment,
         subvention,
         resteACharge,
+        totalInvestmentHT: totalInvestment,
         breakEvenMonths: Math.round(breakEvenMonths),
         breakEvenYears,
-        monthlyLease: Math.round(monthlyLease),
-        paybackYear: breakEvenYears
+        paybackYear: breakEvenYears,
+        totalGains30Years: financialProjection30Years.cumul30,
+        cumul10: financialProjection30Years.cumul10,
+        cumul20: financialProjection30Years.cumul20,
+        cumul30: financialProjection30Years.cumul30,
+        stationMarkers,
+        mapScreenshot: mapScreenshotDataUrl
       });
     }
   }, [
-    selectedPower, quantity, currentProduct, targetTypology, rechargesPerMonth,
-    pricingMode, effectiveMargin, monthlyRevenue, annualRevenue, totalInvestment,
-    subvention, resteACharge, breakEvenMonths, breakEvenYears, monthlyLease, onStateUpdate
+    selectedPower, quantity, clientNameInput, cityName, addressInput, departmentCode,
+    targetTypology, personalConsoRate, rechargesPerMonth, pricingMode, effectiveMargin,
+    monthlyRevenue, annualRevenue, totalInvestment, subvention, resteACharge,
+    breakEvenMonths, breakEvenYears, financialProjection30Years, stationMarkers,
+    mapScreenshotDataUrl, onStateUpdate
   ]);
 
   return (
     <div className="w-full space-y-4">
       
-      {/* Header élargi de 30% */}
-      <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-2xl relative overflow-hidden">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-white/10 pb-4 mb-3">
+      {/* ─── BANDEAU SUPÉRIEUR PLEINE LARGEUR ───────────────────────────────── */}
+      <div className="bg-[#0e2b4d] text-white rounded-3xl p-5 shadow-2xl relative overflow-hidden">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-white/10 pb-3 mb-3">
           <div>
-            <span className="text-xs font-black tracking-widest uppercase text-blue-400 block mb-0.5">
-              Simulateur de Rentabilité IRVE
-            </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Infrastructures de <span className="text-emerald-400">Recharge Électrique</span>
+              Infrastructures de <span className="text-emerald-400">Recharge Électrique (IRVE)</span>
             </h2>
             <p className="text-sm text-slate-300 mt-0.5 max-w-3xl">
-              Estimez le retour sur investissement de l'installation de bornes de recharge pour votre parking ou votre flotte d'entreprise.
+              Estimez le retour sur investissement et positionnez vos bornes sur votre parking.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-white/10 self-end md:self-auto">
-            <Zap className="w-5 h-5 text-emerald-400 shrink-0" />
-            <span className="text-sm font-bold text-white">
-              {quantity} × Borne {selectedPower} kW ({currentProduct.price.toLocaleString('fr-FR')} € HT)
-            </span>
+          <div className="flex flex-wrap items-center gap-2 self-end md:self-auto">
+            <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/20">
+              <span className="text-xs text-amber-300 font-bold">Client :</span>
+              <input
+                type="text"
+                value={clientNameInput}
+                onChange={(e) => setClientNameInput(e.target.value)}
+                placeholder="Nom du client..."
+                className="bg-transparent text-xs font-extrabold text-white placeholder:text-white/50 focus:outline-none w-32 sm:w-40 border-b border-white/30 focus:border-amber-400 transition-all"
+              />
+            </div>
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10">
+              <Zap className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="text-xs font-bold text-white">
+                {quantity} × {selectedPower} kW ({currentProduct.price.toLocaleString('fr-FR')} € HT/u)
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -213,8 +353,8 @@ export default function IrveFrontSimulator({
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         
-        {/* Colonne Gauche */}
-        <div className="lg:col-span-5 space-y-3">
+        {/* Colonne Gauche : Paramètres & Carte interactive */}
+        <div className="lg:col-span-5 space-y-4">
           <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
             
             {/* Recherche d'adresse d'implantation */}
@@ -257,69 +397,124 @@ export default function IrveFrontSimulator({
               )}
             </div>
 
-            <h3 className="text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+            {/* Carte satellite avec carrés déplaçables */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                  Implantation des bornes sur plan satellite ({quantity})
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAddMarker}
+                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Ajouter borne
+                </button>
+              </div>
+
+              <div className="relative w-full h-56 rounded-2xl overflow-hidden border border-slate-200 shadow-inner" ref={mapContainerRef}>
+                <MapContainer
+                  center={mapCenter}
+                  zoom={19}
+                  maxZoom={22}
+                  scrollWheelZoom={true}
+                  className="w-full h-full"
+                >
+                  <TileLayer
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                    maxZoom={22}
+                    crossOrigin="anonymous"
+                    attribution="Esri"
+                  />
+                  {stationMarkers.map((marker, idx) => (
+                    <Marker
+                      key={marker.id}
+                      position={[marker.lat, marker.lng]}
+                      icon={createStationIcon(idx + 1)}
+                      draggable={true}
+                      eventHandlers={{
+                        dragend: (e) => handleMarkerDrag(marker.id, e.target.getLatLng())
+                      }}
+                    >
+                      <Popup>
+                        <div className="text-center p-1">
+                          <p className="font-bold text-xs">Borne #{idx + 1} ({selectedPower} kW)</p>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMarker(marker.id)}
+                            className="mt-1 text-[10px] text-red-600 hover:underline font-bold flex items-center gap-1 mx-auto"
+                          >
+                            <Trash2 className="w-3 h-3" /> Supprimer
+                          </button>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ))}
+                </MapContainer>
+              </div>
+              <p className="text-[11px] text-slate-500 italic">
+                Déplacez librement les carrés verts ⚡ sur vos places de stationnement.
+              </p>
+            </div>
+
+            <h3 className="text-base font-black text-slate-800 uppercase tracking-wider flex items-center gap-2 pt-2 border-t border-slate-100">
               <Sliders className="w-5 h-5 text-blue-600" />
-              Configuration de la Station
+              Paramètres Économiques
             </h3>
 
+            {/* Puissance de la borne */}
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1.5">Puissance de la borne</label>
-              <div className="grid grid-cols-3 gap-2.5">
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">Puissance unitaire</label>
+              <div className="grid grid-cols-3 gap-2">
                 {products.map(p => (
                   <button
                     key={p.id || p.power}
                     type="button"
                     onClick={() => setSelectedPower(p.power)}
-                    className={`p-2.5 rounded-xl text-xs font-black transition-all border ${
+                    className={`p-2 rounded-xl text-xs font-black transition-all border ${
                       selectedPower === p.power
                         ? 'bg-blue-600 border-blue-600 text-white shadow-md scale-105'
                         : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                     }`}
                   >
                     <span className="block text-sm">{p.power} kW</span>
-                    <span className="text-[11px] font-normal opacity-85 block">{p.price.toLocaleString('fr-FR')} €</span>
+                    <span className="text-[10px] font-normal opacity-85 block">{p.price.toLocaleString('fr-FR')} €</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div>
-              <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
-                <span>Nombre de points de charge</span>
-                <span className="text-blue-600 font-black text-sm">{quantity} borne(s)</span>
+            {/* Taux de consommation personnelle */}
+            <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-3.5 space-y-1.5">
+              <div className="flex justify-between text-xs font-bold text-amber-950">
+                <span>Taux de consommation personnelle</span>
+                <span className="font-black text-sm text-amber-700">{personalConsoRate} %</span>
               </div>
               <input
                 type="range"
-                min="1"
-                max="10"
-                value={quantity}
-                onChange={(e) => setQuantity(Number(e.target.value))}
-                className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                min="0"
+                max="100"
+                step="5"
+                value={personalConsoRate}
+                onChange={(e) => setPersonalConsoRate(Number(e.target.value))}
+                className="w-full h-2.5 bg-amber-200 rounded-lg appearance-none cursor-pointer accent-amber-600"
               />
+              <p className="text-[10px] text-amber-800 leading-tight">
+                Pour la part consommée par vos propres véhicules ({personalConsoRate}%), le tarif de vente est égal au coût d'achat (marge = 0 €).
+              </p>
             </div>
 
-            <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Profil d'établissement / Usage</label>
-              <select
-                value={targetTypology}
-                onChange={(e) => handleTypologyChange(e.target.value)}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-              >
-                {Object.entries(typologies).map(([k, v]) => (
-                  <option key={k} value={k}>{v.label} {v.estimate ? `(~${v.estimate} rech./mois)` : ''}</option>
-                ))}
-              </select>
-            </div>
-
+            {/* Recharges mensuelles */}
             <div>
               <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
-                <span>Recharges estimées par mois</span>
+                <span>Recharges mensuelles totales</span>
                 <span className="text-emerald-600 font-black text-sm">{rechargesPerMonth} recharges</span>
               </div>
               <input
                 type="range"
                 min="10"
-                max="800"
+                max="1000"
                 step="10"
                 value={rechargesPerMonth}
                 onChange={(e) => setRechargesPerMonth(Number(e.target.value))}
@@ -327,14 +522,15 @@ export default function IrveFrontSimulator({
               />
             </div>
 
+            {/* Marge nette par recharge */}
             <div>
               <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
-                <span>Marge nette par session</span>
-                <span className="text-emerald-600 font-black text-sm">{marginPerRecharge.toFixed(2)} € / recharge</span>
+                <span>Marge par recharge publique</span>
+                <span className="text-emerald-600 font-black text-sm">{marginPerRecharge.toFixed(2)} € / session</span>
               </div>
               <input
                 type="range"
-                min="1"
+                min="0.5"
                 max="15"
                 step="0.5"
                 value={marginPerRecharge}
@@ -342,11 +538,12 @@ export default function IrveFrontSimulator({
                 className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
               />
             </div>
+
           </div>
         </div>
 
-        {/* Colonne Droite */}
-        <div className="lg:col-span-7 space-y-3">
+        {/* Colonne Droite : Synthèse & Graphique 30 Ans */}
+        <div className="lg:col-span-7 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs">
               <span className="text-xs font-bold text-slate-400 uppercase block">Revenus Mensuels</span>
@@ -373,27 +570,87 @@ export default function IrveFrontSimulator({
             </div>
           </div>
 
-          <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-2">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-700 border-b border-slate-100 pb-2">
-              <span>Évolution du résultat financier net</span>
-              <span className="text-emerald-600">Bénéfice net cumulé</span>
+          {/* ─── SECTION REVENUS CUMULÉS SUR 30 ANS ───────────── */}
+          <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-xl space-y-6">
+            <div>
+              <h3 className="text-lg font-black text-white flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-emerald-400" />
+                Projection Financière &amp; Bénéfices Cumulés (30 ans)
+              </h3>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Projection sur 30 ans des recettes nettes générées par les bornes de recharge
+              </p>
             </div>
-            <div className="h-48 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k€`} />
-                  <Tooltip
-                    formatter={(val) => [`${Number(val).toLocaleString('fr-FR')} €`, 'Résultat net']}
-                    contentStyle={{ borderRadius: 10, fontSize: 12 }}
-                  />
-                  <ReferenceLine x={`M${Math.round(breakEvenMonths)}`} stroke="#ef4444" strokeDasharray="4 4" strokeWidth={2} />
-                  <Bar dataKey="profit" fill="#10b981" radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+
+            {/* 3 Cartes Milestones 10 ans / 20 ans / 30 ans */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white/10 rounded-2xl px-4 py-3 border border-white/10 text-center">
+                <span className="text-xs font-bold text-slate-300 block">sur 10 ans</span>
+                <span className="text-2xl font-black text-white block mt-0.5">{financialProjection30Years.cumul10.toLocaleString('fr-FR')} €</span>
+              </div>
+
+              <div className="bg-white/10 rounded-2xl px-4 py-3 border border-white/10 text-center">
+                <span className="text-xs font-bold text-slate-300 block">sur 20 ans</span>
+                <span className="text-2xl font-black text-white block mt-0.5">{financialProjection30Years.cumul20.toLocaleString('fr-FR')} €</span>
+              </div>
+
+              <div className="bg-white/10 rounded-2xl px-4 py-3 border border-white/10 text-center">
+                <span className="text-xs font-bold text-slate-300 block">sur 30 ans</span>
+                <span className="text-2xl font-black text-emerald-400 block mt-0.5">{financialProjection30Years.cumul30.toLocaleString('fr-FR')} €</span>
+              </div>
+            </div>
+
+            {/* Graphique 30 Ans avec Barres Bicolores */}
+            <div className="space-y-2">
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={financialProjection30Years.data} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                    <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k€`} />
+                    <Tooltip
+                      formatter={(val) => [`${Number(val).toLocaleString('fr-FR')} €`, 'Cumul net']}
+                      labelFormatter={(yr) => `Année ${yr}`}
+                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: 12, color: '#ffffff', fontSize: 12 }}
+                    />
+                    <ReferenceLine
+                      x={Math.round(Number(breakEvenYears)).toString()}
+                      stroke="#ef4444"
+                      strokeDasharray="4 4"
+                      strokeWidth={2}
+                      label={{
+                        value: `Amorti en ${breakEvenYears} ans`,
+                        fill: '#ef4444',
+                        position: 'top',
+                        fontSize: 10,
+                        fontWeight: 'bold'
+                      }}
+                    />
+                    <Bar dataKey="gain" radius={[4, 4, 0, 0]}>
+                      {financialProjection30Years.data.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.isPayback ? '#10b981' : '#3b82f6'}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="flex items-center justify-center gap-6 text-xs text-slate-300 pt-2">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" />
+                  Amortissement en cours
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" />
+                  Bénéfices nets (Post-ROI)
+                </span>
+              </div>
             </div>
           </div>
+
         </div>
 
       </div>

@@ -456,7 +456,7 @@ function Header({ isMobileMenuOpen, setIsMobileMenuOpen, isTrackingAuthorized })
 
             {/* Simulateur (4 solutions unifiées) */}
             {(activeTenantId === 'enr-courtage-energie' || user?.role === 'admin' || user?.role === 'Administrator' || user?.permissions?.canAccessSimulator) && (
-              <NavLink to="/irve" className={({ isActive }) => isActive ? 'nav-link active simulateur' : 'nav-link simulateur'}>
+              <NavLink to="/simulateur" className={({ isActive }) => isActive ? 'nav-link active simulateur' : 'nav-link simulateur'}>
                 Simulateur
               </NavLink>
             )}

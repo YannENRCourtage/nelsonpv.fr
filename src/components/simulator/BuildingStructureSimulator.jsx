@@ -234,12 +234,18 @@ export default function BuildingStructureSimulator({
     return snapshot;
   };
 
+  // Nom du client dynamique
+  const [clientNameInput, setClientNameInput] = useState(
+    selectedProject?.name || selectedProject?.lastName || ''
+  );
+
   // Synchronisation avec l'état global parent
   useEffect(() => {
     if (onStateUpdate) {
       onStateUpdate({
         type: 'structure_metallique',
-        title: `Hangar Solaire ${buildingLength.toFixed(1)}m × ${buildingWidth.toFixed(1)}m (${installedKwc} kWc)`,
+        title: `Hangar Solaire ${buildingLength.toFixed(1)}m × ${buildingWidth.toFixed(1)}m (${installedKwc} kWc) — ${clientNameInput || cityName || 'Projet'}`,
+        clientName: clientNameInput || cityName,
         address: addressInput,
         cityName,
         departmentCode,
@@ -255,6 +261,10 @@ export default function BuildingStructureSimulator({
         resteACharge,
         annualBenefitYear1: annualNetRevenue,
         paybackYear: financialProjection30Years.paybackYears,
+        totalGains30Years: financialProjection30Years.cumul30,
+        cumul10: financialProjection30Years.cumul10,
+        cumul20: financialProjection30Years.cumul20,
+        cumul30: financialProjection30Years.cumul30,
         mapScreenshot: mapScreenshotDataUrl
       });
     }
@@ -262,7 +272,7 @@ export default function BuildingStructureSimulator({
     buildingLength, buildingWidth, floorArea, roofArea, installedKwc,
     annualProductionKwh, totalBuildingCost, totalProjectInvestment,
     soulteInvestisseur, resteACharge, annualNetRevenue,
-    financialProjection30Years.paybackYears, addressInput, cityName,
+    financialProjection30Years, clientNameInput, addressInput, cityName,
     departmentCode, mapScreenshotDataUrl, onStateUpdate
   ]);
 
@@ -285,32 +295,45 @@ export default function BuildingStructureSimulator({
           </div>
         </div>
 
-        {/* 2 Grands Onglets de Navigation */}
-        <div className="flex items-center gap-2 bg-white/10 p-1.5 rounded-2xl border border-white/10 self-end sm:self-auto">
-          <button
-            type="button"
-            onClick={() => setActiveView('configurator')}
-            className={`px-5 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${
-              activeView === 'configurator'
-                ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
-                : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            <span>1. Configurateur 3D</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
+          <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/20">
+            <span className="text-xs text-amber-300 font-bold">Client :</span>
+            <input
+              type="text"
+              value={clientNameInput}
+              onChange={(e) => setClientNameInput(e.target.value)}
+              placeholder="Nom du client..."
+              className="bg-transparent text-xs font-extrabold text-white placeholder:text-white/50 focus:outline-none w-32 sm:w-40 border-b border-white/30 focus:border-amber-400 transition-all"
+            />
+          </div>
 
-          <button
-            type="button"
-            onClick={() => setActiveView('feasibility')}
-            className={`px-5 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${
-              activeView === 'feasibility'
-                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
-                : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            <span>2. Étude Faisabilité Solaire</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
+          {/* 2 Grands Onglets de Navigation */}
+          <div className="flex items-center gap-2 bg-white/10 p-1.5 rounded-2xl border border-white/10">
+            <button
+              type="button"
+              onClick={() => setActiveView('configurator')}
+              className={`px-5 py-2 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${
+                activeView === 'configurator'
+                  ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <span>1. Configurateur 3D</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveView('feasibility')}
+              className={`px-5 py-2 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${
+                activeView === 'feasibility'
+                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <span>2. Étude Faisabilité Solaire</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -431,28 +454,28 @@ export default function BuildingStructureSimulator({
                 </button>
               </div>
 
-              {/* Encart flottant "Synthèse de la structure" en bas à droite de la visionneuse 3D (agrandi de 30% avec typographie renforcée) */}
-              <div className="absolute bottom-4 right-4 z-20 bg-slate-900/95 backdrop-blur-md text-white p-5 rounded-2xl border border-white/20 shadow-2xl w-80 max-w-sm pointer-events-auto space-y-2.5 text-sm">
-                <div className="flex items-center justify-between border-b border-white/20 pb-2">
+              {/* Encart flottant "Synthèse de la structure" en bas à droite de la visionneuse 3D (agrandi de 15% avec typographie renforcée) */}
+              <div className="absolute bottom-4 right-4 z-20 bg-slate-900/95 backdrop-blur-md text-white p-6 rounded-3xl border border-white/20 shadow-2xl w-96 max-w-md pointer-events-auto space-y-3 text-sm">
+                <div className="flex items-center justify-between border-b border-white/20 pb-2.5">
                   <span className="font-black text-amber-400 uppercase text-xs tracking-wider">Synthèse Structure &amp; PV</span>
-                  <span className="font-black text-xs text-white">{buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m</span>
+                  <span className="font-black text-sm text-white">{buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m</span>
                 </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                <div className="grid grid-cols-2 gap-x-5 gap-y-3 text-xs">
                   <div>
-                    <span className="text-slate-400 block text-[10px] font-semibold uppercase">Surface au sol</span>
-                    <strong className="text-white font-black text-sm">{floorArea} m²</strong>
+                    <span className="text-slate-400 block text-[11px] font-semibold uppercase">Surface au sol</span>
+                    <strong className="text-white font-black text-base">{floorArea} m²</strong>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[10px] font-semibold uppercase">Centrale PV</span>
-                    <strong className="text-blue-400 font-black text-sm">{installedKwc} kWc</strong>
+                    <span className="text-slate-400 block text-[11px] font-semibold uppercase">Centrale PV</span>
+                    <strong className="text-blue-400 font-black text-base">{installedKwc} kWc</strong>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[10px] font-semibold uppercase">Budget Gros-Œuvre</span>
-                    <strong className="text-white font-black text-sm">{totalBuildingCost.toLocaleString('fr-FR')} €</strong>
+                    <span className="text-slate-400 block text-[11px] font-semibold uppercase">Budget Gros-Œuvre</span>
+                    <strong className="text-white font-black text-base">{totalBuildingCost.toLocaleString('fr-FR')} €</strong>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[10px] font-semibold uppercase">Reste à charge</span>
-                    <strong className="text-purple-300 font-black text-sm">{resteACharge.toLocaleString('fr-FR')} €</strong>
+                    <span className="text-slate-400 block text-[11px] font-semibold uppercase">Reste à charge</span>
+                    <strong className="text-purple-300 font-black text-base">{resteACharge.toLocaleString('fr-FR')} €</strong>
                   </div>
                 </div>
               </div>
@@ -800,8 +823,13 @@ export default function BuildingStructureSimulator({
                             transform: `rotate(${buildingRotation}deg)`
                           }}
                         >
-                          {/* Faîtage pointillé orange */}
-                          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-amber-400" />
+                          {/* Faîtage pointillé orange (décalé pour les asymétriques) */}
+                          <div
+                            className="absolute inset-x-0 border-t-2 border-dashed border-amber-400 -translate-y-1/2"
+                            style={{
+                              top: (config.buildingType?.startsWith('asymetrique') || isAcamaAsymetrique) ? '32%' : '50%'
+                            }}
+                          />
                           
                           {/* Badge de dimensions */}
                           <div className="bg-slate-900/90 text-white px-3 py-1.5 rounded-xl border border-white/20 text-center shadow-lg pointer-events-none">
