@@ -5,7 +5,8 @@ import {
   ChevronRight, ChevronLeft, Loader2, FileCheck, Zap,
   Hash, Ruler, Info, RefreshCw, Mail, Phone, FileText,
   Upload, Image as ImageIcon, Check, Camera, Eye, Sparkles, Layers,
-  Crop, HelpCircle, ArrowRight, Box, Sliders, Trash2, Battery, Sun, Plus
+  Crop, HelpCircle, ArrowRight, Box, Sliders, Trash2, Battery, Sun, Plus,
+  Compass
 } from 'lucide-react';
 import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames } from '@/services/SmartCerfaService';
 import { cadastreService } from '@/services/CadastreService';
