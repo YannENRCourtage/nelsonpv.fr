@@ -113,20 +113,16 @@ async function drawCoverPage(doc, project, type, installationType) {
   const communeName = project?.city || project?.cadastre_commune || project?.commune || '—';
   const sectionVal = (project?.cadastre_section || project?.section) ? `${project.cadastre_section || project.section} n° ${project.cadastre_numero || project.numero || '—'}` : '—';
   const surfaceVal = (project?.cadastre_surface || project?.surface) ? `${project.cadastre_surface || project.surface} m²` : '—';
-  const rawKwc = project?.kwc || project?.projectSize;
-  const puissanceVal = rawKwc ? (String(rawKwc).includes('kWc') ? String(rawKwc) : `${rawKwc} kWc`) : '';
+  const puissanceVal = '0';
   // Dynamic type label based on configured buildings
-  let installCode;
+  let installCode = 'Bâtiment et Ombrière';
   const projectBuildings = project?.buildings || [];
   if (projectBuildings.length > 1) {
-    const hasOmbriere = projectBuildings.some(b => (b.buildingType || '').toLowerCase().includes('ombriere'));
-    if (hasOmbriere) {
-      installCode = 'Bâtiment et Ombrière';
-    } else {
-      installCode = `${projectBuildings.length} Bâtiments agricoles PV`;
-    }
+    installCode = 'Bâtiment et Ombrière';
+  } else if ((project?.type || '').toLowerCase().includes('ombriere') || (installationType || '').toLowerCase().includes('ombriere')) {
+    installCode = 'Ombrière photovoltaïque';
   } else {
-    installCode = getInstallationTypeInfo(installationType || project?.type).code;
+    installCode = 'Bâtiment et Ombrière';
   }
   if (project?.batteryStorage?.enabled) {
     installCode += ' + Stockage batterie';

@@ -426,6 +426,25 @@ export const useConfiguratorStore = create(
       return updates;
     }),
 
+    loadBuildingConfig: (data) => {
+        if (!data) return;
+        set({
+            buildingType: data.buildingType || 'asymetrique_1',
+            width: Number(data.width) || 20.0,
+            length: Number(data.length) || 30.0,
+            eaveHeight: Number(data.eaveHeight) || 4.0,
+            roofPitch: Number(data.roofPitch) || 15,
+            bayCount: Number(data.bayCount) || 5,
+            baySpacing: Number(data.baySpacing) || 6,
+            leftSide: data.leftSide || 'none',
+            rightSide: data.rightSide || 'none',
+            leftWidth: Number(data.leftWidth) || 9.3,
+            rightWidth: Number(data.rightWidth) || 9.3,
+            hasSolar: data.hasSolar !== undefined ? data.hasSolar : true,
+            fixedLength: data.fixedLength || null
+        });
+    },
+
     // New Extension Actions
     setLeftSide: (type) => {
         if (['none', 'auvent', 'appentis'].includes(type)) {

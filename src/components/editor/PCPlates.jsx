@@ -260,10 +260,11 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     let leftEaveHeight = 6.40;
 
     if (isOmbriere) {
-        // Ombrière : monopente ouverte sur poteaux
-        leftEaveHeight = hauteurEgout + (largeur * Math.tan((pente * Math.PI) / 180));
+        // Ombrière : structure monopente stricte à 10° sur poteau central en Y/V (Barconnière)
+        const effectiveEgout = Number(hauteurEgout) || (largeur >= 11 ? 2.80 : 3.00);
+        rightEaveHeight = effectiveEgout;
+        leftEaveHeight = effectiveEgout + (largeur * Math.tan((10 * Math.PI) / 180));
         ridgeHeight = leftEaveHeight;
-        rightEaveHeight = hauteurEgout;
     } else if (isMonopente) {
         leftEaveHeight = hauteurEgout;
         ridgeHeight = leftEaveHeight + (largeur * Math.tan((pente * Math.PI) / 180));
@@ -291,8 +292,8 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
 
     const apexSvgX = isAsym ? 218 : 305;
     const apexSvgY = 20;
-    const leftEaveSvgY = isAsym ? 44 : 54;
-    const rightEaveSvgY = 54;
+    const leftEaveSvgY = isOmbriere ? 38 : (isAsym ? 44 : 54);
+    const rightEaveSvgY = isOmbriere ? 72 : 54;
     const auventTipSvgX = 550;
     const auventTipSvgY = 66;
 
@@ -303,7 +304,8 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const scaleStartX = 660 - scaleTotalWidth; // Ancré en bas à droite sous TN Amont
     const scaleY = 153; // Abaissé de 0.3cm en bas à droite
 
-    const roofTypeLabel = isOmbriere ? 'monopente (ombrière)' : isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque';
+    const roofTypeLabel = isOmbriere ? 'monopente (ombrière VL/PL)' : isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque';
+    const displayPitch = isOmbriere ? 10 : pente;
 
     const projectCity = project?.city || project?.cadastre_commune || project?.commune || 'SAINT ARAILLES';
     const projectZip = project?.zip || project?.zipCode || project?.postalCode || '32100';
@@ -380,20 +382,37 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             {/* 3. Portique & PANNEAUX SOLAIRES SUR TOUTE LA TOITURE */}
                             {isOmbriere ? (
                                 <>
-                                    {/* Ombrière : structure Façade EST (Pignon) avec poteau central incliné et bras de support */}
-                                    <rect x="295" y="110" width="20" height={groundYLeft - 110} fill="#334155" /> {/* Poteau central base */}
-                                    <polygon points={`295,110 315,110 325,${leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.5 + 20} 305,${leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.5 + 20}`} fill="#475569" /> {/* Poteau central montant */}
-                                    <line x1="305" y1="110" x2="180" y2={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.15 + 10} stroke="#475569" strokeWidth="8" /> {/* Bras de support gauche */}
-                                    <line x1="305" y1="110" x2="430" y2={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.85 + 10} stroke="#475569" strokeWidth="8" /> {/* Bras de support droit */}
-                                    <rect x="270" y={groundYLeft - 6} width="70" height="6" fill="#94a3b8" /> {/* Plot de fondation central */}
-                                    {/* Toiture monopente */}
-                                    <line x1="126" y1={leftEaveSvgY} x2="480" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="6" />
-                                    <polygon points={`122,${leftEaveSvgY - 3} 484,${rightEaveSvgY - 3} 484,${rightEaveSvgY - 11} 122,${leftEaveSvgY - 11}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
-                                    {[0.2, 0.4, 0.6, 0.8].map((ratio, idx) => {
-                                        const px = 130 + (480 - 130) * ratio;
+                                    {/* Ombrière Barconnière : Poteau central en Y/V avec jambes de force et arbalétrier monopente 10° */}
+                                    {/* Plot de fondation béton */}
+                                    <rect x="260" y={groundYLeft - 6} width="90" height="8" rx="1.5" fill="#cbd5e1" stroke="#64748b" strokeWidth="1" />
+                                    <rect x="275" y={groundYLeft - 10} width="60" height="4" rx="1" fill="#94a3b8" />
+                                    <text x="305" y={groundYLeft + 8} textAnchor="middle" fill="#64748b" fontSize="6.5" fontStyle="italic">Massif béton</text>
+
+                                    {/* Jambe gauche du Y (inclinée vers l'amont/nord) */}
+                                    <line x1="288" y1={groundYLeft - 10} x2="225" y2={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.32 + 8} stroke="#334155" strokeWidth="9" strokeLinecap="round" />
+                                    {/* Jambe droite du Y (inclinée vers l'aval/sud) */}
+                                    <line x1="322" y1={groundYLeft - 10} x2="385" y2={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.68 + 8} stroke="#334155" strokeWidth="9" strokeLinecap="round" />
+                                    
+                                    {/* Entretoise horizontale et contreventement en croix */}
+                                    <line x1="274" y1={groundYLeft - 32} x2="336" y2={groundYLeft - 32} stroke="#475569" strokeWidth="3" />
+                                    <line x1="284" y1={groundYLeft - 12} x2="334" y2={groundYLeft - 32} stroke="#64748b" strokeWidth="1.5" />
+                                    <line x1="326" y1={groundYLeft - 12} x2="276" y2={groundYLeft - 32} stroke="#64748b" strokeWidth="1.5" />
+
+                                    {/* Poutre arbalétrier IPE monopente continue */}
+                                    <line x1="120" y1={leftEaveSvgY} x2="490" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="6" strokeLinecap="round" />
+                                    
+                                    {/* Modules photovoltaïques sur toute la toiture */}
+                                    <polygon points={`116,${leftEaveSvgY - 2} 494,${rightEaveSvgY - 2} 494,${rightEaveSvgY - 10} 116,${leftEaveSvgY - 10}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1.2" />
+                                    {[0.12, 0.25, 0.38, 0.5, 0.62, 0.75, 0.88].map((ratio, idx) => {
+                                        const px = 120 + (490 - 120) * ratio;
                                         const py = leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * ratio;
-                                        return <line key={idx} x1={px} y1={py - 11} x2={px} y2={py - 3} stroke="#93c5fd" strokeWidth="1.5" />;
+                                        return <line key={idx} x1={px} y1={py - 10} x2={px} y2={py - 2} stroke="#93c5fd" strokeWidth="1.2" />;
                                     })}
+
+                                    {/* Badge explicatif structure Barconnière */}
+                                    <text x="305" y={groundYLeft - 42} textAnchor="middle" fill="#1e40af" fontSize="7" fontWeight="bold">
+                                        Poteau Y/V (Barconnière)
+                                    </text>
                                 </>
                             ) : isAsym ? (
                                 <>
@@ -448,7 +467,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
                             {/* 4. Mentions de Toiture & PENTE REMONTÉE AU-DESSUS DE LA COUVERTURE */}
                             <text x={350} y={8} textAnchor="middle" fill="#1e3a8a" fontSize="8" fontWeight="bold">
-                                Toiture {roofTypeLabel} : pente {pente}° ({Math.round(Math.tan((pente * Math.PI) / 180) * 100)}%) {isOmbriere ? '• Façade EST (Pignon) ' : ''}• {isOmbriere ? 'Structure métallique & Modules solaires' : 'Bac acier RAL 7016 + Modules solaires'}
+                                Toiture {roofTypeLabel} : pente {displayPitch}° ({Math.round(Math.tan((displayPitch * Math.PI) / 180) * 100)}%) {isOmbriere ? '• Façade EST (Pignon) ' : ''}• {isOmbriere ? 'Structure métallique & Modules solaires' : 'Bac acier RAL 7016 + Modules solaires'}
                             </text>
 
                             {/* 5. Rappel Hauteurs d'égout et Faîtage */}
@@ -475,7 +494,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                     <line x1="104" y1={leftEaveSvgY} x2="112" y2={leftEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
                                     <line x1="104" y1={groundYLeft} x2="112" y2={groundYLeft} stroke="#ef4444" strokeWidth="1.2" />
                                     <text x="100" y={leftEaveSvgY + (groundYLeft - leftEaveSvgY) / 2 + 3} textAnchor="end" fill="#ef4444" fontSize="7.5" fontWeight="bold">
-                                        Sablière Nord : {leftEaveHeight.toFixed(2)}m
+                                        {isOmbriere ? `Sablière Haute : ${leftEaveHeight.toFixed(2)}m` : `Sablière Nord : ${leftEaveHeight.toFixed(2)}m`}
                                     </text>
                                 </>
                             )}
@@ -496,7 +515,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                     <line x1="498" y1={rightEaveSvgY} x2="506" y2={rightEaveSvgY} stroke="#ef4444" strokeWidth="1.2" />
                                     <line x1="498" y1={groundYRight} x2="506" y2={groundYRight} stroke="#ef4444" strokeWidth="1.2" />
                                     <text x="510" y={rightEaveSvgY + (groundYRight - rightEaveSvgY) / 2 + 3} textAnchor="start" fill="#ef4444" fontSize="7.5" fontWeight="bold">
-                                        Égout Sud : {rightEaveHeight.toFixed(2)}m
+                                        {isOmbriere ? `Sablière Basse : ${rightEaveHeight.toFixed(2)}m` : `Égout Sud : ${rightEaveHeight.toFixed(2)}m`}
                                     </text>
                                 </>
                             )}

@@ -29,15 +29,29 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-function DraggableLocationMarker({ lat, lng, setGps }) {
-  const [position, setPosition] = useState({ lat, lng });
+function MapResizer() {
   const map = useMap();
-  const markerRef = React.useRef(null);
-  
   useEffect(() => {
-    setPosition({ lat, lng });
-    map.setView([lat, lng]);
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
+}
+
+function MapSyncCenter({ lat, lng }) {
+  const map = useMap();
+  useEffect(() => {
+    if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+      map.setView([lat, lng], map.getZoom(), { animate: true });
+    }
   }, [lat, lng, map]);
+  return null;
+}
+
+function DraggableLocationMarker({ lat, lng, setGps }) {
+  const markerRef = React.useRef(null);
 
   const eventHandlers = useMemo(
     () => ({
@@ -45,7 +59,6 @@ function DraggableLocationMarker({ lat, lng, setGps }) {
         const marker = markerRef.current;
         if (marker != null) {
           const newPos = marker.getLatLng();
-          setPosition(newPos);
           setGps(newPos.lat, newPos.lng);
         }
       },
@@ -57,7 +70,7 @@ function DraggableLocationMarker({ lat, lng, setGps }) {
     <Marker
       draggable={true}
       eventHandlers={eventHandlers}
-      position={position}
+      position={[lat, lng]}
       ref={markerRef}
     />
   );
@@ -172,29 +185,46 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const projectAltitude = editedProject?.altitude || '140.62 m';
     
     // Bâtiment 1
-    const longueur = config.length || 30;
-    const largeur = Number(config.width || 20);
-    const totalSurface = (largeur * longueur).toFixed(2);
-    const hasAuvent = Boolean(config.rightSide === 'auvent' || config.leftSide === 'auvent');
-    const isAsym = config.buildingType?.startsWith('asym');
-    const isSym = config.buildingType?.startsWith('sym');
-    const roofTypeLabel = isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque';
-    const pente = config.roofPitch || 15;
-    const bayCount = config.bayCount || 5;
-    const baySpacing = config.baySpacing || 6;
+    const b1 = buildings[0] || {};
+    const longueur1 = Number(b1.length || config.length || 30);
+    const largeur1 = Number(b1.width || config.width || 20);
+    const totalSurface1 = (largeur1 * longueur1).toFixed(2);
+    const b1Type = b1.buildingType || config.buildingType || 'asymetrique_1';
+    const isB1Ombriere = b1Type.includes('ombriere');
+    const isB1Asym = b1Type.startsWith('asym');
+    const isB1Sym = b1Type.startsWith('sym');
+    const b1RoofLabel = isB1Ombriere ? 'monopente (10°)' : isB1Asym ? 'double pente asymétrique (15°)' : isB1Sym ? 'double pente symétrique (10°)' : 'photovoltaïque';
+    const b1Eave = Number(b1.eaveHeight || config.eaveHeight || 4.0);
+    const b1Pitch = Number(b1.roofPitch || config.roofPitch || 15);
+    const b1Bays = Number(b1.bayCount || config.bayCount || 5);
+    const b1Spacing = Number(b1.baySpacing || config.baySpacing || 6);
+    const b1Auvent = Boolean(b1.rightSide === 'auvent' || b1.leftSide === 'auvent' || config.rightSide === 'auvent' || config.leftSide === 'auvent');
     const displayKwc = editedProject?.kwc || editedProject?.puissance || editedProject?.projectSize || '';
 
     // Bâtiments secondaires
     const secondaryBuildings = buildings.slice(1);
     const hasMultiBuildings = secondaryBuildings.length > 0;
 
-    let batimentDesc = `Le projet a pour objet la construction d'un hangar${hasMultiBuildings ? ' principal (Bâtiment 1)' : ''} de forme rectangulaire (longueur : ${longueur}m, largeur : ${largeur.toFixed(2)}m${hasAuvent ? ' + Auvent 4.00m' : ''}) en structure métallique (RAL 7016 / 7005), composé de ${bayCount} travées de ${baySpacing}m d'entraxe. La toiture sera constituée d'une double pente ${roofTypeLabel} (${pente}°) avec pour couverture un bac acier anti condensation sur les deux versants (RAL 7016). Des panneaux photovoltaïques (RAL 9005) viendront recouvrir le bac acier sur l'ensemble de la toiture${displayKwc ? `, permettant de créer une centrale de production d'électricité photovoltaïque de ${displayKwc} kWc` : ''}.`;
+    let batimentDesc = isB1Ombriere
+      ? `Le projet a pour objet l'implantation d'une ombrière de parking photovoltaïque${hasMultiBuildings ? ' (Bâtiment 1)' : ''} de dimensions ${longueur1}m × ${largeur1.toFixed(2)}m (surface couverte : ${totalSurface1} m²) à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à 10°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire.`
+      : `Le projet a pour objet la construction d'un bâtiment agricole à charpente métallique${hasMultiBuildings ? ' principal (Bâtiment 1)' : ''} de forme rectangulaire (longueur : ${longueur1}m, largeur : ${largeur1.toFixed(2)}m${b1Auvent ? ' + Auvent 4.00m' : ''}, hauteur sablière : ${b1Eave.toFixed(2)}m) en structure métallique (RAL 7016 / 7005), composé de ${b1Bays} travées de ${b1Spacing}m d'entraxe. La toiture sera constituée d'une couverture ${b1RoofLabel} avec bac acier anti-condensation (RAL 7016) et panneaux solaires photovoltaïques intégrés (RAL 9005)${displayKwc ? `, développant une puissance installée de ${displayKwc} kWc` : ''}.`;
 
     if (hasMultiBuildings) {
       secondaryBuildings.forEach((b, idx) => {
-        const bSurface = (Number(b.width || 20) * Number(b.length || 25)).toFixed(2);
+        const bW = Number(b.width || 20);
+        const bL = Number(b.length || 25);
+        const bSurface = (bW * bL).toFixed(2);
+        const bType = (b.buildingType || 'asymetrique_1').toLowerCase();
+        const isOmb = bType.includes('ombriere');
         const bAuvent = b.rightSide === 'auvent' || b.leftSide === 'auvent';
-        batimentDesc += `\nIl comprend également la construction d'un second hangar (Bâtiment ${idx + 2}) de dimensions ${b.length}m × ${Number(b.width).toFixed(2)}m${bAuvent ? ' (+ Auvent)' : ''} d'une emprise de ${bSurface} m² en structure métallique similaire.`;
+        const bEave = Number(b.eaveHeight || 4.0);
+        const bPitch = Number(b.roofPitch || (isOmb ? 10 : 15));
+
+        if (isOmb) {
+          batimentDesc += `\nIl comprend également l'implantation d'une ombrière photovoltaïque de parking (${b.name || `Bâtiment ${idx + 2}`}) de dimensions ${bL}m × ${bW.toFixed(2)}m (surface couverte : ${bSurface} m²) à structure métallique en Y/V avec toiture monopente inclinée à ${bPitch}°.`;
+        } else {
+          batimentDesc += `\nIl comprend également la construction d'un second bâtiment (${b.name || `Bâtiment ${idx + 2}`}) de dimensions ${bL}m × ${bW.toFixed(2)}m${bAuvent ? ' (+ Auvent)' : ''} d'une emprise au sol de ${bSurface} m² (hauteur sablière : ${bEave.toFixed(2)}m, pente : ${bPitch}°) en structure métallique similaire.`;
+        }
       });
     }
 
@@ -206,11 +236,12 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       batimentDesc += `\nLe site sera également équipé d'un système de stockage d'énergie par batterie stationnaire (${batteryStorage.quantity} unité(s) ${batteryStorage.model}) d'une capacité de ${batteryStorage.capacityKwh} kWh (${batteryStorage.powerKw} kW) implantée sur une dalle béton dédiée (${batteryStorage.footprint}).`;
     }
 
-    let objetDemande = `La demande de permis de construire porte sur la construction d'un hangar à usage agricole avec toiture photovoltaïque. Il servira de stockage de matériel et céréales (${totalSurface} m²).`;
-    if (hasMultiBuildings || additionalRoof.enabled || batteryStorage.enabled) {
-      const totalGlobalSurface = (parseFloat(totalSurface) + secondaryBuildings.reduce((acc, b) => acc + (Number(b.width || 20) * Number(b.length || 25)), 0)).toFixed(2);
-      objetDemande = `La demande de permis de construire porte sur la réalisation d'un ensemble agrivoltaïque comprenant ${1 + secondaryBuildings.length} bâtiment(s) agricole(s) (${totalGlobalSurface} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${batteryStorage.enabled ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`;
-    }
+    let totalGlobalSurface = parseFloat(totalSurface1);
+    secondaryBuildings.forEach(b => {
+      totalGlobalSurface += (Number(b.width || 20) * Number(b.length || 25));
+    });
+
+    let objetDemande = `La demande de permis de construire porte sur la réalisation d'un projet comprenant ${1 + secondaryBuildings.length} structure(s) (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${batteryStorage.enabled ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`;
 
     return `NOTICE D'INSERTION & DESCRIPTIVE DU PROJET
 
@@ -236,6 +267,52 @@ Le positionnement du point de livraison et d'un transformateur (le cas échéant
 Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf PC 02 - Plan de masse).${batteryStorage.enabled ? `\nLe système de stockage batterie est équipé de ses dispositifs de sécurité autonomes conformes aux prescriptions SDIS (détection thermique, coupure automatique d'urgence, système d'extinction dédié et bac de rétention).` : ''}`;
   }, [editedProject, config, buildings, additionalRoof, batteryStorage]);
 
+  // Synchronisation continue des paramètres de configuration vers le bâtiment actif
+  useEffect(() => {
+    setBuildings(prev => {
+      if (!prev[activeBuildingIndex]) return prev;
+      const cur = prev[activeBuildingIndex];
+      if (
+        cur.length === config.length &&
+        cur.width === config.width &&
+        cur.eaveHeight === config.eaveHeight &&
+        cur.roofPitch === config.roofPitch &&
+        cur.buildingType === config.buildingType &&
+        cur.leftSide === config.leftSide &&
+        cur.rightSide === config.rightSide &&
+        cur.bayCount === config.bayCount &&
+        cur.baySpacing === config.baySpacing
+      ) {
+        return prev;
+      }
+      const upd = [...prev];
+      upd[activeBuildingIndex] = {
+        ...cur,
+        length: config.length,
+        width: config.width,
+        eaveHeight: config.eaveHeight,
+        roofPitch: config.roofPitch,
+        buildingType: config.buildingType,
+        leftSide: config.leftSide,
+        rightSide: config.rightSide,
+        bayCount: config.bayCount,
+        baySpacing: config.baySpacing,
+      };
+      return upd;
+    });
+  }, [
+    activeBuildingIndex,
+    config.length,
+    config.width,
+    config.eaveHeight,
+    config.roofPitch,
+    config.buildingType,
+    config.leftSide,
+    config.rightSide,
+    config.bayCount,
+    config.baySpacing
+  ]);
+
   // Gestion des bâtiments multiples
   const handleAddBuilding = () => {
     const newIdx = buildings.length + 1;
@@ -251,44 +328,57 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       rightSide: 'none',
       bayCount: 4,
       baySpacing: 6,
+      rotation: 0,
       captures: {},
       photos: {}
     };
     const updated = [...buildings, newBuilding];
     setBuildings(updated);
     setActiveBuildingIndex(updated.length - 1);
+    if (configActions.loadBuildingConfig) {
+      configActions.loadBuildingConfig(newBuilding);
+    }
   };
 
   const handleSelectBuilding = (index) => {
     if (index === activeBuildingIndex) return;
+
     // 1. Sauvegarder bâtiment actuel
     const updated = [...buildings];
-    updated[activeBuildingIndex] = {
-      ...updated[activeBuildingIndex],
-      length: config.length,
-      width: config.width,
-      eaveHeight: config.eaveHeight,
-      roofPitch: config.roofPitch,
-      buildingType: config.buildingType,
-      leftSide: config.leftSide,
-      rightSide: config.rightSide,
-      bayCount: config.bayCount,
-      baySpacing: config.baySpacing,
-    };
-    setBuildings(updated);
+    if (updated[activeBuildingIndex]) {
+      updated[activeBuildingIndex] = {
+        ...updated[activeBuildingIndex],
+        length: config.length,
+        width: config.width,
+        eaveHeight: config.eaveHeight,
+        roofPitch: config.roofPitch,
+        buildingType: config.buildingType,
+        leftSide: config.leftSide,
+        rightSide: config.rightSide,
+        bayCount: config.bayCount,
+        baySpacing: config.baySpacing,
+      };
+      setBuildings(updated);
+    }
+
     setActiveBuildingIndex(index);
 
-    // 2. Charger nouveau bâtiment
+    // 2. Charger le nouveau bâtiment sans altération ni écrasement de largeur
     const target = updated[index];
     if (target) {
-      if (configActions.setDimensions) configActions.setDimensions({ length: target.length || 30, width: target.width || 20 });
-      if (configActions.setBuildingType) configActions.setBuildingType(target.buildingType || 'asymetrique_1');
-      if (configActions.setRoofPitch) configActions.setRoofPitch(target.roofPitch || 15);
-      if (configActions.setEaveHeight) configActions.setEaveHeight(target.eaveHeight || 4);
-      if (configActions.setBayCount) configActions.setBayCount(target.bayCount || 5);
-      if (configActions.setBaySpacing) configActions.setBaySpacing(target.baySpacing || 6);
-      if (configActions.setLeftSide) configActions.setLeftSide(target.leftSide || 'none');
-      if (configActions.setRightSide) configActions.setRightSide(target.rightSide || 'none');
+      if (configActions.loadBuildingConfig) {
+        configActions.loadBuildingConfig(target);
+      } else {
+        if (configActions.setBuildingType) configActions.setBuildingType(target.buildingType || 'asymetrique_1');
+        if (configActions.setWidth) configActions.setWidth(target.width || 20);
+        if (configActions.setDimensions) configActions.setDimensions({ length: target.length || 30, width: target.width || 20 });
+        if (configActions.setRoofPitch) configActions.setRoofPitch(target.roofPitch || 15);
+        if (configActions.setEaveHeight) configActions.setEaveHeight(target.eaveHeight || 4);
+        if (configActions.setBayCount) configActions.setBayCount(target.bayCount || 5);
+        if (configActions.setBaySpacing) configActions.setBaySpacing(target.baySpacing || 6);
+        if (configActions.setLeftSide) configActions.setLeftSide(target.leftSide || 'none');
+        if (configActions.setRightSide) configActions.setRightSide(target.rightSide || 'none');
+      }
     }
   };
 
@@ -299,8 +389,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     setBuildings(updated);
     setActiveBuildingIndex(0);
     const first = updated[0];
-    if (first && configActions.setDimensions) {
-      configActions.setDimensions({ length: first.length, width: first.width });
+    if (first && configActions.loadBuildingConfig) {
+      configActions.loadBuildingConfig(first);
     }
   };
 
@@ -572,29 +662,36 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
     const effectiveNotice = noticeText || editedProject.noticeText || project?.noticeText || buildAutoNoticeText();
 
-    // Mettre à jour la liste des bâtiments avec le bâtiment actif courant
-    const updatedBuildings = [...buildings];
-    if (updatedBuildings[activeBuildingIndex]) {
-      updatedBuildings[activeBuildingIndex] = {
-        ...updatedBuildings[activeBuildingIndex],
-        length: config.length,
-        width: config.width,
-        eaveHeight: config.eaveHeight,
-        roofPitch: config.roofPitch,
-        buildingType: config.buildingType,
-        leftSide: config.leftSide,
-        rightSide: config.rightSide,
-        bayCount: config.bayCount,
-        baySpacing: config.baySpacing,
-        captures: { ...captures },
-        photos: { ...photos },
-      };
-    }
+    // Mettre à jour la liste des bâtiments SANS écraser leurs photos et captures individuelles
+    const updatedBuildings = buildings.map((b, idx) => {
+      if (idx === activeBuildingIndex) {
+        return {
+          ...b,
+          length: config.length,
+          width: config.width,
+          eaveHeight: config.eaveHeight,
+          roofPitch: config.roofPitch,
+          buildingType: config.buildingType,
+          leftSide: config.leftSide,
+          rightSide: config.rightSide,
+          bayCount: config.bayCount,
+          baySpacing: config.baySpacing,
+          captures: { ...(b.captures || {}) },
+          photos: { ...(b.photos || {}) },
+        };
+      }
+      return b;
+    });
+
+    const isMultiOrOmbriere = updatedBuildings.length > 1 || updatedBuildings.some(b => (b.buildingType || '').includes('ombriere'));
+    const finalTypeLabel = isMultiOrOmbriere ? 'Bâtiment et Ombrière' : (editedProject.type || 'batiment_solaire');
 
     const finalProject = {
       ...editedProject,
       ...fieldValues,
       buildingType: config.buildingType || 'asymetrique_1',
+      type: finalTypeLabel,
+      installationType: finalTypeLabel,
       largeur: String(config.width || 20.0),
       longueur: String(config.length || 30.0),
       hauteur_egout: String(config.buildingType?.startsWith('asymetrique') ? 4.0 : (config.eaveHeight || 4.0)),
@@ -603,9 +700,9 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       rightSide: config.rightSide || 'none',
       bayCount: config.bayCount,
       baySpacing: config.baySpacing,
-      kwc: clientKwc,
-      projectSize: clientKwc,
-      puissance: clientKwc,
+      kwc: '0',
+      projectSize: '0',
+      puissance: '0',
       objet_travaux: shortObjet,
       description: shortObjet,
       noticeText: effectiveNotice,
@@ -619,7 +716,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       batteryStorage: batteryStorage,
     };
     try {
-      await onGenerate(type, editedProject.type || 'batiment_solaire', finalProject, selectedPages);
+      await onGenerate(type, finalTypeLabel, finalProject, selectedPages);
     } finally {
       setIsGenerating(false);
       onClose();
@@ -628,8 +725,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
   if (!isOpen) return null;
 
-  const summary = buildCerfaDataSummary({ ...editedProject, ...fieldValues }, editedProject.type || 'batiment_solaire');
-  const STEPS = ['Déclarant', 'Cartes PC1', 'Cotations & Côtes', '4 Photos', 'Carte PC2', 'Notice Descriptive', 'Validation'];
+  const summary = buildCerfaDataSummary({ ...editedProject, ...fieldValues, puissance: '0', kwc: '0', type: 'Bâtiment et Ombrière', buildings }, editedProject.type || 'batiment_solaire');
+  const STEPS = ['Déclarant', 'Cartes PC1', 'Cotations & Côtes', 'Photos', 'Carte PC2', 'Notice Descriptive', 'Validation'];
 
   return (
     <AnimatePresence>
@@ -810,16 +907,18 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center flex flex-col">
                       <span className="text-xs font-bold text-gray-700 block mb-2">PC1 — Plan de Situation (IGN Cartographique)</span>
-                      <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 z-10 flex-1">
+                      <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 z-10 flex-1 min-h-[260px]">
                         {(() => {
                           const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
                           const [lat, lng] = gps.split(',').map(Number);
                           return (
-                            <MapContainer center={[lat, lng]} zoom={16} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+                            <MapContainer center={[lat, lng]} zoom={16} scrollWheelZoom={true} style={{ height: '100%', minHeight: '260px', width: '100%' }}>
                               <TileLayer
                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                 attribution="&copy; OpenStreetMap contributors"
                               />
+                              <MapResizer />
+                              <MapSyncCenter lat={lat} lng={lng} />
                               <DraggableLocationMarker lat={lat} lng={lng} setGps={handleGpsUpdate} />
                             </MapContainer>
                           );
@@ -829,16 +928,18 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
                     <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center flex flex-col">
                       <span className="text-xs font-bold text-gray-700 block mb-2">PC1 — Vue Aérienne Satellite</span>
-                      <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 z-10 flex-1">
+                      <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 z-10 flex-1 min-h-[260px]">
                         {(() => {
                           const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
                           const [lat, lng] = gps.split(',').map(Number);
                           return (
-                            <MapContainer center={[lat, lng]} zoom={17} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+                            <MapContainer center={[lat, lng]} zoom={17} scrollWheelZoom={true} style={{ height: '100%', minHeight: '260px', width: '100%' }}>
                               <TileLayer
                                 url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                                 attribution="Tiles &copy; Esri"
                               />
+                              <MapResizer />
+                              <MapSyncCenter lat={lat} lng={lng} />
                               <DraggableLocationMarker lat={lat} lng={lng} setGps={handleGpsUpdate} />
                             </MapContainer>
                           );
@@ -972,7 +1073,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                   className="p-5 space-y-3 overflow-y-auto max-h-[70vh]">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-sm font-bold text-gray-800">Étape 4 : 4 Photos, Façades & Insertion Paysagère 3D</h3>
+                      <h3 className="text-sm font-bold text-gray-800">Étape 4 : Photos, Façades & Insertion Paysagère 3D</h3>
                       <p className="text-xs text-gray-500">Capturez les 5 vues de façades pour la PC5 et positionnez le modèle 3D sur votre photo de terrain pour la PC6.</p>
                     </div>
 
@@ -1065,7 +1166,15 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                   <button
                                     type="button"
                                     title="Supprimer la photo"
-                                    onClick={() => setBuildings(prev => { const upd = [...prev]; if (upd[activeBuildingIndex]) upd[activeBuildingIndex].photos = { ...upd[activeBuildingIndex].photos,  }; return upd; })}
+                                    onClick={() => setBuildings(prev => {
+                                      const upd = [...prev];
+                                      if (upd[activeBuildingIndex]) {
+                                        const newPhotos = { ...upd[activeBuildingIndex].photos };
+                                        delete newPhotos.avant;
+                                        upd[activeBuildingIndex].photos = newPhotos;
+                                      }
+                                      return upd;
+                                    })}
                                     className="p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -1092,7 +1201,15 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                       <button
                                         type="button"
                                         title="Réinitialiser l'incrustation"
-                                        onClick={() => setBuildings(prev => { const upd = [...prev]; if (upd[activeBuildingIndex]) upd[activeBuildingIndex].photos = { ...upd[activeBuildingIndex].photos,  }; return upd; })}
+                                        onClick={() => setBuildings(prev => {
+                                          const upd = [...prev];
+                                          if (upd[activeBuildingIndex]) {
+                                            const newPhotos = { ...upd[activeBuildingIndex].photos };
+                                            delete newPhotos.apres;
+                                            upd[activeBuildingIndex].photos = newPhotos;
+                                          }
+                                          return upd;
+                                        })}
                                         className="p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
@@ -1150,7 +1267,15 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             <button
                               type="button"
                               title="Supprimer"
-                              onClick={() => setBuildings(prev => { const upd = [...prev]; if (upd[activeBuildingIndex]) upd[activeBuildingIndex].photos = { ...upd[activeBuildingIndex].photos,  }; return upd; })}
+                              onClick={() => setBuildings(prev => {
+                                const upd = [...prev];
+                                if (upd[activeBuildingIndex]) {
+                                  const newPhotos = { ...upd[activeBuildingIndex].photos };
+                                  delete newPhotos.proche;
+                                  upd[activeBuildingIndex].photos = newPhotos;
+                                }
+                                return upd;
+                              })}
                               className="p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1190,7 +1315,15 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             <button
                               type="button"
                               title="Supprimer"
-                              onClick={() => setBuildings(prev => { const upd = [...prev]; if (upd[activeBuildingIndex]) upd[activeBuildingIndex].photos = { ...upd[activeBuildingIndex].photos,  }; return upd; })}
+                              onClick={() => setBuildings(prev => {
+                                const upd = [...prev];
+                                if (upd[activeBuildingIndex]) {
+                                  const newPhotos = { ...upd[activeBuildingIndex].photos };
+                                  delete newPhotos.lointain;
+                                  upd[activeBuildingIndex].photos = newPhotos;
+                                }
+                                return upd;
+                              })}
                               className="p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-sm transition-all hover:scale-105"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1225,7 +1358,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                         Étape 5 : PC2 — Plan de Masse ({buildings.length} bâtiment{buildings.length > 1 ? 's' : ''})
                       </h3>
                       <p className="text-xs text-gray-500">
-                        Visualisez et ajustez l'emprise au sol de chaque bâtiment à l'échelle sur le plan cadastral (OSM Zoom 19).
+                        Visualisez et ajustez l'emprise au sol et l'orientation de chaque bâtiment à l'échelle sur le plan cadastral (OSM Zoom 19).
                       </p>
                     </div>
                   </div>
@@ -1236,8 +1369,10 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                       const [lat, lng] = gps.split(',').map(Number);
                       const bLength = Number(b.length || config.length || 30);
                       const bWidth = Number(b.width || config.width || 20);
+                      const currentRotation = Number(b.rotation || 0);
+
                       return (
-                        <div key={b.id || bIdx} className="border border-gray-200 rounded-2xl p-4 bg-gray-50 flex flex-col gap-2">
+                        <div key={b.id || bIdx} className="border border-gray-200 rounded-2xl p-4 bg-gray-50 flex flex-col gap-3">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
                               <Building2 className="w-4 h-4 text-blue-600" />
@@ -1248,33 +1383,89 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             </span>
                           </div>
 
+                          {/* Contrôle de Rotation libre du bâtiment sur la carte */}
+                          <div className="flex items-center justify-between gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200 text-xs shadow-2xs">
+                            <div className="flex items-center gap-1.5 font-bold text-slate-700">
+                              <Compass className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Rotation :</span>
+                              <span className="text-blue-600 font-extrabold">{currentRotation}°</span>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-1 max-w-[180px]">
+                              <input
+                                type="range"
+                                min="0"
+                                max="360"
+                                step="5"
+                                value={currentRotation}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value);
+                                  setBuildings(prev => {
+                                    const upd = [...prev];
+                                    if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: val };
+                                    return upd;
+                                  });
+                                }}
+                                className="w-full accent-blue-600 cursor-pointer"
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              {[-90, 0, 45, 90, 180].map((deg) => (
+                                <button
+                                  key={deg}
+                                  type="button"
+                                  onClick={() => {
+                                    const newRot = (deg + 360) % 360;
+                                    setBuildings(prev => {
+                                      const upd = [...prev];
+                                      if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: newRot };
+                                      return upd;
+                                    });
+                                  }}
+                                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                    currentRotation === ((deg + 360) % 360)
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                  }`}
+                                >
+                                  {deg > 0 ? `+${deg}°` : `${deg}°`}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
                           <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 z-10 flex-1 min-h-[260px]">
-                            <MapContainer center={[lat, lng]} zoom={19} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+                            <MapContainer center={[lat, lng]} zoom={19} scrollWheelZoom={true} style={{ height: '100%', minHeight: '260px', width: '100%' }}>
                               <TileLayer
                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                 attribution="&copy; OpenStreetMap contributors"
                                 maxZoom={21}
                               />
+                              <MapResizer />
+                              <MapSyncCenter lat={lat} lng={lng} />
                               <DraggableLocationMarker lat={lat} lng={lng} setGps={handleGpsUpdate} />
                             </MapContainer>
 
-                            {/* Emprise rectangulaire centrée du bâtiment */}
+                            {/* Emprise rectangulaire orientable centrée du bâtiment */}
                             <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[1000]">
                               <div
                                 className="border-2 border-red-500 border-dashed bg-red-500/20 rounded shadow-md flex items-center justify-center text-center p-1"
                                 style={{
                                   width: `${Math.min(260, Math.max(70, bLength * 4))}px`,
                                   height: `${Math.min(180, Math.max(50, bWidth * 4))}px`,
+                                  transform: `rotate(${currentRotation}deg)`,
+                                  transition: 'transform 0.1s ease-out',
                                 }}
                               >
                                 <span className="text-[10px] font-bold text-red-900 bg-white/80 px-1 py-0.5 rounded shadow-2xs">
-                                  {b.name || `Bâtiment ${bIdx + 1}`}
+                                  {b.name || `Bâtiment ${bIdx + 1}`} ({currentRotation}°)
                                 </span>
                               </div>
                             </div>
                           </div>
                           <p className="text-[10px] text-gray-500 text-center">
-                            Zoom et dézoom libres • Déplacez le repère pour ajuster l'implantation
+                            Zoom et dézoom libres • Déplacez le repère et pivotez l'emprise pour ajuster l'implantation
                           </p>
                         </div>
                       );
@@ -1782,7 +1973,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
           <LandscapeIntegrationModal
             isOpen={landscapeModalOpen}
             onClose={() => setLandscapeModalOpen(false)}
-            initialPhoto={photos?.avant}
+            initialPhoto={buildings[activeBuildingIndex]?.photos?.avant || photos?.avant}
             projectDimensions={{
               longueur: config.length,
               largeur: config.width,

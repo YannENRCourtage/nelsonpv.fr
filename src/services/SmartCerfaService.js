@@ -352,7 +352,6 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
 export function buildCerfaDataSummary(project, installationType) {
   const names = resolveDemandeurNames(project);
   const fullName = `${names.firstName} ${names.lastName}`.trim() || names.lastName || project?.demandeur || project?.name || '—';
-  const kwc = project?.kwc || project?.projectSize || project?.power || '';
   const email = project?.email || project?.clientEmail || '—';
 
   const rawAddress = project?.address || project?.clientAddress || '';
@@ -362,20 +361,29 @@ export function buildCerfaDataSummary(project, installationType) {
   const addressParts = [rawAddress, rawZip, rawCity].filter(Boolean);
   const fullAddress = addressParts.length > 0 ? addressParts.join(' ') : '—';
 
+  // Détermination du type
+  let typeLabel = 'Bâtiment et Ombrière';
+  const bList = project?.buildings || [];
+  if (bList.length > 1) {
+    typeLabel = 'Bâtiment et Ombrière';
+  } else if (installationType === 'ombriere' || (project?.type || '').includes('ombriere')) {
+    typeLabel = 'Ombrière photovoltaïque';
+  } else if (installationType === 'toiture' || (project?.type || '').includes('toiture')) {
+    typeLabel = 'Panneaux en toiture existante';
+  } else if (installationType === 'batterie' || (project?.type || '').includes('batterie')) {
+    typeLabel = 'Système de stockage batterie';
+  } else {
+    typeLabel = 'Bâtiment et Ombrière';
+  }
+
   return {
     demandeur: fullName,
     email: email,
     adresse: fullAddress,
     cadastre: `Section ${project?.cadastre_section || '—'} n° ${project?.cadastre_numero || '—'} (${project?.cadastre_surface ? project.cadastre_surface + ' m²' : '—'})`,
     commune: rawCity || '—',
-    puissance: kwc ? `${kwc} kWc` : '—',
-    type: {
-      batiment_solaire: 'Bâtiment solaire (nouvelle construction)',
-      batiment: 'Bâtiment solaire (nouvelle construction)',
-      ombriere: 'Ombrière photovoltaïque',
-      toiture: 'Panneaux en toiture existante',
-      batterie: 'Système de stockage batterie',
-    }[installationType] || installationType,
+    puissance: '0',
+    type: typeLabel,
     siret: project?.siret || '—',
     date: new Date().toLocaleDateString('fr-FR'),
   };
