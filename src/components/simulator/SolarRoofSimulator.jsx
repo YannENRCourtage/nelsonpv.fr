@@ -42,7 +42,7 @@ export default function SolarRoofSimulator({
   // Orientation & Pente
   const [selectedRidgeIndex, setSelectedRidgeIndex] = useState(null);
   const [orientationInfo, setOrientationInfo] = useState({
-    orientationLabel: 'Plein Sud (0°)',
+    orientationLabel: 'Plein Sud',
     azimuthDeg: 0,
     ridgeIndex: null
   });

@@ -42,6 +42,28 @@ function CustomMapZoom() {
   );
 }
 
+// ─── Indicateur du niveau de zoom en bas à gauche de la carte ───────────────
+function ZoomLevelIndicator() {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+
+  useMapEvents({
+    zoomend() {
+      setZoom(map.getZoom());
+    },
+    zoom() {
+      setZoom(map.getZoom());
+    }
+  });
+
+  return (
+    <div className="absolute bottom-3 left-3 z-[1000] bg-slate-900/85 backdrop-blur-sm text-white px-2.5 py-1 rounded-xl text-xs font-bold border border-white/20 shadow-md flex items-center gap-1.5 pointer-events-none">
+      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+      <span>Niveau de zoom : {zoom}</span>
+    </div>
+  );
+}
+
 // ─── Tracker de déplacement du centre de la carte ────────────────────────────
 function MapCenterTracker({ onCenterChange }) {
   useMapEvents({
@@ -796,7 +818,7 @@ export default function BuildingStructureSimulator({
                       <MapContainer
                         center={mapCenter}
                         zoom={19}
-                        maxZoom={21}
+                        maxZoom={23}
                         scrollWheelZoom={true}
                         doubleClickZoom={true}
                         touchZoom={true}
@@ -805,9 +827,11 @@ export default function BuildingStructureSimulator({
                       >
                         <CustomMapZoom />
                         <MapCenterTracker onCenterChange={setMapCenter} />
+                        <ZoomLevelIndicator />
                         <TileLayer
                           url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                          maxZoom={21}
+                          maxNativeZoom={19}
+                          maxZoom={23}
                           crossOrigin="anonymous"
                           attribution="Esri, Maxar, Earthstar Geographics"
                         />
@@ -827,7 +851,7 @@ export default function BuildingStructureSimulator({
                           <div
                             className="absolute inset-x-0 border-t-2 border-dashed border-amber-400 -translate-y-1/2"
                             style={{
-                              top: (config.buildingType?.startsWith('asymetrique') || isAcamaAsymetrique) ? '32%' : '50%'
+                              top: (config.buildingType?.startsWith('asym') || config.buildingType === 'epona' || config.buildingType === 'epona_talian5') ? '32%' : '50%'
                             }}
                           />
                           

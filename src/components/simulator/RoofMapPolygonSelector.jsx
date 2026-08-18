@@ -60,28 +60,28 @@ export function calculateOrientationFromRidge(p1, p2, allPoints = []) {
 
   if (Math.abs(deg) <= 22.5) {
     orientationKey = 'south';
-    orientationLabel = 'Plein Sud (0°)';
+    orientationLabel = 'Plein Sud';
   } else if (deg > 22.5 && deg < 67.5) {
     orientationKey = 'south_west';
-    orientationLabel = 'Sud-Ouest (+45°)';
+    orientationLabel = 'Sud-Ouest';
   } else if (deg >= 67.5 && deg <= 112.5) {
     orientationKey = 'west';
-    orientationLabel = 'Plein Ouest (+90°)';
+    orientationLabel = 'Plein Ouest';
   } else if (deg > 112.5 && deg < 157.5) {
     orientationKey = 'north_west';
-    orientationLabel = 'Nord-Ouest (+135°)';
+    orientationLabel = 'Nord-Ouest';
   } else if (deg < -22.5 && deg > -67.5) {
     orientationKey = 'south_east';
-    orientationLabel = 'Sud-Est (-45°)';
+    orientationLabel = 'Sud-Est';
   } else if (deg <= -67.5 && deg >= -112.5) {
     orientationKey = 'east';
-    orientationLabel = 'Plein Est (-90°)';
+    orientationLabel = 'Plein Est';
   } else if (deg < -112.5 && deg > -157.5) {
     orientationKey = 'north_east';
-    orientationLabel = 'Nord-Est (-135°)';
+    orientationLabel = 'Nord-Est';
   } else {
     orientationKey = 'north';
-    orientationLabel = 'Plein Nord (180°)';
+    orientationLabel = 'Plein Nord';
   }
 
   return { orientationKey, orientationLabel, angle: deg };
@@ -315,6 +315,28 @@ function NativeCornerMarkersLayer({
   return null;
 }
 
+// ─── Indicateur du niveau de zoom en bas à gauche de la carte ───────────────
+function ZoomLevelIndicator() {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+
+  useMapEvents({
+    zoomend() {
+      setZoom(map.getZoom());
+    },
+    zoom() {
+      setZoom(map.getZoom());
+    }
+  });
+
+  return (
+    <div className="absolute bottom-3 left-3 z-[1000] bg-slate-900/85 backdrop-blur-sm text-white px-2.5 py-1 rounded-xl text-xs font-bold border border-white/20 shadow-md flex items-center gap-1.5 pointer-events-none">
+      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+      <span>Niveau de zoom : {zoom}</span>
+    </div>
+  );
+}
+
 export default function RoofMapPolygonSelector({
   step = 2,
   center = [43.6047, 1.4442],
@@ -376,7 +398,7 @@ export default function RoofMapPolygonSelector({
         <MapContainer
           center={center}
           zoom={19}
-          maxZoom={22}
+          maxZoom={23}
           scrollWheelZoom={true}
           doubleClickZoom={true}
           touchZoom={true}
@@ -387,11 +409,13 @@ export default function RoofMapPolygonSelector({
           <StepTransitionController step={step} center={center} polygonPoints={currentPoints} />
           <MapDragTracker enabled={step === 2} onCenterChange={onCenterChange} />
           <CustomZoomControls />
+          <ZoomLevelIndicator />
 
-          {/* Tuile Satellite Esri World Imagery (CORS garanti) */}
+          {/* Tuile Satellite Esri World Imagery (CORS garanti) avec maxNativeZoom={19} et maxZoom={23} pour sur-zoom fluide */}
           <TileLayer
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            maxZoom={22}
+            maxNativeZoom={19}
+            maxZoom={23}
             crossOrigin="anonymous"
             attribution="Esri World Imagery"
           />
@@ -459,7 +483,7 @@ export default function RoofMapPolygonSelector({
               Votre toiture est exposée :
             </span>
             <span className="text-xl font-black text-amber-900">
-              {orientationInfo.orientationLabel} ({orientationInfo.angle || 180}°)
+              {(orientationInfo.orientationLabel || 'Plein Sud').replace(/\s*\([^)]*\)/g, '')} ({orientationInfo.angle != null ? `${orientationInfo.angle}°` : '0°'})
             </span>
           </div>
 

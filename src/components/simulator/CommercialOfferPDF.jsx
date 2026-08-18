@@ -257,7 +257,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             <td style="padding: 2px 0; color: #64748b;">Adresse du site :</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold;">${clientAddress}</td>
             <td style="padding: 2px 0 2px 15px; color: #64748b;">Orientation de toiture :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.orientationLabel || 'Plein Sud (0°)'}</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.orientationLabel || 'Plein Sud'}</td>
           </tr>
           <tr>
             <td style="padding: 2px 0; color: #64748b;">Production estimée :</td>
@@ -282,7 +282,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             <td style="padding: 2px 0; color: #64748b;">Adresse du site :</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold;">${clientAddress}</td>
             <td style="padding: 2px 0 2px 15px; color: #64748b;">Orientation du pan :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.orientationLabel || 'Plein Sud (0°)'}</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.orientationLabel || 'Plein Sud'}</td>
           </tr>
           <tr style="border-bottom: 1px solid #e2e8f0;">
             <td style="padding: 2px 0; color: #64748b;">Productible annuel :</td>
