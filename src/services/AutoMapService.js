@@ -161,16 +161,32 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16) 
         img.src = item.url;
       });
 
-      // Secours en cas de timeout réseau (3.5 secondes max)
+      // Secours en cas de timeout réseau (6 secondes max)
       setTimeout(() => {
         if (loadedCount < totalImages) {
+          console.warn(`[AutoMap] Timeout: ${loadedCount}/${totalImages} tiles loaded, rendering partial map`);
           drawMarkerAndFinish();
         }
-      }, 3500);
+      }, 6000);
 
     } catch (err) {
       console.error('[AutoMap] Error generating static map:', err);
-      resolve(null);
+      // Fallback: canvas with error message
+      try {
+        const fallbackCanvas = document.createElement('canvas');
+        fallbackCanvas.width = 800;
+        fallbackCanvas.height = 500;
+        const fCtx = fallbackCanvas.getContext('2d');
+        fCtx.fillStyle = '#f1f5f9';
+        fCtx.fillRect(0, 0, 800, 500);
+        fCtx.fillStyle = '#64748b';
+        fCtx.font = 'bold 14px Arial';
+        fCtx.textAlign = 'center';
+        fCtx.fillText('Carte non disponible — veuillez réessayer', 400, 250);
+        resolve(fallbackCanvas.toDataURL('image/jpeg', 0.9));
+      } catch (_) {
+        resolve(null);
+      }
     }
   });
 }

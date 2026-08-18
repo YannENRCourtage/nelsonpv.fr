@@ -416,6 +416,15 @@ export const useConfiguratorStore = create(
     decrementBayCount: () => {
         set((state) => ({ bayCount: Math.max(4, state.bayCount - 1) }));
     },
+    setRoofPitch: (pitch) => set({ roofPitch: pitch }),
+    setEaveHeight: (h) => set({ eaveHeight: h }),
+    setDimensions: ({ length, width }) => set((state) => {
+      const updates = { length: length || state.length };
+      if (width && width !== state.width) {
+        updates.width = width;
+      }
+      return updates;
+    }),
 
     // New Extension Actions
     setLeftSide: (type) => {
@@ -887,5 +896,8 @@ export const useConfiguratorActions = () => {
         setIsAcama: (v) => useConfiguratorStore.getState().setIsAcama(v),
         setConfigMode: (m) => useConfiguratorStore.getState().setConfigMode(m),
         updateCustomParams: (u) => useConfiguratorStore.getState().updateCustomParams(u),
+        setRoofPitch: (p) => useConfiguratorStore.getState().setRoofPitch(p),
+        setEaveHeight: (h) => useConfiguratorStore.getState().setEaveHeight(h),
+        setDimensions: (d) => useConfiguratorStore.getState().setDimensions(d),
     }), []);
 };

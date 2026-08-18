@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames } from '@/services/SmartCerfaService';
 import { cadastreService } from '@/services/CadastreService';
-import { getOrGenerateProjectMaps } from '@/services/AutoMapService';
+import { getOrGenerateProjectMaps, generateStaticMapImage } from '@/services/AutoMapService';
 import { useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
 import { ControlPanel } from '../configurator/ui/ControlPanel.jsx';
 import BuildingScene from '../configurator/BuildingScene.jsx';
@@ -137,7 +137,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const pente = config.roofPitch || 15;
     const bayCount = config.bayCount || 5;
     const baySpacing = config.baySpacing || 6;
-    const displayKwc = editedProject?.kwc || editedProject?.puissance || editedProject?.projectSize || 256;
+    const displayKwc = editedProject?.kwc || editedProject?.puissance || editedProject?.projectSize || '';
 
     // Bâtiments secondaires
     const secondaryBuildings = buildings.slice(1);
@@ -240,6 +240,10 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       if (configActions.setBuildingType) configActions.setBuildingType(target.buildingType || 'asymetrique_1');
       if (configActions.setRoofPitch) configActions.setRoofPitch(target.roofPitch || 15);
       if (configActions.setEaveHeight) configActions.setEaveHeight(target.eaveHeight || 4);
+      if (configActions.setBayCount) configActions.setBayCount(target.bayCount || 5);
+      if (configActions.setBaySpacing) configActions.setBaySpacing(target.baySpacing || 6);
+      if (configActions.setLeftSide) configActions.setLeftSide(target.leftSide || 'none');
+      if (configActions.setRightSide) configActions.setRightSide(target.rightSide || 'none');
     }
   };
 
@@ -281,10 +285,10 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       const initialNotice = project?.noticeText || buildAutoNoticeText();
       setNoticeText(initialNotice);
 
-      const clientKwc = project.kwc || project.puissance || project.projectSize || 256;
+      const clientKwc = project?.kwc || project?.puissance || project?.projectSize || '';
       const shortObjet = (type === 'pc' || type === 'dp')
-        ? `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque de ${clientKwc} kWc`
-        : `Certificat d'urbanisme opérationnel pour centrale photovoltaïque de ${clientKwc} kWc`;
+        ? `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque${clientKwc ? ` de ${clientKwc} kWc` : ''}`
+        : `Certificat d'urbanisme opérationnel pour centrale photovoltaïque${clientKwc ? ` de ${clientKwc} kWc` : ''}`;
 
       const initProj = {
         ...project,
@@ -298,8 +302,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
         zip: projZip,
         city: projCity,
         phone: project.phone || project.clientPhone || '06 00 00 00 00',
-        birthDate: project.birthDate || '14/02/1970',
-        birthCity: project.birthCity || projCity || 'AUCH',
+        birthDate: project.birthDate || '',
+        birthCity: project.birthCity || '',
         birthDept: project.birthDept || (projZip ? projZip.substring(0, 2) : '32'),
         kwc: clientKwc,
         projectSize: clientKwc,
@@ -449,12 +453,12 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
   const handleGenerate = async () => {
     if (!onGenerate) return;
     setIsGenerating(true);
-    const clientKwc = project?.kwc || project?.puissance || project?.projectSize || editedProject?.kwc || 256;
+    const clientKwc = project?.kwc || project?.puissance || project?.projectSize || editedProject?.kwc || '';
     
     // Objet synthétique pour Page 1
     const shortObjet = (type === 'pc' || type === 'dp')
-      ? `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque de ${clientKwc} kWc`
-      : `Certificat d'urbanisme opérationnel pour centrale photovoltaïque de ${clientKwc} kWc`;
+      ? `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque${clientKwc ? ` de ${clientKwc} kWc` : ''}`
+      : `Certificat d'urbanisme opérationnel pour centrale photovoltaïque${clientKwc ? ` de ${clientKwc} kWc` : ''}`;
 
     const effectiveNotice = noticeText || editedProject.noticeText || project?.noticeText || buildAutoNoticeText();
 
@@ -704,37 +708,165 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                       {captures?.situation_ign ? (
                         <div className="relative group rounded-xl overflow-hidden aspect-video border border-gray-200">
                           <img src={captures.situation_ign} alt="Situation IGN" className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => setCropModal({ open: true, src: captures.situation_ign, category: 'captures', key: 'situation_ign', title: 'Recadrer Plan de Situation' })}
-                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-opacity"
-                          >
-                            <Crop className="w-4 h-4 mr-1" /> Recadrer / Ajuster
-                          </button>
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={() => setCropModal({ open: true, src: captures.situation_ign, category: 'captures', key: 'situation_ign', title: 'Recadrer Plan de Situation' })}
+                              className="p-2 bg-white/90 hover:bg-white text-slate-800 rounded-lg shadow-sm transition-all hover:scale-105 flex items-center gap-1 text-xs font-bold"
+                            >
+                              <Crop className="w-3.5 h-3.5" /> Recadrer
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
+                                const [lat, lng] = gps.split(',').map(Number);
+                                generateStaticMapImage(lat, lng, 'map', 16).then(dataUrl => {
+                                  if (dataUrl) {
+                                    setCaptures(prev => ({ ...prev, situation_ign: dataUrl }));
+                                    setEditedProject(prev => ({ ...prev, urbanisme_captures: { ...(prev.urbanisme_captures || {}), situation_ign: dataUrl } }));
+                                  }
+                                });
+                              }}
+                              className="p-2 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-sm transition-all hover:scale-105 flex items-center gap-1 text-xs font-bold"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" /> Régénérer
+                            </button>
+                          </div>
+                        </div>
+                      ) : generatingMaps ? (
+                        <div className="aspect-video rounded-xl border border-dashed border-blue-300 flex flex-col items-center justify-center bg-blue-50/50 gap-1">
+                          <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                          <span className="text-[10px] text-blue-600 font-semibold">Génération en cours...</span>
                         </div>
                       ) : (
-                        <div className="aspect-video rounded-xl border border-dashed border-gray-300 flex items-center justify-center bg-white">
-                          <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                        <div className="aspect-video rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-white gap-1">
+                          <AlertCircle className="w-5 h-5 text-amber-500" />
+                          <span className="text-[10px] text-gray-500 font-semibold">Carte non disponible</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
+                              const [lat, lng] = gps.split(',').map(Number);
+                              setGeneratingMaps(true);
+                              generateStaticMapImage(lat, lng, 'map', 16).then(dataUrl => {
+                                if (dataUrl) {
+                                  setCaptures(prev => ({ ...prev, situation_ign: dataUrl }));
+                                  setEditedProject(prev => ({ ...prev, urbanisme_captures: { ...(prev.urbanisme_captures || {}), situation_ign: dataUrl } }));
+                                }
+                                setGeneratingMaps(false);
+                              });
+                            }}
+                            className="px-2.5 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-bold hover:bg-blue-700 transition-all"
+                          >
+                            Générer la carte
+                          </button>
                         </div>
                       )}
                     </div>
 
                     <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center">
-                      <span className="text-xs font-bold text-gray-700 block mb-2">PC2 — Plan de Masse (IGN Cadastre / Ortho)</span>
+                      <span className="text-xs font-bold text-gray-700 block mb-2">PC1 — Vue Aérienne Satellite</span>
+                      {captures?.satellite ? (
+                        <div className="relative group rounded-xl overflow-hidden aspect-video border border-gray-200">
+                          <img src={captures.satellite} alt="Vue Satellite" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={() => setCropModal({ open: true, src: captures.satellite, category: 'captures', key: 'satellite', title: 'Recadrer Vue Satellite' })}
+                              className="p-2 bg-white/90 hover:bg-white text-slate-800 rounded-lg shadow-sm transition-all hover:scale-105 flex items-center gap-1 text-xs font-bold"
+                            >
+                              <Crop className="w-3.5 h-3.5" /> Recadrer
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
+                                const [lat, lng] = gps.split(',').map(Number);
+                                generateStaticMapImage(lat, lng, 'satellite', 17).then(dataUrl => {
+                                  if (dataUrl) {
+                                    setCaptures(prev => ({ ...prev, satellite: dataUrl }));
+                                    setEditedProject(prev => ({ ...prev, urbanisme_captures: { ...(prev.urbanisme_captures || {}), satellite: dataUrl } }));
+                                  }
+                                });
+                              }}
+                              className="p-2 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-sm transition-all hover:scale-105 flex items-center gap-1 text-xs font-bold"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" /> Régénérer
+                            </button>
+                          </div>
+                        </div>
+                      ) : generatingMaps ? (
+                        <div className="aspect-video rounded-xl border border-dashed border-blue-300 flex flex-col items-center justify-center bg-blue-50/50 gap-1">
+                          <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                          <span className="text-[10px] text-blue-600 font-semibold">Génération en cours...</span>
+                        </div>
+                      ) : (
+                        <div className="aspect-video rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-white gap-1">
+                          <AlertCircle className="w-5 h-5 text-amber-500" />
+                          <span className="text-[10px] text-gray-500 font-semibold">Vue non disponible</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
+                              const [lat, lng] = gps.split(',').map(Number);
+                              setGeneratingMaps(true);
+                              generateStaticMapImage(lat, lng, 'satellite', 17).then(dataUrl => {
+                                if (dataUrl) {
+                                  setCaptures(prev => ({ ...prev, satellite: dataUrl }));
+                                  setEditedProject(prev => ({ ...prev, urbanisme_captures: { ...(prev.urbanisme_captures || {}), satellite: dataUrl } }));
+                                }
+                                setGeneratingMaps(false);
+                              });
+                            }}
+                            className="px-2.5 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-bold hover:bg-blue-700 transition-all"
+                          >
+                            Générer la vue
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center">
+                      <span className="text-xs font-bold text-gray-700 block mb-2">PC2 — Plan de Masse (OSM Zoom 19)</span>
                       {captures?.masse_projet ? (
                         <div className="relative group rounded-xl overflow-hidden aspect-video border border-gray-200">
                           <img src={captures.masse_projet} alt="Plan de Masse" className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => setCropModal({ open: true, src: captures.masse_projet, category: 'captures', key: 'masse_projet', title: 'Recadrer Plan de Masse' })}
-                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-opacity"
-                          >
-                            <Crop className="w-4 h-4 mr-1" /> Recadrer / Ajuster
-                          </button>
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={() => setCropModal({ open: true, src: captures.masse_projet, category: 'captures', key: 'masse_projet', title: 'Recadrer Plan de Masse' })}
+                              className="p-2 bg-white/90 hover:bg-white text-slate-800 rounded-lg shadow-sm transition-all hover:scale-105 flex items-center gap-1 text-xs font-bold"
+                            >
+                              <Crop className="w-3.5 h-3.5" /> Recadrer
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
+                                const [lat, lng] = gps.split(',').map(Number);
+                                generateStaticMapImage(lat, lng, 'map', 19).then(dataUrl => {
+                                  if (dataUrl) {
+                                    setCaptures(prev => ({ ...prev, masse_projet: dataUrl }));
+                                    setEditedProject(prev => ({ ...prev, urbanisme_captures: { ...(prev.urbanisme_captures || {}), masse_projet: dataUrl } }));
+                                  }
+                                });
+                              }}
+                              className="p-2 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-sm transition-all hover:scale-105 flex items-center gap-1 text-xs font-bold"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" /> Régénérer
+                            </button>
+                          </div>
+                        </div>
+                      ) : generatingMaps ? (
+                        <div className="aspect-video rounded-xl border border-dashed border-blue-300 flex flex-col items-center justify-center bg-blue-50/50 gap-1">
+                          <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                          <span className="text-[10px] text-blue-600 font-semibold">Génération en cours...</span>
                         </div>
                       ) : (
-                        <div className="aspect-video rounded-xl border border-dashed border-gray-300 flex items-center justify-center bg-white">
-                          <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                        <div className="aspect-video rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-white gap-1">
+                          <AlertCircle className="w-5 h-5 text-amber-500" />
+                          <span className="text-[10px] text-gray-500 font-semibold">Plan non disponible</span>
                         </div>
                       )}
                     </div>
@@ -1184,29 +1316,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                       className="flex-1 w-full min-h-0 p-3.5 mt-2 bg-slate-50/70 border border-slate-200 rounded-xl text-xs leading-relaxed text-slate-800 font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all"
                     />
 
-                    {/* Rappel des 5 points clés */}
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-2.5 text-[10px] flex-shrink-0">
-                      <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
-                        <strong className="block text-slate-800 mb-0.5">1- Objet</strong>
-                        <span className="text-slate-500">Destination agricole & surface</span>
-                      </div>
-                      <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
-                        <strong className="block text-slate-800 mb-0.5">2- Le Site</strong>
-                        <span className="text-slate-500">Commune, parcelle, altitude</span>
-                      </div>
-                      <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
-                        <strong className="block text-slate-800 mb-0.5">3- Le Projet</strong>
-                        <span className="text-slate-500">Bâtiment(s), structure, kWc</span>
-                      </div>
-                      <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
-                        <strong className="block text-slate-800 mb-0.5">4- Réseaux</strong>
-                        <span className="text-slate-500">Raccordement Enedis (PDL)</span>
-                      </div>
-                      <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
-                        <strong className="block text-slate-800 mb-0.5">5- Incendie</strong>
-                        <span className="text-slate-500">Bâche 120m³, sécurité</span>
-                      </div>
-                    </div>
+
                   </div>
                 </motion.div>
               )}

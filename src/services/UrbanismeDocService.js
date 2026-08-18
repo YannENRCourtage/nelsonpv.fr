@@ -113,8 +113,24 @@ async function drawCoverPage(doc, project, type, installationType) {
   const communeName = project?.city || project?.cadastre_commune || project?.commune || '—';
   const sectionVal = (project?.cadastre_section || project?.section) ? `${project.cadastre_section || project.section} n° ${project.cadastre_numero || project.numero || '—'}` : '—';
   const surfaceVal = (project?.cadastre_surface || project?.surface) ? `${project.cadastre_surface || project.surface} m²` : '—';
-  const puissanceVal = project?.kwc || project?.projectSize ? (String(project.kwc || project.projectSize).includes('kWc') ? String(project.kwc || project.projectSize) : `${project.kwc || project.projectSize} kWc`) : '100 kWc';
-  const installCode = getInstallationTypeInfo(installationType || project?.type).code;
+  const rawKwc = project?.kwc || project?.projectSize;
+  const puissanceVal = rawKwc ? (String(rawKwc).includes('kWc') ? String(rawKwc) : `${rawKwc} kWc`) : '—';
+  // Dynamic type label based on configured buildings
+  let installCode;
+  const projectBuildings = project?.buildings || [];
+  if (projectBuildings.length > 1) {
+    const hasOmbriere = projectBuildings.some(b => (b.buildingType || '').toLowerCase().includes('ombriere'));
+    if (hasOmbriere) {
+      installCode = 'Bâtiment et Ombrière';
+    } else {
+      installCode = `${projectBuildings.length} Bâtiments agricoles PV`;
+    }
+  } else {
+    installCode = getInstallationTypeInfo(installationType || project?.type).code;
+  }
+  if (project?.batteryStorage?.enabled) {
+    installCode += ' + Stockage batterie';
+  }
 
   const drawLeft = (label, value, yPos) => {
     page.drawText(label.toUpperCase(), { x: 18, y: yPos + 14, size: 7, font: fontR, color: rgb(1,1,1,0.6) });
@@ -232,37 +248,7 @@ async function captureplate(doc, elementId, landscape = true) {
     const page = doc.addPage(dims);
     page.drawImage(img, { x: 0, y: 0, width: dims[0], height: dims[1] });
 
-    // Rendre la zone notice descriptive interactive et modifiable dans le PDF généré
-    if (elementId.includes('plate-section-notice')) {
-      try {
-        const form = doc.getForm();
-        const noticeField = form.createTextField(`notice_descriptive_field_${Math.floor(Math.random() * 10000)}`);
-        noticeField.enableMultiline();
-
-        // Récupération du texte de la notice depuis le DOM
-        const textareaEl = el.querySelector('textarea');
-        let textVal = textareaEl ? textareaEl.value : '';
-        if (!textVal) {
-          const noticeEl = el.querySelector('div[style*="pre-line"]') || el.querySelector('div > div:last-child');
-          if (noticeEl) textVal = noticeEl.innerText || '';
-        }
-
-        if (textVal) {
-          noticeField.setText(textVal);
-        }
-
-        // Positionnement précis sur le cadre PC4 (A4 Paysage: 841.89 x 595.28 pt)
-        noticeField.addToPage(page, {
-          x: 32,
-          y: 38,
-          width: 778,
-          height: 238,
-          borderWidth: 0,
-        });
-      } catch (fErr) {
-        console.warn('[UrbanismeDoc] Erreur création champ interactif notice:', fErr);
-      }
-    }
+    // Notice descriptive: texte déjà capturé par html2canvas, pas de champ AcroForm superposé
   } catch (err) {
     console.error(`[UrbanismeDoc] Error capturing #${elementId}:`, err);
   }

@@ -101,7 +101,7 @@ const ImageUploadZone = ({ isInteractive, photo, onUpload, defaultText = "Clique
 export const PlateGarde = ({ project }) => {
     const names = resolveDemandeurNames(project);
     const clientFullName = `${names.lastName} ${names.firstName}`.trim() || project?.name || 'Demandeur';
-    const displayKwc = project?.kwc || project?.puissance || project?.projectSize || 256;
+    const displayKwc = project?.kwc || project?.puissance || project?.projectSize || '';
 
     return (
         <div style={PAGE_STYLE} id="pc-plate-garde">
@@ -229,7 +229,7 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const hauteurEgout = parseFloat(project?.hauteur_egout || 4.0);
     const pente = parseFloat(project?.pente || 15);
     const terrainSlopeDeg = parseFloat(project?.pente_terrain || project?.terrain_slope || 3);
-    const displayKwc = project?.kwc || project?.puissance || project?.projectSize || 256;
+    const displayKwc = project?.kwc || project?.puissance || project?.projectSize || '';
     
     // Priorité absolue à la notice descriptive structurée en 5 points
     const candidateNotice = (noticeText && noticeText.includes("1- OBJET"))
@@ -257,7 +257,12 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     let ridgeHeight = 7.40;
     let leftEaveHeight = 6.40;
 
-    if (isMonopente) {
+    if (isOmbriere) {
+        // Ombrière : monopente ouverte sur poteaux
+        leftEaveHeight = hauteurEgout + (largeur * Math.tan((pente * Math.PI) / 180));
+        ridgeHeight = leftEaveHeight;
+        rightEaveHeight = hauteurEgout;
+    } else if (isMonopente) {
         leftEaveHeight = hauteurEgout;
         ridgeHeight = leftEaveHeight + (largeur * Math.tan((pente * Math.PI) / 180));
         rightEaveHeight = ridgeHeight;
@@ -296,7 +301,7 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const scaleStartX = 660 - scaleTotalWidth; // Ancré en bas à droite sous TN Amont
     const scaleY = 153; // Abaissé de 0.3cm en bas à droite
 
-    const roofTypeLabel = isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque';
+    const roofTypeLabel = isOmbriere ? 'monopente (ombrière)' : isAsym ? 'asymétrique' : isSym ? 'symétrique' : 'photovoltaïque';
 
     const projectCity = project?.city || project?.cadastre_commune || project?.commune || 'SAINT ARAILLES';
     const projectZip = project?.zip || project?.zipCode || project?.postalCode || '32100';
@@ -370,8 +375,24 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                 <rect x="545" y={auventTipSvgY} width="6" height={groundYRight - auventTipSvgY} fill="#334155" />
                             )}
 
-                            {/* 3. Portique & PANNEAUX SOLAIRES SUR TOUTE LA TOITURE (VERSANT COURT NORD + VERSANT LONG SUD + AUVENT) */}
-                            {isAsym ? (
+                            {/* 3. Portique & PANNEAUX SOLAIRES SUR TOUTE LA TOITURE */}
+                            {isOmbriere ? (
+                                <>
+                                    {/* Ombrière : 4 poteaux fins + toiture monopente + modules solaires */}
+                                    <rect x="130" y={leftEaveSvgY} width="5" height={groundYLeft - leftEaveSvgY} fill="#475569" />
+                                    <rect x="220" y={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.25} width="5" height={groundYLeft - (leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.25)} fill="#475569" />
+                                    <rect x="360" y={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.65} width="5" height={groundYRight - (leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.65)} fill="#475569" />
+                                    <rect x="472" y={rightEaveSvgY} width="5" height={groundYRight - rightEaveSvgY} fill="#475569" />
+                                    {/* Toiture monopente */}
+                                    <line x1="126" y1={leftEaveSvgY} x2="480" y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="5" />
+                                    <polygon points={`122,${leftEaveSvgY - 2} 484,${rightEaveSvgY - 2} 484,${rightEaveSvgY - 8} 122,${leftEaveSvgY - 8}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                    {[0.2, 0.4, 0.6, 0.8].map((ratio, idx) => {
+                                        const px = 130 + (480 - 130) * ratio;
+                                        const py = leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * ratio;
+                                        return <line key={idx} x1={px} y1={py - 8} x2={px} y2={py - 2} stroke="#93c5fd" strokeWidth="1" />;
+                                    })}
+                                </>
+                            ) : isAsym ? (
                                 <>
                                     {/* Versant court Nord (5m) */}
                                     <line x1="130" y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="5" />
@@ -486,16 +507,16 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                     <div style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5mm', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         NOTICE D'INSERTION & DESCRIPTIVE DU PROJET
                     </div>
-                    <div style={{ flex: 1, overflowY: 'auto', fontSize: '6.8pt', lineHeight: '1.28', color: '#334155' }}>
+                    <div style={{ flex: 1, overflow: 'hidden', fontSize: '6.3pt', lineHeight: '1.22', color: '#334155' }}>
                         {isInteractive ? (
                             <textarea 
-                                style={{ width: '100%', height: '100%', border: 'none', resize: 'none', outline: 'none', fontSize: '6.8pt', fontFamily: 'Arial, sans-serif', lineHeight: '1.3' }}
+                                style={{ width: '100%', height: '100%', border: 'none', resize: 'none', outline: 'none', fontSize: '6.3pt', fontFamily: 'Arial, sans-serif', lineHeight: '1.22' }}
                                 value={effectiveNoticeText || default5PointsNotice}
                                 onChange={(e) => onNoticeChange && onNoticeChange(e.target.value)}
                                 placeholder="Notice descriptive du projet..."
                             />
                         ) : effectiveNoticeText ? (
-                            <div style={{ whiteSpace: 'pre-line', fontSize: '6.8pt', lineHeight: '1.28', color: '#334155' }}>
+                            <div style={{ whiteSpace: 'pre-line', fontSize: '6.3pt', lineHeight: '1.22', color: '#334155' }}>
                                 {effectiveNoticeText}
                             </div>
                         ) : (
