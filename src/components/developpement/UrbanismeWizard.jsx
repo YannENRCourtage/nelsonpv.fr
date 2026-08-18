@@ -271,12 +271,16 @@ Le positionnement du point de livraison et d'un transformateur (le cas échéant
 Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf PC 02 - Plan de masse).${batteryStorage.enabled ? `\nLe système de stockage batterie est équipé de ses dispositifs de sécurité autonomes conformes aux prescriptions SDIS (détection thermique, coupure automatique d'urgence, système d'extinction dédié et bac de rétention).` : ''}`;
   }, [editedProject, project, config, buildings, additionalRoof, batteryStorage]);
 
+  const activeBuildingIndexRef = React.useRef(0);
+  activeBuildingIndexRef.current = activeBuildingIndex;
+
   // Synchronisation continue des paramètres de configuration vers le bâtiment actif
   useEffect(() => {
     if (isSwitchingBuildingRef.current) return;
+    const targetIdx = activeBuildingIndexRef.current;
     setBuildings(prev => {
-      if (!prev[activeBuildingIndex]) return prev;
-      const cur = prev[activeBuildingIndex];
+      if (!prev[targetIdx]) return prev;
+      const cur = prev[targetIdx];
       if (
         cur.length === config.length &&
         cur.width === config.width &&
@@ -291,7 +295,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
         return prev;
       }
       const upd = [...prev];
-      upd[activeBuildingIndex] = {
+      upd[targetIdx] = {
         ...cur,
         length: config.length,
         width: config.width,
@@ -306,6 +310,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       return upd;
     });
   }, [
+    activeBuildingIndex,
     config.length,
     config.width,
     config.eaveHeight,
@@ -319,10 +324,11 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
   // Gestion des bâtiments multiples
   const handleAddBuilding = () => {
+    const currentIdx = activeBuildingIndexRef.current;
     const currentList = [...buildings];
-    if (currentList[activeBuildingIndex]) {
-      currentList[activeBuildingIndex] = {
-        ...currentList[activeBuildingIndex],
+    if (currentList[currentIdx]) {
+      currentList[currentIdx] = {
+        ...currentList[currentIdx],
         length: config.length,
         width: config.width,
         eaveHeight: config.eaveHeight,
@@ -354,23 +360,26 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     };
     const updated = [...currentList, newBuilding];
     const newIdxPos = updated.length - 1;
+
+    isSwitchingBuildingRef.current = true;
+    activeBuildingIndexRef.current = newIdxPos;
     setBuildings(updated);
     setActiveBuildingIndex(newIdxPos);
-    isSwitchingBuildingRef.current = true;
     useConfiguratorStore.getState().loadBuildingConfig(newBuilding);
     setTimeout(() => {
       isSwitchingBuildingRef.current = false;
-    }, 60);
+    }, 150);
   };
 
   const handleSelectBuilding = (index) => {
-    if (index === activeBuildingIndex) return;
+    if (index === activeBuildingIndexRef.current) return;
 
-    // 1. Sauvegarder bâtiment actuel avec les valeurs courantes du store
+    // 1. Sauvegarder le bâtiment actuellement quitté
+    const currentIdx = activeBuildingIndexRef.current;
     const updated = [...buildings];
-    if (updated[activeBuildingIndex]) {
-      updated[activeBuildingIndex] = {
-        ...updated[activeBuildingIndex],
+    if (updated[currentIdx]) {
+      updated[currentIdx] = {
+        ...updated[currentIdx],
         length: config.length,
         width: config.width,
         eaveHeight: config.eaveHeight,
@@ -381,18 +390,19 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
         bayCount: config.bayCount,
         baySpacing: config.baySpacing,
       };
-      setBuildings(updated);
     }
 
-    // 2. Charger le nouveau bâtiment sans altération ni écrasement de largeur
+    // 2. Charger le nouveau bâtiment
     const target = updated[index];
     if (target) {
       isSwitchingBuildingRef.current = true;
+      activeBuildingIndexRef.current = index;
+      setBuildings(updated);
       setActiveBuildingIndex(index);
       useConfiguratorStore.getState().loadBuildingConfig(target);
       setTimeout(() => {
         isSwitchingBuildingRef.current = false;
-      }, 60);
+      }, 150);
     }
   };
 
@@ -584,7 +594,24 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     });
   };
 
-  const handleSaveFacadeCaptures = handleCaptureAll5ViewsPC5;
+  // Recadrage & Sélection Photo
+  const handleFileSelectForCrop = (category, key, title, event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCropModal({
+        open: true,
+        src: e.target.result,
+        category,
+        key,
+        title: `Recadrer : ${title}`,
+      });
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
 
   const handleOpenCrop = (src, category, key, title) => {
     setCropModal({ open: true, src, category, key, title });
