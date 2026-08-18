@@ -13,6 +13,110 @@ import { useSimulatorSettingsStore } from '@/stores/useSimulatorSettingsStore';
 import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
 import EvComparator from '@/components/simulator/EvComparator';
 
+// ─── Contrôles de Zoom Flottants Leaflet ─────────────────────────────────────
+function CustomMapZoom() {
+  const map = useMap();
+  return (
+    <div className="absolute top-3 left-3 z-[1100] flex flex-col gap-1.5 shadow-md">
+      <button
+        type="button"
+        onClick={() => map.zoomIn()}
+        className="w-8 h-8 rounded-xl bg-white/95 hover:bg-white text-slate-800 font-black flex items-center justify-center border border-slate-200 shadow-sm transition-all hover:scale-105"
+        title="Zoomer (+)"
+      >
+        <Plus className="w-4 h-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => map.zoomOut()}
+        className="w-8 h-8 rounded-xl bg-white/95 hover:bg-white text-slate-800 font-black flex items-center justify-center border border-slate-200 shadow-sm transition-all hover:scale-105"
+        title="Dézoomer (-)"
+      >
+        <Minus className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+// ─── Trait d'échelle dynamique en bas à gauche ──────────────────────────────
+function MapScaleBar() {
+  const map = useMap();
+  const [scaleData, setScaleData] = useState({ widthPx: 80, label: '10 m' });
+
+  const calculateScale = () => {
+    const lat = map.getCenter().lat;
+    const zoom = map.getZoom();
+    const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom + 8);
+
+    const targetPx = 80;
+    const rawMeters = targetPx * metersPerPx;
+    let roundedMeters = 10;
+    if (rawMeters <= 3) roundedMeters = 2;
+    else if (rawMeters <= 7) roundedMeters = 5;
+    else if (rawMeters <= 15) roundedMeters = 10;
+    else if (rawMeters <= 35) roundedMeters = 20;
+    else if (rawMeters <= 75) roundedMeters = 50;
+    else if (rawMeters <= 150) roundedMeters = 100;
+    else roundedMeters = 200;
+
+    const actualPx = Math.max(25, roundedMeters / metersPerPx);
+    const label = `${roundedMeters} m`;
+    setScaleData({ widthPx: actualPx, label });
+  };
+
+  useMapEvents({
+    zoomend: calculateScale,
+    moveend: calculateScale,
+    zoom: calculateScale,
+  });
+
+  useEffect(() => {
+    calculateScale();
+  }, []);
+
+  return (
+    <div className="absolute bottom-9 left-3 z-[1000] bg-slate-900/85 backdrop-blur-sm text-white px-2 py-0.5 rounded-lg text-[10px] font-bold border border-white/20 shadow-md flex items-center gap-1.5 pointer-events-none">
+      <div className="flex flex-col items-center">
+        <span className="text-[9px] font-mono leading-none mb-0.5">{scaleData.label}</span>
+        <div className="h-1 border-x-2 border-b-2 border-white" style={{ width: `${scaleData.widthPx}px` }} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Indicateur du niveau de zoom ───────────────────────────────────────────
+function ZoomLevelIndicator() {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+
+  useMapEvents({
+    zoomend() {
+      setZoom(map.getZoom());
+    },
+    zoom() {
+      setZoom(map.getZoom());
+    }
+  });
+
+  return (
+    <div className="absolute bottom-2.5 left-3 z-[1000] bg-slate-900/85 backdrop-blur-sm text-white px-2 py-0.5 rounded-lg text-[10px] font-bold border border-white/20 shadow-md flex items-center gap-1 pointer-events-none">
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+      <span>Zoom : {zoom}</span>
+    </div>
+  );
+}
+
+// ─── Tracker de déplacement du centre de la carte ────────────────────────────
+function MapCenterTracker({ onCenterChange }) {
+  useMapEvents({
+    moveend: (e) => {
+      const c = e.target.getCenter();
+      if (onCenterChange) onCenterChange([c.lat, c.lng]);
+    }
+  });
+  return null;
+}
+
 // ─── Icône personnalisée Carrée pour les Bornes IRVE ───────────────────────────
 const createStationIcon = (number) => {
   return L.divIcon({
@@ -155,6 +259,22 @@ export default function IrveFrontSimulator({
     setSuggestions([]);
   };
 
+  const handleSearchGo = async () => {
+    if (!addressInput || addressInput.trim().length < 2) return;
+    setIsSearchingAddress(true);
+    try {
+      const resp = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(addressInput)}&limit=1`);
+      const data = await resp.json();
+      if (data && data.features && data.features.length > 0) {
+        handleSelectSuggestion(data.features[0]);
+      }
+    } catch (err) {
+      console.error('Erreur GO BAN:', err);
+    } finally {
+      setIsSearchingAddress(false);
+    }
+  };
+
   const handleAddMarker = () => {
     const newId = stationMarkers.length + 1;
     const offset = (stationMarkers.length * 0.0001);
@@ -256,10 +376,11 @@ export default function IrveFrontSimulator({
   const ensureMapSnapshot = async () => {
     const snapshot = await generateSatelliteSnapshot({
       center: mapCenter,
+      stationMarkers: stationMarkers,
       polygonPoints: [],
       width: 800,
       height: 480,
-      zoom: 19
+      zoom: 20
     });
     if (snapshot) setMapScreenshotDataUrl(snapshot);
     return snapshot;
@@ -357,27 +478,41 @@ export default function IrveFrontSimulator({
         <div className="lg:col-span-5 space-y-4">
           <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
             
-            {/* Recherche d'adresse d'implantation */}
+            {/* Recherche d'adresse d'implantation avec Bouton GO ! */}
             <div className="space-y-1.5 border-b border-slate-100 pb-3">
               <label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                 <MapPin className="w-4 h-4 text-emerald-600" />
                 Adresse du site d'implantation
               </label>
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-                <input
-                  type="text"
-                  value={addressInput}
-                  onChange={(e) => {
-                    setAddressInput(e.target.value);
-                    setIsAddressSelected(false);
-                  }}
-                  placeholder="Saisissez l'adresse de votre parking ou entreprise..."
-                  className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500 shadow-2xs"
-                />
-                {isSearchingAddress && (
-                  <Loader2 className="w-4 h-4 absolute right-3 top-3 text-emerald-600 animate-spin" />
-                )}
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                  <input
+                    type="text"
+                    value={addressInput}
+                    onChange={(e) => {
+                      setAddressInput(e.target.value);
+                      setIsAddressSelected(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSearchGo();
+                    }}
+                    placeholder="Saisissez l'adresse de votre parking ou entreprise..."
+                    className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500 shadow-2xs"
+                  />
+                  {isSearchingAddress && (
+                    <Loader2 className="w-4 h-4 absolute right-3 top-3 text-emerald-600 animate-spin" />
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSearchGo}
+                  disabled={isSearchingAddress}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center gap-1 shrink-0"
+                  title="Rechercher et centrer la carte sur cette adresse"
+                >
+                  GO !
+                </button>
               </div>
 
               {!isAddressSelected && suggestions.length > 0 && (
@@ -413,19 +548,27 @@ export default function IrveFrontSimulator({
                 </button>
               </div>
 
-              <div className="relative w-full h-56 rounded-2xl overflow-hidden border border-slate-200 shadow-inner" ref={mapContainerRef}>
+              <div className="relative w-full h-64 rounded-2xl overflow-hidden border border-slate-200 shadow-inner" ref={mapContainerRef}>
                 <MapContainer
                   center={mapCenter}
-                  zoom={19}
-                  maxZoom={22}
+                  zoom={20}
+                  maxZoom={23}
                   scrollWheelZoom={true}
+                  doubleClickZoom={true}
+                  touchZoom={true}
+                  zoomControl={false}
                   className="w-full h-full"
                 >
+                  <CustomMapZoom />
+                  <MapCenterTracker onCenterChange={setMapCenter} />
+                  <MapScaleBar />
+                  <ZoomLevelIndicator />
                   <TileLayer
                     url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                    maxZoom={22}
+                    maxNativeZoom={19}
+                    maxZoom={23}
                     crossOrigin="anonymous"
-                    attribution="Esri"
+                    attribution="Esri, Maxar, Earthstar Geographics"
                   />
                   {stationMarkers.map((marker, idx) => (
                     <Marker
@@ -522,8 +665,8 @@ export default function IrveFrontSimulator({
               />
             </div>
 
-            {/* Marge nette par recharge */}
-            <div>
+            {/* Marge nette par recharge & Hypothèses dynamiques en €/kWh */}
+            <div className="space-y-2">
               <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
                 <span>Marge par recharge publique</span>
                 <span className="text-emerald-600 font-black text-sm">{marginPerRecharge.toFixed(2)} € / session</span>
@@ -537,6 +680,33 @@ export default function IrveFrontSimulator({
                 onChange={(e) => setMarginPerRecharge(Number(e.target.value))}
                 className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
               />
+
+              {/* Hypothèses dynamiques Prix d'achat & Prix de vente en €/kWh */}
+              {(() => {
+                const avgKwhSession = 40;
+                const marginKwh = marginPerRecharge / avgKwhSession;
+                const purchasePriceKwh = 0.18;
+                const sellPriceKwh = purchasePriceKwh + marginKwh;
+                return (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] space-y-1 text-slate-700 shadow-2xs">
+                    <div className="flex justify-between items-center text-slate-500 font-semibold border-b border-slate-200 pb-1 mb-1">
+                      <span>Hypothèses tarifaires (base {avgKwhSession} kWh / recharge) :</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-600">Prix d'achat électricité :</span>
+                      <strong className="text-slate-900 font-bold">{purchasePriceKwh.toFixed(2)} € / kWh</strong>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-600">Prix de vente rechargé :</span>
+                      <strong className="text-emerald-700 font-bold">{sellPriceKwh.toFixed(2)} € / kWh</strong>
+                    </div>
+                    <div className="flex justify-between items-center text-emerald-800 font-extrabold pt-0.5 border-t border-slate-200">
+                      <span>Marge brute calculée :</span>
+                      <span>+{marginKwh.toFixed(2)} € / kWh ({marginPerRecharge.toFixed(2)} €/session)</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
           </div>

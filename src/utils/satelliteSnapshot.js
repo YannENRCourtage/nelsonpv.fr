@@ -1,6 +1,14 @@
 // ─── Générateur de capture satellite haute résolution pour PDF ───────────────
 
-export const generateSatelliteSnapshot = async ({ center, polygonPoints, width = 800, height = 480, zoom = 19 }) => {
+export const generateSatelliteSnapshot = async ({
+  center,
+  polygonPoints,
+  building,
+  stationMarkers,
+  width = 800,
+  height = 480,
+  zoom = 19
+}) => {
   try {
     const lat = center ? center[0] : 43.6047;
     const lng = center ? center[1] : 1.4442;
@@ -23,7 +31,7 @@ export const generateSatelliteSnapshot = async ({ center, polygonPoints, width =
     const pixelOffsetX = (xExact - centerTileX) * 256;
     const pixelOffsetY = (yExact - centerTileY) * 256;
 
-    // Charger les tuiles autour du centre (grille 4x3)
+    // Charger les tuiles autour du centre (grille 5x3)
     const tilePromises = [];
     const minTileX = centerTileX - 2;
     const maxTileX = centerTileX + 2;
@@ -72,7 +80,85 @@ export const generateSatelliteSnapshot = async ({ center, polygonPoints, width =
       return { x: screenX, y: screenY };
     };
 
-    // Dessin du polygone vert fluo et des coins 1, 2, 3, 4
+    // 1. Dessin de l'implantation du Bâtiment Configuré (Structure Métallique / Hangar)
+    if (building && building.length && building.width) {
+      const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom + 8);
+      const pxPerMeter = metersPerPx > 0 ? (1 / metersPerPx) : 4.6;
+
+      const rectW = Math.max(40, building.length * pxPerMeter);
+      const rectH = Math.max(30, building.width * pxPerMeter);
+      const rotRad = ((building.rotation || 0) * Math.PI) / 180;
+
+      ctx.save();
+      ctx.translate(canvasCenterX, canvasCenterY);
+      ctx.rotate(rotRad);
+
+      // Emprise au sol du bâtiment
+      ctx.fillStyle = 'rgba(37, 99, 235, 0.45)';
+      ctx.fillRect(-rectW / 2, -rectH / 2, rectW, rectH);
+
+      ctx.strokeStyle = '#60a5fa';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(-rectW / 2, -rectH / 2, rectW, rectH);
+
+      // Ligne de Faîtage en pointillés orange
+      const isAsym = (building.buildingType || '').startsWith('asym') || building.buildingType === 'epona';
+      const ridgeY = isAsym ? (-rectH / 2 + rectH * 0.32) : 0;
+      ctx.beginPath();
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2.5;
+      ctx.moveTo(-rectW / 2, ridgeY);
+      ctx.lineTo(rectW / 2, ridgeY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Badge central de dimensions
+      const badgeW = 120;
+      const badgeH = 28;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+      ctx.beginPath();
+      ctx.roundRect(-badgeW / 2, -badgeH / 2, badgeW, badgeH, 6);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${building.length.toFixed(1)}m × ${building.width.toFixed(1)}m (${Math.round(building.length * building.width)} m²)`, 0, 0);
+
+      ctx.restore();
+    }
+
+    // 2. Dessin des Bornes IRVE sur le parking
+    if (stationMarkers && stationMarkers.length > 0) {
+      stationMarkers.forEach((m, idx) => {
+        const pt = latLngToCanvasPoint(m.lat, m.lng);
+        const pinSize = 30;
+
+        ctx.save();
+        ctx.fillStyle = '#059669';
+        ctx.beginPath();
+        ctx.roundRect(pt.x - pinSize / 2, pt.y - pinSize / 2, pinSize, pinSize, 6);
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`⚡${idx + 1}`, pt.x, pt.y);
+        ctx.restore();
+      });
+    }
+
+    // 3. Dessin du polygone vert fluo et des coins 1, 2, 3, 4 (Toiture standard)
     if (polygonPoints && polygonPoints.length >= 3) {
       const canvasPts = polygonPoints.map(p => latLngToCanvasPoint(p.lat, p.lng));
 
@@ -111,6 +197,34 @@ export const generateSatelliteSnapshot = async ({ center, polygonPoints, width =
         ctx.fillText(`${idx + 1}`, pt.x, pt.y + 1);
       });
     }
+
+    // 4. Trait d'échelle (Scale Bar) en bas à gauche
+    const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom + 8);
+    const targetScaleMeters = zoom >= 20 ? 10 : zoom >= 19 ? 20 : zoom >= 18 ? 50 : 100;
+    const scaleBarPx = targetScaleMeters / metersPerPx;
+
+    const sbX = 20;
+    const sbY = height - 22;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    ctx.beginPath();
+    ctx.roundRect(sbX - 6, sbY - 18, Math.max(60, scaleBarPx + 12), 26, 6);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 10px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`${targetScaleMeters} m`, sbX + scaleBarPx / 2, sbY - 14);
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(sbX, sbY);
+    ctx.lineTo(sbX, sbY + 5);
+    ctx.lineTo(sbX + scaleBarPx, sbY + 5);
+    ctx.lineTo(sbX + scaleBarPx, sbY);
+    ctx.stroke();
 
     return canvas.toDataURL('image/jpeg', 0.92);
   } catch (err) {

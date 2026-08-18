@@ -319,7 +319,23 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
   // Gestion des bâtiments multiples
   const handleAddBuilding = () => {
-    const newIdx = buildings.length + 1;
+    const currentList = [...buildings];
+    if (currentList[activeBuildingIndex]) {
+      currentList[activeBuildingIndex] = {
+        ...currentList[activeBuildingIndex],
+        length: config.length,
+        width: config.width,
+        eaveHeight: config.eaveHeight,
+        roofPitch: config.roofPitch,
+        buildingType: config.buildingType,
+        leftSide: config.leftSide,
+        rightSide: config.rightSide,
+        bayCount: config.bayCount,
+        baySpacing: config.baySpacing,
+      };
+    }
+
+    const newIdx = currentList.length + 1;
     const newBuilding = {
       id: `bat-${newIdx}`,
       name: `Bâtiment ${newIdx} (Secondaire)`,
@@ -336,11 +352,12 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       captures: {},
       photos: {}
     };
-    const updated = [...buildings, newBuilding];
+    const updated = [...currentList, newBuilding];
+    const newIdxPos = updated.length - 1;
     setBuildings(updated);
+    setActiveBuildingIndex(newIdxPos);
     isSwitchingBuildingRef.current = true;
     useConfiguratorStore.getState().loadBuildingConfig(newBuilding);
-    setActiveBuildingIndex(updated.length - 1);
     setTimeout(() => {
       isSwitchingBuildingRef.current = false;
     }, 60);
@@ -371,8 +388,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     const target = updated[index];
     if (target) {
       isSwitchingBuildingRef.current = true;
-      useConfiguratorStore.getState().loadBuildingConfig(target);
       setActiveBuildingIndex(index);
+      useConfiguratorStore.getState().loadBuildingConfig(target);
       setTimeout(() => {
         isSwitchingBuildingRef.current = false;
       }, 60);
@@ -537,21 +554,37 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     });
   };
 
-  // Sauvegarde des 5 captures de façades pour PC5
-  const handleSaveFacadeCaptures = (facadeViews) => {
-    if (!facadeViews) return;
+  // Sauvegarde des captures de façades pour PC5
+  const handleCaptureSnapshotPC5 = (dataUrl, slotKey = 'facade_sud') => {
     setBuildings(prev => {
       const updated = [...prev];
       if (updated[activeBuildingIndex]) {
         updated[activeBuildingIndex].captures = {
           ...updated[activeBuildingIndex].captures,
-          ...facadeViews,
-          facades_projet: facadeViews.facade_sud || facadeViews.facade_nord || updated[activeBuildingIndex].captures?.facades_projet
+          [slotKey]: dataUrl,
+          facades_projet: dataUrl
         };
       }
       return updated;
     });
   };
+
+  const handleCaptureAll5ViewsPC5 = (fiveViewsObj) => {
+    if (!fiveViewsObj) return;
+    setBuildings(prev => {
+      const updated = [...prev];
+      if (updated[activeBuildingIndex]) {
+        updated[activeBuildingIndex].captures = {
+          ...updated[activeBuildingIndex].captures,
+          ...fiveViewsObj,
+          facades_projet: fiveViewsObj.facade_sud || fiveViewsObj.vue_couverture || updated[activeBuildingIndex].captures?.facades_projet
+        };
+      }
+      return updated;
+    });
+  };
+
+  const handleSaveFacadeCaptures = handleCaptureAll5ViewsPC5;
 
   const handleOpenCrop = (src, category, key, title) => {
     setCropModal({ open: true, src, category, key, title });

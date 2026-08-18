@@ -42,6 +42,110 @@ function CustomMapZoom() {
   );
 }
 
+// ─── Trait d'échelle dynamique en bas à gauche au-dessus de l'indicateur de zoom ──
+function MapScaleBar() {
+  const map = useMap();
+  const [scaleData, setScaleData] = useState({ widthPx: 92, label: '20 m' });
+
+  const calculateScale = () => {
+    const lat = map.getCenter().lat;
+    const zoom = map.getZoom();
+    const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom + 8);
+
+    const targetPx = 90;
+    const rawMeters = targetPx * metersPerPx;
+    let roundedMeters = 20;
+    if (rawMeters <= 3) roundedMeters = 2;
+    else if (rawMeters <= 7) roundedMeters = 5;
+    else if (rawMeters <= 15) roundedMeters = 10;
+    else if (rawMeters <= 35) roundedMeters = 20;
+    else if (rawMeters <= 75) roundedMeters = 50;
+    else if (rawMeters <= 150) roundedMeters = 100;
+    else if (rawMeters <= 350) roundedMeters = 200;
+    else if (rawMeters <= 750) roundedMeters = 500;
+    else roundedMeters = Math.round(rawMeters / 500) * 500;
+
+    const actualPx = Math.max(25, roundedMeters / metersPerPx);
+    const label = roundedMeters >= 1000 ? `${(roundedMeters / 1000).toFixed(1)} km` : `${roundedMeters} m`;
+    setScaleData({ widthPx: actualPx, label });
+  };
+
+  useMapEvents({
+    zoomend: calculateScale,
+    moveend: calculateScale,
+    zoom: calculateScale,
+  });
+
+  useEffect(() => {
+    calculateScale();
+  }, []);
+
+  return (
+    <div className="absolute bottom-12 left-3 z-[1000] bg-slate-900/85 backdrop-blur-sm text-white px-2.5 py-1 rounded-xl text-xs font-bold border border-white/20 shadow-md flex items-center gap-2 pointer-events-none">
+      <div className="flex flex-col items-center">
+        <span className="text-[10px] font-mono leading-none mb-0.5">{scaleData.label}</span>
+        <div className="h-1.5 border-x-2 border-b-2 border-white" style={{ width: `${scaleData.widthPx}px` }} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Emprise du bâtiment 100% à l'échelle réelle du terrain selon le zoom ─────
+function ScaledBuildingMapOverlay({ buildingLength, buildingWidth, buildingRotation, buildingType, floorArea }) {
+  const map = useMap();
+  const [dimensionsPx, setDimensionsPx] = useState({ widthPx: 200, heightPx: 120 });
+
+  const updateDimensions = () => {
+    const lat = map.getCenter().lat;
+    const zoom = map.getZoom();
+    const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom + 8);
+    const pxPerMeter = metersPerPx > 0 ? (1 / metersPerPx) : 4.6;
+
+    const wPx = Math.max(20, buildingLength * pxPerMeter);
+    const hPx = Math.max(15, buildingWidth * pxPerMeter);
+    setDimensionsPx({ widthPx: wPx, heightPx: hPx });
+  };
+
+  useMapEvents({
+    zoomend: updateDimensions,
+    moveend: updateDimensions,
+    zoom: updateDimensions,
+  });
+
+  useEffect(() => {
+    updateDimensions();
+  }, [buildingLength, buildingWidth]);
+
+  const isAsym = (buildingType || '').startsWith('asym') || buildingType === 'epona';
+
+  return (
+    <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[1000]">
+      <div
+        className="relative border-2 border-blue-400 bg-blue-600/40 shadow-2xl transition-transform duration-75 flex items-center justify-center"
+        style={{
+          width: `${dimensionsPx.widthPx}px`,
+          height: `${dimensionsPx.heightPx}px`,
+          transform: `rotate(${buildingRotation}deg)`
+        }}
+      >
+        {/* Faîtage pointillé orange (décalé pour les asymétriques) */}
+        <div
+          className="absolute inset-x-0 border-t-2 border-dashed border-amber-400 -translate-y-1/2"
+          style={{
+            top: isAsym ? '32%' : '50%'
+          }}
+        />
+        
+        {/* Badge de dimensions */}
+        <div className="bg-slate-900/90 text-white px-2 py-0.5 rounded-lg border border-white/20 text-center shadow-lg pointer-events-none transform scale-90">
+          <span className="font-bold text-[11px] block whitespace-nowrap">{buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m</span>
+          <span className="text-[9px] text-slate-300 block whitespace-nowrap">{floorArea} m²</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Indicateur du niveau de zoom en bas à gauche de la carte ───────────────
 function ZoomLevelIndicator() {
   const map = useMap();
@@ -244,10 +348,30 @@ export default function BuildingStructureSimulator({
     setSuggestions([]);
   };
 
+  const [building3dSnapshot, setBuilding3dSnapshot] = useState(null);
+
+  const capture3dSnapshot = useCallback(async () => {
+    if (!canvasRef.current) return null;
+    try {
+      const dataUrl = canvasRef.current.toDataURL('image/png');
+      setBuilding3dSnapshot(dataUrl);
+      return dataUrl;
+    } catch (e) {
+      console.warn('Erreur capture 3D:', e);
+      return null;
+    }
+  }, []);
+
   const ensureMapSnapshot = async () => {
     const snapshot = await generateSatelliteSnapshot({
       center: mapCenter,
       polygonPoints: [],
+      building: {
+        length: buildingLength,
+        width: buildingWidth,
+        rotation: buildingRotation,
+        buildingType: config.buildingType
+      },
       width: 800,
       height: 480,
       zoom: 19
@@ -255,6 +379,12 @@ export default function BuildingStructureSimulator({
     if (snapshot) setMapScreenshotDataUrl(snapshot);
     return snapshot;
   };
+
+  useEffect(() => {
+    if (mapCenter) {
+      ensureMapSnapshot();
+    }
+  }, [mapCenter, buildingLength, buildingWidth, buildingRotation, config.buildingType]);
 
   // Nom du client dynamique
   const [clientNameInput, setClientNameInput] = useState(
@@ -287,6 +417,7 @@ export default function BuildingStructureSimulator({
         cumul10: financialProjection30Years.cumul10,
         cumul20: financialProjection30Years.cumul20,
         cumul30: financialProjection30Years.cumul30,
+        building3dScreenshot: building3dSnapshot,
         mapScreenshot: mapScreenshotDataUrl
       });
     }
@@ -295,7 +426,7 @@ export default function BuildingStructureSimulator({
     annualProductionKwh, totalBuildingCost, totalProjectInvestment,
     soulteInvestisseur, resteACharge, annualNetRevenue,
     financialProjection30Years, clientNameInput, addressInput, cityName,
-    departmentCode, mapScreenshotDataUrl, onStateUpdate
+    departmentCode, building3dSnapshot, mapScreenshotDataUrl, onStateUpdate
   ]);
 
   return (
@@ -345,7 +476,10 @@ export default function BuildingStructureSimulator({
 
             <button
               type="button"
-              onClick={() => setActiveView('feasibility')}
+              onClick={async () => {
+                await capture3dSnapshot();
+                setActiveView('feasibility');
+              }}
               className={`px-5 py-2 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${
                 activeView === 'feasibility'
                   ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
@@ -519,7 +653,10 @@ export default function BuildingStructureSimulator({
 
               <button
                 type="button"
-                onClick={() => setActiveView('feasibility')}
+                onClick={async () => {
+                  await capture3dSnapshot();
+                  setActiveView('feasibility');
+                }}
                 className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl text-xs font-black transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/30 hover:scale-105"
               >
                 <span>Passer à l'étude de faisabilité solaire</span>
@@ -827,6 +964,7 @@ export default function BuildingStructureSimulator({
                       >
                         <CustomMapZoom />
                         <MapCenterTracker onCenterChange={setMapCenter} />
+                        <MapScaleBar />
                         <ZoomLevelIndicator />
                         <TileLayer
                           url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
@@ -837,31 +975,14 @@ export default function BuildingStructureSimulator({
                         />
                       </MapContainer>
 
-                      {/* Emprise rectangulaire bleue du bâtiment au centre de l'écran avec rotation */}
-                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[1000]">
-                        <div
-                          className="relative border-2 border-blue-400 bg-blue-600/40 shadow-2xl transition-transform duration-200 flex items-center justify-center"
-                          style={{
-                            width: `${Math.min(320, Math.max(140, buildingLength * 6.5))}px`,
-                            height: `${Math.min(220, Math.max(90, buildingWidth * 6.5))}px`,
-                            transform: `rotate(${buildingRotation}deg)`
-                          }}
-                        >
-                          {/* Faîtage pointillé orange (décalé pour les asymétriques) */}
-                          <div
-                            className="absolute inset-x-0 border-t-2 border-dashed border-amber-400 -translate-y-1/2"
-                            style={{
-                              top: (config.buildingType?.startsWith('asym') || config.buildingType === 'epona' || config.buildingType === 'epona_talian5') ? '32%' : '50%'
-                            }}
-                          />
-                          
-                          {/* Badge de dimensions */}
-                          <div className="bg-slate-900/90 text-white px-3 py-1.5 rounded-xl border border-white/20 text-center shadow-lg pointer-events-none">
-                            <span className="font-bold text-xs block">{buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m</span>
-                            <span className="text-[10px] text-slate-300 block">Surface: {floorArea} m²</span>
-                          </div>
-                        </div>
-                      </div>
+                      {/* Emprise rectangulaire bleue du bâtiment 100% à l'échelle du terrain au centre */}
+                      <ScaledBuildingMapOverlay
+                        buildingLength={buildingLength}
+                        buildingWidth={buildingWidth}
+                        buildingRotation={buildingRotation}
+                        buildingType={config.buildingType}
+                        floorArea={floorArea}
+                      />
                     </div>
 
                     {/* Badge adresse sous le bâtiment */}

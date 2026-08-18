@@ -217,7 +217,12 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   // HTML conditionnel selon la solution
   let technicalHypothesesHtml = '';
   if (isIrve) {
-    // Cadre Hypothèses spécifique IRVE
+    // Cadre Hypothèses spécifique IRVE avec tarifs €/kWh
+    const marginSession = sim.effectiveMargin ? Number(sim.effectiveMargin) : 4.00;
+    const marginKwh = marginSession / 40;
+    const purchaseKwh = 0.18;
+    const sellKwh = purchaseKwh + marginKwh;
+
     technicalHypothesesHtml = `
       <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 7px 12px; margin-bottom: 10px;">
         <div style="font-size: 8pt; font-weight: 800; color: #059669; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px;">
@@ -228,11 +233,11 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             <td style="padding: 2px 0; color: #64748b;">Adresse du parking :</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold;">${clientAddress}</td>
             <td style="padding: 2px 0 2px 15px; color: #64748b;">Points de charge :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #059669;">${sim.quantity || 1} borne(s)</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #059669;">${sim.quantity || 1} borne(s) (${sim.power || 22} kW)</td>
           </tr>
           <tr style="border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 2px 0; color: #64748b;">Puissance unitaire :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.power || 22} kW</td>
+            <td style="padding: 2px 0; color: #64748b;">Tarifs électricité :</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold;">Achat : ${purchaseKwh.toFixed(2)} €/kWh &nbsp;|&nbsp; Vente : ${sellKwh.toFixed(2)} €/kWh</td>
             <td style="padding: 2px 0 2px 15px; color: #64748b;">Taux conso personnelle :</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #d97706;">${sim.personalConsoRate || 0} % (Marge 0€)</td>
           </tr>
@@ -240,7 +245,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             <td style="padding: 2px 0; color: #64748b;">Recharges estimées :</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.rechargesPerMonth || 205} rech./mois</td>
             <td style="padding: 2px 0 2px 15px; color: #64748b;">Marge session publique :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #059669;">${sim.effectiveMargin ? Number(sim.effectiveMargin).toFixed(2) : '4.00'} € / session</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #059669;">${marginSession.toFixed(2)} € / session (+${marginKwh.toFixed(2)} €/kWh)</td>
           </tr>
         </table>
       </div>
@@ -352,20 +357,58 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
         </div>
 
-        <!-- 4. VISUEL SATELLITE HAUTE DÉFINITION (+30% HAUTEUR : 310px) -->
-        <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 10px; height: 300px; display: flex; align-items: center; justify-content: center; position: relative;">
-          ${finalMapScreenshot ? `
-            <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover;" alt="Vue satellite du site" />
-          ` : `
-            <div style="color: #94a3b8; font-size: 10pt; text-align: center; padding: 15px;">
-              <strong style="color: #ffffff;">Repérage Satellite du Site</strong>
-              <div style="font-size: 8pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
+        <!-- 4. VISUELS : VUE 3D CONFIGURATEUR ET/OU PLAN SATELLITE -->
+        ${isStruct ? `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; height: 260px;">
+            <!-- 4a. VISUEL 3D DU BÂTIMENT CONFIGURÉ (PUR, SANS ENCARTS) -->
+            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #f8fafc; display: flex; flex-direction: column; position: relative;">
+              <div style="position: absolute; top: 6px; left: 8px; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-radius: 4px; font-size: 7pt; font-weight: bold; z-index: 2;">
+                Vue 3D — Bâtiment ${sim.length ? Number(sim.length).toFixed(1) : '30.0'}m × ${sim.width ? Number(sim.width).toFixed(1) : '20.0'}m
+              </div>
+              ${sim.building3dScreenshot ? `
+                <img src="${sim.building3dScreenshot}" style="width: 100%; height: 100%; object-fit: contain; padding: 8px;" alt="Vue 3D du Bâtiment" />
+              ` : `
+                <div style="color: #64748b; font-size: 8.5pt; text-align: center; margin: auto; padding: 15px;">
+                  <strong style="color: #0f172a; display: block; margin-bottom: 3px;">Hangar Solaire 3D</strong>
+                  ${sim.length ? Number(sim.length).toFixed(1) : '30'}m × ${sim.width ? Number(sim.width).toFixed(1) : '20'}m (${sim.floorArea || Math.round((sim.length || 30) * (sim.width || 20))} m²)
+                </div>
+              `}
             </div>
-          `}
-          <div style="position: absolute; bottom: 6px; right: 8px; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-radius: 4px; font-size: 7.5pt; font-weight: bold;">
-            ${isIrve ? `Implantation : ${sim.quantity || 1} borne(s)` : `Surface : ${sim.roofSurface || sim.floorArea || 83} m²`}
+
+            <!-- 4b. IMPLANTATION SATELLITE SUR LE TERRAIN -->
+            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; display: flex; flex-direction: column; position: relative;">
+              <div style="position: absolute; top: 6px; left: 8px; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-radius: 4px; font-size: 7pt; font-weight: bold; z-index: 2;">
+                Implantation Satellite sur la Parcelle
+              </div>
+              ${finalMapScreenshot ? `
+                <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover;" alt="Vue satellite du site" />
+              ` : `
+                <div style="color: #94a3b8; font-size: 8.5pt; text-align: center; margin: auto; padding: 15px;">
+                  <strong style="color: #ffffff;">Repérage Satellite</strong>
+                  <div style="font-size: 7.5pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
+                </div>
+              `}
+              <div style="position: absolute; bottom: 6px; right: 8px; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-radius: 4px; font-size: 7pt; font-weight: bold;">
+                Surface : ${sim.floorArea || Math.round((sim.length || 30) * (sim.width || 20))} m²
+              </div>
+            </div>
           </div>
-        </div>
+        ` : `
+          <!-- 4. VISUEL SATELLITE HAUTE DÉFINITION (+30% HAUTEUR : 300px) -->
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 10px; height: 300px; display: flex; align-items: center; justify-content: center; position: relative;">
+            ${finalMapScreenshot ? `
+              <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover;" alt="Vue satellite du site" />
+            ` : `
+              <div style="color: #94a3b8; font-size: 10pt; text-align: center; padding: 15px;">
+                <strong style="color: #ffffff;">Repérage Satellite du Site</strong>
+                <div style="font-size: 8pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
+              </div>
+            `}
+            <div style="position: absolute; bottom: 6px; right: 8px; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-radius: 4px; font-size: 7.5pt; font-weight: bold;">
+              ${isIrve ? `Implantation : ${sim.quantity || 1} borne(s)` : `Surface : ${sim.roofSurface || sim.floorArea || 83} m²`}
+            </div>
+          </div>
+        `}
 
         <!-- 5. GRAPHIQUE FINANCIER D'AMORTISSEMENT (30 ANS) (+10% HAUTEUR : 210px) -->
         <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; margin-bottom: 8px;">
