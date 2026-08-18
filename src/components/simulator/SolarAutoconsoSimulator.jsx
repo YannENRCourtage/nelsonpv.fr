@@ -187,6 +187,11 @@ export default function SolarAutoconsoSimulator({
 
   const totalAnnualBenefitYear1 = annualSavingsAutoconso + annualRevenueSurplus;
 
+  // Investissement Total HT calculé via le barème
+  const totalInvestmentHT = useMemo(() => {
+    return getSolarPriceForKwc(customKwc);
+  }, [customKwc, getSolarPriceForKwc]);
+
   // Nom du client dynamique
   const [clientNameInput, setClientNameInput] = useState(selectedProject?.name || selectedProject?.lastName || '');
 
