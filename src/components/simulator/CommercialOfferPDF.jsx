@@ -217,6 +217,21 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   const calculatedPower = sim.kwc ? `${sim.kwc} kWc` : (sim.power ? `${sim.power} kW` : (sim.annualProductionKwh ? `${(sim.annualProductionKwh / 1050).toFixed(2)} kWc` : '36 kWc'));
 
   // HTML conditionnel selon la solution
+  const resolveOrientationName = (simObj) => {
+    if (simObj?.orientationLabel) {
+      return simObj.orientationLabel.replace(/\s*\([^)]*\)/, '').trim();
+    }
+    const r = Number(simObj?.rotation !== undefined ? simObj.rotation : (simObj?.buildings && simObj.buildings[0] && simObj.buildings[0].rotation !== undefined ? simObj.buildings[0].rotation : 0));
+    const norm = ((((Number(r) + 180) % 360) + 360) % 360) - 180;
+    if (norm === 0) return 'Plein Sud';
+    if (Math.abs(norm) >= 135) return 'Nord';
+    if (norm > 45) return 'Ouest';
+    if (norm > 0 && norm <= 45) return 'Sud-Ouest';
+    if (norm < -45) return 'Est';
+    if (norm < 0 && norm >= -45) return 'Sud-Est';
+    return 'Plein Sud';
+  };
+
   let technicalHypothesesHtml = '';
   if (isIrve) {
     // Cadre Hypothèses spécifique IRVE avec tarifs €/kWh
@@ -272,7 +287,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               ${sim.annualProductionKwh ? `${sim.annualProductionKwh.toLocaleString('fr-FR')} kWh / an` : '7 125 kWh / an'}
             </td>
             <td style="padding: 2px 0 2px 15px; color: #64748b;">Orientation / Pente :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.orientationLabel || 'Plein Sud'} (${sim.pitch || 15}°)</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${resolveOrientationName(sim)} (${sim.pitch || 15}°)</td>
           </tr>
         </table>
       </div>
@@ -297,7 +312,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               ${sim.annualProductionKwh ? `${sim.annualProductionKwh.toLocaleString('fr-FR')} kWh / an` : '7 125 kWh / an'}
             </td>
             <td style="padding: 2px 0 2px 15px; color: #64748b;">Orientation / Inclinaison :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.orientationLabel || 'Plein Sud'} (${sim.pitch || 30}°)</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${resolveOrientationName(sim)} (${sim.pitch || 30}°)</td>
           </tr>
           <tr>
             <td style="padding: 2px 0; color: #64748b;">Taux d'autoconsommation :</td>

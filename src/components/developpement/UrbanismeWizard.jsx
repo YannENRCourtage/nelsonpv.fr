@@ -11,7 +11,7 @@ import {
 import { getMissingFields, buildCerfaDataSummary, resolveDemandeurNames } from '@/services/SmartCerfaService';
 import { cadastreService } from '@/services/CadastreService';
 import { getOrGenerateProjectMaps, generateStaticMapImage } from '@/services/AutoMapService';
-import { useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
+import { useConfiguratorStore, useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
 import { ControlPanel } from '../configurator/ui/ControlPanel.jsx';
 import BuildingScene from '../configurator/BuildingScene.jsx';
 import ImageCropModal from './ImageCropModal';

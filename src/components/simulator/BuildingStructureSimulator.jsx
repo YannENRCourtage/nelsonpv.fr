@@ -283,17 +283,30 @@ export default function BuildingStructureSimulator({
     const r = Number(rotDeg) || 0;
     const norm = ((((r + 180) % 360) + 360) % 360) - 180;
     if (norm === 0) return 'Plein Sud (0°)';
-    if (norm > 0 && norm <= 30) return `Sud-Sud-Ouest (+${r}°)`;
-    if (norm > 30 && norm <= 60) return `Sud-Ouest (+${r}°)`;
-    if (norm > 60 && norm <= 80) return `Ouest-Sud-Ouest (+${r}°)`;
-    if (norm > 80 && norm <= 100) return `Plein Ouest (+${r}°)`;
-    if (norm > 100 && norm <= 135) return `Nord-Ouest (+${r}°)`;
-    if (norm < 0 && norm >= -30) return `Sud-Sud-Est (${r}°)`;
-    if (norm < -30 && norm >= -60) return `Sud-Est (${r}°)`;
-    if (norm < -60 && norm >= -80) return `Est-Sud-Est (${r}°)`;
-    if (norm < -80 && norm >= -100) return `Plein Est (${r}°)`;
-    if (norm < -100 && norm >= -135) return `Nord-Est (${r}°)`;
-    return `Plein Nord (${r}°)`;
+    if (Math.abs(norm) >= 135) return `Nord (${r > 0 ? `+${r}` : r}°)`;
+    if (norm > 45) {
+      if (norm >= 85 && norm <= 95) return `Plein Ouest (+${r}°)`;
+      return `Ouest (+${r}°)`;
+    }
+    if (norm > 0 && norm <= 45) return `Sud-Ouest (+${r}°)`;
+    if (norm < -45) {
+      if (norm <= -85 && norm >= -95) return `Plein Est (${r}°)`;
+      return `Est (${r}°)`;
+    }
+    if (norm < 0 && norm >= -45) return `Sud-Est (${r}°)`;
+    return `Plein Sud (0°)`;
+  };
+
+  const getOrientationName = (rotDeg) => {
+    const r = Number(rotDeg) || 0;
+    const norm = ((((r + 180) % 360) + 360) % 360) - 180;
+    if (norm === 0) return 'Plein Sud';
+    if (Math.abs(norm) >= 135) return 'Nord';
+    if (norm > 45) return 'Ouest';
+    if (norm > 0 && norm <= 45) return 'Sud-Ouest';
+    if (norm < -45) return 'Est';
+    if (norm < 0 && norm >= -45) return 'Sud-Est';
+    return 'Plein Sud';
   };
 
   const handleAddBuilding = () => {
