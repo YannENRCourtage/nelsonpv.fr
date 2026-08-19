@@ -124,6 +124,17 @@ function MapSyncCenter({ lat, lng }) {
   return null;
 }
 
+function MapClickHandler({ setGps }) {
+  useMapEvents({
+    click(e) {
+      if (setGps && e.latlng) {
+        setGps(e.latlng.lat, e.latlng.lng);
+      }
+    }
+  });
+  return null;
+}
+
 function DraggableLocationMarker({ lat, lng, setGps }) {
   const markerRef = React.useRef(null);
 
@@ -141,12 +152,16 @@ function DraggableLocationMarker({ lat, lng, setGps }) {
   );
 
   return (
-    <Marker
-      draggable={true}
-      eventHandlers={eventHandlers}
-      position={[lat, lng]}
-      ref={markerRef}
-    />
+    <>
+      <MapClickHandler setGps={setGps} />
+      <Marker
+        draggable={true}
+        autoPan={true}
+        eventHandlers={eventHandlers}
+        position={[lat, lng]}
+        ref={markerRef}
+      />
+    </>
   );
 }
 
@@ -675,6 +690,14 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
   const handleGpsUpdate = useCallback((lat, lng) => {
     setEditedProject(prev => ({ ...prev, lat, lng, gps: `${lat},${lng}` }));
+    setBuildings(prev => {
+      if (prev.length > 0) {
+        const next = [...prev];
+        next[0] = { ...next[0], lat, lng, gps: `${lat},${lng}` };
+        return next;
+      }
+      return prev;
+    });
     generateStaticMapImage(lat, lng, 'map', 16).then(ign => {
       if (ign) {
         setCaptures(c => ({ ...c, ign }));

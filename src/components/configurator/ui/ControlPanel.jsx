@@ -2,6 +2,19 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConfiguratorValues, useConfiguratorActions, EPONA_MODELS, TALIAN_MODELS, TALIAN_1_MODELS, TALIAN_3_MODELS, TALIAN_5_MODELS } from '@/stores/useConfiguratorStore.js';
 
+const TYPE_WIDTHS_MAP = {
+    'symetrique': [15.0, 18.6, 22.3, 26.0, 29.8, 33.5],
+    'epona': [23.6],
+    'epona_talian5': [23.6],
+    'asymetrique_1': [16.4, 20.0],
+    'asymetrique_2': [25.5, 29.1],
+    'monopente': [12.7, 16.4],
+    'ombriere_vl_simple_gauche': [6.9],
+    'ombriere_vl_simple_droite': [6.9],
+    'ombriere_vl_double': [9.1, 11.3],
+    'ombriere_pl': [15.8, 20.2, 24.6]
+};
+
 export function ControlPanel({ isAcama = false, selectedProject = null, activeBuilding = null, onUpdateBuilding = null }) {
     const navigate = useNavigate();
     // NEW: Split hooks with destructuring to maintain variable scope compatibility
@@ -28,6 +41,8 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
     const bayCount = activeBuilding?.bayCount !== undefined ? activeBuilding.bayCount : storeValues.bayCount;
     const leftSide = activeBuilding?.leftSide || storeValues.leftSide;
     const rightSide = activeBuilding?.rightSide || storeValues.rightSide;
+
+    const effectiveAvailableWidths = TYPE_WIDTHS_MAP[buildingType] || availableWidths || [20.0];
 
     const {
         setWidth,
@@ -200,7 +215,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
                             isAcama ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : ''
                         }`}
                     >
-                        {availableWidths?.map((w) => (
+                        {effectiveAvailableWidths?.map((w) => (
                             <option key={w} value={w}>{w} m</option>
                         ))}
                     </select>

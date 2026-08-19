@@ -90,58 +90,76 @@ function MapScaleBar() {
   );
 }
 
-// ─── Emprise du bâtiment 100% à l'échelle réelle du terrain selon le zoom ─────
-function ScaledBuildingMapOverlay({ buildingLength, buildingWidth, buildingRotation, buildingType, floorArea }) {
+// ─── Emprise des bâtiments 100% à l'échelle réelle du terrain selon le zoom ─────
+function ScaledBuildingMapOverlay({ buildings = [], activeIndex = 0 }) {
   const map = useMap();
-  const [dimensionsPx, setDimensionsPx] = useState({ widthPx: 200, heightPx: 120 });
+  const [scale, setScale] = useState(4.6);
 
-  const updateDimensions = () => {
+  const updateScale = () => {
     const lat = map.getCenter().lat;
     const zoom = map.getZoom();
     const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom + 8);
     const pxPerMeter = metersPerPx > 0 ? (1 / metersPerPx) : 4.6;
-
-    const wPx = Math.max(20, buildingLength * pxPerMeter);
-    const hPx = Math.max(15, buildingWidth * pxPerMeter);
-    setDimensionsPx({ widthPx: wPx, heightPx: hPx });
+    setScale(pxPerMeter);
   };
 
   useMapEvents({
-    zoomend: updateDimensions,
-    moveend: updateDimensions,
-    zoom: updateDimensions,
+    zoomend: updateScale,
+    moveend: updateScale,
+    zoom: updateScale,
   });
 
   useEffect(() => {
-    updateDimensions();
-  }, [buildingLength, buildingWidth]);
-
-  const isAsym = (buildingType || '').startsWith('asym') || buildingType === 'epona';
+    updateScale();
+  }, []);
 
   return (
     <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[1000]">
-      <div
-        className="relative border-2 border-blue-400 bg-blue-600/40 shadow-2xl transition-transform duration-75 flex items-center justify-center"
-        style={{
-          width: `${dimensionsPx.widthPx}px`,
-          height: `${dimensionsPx.heightPx}px`,
-          transform: `rotate(${buildingRotation}deg)`
-        }}
-      >
-        {/* Faîtage pointillé orange (décalé pour les asymétriques) */}
-        <div
-          className="absolute inset-x-0 border-t-2 border-dashed border-amber-400 -translate-y-1/2"
-          style={{
-            top: isAsym ? '32%' : '50%'
-          }}
-        />
-        
-        {/* Badge de dimensions */}
-        <div className="bg-slate-900/90 text-white px-2 py-0.5 rounded-lg border border-white/20 text-center shadow-lg pointer-events-none transform scale-90">
-          <span className="font-bold text-[11px] block whitespace-nowrap">{buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m</span>
-          <span className="text-[9px] text-slate-300 block whitespace-nowrap">{floorArea} m²</span>
-        </div>
-      </div>
+      {buildings.map((b, idx) => {
+        const bLength = Number(b.length || 30);
+        const bWidth = Number(b.width || 20);
+        const bRot = Number(b.rotation || 0);
+        const wPx = Math.max(20, bLength * scale);
+        const hPx = Math.max(15, bWidth * scale);
+        const isAsym = (b.buildingType || '').startsWith('asym') || b.buildingType === 'epona';
+        const isActive = idx === activeIndex;
+        const offX = Number(b.offsetX || (buildings.length > 1 ? (idx * (wPx + 40) - ((buildings.length - 1) * (wPx + 40) / 2)) : 0));
+        const offY = Number(b.offsetY || 0);
+
+        return (
+          <div
+            key={b.id || idx}
+            className={`absolute border-2 transition-all flex items-center justify-center ${
+              isActive
+                ? 'border-blue-400 bg-blue-600/40 shadow-2xl ring-2 ring-amber-400'
+                : 'border-cyan-300 bg-cyan-600/30 shadow-lg'
+            }`}
+            style={{
+              width: `${wPx}px`,
+              height: `${hPx}px`,
+              transform: `translate(${offX}px, ${offY}px) rotate(${bRot}deg)`
+            }}
+          >
+            {/* Faîtage pointillé orange */}
+            <div
+              className="absolute inset-x-0 border-t-2 border-dashed border-amber-400 -translate-y-1/2"
+              style={{
+                top: isAsym ? '32%' : '50%'
+              }}
+            />
+            
+            {/* Badge de dimensions */}
+            <div className="bg-slate-900/90 text-white px-2 py-0.5 rounded-lg border border-white/20 text-center shadow-lg pointer-events-none transform scale-90">
+              <span className="font-bold text-[10px] block whitespace-nowrap">
+                {b.name || `Bâtiment ${idx + 1}`} : {bLength.toFixed(1)}m × {bWidth.toFixed(1)}m
+              </span>
+              <span className="text-[8.5px] text-slate-300 block whitespace-nowrap">
+                {Math.round(bLength * bWidth)} m²
+              </span>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -213,9 +231,23 @@ export default function BuildingStructureSimulator({
   const [departmentCode, setDepartmentCode] = useState('32');
   const [cityName, setCityName] = useState('Auch');
 
-  // Étape 2 : Orientation du bâtiment sur le terrain (en degrés)
+  // Étape 2 : Orientation et Gestion Multi-Bâtiments sur le terrain
   const [mapCenter, setMapCenter] = useState([43.646, 0.585]);
-  const [buildingRotation, setBuildingRotation] = useState(0); // 0° = Plein Sud, -45° = Sud-Est, +45° = Sud-Ouest
+  const [buildingRotation, setBuildingRotation] = useState(0);
+
+  const [simBuildings, setSimBuildings] = useState([
+    {
+      id: 1,
+      name: 'Bâtiment 1 (Principal)',
+      length: config.length || 30,
+      width: (config.width + (config.leftSide !== 'none' ? (config.leftWidth || 0) : 0) + (config.rightSide !== 'none' ? (config.rightWidth || 0) : 0)) || 18.6,
+      rotation: 0,
+      buildingType: config.buildingType || 'symetrique',
+      offsetX: 0,
+      offsetY: 0
+    }
+  ]);
+  const [activeBuildingIdx, setActiveBuildingIdx] = useState(0);
 
   const mapContainerRef = useRef(null);
   const [mapScreenshotDataUrl, setMapScreenshotDataUrl] = useState(null);
@@ -224,26 +256,117 @@ export default function BuildingStructureSimulator({
     actions.setIsAcama(isAcama);
   }, [isAcama]);
 
-  // Dimensions et Surfaces dynamiques du bâtiment 3D
+  // Dimensions et Surfaces dynamiques du bâtiment principal 3D
   const buildingLength = config.length || 30;
   const buildingWidth = (config.width
     + (config.leftSide !== 'none' ? (config.leftWidth || 0) : 0)
     + (config.rightSide !== 'none' ? (config.rightWidth || 0) : 0)) || 18.6;
 
-  const floorArea = useMemo(() => {
-    return Math.round(buildingLength * buildingWidth);
-  }, [buildingLength, buildingWidth]);
+  // Synchronisation du Bâtiment 1 avec le configurateur 3D
+  useEffect(() => {
+    setSimBuildings(prev => {
+      const next = [...prev];
+      if (next[0]) {
+        next[0] = {
+          ...next[0],
+          length: buildingLength,
+          width: buildingWidth,
+          buildingType: config.buildingType || 'symetrique'
+        };
+      }
+      return next;
+    });
+  }, [buildingLength, buildingWidth, config.buildingType]);
+
+  // Calcul du libellé d'orientation exact en fonction de la rotation en degrés
+  const getOrientationLabel = (rotDeg) => {
+    const r = Number(rotDeg) || 0;
+    const norm = ((((r + 180) % 360) + 360) % 360) - 180;
+    if (norm === 0) return 'Plein Sud (0°)';
+    if (norm > 0 && norm <= 30) return `Sud-Sud-Ouest (+${r}°)`;
+    if (norm > 30 && norm <= 60) return `Sud-Ouest (+${r}°)`;
+    if (norm > 60 && norm <= 80) return `Ouest-Sud-Ouest (+${r}°)`;
+    if (norm > 80 && norm <= 100) return `Plein Ouest (+${r}°)`;
+    if (norm > 100 && norm <= 135) return `Nord-Ouest (+${r}°)`;
+    if (norm < 0 && norm >= -30) return `Sud-Sud-Est (${r}°)`;
+    if (norm < -30 && norm >= -60) return `Sud-Est (${r}°)`;
+    if (norm < -60 && norm >= -80) return `Est-Sud-Est (${r}°)`;
+    if (norm < -80 && norm >= -100) return `Plein Est (${r}°)`;
+    if (norm < -100 && norm >= -135) return `Nord-Est (${r}°)`;
+    return `Plein Nord (${r}°)`;
+  };
+
+  const handleAddBuilding = () => {
+    const nextIdx = simBuildings.length + 1;
+    const offset = simBuildings.length * 60;
+    const newB = {
+      id: Date.now(),
+      name: `Bâtiment ${nextIdx}`,
+      length: 30,
+      width: 20,
+      rotation: 0,
+      buildingType: 'symetrique',
+      offsetX: offset,
+      offsetY: 0
+    };
+    setSimBuildings(prev => [...prev, newB]);
+    setActiveBuildingIdx(simBuildings.length);
+  };
+
+  const handleDuplicateBuilding = () => {
+    const current = simBuildings[activeBuildingIdx] || simBuildings[0];
+    const nextIdx = simBuildings.length + 1;
+    const newB = {
+      ...current,
+      id: Date.now(),
+      name: `Bâtiment ${nextIdx}`,
+      offsetX: (current.offsetX || 0) + 80,
+      offsetY: (current.offsetY || 0) + 40
+    };
+    setSimBuildings(prev => [...prev, newB]);
+    setActiveBuildingIdx(simBuildings.length);
+  };
+
+  const handleRemoveBuilding = (idx) => {
+    if (simBuildings.length <= 1) return;
+    setSimBuildings(prev => prev.filter((_, i) => i !== idx));
+    setActiveBuildingIdx(Math.max(0, idx - 1));
+  };
+
+  const handleUpdateActiveBuilding = (updates) => {
+    setSimBuildings(prev => {
+      const next = [...prev];
+      if (next[activeBuildingIdx]) {
+        next[activeBuildingIdx] = { ...next[activeBuildingIdx], ...updates };
+      }
+      return next;
+    });
+    if (updates.rotation !== undefined) {
+      setBuildingRotation(updates.rotation);
+    }
+  };
+
+  // Calculs globaux consolidés multi-bâtiments
+  const totalFloorArea = useMemo(() => {
+    return simBuildings.reduce((acc, b) => acc + Math.round((Number(b.length) || 30) * (Number(b.width) || 20)), 0);
+  }, [simBuildings]);
+
+  const floorArea = totalFloorArea;
 
   const roofPitch = config.roofPitch || 10;
-  const roofArea = useMemo(() => {
-    const pitchRad = (roofPitch * Math.PI) / 180;
-    return Math.round(floorArea / Math.cos(pitchRad));
-  }, [floorArea, roofPitch]);
+  const totalRoofArea = useMemo(() => {
+    return simBuildings.reduce((acc, b) => {
+      const pitchRad = (roofPitch * Math.PI) / 180;
+      const bArea = (Number(b.length) || 30) * (Number(b.width) || 20);
+      return acc + Math.round(bArea / Math.cos(pitchRad));
+    }, 0);
+  }, [simBuildings, roofPitch]);
+
+  const roofArea = totalRoofArea;
 
   const installedKwc = useMemo(() => {
-    if (config.solarStats?.power) return Math.round(config.solarStats.power * 100) / 100;
     return Math.round((roofArea * 0.20) * 100) / 100;
-  }, [config.solarStats, roofArea]);
+  }, [roofArea]);
 
   const regionalBaseYield = useMemo(() => {
     return getProductionForDepartment(departmentCode);
@@ -253,7 +376,7 @@ export default function BuildingStructureSimulator({
     return Math.round(installedKwc * regionalBaseYield);
   }, [installedKwc, regionalBaseYield]);
 
-  // Modèle économique Gros-Œuvre & PV
+  // Modèle économique Gros-Œuvre & PV multi-bâtiments
   const charpenteCost = Math.round(floorArea * (structSettings.charpenteCostM2 || 75));
   const couvertureCost = Math.round(roofArea * (structSettings.couvertureBacAcierM2 || 28));
   const fondationsCost = Math.round(floorArea * (structSettings.fondationsCostM2 || 25));
@@ -366,12 +489,7 @@ export default function BuildingStructureSimulator({
     const snapshot = await generateSatelliteSnapshot({
       center: mapCenter,
       polygonPoints: [],
-      building: {
-        length: buildingLength,
-        width: buildingWidth,
-        rotation: buildingRotation,
-        buildingType: config.buildingType
-      },
+      buildings: simBuildings,
       width: 800,
       height: 480,
       zoom: 19
@@ -384,7 +502,7 @@ export default function BuildingStructureSimulator({
     if (mapCenter) {
       ensureMapSnapshot();
     }
-  }, [mapCenter, buildingLength, buildingWidth, buildingRotation, config.buildingType]);
+  }, [mapCenter, simBuildings, config.buildingType]);
 
   // Nom du client dynamique
   const [clientNameInput, setClientNameInput] = useState(
@@ -394,17 +512,18 @@ export default function BuildingStructureSimulator({
   // Synchronisation avec l'état global parent
   useEffect(() => {
     if (onStateUpdate) {
+      const activeRot = simBuildings[activeBuildingIdx]?.rotation || 0;
       onStateUpdate({
         type: 'structure_metallique',
-        title: `Hangar Solaire ${buildingLength.toFixed(1)}m × ${buildingWidth.toFixed(1)}m (${installedKwc} kWc) — ${clientNameInput || cityName || 'Projet'}`,
+        title: `Hangar Solaire ${simBuildings.length > 1 ? `${simBuildings.length} Bâtiments (${totalFloorArea} m²)` : `${buildingLength.toFixed(1)}m × ${buildingWidth.toFixed(1)}m (${totalFloorArea} m²)`} (${installedKwc} kWc) — ${clientNameInput || cityName || 'Projet'}`,
         clientName: clientNameInput || cityName,
         address: addressInput,
         cityName,
         departmentCode,
         length: buildingLength,
         width: buildingWidth,
-        floorArea,
-        roofArea,
+        floorArea: totalFloorArea,
+        roofArea: totalRoofArea,
         kwc: installedKwc,
         annualProductionKwh,
         totalBuildingCost,
@@ -418,15 +537,18 @@ export default function BuildingStructureSimulator({
         cumul20: financialProjection30Years.cumul20,
         cumul30: financialProjection30Years.cumul30,
         building3dScreenshot: building3dSnapshot,
-        mapScreenshot: mapScreenshotDataUrl
+        mapScreenshot: mapScreenshotDataUrl,
+        buildings: simBuildings,
+        orientationLabel: getOrientationLabel(activeRot),
+        pitch: config.roofPitch || 15
       });
     }
   }, [
-    buildingLength, buildingWidth, floorArea, roofArea, installedKwc,
+    buildingLength, buildingWidth, totalFloorArea, totalRoofArea, installedKwc,
     annualProductionKwh, totalBuildingCost, totalProjectInvestment,
     soulteInvestisseur, resteACharge, annualNetRevenue,
     financialProjection30Years, clientNameInput, addressInput, cityName,
-    departmentCode, building3dSnapshot, mapScreenshotDataUrl, onStateUpdate
+    departmentCode, building3dSnapshot, mapScreenshotDataUrl, simBuildings, activeBuildingIdx, onStateUpdate
   ]);
 
   return (
@@ -833,18 +955,82 @@ export default function BuildingStructureSimulator({
                         Implantation Satellite
                       </h3>
                       <p className="text-sm text-slate-600 mt-1 leading-relaxed">
-                        L'emprise ({buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m — {floorArea} m²) reste au centre. Déplacez la carte ci-contre pour caler votre parcelle sous le bâtiment. Le trait pointillé orange représente le faîtage.
+                        {simBuildings.length > 1
+                          ? `${simBuildings.length} bâtiments configurés (${totalFloorArea} m² au total). Ajustez la rotation de chaque bâtiment ou dupliquez-les sur votre parcelle.`
+                          : `L'emprise (${buildingLength.toFixed(1)}m × ${buildingWidth.toFixed(1)}m — ${totalFloorArea} m²) reste au centre. Déplacez la carte ci-contre pour caler votre parcelle sous le bâtiment.`}
                       </p>
                     </div>
 
-                    {/* Curseur et Boutons d'Orientation */}
+                    {/* Gestion Multi-Bâtiments (Tabs + Actions) */}
+                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-1.5">
+                          🏢 Bâtiments ({simBuildings.length})
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={handleDuplicateBuilding}
+                            className="px-2.5 py-1 text-[11px] font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-all shadow-xs flex items-center gap-1"
+                            title="Dupliquer le bâtiment sélectionné"
+                          >
+                            <span>📋 Dupliquer</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleAddBuilding}
+                            className="px-2.5 py-1 text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-xs flex items-center gap-1"
+                            title="Ajouter un nouveau bâtiment"
+                          >
+                            <span>+ Ajouter</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Onglets Bâtiments */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                        {simBuildings.map((b, idx) => {
+                          const isActive = idx === activeBuildingIdx;
+                          return (
+                            <div
+                              key={b.id || idx}
+                              className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                                isActive
+                                  ? 'bg-[#0e2b4d] text-white shadow-md'
+                                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                              }`}
+                              onClick={() => setActiveBuildingIdx(idx)}
+                            >
+                              <span>{b.name || `Bâtiment ${idx + 1}`}</span>
+                              {simBuildings.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveBuilding(idx);
+                                  }}
+                                  className="ml-1 text-red-400 hover:text-red-600 p-0.5"
+                                  title="Supprimer ce bâtiment"
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Curseur et Boutons d'Orientation du Bâtiment Actif */}
                     <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3">
                       <div className="flex items-center justify-between text-sm font-bold text-slate-800">
                         <span className="flex items-center gap-1.5">
                           <Compass className="w-5 h-5 text-blue-600" />
-                          Orientation
+                          Orientation {simBuildings[activeBuildingIdx]?.name ? `(${simBuildings[activeBuildingIdx].name})` : ''}
                         </span>
-                        <span className="text-blue-600 font-black text-base">{buildingRotation}°</span>
+                        <span className="text-blue-600 font-black text-base">
+                          {simBuildings[activeBuildingIdx]?.rotation || 0}°
+                        </span>
                       </div>
 
                       <input
@@ -852,41 +1038,39 @@ export default function BuildingStructureSimulator({
                         min="-90"
                         max="90"
                         step="1"
-                        value={buildingRotation}
-                        onChange={(e) => setBuildingRotation(Number(e.target.value))}
+                        value={simBuildings[activeBuildingIdx]?.rotation || 0}
+                        onChange={(e) => handleUpdateActiveBuilding({ rotation: Number(e.target.value) })}
                         className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                       />
 
                       <div className="bg-blue-50 border border-blue-200 rounded-xl p-2.5 text-center text-sm font-bold text-blue-900">
-                        {buildingRotation === 0 ? 'Sud Plein (0°) - Idéal ☀️'
-                          : buildingRotation > 0 ? `Sud-Ouest (+${buildingRotation}°) ⛅`
-                          : `Sud-Est (${buildingRotation}°) 🌅`}
+                        {getOrientationLabel(simBuildings[activeBuildingIdx]?.rotation || 0)}
                       </div>
 
                       <div className="grid grid-cols-3 gap-2 pt-1">
                         <button
                           type="button"
-                          onClick={() => setBuildingRotation(45)}
+                          onClick={() => handleUpdateActiveBuilding({ rotation: 45 })}
                           className={`py-2 rounded-xl text-xs font-black transition-all border ${
-                            buildingRotation === 45 ? 'bg-[#0e2b4d] text-white' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                            (simBuildings[activeBuildingIdx]?.rotation || 0) === 45 ? 'bg-[#0e2b4d] text-white' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
                           Sud-Ouest (45°)
                         </button>
                         <button
                           type="button"
-                          onClick={() => setBuildingRotation(0)}
+                          onClick={() => handleUpdateActiveBuilding({ rotation: 0 })}
                           className={`py-2 rounded-xl text-xs font-black transition-all border ${
-                            buildingRotation === 0 ? 'bg-[#0e2b4d] text-white' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                            (simBuildings[activeBuildingIdx]?.rotation || 0) === 0 ? 'bg-[#0e2b4d] text-white' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
                           Sud (0°)
                         </button>
                         <button
                           type="button"
-                          onClick={() => setBuildingRotation(-45)}
+                          onClick={() => handleUpdateActiveBuilding({ rotation: -45 })}
                           className={`py-2 rounded-xl text-xs font-black transition-all border ${
-                            buildingRotation === -45 ? 'bg-[#0e2b4d] text-white' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                            (simBuildings[activeBuildingIdx]?.rotation || 0) === -45 ? 'bg-[#0e2b4d] text-white' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
                           Sud-Est (-45°)
@@ -897,22 +1081,20 @@ export default function BuildingStructureSimulator({
                     {/* Spécifications Charpente */}
                     <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2 text-sm">
                       <h4 className="font-black text-slate-800 uppercase tracking-wider text-xs border-b border-slate-200 pb-1.5">
-                        Spécifications Charpente :
+                        Spécifications Globales ({simBuildings.length} bât.) :
                       </h4>
-                      <div className="flex justify-between py-1">
-                        <span className="text-slate-600 font-medium">Type :</span>
-                        <strong className="text-slate-900 font-bold capitalize">{config.buildingType || 'symetrique'}</strong>
+                      {simBuildings.map((b, idx) => (
+                        <div key={b.id || idx} className="flex justify-between py-0.5 text-xs text-slate-700">
+                          <span>{b.name || `Bâtiment ${idx + 1}`} :</span>
+                          <strong className="text-slate-900">{Number(b.length || 30).toFixed(1)}m × {Number(b.width || 20).toFixed(1)}m ({Math.round((Number(b.length) || 30) * (Number(b.width) || 20))} m²)</strong>
+                        </div>
+                      ))}
+                      <div className="border-t border-slate-200 pt-1.5 flex justify-between py-1">
+                        <span className="text-slate-600 font-medium">Surface totale cumulée :</span>
+                        <strong className="text-slate-900 font-black">{totalFloorArea} m²</strong>
                       </div>
                       <div className="flex justify-between py-1">
-                        <span className="text-slate-600 font-medium">Emprise :</span>
-                        <strong className="text-slate-900 font-bold">{buildingLength.toFixed(1)}m × {buildingWidth.toFixed(1)}m</strong>
-                      </div>
-                      <div className="flex justify-between py-1">
-                        <span className="text-slate-600 font-medium">Surface totale :</span>
-                        <strong className="text-slate-900 font-bold">{floorArea} m²</strong>
-                      </div>
-                      <div className="flex justify-between py-1">
-                        <span className="text-slate-600 font-medium">Puissance Solaire :</span>
+                        <span className="text-slate-600 font-medium">Puissance Solaire Globale :</span>
                         <strong className="text-blue-600 font-black text-base">{installedKwc} kWc</strong>
                       </div>
                     </div>
@@ -949,7 +1131,7 @@ export default function BuildingStructureSimulator({
                       
                       {/* Encart guide flottant */}
                       <div className="absolute top-3 left-16 right-3 z-[1100] bg-slate-900/85 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-2xl border border-white/20 shadow-md text-center">
-                        + Glissez la carte pour ajuster l'emplacement de votre parcelle sous le bâtiment
+                        + Glissez la carte pour ajuster l'emplacement de votre parcelle sous les bâtiments
                       </div>
 
                       <MapContainer
@@ -967,11 +1149,8 @@ export default function BuildingStructureSimulator({
                         <MapScaleBar />
                         <ZoomLevelIndicator />
                         <ScaledBuildingMapOverlay
-                          buildingLength={buildingLength}
-                          buildingWidth={buildingWidth}
-                          buildingRotation={buildingRotation}
-                          buildingType={config.buildingType}
-                          floorArea={floorArea}
+                          buildings={simBuildings}
+                          activeIndex={activeBuildingIdx}
                         />
                         <TileLayer
                           url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"

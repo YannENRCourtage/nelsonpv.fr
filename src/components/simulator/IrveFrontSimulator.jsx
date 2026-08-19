@@ -38,6 +38,16 @@ function CustomMapZoom() {
   );
 }
 
+function MapSyncCenter({ lat, lng }) {
+  const map = useMap();
+  useEffect(() => {
+    if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+      map.setView([lat, lng], map.getZoom(), { animate: true });
+    }
+  }, [lat, lng, map]);
+  return null;
+}
+
 // ─── Trait d'échelle dynamique en bas à gauche ──────────────────────────────
 function MapScaleBar() {
   const map = useMap();
@@ -409,7 +419,7 @@ export default function IrveFrontSimulator({
       polygonPoints: [],
       width: 800,
       height: 480,
-      zoom: 20
+      zoom: 19
     });
     if (snapshot) setMapScreenshotDataUrl(snapshot);
     return snapshot;
@@ -443,8 +453,9 @@ export default function IrveFrontSimulator({
         totalInvestment,
         subvention,
         resteACharge,
-        totalInvestmentHT: totalInvestment,
+        totalInvestmentHT: resteACharge,
         breakEvenMonths: Math.round(breakEvenMonths),
+        paybackMonths: Math.round(breakEvenMonths),
         breakEvenYears,
         paybackYear: breakEvenYears,
         totalGains30Years: financialProjection30Years.cumul30,
@@ -589,6 +600,7 @@ export default function IrveFrontSimulator({
                   className="w-full h-full"
                 >
                   <CustomMapZoom />
+                  <MapSyncCenter lat={mapCenter[0]} lng={mapCenter[1]} />
                   <MapCenterTracker onCenterChange={setMapCenter} />
                   <MapScaleBar />
                   <ZoomLevelIndicator />

@@ -347,15 +347,15 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
 
           <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 8px; padding: 6px; text-align: center;">
-            <div style="font-size: 6.5pt; font-weight: bold; color: #166534; text-transform: uppercase;">Gains / an (An 1)</div>
-            <div style="font-size: 13pt; font-weight: 900; color: #16a34a; margin: 1px 0;">${annualGainFormatted}</div>
-            <div style="font-size: 6.5pt; color: #166534;">Bénéfice net annuel</div>
+            <div style="font-size: 6.5pt; font-weight: bold; color: #166534; text-transform: uppercase;">${isIrve ? 'Investissement net' : 'Gains / an (An 1)'}</div>
+            <div style="font-size: 13pt; font-weight: 900; color: #16a34a; margin: 1px 0;">${isIrve ? `${(sim.totalInvestmentHT || sim.resteACharge || 3960).toLocaleString('fr-FR')} € HT` : annualGainFormatted}</div>
+            <div style="font-size: 6.5pt; color: #166534;">${isIrve ? `Coût ${sim.quantity || 1} borne(s)` : 'Bénéfice net annuel'}</div>
           </div>
 
           <div style="background: #faf5ff; border: 1.5px solid #e9d5ff; border-radius: 8px; padding: 6px; text-align: center;">
             <div style="font-size: 6.5pt; font-weight: bold; color: #6b21a8; text-transform: uppercase;">Amortissement</div>
             <div style="font-size: 13pt; font-weight: 900; color: #9333ea; margin: 1px 0;">${sim.paybackYear || 8} ans</div>
-            <div style="font-size: 6.5pt; color: #6b21a8;">Invest. : ${sim.totalInvestmentHT ? sim.totalInvestmentHT.toLocaleString('fr-FR') : sim.resteACharge ? sim.resteACharge.toLocaleString('fr-FR') : '-'} € HT</div>
+            <div style="font-size: 6.5pt; color: #6b21a8;">${isIrve ? `Soit ${sim.paybackMonths || Math.round((Number(sim.paybackYear) || 0.4) * 12)} mois` : `Invest. : ${sim.totalInvestmentHT ? sim.totalInvestmentHT.toLocaleString('fr-FR') : sim.resteACharge ? sim.resteACharge.toLocaleString('fr-FR') : '-'} € HT`}</div>
           </div>
         </div>
 
@@ -365,7 +365,9 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             <!-- 4a. VISUEL 3D DU BÂTIMENT CONFIGURÉ (PUR, SANS ESPACE AU-DESSUS DU TITRE) -->
             <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #f8fafc; display: flex; flex-direction: column; position: relative;">
               <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 8px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2;">
-                Vue 3D — Bâtiment ${sim.length ? Number(sim.length).toFixed(1) : '30.0'}m × ${sim.width ? Number(sim.width).toFixed(1) : '20.0'}m
+                ${sim.buildings && sim.buildings.length > 1
+                  ? `Vue 3D — ${sim.buildings.length} Bâtiments (${sim.floorArea} m²)`
+                  : `Vue 3D — Bâtiment ${sim.length ? Number(sim.length).toFixed(1) : '30.0'}m × ${sim.width ? Number(sim.width).toFixed(1) : '20.0'}m`}
               </div>
               ${sim.building3dScreenshot ? `
                 <img src="${sim.building3dScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue 3D du Bâtiment" />

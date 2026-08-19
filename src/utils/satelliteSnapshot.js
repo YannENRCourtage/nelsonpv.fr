@@ -4,12 +4,14 @@ export const generateSatelliteSnapshot = async ({
   center,
   polygonPoints,
   building,
+  buildings,
   stationMarkers,
   width = 800,
   height = 480,
   zoom = 19
 }) => {
   try {
+    const safeZoom = Math.min(19, Math.max(14, zoom || 18));
     const lat = center ? center[0] : 43.6047;
     const lng = center ? center[1] : 1.4442;
 
@@ -19,7 +21,7 @@ export const generateSatelliteSnapshot = async ({
     const ctx = canvas.getContext('2d');
 
     // Calcul des tuiles pour le centre
-    const n = Math.pow(2, zoom);
+    const n = Math.pow(2, safeZoom);
     const xExact = ((lng + 180) / 360) * n;
     const latRad = (lat * Math.PI) / 180;
     const yExact = ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n;
@@ -40,7 +42,7 @@ export const generateSatelliteSnapshot = async ({
 
     for (let tx = minTileX; tx <= maxTileX; tx++) {
       for (let ty = minTileY; ty <= maxTileY; ty++) {
-        const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${ty}/${tx}`;
+        const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${safeZoom}/${ty}/${tx}`;
         const p = new Promise((resolve) => {
           const img = new Image();
           img.crossOrigin = 'anonymous';
@@ -80,57 +82,78 @@ export const generateSatelliteSnapshot = async ({
       return { x: screenX, y: screenY };
     };
 
-    // 1. Dessin de l'implantation du Bâtiment Configuré (Structure Métallique / Hangar)
-    if (building && building.length && building.width) {
-      const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom + 8);
+    // 1. Dessin de l'implantation du/des Bâtiments (Structure Métallique / Hangar)
+    const buildingList = Array.isArray(buildings) && buildings.length > 0
+      ? buildings
+      : (building && building.length && building.width ? [building] : []);
+
+    if (buildingList.length > 0) {
+      const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, safeZoom + 8);
       const pxPerMeter = metersPerPx > 0 ? (1 / metersPerPx) : 4.6;
 
-      const rectW = Math.max(40, building.length * pxPerMeter);
-      const rectH = Math.max(30, building.width * pxPerMeter);
-      const rotRad = ((building.rotation || 0) * Math.PI) / 180;
+      buildingList.forEach((b, bIdx) => {
+        const bLength = Number(b.length || 30);
+        const bWidth = Number(b.width || 20);
+        const rectW = Math.max(30, bLength * pxPerMeter);
+        const rectH = Math.max(20, bWidth * pxPerMeter);
+        const rotRad = ((Number(b.rotation) || 0) * Math.PI) / 180;
 
-      ctx.save();
-      ctx.translate(canvasCenterX, canvasCenterY);
-      ctx.rotate(rotRad);
+        let posX = canvasCenterX;
+        let posY = canvasCenterY;
 
-      // Emprise au sol du bâtiment
-      ctx.fillStyle = 'rgba(37, 99, 235, 0.45)';
-      ctx.fillRect(-rectW / 2, -rectH / 2, rectW, rectH);
+        if (b.lat && b.lng && !isNaN(b.lat) && !isNaN(b.lng)) {
+          const pt = latLngToCanvasPoint(b.lat, b.lng);
+          posX = pt.x;
+          posY = pt.y;
+        } else if (buildingList.length > 1) {
+          posX = canvasCenterX + (bIdx * (rectW + 40) - ((buildingList.length - 1) * (rectW + 40) / 2));
+        }
 
-      ctx.strokeStyle = '#60a5fa';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(-rectW / 2, -rectH / 2, rectW, rectH);
+        ctx.save();
+        ctx.translate(posX, posY);
+        ctx.rotate(rotRad);
 
-      // Ligne de Faîtage en pointillés orange
-      const isAsym = (building.buildingType || '').startsWith('asym') || building.buildingType === 'epona';
-      const ridgeY = isAsym ? (-rectH / 2 + rectH * 0.32) : 0;
-      ctx.beginPath();
-      ctx.setLineDash([6, 4]);
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 2.5;
-      ctx.moveTo(-rectW / 2, ridgeY);
-      ctx.lineTo(rectW / 2, ridgeY);
-      ctx.stroke();
-      ctx.setLineDash([]);
+        // Emprise au sol du bâtiment
+        ctx.fillStyle = 'rgba(37, 99, 235, 0.45)';
+        ctx.fillRect(-rectW / 2, -rectH / 2, rectW, rectH);
 
-      // Badge central de dimensions
-      const badgeW = 120;
-      const badgeH = 28;
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
-      ctx.beginPath();
-      ctx.roundRect(-badgeW / 2, -badgeH / 2, badgeW, badgeH, 6);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
+        ctx.strokeStyle = '#60a5fa';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(-rectW / 2, -rectH / 2, rectW, rectH);
 
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 10px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(`${building.length.toFixed(1)}m × ${building.width.toFixed(1)}m (${Math.round(building.length * building.width)} m²)`, 0, 0);
+        // Ligne de Faîtage en pointillés orange
+        const isAsym = (b.buildingType || '').startsWith('asym') || b.buildingType === 'epona';
+        const ridgeY = isAsym ? (-rectH / 2 + rectH * 0.32) : 0;
+        ctx.beginPath();
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2.5;
+        ctx.moveTo(-rectW / 2, ridgeY);
+        ctx.lineTo(rectW / 2, ridgeY);
+        ctx.stroke();
+        ctx.setLineDash([]);
 
-      ctx.restore();
+        // Badge central de dimensions
+        const badgeW = Math.min(rectW - 6, 140);
+        const badgeH = 26;
+        if (badgeW > 40) {
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+          ctx.beginPath();
+          ctx.roundRect(-badgeW / 2, -badgeH / 2, badgeW, badgeH, 6);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 9px Arial';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`${b.name ? `${b.name} : ` : ''}${bLength.toFixed(1)}m × ${bWidth.toFixed(1)}m`, 0, 0);
+        }
+
+        ctx.restore();
+      });
     }
 
     // 2. Dessin des Bornes IRVE sur le parking
