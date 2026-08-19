@@ -406,13 +406,27 @@ export default function EtudeDossierView({
 
   // Formatage de la date de saisie / première sauvegarde
   const formatSaisieDate = (dateVal) => {
-    if (!dateVal) return '14/08/2026';
+    if (!dateVal) return new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     try {
+      // Si c'est un Timestamp Firestore ou objet avec toDate()
+      if (typeof dateVal === 'object' && dateVal !== null) {
+        if (typeof dateVal.toDate === 'function') {
+          return dateVal.toDate().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+        if (dateVal.seconds || dateVal._seconds) {
+          return new Date((dateVal.seconds || dateVal._seconds) * 1000).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+        if (dateVal.date) {
+          dateVal = dateVal.date;
+        }
+      }
       const d = new Date(dateVal);
-      if (isNaN(d.getTime())) return String(dateVal);
+      if (isNaN(d.getTime())) {
+        return new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      }
       return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     } catch {
-      return String(dateVal);
+      return new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
   };
 
@@ -428,9 +442,10 @@ export default function EtudeDossierView({
   const clientName = `${project?.name || ''} ${project?.firstName || ''}`.trim() || 'Client non renseigné';
   const fullProjectTitle = getFullProjectName(project);
   const powerDisplay = project?.kwc ? (project.kwc.toString().toLowerCase().includes('kwc') ? project.kwc : `${project.kwc} kWc`) : (project?.projectSize ? `${project.projectSize} kWc` : '-');
-  const chefProjetName = project?.assignedUser || project?.chef_projet || project?.chefProjet || project?.project_manager || project?.manager || 'Yann';
-  const commercialName = project?.commercial || project?.commercial_name || project?.salesRep || 'Yann';
-  const dateSaisie = formatSaisieDate(project?.created_at || project?.createdAt || project?.date_creation || project?.dateCreation || project?.creationDate || project?.date || '2026-08-14');
+  const rawChef = project?.assignedUser || project?.chef_projet || project?.chefProjet || project?.project_manager || project?.manager || '';
+  const chefProjetName = (rawChef && rawChef !== 'Contact' && rawChef !== '-') ? rawChef : '-';
+  const commercialName = project?.commercial || project?.commercial_name || project?.salesRep || '';
+  const dateSaisie = formatSaisieDate(project?.created_at || project?.createdAt || project?.date_creation || project?.dateCreation || project?.creationDate || project?.date);
 
   // Extraction propre des références cadastrales (section et numéro séparés)
   const rawSection = project?.cadastre_section || project?.cadastreSection || (project?.cadastre ? project.cadastre.split(' ')[0] : '') || project?.section || '';

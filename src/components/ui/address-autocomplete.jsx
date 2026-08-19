@@ -8,6 +8,7 @@ export function AddressAutocomplete({ value, onChange, onSelect, className, plac
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const containerRef = useRef(null);
+  const isSelectedRef = useRef(false);
 
   // Sync internal query with external value
   useEffect(() => {
@@ -27,9 +28,15 @@ export function AddressAutocomplete({ value, onChange, onSelect, className, plac
 
   // Search logic with debounce
   useEffect(() => {
-    // Only search if query is long enough and not already selected
+    // Ne pas chercher si l'utilisateur vient de cliquer sur une suggestion
+    if (isSelectedRef.current) {
+      return;
+    }
+
+    // Only search if query is long enough
     if (!query || query.length < 3) {
       setSuggestions([]);
+      setIsOpen(false);
       return;
     }
 
@@ -38,9 +45,11 @@ export function AddressAutocomplete({ value, onChange, onSelect, className, plac
       try {
         const res = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`);
         const data = await res.json();
-        setSuggestions(data.features || []);
-        if (data.features?.length > 0) {
-          setIsOpen(true);
+        if (!isSelectedRef.current) {
+          setSuggestions(data.features || []);
+          if (data.features?.length > 0) {
+            setIsOpen(true);
+          }
         }
       } catch (err) {
         console.error("Address search error:", err);
@@ -53,7 +62,8 @@ export function AddressAutocomplete({ value, onChange, onSelect, className, plac
   }, [query]);
 
   const handleSelect = (feature) => {
-    const label = feature.properties.name;
+    const label = feature.properties.name || feature.properties.label;
+    isSelectedRef.current = true;
     setQuery(label);
     setSuggestions([]);
     setIsOpen(false);
@@ -66,11 +76,12 @@ export function AddressAutocomplete({ value, onChange, onSelect, className, plac
         <Input
           value={query}
           onChange={(e) => {
+            isSelectedRef.current = false;
             setQuery(e.target.value);
             onChange?.(e);
           }}
           onFocus={() => {
-            if (suggestions.length > 0) setIsOpen(true);
+            if (!isSelectedRef.current && suggestions.length > 0) setIsOpen(true);
           }}
           className={className}
           placeholder={placeholder}

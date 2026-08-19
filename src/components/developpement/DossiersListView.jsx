@@ -62,12 +62,13 @@ export default function DossiersListView({
 
   // Chef de projet fidèle au CRM (champ assignedUser en priorité)
   const getChefProjet = (p) => {
-    return p.assignedUser || p.chef_projet || p.chefProjet || p.project_manager || p.manager || 'Yann';
+    const chef = p.assignedUser || p.chef_projet || p.chefProjet || p.project_manager || p.manager;
+    return (chef && chef !== 'Contact' && chef !== '-') ? chef : '-';
   };
 
   // Commercial fidèle au CRM
   const getCommercial = (p) => {
-    return p.commercial || p.commercial_name || p.assignedTo || 'Yann';
+    return p.commercial || p.commercial_name || p.assignedTo || '-';
   };
 
   // Toggle du filtre de statut
