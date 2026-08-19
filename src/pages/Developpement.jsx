@@ -451,6 +451,7 @@ export default function Developpement() {
               ) : (
                 <EtudeDossierView
                   project={selectedProject}
+                  allProjects={projects}
                   onBackToDossiers={() => setActiveSection('dossiers')}
                   onOpenUrbanismeWizard={(type) => setUrbanismeModal({ open: true, type })}
                   onOpenEmailMandatement={(type) => setEmailMandatementModal({ open: true, type })}

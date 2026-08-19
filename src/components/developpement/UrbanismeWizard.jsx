@@ -1177,10 +1177,10 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                         </button>
                       </div>
 
-                      {/* Rendu Canvas BuildingScene avec clé unique par onglet et configuration */}
+                      {/* Rendu Canvas BuildingScene avec clé par onglet */}
                       <div className="w-full h-full">
                         <BuildingScene 
-                          key={`bldg-scene-${activeBuildingIndex}-${buildings[activeBuildingIndex]?.buildingType}-${buildings[activeBuildingIndex]?.width}-${buildings[activeBuildingIndex]?.length}-${buildings[activeBuildingIndex]?.bayCount}-${buildings[activeBuildingIndex]?.baySpacing}-${buildings[activeBuildingIndex]?.leftSide}-${buildings[activeBuildingIndex]?.rightSide}`}
+                          key={`bldg-scene-${activeBuildingIndex}`}
                           viewMode={viewMode} 
                         />
                       </div>
