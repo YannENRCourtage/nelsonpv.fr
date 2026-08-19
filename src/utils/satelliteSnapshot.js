@@ -105,6 +105,9 @@ export const generateSatelliteSnapshot = async ({
           const pt = latLngToCanvasPoint(b.lat, b.lng);
           posX = pt.x;
           posY = pt.y;
+        } else if (b.offsetX !== undefined || b.offsetY !== undefined) {
+          posX = canvasCenterX + Number(b.offsetX || 0);
+          posY = canvasCenterY + Number(b.offsetY || 0);
         } else if (buildingList.length > 1) {
           posX = canvasCenterX + (bIdx * (rectW + 40) - ((buildingList.length - 1) * (rectW + 40) / 2));
         }
@@ -133,24 +136,21 @@ export const generateSatelliteSnapshot = async ({
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Badge central de dimensions
-        const badgeW = Math.min(rectW - 6, 140);
-        const badgeH = 26;
-        if (badgeW > 40) {
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
-          ctx.beginPath();
-          ctx.roundRect(-badgeW / 2, -badgeH / 2, badgeW, badgeH, 6);
-          ctx.fill();
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-          ctx.lineWidth = 1;
-          ctx.stroke();
+        // Rond numéroté ①, ②, etc. au centre du bâtiment
+        const circleR = 13;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, circleR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
 
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 9px Arial';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(`${b.name ? `${b.name} : ` : ''}${bLength.toFixed(1)}m × ${bWidth.toFixed(1)}m`, 0, 0);
-        }
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(bIdx + 1), 0, 0);
 
         ctx.restore();
       });

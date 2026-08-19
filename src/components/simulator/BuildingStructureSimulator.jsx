@@ -2,12 +2,12 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { ControlPanel } from '../configurator/ui/ControlPanel.jsx';
-import { useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
+import { useConfiguratorStore, useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
 import {
   Download, Maximize, X, Building2, MapPin, Search,
   ChevronRight, ChevronLeft, Sun, Zap, TrendingUp,
   ShieldCheck, RotateCcw, Compass, CheckCircle2, ArrowRight,
-  Sliders, Loader2, Leaf, Award, RotateCw, Plus, Minus
+  Sliders, Loader2, Leaf, Award, RotateCw, Plus, Minus, Trash2, Copy
 } from 'lucide-react';
 import BuildingScene from '../configurator/BuildingScene.jsx';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Cell } from 'recharts';
@@ -91,9 +91,11 @@ function MapScaleBar() {
 }
 
 // ─── Emprise des bâtiments 100% à l'échelle réelle du terrain selon le zoom ─────
-function ScaledBuildingMapOverlay({ buildings = [], activeIndex = 0 }) {
+function ScaledBuildingMapOverlay({ buildings = [], activeIndex = 0, onBuildingDrag, onSelectBuilding }) {
   const map = useMap();
   const [scale, setScale] = useState(4.6);
+  const [draggingIdx, setDraggingIdx] = useState(null);
+  const dragStartRef = useRef({ x: 0, y: 0, startOffX: 0, startOffY: 0 });
 
   const updateScale = () => {
     const lat = map.getCenter().lat;
@@ -113,6 +115,49 @@ function ScaledBuildingMapOverlay({ buildings = [], activeIndex = 0 }) {
     updateScale();
   }, []);
 
+  const handlePointerDown = (e, idx, b) => {
+    e.stopPropagation();
+    if (onSelectBuilding) onSelectBuilding(idx);
+    setDraggingIdx(idx);
+    const clientX = e.clientX || (e.touches && e.touches[0]?.clientX) || 0;
+    const clientY = e.clientY || (e.touches && e.touches[0]?.clientY) || 0;
+    const wPx = Math.max(20, Number(b.length || 30) * scale);
+    const defaultOffX = Number(b.offsetX !== undefined ? b.offsetX : (buildings.length > 1 ? (idx * (wPx + 40) - ((buildings.length - 1) * (wPx + 40) / 2)) : 0));
+    const defaultOffY = Number(b.offsetY || 0);
+
+    dragStartRef.current = {
+      x: clientX,
+      y: clientY,
+      startOffX: defaultOffX,
+      startOffY: defaultOffY
+    };
+
+    const handlePointerMove = (moveEvt) => {
+      const curX = moveEvt.clientX || (moveEvt.touches && moveEvt.touches[0]?.clientX) || 0;
+      const curY = moveEvt.clientY || (moveEvt.touches && moveEvt.touches[0]?.clientY) || 0;
+      const deltaX = curX - dragStartRef.current.x;
+      const deltaY = curY - dragStartRef.current.y;
+      const newOffX = dragStartRef.current.startOffX + deltaX;
+      const newOffY = dragStartRef.current.startOffY + deltaY;
+      if (onBuildingDrag) {
+        onBuildingDrag(idx, newOffX, newOffY);
+      }
+    };
+
+    const handlePointerUp = () => {
+      setDraggingIdx(null);
+      window.removeEventListener('mousemove', handlePointerMove);
+      window.removeEventListener('mouseup', handlePointerUp);
+      window.removeEventListener('touchmove', handlePointerMove);
+      window.removeEventListener('touchend', handlePointerUp);
+    };
+
+    window.addEventListener('mousemove', handlePointerMove);
+    window.addEventListener('mouseup', handlePointerUp);
+    window.addEventListener('touchmove', handlePointerMove);
+    window.addEventListener('touchend', handlePointerUp);
+  };
+
   return (
     <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[1000]">
       {buildings.map((b, idx) => {
@@ -123,39 +168,37 @@ function ScaledBuildingMapOverlay({ buildings = [], activeIndex = 0 }) {
         const hPx = Math.max(15, bWidth * scale);
         const isAsym = (b.buildingType || '').startsWith('asym') || b.buildingType === 'epona';
         const isActive = idx === activeIndex;
-        const offX = Number(b.offsetX || (buildings.length > 1 ? (idx * (wPx + 40) - ((buildings.length - 1) * (wPx + 40) / 2)) : 0));
+        const offX = Number(b.offsetX !== undefined ? b.offsetX : (buildings.length > 1 ? (idx * (wPx + 40) - ((buildings.length - 1) * (wPx + 40) / 2)) : 0));
         const offY = Number(b.offsetY || 0);
 
         return (
           <div
             key={b.id || idx}
-            className={`absolute border-2 transition-all flex items-center justify-center ${
+            onMouseDown={(e) => handlePointerDown(e, idx, b)}
+            onTouchStart={(e) => handlePointerDown(e, idx, b)}
+            className={`absolute border-2 transition-all flex items-center justify-center pointer-events-auto cursor-grab active:cursor-grabbing select-none ${
               isActive
                 ? 'border-blue-400 bg-blue-600/40 shadow-2xl ring-2 ring-amber-400'
-                : 'border-cyan-300 bg-cyan-600/30 shadow-lg'
+                : 'border-cyan-300 bg-cyan-600/30 shadow-lg hover:border-blue-300 hover:bg-blue-600/30'
             }`}
             style={{
               width: `${wPx}px`,
               height: `${hPx}px`,
-              transform: `translate(${offX}px, ${offY}px) rotate(${bRot}deg)`
+              transform: `translate(${offX}px, ${offY}px) rotate(${bRot}deg)`,
+              transition: draggingIdx === idx ? 'none' : 'border 0.2s, box-shadow 0.2s'
             }}
           >
             {/* Faîtage pointillé orange */}
             <div
-              className="absolute inset-x-0 border-t-2 border-dashed border-amber-400 -translate-y-1/2"
+              className="absolute inset-x-0 border-t-2 border-dashed border-amber-400 -translate-y-1/2 pointer-events-none"
               style={{
                 top: isAsym ? '32%' : '50%'
               }}
             />
             
-            {/* Badge de dimensions */}
-            <div className="bg-slate-900/90 text-white px-2 py-0.5 rounded-lg border border-white/20 text-center shadow-lg pointer-events-none transform scale-90">
-              <span className="font-bold text-[10px] block whitespace-nowrap">
-                {b.name || `Bâtiment ${idx + 1}`} : {bLength.toFixed(1)}m × {bWidth.toFixed(1)}m
-              </span>
-              <span className="text-[8.5px] text-slate-300 block whitespace-nowrap">
-                {Math.round(bLength * bWidth)} m²
-              </span>
+            {/* Rond avec le numéro du bâtiment ①, ②, etc. */}
+            <div className="w-7 h-7 rounded-full bg-white text-slate-900 font-black text-xs border-2 border-slate-900 flex items-center justify-center shadow-xl pointer-events-none z-10">
+              {idx + 1}
             </div>
           </div>
         );
@@ -262,21 +305,51 @@ export default function BuildingStructureSimulator({
     + (config.leftSide !== 'none' ? (config.leftWidth || 0) : 0)
     + (config.rightSide !== 'none' ? (config.rightWidth || 0) : 0)) || 18.6;
 
-  // Synchronisation du Bâtiment 1 avec le configurateur 3D
+  // Synchronisation continue du bâtiment actif avec le configurateur 3D
   useEffect(() => {
     setSimBuildings(prev => {
       const next = [...prev];
-      if (next[0]) {
-        next[0] = {
-          ...next[0],
+      if (next[activeBuildingIdx]) {
+        next[activeBuildingIdx] = {
+          ...next[activeBuildingIdx],
           length: buildingLength,
           width: buildingWidth,
-          buildingType: config.buildingType || 'symetrique'
+          buildingType: config.buildingType || 'symetrique',
+          bayCount: config.bayCount,
+          baySpacing: config.baySpacing,
+          eaveHeight: config.eaveHeight,
+          roofPitch: config.roofPitch,
+          leftSide: config.leftSide,
+          rightSide: config.rightSide,
+          leftWidth: config.leftWidth,
+          rightWidth: config.rightWidth,
+          hasSolar: config.hasSolar
         };
       }
       return next;
     });
-  }, [buildingLength, buildingWidth, config.buildingType]);
+  }, [
+    buildingLength, buildingWidth, config.buildingType, config.bayCount,
+    config.baySpacing, config.eaveHeight, config.roofPitch, config.leftSide,
+    config.rightSide, config.leftWidth, config.rightWidth, config.hasSolar,
+    activeBuildingIdx
+  ]);
+
+  const captureCurrentBuilding3d = () => {
+    if (canvasRef.current) {
+      try {
+        const dataUrl = canvasRef.current.toDataURL('image/png');
+        if (dataUrl) {
+          setBuilding3dSnapshot(dataUrl);
+          setSimBuildings(prev => {
+            const upd = [...prev];
+            if (upd[activeBuildingIdx]) upd[activeBuildingIdx] = { ...upd[activeBuildingIdx], screenshot3d: dataUrl };
+            return upd;
+          });
+        }
+      } catch (e) {}
+    }
+  };
 
   // Calcul du libellé d'orientation exact en fonction de la rotation en degrés
   const getOrientationLabel = (rotDeg) => {
@@ -309,41 +382,69 @@ export default function BuildingStructureSimulator({
     return 'Plein Sud';
   };
 
+  const handleSelectBuilding = (index) => {
+    if (index === activeBuildingIdx || !simBuildings[index]) return;
+    captureCurrentBuilding3d();
+    setActiveBuildingIdx(index);
+    const target = simBuildings[index];
+    useConfiguratorStore.getState().loadBuildingConfig(target);
+  };
+
   const handleAddBuilding = () => {
+    captureCurrentBuilding3d();
     const nextIdx = simBuildings.length + 1;
-    const offset = simBuildings.length * 60;
+    const offset = (simBuildings.length * 60) - (simBuildings.length * 30);
     const newB = {
-      id: Date.now(),
+      id: `bat-${nextIdx}-${Date.now()}`,
       name: `Bâtiment ${nextIdx}`,
       length: 30,
       width: 20,
       rotation: 0,
-      buildingType: 'symetrique',
+      buildingType: 'asymetrique_1',
       offsetX: offset,
-      offsetY: 0
+      offsetY: 0,
+      bayCount: 5,
+      baySpacing: 6,
+      eaveHeight: 4,
+      roofPitch: 15,
+      leftSide: 'none',
+      rightSide: 'none',
+      leftWidth: 0,
+      rightWidth: 0,
+      hasSolar: true
     };
-    setSimBuildings(prev => [...prev, newB]);
-    setActiveBuildingIdx(simBuildings.length);
+    const updated = [...simBuildings, newB];
+    setSimBuildings(updated);
+    setActiveBuildingIdx(updated.length - 1);
+    useConfiguratorStore.getState().loadBuildingConfig(newB);
   };
 
   const handleDuplicateBuilding = () => {
+    captureCurrentBuilding3d();
     const current = simBuildings[activeBuildingIdx] || simBuildings[0];
     const nextIdx = simBuildings.length + 1;
     const newB = {
       ...current,
-      id: Date.now(),
+      id: `bat-${nextIdx}-${Date.now()}`,
       name: `Bâtiment ${nextIdx}`,
-      offsetX: (current.offsetX || 0) + 80,
-      offsetY: (current.offsetY || 0) + 40
+      offsetX: (current.offsetX || 0) + 60,
+      offsetY: (current.offsetY || 0) + 30
     };
-    setSimBuildings(prev => [...prev, newB]);
-    setActiveBuildingIdx(simBuildings.length);
+    const updated = [...simBuildings, newB];
+    setSimBuildings(updated);
+    setActiveBuildingIdx(updated.length - 1);
+    useConfiguratorStore.getState().loadBuildingConfig(newB);
   };
 
-  const handleRemoveBuilding = (idx) => {
+  const handleRemoveBuilding = (idx, e) => {
+    if (e) e.stopPropagation();
     if (simBuildings.length <= 1) return;
-    setSimBuildings(prev => prev.filter((_, i) => i !== idx));
-    setActiveBuildingIdx(Math.max(0, idx - 1));
+    const updated = simBuildings.filter((_, i) => i !== idx);
+    setSimBuildings(updated);
+    setActiveBuildingIdx(0);
+    if (updated[0]) {
+      useConfiguratorStore.getState().loadBuildingConfig(updated[0]);
+    }
   };
 
   const handleUpdateActiveBuilding = (updates) => {
@@ -634,6 +735,63 @@ export default function BuildingStructureSimulator({
       {activeView === 'configurator' && (
         <div className="space-y-4">
           
+          {/* Barre d'onglets multi-bâtiments (identique à l'étape Cotations & Côtes) */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 bg-white rounded-2xl border border-slate-200 shadow-xs">
+            <div className="flex items-center gap-2 overflow-x-auto py-0.5 max-w-full">
+              <span className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5 px-1 shrink-0">
+                <Building2 className="w-4 h-4 text-blue-600" /> Bâtiments :
+              </span>
+              {simBuildings.map((b, idx) => (
+                <div key={b.id || idx} className="flex items-center shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectBuilding(idx)}
+                    className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all flex items-center gap-1.5 border shadow-2xs ${
+                      activeBuildingIdx === idx
+                        ? 'bg-[#0e2b4d] text-white border-slate-800 shadow-sm'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>{b.name || `Bâtiment ${idx + 1}`}</span>
+                    <span className="text-[10px] opacity-75">
+                      ({Number(b.length || 30).toFixed(1)}m × {Number(b.width || 20).toFixed(1)}m)
+                    </span>
+                  </button>
+                  {simBuildings.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleRemoveBuilding(idx, e)}
+                      className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors ml-0.5"
+                      title="Supprimer ce bâtiment"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleDuplicateBuilding}
+                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs transition-all"
+                title="Dupliquer le bâtiment actuel"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Dupliquer</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleAddBuilding}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Ajouter un bâtiment</span>
+              </button>
+            </div>
+          </div>
+
           {/* Visionneuse 3D et Panneau de Contrôle Pleine Largeur */}
           <div className="w-full h-[580px] bg-gradient-to-b from-slate-50 to-slate-200 relative flex flex-col lg:flex-row overflow-hidden rounded-3xl border border-slate-200 shadow-xl">
             
@@ -1012,16 +1170,13 @@ export default function BuildingStructureSimulator({
                                   ? 'bg-[#0e2b4d] text-white shadow-md'
                                   : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
                               }`}
-                              onClick={() => setActiveBuildingIdx(idx)}
+                              onClick={() => handleSelectBuilding(idx)}
                             >
                               <span>{b.name || `Bâtiment ${idx + 1}`}</span>
                               {simBuildings.length > 1 && (
                                 <button
                                   type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleRemoveBuilding(idx);
-                                  }}
+                                  onClick={(e) => handleRemoveBuilding(idx, e)}
                                   className="ml-1 text-red-400 hover:text-red-600 p-0.5"
                                   title="Supprimer ce bâtiment"
                                 >
@@ -1164,6 +1319,18 @@ export default function BuildingStructureSimulator({
                         <ScaledBuildingMapOverlay
                           buildings={simBuildings}
                           activeIndex={activeBuildingIdx}
+                          onBuildingDrag={(idx, offX, offY) => {
+                            setSimBuildings(prev => {
+                              const next = [...prev];
+                              if (next[idx]) next[idx] = { ...next[idx], offsetX: offX, offsetY: offY };
+                              return next;
+                            });
+                          }}
+                          onSelectBuilding={(idx) => {
+                            setActiveBuildingIdx(idx);
+                            const target = simBuildings[idx];
+                            if (target) useConfiguratorStore.getState().loadBuildingConfig(target);
+                          }}
                         />
                         <TileLayer
                           url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"

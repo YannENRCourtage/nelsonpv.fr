@@ -1513,55 +1513,101 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             </span>
                           </div>
 
-                          {/* Contrôle de Rotation libre du bâtiment sur la carte */}
-                          <div className="flex items-center justify-between gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200 text-xs shadow-2xs">
-                            <div className="flex items-center gap-1.5 font-bold text-slate-700">
-                              <Compass className="w-3.5 h-3.5 text-blue-600" />
-                              <span>Rotation :</span>
-                              <span className="text-blue-600 font-extrabold">{currentRotation}°</span>
+                          {/* Contrôle de Rotation du bâtiment identique au simulateur */}
+                          <div className="bg-white px-3.5 py-3 rounded-2xl border border-slate-200 text-xs shadow-2xs space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                                <Compass className="w-4 h-4 text-blue-600" />
+                                Orientation ({b.name || `Bâtiment ${bIdx + 1}`})
+                              </span>
+                              <span className="text-blue-600 font-black text-sm">
+                                {currentRotation}°
+                              </span>
                             </div>
 
-                            <div className="flex items-center gap-2 flex-1 max-w-[180px]">
-                              <input
-                                type="range"
-                                min="0"
-                                max="360"
-                                step="5"
-                                value={currentRotation}
-                                onChange={(e) => {
-                                  const val = Number(e.target.value);
+                            <input
+                              type="range"
+                              min="-90"
+                              max="90"
+                              step="1"
+                              value={currentRotation}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                setBuildings(prev => {
+                                  const upd = [...prev];
+                                  if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: val };
+                                  return upd;
+                                });
+                              }}
+                              className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                            />
+
+                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-2 text-center text-xs font-bold text-blue-900 shadow-2xs">
+                              {(() => {
+                                const r = Number(currentRotation) || 0;
+                                const norm = ((((r + 180) % 360) + 360) % 360) - 180;
+                                if (norm === 0) return 'Plein Sud (0°)';
+                                if (Math.abs(norm) >= 135) return `Nord (${r > 0 ? `+${r}` : r}°)`;
+                                if (norm > 45) {
+                                  if (norm >= 85 && norm <= 95) return `Plein Ouest (+${r}°)`;
+                                  return `Ouest (+${r}°)`;
+                                }
+                                if (norm > 0 && norm <= 45) return `Sud-Ouest (+${r}°)`;
+                                if (norm < -45) {
+                                  if (norm <= -85 && norm >= -95) return `Plein Est (${r}°)`;
+                                  return `Est (${r}°)`;
+                                }
+                                if (norm < 0 && norm >= -45) return `Sud-Est (${r}°)`;
+                                return `Plein Sud (0°)`;
+                              })()}
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
                                   setBuildings(prev => {
                                     const upd = [...prev];
-                                    if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: val };
+                                    if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: 45 };
                                     return upd;
                                   });
                                 }}
-                                className="w-full accent-blue-600 cursor-pointer"
-                              />
-                            </div>
-
-                            <div className="flex items-center gap-1">
-                              {[-90, 0, 45, 90, 180].map((deg) => (
-                                <button
-                                  key={deg}
-                                  type="button"
-                                  onClick={() => {
-                                    const newRot = (deg + 360) % 360;
-                                    setBuildings(prev => {
-                                      const upd = [...prev];
-                                      if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: newRot };
-                                      return upd;
-                                    });
-                                  }}
-                                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                    currentRotation === ((deg + 360) % 360)
-                                      ? 'bg-blue-600 text-white'
-                                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                  }`}
-                                >
-                                  {deg > 0 ? `+${deg}°` : `${deg}°`}
-                                </button>
-                              ))}
+                                className={`py-1.5 rounded-xl text-xs font-black transition-all border ${
+                                  currentRotation === 45 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                Sud-Ouest (45°)
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setBuildings(prev => {
+                                    const upd = [...prev];
+                                    if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: 0 };
+                                    return upd;
+                                  });
+                                }}
+                                className={`py-1.5 rounded-xl text-xs font-black transition-all border ${
+                                  currentRotation === 0 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                Sud (0°)
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setBuildings(prev => {
+                                    const upd = [...prev];
+                                    if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: -45 };
+                                    return upd;
+                                  });
+                                }}
+                                className={`py-1.5 rounded-xl text-xs font-black transition-all border ${
+                                  currentRotation === -45 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                Sud-Est (-45°)
+                              </button>
                             </div>
                           </div>
 
