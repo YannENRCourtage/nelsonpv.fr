@@ -112,50 +112,69 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
             const rectW = Math.max(30, bLength * pxPerMeter);
             const rectH = Math.max(20, bWidth * pxPerMeter);
 
-            // Calcul de la position exacte du bâtiment s'il a ses propres coordonnées GPS
+            // Calcul de la position exacte du bâtiment
             let bPixelX = mx;
             let bPixelY = my;
 
-            const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null));
-            const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null));
+            if (bList.length > 1) {
+              const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null));
+              const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null));
 
-            if (bLat && bLng && !isNaN(bLat) && !isNaN(bLng)) {
-              const bRad = (bLat * Math.PI) / 180;
-              const bExactX = ((bLng + 180) / 360) * n;
-              const bExactY = ((1 - Math.log(Math.tan(bRad) + 1 / Math.cos(bRad)) / Math.PI) / 2) * n;
-              bPixelX = centerX + (bExactX - exactX) * tileSize;
-              bPixelY = centerY + (bExactY - exactY) * tileSize;
-            } else if (bList.length > 1) {
-              bPixelX = mx + (bIdx * 80 - ((bList.length - 1) * 40));
+              if (bLat && bLng && !isNaN(bLat) && !isNaN(bLng)) {
+                const bRad = (bLat * Math.PI) / 180;
+                const bExactX = ((bLng + 180) / 360) * n;
+                const bExactY = ((1 - Math.log(Math.tan(bRad) + 1 / Math.cos(bRad)) / Math.PI) / 2) * n;
+                bPixelX = centerX + (bExactX - exactX) * tileSize;
+                bPixelY = centerY + (bExactY - exactY) * tileSize;
+              } else {
+                bPixelX = mx + (bIdx * 80 - ((bList.length - 1) * 40));
+              }
             }
 
             ctx.save();
             ctx.translate(bPixelX, bPixelY);
             ctx.rotate((bRot * Math.PI) / 180);
 
-            // Emprise au sol colorée
-            ctx.fillStyle = 'rgba(239, 68, 68, 0.3)';
+            // Emprise au sol colorée fidèle à l'interface PC2
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.22)';
             ctx.fillRect(-rectW / 2, -rectH / 2, rectW, rectH);
-            ctx.strokeStyle = '#dc2626';
-            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2;
             ctx.strokeRect(-rectW / 2, -rectH / 2, rectW, rectH);
 
-            // Faîtage médian
+            // Faîtage médian en pointillés discrets
             ctx.beginPath();
             ctx.setLineDash([4, 3]);
             ctx.strokeStyle = '#f59e0b';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 1.5;
             ctx.moveTo(-rectW / 2, 0);
             ctx.lineTo(rectW / 2, 0);
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // Dimensions et libellé
-            ctx.fillStyle = '#991b1b';
-            ctx.font = 'bold 10px sans-serif';
+            // Badge central blanc avec libellé du bâtiment (style identique à l'étape PC2)
+            const badgeText = `${b.name || `Bâtiment ${bIdx + 1}`} (${bRot}°)`;
+            ctx.font = 'bold 9.5px sans-serif';
+            const metrics = ctx.measureText(badgeText);
+            const badgeW = metrics.width + 10;
+            const badgeH = 16;
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
+            ctx.strokeStyle = '#fca5a5';
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            if (ctx.roundRect) {
+              ctx.roundRect(-badgeW / 2, -badgeH / 2, badgeW, badgeH, 3);
+            } else {
+              ctx.rect(-badgeW / 2, -badgeH / 2, badgeW, badgeH);
+            }
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#7f1d1d';
             ctx.textAlign = 'center';
-            ctx.fillText(`${b.name || `Bâtiment ${bIdx + 1}`}`, 0, -rectH / 2 - 5);
-            ctx.fillText(`${bLength.toFixed(1)}m × ${bWidth.toFixed(1)}m`, 0, 4);
+            ctx.textBaseline = 'middle';
+            ctx.fillText(badgeText, 0, 0);
 
             ctx.restore();
           });

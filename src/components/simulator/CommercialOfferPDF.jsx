@@ -219,17 +219,17 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   // HTML conditionnel selon la solution
   const resolveOrientationName = (simObj) => {
     if (simObj?.orientationLabel) {
-      return simObj.orientationLabel.replace(/\s*\([^)]*\)/, '').trim();
+      return simObj.orientationLabel;
     }
     const r = Number(simObj?.rotation !== undefined ? simObj.rotation : (simObj?.buildings && simObj.buildings[0] && simObj.buildings[0].rotation !== undefined ? simObj.buildings[0].rotation : 0));
     const norm = ((((Number(r) + 180) % 360) + 360) % 360) - 180;
-    if (norm === 0) return 'Plein Sud';
-    if (Math.abs(norm) >= 135) return 'Nord';
-    if (norm > 45) return 'Ouest';
-    if (norm > 0 && norm <= 45) return 'Sud-Ouest';
-    if (norm < -45) return 'Est';
-    if (norm < 0 && norm >= -45) return 'Sud-Est';
-    return 'Plein Sud';
+    if (norm === 0) return 'Plein Sud (0°)';
+    if (Math.abs(norm) >= 135) return `Nord (${r > 0 ? `+${r}` : r}°)`;
+    if (norm > 45) return `Ouest (+${r}°)`;
+    if (norm > 0 && norm <= 45) return `Sud-Ouest (+${r}°)`;
+    if (norm < -45) return `Est (${r}°)`;
+    if (norm < 0 && norm >= -45) return `Sud-Est (${r}°)`;
+    return 'Plein Sud (0°)';
   };
 
   let technicalHypothesesHtml = '';
@@ -241,7 +241,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
     const sellKwh = purchaseKwh + marginKwh;
 
     technicalHypothesesHtml = `
-      <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 7px 12px; margin-bottom: 10px;">
+      <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 7px 12px; margin-top: 10px; margin-bottom: 10px;">
         <div style="font-size: 8pt; font-weight: 800; color: #059669; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px;">
           Paramètres du Site &amp; Bornes IRVE
         </div>
@@ -270,7 +270,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   } else if (isToiture || isStruct) {
     // Cadre Toiture / Structure SANS "Taux d'autoconsommation" ni "Gisement régional", avec Puissance installée
     technicalHypothesesHtml = `
-      <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 7px 12px; margin-bottom: 10px;">
+      <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 7px 12px; margin-top: 10px; margin-bottom: 10px;">
         <div style="font-size: 8pt; font-weight: 800; color: #00429d; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px;">
           Hypothèses Techniques de Dimensionnement
         </div>
@@ -287,7 +287,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               ${sim.annualProductionKwh ? `${sim.annualProductionKwh.toLocaleString('fr-FR')} kWh / an` : '7 125 kWh / an'}
             </td>
             <td style="padding: 2px 0 2px 15px; color: #64748b;">Orientation / Pente :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${resolveOrientationName(sim)} (${sim.pitch || 15}°)</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${resolveOrientationName(sim)}</td>
           </tr>
         </table>
       </div>
@@ -295,7 +295,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   } else {
     // Autoconsommation standard avec Puissance installée
     technicalHypothesesHtml = `
-      <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 7px 12px; margin-bottom: 10px;">
+      <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 7px 12px; margin-top: 10px; margin-bottom: 10px;">
         <div style="font-size: 8pt; font-weight: 800; color: #00429d; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px;">
           Hypothèses Techniques de Dimensionnement
         </div>
@@ -312,7 +312,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               ${sim.annualProductionKwh ? `${sim.annualProductionKwh.toLocaleString('fr-FR')} kWh / an` : '7 125 kWh / an'}
             </td>
             <td style="padding: 2px 0 2px 15px; color: #64748b;">Orientation / Inclinaison :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${resolveOrientationName(sim)} (${sim.pitch || 30}°)</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${resolveOrientationName(sim)}</td>
           </tr>
           <tr>
             <td style="padding: 2px 0; color: #64748b;">Taux d'autoconsommation :</td>

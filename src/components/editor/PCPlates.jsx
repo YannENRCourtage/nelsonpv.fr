@@ -320,6 +320,14 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
         } else if (Math.abs(largeur - 20) < 0.8) {
             ridgeHeight = 8.40;
             leftEaveHeight = 7.40;
+        } else if (Math.abs(largeur - 25.5) < 0.8) {
+            ridgeHeight = 8.90;
+            leftEaveHeight = 6.90;
+            rightEaveHeight = 4.00;
+        } else if (Math.abs(largeur - 29.1) < 0.8) {
+            ridgeHeight = 9.80;
+            leftEaveHeight = 7.90;
+            rightEaveHeight = 4.00;
         } else {
             ridgeHeight = rightEaveHeight + (largeur * 0.75 * Math.tan((pente * Math.PI) / 180));
             leftEaveHeight = Math.max(3.0, ridgeHeight - (largeur * 0.25 * Math.tan((pente * Math.PI) / 180)));
@@ -473,6 +481,14 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                         const py = apexSvgY + (rightEaveSvgY - apexSvgY) * ratio;
                                         return <line key={idx} x1={px} y1={py - 8} x2={px} y2={py - 2} stroke="#93c5fd" strokeWidth="1" />;
                                     })}
+
+                                     {/* Poteau intermédiaire pour asymétrique 2 zones */}
+                                     {rawType.includes('asymetrique_2') && (
+                                         <>
+                                             <rect x="294" y={apexSvgY + (rightEaveSvgY - apexSvgY) * 0.32} width="8" height={groundYLeft + (groundYRight - groundYLeft) * 0.46 - (apexSvgY + (rightEaveSvgY - apexSvgY) * 0.32)} fill="#334155" />
+                                             <text x="298" y={groundYLeft + (groundYRight - groundYLeft) * 0.46 + 10} textAnchor="middle" fill="#64748b" fontSize="6" fontStyle="italic">Poteau intermédiaire</text>
+                                         </>
+                                     )}
 
                                     {/* Auvent */}
                                     {hasAuvent && hasAuventRight && (

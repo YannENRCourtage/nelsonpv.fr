@@ -245,6 +245,14 @@ export const PlateCoupe = ({ project }) => {
         } else if (Math.abs(largeur - 20) < 0.8) {
             ridgeHeight = 8.40;
             leftEaveHeight = 7.40;
+        } else if (Math.abs(largeur - 25.5) < 0.8) {
+            ridgeHeight = 8.90;
+            leftEaveHeight = 6.90;
+            rightEaveHeight = 4.00;
+        } else if (Math.abs(largeur - 29.1) < 0.8) {
+            ridgeHeight = 9.80;
+            leftEaveHeight = 7.90;
+            rightEaveHeight = 4.00;
         } else {
             ridgeHeight = rightEaveHeight + (largeur * 0.75 * Math.tan((pente * Math.PI) / 180));
             leftEaveHeight = Math.max(3.0, ridgeHeight - (largeur * 0.25 * Math.tan((pente * Math.PI) / 180)));
