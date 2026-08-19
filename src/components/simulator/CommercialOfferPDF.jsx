@@ -376,7 +376,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
 
         <!-- 4. VISUELS : VUE 3D CONFIGURATEUR ET/OU PLAN SATELLITE -->
         ${isStruct ? `
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; height: 260px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; ${sim.buildings && sim.buildings.length > 1 ? 'height: 280px;' : 'height: 260px;'}">
             <!-- 4a. VISUEL(S) 3D DU/DES BÂTIMENT(S) -->
             ${sim.buildings && sim.buildings.length > 1 ? `
               <div style="display: grid; grid-template-rows: 1fr 1fr; gap: 6px; height: 100%;">
@@ -437,12 +437,12 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
         `}
 
-        <!-- 5. GRAPHIQUE FINANCIER D'AMORTISSEMENT (+10% HAUTEUR : 225px) -->
+        <!-- 5. GRAPHIQUE FINANCIER D'AMORTISSEMENT -->
         <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; margin-bottom: 8px;">
           <div style="font-size: 8pt; font-weight: 800; color: #00429d; text-transform: uppercase; margin-bottom: 2px;">
             Projection Financière des Gains Cumulés (30 ans)
           </div>
-          <div style="height: 225px; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <div style="height: ${isStruct && sim.buildings && sim.buildings.length > 1 ? '195px' : '225px'}; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
             <img src="${financialChartImg}" style="width: 100%; height: 100%; object-fit: contain;" alt="Graphique Amortissement" />
           </div>
 
@@ -465,7 +465,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
         </div>
 
-        <!-- 6. ZONE VOTRE IMPACT SUR L'ENVIRONNEMENT (+10% HAUTEUR) -->
+        <!-- 6. ZONE VOTRE IMPACT SUR L'ENVIRONNEMENT -->
         <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: 9px 12px; margin-bottom: 4px;">
           <div style="font-size: 8pt; font-weight: 800; color: #166534; text-transform: uppercase; margin-bottom: 5px;">
             🌱 Votre Impact sur l'Environnement
@@ -531,8 +531,49 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const imgProps = pdf.getImageProperties(imgData);
+    
+    // Calculer la hauteur réelle de l'image en mm proportionnellement à la largeur A4
+    const imgHeightMm = (imgProps.height * pdfWidth) / imgProps.width;
 
-    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    if (imgHeightMm <= pdfHeight + 2) {
+      // Le contenu tient sur une seule page
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    } else {
+      // Multi-page : découper l'image en tranches de hauteur pdfHeight
+      const totalPages = Math.ceil(imgHeightMm / pdfHeight);
+      const srcSliceHeight = imgProps.height / totalPages;
+      
+      for (let page = 0; page < totalPages; page++) {
+        if (page > 0) pdf.addPage();
+        
+        // Créer un canvas temporaire pour chaque tranche
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = imgProps.width;
+        sliceCanvas.height = Math.ceil(srcSliceHeight);
+        const sliceCtx = sliceCanvas.getContext('2d');
+        
+        // Remplir le fond blanc
+        sliceCtx.fillStyle = '#ffffff';
+        sliceCtx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+        
+        // Dessiner la tranche depuis le canvas source
+        const srcImg = new Image();
+        srcImg.src = imgData;
+        await new Promise(r => { srcImg.onload = r; if (srcImg.complete) r(); });
+        
+        sliceCtx.drawImage(
+          srcImg,
+          0, Math.floor(page * srcSliceHeight),  // sx, sy
+          imgProps.width, Math.ceil(srcSliceHeight),  // sWidth, sHeight
+          0, 0,  // dx, dy
+          sliceCanvas.width, sliceCanvas.height  // dWidth, dHeight
+        );
+        
+        const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+        pdf.addImage(sliceData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      }
+    }
 
     const safeTitle = (sim.title || 'Offre_Commerciale_NELSON').replace(/[^a-zA-Z0-9_-]/g, '_');
     pdf.save(`${safeTitle}_${new Date().toISOString().split('T')[0]}.pdf`);

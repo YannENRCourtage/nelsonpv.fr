@@ -240,7 +240,7 @@ export const PlateCoupe = ({ project }) => {
     const isOmbriere = rawType.includes('ombriere');
     const isMonopente = rawType.includes('monopente');
     const isSym = rawType.includes('symetrique') && !rawType.includes('asym');
-    const isAsym2 = rawType.includes('asymetrique_2') || Math.abs(largeur - 25.5) < 0.8 || Math.abs(largeur - 29.1) < 0.8;
+    const isAsym2 = rawType.includes('asymetrique_2') || (!isSym && (Math.abs(largeur - 25.5) < 0.8 || Math.abs(largeur - 29.1) < 0.8));
     const isAsym = (!isOmbriere && !isMonopente && !isSym) || rawType.includes('asym');
 
     // Détection des extensions (Auvent / Appentis)
@@ -252,23 +252,23 @@ export const PlateCoupe = ({ project }) => {
     const hasAppentisRight = Boolean(project?.rightSide === 'appentis' || (project?.appentis && project?.appentis !== 'none' && project?.appentis !== false));
     const hasExtRight = hasAuventRight || hasAppentisRight;
 
-    // Dimensions extensions
-    const extRightWidth = hasAppentisRight ? (Number(project?.rightWidth) || 9.3) : (hasAuventRight ? 4.0 : 0);
-    const extLeftWidth = hasAppentisLeft ? (Number(project?.leftWidth) || 9.3) : (hasAuventLeft ? 4.0 : 0);
+    // Dimensions extensions — lire les valeurs exactes du projet (sauvegardées par le configurateur)
+    const extRightWidth = hasAppentisRight ? (Number(project?.rightWidth) || 9.3) : (hasAuventRight ? (Number(project?.rightWidth) || 4.0) : 0);
+    const extLeftWidth = hasAppentisLeft ? (Number(project?.leftWidth) || 9.3) : (hasAuventLeft ? (Number(project?.leftWidth) || 4.0) : 0);
 
-    // Calculs dimensionnels exacts fidèles au configurateur 3D
+    // Calculs dimensionnels FIDÈLES au configurateur 3D — priorité absolue aux valeurs du projet
     let rightEaveHeight = 4.00;
     let ridgeHeight = 7.40;
     let leftEaveHeight = 6.40;
-    let effectivePitch = isOmbriere ? 10 : (isSym ? 10 : (isAsym || isMonopente ? 15 : pente));
+    let effectivePitch = pente || 10;
 
     if (isOmbriere) {
-        effectivePitch = 10;
+        effectivePitch = pente || 10;
         if (rawType.includes('pl')) {
             if (Math.abs(largeur - 15.8) < 0.8) { rightEaveHeight = 6.00; ridgeHeight = 7.90; leftEaveHeight = 7.90; }
             else if (Math.abs(largeur - 20.2) < 0.8) { rightEaveHeight = 6.50; ridgeHeight = 9.30; leftEaveHeight = 9.30; }
             else if (Math.abs(largeur - 24.6) < 0.8) { rightEaveHeight = 7.00; ridgeHeight = 9.30; leftEaveHeight = 9.30; }
-            else { rightEaveHeight = 6.00; ridgeHeight = 6.00 + largeur * Math.tan(10 * Math.PI / 180); leftEaveHeight = ridgeHeight; }
+            else { rightEaveHeight = 6.00; ridgeHeight = 6.00 + largeur * Math.tan(effectivePitch * Math.PI / 180); leftEaveHeight = ridgeHeight; }
         } else if (rawType.includes('simple')) {
             rightEaveHeight = 2.93;
             ridgeHeight = 4.10;
@@ -278,49 +278,22 @@ export const PlateCoupe = ({ project }) => {
             else { rightEaveHeight = 3.00; ridgeHeight = 4.60; leftEaveHeight = 4.60; }
         }
     } else if (isMonopente) {
-        effectivePitch = 15;
-        rightEaveHeight = 4.00;
-        if (Math.abs(largeur - 12.7) < 0.8) { ridgeHeight = 7.40; leftEaveHeight = 7.40; }
-        else if (Math.abs(largeur - 16.4) < 0.8) { ridgeHeight = 8.40; leftEaveHeight = 8.40; }
-        else { ridgeHeight = rightEaveHeight + largeur * Math.tan(15 * Math.PI / 180); leftEaveHeight = ridgeHeight; }
-    } else if (isAsym) {
-        effectivePitch = 15;
-        rightEaveHeight = 4.00;
-        if (Math.abs(largeur - 16.4) < 0.8 || Math.abs(largeur - 16) < 0.8) {
-            ridgeHeight = 7.40;
-            leftEaveHeight = 6.40;
-        } else if (Math.abs(largeur - 20) < 0.8) {
-            ridgeHeight = 8.40;
-            leftEaveHeight = 7.40;
-        } else if (Math.abs(largeur - 25.5) < 0.8) {
-            ridgeHeight = 8.90;
-            leftEaveHeight = 6.90;
-        } else if (Math.abs(largeur - 29.1) < 0.8) {
-            ridgeHeight = 9.80;
-            leftEaveHeight = 7.90;
-        } else {
-            ridgeHeight = rightEaveHeight + (largeur * 0.75 * Math.tan(15 * Math.PI / 180));
-            leftEaveHeight = Math.max(3.0, ridgeHeight - (largeur * 0.25 * Math.tan(15 * Math.PI / 180)));
-        }
+        effectivePitch = pente || 15;
+        rightEaveHeight = hauteurEgout || 4.00;
+        ridgeHeight = rightEaveHeight + largeur * Math.tan(effectivePitch * Math.PI / 180);
+        leftEaveHeight = ridgeHeight;
+    } else if (isSym) {
+        // Symétrique : hauteur d'égout identique des deux côtés, calculée depuis le projet
+        effectivePitch = pente || 10;
+        leftEaveHeight = hauteurEgout || 5.50;
+        rightEaveHeight = leftEaveHeight;
+        ridgeHeight = leftEaveHeight + ((largeur / 2) * Math.tan(effectivePitch * Math.PI / 180));
     } else {
-        // Symétrique
-        effectivePitch = 10;
-        leftEaveHeight = 5.50;
-        rightEaveHeight = 5.50;
-        const defaultSymHeights = {
-            15.0: 6.80,
-            18.6: 7.10,
-            22.3: 7.50,
-            26.0: 7.79,
-            29.8: 8.10,
-            33.5: 8.50,
-        };
-        const closestW = Object.keys(defaultSymHeights).find(w => Math.abs(largeur - Number(w)) < 0.6);
-        if (closestW) {
-            ridgeHeight = defaultSymHeights[closestW];
-        } else {
-            ridgeHeight = leftEaveHeight + ((largeur / 2) * Math.tan(10 * Math.PI / 180));
-        }
+        // Asymétrique
+        effectivePitch = pente || 15;
+        rightEaveHeight = hauteurEgout || 4.00;
+        ridgeHeight = rightEaveHeight + (largeur * 0.75 * Math.tan(effectivePitch * Math.PI / 180));
+        leftEaveHeight = Math.max(3.0, ridgeHeight - (largeur * 0.25 * Math.tan(effectivePitch * Math.PI / 180)));
     }
 
     // Calcul de la largeur totale réelle (Bâtiment + Extensions) pour un dimensionnement 100% proportionnel

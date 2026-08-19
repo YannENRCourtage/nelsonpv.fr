@@ -180,8 +180,8 @@ export default function LandscapeIntegrationModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] flex items-center justify-center p-2 pt-12 pb-2">
-      <div className="bg-slate-900 text-white rounded-3xl w-[95vw] max-w-[1450px] h-[92vh] flex flex-col overflow-hidden shadow-2xl border border-slate-700">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] flex items-center justify-center p-1 pt-10 pb-1">
+      <div className="bg-slate-900 text-white rounded-3xl w-[97vw] max-w-[1595px] h-[93vh] flex flex-col overflow-hidden shadow-2xl border border-slate-700">
         
         {/* Header */}
         <div className="px-6 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
