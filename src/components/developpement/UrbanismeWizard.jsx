@@ -236,6 +236,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [fieldValues, setFieldValues] = useState({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [noticeText, setNoticeText] = useState('');
+  const [isNoticeUserModified, setIsNoticeUserModified] = useState(false);
   const [selectedPages, setSelectedPages] = useState({
     cover: true,
     situation: true,
@@ -539,14 +540,38 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     }
   }, [config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.leftSide, config.rightSide, config.solarStats, project?.kwc, project?.puissance, project?.projectSize]);
 
-  // Mise à jour automatique de la notice si elle contient encore l'ancien template ou si on arrive sur l'étape 5
+  // Mise à jour automatique de la notice selon les paramètres actuels et le nombre réel de bâtiments
   useEffect(() => {
-    if (step === 5 && (noticeText.includes("SAINT ARAILLES") || !noticeText)) {
+    if (!isNoticeUserModified || !noticeText || noticeText.includes("SAINT ARAILLES")) {
       const auto = buildAutoNoticeText();
       setNoticeText(auto);
       setEditedProject(prev => ({ ...prev, noticeText: auto }));
     }
-  }, [step, buildAutoNoticeText, noticeText]);
+  }, [step, buildings, additionalRoof, batteryStorage, buildAutoNoticeText, isNoticeUserModified]);
+
+  // Mise à jour de la position GPS individuelle d'un bâtiment (PC2)
+  const handleBuildingGpsUpdate = (bIdx, newLat, newLng) => {
+    setBuildings(prev => {
+      const next = [...prev];
+      if (next[bIdx]) {
+        next[bIdx] = {
+          ...next[bIdx],
+          lat: newLat,
+          lng: newLng,
+          gps: `${newLat},${newLng}`
+        };
+      }
+      return next;
+    });
+    if (bIdx === 0) {
+      setEditedProject(prev => ({
+        ...prev,
+        lat: newLat,
+        lng: newLng,
+        gps: `${newLat},${newLng}`
+      }));
+    }
+  };
 
   // Sauvegarde simulation 3D après projet (PC6)
   const handleSaveSimulation = (simulatedDataUrl) => {
@@ -1409,8 +1434,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
                   <div className={`grid ${buildings.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
                     {buildings.map((b, bIdx) => {
-                      const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
-                      const [lat, lng] = gps.split(',').map(Number);
+                      const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null) || editedProject?.lat || 43.5612);
+                      const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null) || editedProject?.lng || 0.9168);
                       const bLength = Number(b.length || config.length || 30);
                       const bWidth = Number(b.width || config.width || 20);
                       const currentRotation = Number(b.rotation || 0);
@@ -1480,7 +1505,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                           </div>
 
                           <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 z-10 flex-1 min-h-[260px]">
-                            <MapContainer center={[lat, lng]} zoom={19} scrollWheelZoom={true} style={{ height: '100%', minHeight: '260px', width: '100%' }}>
+                            <MapContainer center={[bLat, bLng]} zoom={19} scrollWheelZoom={true} style={{ height: '100%', minHeight: '260px', width: '100%' }}>
                               <TileLayer
                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                 attribution="&copy; OpenStreetMap contributors"
@@ -1488,8 +1513,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                 maxNativeZoom={19}
                               />
                               <MapResizer />
-                              <MapSyncCenter lat={lat} lng={lng} />
-                              <DraggableLocationMarker lat={lat} lng={lng} setGps={handleGpsUpdate} />
+                              <MapSyncCenter lat={bLat} lng={bLng} />
+                              <DraggableLocationMarker lat={bLat} lng={bLng} setGps={(newLat, newLng) => handleBuildingGpsUpdate(bIdx, newLat, newLng)} />
                               <PC2ScaledBuildingOverlay
                                 bLength={bLength}
                                 bWidth={bWidth}
@@ -1559,6 +1584,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                       <button
                         type="button"
                         onClick={() => {
+                          setIsNoticeUserModified(false);
                           const auto = buildAutoNoticeText();
                           setNoticeText(auto);
                           setEditedProject(prev => ({ ...prev, noticeText: auto }));
@@ -1587,14 +1613,13 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                     <textarea
                       value={noticeText}
                       onChange={(e) => {
+                        setIsNoticeUserModified(true);
                         setNoticeText(e.target.value);
                         setEditedProject(prev => ({ ...prev, noticeText: e.target.value }));
                       }}
                       placeholder="Rédigez ou personnalisez la notice descriptive du projet..."
                       className="flex-1 w-full min-h-0 p-3.5 mt-2 bg-slate-50/70 border border-slate-200 rounded-xl text-xs leading-relaxed text-slate-800 font-mono focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-all"
                     />
-
-
                   </div>
                 </motion.div>
               )}

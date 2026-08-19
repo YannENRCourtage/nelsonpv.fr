@@ -297,7 +297,8 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const auventTipSvgX = 550;
     const auventTipSvgY = 66;
 
-    // Calcul     const pxPerMeter = 350 / (largeur || 20.0);
+    // Calcul échelle métrique
+    const pxPerMeter = 350 / (largeur || 20.0);
     const scaleTotalWidth = 10 * pxPerMeter; // Largeur exacte de la barre 10m
     const scaleSegWidth = 2 * pxPerMeter; // Largeur segment 2m
     const scaleStartX = 660 - scaleTotalWidth; // Ancré en bas à droite sous TN Amont

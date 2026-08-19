@@ -96,7 +96,7 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
         const my = centerY;
 
         if (zoom >= 18) {
-          // Repère Plan de Masse avec emprise exacte et rotation de chaque bâtiment
+          // Repère Plan de Masse avec emprise exacte, position GPS personnalisée et rotation de chaque bâtiment
           const bList = (buildings && Array.isArray(buildings) && buildings.length > 0)
             ? buildings
             : [{ length: 30, width: 20, rotation: 0, name: 'Bâtiment 1' }];
@@ -112,11 +112,25 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
             const rectW = Math.max(30, bLength * pxPerMeter);
             const rectH = Math.max(20, bWidth * pxPerMeter);
 
-            // Décalage visuel si multi-bâtiments
-            const xOffset = bList.length > 1 ? (bIdx * 80 - ((bList.length - 1) * 40)) : 0;
+            // Calcul de la position exacte du bâtiment s'il a ses propres coordonnées GPS
+            let bPixelX = mx;
+            let bPixelY = my;
+
+            const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null));
+            const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null));
+
+            if (bLat && bLng && !isNaN(bLat) && !isNaN(bLng)) {
+              const bRad = (bLat * Math.PI) / 180;
+              const bExactX = ((bLng + 180) / 360) * n;
+              const bExactY = ((1 - Math.log(Math.tan(bRad) + 1 / Math.cos(bRad)) / Math.PI) / 2) * n;
+              bPixelX = centerX + (bExactX - exactX) * tileSize;
+              bPixelY = centerY + (bExactY - exactY) * tileSize;
+            } else if (bList.length > 1) {
+              bPixelX = mx + (bIdx * 80 - ((bList.length - 1) * 40));
+            }
 
             ctx.save();
-            ctx.translate(mx + xOffset, my);
+            ctx.translate(bPixelX, bPixelY);
             ctx.rotate((bRot * Math.PI) / 180);
 
             // Emprise au sol colorée
@@ -147,20 +161,23 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
           });
         }
 
-        // Halo
-        ctx.beginPath();
-        ctx.arc(mx, my, 14, 0, Math.PI * 2);
-        ctx.fillStyle = mode === 'satellite' ? 'rgba(255, 255, 255, 0.4)' : 'rgba(13, 77, 173, 0.25)';
-        ctx.fill();
+        // Marqueur Pin de localisation (uniquement pour PC1 Situation et Satellite, masqué en PC2 Plan de masse)
+        if (zoom < 18) {
+          // Halo
+          ctx.beginPath();
+          ctx.arc(mx, my, 14, 0, Math.PI * 2);
+          ctx.fillStyle = mode === 'satellite' ? 'rgba(255, 255, 255, 0.4)' : 'rgba(13, 77, 173, 0.25)';
+          ctx.fill();
 
-        // Pin de localisation
-        ctx.beginPath();
-        ctx.arc(mx, my, 7, 0, Math.PI * 2);
-        ctx.fillStyle = mode === 'satellite' ? '#ef4444' : '#0d4dad';
-        ctx.fill();
-        ctx.lineWidth = 2.5;
-        ctx.strokeStyle = '#ffffff';
-        ctx.stroke();
+          // Pin de localisation
+          ctx.beginPath();
+          ctx.arc(mx, my, 7, 0, Math.PI * 2);
+          ctx.fillStyle = mode === 'satellite' ? '#ef4444' : '#0d4dad';
+          ctx.fill();
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = '#ffffff';
+          ctx.stroke();
+        }
 
         // Légende filigrane
         ctx.font = 'bold 11px sans-serif';
