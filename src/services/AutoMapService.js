@@ -140,7 +140,9 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
             ctx.fillRect(-rectW / 2, -rectH / 2, rectW, rectH);
             ctx.strokeStyle = '#ef4444';
             ctx.lineWidth = 2;
+            ctx.setLineDash([5, 3]);
             ctx.strokeRect(-rectW / 2, -rectH / 2, rectW, rectH);
+            ctx.setLineDash([]);
 
             // Faîtage médian en pointillés discrets
             ctx.beginPath();
@@ -178,6 +180,46 @@ export async function generateStaticMapImage(lat, lng, mode = 'map', zoom = 16, 
 
             ctx.restore();
           });
+
+          // Échelle métrique dans le coin inférieur gauche (identique à PC2MapScaleBar)
+          const targets = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+          const maxBarPx = 80;
+          const maxMeters = maxBarPx * metersPerPx;
+          const best = targets.reduce((prev, cur) => (cur <= maxMeters ? cur : prev), 10);
+          const pxWidth = best / metersPerPx;
+          const scaleLabel = best >= 1000 ? `${best / 1000} km` : `${best} m`;
+
+          const sbX = 14;
+          const sbY = height - 36;
+          const sbW = Math.max(60, pxWidth + 36);
+          const sbH = 22;
+
+          ctx.save();
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(sbX, sbY, sbW, sbH, 4);
+          else ctx.rect(sbX, sbY, sbW, sbH);
+          ctx.fill();
+          ctx.stroke();
+
+          // Barre
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(sbX + 8, sbY + 7);
+          ctx.lineTo(sbX + 8, sbY + 14);
+          ctx.lineTo(sbX + 8 + pxWidth, sbY + 14);
+          ctx.lineTo(sbX + 8 + pxWidth, sbY + 7);
+          ctx.stroke();
+
+          ctx.font = 'bold 10px sans-serif';
+          ctx.fillStyle = '#334155';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(scaleLabel, sbX + 8 + pxWidth + 6, sbY + 11);
+          ctx.restore();
         }
 
         // Marqueur Pin de localisation (uniquement pour PC1 Situation et Satellite, masqué en PC2 Plan de masse)

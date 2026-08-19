@@ -203,9 +203,14 @@ export const PlateSituation = ({ project, captures, isInteractive, onUpload }) =
 export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
     const rawBuildings = project?.buildings && Array.isArray(project.buildings) && project.buildings.length > 0
         ? project.buildings
-        : null;
+        : [{
+            name: 'Bâtiment 1 (Principal)',
+            length: Number(project?.longueur || 30),
+            width: Number(project?.largeur || 20),
+            masse_capture: captures?.masse_projet || captures?.satellite
+        }];
 
-    const isMulti = Boolean(rawBuildings && rawBuildings.length > 1);
+    const isMulti = rawBuildings.length > 1;
 
     return (
         <div style={PAGE_STYLE} id="pc-plate-masse">
@@ -215,10 +220,9 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
                     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(rawBuildings.length, 2)}, 1fr)`, gap: '4mm', flex: 1, height: '100%' }}>
                         {rawBuildings.map((b, idx) => {
                             const bPhoto = b.masse_capture || (idx === 0 ? captures?.masse_projet : null) || captures?.satellite;
-                            const bLen = Number(b.length || (b.bayCount || 5) * (b.baySpacing || 6) || project?.longueur || 30);
+                            const bLen = Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || project?.longueur || 30);
                             const bW = Number(b.width || project?.largeur || 20);
                             const bArea = Math.round(bLen * bW);
-                            const bRot = Number(b.rotation || 0);
 
                             return (
                                 <div key={b.id || idx} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1', borderRadius: '3mm', background: '#f8fafc', padding: '2mm', overflow: 'hidden' }}>
@@ -243,17 +247,35 @@ export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
                             );
                         })}
                     </div>
-                ) : (
-                    <div style={{ flex: 1, background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '3mm', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                        <ImageUploadZone 
-                            isInteractive={isInteractive} 
-                            photo={captures?.masse_projet || captures?.satellite} 
-                            onUpload={(data) => onUpload && onUpload('masse_projet', data)} 
-                            defaultText="Plan de masse (Cadastre / OpenStreetMap)" 
-                            label="Plan de Masse"
-                        />
-                    </div>
-                )}
+                ) : (() => {
+                    const b = rawBuildings[0];
+                    const bPhoto = b?.masse_capture || captures?.masse_projet || captures?.satellite;
+                    const bLen = Number(b?.length || (b?.bayCount || 5) * (b?.baySpacing || 7.5) || project?.longueur || 30);
+                    const bW = Number(b?.width || project?.largeur || 20);
+                    const bArea = Math.round(bLen * bW);
+
+                    return (
+                        <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', padding: '2mm' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm', padding: '0 1mm' }}>
+                                <span style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#0f172a' }}>
+                                    PC2 — Plan de Masse : {b?.name || 'Bâtiment 1 (Principal)'} (OpenStreetMap Zoom 19)
+                                </span>
+                                <span style={{ fontSize: '7.5pt', fontWeight: 'bold', color: '#1e40af', background: '#dbeafe', padding: '0.5mm 2mm', borderRadius: '2mm' }}>
+                                    {bLen.toFixed(1)}m × {bW.toFixed(1)}m ({bArea} m²)
+                                </span>
+                            </div>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: '2mm', background: '#ffffff' }}>
+                                <ImageUploadZone 
+                                    isInteractive={isInteractive} 
+                                    photo={bPhoto} 
+                                    onUpload={(data) => onUpload && onUpload('masse_projet', data)} 
+                                    defaultText="Plan de masse (OpenStreetMap Zoom 19)" 
+                                    label="Plan de Masse"
+                                />
+                            </div>
+                        </div>
+                    );
+                })()}
             </div>
             <Footer project={project} />
         </div>
@@ -374,6 +396,8 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
             ridgeHeight = leftEaveHeight + ((largeur / 2) * Math.tan(10 * Math.PI / 180));
         }
     }
+
+    const displayPitch = effectivePitch;
 
     // Calcul de la largeur totale réelle (Bâtiment + Extensions) pour un dimensionnement 100% proportionnel
     const totalRealWidth = (hasExtLeft ? extLeftWidth : 0) + largeur + (hasExtRight ? extRightWidth : 0);

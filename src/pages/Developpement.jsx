@@ -245,6 +245,14 @@ export default function Developpement() {
         installationType: chosenType || finalProject?.installationType || selectedProject.installationType || 'batiment_solaire'
       };
       setSelectedProject(projectToUse);
+      setProjects(prev => prev.map(p => p.id === projectToUse.id ? projectToUse : p));
+      if (projectToUse?.id) {
+        try {
+          await apiService.updateProject(projectToUse.id, projectToUse, activeTenantId);
+        } catch (saveErr) {
+          console.warn('Erreur sauvegarde projet dans Firestore:', saveErr);
+        }
+      }
 
       // Laisser le temps à React de monter les planches dans le DOM avec les nouvelles données
       await new Promise(r => setTimeout(r, 200));

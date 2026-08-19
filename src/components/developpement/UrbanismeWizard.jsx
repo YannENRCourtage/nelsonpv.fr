@@ -453,11 +453,55 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       const projZip = project.zip || project.postalCode || project.code_postal || project.clientZip || '';
       const projCity = project.city || project.commune || project.clientCity || project.cadastre_commune || '';
 
-      const isOmbriere = (project.type || '').toLowerCase().includes('ombriere');
-      if (isOmbriere) {
-        configActions.setBuildingType('ombriere_vl_double');
+      const isOmbriere = (project.type || '').toLowerCase().includes('ombriere') || (project.buildingType || '').toLowerCase().includes('ombriere');
+
+      // Restaurer fidèlement les bâtiments existants ou initialiser le Bâtiment 1 avec les paramètres précis du projet
+      let initialBuildings = [];
+      if (project.buildings && Array.isArray(project.buildings) && project.buildings.length > 0) {
+        initialBuildings = project.buildings;
       } else {
-        configActions.setBuildingType('asymetrique_1');
+        const pLen = Number(project.longueur || 37.5);
+        const pW = Number(project.largeur || 20.0);
+        const pBc = Number(project.bayCount) || Math.max(1, Math.round(pLen / 7.5)) || 5;
+        const pBs = Number(project.baySpacing) || 7.5;
+        const pType = project.buildingType || (isOmbriere ? 'ombriere_vl_double' : 'symetrique');
+        const pEave = Number(project.hauteur_egout) || (pType.startsWith('asymetrique') ? 4.0 : 5.5);
+        const pPitch = Number(project.pente) || (pType.startsWith('asymetrique') ? 15 : 10);
+        const pRightSide = project.rightSide || (project.appentis ? 'appentis' : project.auvent ? 'auvent' : 'none');
+        const pLeftSide = project.leftSide || 'none';
+        const pRightWidth = Number(project.rightWidth) || (pRightSide === 'appentis' ? 9.3 : 4.0);
+        const pLeftWidth = Number(project.leftWidth) || (pLeftSide === 'appentis' ? 9.3 : 4.0);
+
+        initialBuildings = [
+          {
+            id: 'bat-1',
+            name: 'Bâtiment 1 (Principal)',
+            length: pBc * pBs,
+            width: pW,
+            eaveHeight: pEave,
+            roofPitch: pPitch,
+            buildingType: pType,
+            leftSide: pLeftSide,
+            rightSide: pRightSide,
+            leftWidth: pLeftWidth,
+            rightWidth: pRightWidth,
+            bayCount: pBc,
+            baySpacing: pBs,
+            hasSolar: true,
+            captures: project.urbanisme_captures || {},
+            photos: project.pc_photos || {},
+            rotation: Number(project.rotation || 0)
+          }
+        ];
+      }
+
+      setBuildings(initialBuildings);
+      setActiveBuildingIndex(0);
+
+      // Charger immédiatement le premier bâtiment dans le store 3D
+      const b1 = initialBuildings[0];
+      if (b1) {
+        useConfiguratorStore.getState().loadBuildingConfig(b1);
       }
 
       const initialNotice = project?.noticeText || buildAutoNoticeText();
@@ -470,8 +514,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
       const initProj = {
         ...project,
-        type: isOmbriere ? 'ombriere' : 'batiment_solaire',
-        buildingType: isOmbriere ? 'ombriere_vl_double' : 'asymetrique_1',
+        type: isOmbriere ? 'ombriere' : (project.type || 'batiment_solaire'),
+        buildingType: b1?.buildingType || project.buildingType || (isOmbriere ? 'ombriere_vl_double' : 'symetrique'),
         lastName: cleanDemandeur,
         firstName: names.firstName || '',
         demandeur: cleanDemandeur,
@@ -489,15 +533,20 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
         objet_travaux: shortObjet,
         description: shortObjet,
         noticeText: initialNotice,
-        longueur: String(config.length || 30.0),
-        largeur: String(config.width || 20.0),
-        hauteur_egout: String(config.buildingType?.startsWith('asymetrique') ? 4.0 : (config.eaveHeight || 4.0)),
-        pente: String(config.buildingType?.startsWith('asymetrique') ? 15 : (config.roofPitch || 15)),
-        leftSide: config.leftSide || 'none',
-        rightSide: config.rightSide || 'none',
+        longueur: String(b1?.length || 37.5),
+        largeur: String(b1?.width || 20.0),
+        hauteur_egout: String(b1?.eaveHeight || 4.0),
+        pente: String(b1?.roofPitch || 10),
+        leftSide: b1?.leftSide || 'none',
+        rightSide: b1?.rightSide || 'none',
+        leftWidth: b1?.leftWidth,
+        rightWidth: b1?.rightWidth,
+        bayCount: b1?.bayCount,
+        baySpacing: b1?.baySpacing,
         pente_terrain: project.pente_terrain || '3',
         cotation_bati: project.cotation_bati || '12.50',
         cotation_voie: project.cotation_voie || '8.00',
+        buildings: initialBuildings,
       };
       setEditedProject(initProj);
       setCaptures(project?.urbanisme_captures || {});
@@ -537,10 +586,32 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
   // Synchronisation continue des valeurs du configurateur vers le projet (sans écraser le kWc du client)
   useEffect(() => {
-    if (config) {
+    if (config && buildings[activeBuildingIndex]) {
       const isOmbriere = (config.buildingType || '').startsWith('ombriere');
       const category = isOmbriere ? 'ombriere' : 'batiment_solaire';
       const kwcEstimate = config.solarStats?.power ? Math.round(config.solarStats.power) : Math.round((config.width * config.length * 0.22) / 5) * 5;
+
+      setBuildings(prev => {
+        if (!prev[activeBuildingIndex]) return prev;
+        const next = [...prev];
+        next[activeBuildingIndex] = {
+          ...next[activeBuildingIndex],
+          buildingType: config.buildingType,
+          width: config.width,
+          length: config.length,
+          eaveHeight: config.eaveHeight,
+          roofPitch: config.roofPitch,
+          bayCount: config.bayCount,
+          baySpacing: config.baySpacing,
+          leftSide: config.leftSide,
+          rightSide: config.rightSide,
+          leftWidth: config.leftWidth,
+          rightWidth: config.rightWidth,
+          hasSolar: config.hasSolar,
+          solarStats: config.solarStats,
+        };
+        return next;
+      });
 
       setEditedProject(prev => {
         const clientKwc = project?.kwc || project?.puissance || project?.projectSize || prev?.kwc || kwcEstimate;
@@ -555,13 +626,17 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
           pente: String(config.roofPitch),
           leftSide: config.leftSide || 'none',
           rightSide: config.rightSide || 'none',
+          leftWidth: config.leftWidth,
+          rightWidth: config.rightWidth,
+          bayCount: config.bayCount,
+          baySpacing: config.baySpacing,
           kwc: clientKwc,
           projectSize: clientKwc,
           puissance: clientKwc,
         };
       });
     }
-  }, [config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.leftSide, config.rightSide, config.solarStats, project?.kwc, project?.puissance, project?.projectSize]);
+  }, [config.width, config.length, config.eaveHeight, config.roofPitch, config.buildingType, config.leftSide, config.rightSide, config.solarStats, config.bayCount, config.baySpacing, project?.kwc, project?.puissance, project?.projectSize]);
 
   // Mise à jour automatique de la notice selon les paramètres actuels et le nombre réel de bâtiments
   useEffect(() => {
