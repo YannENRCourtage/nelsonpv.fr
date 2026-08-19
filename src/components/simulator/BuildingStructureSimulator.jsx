@@ -335,10 +335,85 @@ export default function BuildingStructureSimulator({
     activeBuildingIdx
   ]);
 
+// Helper de recadrage intelligent de la scène 3D pour correspondre fidèlement à la visionneuse
+const crop3DCanvas = (sourceCanvas) => {
+  if (!sourceCanvas) return null;
+  try {
+    const w = sourceCanvas.width;
+    const h = sourceCanvas.height;
+    if (!w || !h) return sourceCanvas.toDataURL('image/png');
+
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = w;
+    tempCanvas.height = h;
+    const ctx = tempCanvas.getContext('2d');
+    if (!ctx) return sourceCanvas.toDataURL('image/png');
+
+    ctx.drawImage(sourceCanvas, 0, 0);
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+
+    // Détection de la couleur d'arrière-plan du coin supérieur gauche
+    const bgR = data[0];
+    const bgG = data[1];
+    const bgB = data[2];
+    const bgA = data[3];
+
+    let minX = w, maxX = 0, minY = h, maxY = 0;
+    let found = false;
+
+    // Échantillonnage pour rapidité et précision
+    for (let y = 0; y < h; y += 2) {
+      for (let x = 0; x < w; x += 2) {
+        const idx = (y * w + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+        const a = data[idx + 3];
+
+        const diff = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB) + Math.abs(a - bgA);
+        if (a > 15 && diff > 18) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+          found = true;
+        }
+      }
+    }
+
+    if (!found || minX >= maxX || minY >= maxY) {
+      return sourceCanvas.toDataURL('image/png');
+    }
+
+    // Marge légère de 3%
+    const padX = Math.round((maxX - minX) * 0.03) + 8;
+    const padY = Math.round((maxY - minY) * 0.03) + 8;
+    const cropX = Math.max(0, minX - padX);
+    const cropY = Math.max(0, minY - padY);
+    const cropW = Math.min(w - cropX, (maxX - minX) + padX * 2);
+    const cropH = Math.min(h - cropY, (maxY - minY) + padY * 2);
+
+    const outCanvas = document.createElement('canvas');
+    outCanvas.width = cropW;
+    outCanvas.height = cropH;
+    const outCtx = outCanvas.getContext('2d');
+
+    outCtx.fillStyle = bgA > 200 ? `rgb(${bgR},${bgG},${bgB})` : '#f0f4f8';
+    outCtx.fillRect(0, 0, cropW, cropH);
+    outCtx.drawImage(sourceCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+    return outCanvas.toDataURL('image/png');
+  } catch (e) {
+    console.warn('Erreur crop 3D:', e);
+    return sourceCanvas.toDataURL('image/png');
+  }
+};
+
   const captureCurrentBuilding3d = () => {
     if (canvasRef.current) {
       try {
-        const dataUrl = canvasRef.current.toDataURL('image/png');
+        const dataUrl = crop3DCanvas(canvasRef.current);
         if (dataUrl) {
           setBuilding3dSnapshot(dataUrl);
           setSimBuildings(prev => {
@@ -590,22 +665,29 @@ export default function BuildingStructureSimulator({
   const capture3dSnapshot = useCallback(async () => {
     if (!canvasRef.current) return null;
     try {
-      const dataUrl = canvasRef.current.toDataURL('image/png');
-      setBuilding3dSnapshot(dataUrl);
+      const dataUrl = crop3DCanvas(canvasRef.current);
+      if (dataUrl) {
+        setBuilding3dSnapshot(dataUrl);
+        setSimBuildings(prev => {
+          const upd = [...prev];
+          if (upd[activeBuildingIdx]) upd[activeBuildingIdx] = { ...upd[activeBuildingIdx], screenshot3d: dataUrl };
+          return upd;
+        });
+      }
       return dataUrl;
     } catch (e) {
       console.warn('Erreur capture 3D:', e);
       return null;
     }
-  }, []);
+  }, [activeBuildingIdx]);
 
   const ensureMapSnapshot = async () => {
     const snapshot = await generateSatelliteSnapshot({
       center: mapCenter,
       polygonPoints: [],
       buildings: simBuildings,
-      width: 800,
-      height: 480,
+      width: 600,
+      height: 600,
       zoom: 19
     });
     if (snapshot) setMapScreenshotDataUrl(snapshot);

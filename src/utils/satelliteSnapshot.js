@@ -116,12 +116,12 @@ export const generateSatelliteSnapshot = async ({
         ctx.translate(posX, posY);
         ctx.rotate(rotRad);
 
-        // Emprise au sol du bâtiment
+        // Emprise au sol du bâtiment avec bordure orange fidèle à l'interface
         ctx.fillStyle = 'rgba(37, 99, 235, 0.45)';
         ctx.fillRect(-rectW / 2, -rectH / 2, rectW, rectH);
 
-        ctx.strokeStyle = '#60a5fa';
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 3.5;
         ctx.strokeRect(-rectW / 2, -rectH / 2, rectW, rectH);
 
         // Ligne de Faîtage en pointillés orange
@@ -137,7 +137,7 @@ export const generateSatelliteSnapshot = async ({
         ctx.setLineDash([]);
 
         // Rond numéroté ①, ②, etc. au centre du bâtiment
-        const circleR = 13;
+        const circleR = 14;
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.arc(0, 0, circleR, 0, Math.PI * 2);
@@ -147,10 +147,10 @@ export const generateSatelliteSnapshot = async ({
         ctx.stroke();
 
         ctx.fillStyle = '#0f172a';
-        ctx.font = 'bold 12px Arial';
+        ctx.font = 'bold 13px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(String(bIdx + 1), 0, 0);
+        ctx.fillText(String(bIdx + 1), 0, 1);
 
         ctx.restore();
       });
@@ -221,33 +221,35 @@ export const generateSatelliteSnapshot = async ({
       });
     }
 
-    // 4. Trait d'échelle (Scale Bar) en bas à gauche
-    const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom + 8);
-    const targetScaleMeters = zoom >= 20 ? 10 : zoom >= 19 ? 20 : zoom >= 18 ? 50 : 100;
-    const scaleBarPx = targetScaleMeters / metersPerPx;
+    // 4. Trait d'échelle (Scale Bar) uniquement si pas de bâtiment (pour préserver le visuel épuré de l'implantation)
+    if (!buildingList || buildingList.length === 0) {
+      const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom + 8);
+      const targetScaleMeters = zoom >= 20 ? 10 : zoom >= 19 ? 20 : zoom >= 18 ? 50 : 100;
+      const scaleBarPx = targetScaleMeters / metersPerPx;
 
-    const sbX = 20;
-    const sbY = height - 22;
+      const sbX = 20;
+      const sbY = height - 22;
 
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-    ctx.beginPath();
-    ctx.roundRect(sbX - 6, sbY - 18, Math.max(60, scaleBarPx + 12), 26, 6);
-    ctx.fill();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.beginPath();
+      ctx.roundRect(sbX - 6, sbY - 18, Math.max(60, scaleBarPx + 12), 26, 6);
+      ctx.fill();
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 10px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`${targetScaleMeters} m`, sbX + scaleBarPx / 2, sbY - 14);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`${targetScaleMeters} m`, sbX + scaleBarPx / 2, sbY - 14);
 
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(sbX, sbY);
-    ctx.lineTo(sbX, sbY + 5);
-    ctx.lineTo(sbX + scaleBarPx, sbY + 5);
-    ctx.lineTo(sbX + scaleBarPx, sbY);
-    ctx.stroke();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sbX, sbY);
+      ctx.lineTo(sbX, sbY + 5);
+      ctx.lineTo(sbX + scaleBarPx, sbY + 5);
+      ctx.lineTo(sbX + scaleBarPx, sbY);
+      ctx.stroke();
+    }
 
     return canvas.toDataURL('image/jpeg', 0.92);
   } catch (err) {
