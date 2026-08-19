@@ -201,19 +201,59 @@ export const PlateSituation = ({ project, captures, isInteractive, onUpload }) =
 };
 
 export const PlateMasse = ({ project, captures, isInteractive, onUpload }) => {
+    const rawBuildings = project?.buildings && Array.isArray(project.buildings) && project.buildings.length > 0
+        ? project.buildings
+        : null;
+
+    const isMulti = Boolean(rawBuildings && rawBuildings.length > 1);
+
     return (
         <div style={PAGE_STYLE} id="pc-plate-masse">
             <PlateHeader title="PC2 : PLAN DE MASSE DES CONSTRUCTIONS" project={project} />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxHeight: '135mm', marginBottom: '5mm' }}>
-                <div style={{ flex: 1, background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '3mm', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                    <ImageUploadZone 
-                        isInteractive={isInteractive} 
-                        photo={captures?.masse_projet || captures?.satellite} 
-                        onUpload={(data) => onUpload && onUpload('masse_projet', data)} 
-                        defaultText="Plan de masse (Cadastre / OpenStreetMap)" 
-                        label="Plan de Masse"
-                    />
-                </div>
+                {isMulti ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(rawBuildings.length, 2)}, 1fr)`, gap: '4mm', flex: 1, height: '100%' }}>
+                        {rawBuildings.map((b, idx) => {
+                            const bPhoto = b.masse_capture || (idx === 0 ? captures?.masse_projet : null) || captures?.satellite;
+                            const bLen = Number(b.length || (b.bayCount || 5) * (b.baySpacing || 6) || project?.longueur || 30);
+                            const bW = Number(b.width || project?.largeur || 20);
+                            const bArea = Math.round(bLen * bW);
+                            const bRot = Number(b.rotation || 0);
+
+                            return (
+                                <div key={b.id || idx} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1', borderRadius: '3mm', background: '#f8fafc', padding: '2mm', overflow: 'hidden' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm', padding: '0 1mm' }}>
+                                        <span style={{ fontSize: '7.5pt', fontWeight: 'bold', color: '#0f172a' }}>
+                                            PC2 — Plan de Masse : {b.name || `Bâtiment ${idx + 1}`}
+                                        </span>
+                                        <span style={{ fontSize: '7pt', fontWeight: 'bold', color: '#1e40af', background: '#dbeafe', padding: '0.5mm 1.5mm', borderRadius: '2mm' }}>
+                                            {bLen.toFixed(1)}m × {bW.toFixed(1)}m ({bArea} m²)
+                                        </span>
+                                    </div>
+                                    <div style={{ flex: 1, position: 'relative', overflow: 'hidden', borderRadius: '2mm', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <ImageUploadZone 
+                                            isInteractive={isInteractive} 
+                                            photo={bPhoto} 
+                                            onUpload={(data) => onUpload && onUpload(`masse_projet_${idx}`, data)} 
+                                            defaultText={`Plan de masse : ${b.name || `Bâtiment ${idx + 1}`}`} 
+                                            label={`Plan de Masse (${b.name || `Bât. ${idx + 1}`})`}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div style={{ flex: 1, background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '3mm', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                        <ImageUploadZone 
+                            isInteractive={isInteractive} 
+                            photo={captures?.masse_projet || captures?.satellite} 
+                            onUpload={(data) => onUpload && onUpload('masse_projet', data)} 
+                            defaultText="Plan de masse (Cadastre / OpenStreetMap)" 
+                            label="Plan de Masse"
+                        />
+                    </div>
+                )}
             </div>
             <Footer project={project} />
         </div>
@@ -590,23 +630,23 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
                 {/* ── BAS : PC4 NOTICE DESCRIPTIVE DU PROJET (SYNTHÈSE EN 5 POINTS ÉTENDUE JUSQU'AU TRAIT BLEU) ── */}
                 <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '2.5mm 4.5mm', background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <div style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5mm', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <div style={{ fontSize: '8pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5mm', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         NOTICE D'INSERTION & DESCRIPTIVE DU PROJET
                     </div>
-                    <div style={{ flex: 1, overflow: 'hidden', fontSize: '8.5pt', lineHeight: '1.35', color: '#334155' }}>
+                    <div style={{ flex: 1, overflow: 'hidden', fontSize: '6.5pt', lineHeight: '1.3', color: '#334155' }}>
                         {isInteractive ? (
                             <textarea 
-                                style={{ width: '100%', height: '100%', border: 'none', resize: 'none', outline: 'none', fontSize: '8.5pt', fontFamily: 'Arial, sans-serif', lineHeight: '1.35' }}
+                                style={{ width: '100%', height: '100%', border: 'none', resize: 'none', outline: 'none', fontSize: '6.5pt', fontFamily: 'Arial, sans-serif', lineHeight: '1.3' }}
                                 value={cleanNoticeText || default5PointsNotice}
                                 onChange={(e) => onNoticeChange && onNoticeChange(e.target.value)}
                                 placeholder="Notice descriptive du projet..."
                             />
                         ) : cleanNoticeText ? (
-                            <div style={{ whiteSpace: 'pre-line', fontSize: '8.5pt', lineHeight: '1.35', color: '#334155' }}>
+                            <div style={{ whiteSpace: 'pre-line', fontSize: '6.5pt', lineHeight: '1.3', color: '#334155' }}>
                                 {cleanNoticeText}
                             </div>
                         ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5mm' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1mm', fontSize: '6.5pt', lineHeight: '1.3' }}>
                                 <div>
                                     <strong style={{ color: '#0f172a' }}>1- OBJET DE LA DEMANDE</strong>
                                     <div>La demande de permis de construire porte sur la construction d'un hangar à usage agricole avec toiture photovoltaïque. Il servira de stockage de matériel et céréales ({totalSurface}m²).</div>

@@ -375,8 +375,16 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
         merged.length = bc * bs;
       }
       next[activeBuildingIndex] = merged;
+      useConfiguratorStore.getState().loadBuildingConfig(merged);
       return next;
     });
+  }, [activeBuildingIndex]);
+
+  // Synchronisation automatique de la 3D dès qu'on change d'onglet de bâtiment
+  useEffect(() => {
+    if (buildings[activeBuildingIndex]) {
+      useConfiguratorStore.getState().loadBuildingConfig(buildings[activeBuildingIndex]);
+    }
   }, [activeBuildingIndex]);
 
   // Gestion des bâtiments multiples avec isolation stricte des onglets
@@ -759,7 +767,19 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     const [lat, lng] = gps.split(',').map(Number);
     const ignMap = await generateStaticMapImage(lat, lng, 'map', 16);
     const satMap = await generateStaticMapImage(lat, lng, 'satellite', 17);
-    const masseMap = await generateStaticMapImage(lat, lng, 'map', 19, updatedBuildings);
+    
+    // Génération de la capture de plan de masse individuelle par bâtiment
+    const buildingsWithMasse = await Promise.all(updatedBuildings.map(async (b) => {
+      const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null) || lat);
+      const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null) || lng);
+      const bMasse = await generateStaticMapImage(bLat, bLng, 'map', 19, [b]);
+      return {
+        ...b,
+        masse_capture: bMasse || null
+      };
+    }));
+
+    const masseMap = buildingsWithMasse[0]?.masse_capture || await generateStaticMapImage(lat, lng, 'map', 19, updatedBuildings);
 
     const finalCaptures = {
       ...captures,
@@ -793,7 +813,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       notice_descriptive: effectiveNotice,
       urbanisme_captures: finalCaptures,
       pc_photos: photos,
-      buildings: updatedBuildings,
+      buildings: buildingsWithMasse,
       additionalRoof: additionalRoof,
       batteryStorage: batteryStorage,
     };
@@ -1096,15 +1116,29 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                     <div className="flex-1 relative h-full rounded-2xl overflow-hidden border border-slate-200 bg-gradient-to-b from-slate-50 to-slate-200 shadow-sm isolate">
                       <div className="absolute top-3 left-3 z-20 flex flex-col gap-2 pointer-events-auto">
                         <div className="bg-white/95 backdrop-blur px-3 py-1.5 rounded-lg shadow-sm border border-slate-200">
-                          <span className="text-slate-800 font-bold text-sm whitespace-nowrap">
-                            {config.length.toFixed(2)}m × {config.width.toFixed(2)}m — {Math.round(config.width * config.length)}m²
-                          </span>
+                          {(() => {
+                            const curB = buildings[activeBuildingIndex] || config;
+                            const curW = Number(curB.width || config.width || 20);
+                            const curL = Number(curB.length || (curB.bayCount || 5) * (curB.baySpacing || 6) || config.length || 30);
+                            const curArea = Math.round(curW * curL);
+                            return (
+                              <span className="text-slate-800 font-bold text-sm whitespace-nowrap">
+                                {curL.toFixed(2)}m × {curW.toFixed(2)}m — {curArea}m²
+                              </span>
+                            );
+                          })()}
                         </div>
 
                         {config.hasSolar && (
                           <div className="bg-yellow-50/95 backdrop-blur px-3 py-1 rounded-lg shadow-sm border border-yellow-200">
                             <span className="text-yellow-800 font-bold text-xs whitespace-nowrap">
-                              ⚡ {config.solarStats?.power?.toFixed(2)} kWc
+                              ⚡ {(() => {
+                                const curB = buildings[activeBuildingIndex] || config;
+                                const curW = Number(curB.width || config.width || 20);
+                                const curL = Number(curB.length || (curB.bayCount || 5) * (curB.baySpacing || 6) || config.length || 30);
+                                const curArea = Math.round(curW * curL);
+                                return curB.solarStats?.power ? curB.solarStats.power.toFixed(2) : (curArea * 0.20).toFixed(2);
+                              })()} kWc
                             </span>
                           </div>
                         )}
@@ -1142,9 +1176,12 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                         </button>
                       </div>
 
-                      {/* Rendu Canvas BuildingScene */}
+                      {/* Rendu Canvas BuildingScene avec clé unique par onglet et configuration */}
                       <div className="w-full h-full">
-                        <BuildingScene viewMode={viewMode} />
+                        <BuildingScene 
+                          key={`bldg-scene-${activeBuildingIndex}-${buildings[activeBuildingIndex]?.buildingType}-${buildings[activeBuildingIndex]?.width}-${buildings[activeBuildingIndex]?.length}-${buildings[activeBuildingIndex]?.bayCount}-${buildings[activeBuildingIndex]?.baySpacing}-${buildings[activeBuildingIndex]?.leftSide}-${buildings[activeBuildingIndex]?.rightSide}`}
+                          viewMode={viewMode} 
+                        />
                       </div>
                     </div>
                   </div>

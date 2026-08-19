@@ -156,16 +156,51 @@ export const PlateSituation = ({ project, captures }) => {
  * PLANCHE DP2 : PLAN DE MASSE (Cadre réduit en hauteur pour rehausser le footer)
  */
 export const PlateMasse = ({ project, captures }) => {
+    const rawBuildings = project?.buildings && Array.isArray(project.buildings) && project.buildings.length > 0
+        ? project.buildings
+        : null;
+
+    const isMulti = Boolean(rawBuildings && rawBuildings.length > 1);
+
     return (
         <div style={PAGE_STYLE} id="dp-plate-masse">
             <PlateHeader title="DP2 — PLAN DE MASSE DES CONSTRUCTIONS ET AMÉNAGEMENTS" project={project} />
-            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', maxHeight: '135mm', marginBottom: '5mm' }}>
-                <div style={{ padding: '2.5mm', background: '#e2e8f0', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#1e293b' }}>
-                    PLAN DE MASSE DE L'ÉTAT PROJETÉ (OPENSTREETMAP ZOOM 19 / EXTRAIT CADASTRAL)
-                </div>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                    <img src={captures?.masse_projet || captures?.satellite || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan de masse" crossOrigin="anonymous" />
-                </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxHeight: '135mm', marginBottom: '5mm' }}>
+                {isMulti ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(rawBuildings.length, 2)}, 1fr)`, gap: '4mm', flex: 1, height: '100%' }}>
+                        {rawBuildings.map((b, idx) => {
+                            const bPhoto = b.masse_capture || (idx === 0 ? captures?.masse_projet : null) || captures?.satellite;
+                            const bLen = Number(b.length || (b.bayCount || 5) * (b.baySpacing || 6) || project?.longueur || 30);
+                            const bW = Number(b.width || project?.largeur || 20);
+                            const bArea = Math.round(bLen * bW);
+
+                            return (
+                                <div key={b.id || idx} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1', borderRadius: '3mm', background: '#f8fafc', padding: '2mm', overflow: 'hidden' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm', padding: '0 1mm' }}>
+                                        <span style={{ fontSize: '7.5pt', fontWeight: 'bold', color: '#0f172a' }}>
+                                            DP2 — Plan de Masse : {b.name || `Bâtiment ${idx + 1}`}
+                                        </span>
+                                        <span style={{ fontSize: '7pt', fontWeight: 'bold', color: '#1e40af', background: '#dbeafe', padding: '0.5mm 1.5mm', borderRadius: '2mm' }}>
+                                            {bLen.toFixed(1)}m × {bW.toFixed(1)}m ({bArea} m²)
+                                        </span>
+                                    </div>
+                                    <div style={{ flex: 1, position: 'relative', overflow: 'hidden', borderRadius: '2mm', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <img src={bPhoto || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan de masse" crossOrigin="anonymous" />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+                        <div style={{ padding: '2.5mm', background: '#e2e8f0', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#1e293b' }}>
+                            PLAN DE MASSE DE L'ÉTAT PROJETÉ (OPENSTREETMAP ZOOM 19 / EXTRAIT CADASTRAL)
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                            <img src={captures?.masse_projet || captures?.satellite || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Plan de masse" crossOrigin="anonymous" />
+                        </div>
+                    </div>
+                )}
             </div>
             <Footer project={project} />
         </div>
