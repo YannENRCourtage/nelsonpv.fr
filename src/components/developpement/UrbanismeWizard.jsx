@@ -41,6 +41,79 @@ function MapResizer() {
   return null;
 }
 
+// Dynamically scale the building rectangle to match ground truth at any zoom level
+function PC2ScaledBuildingOverlay({ bLength, bWidth, rotation, label }) {
+  const map = useMap();
+  const [dims, setDims] = React.useState({ w: 0, h: 0 });
+
+  useEffect(() => {
+    const update = () => {
+      const center = map.getCenter();
+      const zoom = map.getZoom();
+      const metersPerPx = (40075016.686 * Math.cos((center.lat * Math.PI) / 180)) / Math.pow(2, zoom + 8);
+      const pxPerMeter = 1 / metersPerPx;
+      setDims({ w: bLength * pxPerMeter, h: bWidth * pxPerMeter });
+    };
+    update();
+    map.on('zoom zoomend moveend', update);
+    return () => map.off('zoom zoomend moveend', update);
+  }, [map, bLength, bWidth]);
+
+  if (dims.w < 2 || dims.h < 2) return null;
+  return (
+    <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[1000]">
+      <div
+        className="border-2 border-red-500 border-dashed bg-red-500/20 rounded shadow-md flex items-center justify-center text-center p-1"
+        style={{
+          width: `${dims.w}px`,
+          height: `${dims.h}px`,
+          transform: `rotate(${rotation}deg)`,
+          transition: 'width 0.15s, height 0.15s, transform 0.1s ease-out',
+        }}
+      >
+        <span className="text-[10px] font-bold text-red-900 bg-white/80 px-1 py-0.5 rounded shadow-2xs whitespace-nowrap">
+          {label}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Scale bar that updates with zoom level
+function PC2MapScaleBar() {
+  const map = useMap();
+  const [bar, setBar] = React.useState({ widthPx: 0, label: '' });
+
+  useEffect(() => {
+    const update = () => {
+      const center = map.getCenter();
+      const zoom = map.getZoom();
+      const metersPerPx = (40075016.686 * Math.cos((center.lat * Math.PI) / 180)) / Math.pow(2, zoom + 8);
+      const targets = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
+      const maxBarPx = 100;
+      const maxMeters = maxBarPx * metersPerPx;
+      const best = targets.reduce((prev, cur) => (cur <= maxMeters ? cur : prev), 1);
+      const pxWidth = best / metersPerPx;
+      setBar({ widthPx: Math.round(pxWidth), label: best >= 1000 ? `${best / 1000} km` : `${best} m` });
+    };
+    update();
+    map.on('zoom zoomend moveend', update);
+    return () => map.off('zoom zoomend moveend', update);
+  }, [map]);
+
+  return (
+    <div className="absolute bottom-2 left-2 z-[1000] bg-white/90 backdrop-blur-sm rounded px-1.5 py-0.5 border border-slate-300 shadow-sm">
+      <div className="flex items-end gap-1">
+        <div
+          className="border-b-2 border-l-2 border-r-2 border-slate-700"
+          style={{ width: `${bar.widthPx}px`, height: '6px' }}
+        />
+        <span className="text-[9px] font-bold text-slate-700 leading-none">{bar.label}</span>
+      </div>
+    </div>
+  );
+}
+
 function MapSyncCenter({ lat, lng }) {
   const map = useMap();
   useEffect(() => {
@@ -203,7 +276,8 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const b1Auvent = Boolean(b1.rightSide === 'auvent' || b1.leftSide === 'auvent' || config.rightSide === 'auvent' || config.leftSide === 'auvent');
     
     const rawKwc = editedProject?.kwc || editedProject?.puissance || editedProject?.projectSize || project?.kwc || project?.puissance || project?.projectSize;
-    const displayKwc = (rawKwc !== undefined && rawKwc !== null && rawKwc !== '' && rawKwc !== '0') ? String(rawKwc) : '0';
+    const isValidKwc = rawKwc !== undefined && rawKwc !== null && rawKwc !== '' && rawKwc !== '0' && !isNaN(Number(rawKwc)) && Number(rawKwc) > 0;
+    const displayKwc = isValidKwc ? String(Number(rawKwc)) : '';
 
     // Bâtiments secondaires
     const secondaryBuildings = buildings.slice(1);
@@ -211,7 +285,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 
     let batimentDesc = isB1Ombriere
       ? `Le projet a pour objet l'implantation d'une ombrière de parking photovoltaïque${hasMultiBuildings ? ' (Bâtiment 1)' : ''} de dimensions ${longueur1}m × ${largeur1.toFixed(2)}m (surface couverte : ${totalSurface1} m²) à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à 10°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire.`
-      : `Le projet a pour objet la construction d'un bâtiment agricole à charpente métallique${hasMultiBuildings ? ' principal (Bâtiment 1)' : ''} de forme rectangulaire (longueur : ${longueur1}m, largeur : ${largeur1.toFixed(2)}m${b1Auvent ? ' + Auvent 4.00m' : ''}, hauteur sablière : ${b1Eave.toFixed(2)}m) en structure métallique (RAL 7016 / 7005), composé de ${b1Bays} travées de ${b1Spacing}m d'entraxe. La toiture sera constituée d'une couverture ${b1RoofLabel} avec bac acier anti-condensation (RAL 7016) et panneaux solaires photovoltaïques intégrés (RAL 9005), développant une puissance installée de ${displayKwc} kWc.`;
+      : `Le projet a pour objet la construction d'un bâtiment agricole à charpente métallique${hasMultiBuildings ? ' principal (Bâtiment 1)' : ''} de forme rectangulaire (longueur : ${longueur1}m, largeur : ${largeur1.toFixed(2)}m${b1Auvent ? ' + Auvent 4.00m' : ''}, hauteur sablière : ${b1Eave.toFixed(2)}m) en structure métallique (RAL 7016 / 7005), composé de ${b1Bays} travées de ${b1Spacing}m d'entraxe. La toiture sera constituée d'une couverture ${b1RoofLabel} avec bac acier anti-condensation (RAL 7016) et panneaux solaires photovoltaïques intégrés (RAL 9005)${displayKwc ? `, développant une puissance installée de ${displayKwc} kWc` : ''}.`;
 
     if (hasMultiBuildings) {
       secondaryBuildings.forEach((b, idx) => {
@@ -245,7 +319,8 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       totalGlobalSurface += (Number(b.width || 20) * Number(b.length || 25));
     });
 
-    let objetDemande = `La demande de permis de construire porte sur la réalisation d'un projet comprenant ${1 + secondaryBuildings.length} structure(s) (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${batteryStorage.enabled ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`;
+    const totalBuildingCount = buildings.length;
+    let objetDemande = `La demande de permis de construire porte sur la réalisation d'un projet comprenant ${totalBuildingCount} structure${totalBuildingCount > 1 ? 's' : ''} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${batteryStorage.enabled ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`;
 
     return `NOTICE D'INSERTION & DESCRIPTIVE DU PROJET
 
@@ -271,16 +346,14 @@ Le positionnement du point de livraison et d'un transformateur (le cas échéant
 Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf PC 02 - Plan de masse).${batteryStorage.enabled ? `\nLe système de stockage batterie est équipé de ses dispositifs de sécurité autonomes conformes aux prescriptions SDIS (détection thermique, coupure automatique d'urgence, système d'extinction dédié et bac de rétention).` : ''}`;
   }, [editedProject, project, config, buildings, additionalRoof, batteryStorage]);
 
-  const activeBuildingIndexRef = React.useRef(0);
-  activeBuildingIndexRef.current = activeBuildingIndex;
-
   // Synchronisation continue des paramètres de configuration vers le bâtiment actif
+  // Uses activeBuildingIndex from closure (deps array) — NOT a ref — to avoid
+  // stale-index race conditions when Zustand triggers intermediate renders.
   useEffect(() => {
     if (isSwitchingBuildingRef.current) return;
-    const targetIdx = activeBuildingIndexRef.current;
     setBuildings(prev => {
-      if (!prev[targetIdx]) return prev;
-      const cur = prev[targetIdx];
+      if (!prev[activeBuildingIndex]) return prev;
+      const cur = prev[activeBuildingIndex];
       if (
         cur.length === config.length &&
         cur.width === config.width &&
@@ -295,7 +368,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
         return prev;
       }
       const upd = [...prev];
-      upd[targetIdx] = {
+      upd[activeBuildingIndex] = {
         ...cur,
         length: config.length,
         width: config.width,
@@ -324,11 +397,11 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
   // Gestion des bâtiments multiples
   const handleAddBuilding = () => {
-    const currentIdx = activeBuildingIndexRef.current;
+    // Save current building with live store values
     const currentList = [...buildings];
-    if (currentList[currentIdx]) {
-      currentList[currentIdx] = {
-        ...currentList[currentIdx],
+    if (currentList[activeBuildingIndex]) {
+      currentList[activeBuildingIndex] = {
+        ...currentList[activeBuildingIndex],
         length: config.length,
         width: config.width,
         eaveHeight: config.eaveHeight,
@@ -362,24 +435,22 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     const newIdxPos = updated.length - 1;
 
     isSwitchingBuildingRef.current = true;
-    activeBuildingIndexRef.current = newIdxPos;
     setBuildings(updated);
     setActiveBuildingIndex(newIdxPos);
     useConfiguratorStore.getState().loadBuildingConfig(newBuilding);
     setTimeout(() => {
       isSwitchingBuildingRef.current = false;
-    }, 150);
+    }, 500);
   };
 
   const handleSelectBuilding = (index) => {
-    if (index === activeBuildingIndexRef.current) return;
+    if (index === activeBuildingIndex) return;
 
-    // 1. Sauvegarder le bâtiment actuellement quitté
-    const currentIdx = activeBuildingIndexRef.current;
+    // 1. Save current building with live store values before switching
     const updated = [...buildings];
-    if (updated[currentIdx]) {
-      updated[currentIdx] = {
-        ...updated[currentIdx],
+    if (updated[activeBuildingIndex]) {
+      updated[activeBuildingIndex] = {
+        ...updated[activeBuildingIndex],
         length: config.length,
         width: config.width,
         eaveHeight: config.eaveHeight,
@@ -392,17 +463,16 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       };
     }
 
-    // 2. Charger le nouveau bâtiment
+    // 2. Load target building into the store
     const target = updated[index];
     if (target) {
       isSwitchingBuildingRef.current = true;
-      activeBuildingIndexRef.current = index;
       setBuildings(updated);
       setActiveBuildingIndex(index);
       useConfiguratorStore.getState().loadBuildingConfig(target);
       setTimeout(() => {
         isSwitchingBuildingRef.current = false;
-      }, 150);
+      }, 500);
     }
   };
 
@@ -1480,28 +1550,19 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                 attribution="&copy; OpenStreetMap contributors"
                                 maxZoom={21}
+                                maxNativeZoom={19}
                               />
                               <MapResizer />
                               <MapSyncCenter lat={lat} lng={lng} />
                               <DraggableLocationMarker lat={lat} lng={lng} setGps={handleGpsUpdate} />
+                              <PC2ScaledBuildingOverlay
+                                bLength={bLength}
+                                bWidth={bWidth}
+                                rotation={currentRotation}
+                                label={`${b.name || `Bâtiment ${bIdx + 1}`} (${currentRotation}°)`}
+                              />
+                              <PC2MapScaleBar />
                             </MapContainer>
-
-                            {/* Emprise rectangulaire orientable centrée du bâtiment */}
-                            <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[1000]">
-                              <div
-                                className="border-2 border-red-500 border-dashed bg-red-500/20 rounded shadow-md flex items-center justify-center text-center p-1"
-                                style={{
-                                  width: `${Math.min(260, Math.max(70, bLength * 4))}px`,
-                                  height: `${Math.min(180, Math.max(50, bWidth * 4))}px`,
-                                  transform: `rotate(${currentRotation}deg)`,
-                                  transition: 'transform 0.1s ease-out',
-                                }}
-                              >
-                                <span className="text-[10px] font-bold text-red-900 bg-white/80 px-1 py-0.5 rounded shadow-2xs">
-                                  {b.name || `Bâtiment ${bIdx + 1}`} ({currentRotation}°)
-                                </span>
-                              </div>
-                            </div>
                           </div>
                           <p className="text-[10px] text-gray-500 text-center">
                             Zoom et dézoom libres • Déplacez le repère et pivotez l'emprise pour ajuster l'implantation
