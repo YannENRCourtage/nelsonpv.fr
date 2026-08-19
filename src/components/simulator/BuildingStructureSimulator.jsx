@@ -966,6 +966,13 @@ export default function BuildingStructureSimulator({
                         <MapCenterTracker onCenterChange={setMapCenter} />
                         <MapScaleBar />
                         <ZoomLevelIndicator />
+                        <ScaledBuildingMapOverlay
+                          buildingLength={buildingLength}
+                          buildingWidth={buildingWidth}
+                          buildingRotation={buildingRotation}
+                          buildingType={config.buildingType}
+                          floorArea={floorArea}
+                        />
                         <TileLayer
                           url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                           maxNativeZoom={19}
@@ -974,15 +981,6 @@ export default function BuildingStructureSimulator({
                           attribution="Esri, Maxar, Earthstar Geographics"
                         />
                       </MapContainer>
-
-                      {/* Emprise rectangulaire bleue du bâtiment 100% à l'échelle du terrain au centre */}
-                      <ScaledBuildingMapOverlay
-                        buildingLength={buildingLength}
-                        buildingWidth={buildingWidth}
-                        buildingRotation={buildingRotation}
-                        buildingType={config.buildingType}
-                        floorArea={floorArea}
-                      />
                     </div>
 
                     {/* Badge adresse sous le bâtiment */}
