@@ -40,11 +40,13 @@ export default function SolarRoofSimulator({
   const [roofSurface, setRoofSurface] = useState(1179);
 
   // Orientation & Pente
-  const [selectedRidgeIndex, setSelectedRidgeIndex] = useState(null);
+  const [selectedRidgeIndex, setSelectedRidgeIndex] = useState(0);
   const [orientationInfo, setOrientationInfo] = useState({
-    orientationLabel: 'Plein Sud',
+    orientationKey: 'south',
+    orientationLabel: 'Plein Sud (0°)',
     azimuthDeg: 0,
-    ridgeIndex: null
+    angle: 0,
+    ridgeIndex: 0
   });
   const [selectedPitch, setSelectedPitch] = useState(30);
 

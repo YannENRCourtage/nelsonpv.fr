@@ -202,7 +202,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     {
       id: 'bat-1',
       name: 'Bâtiment 1 (Principal)',
-      length: 30,
+      length: 37.5,
       width: 20,
       eaveHeight: 4,
       roofPitch: 15,
@@ -210,7 +210,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       leftSide: 'none',
       rightSide: 'none',
       bayCount: 5,
-      baySpacing: 6,
+      baySpacing: 7.5,
       captures: {},
       photos: {}
     }
@@ -288,7 +288,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const b1Eave = Number(b1.eaveHeight || config.eaveHeight || 4.0);
     const b1Pitch = Number(b1.roofPitch || config.roofPitch || 15);
     const b1Bays = Number(b1.bayCount || config.bayCount || 5);
-    const b1Spacing = Number(b1.baySpacing || config.baySpacing || 6);
+    const b1Spacing = Number(b1.baySpacing || config.baySpacing || 7.5);
     const b1Auvent = Boolean(b1.rightSide === 'auvent' || b1.leftSide === 'auvent' || config.rightSide === 'auvent' || config.leftSide === 'auvent');
     
     const rawKwc = editedProject?.kwc || editedProject?.puissance || editedProject?.projectSize || project?.kwc || project?.puissance || project?.projectSize;
@@ -371,7 +371,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       const merged = { ...cur, ...updates };
       if (updates.bayCount !== undefined || updates.baySpacing !== undefined) {
         const bc = updates.bayCount !== undefined ? updates.bayCount : (cur.bayCount || 5);
-        const bs = updates.baySpacing !== undefined ? updates.baySpacing : (cur.baySpacing || 6);
+        const bs = updates.baySpacing !== undefined ? updates.baySpacing : (cur.baySpacing || 7.5);
         merged.length = bc * bs;
       }
       next[activeBuildingIndex] = merged;
@@ -393,7 +393,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     const newBuilding = {
       id: `bat-${newIdx}`,
       name: `Bâtiment ${newIdx} (Secondaire)`,
-      length: 24,
+      length: 30,
       width: 9.1,
       eaveHeight: 3,
       roofPitch: 10,
@@ -401,7 +401,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       leftSide: 'none',
       rightSide: 'none',
       bayCount: 4,
-      baySpacing: 6,
+      baySpacing: 7.5,
       leftWidth: 9.3,
       rightWidth: 9.3,
       hasSolar: true,
@@ -1120,7 +1120,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                           {(() => {
                             const curB = buildings[activeBuildingIndex] || config;
                             const curW = Number(curB.width || config.width || 20);
-                            const curL = Number(curB.length || (curB.bayCount || 5) * (curB.baySpacing || 6) || config.length || 30);
+                            const curL = Number(curB.length || (curB.bayCount || 5) * (curB.baySpacing || 7.5) || config.length || 37.5);
                             const curArea = Math.round(curW * curL);
                             return (
                               <span className="text-slate-800 font-bold text-sm whitespace-nowrap">
@@ -1136,7 +1136,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                               ⚡ {(() => {
                                 const curB = buildings[activeBuildingIndex] || config;
                                 const curW = Number(curB.width || config.width || 20);
-                                const curL = Number(curB.length || (curB.bayCount || 5) * (curB.baySpacing || 6) || config.length || 30);
+                                const curL = Number(curB.length || (curB.bayCount || 5) * (curB.baySpacing || 7.5) || config.length || 37.5);
                                 const curArea = Math.round(curW * curL);
                                 return curB.solarStats?.power ? curB.solarStats.power.toFixed(2) : (curArea * 0.20).toFixed(2);
                               })()} kWc

@@ -84,7 +84,10 @@ export function calculateOrientationFromRidge(p1, p2, allPoints = []) {
     orientationLabel = 'Plein Nord';
   }
 
-  return { orientationKey, orientationLabel, angle: deg };
+  const angleStr = deg === 0 ? ' (0°)' : (deg > 0 ? ` (+${deg}°)` : ` (${deg}°)`);
+  const fullOrientationLabel = `${orientationLabel}${angleStr}`;
+
+  return { orientationKey, orientationLabel: fullOrientationLabel, rawOrientationLabel: orientationLabel, angle: deg };
 }
 
 // ─── Créateur d'icône HTML pour les 4 coins ─────────────────────────────────
@@ -199,6 +202,21 @@ function NativeCornerMarkersLayer({
   useEffect(() => {
     pointsRef.current = points;
   }, [points]);
+
+  // Synchronisation automatique de l'orientation pour l'arête active
+  useEffect(() => {
+    if (points && points.length >= 4) {
+      const idx = selectedRidgeIndex !== undefined && selectedRidgeIndex !== null ? selectedRidgeIndex : 0;
+      const ptA = points[idx];
+      const ptB = points[(idx + 1) % 4];
+      if (ptA && ptB) {
+        const res = calculateOrientationFromRidge(ptA, ptB, points);
+        if (onOrientationChange) {
+          onOrientationChange(res);
+        }
+      }
+    }
+  }, [points, selectedRidgeIndex, onOrientationChange]);
 
   // Initialisation et gestion du polygone + arêtes + 4 marqueurs
   useEffect(() => {
@@ -483,7 +501,7 @@ export default function RoofMapPolygonSelector({
               Votre toiture est exposée :
             </span>
             <span className="text-xl font-black text-amber-900">
-              {(orientationInfo.orientationLabel || 'Plein Sud').replace(/\s*\([^)]*\)/g, '')} ({orientationInfo.angle != null ? `${orientationInfo.angle}°` : '0°'})
+              {orientationInfo?.orientationLabel || 'Plein Sud (0°)'}
             </span>
           </div>
 

@@ -42,9 +42,9 @@ export default function SolarAutoconsoSimulator({
   // Étape 4 : Orientation
   const [selectedRidgeIndex, setSelectedRidgeIndex] = useState(0);
   const [orientationInfo, setOrientationInfo] = useState({
-    orientationKey: 'south_east',
-    orientationLabel: 'Sud-Est',
-    angle: 135
+    orientationKey: 'south',
+    orientationLabel: 'Plein Sud (0°)',
+    angle: 0
   });
 
   // Étape 5 : Inclinaison
