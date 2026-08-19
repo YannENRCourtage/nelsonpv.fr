@@ -2,19 +2,14 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConfiguratorValues, useConfiguratorActions, EPONA_MODELS, TALIAN_MODELS, TALIAN_1_MODELS, TALIAN_3_MODELS, TALIAN_5_MODELS } from '@/stores/useConfiguratorStore.js';
 
-export function ControlPanel({ isAcama = false, selectedProject = null }) {
+export function ControlPanel({ isAcama = false, selectedProject = null, activeBuilding = null, onUpdateBuilding = null }) {
     const navigate = useNavigate();
     // NEW: Split hooks with destructuring to maintain variable scope compatibility
+    const storeValues = useConfiguratorValues();
     const {
-        width,
         eaveHeight,
         roofPitch,
-        baySpacing,
-        bayCount,
         availableWidths,
-        buildingType,
-        leftSide,
-        rightSide,
         hasSolar,
         solarStats,
         selectedEponaModel,
@@ -24,7 +19,15 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
         selectedTalian5Model,
         configMode,
         customParams,
-    } = useConfiguratorValues();
+    } = storeValues;
+
+    // Use activeBuilding values if provided (isolated tab), otherwise fallback to store
+    const width = activeBuilding?.width !== undefined ? activeBuilding.width : storeValues.width;
+    const buildingType = activeBuilding?.buildingType || storeValues.buildingType;
+    const baySpacing = activeBuilding?.baySpacing !== undefined ? activeBuilding.baySpacing : storeValues.baySpacing;
+    const bayCount = activeBuilding?.bayCount !== undefined ? activeBuilding.bayCount : storeValues.bayCount;
+    const leftSide = activeBuilding?.leftSide || storeValues.leftSide;
+    const rightSide = activeBuilding?.rightSide || storeValues.rightSide;
 
     const {
         setWidth,
@@ -45,6 +48,68 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
         setConfigMode,
         updateCustomParams,
     } = useConfiguratorActions();
+
+    // Handlers with per-building isolation callback
+    const handleTypeSelection = (newType) => {
+        setBuildingType(newType);
+        if (onUpdateBuilding) {
+            const defW = (TYPE_WIDTHS_MAP[newType] && TYPE_WIDTHS_MAP[newType][0]) || 20.0;
+            const isOmb = newType.startsWith('ombriere');
+            const isMono = newType === 'monopente';
+            onUpdateBuilding({
+                buildingType: newType,
+                width: defW,
+                roofPitch: isMono ? 15 : 10,
+                eaveHeight: isMono ? 4.0 : (isOmb ? 3.0 : 5.5),
+                leftSide: isOmb ? 'none' : (activeBuilding?.leftSide || leftSide),
+                rightSide: isOmb ? 'none' : (activeBuilding?.rightSide || rightSide)
+            });
+        }
+    };
+
+    const handleWidthSelection = (newW) => {
+        setWidth(newW);
+        if (onUpdateBuilding) {
+            onUpdateBuilding({ width: Number(newW) });
+        }
+    };
+
+    const handleBaySpacingSelection = (sp) => {
+        setBaySpacing(sp);
+        if (onUpdateBuilding) {
+            onUpdateBuilding({ baySpacing: sp });
+        }
+    };
+
+    const handleIncrementBay = () => {
+        incrementBayCount();
+        if (onUpdateBuilding) {
+            const curBays = activeBuilding?.bayCount !== undefined ? activeBuilding.bayCount : bayCount;
+            onUpdateBuilding({ bayCount: curBays + 1 });
+        }
+    };
+
+    const handleDecrementBay = () => {
+        decrementBayCount();
+        if (onUpdateBuilding) {
+            const curBays = activeBuilding?.bayCount !== undefined ? activeBuilding.bayCount : bayCount;
+            onUpdateBuilding({ bayCount: Math.max(4, curBays - 1) });
+        }
+    };
+
+    const handleLeftSideToggle = (side) => {
+        setLeftSide(side);
+        if (onUpdateBuilding) {
+            onUpdateBuilding({ leftSide: side });
+        }
+    };
+
+    const handleRightSideToggle = (side) => {
+        setRightSide(side);
+        if (onUpdateBuilding) {
+            onUpdateBuilding({ rightSide: side });
+        }
+    };
 
     // ACAMA mode: show EPONA model selector when buildingType is 'epona'
     const isAcamaTalian4 = isAcama && buildingType === 'symetrique' && !!TALIAN_MODELS[selectedTalianModel] && Math.abs(width - 13.7) < 0.1;
@@ -102,7 +167,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                     </label>
                     <select
                         value={isAcama ? (isAcamaAsymetrique ? 'asymetrique' : 'symetrique') : buildingType}
-                        onChange={(e) => isAcama ? handleAcamaBuildingType(e.target.value) : setBuildingType(e.target.value)}
+                        onChange={(e) => isAcama ? handleAcamaBuildingType(e.target.value) : handleTypeSelection(e.target.value)}
                         className="w-full px-3 py-2.5 border border-slate-300 rounded-lg font-semibold text-xs bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                     >
                         <option value="symetrique">Symétrique</option>
@@ -129,7 +194,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                     </label>
                     <select
                         value={width}
-                        onChange={(e) => setWidth(Number(e.target.value))}
+                        onChange={(e) => handleWidthSelection(Number(e.target.value))}
                         disabled={isAcama}
                         className={`w-full px-3 py-2.5 border border-slate-300 rounded-lg font-semibold text-xs bg-white hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all ${
                             isAcama ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : ''
@@ -155,7 +220,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                                 <span className="text-[10px] font-bold text-slate-400 w-8 uppercase">Gch</span>
                                 <div className="flex-1 flex gap-1">
                                     <button
-                                        onClick={() => setLeftSide(leftSide === 'auvent' ? 'none' : 'auvent')}
+                                        onClick={() => handleLeftSideToggle(leftSide === 'auvent' ? 'none' : 'auvent')}
                                         className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase border transition-all ${leftSide === 'auvent'
                                             ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                                             : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
@@ -167,7 +232,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                                         type="button"
                                         onClick={() => {
                                             if (buildingType !== 'monopente' && !buildingType.startsWith('asymetrique')) {
-                                                setLeftSide(leftSide === 'appentis' ? 'none' : 'appentis');
+                                                handleLeftSideToggle(leftSide === 'appentis' ? 'none' : 'appentis');
                                             }
                                         }}
                                         disabled={buildingType === 'monopente' || buildingType.startsWith('asymetrique')}
@@ -188,7 +253,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                                 <div className="flex-1 flex gap-1">
                                     <button
                                         type="button"
-                                        onClick={() => setRightSide(rightSide === 'auvent' ? 'none' : 'auvent')}
+                                        onClick={() => handleRightSideToggle(rightSide === 'auvent' ? 'none' : 'auvent')}
                                         className={`flex-1 py-1 rounded-md text-[10px] font-bold uppercase border transition-all ${rightSide === 'auvent'
                                             ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                                             : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
@@ -200,7 +265,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                                         type="button"
                                         onClick={() => {
                                             if (buildingType !== 'monopente' && !buildingType.startsWith('asymetrique')) {
-                                                setRightSide(rightSide === 'appentis' ? 'none' : 'appentis');
+                                                handleRightSideToggle(rightSide === 'appentis' ? 'none' : 'appentis');
                                             }
                                         }}
                                         disabled={buildingType === 'monopente' || buildingType.startsWith('asymetrique')}
@@ -230,13 +295,13 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                             </label>
                             <div className="inline-flex rounded-lg overflow-hidden border-2 border-slate-300 w-full">
                                 <button
-                                    onClick={() => setBaySpacing(6)}
+                                    onClick={() => handleBaySpacingSelection(6)}
                                     className={`flex-1 py-1.5 font-bold text-xs transition-all ${baySpacing === 6 ? 'bg-green-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
                                 >
                                     6m
                                 </button>
                                 <button
-                                    onClick={() => setBaySpacing(7.5)}
+                                    onClick={() => handleBaySpacingSelection(7.5)}
                                     className={`flex-1 py-1.5 font-bold text-xs transition-all ${baySpacing === 7.5 ? 'bg-green-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
                                 >
                                     7.5m
@@ -250,7 +315,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                             </label>
                             <div className="flex items-center justify-between gap-1 border-2 border-slate-300 rounded-lg p-0.5 bg-white">
                                 <button
-                                    onClick={decrementBayCount}
+                                    onClick={handleDecrementBay}
                                     disabled={bayCount <= 4}
                                     className={`w-7 h-7 rounded-md font-bold text-base transition-all flex items-center justify-center ${bayCount > 4 ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
                                 >
@@ -260,7 +325,7 @@ export function ControlPanel({ isAcama = false, selectedProject = null }) {
                                     <span className="text-base font-bold text-slate-900 leading-none">{bayCount}</span>
                                 </div>
                                 <button
-                                    onClick={incrementBayCount}
+                                    onClick={handleIncrementBay}
                                     className="w-7 h-7 rounded-md bg-green-500 text-white font-bold text-base hover:bg-green-600 transition-all flex items-center justify-center"
                                 >
                                     +

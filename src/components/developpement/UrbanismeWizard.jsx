@@ -346,75 +346,26 @@ Le positionnement du point de livraison et d'un transformateur (le cas échéant
 Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf PC 02 - Plan de masse).${batteryStorage.enabled ? `\nLe système de stockage batterie est équipé de ses dispositifs de sécurité autonomes conformes aux prescriptions SDIS (détection thermique, coupure automatique d'urgence, système d'extinction dédié et bac de rétention).` : ''}`;
   }, [editedProject, project, config, buildings, additionalRoof, batteryStorage]);
 
-  // Synchronisation continue des paramètres de configuration vers le bâtiment actif
-  // Uses activeBuildingIndex from closure (deps array) — NOT a ref — to avoid
-  // stale-index race conditions when Zustand triggers intermediate renders.
-  useEffect(() => {
-    if (isSwitchingBuildingRef.current) return;
+  // Mise à jour explicite du bâtiment actif (Single Source of Truth par onglet)
+  const updateActiveBuilding = useCallback((updates) => {
     setBuildings(prev => {
       if (!prev[activeBuildingIndex]) return prev;
-      const cur = prev[activeBuildingIndex];
-      if (
-        cur.length === config.length &&
-        cur.width === config.width &&
-        cur.eaveHeight === config.eaveHeight &&
-        cur.roofPitch === config.roofPitch &&
-        cur.buildingType === config.buildingType &&
-        cur.leftSide === config.leftSide &&
-        cur.rightSide === config.rightSide &&
-        cur.bayCount === config.bayCount &&
-        cur.baySpacing === config.baySpacing
-      ) {
-        return prev;
+      const next = [...prev];
+      const cur = next[activeBuildingIndex];
+      const merged = { ...cur, ...updates };
+      if (updates.bayCount !== undefined || updates.baySpacing !== undefined) {
+        const bc = updates.bayCount !== undefined ? updates.bayCount : (cur.bayCount || 5);
+        const bs = updates.baySpacing !== undefined ? updates.baySpacing : (cur.baySpacing || 6);
+        merged.length = bc * bs;
       }
-      const upd = [...prev];
-      upd[activeBuildingIndex] = {
-        ...cur,
-        length: config.length,
-        width: config.width,
-        eaveHeight: config.eaveHeight,
-        roofPitch: config.roofPitch,
-        buildingType: config.buildingType,
-        leftSide: config.leftSide,
-        rightSide: config.rightSide,
-        bayCount: config.bayCount,
-        baySpacing: config.baySpacing,
-      };
-      return upd;
+      next[activeBuildingIndex] = merged;
+      return next;
     });
-  }, [
-    activeBuildingIndex,
-    config.length,
-    config.width,
-    config.eaveHeight,
-    config.roofPitch,
-    config.buildingType,
-    config.leftSide,
-    config.rightSide,
-    config.bayCount,
-    config.baySpacing
-  ]);
+  }, [activeBuildingIndex]);
 
-  // Gestion des bâtiments multiples
+  // Gestion des bâtiments multiples avec isolation stricte des onglets
   const handleAddBuilding = () => {
-    // Save current building with live store values
-    const currentList = [...buildings];
-    if (currentList[activeBuildingIndex]) {
-      currentList[activeBuildingIndex] = {
-        ...currentList[activeBuildingIndex],
-        length: config.length,
-        width: config.width,
-        eaveHeight: config.eaveHeight,
-        roofPitch: config.roofPitch,
-        buildingType: config.buildingType,
-        leftSide: config.leftSide,
-        rightSide: config.rightSide,
-        bayCount: config.bayCount,
-        baySpacing: config.baySpacing,
-      };
-    }
-
-    const newIdx = currentList.length + 1;
+    const newIdx = buildings.length + 1;
     const newBuilding = {
       id: `bat-${newIdx}`,
       name: `Bâtiment ${newIdx} (Secondaire)`,
@@ -427,53 +378,27 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       rightSide: 'none',
       bayCount: 4,
       baySpacing: 6,
+      leftWidth: 9.3,
+      rightWidth: 9.3,
+      hasSolar: true,
       rotation: 0,
       captures: {},
       photos: {}
     };
-    const updated = [...currentList, newBuilding];
+    const updated = [...buildings, newBuilding];
     const newIdxPos = updated.length - 1;
 
-    isSwitchingBuildingRef.current = true;
     setBuildings(updated);
     setActiveBuildingIndex(newIdxPos);
     useConfiguratorStore.getState().loadBuildingConfig(newBuilding);
-    setTimeout(() => {
-      isSwitchingBuildingRef.current = false;
-    }, 500);
   };
 
   const handleSelectBuilding = (index) => {
-    if (index === activeBuildingIndex) return;
+    if (index === activeBuildingIndex || !buildings[index]) return;
 
-    // 1. Save current building with live store values before switching
-    const updated = [...buildings];
-    if (updated[activeBuildingIndex]) {
-      updated[activeBuildingIndex] = {
-        ...updated[activeBuildingIndex],
-        length: config.length,
-        width: config.width,
-        eaveHeight: config.eaveHeight,
-        roofPitch: config.roofPitch,
-        buildingType: config.buildingType,
-        leftSide: config.leftSide,
-        rightSide: config.rightSide,
-        bayCount: config.bayCount,
-        baySpacing: config.baySpacing,
-      };
-    }
-
-    // 2. Load target building into the store
-    const target = updated[index];
-    if (target) {
-      isSwitchingBuildingRef.current = true;
-      setBuildings(updated);
-      setActiveBuildingIndex(index);
-      useConfiguratorStore.getState().loadBuildingConfig(target);
-      setTimeout(() => {
-        isSwitchingBuildingRef.current = false;
-      }, 500);
-    }
+    setActiveBuildingIndex(index);
+    const target = buildings[index];
+    useConfiguratorStore.getState().loadBuildingConfig(target);
   };
 
   const handleRemoveBuilding = (index, e) => {
@@ -483,8 +408,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     setBuildings(updated);
     setActiveBuildingIndex(0);
     const first = updated[0];
-    if (first && configActions.loadBuildingConfig) {
-      configActions.loadBuildingConfig(first);
+    if (first) {
+      useConfiguratorStore.getState().loadBuildingConfig(first);
     }
   };
 
@@ -1111,7 +1036,12 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                   <div className="flex-1 flex flex-col lg:flex-row gap-3.5 min-h-0 overflow-hidden">
                     {/* Panneau de contrôle gauche */}
                     <div className="w-full lg:w-[410px] h-full overflow-y-auto pr-1">
-                      <ControlPanel isAcama={false} selectedProject={editedProject} />
+                      <ControlPanel 
+                        isAcama={false} 
+                        selectedProject={editedProject} 
+                        activeBuilding={buildings[activeBuildingIndex]}
+                        onUpdateBuilding={updateActiveBuilding}
+                      />
                     </div>
 
                     {/* Scène 3D droite */}
@@ -1219,21 +1149,26 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                       </div>
 
                       <div className="flex-1 mb-2">
-                        <Building3DViewer
-                          buildingConfig={{
-                            longueur: config.length,
-                            largeur: config.width,
-                            hauteur_egout: config.eaveHeight,
-                            pente: config.roofPitch,
-                            buildingType: config.buildingType,
-                            leftSide: config.leftSide,
-                            rightSide: config.rightSide,
-                            type: editedProject.type
-                          }}
-                          onCaptureSnapshot={handleCaptureSnapshotPC5}
-                          onCaptureAll5Views={handleCaptureAll5ViewsPC5}
-                          height={220}
-                        />
+                        {(() => {
+                          const activeB = buildings[activeBuildingIndex] || {};
+                          return (
+                            <Building3DViewer
+                              buildingConfig={{
+                                longueur: Number(activeB.length || config.length || 30),
+                                largeur: Number(activeB.width || config.width || 20),
+                                hauteur_egout: Number(activeB.eaveHeight || config.eaveHeight || 4),
+                                pente: Number(activeB.roofPitch || config.roofPitch || 15),
+                                buildingType: activeB.buildingType || config.buildingType || 'asymetrique_1',
+                                leftSide: activeB.leftSide || config.leftSide || 'none',
+                                rightSide: activeB.rightSide || config.rightSide || 'none',
+                                type: editedProject.type
+                              }}
+                              onCaptureSnapshot={handleCaptureSnapshotPC5}
+                              onCaptureAll5Views={handleCaptureAll5ViewsPC5}
+                              height={220}
+                            />
+                          );
+                        })()}
                       </div>
                     </div>
 

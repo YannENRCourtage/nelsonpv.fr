@@ -4,7 +4,7 @@ import html2canvas from 'html2canvas';
 import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
 
 // ─── Générateur de Graphique Financier Haute Résolution pour le PDF (30 ans) ──
-const generateFinancialChartImage = ({ sim, width = 800, height = 340 }) => {
+const generateFinancialChartImage = ({ sim, width = 800, height = 374 }) => {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -157,7 +157,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   }
 
   // Graphique financier 30 ans
-  const financialChartImg = generateFinancialChartImage({ sim, width: 800, height: 340 });
+  const financialChartImg = generateFinancialChartImage({ sim, width: 800, height: 374 });
 
   // Calculs financiers pour les 3 cartes de cumuls 10 / 20 / 30 ans
   const totalInv = sim.totalInvestmentHT || sim.resteACharge || 10800;
@@ -214,6 +214,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
     ? `+${sim.annualRevenue.toLocaleString('fr-FR')} €`
     : `+${(Math.round((sim.annualProductionKwh || 11250) * 0.20)).toLocaleString('fr-FR')} €`;
 
+  const calculatedPower = sim.kwc ? `${sim.kwc} kWc` : (sim.power ? `${sim.power} kW` : (sim.annualProductionKwh ? `${(sim.annualProductionKwh / 1050).toFixed(2)} kWc` : '36 kWc'));
+
   // HTML conditionnel selon la solution
   let technicalHypothesesHtml = '';
   if (isIrve) {
@@ -251,7 +253,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
       </div>
     `;
   } else if (isToiture || isStruct) {
-    // Cadre Toiture / Structure SANS "Taux d'autoconsommation" ni "Gisement régional"
+    // Cadre Toiture / Structure SANS "Taux d'autoconsommation" ni "Gisement régional", avec Puissance installée
     technicalHypothesesHtml = `
       <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 7px 12px; margin-bottom: 10px;">
         <div style="font-size: 8pt; font-weight: 800; color: #00429d; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px;">
@@ -261,22 +263,22 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           <tr style="border-bottom: 1px solid #e2e8f0;">
             <td style="padding: 2px 0; color: #64748b;">Adresse du site :</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold;">${clientAddress}</td>
-            <td style="padding: 2px 0 2px 15px; color: #64748b;">Orientation de toiture :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.orientationLabel || 'Plein Sud'}</td>
+            <td style="padding: 2px 0 2px 15px; color: #64748b;">Puissance installée :</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #00429d;">${calculatedPower}</td>
           </tr>
           <tr>
             <td style="padding: 2px 0; color: #64748b;">Production estimée :</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #0284c7;">
               ${sim.annualProductionKwh ? `${sim.annualProductionKwh.toLocaleString('fr-FR')} kWh / an` : '7 125 kWh / an'}
             </td>
-            <td style="padding: 2px 0 2px 15px; color: #64748b;">Pente de toiture :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.pitch || 15}°</td>
+            <td style="padding: 2px 0 2px 15px; color: #64748b;">Orientation / Pente :</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.orientationLabel || 'Plein Sud'} (${sim.pitch || 15}°)</td>
           </tr>
         </table>
       </div>
     `;
   } else {
-    // Autoconsommation standard
+    // Autoconsommation standard avec Puissance installée
     technicalHypothesesHtml = `
       <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 7px 12px; margin-bottom: 10px;">
         <div style="font-size: 8pt; font-weight: 800; color: #00429d; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 4px;">
@@ -286,16 +288,16 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           <tr style="border-bottom: 1px solid #e2e8f0;">
             <td style="padding: 2px 0; color: #64748b;">Adresse du site :</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold;">${clientAddress}</td>
-            <td style="padding: 2px 0 2px 15px; color: #64748b;">Orientation du pan :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.orientationLabel || 'Plein Sud'}</td>
+            <td style="padding: 2px 0 2px 15px; color: #64748b;">Puissance installée :</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #00429d;">${calculatedPower}</td>
           </tr>
           <tr style="border-bottom: 1px solid #e2e8f0;">
             <td style="padding: 2px 0; color: #64748b;">Productible annuel :</td>
             <td style="padding: 2px 0; text-align: right; font-weight: bold; color: #0284c7;">
               ${sim.annualProductionKwh ? `${sim.annualProductionKwh.toLocaleString('fr-FR')} kWh / an` : '7 125 kWh / an'}
             </td>
-            <td style="padding: 2px 0 2px 15px; color: #64748b;">Inclinaison de toiture :</td>
-            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.pitch || 30}°</td>
+            <td style="padding: 2px 0 2px 15px; color: #64748b;">Orientation / Inclinaison :</td>
+            <td style="padding: 2px 0; text-align: right; font-weight: bold;">${sim.orientationLabel || 'Plein Sud'} (${sim.pitch || 30}°)</td>
           </tr>
           <tr>
             <td style="padding: 2px 0; color: #64748b;">Taux d'autoconsommation :</td>
@@ -334,7 +336,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px;">
           <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 6px; text-align: center;">
             <div style="font-size: 6.5pt; font-weight: bold; color: #64748b; text-transform: uppercase;">Puissance</div>
-            <div style="font-size: 13pt; font-weight: 900; color: #00429d; margin: 1px 0;">${sim.kwc ? `${sim.kwc} kWc` : sim.power ? `${sim.power} kW` : '-'}</div>
+            <div style="font-size: 13pt; font-weight: 900; color: #00429d; margin: 1px 0;">${calculatedPower}</div>
             <div style="font-size: 6.5pt; color: #64748b;">${sim.roofSurface ? `${sim.roofSurface} m² toiture` : sim.quantity ? `${sim.quantity} borne(s)` : ''}</div>
           </div>
 
@@ -360,13 +362,13 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         <!-- 4. VISUELS : VUE 3D CONFIGURATEUR ET/OU PLAN SATELLITE -->
         ${isStruct ? `
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; height: 260px;">
-            <!-- 4a. VISUEL 3D DU BÂTIMENT CONFIGURÉ (PUR, SANS ENCARTS) -->
+            <!-- 4a. VISUEL 3D DU BÂTIMENT CONFIGURÉ (PUR, SANS ESPACE AU-DESSUS DU TITRE) -->
             <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #f8fafc; display: flex; flex-direction: column; position: relative;">
-              <div style="position: absolute; top: 6px; left: 8px; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-radius: 4px; font-size: 7pt; font-weight: bold; z-index: 2;">
+              <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 8px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2;">
                 Vue 3D — Bâtiment ${sim.length ? Number(sim.length).toFixed(1) : '30.0'}m × ${sim.width ? Number(sim.width).toFixed(1) : '20.0'}m
               </div>
               ${sim.building3dScreenshot ? `
-                <img src="${sim.building3dScreenshot}" style="width: 100%; height: 100%; object-fit: contain; padding: 8px;" alt="Vue 3D du Bâtiment" />
+                <img src="${sim.building3dScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue 3D du Bâtiment" />
               ` : `
                 <div style="color: #64748b; font-size: 8.5pt; text-align: center; margin: auto; padding: 15px;">
                   <strong style="color: #0f172a; display: block; margin-bottom: 3px;">Hangar Solaire 3D</strong>
@@ -375,13 +377,13 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               `}
             </div>
 
-            <!-- 4b. IMPLANTATION SATELLITE SUR LE TERRAIN -->
+            <!-- 4b. IMPLANTATION SATELLITE SUR LE TERRAIN (SANS ESPACE AU-DESSUS DU TITRE) -->
             <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; display: flex; flex-direction: column; position: relative;">
-              <div style="position: absolute; top: 6px; left: 8px; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-radius: 4px; font-size: 7pt; font-weight: bold; z-index: 2;">
+              <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 8px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2;">
                 Implantation Satellite sur la Parcelle
               </div>
               ${finalMapScreenshot ? `
-                <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover;" alt="Vue satellite du site" />
+                <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue satellite du site" />
               ` : `
                 <div style="color: #94a3b8; font-size: 8.5pt; text-align: center; margin: auto; padding: 15px;">
                   <strong style="color: #ffffff;">Repérage Satellite</strong>
@@ -394,10 +396,10 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             </div>
           </div>
         ` : `
-          <!-- 4. VISUEL SATELLITE HAUTE DÉFINITION (+30% HAUTEUR : 300px) -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 10px; height: 300px; display: flex; align-items: center; justify-content: center; position: relative;">
+          <!-- 4. VISUEL SATELLITE (+10% HAUTEUR : 330px) -->
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 10px; height: 330px; display: flex; align-items: center; justify-content: center; position: relative;">
             ${finalMapScreenshot ? `
-              <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover;" alt="Vue satellite du site" />
+              <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue satellite du site" />
             ` : `
               <div style="color: #94a3b8; font-size: 10pt; text-align: center; padding: 15px;">
                 <strong style="color: #ffffff;">Repérage Satellite du Site</strong>
@@ -410,12 +412,12 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
         `}
 
-        <!-- 5. GRAPHIQUE FINANCIER D'AMORTISSEMENT (30 ANS) (+10% HAUTEUR : 210px) -->
+        <!-- 5. GRAPHIQUE FINANCIER D'AMORTISSEMENT (+10% HAUTEUR : 225px) -->
         <div style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; margin-bottom: 8px;">
           <div style="font-size: 8pt; font-weight: 800; color: #00429d; text-transform: uppercase; margin-bottom: 2px;">
             Projection Financière des Gains Cumulés (30 ans)
           </div>
-          <div style="height: 205px; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <div style="height: 225px; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center;">
             <img src="${financialChartImg}" style="width: 100%; height: 100%; object-fit: contain;" alt="Graphique Amortissement" />
           </div>
 

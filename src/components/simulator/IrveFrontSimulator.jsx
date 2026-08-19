@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Zap, Car, ShieldCheck, Lightbulb, TrendingUp,
+  Zap, Car, ShieldCheck, Lightbulb, TrendingUp, Clock,
   Save, FileDown, CheckCircle2, ChevronRight, Sliders, Euro, Calculator,
   MapPin, Search, Loader2, Plus, Minus, Trash2
 } from 'lucide-react';
@@ -343,6 +343,9 @@ export default function IrveFrontSimulator({
   const breakEvenYears = (breakEvenMonths / 12).toFixed(1);
 
   // Projection financière sur 30 ans avec cumul 10 / 20 / 30 ans
+  // Horizon mensuel sélectionnable (36, 48 ou 60 mois)
+  const [selectedMonthHorizon, setSelectedMonthHorizon] = useState(36);
+
   const financialProjection30Years = useMemo(() => {
     const data = [];
     let cumul = -resteACharge;
@@ -372,6 +375,32 @@ export default function IrveFrontSimulator({
       cumul30
     };
   }, [resteACharge, annualRevenue]);
+
+  // Projection mensuelle détaillée sur 36 / 48 / 60 mois
+  const financialProjectionMonths = useMemo(() => {
+    const horizon = selectedMonthHorizon || 36;
+    const inv = resteACharge || 12000;
+    const mRev = monthlyRevenue || 500;
+    const data = [];
+    let cumul = -inv;
+
+    for (let m = 1; m <= horizon; m++) {
+      cumul += mRev;
+      data.push({
+        month: `M${m}`,
+        m,
+        gain: Math.round(cumul),
+        monthRevenue: mRev,
+        isPayback: cumul >= 0
+      });
+    }
+
+    return {
+      data,
+      horizon,
+      totalGainAtHorizon: Math.round(mRev * horizon - inv)
+    };
+  }, [resteACharge, monthlyRevenue, selectedMonthHorizon]);
 
   const ensureMapSnapshot = async () => {
     const snapshot = await generateSatelliteSnapshot({
@@ -816,6 +845,119 @@ export default function IrveFrontSimulator({
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" />
                   Bénéfices nets (Post-ROI)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ─── SECTION REVENUS CUMULÉS SUR 36/48/60 MOIS ───────────── */}
+          <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-black text-white flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-amber-400" />
+                  Projection financière &amp; Bénéfices Cumulés ({selectedMonthHorizon} mois)
+                </h3>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  Projection mensuelle détaillée du retour sur investissement des bornes de recharge
+                </p>
+              </div>
+
+              {/* 3 Boutons 36 mois / 48 mois / 60 mois */}
+              <div className="inline-flex bg-white/10 p-1 rounded-2xl border border-white/15 shrink-0 self-start sm:self-auto">
+                {[36, 48, 60].map((horizon) => (
+                  <button
+                    key={horizon}
+                    type="button"
+                    onClick={() => setSelectedMonthHorizon(horizon)}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all ${
+                      selectedMonthHorizon === horizon
+                        ? 'bg-amber-400 text-slate-950 shadow-md font-extrabold'
+                        : 'text-slate-300 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {horizon} mois
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 3 Cartes Milestones Mensuelles */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white/10 rounded-2xl px-4 py-3 border border-white/10 text-center">
+                <span className="text-xs font-bold text-slate-300 block">sur 12 mois (An 1)</span>
+                <span className="text-2xl font-black text-white block mt-0.5">
+                  {Math.round(monthlyRevenue * 12).toLocaleString('fr-FR')} €
+                </span>
+              </div>
+
+              <div className="bg-white/10 rounded-2xl px-4 py-3 border border-white/10 text-center">
+                <span className="text-xs font-bold text-slate-300 block">sur 24 mois (An 2)</span>
+                <span className="text-2xl font-black text-white block mt-0.5">
+                  {Math.round(monthlyRevenue * 24).toLocaleString('fr-FR')} €
+                </span>
+              </div>
+
+              <div className="bg-white/10 rounded-2xl px-4 py-3 border border-white/10 text-center">
+                <span className="text-xs font-bold text-slate-300 block">sur {selectedMonthHorizon} mois</span>
+                <span className="text-2xl font-black text-amber-300 block mt-0.5">
+                  {Math.round(monthlyRevenue * selectedMonthHorizon).toLocaleString('fr-FR')} €
+                </span>
+              </div>
+            </div>
+
+            {/* Graphique Mensuel avec Barres Bicolores */}
+            <div className="space-y-2">
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={financialProjectionMonths.data} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                    <XAxis
+                      dataKey="month"
+                      tick={{ fill: '#94a3b8', fontSize: 10 }}
+                      interval={selectedMonthHorizon === 60 ? 5 : selectedMonthHorizon === 48 ? 3 : 2}
+                    />
+                    <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(1)}k€`} />
+                    <Tooltip
+                      formatter={(val) => [`${Number(val).toLocaleString('fr-FR')} €`, 'Cumul net']}
+                      labelFormatter={(m) => `Mois ${m}`}
+                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: 12, color: '#ffffff', fontSize: 12 }}
+                    />
+                    {breakEvenMonths <= selectedMonthHorizon && (
+                      <ReferenceLine
+                        x={`M${Math.max(1, Math.round(breakEvenMonths))}`}
+                        stroke="#ef4444"
+                        strokeDasharray="4 4"
+                        strokeWidth={2}
+                        label={{
+                          value: `Amorti à M${Math.round(breakEvenMonths)}`,
+                          fill: '#ef4444',
+                          position: 'top',
+                          fontSize: 10,
+                          fontWeight: 'bold'
+                        }}
+                      />
+                    )}
+                    <Bar dataKey="gain" radius={[4, 4, 0, 0]}>
+                      {financialProjectionMonths.data.map((entry, index) => (
+                        <Cell
+                          key={`cell-m-${index}`}
+                          fill={entry.isPayback ? '#10b981' : '#3b82f6'}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="flex items-center justify-center gap-6 text-xs text-slate-300 pt-2">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-full bg-blue-500 inline-block" />
+                  Investissement en cours d'amortissement
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" />
+                  Bénéfices nets cumulés (Post-ROI)
                 </span>
               </div>
             </div>
