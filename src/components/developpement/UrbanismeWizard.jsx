@@ -712,20 +712,50 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     });
   };
 
-  // Recadrage & Sélection Photo
-  const handleFileSelectForCrop = (category, key, title, event) => {
+  // Chargement direct de photo (sans pop-up automatique de recadrage)
+  const handleDirectPhotoUpload = (category, key, event) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      setCropModal({
-        open: true,
-        src: e.target.result,
-        category,
-        key,
-        title: `Recadrer : ${title}`,
-      });
+      const dataUrl = e.target.result;
+      if (category === 'photos') {
+        setPhotos(prev => ({ ...prev, [key]: dataUrl }));
+        setEditedProject(prev => ({
+          ...prev,
+          pc_photos: { ...(prev.pc_photos || {}), [key]: dataUrl }
+        }));
+        setBuildings(prev => {
+          const updated = [...prev];
+          if (updated[activeBuildingIndex]) {
+            updated[activeBuildingIndex].photos = {
+              ...(updated[activeBuildingIndex].photos || {}),
+              [key]: dataUrl
+            };
+          }
+          return updated;
+        });
+      } else if (category === 'captures') {
+        if (key === 'situation_ign' || key === 'satellite' || key === 'masse_projet') {
+          setCaptures(prev => ({ ...prev, [key]: dataUrl }));
+          setEditedProject(prev => ({
+            ...prev,
+            urbanisme_captures: { ...(prev.urbanisme_captures || {}), [key]: dataUrl }
+          }));
+        } else {
+          setBuildings(prev => {
+            const updated = [...prev];
+            if (updated[activeBuildingIndex]) {
+              updated[activeBuildingIndex].captures = {
+                ...(updated[activeBuildingIndex].captures || {}),
+                [key]: dataUrl
+              };
+            }
+            return updated;
+          });
+        }
+      }
     };
     reader.readAsDataURL(file);
     event.target.value = '';
@@ -1362,7 +1392,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
                                   <label title="Remplacer la photo" className="cursor-pointer p-1.5 bg-white/90 hover:bg-white text-slate-800 rounded-lg shadow-sm transition-all hover:scale-105">
                                     <Upload className="w-3.5 h-3.5" />
-                                    <input type="file" accept="image/*" className="hidden" onChange={e => handleFileSelectForCrop('photos', 'avant', 'Photo Terrain Avant', e)} />
+                                    <input type="file" accept="image/*" className="hidden" onChange={e => handleDirectPhotoUpload('photos', 'avant', e)} />
                                   </label>
                                   <button
                                     type="button"
@@ -1443,7 +1473,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             <Upload className="w-6 h-6 text-gray-400 mb-1" />
                             <span className="text-xs text-gray-600 font-bold">1. Charger photo de terrain (Avant)</span>
                             <span className="text-[10px] text-gray-400">Puis ajustez la position du modèle 3D</span>
-                            <input type="file" accept="image/*" className="hidden" onChange={e => handleFileSelectForCrop('photos', 'avant', 'Photo Terrain Avant', e)} />
+                            <input type="file" accept="image/*" className="hidden" onChange={e => handleDirectPhotoUpload('photos', 'avant', e)} />
                           </label>
                         )}
                       </div>
@@ -1463,7 +1493,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
                             <label title="Remplacer la photo" className="cursor-pointer p-1.5 bg-white/90 hover:bg-white text-slate-800 rounded-lg shadow-sm transition-all hover:scale-105">
                               <Upload className="w-3.5 h-3.5" />
-                              <input type="file" accept="image/*" className="hidden" onChange={e => handleFileSelectForCrop('photos', 'proche', 'Environnement Proche', e)} />
+                              <input type="file" accept="image/*" className="hidden" onChange={e => handleDirectPhotoUpload('photos', 'proche', e)} />
                             </label>
                             <button
                               type="button"
@@ -1495,7 +1525,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                         <label className="aspect-video rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 bg-white transition-colors">
                           <Upload className="w-5 h-5 text-gray-400 mb-1" />
                           <span className="text-[11px] text-gray-500 font-semibold">Importer photo proche</span>
-                          <input type="file" accept="image/*" className="hidden" onChange={e => handleFileSelectForCrop('photos', 'proche', 'Environnement Proche', e)} />
+                          <input type="file" accept="image/*" className="hidden" onChange={e => handleDirectPhotoUpload('photos', 'proche', e)} />
                         </label>
                       )}
                     </div>
@@ -1511,7 +1541,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
                             <label title="Remplacer la photo" className="cursor-pointer p-1.5 bg-white/90 hover:bg-white text-slate-800 rounded-lg shadow-sm transition-all hover:scale-105">
                               <Upload className="w-3.5 h-3.5" />
-                              <input type="file" accept="image/*" className="hidden" onChange={e => handleFileSelectForCrop('photos', 'lointain', 'Environnement Lointain', e)} />
+                              <input type="file" accept="image/*" className="hidden" onChange={e => handleDirectPhotoUpload('photos', 'lointain', e)} />
                             </label>
                             <button
                               type="button"
@@ -1543,7 +1573,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                         <label className="aspect-video rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 bg-white transition-colors">
                           <Upload className="w-5 h-5 text-gray-400 mb-1" />
                           <span className="text-[11px] text-gray-500 font-semibold">Importer photo lointaine</span>
-                          <input type="file" accept="image/*" className="hidden" onChange={e => handleFileSelectForCrop('photos', 'lointain', 'Environnement Lointain', e)} />
+                          <input type="file" accept="image/*" className="hidden" onChange={e => handleDirectPhotoUpload('photos', 'lointain', e)} />
                         </label>
                       )}
                     </div>
@@ -1552,16 +1582,16 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                 );
               })()}
 
-              {/* ÉTAPE 4 — Carte PC2 (Plan de masse dynamique par bâtiment) */}
+              {/* ÉTAPE 4 — Carte PC2 (Plan de masse dynamique par bâtiment — PLEINE HAUTEUR) */}
               {step === 4 && (
                 <motion.div
                   key="step4-pc2"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="p-6 space-y-4 overflow-y-auto max-h-[70vh]"
+                  className="p-5 h-full flex flex-col gap-3 overflow-hidden"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-shrink-0">
                     <div>
                       <h3 className="text-sm font-bold text-gray-800">
                         Étape 5 : PC2 — Plan de Masse ({buildings.length} bâtiment{buildings.length > 1 ? 's' : ''})
@@ -1570,153 +1600,171 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                         Visualisez et ajustez l'emprise au sol et l'orientation de chaque bâtiment à l'échelle sur le plan cadastral (OSM Zoom 19).
                       </p>
                     </div>
+
+                    {buildings.length > 1 && (
+                      <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        {buildings.map((b, idx) => (
+                          <button
+                            key={b.id || idx}
+                            type="button"
+                            onClick={() => setActiveBuildingIndex(idx)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                              activeBuildingIndex === idx ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-white'
+                            }`}
+                          >
+                            {b.name || `Bâtiment ${idx + 1}`}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div className={`grid ${buildings.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
-                    {buildings.map((b, bIdx) => {
-                      const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null) || editedProject?.lat || 43.5612);
-                      const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null) || editedProject?.lng || 0.9168);
-                      const bLength = Number(b.length || config.length || 30);
-                      const bWidth = Number(b.width || config.width || 20);
-                      const currentRotation = Number(b.rotation || 0);
+                  {(() => {
+                    const bIdx = activeBuildingIndex >= buildings.length ? 0 : activeBuildingIndex;
+                    const b = buildings[bIdx] || buildings[0] || {};
+                    const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null) || editedProject?.lat || 43.5612);
+                    const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null) || editedProject?.lng || 0.9168);
+                    const bLength = Number(b.length || config.length || 30);
+                    const bWidth = Number(b.width || config.width || 20);
+                    const currentRotation = Number(b.rotation || 0);
 
-                      return (
-                        <div key={b.id || bIdx} className="border border-gray-200 rounded-2xl p-4 bg-gray-50 flex flex-col gap-3">
+                    return (
+                      <div className="flex-1 flex flex-col min-h-0 bg-gray-50 border border-gray-200 rounded-2xl p-3.5 shadow-xs overflow-hidden gap-2.5">
+                        <div className="flex items-center justify-between flex-shrink-0">
+                          <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                            <Building2 className="w-4 h-4 text-blue-600" />
+                            PC2 — Plan de Masse : {b.name || `Bâtiment ${bIdx + 1}`}
+                          </span>
+                          <span className="text-[11px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                            {bLength.toFixed(1)}m × {bWidth.toFixed(1)}m ({Math.round(bLength * bWidth)} m²)
+                          </span>
+                        </div>
+
+                        {/* Contrôle de Rotation du bâtiment */}
+                        <div className="bg-white px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs shadow-2xs space-y-2 flex-shrink-0">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                              <Building2 className="w-4 h-4 text-blue-600" />
-                              PC2 — Plan de Masse : {b.name || `Bâtiment ${bIdx + 1}`}
+                            <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                              <Compass className="w-4 h-4 text-blue-600" />
+                              Orientation ({b.name || `Bâtiment ${bIdx + 1}`})
                             </span>
-                            <span className="text-[11px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                              {bLength.toFixed(1)}m × {bWidth.toFixed(1)}m ({Math.round(bLength * bWidth)} m²)
+                            <span className="text-blue-600 font-black text-sm">
+                              {currentRotation}°
                             </span>
                           </div>
 
-                          {/* Contrôle de Rotation du bâtiment identique au simulateur */}
-                          <div className="bg-white px-3.5 py-3 rounded-2xl border border-slate-200 text-xs shadow-2xs space-y-2.5">
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-slate-700 flex items-center gap-1.5">
-                                <Compass className="w-4 h-4 text-blue-600" />
-                                Orientation ({b.name || `Bâtiment ${bIdx + 1}`})
-                              </span>
-                              <span className="text-blue-600 font-black text-sm">
-                                {currentRotation}°
-                              </span>
-                            </div>
+                          <input
+                            type="range"
+                            min="-90"
+                            max="90"
+                            step="1"
+                            value={currentRotation}
+                            onChange={(e) => {
+                              const val = Number(e.target.value);
+                              setBuildings(prev => {
+                                const upd = [...prev];
+                                if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: val };
+                                return upd;
+                              });
+                            }}
+                            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                          />
 
-                            <input
-                              type="range"
-                              min="-90"
-                              max="90"
-                              step="1"
-                              value={currentRotation}
-                              onChange={(e) => {
-                                const val = Number(e.target.value);
+                          <div className="bg-blue-50 border border-blue-200 rounded-xl py-1 px-2 text-center text-xs font-bold text-blue-900 shadow-2xs">
+                            {(() => {
+                              const r = Number(currentRotation) || 0;
+                              const norm = ((((r + 180) % 360) + 360) % 360) - 180;
+                              if (norm === 0) return 'Plein Sud (0°)';
+                              if (Math.abs(norm) >= 135) return `Nord (${r > 0 ? `+${r}` : r}°)`;
+                              if (norm > 45) {
+                                if (norm >= 85 && norm <= 95) return `Plein Ouest (+${r}°)`;
+                                return `Ouest (+${r}°)`;
+                              }
+                              if (norm > 0 && norm <= 45) return `Sud-Ouest (+${r}°)`;
+                              if (norm < -45) {
+                                if (norm <= -85 && norm >= -95) return `Plein Est (${r}°)`;
+                                return `Est (${r}°)`;
+                              }
+                              if (norm < 0 && norm >= -45) return `Sud-Est (${r}°)`;
+                              return `Plein Sud (0°)`;
+                            })()}
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
                                 setBuildings(prev => {
                                   const upd = [...prev];
-                                  if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: val };
+                                  if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: 45 };
                                   return upd;
                                 });
                               }}
-                              className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                            />
-
-                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-2 text-center text-xs font-bold text-blue-900 shadow-2xs">
-                              {(() => {
-                                const r = Number(currentRotation) || 0;
-                                const norm = ((((r + 180) % 360) + 360) % 360) - 180;
-                                if (norm === 0) return 'Plein Sud (0°)';
-                                if (Math.abs(norm) >= 135) return `Nord (${r > 0 ? `+${r}` : r}°)`;
-                                if (norm > 45) {
-                                  if (norm >= 85 && norm <= 95) return `Plein Ouest (+${r}°)`;
-                                  return `Ouest (+${r}°)`;
-                                }
-                                if (norm > 0 && norm <= 45) return `Sud-Ouest (+${r}°)`;
-                                if (norm < -45) {
-                                  if (norm <= -85 && norm >= -95) return `Plein Est (${r}°)`;
-                                  return `Est (${r}°)`;
-                                }
-                                if (norm < 0 && norm >= -45) return `Sud-Est (${r}°)`;
-                                return `Plein Sud (0°)`;
-                              })()}
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setBuildings(prev => {
-                                    const upd = [...prev];
-                                    if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: 45 };
-                                    return upd;
-                                  });
-                                }}
-                                className={`py-1.5 rounded-xl text-xs font-black transition-all border ${
-                                  currentRotation === 45 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                                }`}
-                              >
-                                Sud-Ouest (45°)
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setBuildings(prev => {
-                                    const upd = [...prev];
-                                    if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: 0 };
-                                    return upd;
-                                  });
-                                }}
-                                className={`py-1.5 rounded-xl text-xs font-black transition-all border ${
-                                  currentRotation === 0 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                                }`}
-                              >
-                                Sud (0°)
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setBuildings(prev => {
-                                    const upd = [...prev];
-                                    if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: -45 };
-                                    return upd;
-                                  });
-                                }}
-                                className={`py-1.5 rounded-xl text-xs font-black transition-all border ${
-                                  currentRotation === -45 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                                }`}
-                              >
-                                Sud-Est (-45°)
-                              </button>
-                            </div>
+                              className={`py-1 rounded-xl text-xs font-black transition-all border ${
+                                currentRotation === 45 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              Sud-Ouest (45°)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBuildings(prev => {
+                                  const upd = [...prev];
+                                  if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: 0 };
+                                  return upd;
+                                });
+                              }}
+                              className={`py-1 rounded-xl text-xs font-black transition-all border ${
+                                currentRotation === 0 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              Sud (0°)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBuildings(prev => {
+                                  const upd = [...prev];
+                                  if (upd[bIdx]) upd[bIdx] = { ...upd[bIdx], rotation: -45 };
+                                  return upd;
+                                });
+                              }}
+                              className={`py-1 rounded-xl text-xs font-black transition-all border ${
+                                currentRotation === -45 ? 'bg-[#0e2b4d] text-white shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              Sud-Est (-45°)
+                            </button>
                           </div>
-
-                          <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 z-10 flex-1 min-h-[260px]">
-                            <MapContainer center={[bLat, bLng]} zoom={19} scrollWheelZoom={true} style={{ height: '100%', minHeight: '260px', width: '100%' }}>
-                              <TileLayer
-                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                attribution="&copy; OpenStreetMap contributors"
-                                maxZoom={21}
-                                maxNativeZoom={19}
-                              />
-                              <MapResizer />
-                              <MapSyncCenter lat={bLat} lng={bLng} />
-                              <DraggableLocationMarker lat={bLat} lng={bLng} setGps={(newLat, newLng) => handleBuildingGpsUpdate(bIdx, newLat, newLng)} />
-                              <PC2ScaledBuildingOverlay
-                                bLength={bLength}
-                                bWidth={bWidth}
-                                rotation={currentRotation}
-                                label={`${b.name || `Bâtiment ${bIdx + 1}`} (${currentRotation}°)`}
-                              />
-                              <PC2MapScaleBar />
-                            </MapContainer>
-                          </div>
-                          <p className="text-[10px] text-gray-500 text-center">
-                            Zoom et dézoom libres • Déplacez le repère et pivotez l'emprise pour ajuster l'implantation
-                          </p>
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        {/* Visionneuse Carte occupant 100% de la hauteur disponible */}
+                        <div className="relative rounded-xl overflow-hidden border border-gray-200 z-10 flex-1 min-h-0 w-full shadow-inner">
+                          <MapContainer center={[bLat, bLng]} zoom={19} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
+                            <TileLayer
+                              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                              attribution="&copy; OpenStreetMap contributors"
+                              maxZoom={21}
+                              maxNativeZoom={19}
+                            />
+                            <MapResizer />
+                            <MapSyncCenter lat={bLat} lng={bLng} />
+                            <DraggableLocationMarker lat={bLat} lng={bLng} setGps={(newLat, newLng) => handleBuildingGpsUpdate(bIdx, newLat, newLng)} />
+                            <PC2ScaledBuildingOverlay
+                              bLength={bLength}
+                              bWidth={bWidth}
+                              rotation={currentRotation}
+                              label={`${b.name || `Bâtiment ${bIdx + 1}`} (${currentRotation}°)`}
+                            />
+                            <PC2MapScaleBar />
+                          </MapContainer>
+                        </div>
+                        <p className="text-[10px] text-gray-500 text-center flex-shrink-0">
+                          Zoom et dézoom libres • Déplacez le repère et pivotez l'emprise pour ajuster l'implantation
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </motion.div>
               )}
 

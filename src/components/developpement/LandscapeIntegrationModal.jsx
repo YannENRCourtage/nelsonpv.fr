@@ -181,7 +181,7 @@ export default function LandscapeIntegrationModal({
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] flex items-center justify-center p-1 pt-10 pb-1">
-      <div className="bg-slate-900 text-white rounded-3xl w-[97vw] max-w-[1595px] h-[93vh] flex flex-col overflow-hidden shadow-2xl border border-slate-700">
+      <div className="bg-slate-900 text-white rounded-3xl w-[98vw] max-w-[1760px] h-[94vh] flex flex-col overflow-hidden shadow-2xl border border-slate-700">
         
         {/* Header */}
         <div className="px-6 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
@@ -327,7 +327,7 @@ export default function LandscapeIntegrationModal({
 
               <div>
                 <div className="flex justify-between text-slate-300 mb-1 font-semibold">
-                  <span>Hauteur sol (Altitude)</span>
+                  <span>Hauteur sol (Altitude Y)</span>
                   <span className="text-blue-400 font-bold">{transform.posY.toFixed(1)} m</span>
                 </div>
                 <input
@@ -336,6 +336,23 @@ export default function LandscapeIntegrationModal({
                   onChange={e => setTransform(t => ({ ...t, posY: parseFloat(e.target.value) }))}
                   className="w-full accent-blue-500 cursor-pointer"
                 />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-slate-300 mb-1 font-semibold">
+                  <span className="flex items-center gap-1"><Move className="w-3.5 h-3.5 text-blue-400" /> Profondeur (Distance Z)</span>
+                  <span className="text-blue-400 font-bold">{transform.posZ.toFixed(1)} m</span>
+                </div>
+                <input
+                  type="range" min="-60" max="30" step="0.5"
+                  value={transform.posZ}
+                  onChange={e => setTransform(t => ({ ...t, posZ: parseFloat(e.target.value) }))}
+                  className="w-full accent-blue-500 cursor-pointer"
+                />
+                <div className="flex justify-between text-[9.5px] text-slate-500 px-0.5 mt-0.5">
+                  <span>Éloigner (Arrière-plan)</span>
+                  <span>Rapprocher (Devant)</span>
+                </div>
               </div>
 
               <div>
