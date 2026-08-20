@@ -212,6 +212,56 @@ async function drawCoverPage(doc, project, type, installationType) {
     page.drawText(line, { x: cx + 16, y: H - 300 - i * 13, size: 9.5, font: fontR, color: C.dark });
   });
 
+  // ── Encart Réglementaire Déclaration Préalable (Article R.421-9 du Code de l'Urbanisme) ──
+  if (type === 'dp') {
+    const encartX = cx + 16;
+    const encartW = W - cx - 36;
+    const encartH = 76;
+    const encartY = 42;
+
+    // Fond encart
+    page.drawRectangle({
+      x: encartX,
+      y: encartY,
+      width: encartW,
+      height: encartH,
+      color: rgb(0.95, 0.98, 0.96),
+      borderColor: rgb(0.78, 0.89, 0.82),
+      borderWidth: 1,
+    });
+
+    // Bandeau vert gauche
+    page.drawRectangle({
+      x: encartX,
+      y: encartY,
+      width: 4,
+      height: encartH,
+      color: C.green,
+    });
+
+    // Titre de l'encart
+    page.drawText("ARTICLE R.421-9 DU CODE DE L'URBANISME", {
+      x: encartX + 14,
+      y: encartY + encartH - 18,
+      size: 8,
+      font: fontB,
+      color: C.green,
+    });
+
+    // Phrase réglementaire
+    const legalText = "« Les ouvrages de production d'électricité à partir de l'énergie solaire installés sur le sol et les ombrières intégrant un procédé de production d'énergies renouvelables, dont la puissance crête est inférieure à trois kilowatts et dont la hauteur maximum au-dessus du sol peut dépasser un mètre quatre-vingts ainsi que ceux dont la puissance crête est supérieure ou égale à trois kilowatts et inférieure à trois mégawatts quelle que soit leur hauteur. »";
+    const legalLines = wrapText(legalText, 105);
+    legalLines.forEach((line, idx) => {
+      page.drawText(line, {
+        x: encartX + 14,
+        y: encartY + encartH - 33 - (idx * 11),
+        size: 7.5,
+        font: fontR,
+        color: rgb(0.20, 0.25, 0.30),
+      });
+    });
+  }
+
   // ── Footer barre ──────────────────────────────────────────────
   page.drawRectangle({ x: 0, y: 0, width: W, height: 16, color: typeColor });
   page.drawText('DOSSIER CONFIDENTIEL — Usage réservé à la procédure d\'instruction', {

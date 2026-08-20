@@ -506,7 +506,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
       const initialNotice = project?.noticeText || buildAutoNoticeText();
       setNoticeText(initialNotice);
-
+      const clientKwc = project?.kwc || project?.puissance || project?.projectSize || '';
       const shortObjet = (type === 'pc' || type === 'dp')
         ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
         : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque";
