@@ -372,16 +372,16 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     
     // Bâtiment / Ombrière 1
     const b1 = buildings[0] || {};
-    const longueur1 = Number(b1.length || config.length || 30);
-    const largeur1 = Number(b1.width || config.width || 20);
+    const longueur1 = Number(b1.length || config.length || 37.5);
+    const largeur1 = Number(b1.width || config.width || 16.4);
     const totalSurface1 = (largeur1 * longueur1).toFixed(2);
-    const b1Type = b1.buildingType || config.buildingType || (isDP ? 'ombriere_vl_double' : 'asymetrique_1');
+    const b1Type = b1.buildingType || config.buildingType || 'asymetrique_1';
     const isB1Ombriere = isDP || b1Type.includes('ombriere');
     const isB1Asym = b1Type.startsWith('asym');
     const isB1Sym = b1Type.startsWith('sym');
     const b1RoofLabel = isB1Ombriere ? 'monopente (10°)' : isB1Asym ? 'double pente asymétrique (15°)' : isB1Sym ? 'double pente symétrique (10°)' : 'photovoltaïque';
-    const b1Eave = Number(b1.eaveHeight || config.eaveHeight || (isDP ? 3.0 : 4.0));
-    const b1Pitch = Number(b1.roofPitch || config.roofPitch || 10);
+    const b1Eave = Number(b1.eaveHeight || config.eaveHeight || (b1Type.startsWith('asym') ? 4.0 : 5.5));
+    const b1Pitch = Number(b1.roofPitch || config.roofPitch || (b1Type.startsWith('asym') ? 15 : 10));
     const b1Bays = Number(b1.bayCount || config.bayCount || 5);
     const b1Spacing = Number(b1.baySpacing || config.baySpacing || 7.5);
     const b1Auvent = Boolean(b1.rightSide === 'auvent' || b1.leftSide === 'auvent' || config.rightSide === 'auvent' || config.leftSide === 'auvent');
@@ -402,10 +402,10 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
 
     if (hasMultiBuildings) {
       secondaryBuildings.forEach((b, idx) => {
-        const bW = Number(b.width || 20);
-        const bL = Number(b.length || 25);
+        const bW = Number(b.width || 16.4);
+        const bL = Number(b.length || 37.5);
         const bSurface = (bW * bL).toFixed(2);
-        const bType = (b.buildingType || (isDP ? 'ombriere_vl_double' : 'asymetrique_1')).toLowerCase();
+        const bType = (b.buildingType || 'asymetrique_1').toLowerCase();
         const isOmb = isDP || bType.includes('ombriere');
         const bAuvent = b.rightSide === 'auvent' || b.leftSide === 'auvent';
         const bEave = Number(b.eaveHeight || (isDP ? 3.0 : 4.0));
@@ -571,12 +571,12 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
         initialBuildings = project.buildings;
       } else {
         const pLen = Number(project.longueur || 37.5);
-        const pW = Number(project.largeur || 20.0);
+        const pW = Number(project.largeur || 16.4);
         const pBc = Number(project.bayCount) || Math.max(1, Math.round(pLen / 7.5)) || 5;
         const pBs = Number(project.baySpacing) || 7.5;
-        const pType = project.buildingType || (isDP ? 'ombriere_vl_double' : (isOmbriere ? 'ombriere_vl_double' : 'symetrique'));
-        const pEave = Number(project.hauteur_egout) || (isDP ? 3.0 : (pType.startsWith('asymetrique') ? 4.0 : 5.5));
-        const pPitch = Number(project.pente) || (isDP ? 10 : (pType.startsWith('asymetrique') ? 15 : 10));
+        const pType = project.buildingType || 'asymetrique_1';
+        const pEave = Number(project.hauteur_egout) || (pType === 'ombriere_pl' ? 5.08 : (pType === 'ombriere_vl_double' ? 3.0 : (pType.startsWith('asymetrique') || pType === 'monopente' ? 4.0 : 5.5)));
+        const pPitch = Number(project.pente) || ((pType.startsWith('asymetrique') || pType === 'monopente') ? 15 : 10);
         const pRightSide = project.rightSide || (project.appentis ? 'appentis' : project.auvent ? 'auvent' : 'none');
         const pLeftSide = project.leftSide || 'none';
         const pRightWidth = Number(project.rightWidth) || (pRightSide === 'appentis' ? 9.3 : 4.0);
@@ -626,7 +626,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       const initProj = {
         ...project,
         type: isOmbriere ? 'ombriere' : (project.type || 'batiment_solaire'),
-        buildingType: b1?.buildingType || project.buildingType || (isOmbriere ? 'ombriere_vl_double' : 'symetrique'),
+        buildingType: b1?.buildingType || project.buildingType || 'asymetrique_1',
         lastName: cleanDemandeur,
         firstName: names.firstName || '',
         demandeur: cleanDemandeur,
@@ -1018,12 +1018,12 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       ...fieldValues,
       cerfaEmailChoice: editedProject?.cerfaEmailChoice || 'email1',
       email2: editedProject?.email2 || '',
-      buildingType: b1.buildingType || config.buildingType || (isDP ? 'ombriere_vl_double' : 'asymetrique_1'),
+      buildingType: b1.buildingType || config.buildingType || 'asymetrique_1',
       type: finalTypeLabel,
       installationType: finalTypeLabel,
-      largeur: String(b1.width || config.width || 20.0),
-      longueur: String(b1.length || config.length || 30.0),
-      hauteur_egout: String(b1.eaveHeight || (b1.buildingType?.startsWith('asymetrique') ? 4.0 : (config.eaveHeight || (isDP ? 3.0 : 4.0)))),
+      largeur: String(b1.width || config.width || 16.4),
+      longueur: String(b1.length || config.length || 37.5),
+      hauteur_egout: String(b1.eaveHeight || (b1.buildingType === 'ombriere_pl' ? 5.08 : (b1.buildingType?.startsWith('asymetrique') ? 4.0 : (config.eaveHeight || 4.0)))),
       pente: String(b1.roofPitch || (b1.buildingType?.startsWith('asymetrique') ? 15 : (config.roofPitch || 10))),
       leftSide: b1.leftSide || config.leftSide || 'none',
       rightSide: b1.rightSide || config.rightSide || 'none',
@@ -1540,7 +1540,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                                 largeur: Number(activeB.width || config.width || 20),
                                 hauteur_egout: Number(activeB.eaveHeight || config.eaveHeight || (isDP ? 3 : 4)),
                                 pente: Number(activeB.roofPitch || config.roofPitch || 10),
-                                buildingType: activeB.buildingType || config.buildingType || (isDP ? 'ombriere_vl_double' : 'asymetrique_1'),
+                                buildingType: activeB.buildingType || config.buildingType || 'asymetrique_1',
                                 leftSide: activeB.leftSide || config.leftSide || 'none',
                                 rightSide: activeB.rightSide || config.rightSide || 'none',
                                 type: isDP ? 'dp' : editedProject.type

@@ -43,14 +43,22 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
         ? Math.round(floorArea * 128)
         : barcMatch.tarif;
 
-    // Ratios officiels
-    const ratioCostPerWc = installedKwc > 0 ? Number((totalBuildingCost / (installedKwc * 1000)).toFixed(2)) : barcMatch.ratioKwc;
-    const ratioCostPerKwc = Math.round(ratioCostPerWc * 1000);
-    const ratioCostPerM2 = floorArea > 0 ? Math.round(totalBuildingCost / floorArea) : barcMatch.ratioM2;
-
     // Chiffrage PV
     const pvCostPerWc = 0.55;
     const pvInstallationCost = Math.round(installedKwc * 1000 * pvCostPerWc + 15000);
+
+    // Ratios officiels
+    // 1. Ratio Global (Structure + Centrale PV)
+    const totalProjectCost = totalBuildingCost + (config.hasSolar ? pvInstallationCost : 0);
+    const ratioTotalCostPerWc = installedKwc > 0 ? Number((totalProjectCost / (installedKwc * 1000)).toFixed(2)) : 0;
+    const ratioTotalCostPerKwc = Math.round(ratioTotalCostPerWc * 1000);
+
+    // 2. Ratio Hors PV (Structure uniquement)
+    const ratioStructureCostPerWc = installedKwc > 0 ? Number((totalBuildingCost / (installedKwc * 1000)).toFixed(2)) : barcMatch.ratioKwc;
+    const ratioStructureCostPerKwc = Math.round(ratioStructureCostPerWc * 1000);
+
+    // 3. Ratio Tarif / Surface
+    const ratioCostPerM2 = floorArea > 0 ? Math.round(totalBuildingCost / floorArea) : barcMatch.ratioM2;
 
     return (
         <div className={`bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-slate-200 text-slate-800 space-y-3.5 ${className}`}>
@@ -167,22 +175,40 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                     </span>
                 </div>
 
-                {/* Ratios Tarif/Puissance et Tarif/Surface */}
-                <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 bg-white p-2.5 rounded-xl border border-slate-100">
-                    <div>
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Ratio Tarif / Puissance</span>
-                        <strong className="text-slate-800 font-extrabold text-xs sm:text-sm flex items-baseline gap-1 mt-0.5">
-                            {ratioCostPerWc.toFixed(2)} € <span className="text-[10px] font-normal text-slate-500">/ Wc</span>
-                            <span className="text-[10px] font-semibold text-slate-400">({ratioCostPerKwc} €/kWc)</span>
-                        </strong>
+                {/* Ratios Tarif / Puissance et Tarif / Surface */}
+                {config.hasSolar ? (
+                    <div className="space-y-2 bg-white p-2.5 rounded-xl border border-slate-100 text-xs">
+                        <div className="grid grid-cols-2 gap-2 text-slate-500">
+                            <div>
+                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Ratio Tarif / Puissance</span>
+                                <strong className="text-slate-800 font-extrabold text-xs sm:text-sm flex items-baseline gap-1 mt-0.5">
+                                    {ratioTotalCostPerWc.toFixed(2)} € <span className="text-[10px] font-normal text-slate-500">/ Wc</span>
+                                    <span className="text-[10px] font-semibold text-slate-400">({ratioTotalCostPerKwc} €/kWc)</span>
+                                </strong>
+                            </div>
+                            <div>
+                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Ratio Tarif / Surface</span>
+                                <strong className="text-slate-800 font-extrabold text-xs sm:text-sm block mt-0.5">
+                                    {ratioCostPerM2} € <span className="text-[10px] font-normal text-slate-500">/ m²</span>
+                                </strong>
+                            </div>
+                        </div>
+                        <div className="border-t border-slate-100 pt-2 flex items-center justify-between text-slate-500">
+                            <span className="text-[10px] uppercase font-bold text-slate-400">Ratio Tarif / Puissance (Hors PV)</span>
+                            <strong className="text-slate-700 font-extrabold text-xs sm:text-sm flex items-baseline gap-1">
+                                {ratioStructureCostPerWc.toFixed(2)} € <span className="text-[10px] font-normal text-slate-500">/ Wc</span>
+                                <span className="text-[10px] font-normal text-slate-400">({ratioStructureCostPerKwc} €/kWc)</span>
+                            </strong>
+                        </div>
                     </div>
-                    <div>
+                ) : (
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-100 text-xs flex items-center justify-between">
                         <span className="text-[10px] uppercase font-bold text-slate-400 block">Ratio Tarif / Surface</span>
-                        <strong className="text-slate-800 font-extrabold text-xs sm:text-sm block mt-0.5">
+                        <strong className="text-slate-800 font-extrabold text-xs sm:text-sm">
                             {ratioCostPerM2} € <span className="text-[10px] font-normal text-slate-500">/ m²</span>
                         </strong>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );

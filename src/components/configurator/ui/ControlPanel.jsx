@@ -68,14 +68,23 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
     const handleTypeSelection = (newType) => {
         setBuildingType(newType);
         if (onUpdateBuilding) {
-            const defW = (TYPE_WIDTHS_MAP[newType] && TYPE_WIDTHS_MAP[newType][0]) || 20.0;
+            const defW = (TYPE_WIDTHS_MAP[newType] && TYPE_WIDTHS_MAP[newType][0]) || 16.4;
             const isOmb = newType.startsWith('ombriere');
             const isMono = newType === 'monopente';
+            const isAsym1 = newType === 'asymetrique_1';
+            const isAsym2 = newType === 'asymetrique_2';
+            const isPL = newType === 'ombriere_pl';
+            const isDouble = newType === 'ombriere_vl_double';
+            const isSimple = newType.startsWith('ombriere_vl_simple');
+
+            const defaultEave = isPL ? 5.08 : (isDouble ? 3.0 : (isSimple ? 2.93 : (isAsym1 || isMono ? 4.0 : 5.5)));
+            const defaultPitch = (isAsym1 || isAsym2 || isMono) ? 15 : 10;
+
             onUpdateBuilding({
                 buildingType: newType,
                 width: defW,
-                roofPitch: isMono ? 15 : 10,
-                eaveHeight: isMono ? 4.0 : (isOmb ? 3.0 : 5.5),
+                roofPitch: defaultPitch,
+                eaveHeight: defaultEave,
                 leftSide: isOmb ? 'none' : (activeBuilding?.leftSide || leftSide),
                 rightSide: isOmb ? 'none' : (activeBuilding?.rightSide || rightSide)
             });

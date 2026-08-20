@@ -369,31 +369,40 @@ export const useConfiguratorStore = create(
             const defaultWidth = TYPE_WIDTHS_MAP[type][0];
             const updates = { buildingType: type, width: defaultWidth, fixedLength: null };
 
-            // Forcer la hauteur de sablière pour Monopente + Pente 15°
+            // Forcer la hauteur de sablière et pente par typologie
             if (type === 'monopente') {
                 updates.eaveHeight = 4.0;
                 updates.roofPitch = 15; // FORCE 15°
-
-                // Disable Appentis if selected
                 const state = get();
                 if (state.leftSide === 'appentis') updates.leftSide = 'none';
                 if (state.rightSide === 'appentis') updates.rightSide = 'none';
+            } else if (type === 'asymetrique_1') {
+                updates.eaveHeight = 4.0;
+                updates.roofPitch = 15;
+            } else if (type === 'asymetrique_2') {
+                updates.eaveHeight = 5.5;
+                updates.roofPitch = 15;
+            } else if (type === 'ombriere_pl') {
+                updates.eaveHeight = 5.08;
+                updates.roofPitch = 10;
+                updates.hasSolar = true;
+                updates.leftSide = 'none';
+                updates.rightSide = 'none';
             } else if (type === 'ombriere_vl_simple_gauche' || type === 'ombriere_vl_simple_droite') {
                 updates.eaveHeight = 2.93;
                 updates.roofPitch = 10;
-                updates.hasSolar = true; // Auto solar
+                updates.hasSolar = true;
                 updates.leftSide = 'none';
                 updates.rightSide = 'none';
             } else if (type === 'ombriere_vl_double') {
-                // Set default height based on default width (9.1m -> 3.0m)
-                updates.eaveHeight = WIDTH_HEIGHT_MAP[defaultWidth];
+                updates.eaveHeight = WIDTH_HEIGHT_MAP[defaultWidth] || 3.0;
                 updates.roofPitch = 10;
                 updates.hasSolar = true;
                 updates.leftSide = 'none';
                 updates.rightSide = 'none';
             } else {
                 updates.eaveHeight = 5.5;
-                updates.roofPitch = 10; // Reset to 10° for Symmetrical/Asymmetrical
+                updates.roofPitch = 10;
             }
 
             set(updates);
@@ -401,8 +410,6 @@ export const useConfiguratorStore = create(
     },
     setIsAcama: (val) => set({ isAcama: !!val }),
     setWidth: (width) => {
-        // Allow setting width if it exists in current type's list
-        // Or broadly check if valid number to avoid locking
         set({ width: Number(width) });
     },
     setBaySpacing: (spacing) => {
@@ -431,15 +438,22 @@ export const useConfiguratorStore = create(
         if (!data) return;
         const validWidth = (data.width !== undefined && data.width !== null && !isNaN(Number(data.width))) 
             ? Number(data.width) 
-            : 20.0;
+            : 16.4;
+        const bType = data.buildingType || 'asymetrique_1';
+        const bCount = Number(data.bayCount || 5);
+        const bSpacing = Number(data.baySpacing || 7.5);
+        const bLength = Number(data.length) || (bCount * bSpacing) || 37.5;
+        const defaultEave = bType === 'ombriere_pl' ? 5.08 : (bType === 'ombriere_vl_double' ? 3.0 : (bType.startsWith('asymetrique') || bType === 'monopente' ? 4.0 : 5.5));
+        const defaultPitch = (bType.startsWith('asymetrique') || bType === 'monopente') ? 15 : 10;
+
         set({
-            buildingType: data.buildingType || 'asymetrique_1',
+            buildingType: bType,
             width: validWidth,
-            length: Number(data.length) || 30.0,
-            eaveHeight: Number(data.eaveHeight) || 4.0,
-            roofPitch: Number(data.roofPitch) || 15,
-            bayCount: Number(data.bayCount) || 5,
-            baySpacing: Number(data.baySpacing) || 6,
+            length: bLength,
+            eaveHeight: Number(data.eaveHeight) || defaultEave,
+            roofPitch: Number(data.roofPitch) || defaultPitch,
+            bayCount: bCount,
+            baySpacing: bSpacing,
             leftSide: data.leftSide || 'none',
             rightSide: data.rightSide || 'none',
             leftWidth: Number(data.leftWidth) || 9.3,
