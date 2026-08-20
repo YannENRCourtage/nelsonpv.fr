@@ -379,6 +379,11 @@ export const PlateCoupe = ({ project }) => {
     const scaleStartX = 660 - scaleTotalWidth;
     const scaleY = 172;
 
+    const asym2LeftDist = 13.1;
+    const asym2RightDist = (Math.abs(largeur - 25.5) < 0.8) ? 12.4 : (Math.abs(largeur - 29.1) < 0.8 ? 16.0 : (largeur - 13.1));
+    const middleColSvgX = mainLeftSvgX + asym2LeftDist * pxPerM;
+    const middleColTopY = apexSvgY + (rightEaveSvgY - apexSvgY) * ((middleColSvgX - apexSvgX) / (mainRightSvgX - apexSvgX));
+
     const roofTypeLabel = isOmbriere ? 'monopente (ombrière VL/PL)' : isAsym ? (isAsym2 ? 'double pente asymétrique 2 zones' : 'double pente asymétrique') : isSym ? 'double pente symétrique' : 'photovoltaïque';
 
     return (
@@ -543,6 +548,14 @@ export const PlateCoupe = ({ project }) => {
                                 <rect x={mainLeftSvgX} y={leftEaveSvgY} width="8" height={groundYLeft - leftEaveSvgY} fill="#334155" />
                                 <rect x={mainRightSvgX - 8} y={rightEaveSvgY} width="8" height={groundYRight - rightEaveSvgY} fill="#334155" />
 
+                                {/* Poteau intermédiaire pour asymétrique 2 zones */}
+                                {isAsym2 && (
+                                    <>
+                                        <rect x={middleColSvgX - 4} y={middleColTopY} width="8" height={groundY - middleColTopY} fill="#334155" />
+                                        <text x={middleColSvgX} y={groundY + 8} textAnchor="middle" fill="#64748b" fontSize="6" fontStyle="italic">Poteau intermédiaire</text>
+                                    </>
+                                )}
+
                                 {hasAppentisRight && <rect x={extRightSvgX - 7} y={extRightSvgY} width="7" height={groundYRight - extRightSvgY} fill="#334155" />}
                                 {hasAppentisLeft && <rect x={extLeftSvgX} y={extLeftSvgY} width="7" height={groundYLeft - extLeftSvgY} fill="#334155" />}
 
@@ -633,15 +646,85 @@ export const PlateCoupe = ({ project }) => {
                             Faîtage : {ridgeHeight.toFixed(2)}m
                         </text>
 
-                        {/* 5. Cote Largeur d'emprise au sol */}
-                        <line x1={mainLeftSvgX} y1={groundY} x2={mainLeftSvgX} y2="158" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
-                        <line x1={mainRightSvgX} y1={groundY} x2={mainRightSvgX} y2="158" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
-                        <line x1={mainLeftSvgX} y1="158" x2={mainRightSvgX} y2="158" stroke="#0284c7" strokeWidth="1.2" />
-                        <line x1={mainLeftSvgX} y1="153" x2={mainLeftSvgX} y2="163" stroke="#0284c7" strokeWidth="1.2" />
-                        <line x1={mainRightSvgX} y1="153" x2={mainRightSvgX} y2="163" stroke="#0284c7" strokeWidth="1.2" />
-                        <text x={centerX} y="169" textAnchor="middle" fill="#0284c7" fontSize="8.5" fontWeight="bold">
-                            ▲ Largeur : {realGroundWidth.toFixed(2)} m (Emprise au sol)
-                        </text>
+                        {/* 5. Cotes d'emprise au sol (avec cotes internes intermédiaires pour Asymétrique 2 zones) */}
+                        {isAsym2 ? (
+                            <g>
+                                {/* Lignes repères verticales discrètes */}
+                                <line x1={middleColSvgX} y1={groundY} x2={middleColSvgX} y2="152" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
+                                <line x1={mainLeftSvgX} y1={groundY} x2={mainLeftSvgX} y2="152" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
+                                <line x1={mainRightSvgX} y1={groundY} x2={mainRightSvgX} y2="152" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
+
+                                {/* Cote Zone Gauche (ex: 13.10 m) */}
+                                <line x1={mainLeftSvgX} y1="150" x2={middleColSvgX} y2="150" stroke="#0284c7" strokeWidth="1.2" />
+                                <line x1={mainLeftSvgX} y1={146} x2={mainLeftSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
+                                <line x1={middleColSvgX} y1={146} x2={middleColSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
+                                <text x={(mainLeftSvgX + middleColSvgX) / 2} y="146" textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">
+                                    {asym2LeftDist.toFixed(2)} m
+                                </text>
+
+                                {/* Cote Zone Droite (ex: 12.40 m) */}
+                                <line x1={middleColSvgX} y1="150" x2={mainRightSvgX} y2="150" stroke="#0284c7" strokeWidth="1.2" />
+                                <line x1={mainRightSvgX} y1={146} x2={mainRightSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
+                                <text x={(middleColSvgX + mainRightSvgX) / 2} y="146" textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">
+                                    {asym2RightDist.toFixed(2)} m
+                                </text>
+
+                                {/* Cote Globale au sol */}
+                                <line x1={mainLeftSvgX} y1="162" x2={mainRightSvgX} y2="162" stroke="#0284c7" strokeWidth="1.2" />
+                                <line x1={mainLeftSvgX} y1={158} x2={mainLeftSvgX} y2={166} stroke="#0284c7" strokeWidth="1.2" />
+                                <line x1={mainRightSvgX} y1={158} x2={mainRightSvgX} y2={166} stroke="#0284c7" strokeWidth="1.2" />
+                                <text x={centerX} y="171" textAnchor="middle" fill="#0284c7" fontSize="7.5" fontWeight="bold">
+                                    ▲ Largeur : {realGroundWidth.toFixed(2)} m (Emprise au sol)
+                                </text>
+
+                                {/* Extension droite au sol */}
+                                {hasExtRight && (
+                                    <g>
+                                        <line x1={mainRightSvgX} y1="162" x2={extRightSvgX} y2="162" stroke="#0284c7" strokeWidth="1.2" />
+                                        <line x1={extRightSvgX} y1={158} x2={extRightSvgX} y2={166} stroke="#0284c7" strokeWidth="1.2" />
+                                        <text x={(mainRightSvgX + extRightSvgX) / 2} y="171" textAnchor="middle" fill="#0284c7" fontSize="6.5" fontWeight="bold">+{extRightWidth.toFixed(2)}m</text>
+                                    </g>
+                                )}
+
+                                {/* Extension gauche au sol */}
+                                {hasExtLeft && (
+                                    <g>
+                                        <line x1={extLeftSvgX} y1={162" x2={mainLeftSvgX} y2="162" stroke="#0284c7" strokeWidth="1.2" />
+                                        <line x1={extLeftSvgX} y1={158} x2={extLeftSvgX} y2={166} stroke="#0284c7" strokeWidth="1.2" />
+                                        <text x={(extLeftSvgX + mainLeftSvgX) / 2} y="171" textAnchor="middle" fill="#0284c7" fontSize="6.5" fontWeight="bold">+{extLeftWidth.toFixed(2)}m</text>
+                                    </g>
+                                )}
+                            </g>
+                        ) : (
+                            <g>
+                                <line x1={mainLeftSvgX} y1={groundY} x2={mainLeftSvgX} y2="158" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
+                                <line x1={mainRightSvgX} y1={groundY} x2={mainRightSvgX} y2="158" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
+                                <line x1={mainLeftSvgX} y1="158" x2={mainRightSvgX} y2="158" stroke="#0284c7" strokeWidth="1.2" />
+                                <line x1={mainLeftSvgX} y1="153" x2={mainLeftSvgX} y2="163" stroke="#0284c7" strokeWidth="1.2" />
+                                <line x1={mainRightSvgX} y1="153" x2={mainRightSvgX} y2="163" stroke="#0284c7" strokeWidth="1.2" />
+                                <text x={centerX} y="169" textAnchor="middle" fill="#0284c7" fontSize="8.5" fontWeight="bold">
+                                    ▲ Largeur : {realGroundWidth.toFixed(2)} m (Emprise au sol)
+                                </text>
+
+                                {/* Cote extension droite au sol */}
+                                {hasExtRight && (
+                                    <g>
+                                        <line x1={mainRightSvgX} y1="158" x2={extRightSvgX} y2="158" stroke="#0284c7" strokeWidth="1.2" />
+                                        <line x1={extRightSvgX} y1="153" x2={extRightSvgX} y2={163" stroke="#0284c7" strokeWidth="1.2" />
+                                        <text x={(mainRightSvgX + extRightSvgX) / 2} y="169" textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">+{extRightWidth.toFixed(2)}m</text>
+                                    </g>
+                                )}
+
+                                {/* Cote extension gauche au sol */}
+                                {hasExtLeft && (
+                                    <g>
+                                        <line x1={extLeftSvgX} y1="158" x2={mainLeftSvgX} y2="158" stroke="#0284c7" strokeWidth="1.2" />
+                                        <line x1={extLeftSvgX} y1="153" x2={extLeftSvgX} y2={163" stroke="#0284c7" strokeWidth="1.2" />
+                                        <text x={(extLeftSvgX + mainLeftSvgX) / 2} y="169" textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">+{extLeftWidth.toFixed(2)}m</text>
+                                    </g>
+                                )}
+                            </g>
+                        )}
 
                         {/* Barre d'échelle métrique EXACTE */}
                         <g transform={`translate(${scaleStartX}, ${scaleY})`}>
