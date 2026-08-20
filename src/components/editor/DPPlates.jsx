@@ -689,7 +689,7 @@ export const PlateCoupe = ({ project }) => {
                                 {/* Extension gauche au sol */}
                                 {hasExtLeft && (
                                     <g>
-                                        <line x1={extLeftSvgX} y1={162" x2={mainLeftSvgX} y2="162" stroke="#0284c7" strokeWidth="1.2" />
+                                        <line x1={extLeftSvgX} y1="162" x2={mainLeftSvgX} y2="162" stroke="#0284c7" strokeWidth="1.2" />
                                         <line x1={extLeftSvgX} y1={158} x2={extLeftSvgX} y2={166} stroke="#0284c7" strokeWidth="1.2" />
                                         <text x={(extLeftSvgX + mainLeftSvgX) / 2} y="171" textAnchor="middle" fill="#0284c7" fontSize="6.5" fontWeight="bold">+{extLeftWidth.toFixed(2)}m</text>
                                     </g>
