@@ -451,12 +451,18 @@ export const useConfiguratorStore = create(
     // New Extension Actions
     setLeftSide: (type) => {
         if (['none', 'auvent', 'appentis'].includes(type)) {
-            set({ leftSide: type });
+            set({
+                leftSide: type,
+                leftWidth: type === 'appentis' ? 9.3 : (type === 'auvent' ? 4.0 : 0)
+            });
         }
     },
     setRightSide: (type) => {
         if (['none', 'auvent', 'appentis'].includes(type)) {
-            set({ rightSide: type });
+            set({
+                rightSide: type,
+                rightWidth: type === 'appentis' ? 9.3 : (type === 'auvent' ? 4.0 : 0)
+            });
         }
     },
 

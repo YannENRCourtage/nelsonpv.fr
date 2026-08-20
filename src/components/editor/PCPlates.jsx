@@ -317,18 +317,18 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const isAsym = !isOmbriere && !isMonopente && !isSym;
 
     // Détection des extensions (Auvent / Appentis)
-    const hasAuventLeft = Boolean(project?.leftSide === 'auvent');
-    const hasAppentisLeft = Boolean(project?.leftSide === 'appentis');
+    const hasAppentisLeft = project?.leftSide === 'appentis';
+    const hasAuventLeft = !hasAppentisLeft && project?.leftSide === 'auvent';
     const hasExtLeft = hasAuventLeft || hasAppentisLeft;
 
-    const hasAuventRight = Boolean(project?.rightSide === 'auvent' || (project?.auvent && project?.auvent !== 'none' && project?.auvent !== false));
-    const hasAppentisRight = Boolean(project?.rightSide === 'appentis' || (project?.appentis && project?.appentis !== 'none' && project?.appentis !== false));
+    const hasAppentisRight = project?.rightSide === 'appentis' || (!project?.rightSide && Boolean(project?.appentis && project?.appentis !== 'none' && project?.appentis !== false));
+    const hasAuventRight = !hasAppentisRight && (project?.rightSide === 'auvent' || (!project?.rightSide && Boolean(project?.auvent && project?.auvent !== 'none' && project?.auvent !== false)));
     const hasExtRight = hasAuventRight || hasAppentisRight;
 
     const hasAuvent = hasAuventLeft || hasAuventRight;
     const hasAppentis = hasAppentisLeft || hasAppentisRight;
 
-    // Dimensions extensions
+    // Dimensions extensions : Appentis par défaut à 9.30m, Auvent à 4.00m
     const extRightWidth = hasAppentisRight ? (Number(project?.rightWidth) || 9.3) : (hasAuventRight ? (Number(project?.rightWidth) || 4.0) : 0);
     const extLeftWidth = hasAppentisLeft ? (Number(project?.leftWidth) || 9.3) : (hasAuventLeft ? (Number(project?.leftWidth) || 4.0) : 0);
 
@@ -457,8 +457,9 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const extRightSvgY = rightEaveSvgY + (extRightSvgX - mainRightSvgX) * rightSlopeSvg;
     const extLeftSvgY = leftEaveSvgY + (mainLeftSvgX - extLeftSvgX) * leftSlopeSvg;
 
-    const extRightHeight = Math.max(2.4, rightEaveHeight - extRightWidth * Math.tan((displayPitch * Math.PI) / 180));
-    const extLeftHeight = Math.max(2.4, leftEaveHeight - extLeftWidth * Math.tan((displayPitch * Math.PI) / 180));
+    // Hauteur d'égout de l'extension : 3.90m pour Appentis, ou calculée pour Auvent
+    const extRightHeight = hasAppentisRight ? 3.90 : Math.max(2.4, rightEaveHeight - extRightWidth * Math.tan((displayPitch * Math.PI) / 180));
+    const extLeftHeight = hasAppentisLeft ? 3.90 : Math.max(2.4, leftEaveHeight - extLeftWidth * Math.tan((displayPitch * Math.PI) / 180));
 
     // Échelle métrique
     const scaleTotalWidth = 10 * pxPerMeter;
@@ -495,7 +496,7 @@ La demande de permis de construire porte sur la construction d'un hangar à usag
 Le projet se situe sur la commune de ${projectCity} (${projectZip}) au ${projectAddress}. Le terrain concerné par le projet est cadastré sous le numéro ${projectCadastre} (surface : ${projectSurface}). Le terrain est globalement plat et se trouve à une altitude de ${projectAltitude} au-dessus du niveau de la mer. Le site s'inscrit dans un paysage à identité rurale. L'accès du site se fait par le Sud de la parcelle via la voie d'accès existante.
 
 3- LE PROJET
-Le projet a pour objet la construction d'un hangar de forme rectangulaire (longueur : ${longueur}m, largeur : ${largeur.toFixed(2)}m${hasAuventRight ? ' + Auvent 4.00m' : hasAppentisRight ? ` + Appentis ${extRightWidth.toFixed(2)}m` : ''}) en structure métallique (RAL 7016 / 7005), composé de ${bayCount} travées de ${baySpacing}m d'entraxe. La toiture sera constituée d'une double pente ${roofTypeLabel} (${displayPitch}°) avec pour couverture un bac acier anti condensation sur les deux versants (RAL 7016). Des panneaux photovoltaïques (RAL 9005) viendront recouvrir le bac acier sur l'ensemble de la toiture, permettant de créer une centrale de production d'électricité photovoltaïque de ${displayKwcStr}.
+Le projet a pour objet la construction d'un hangar de forme rectangulaire (longueur : ${longueur}m, largeur : ${largeur.toFixed(2)}m${hasAuventRight ? ` + Auvent ${extRightWidth.toFixed(2)}m` : hasAppentisRight ? ` + Appentis ${extRightWidth.toFixed(2)}m` : ''}) en structure métallique (RAL 7016 / 7005), composé de ${bayCount} travées de ${baySpacing}m d'entraxe. La toiture sera constituée d'une double pente ${roofTypeLabel} (${displayPitch}°) avec pour couverture un bac acier anti condensation sur les deux versants (RAL 7016). Des panneaux photovoltaïques (RAL 9005) viendront recouvrir le bac acier sur l'ensemble de la toiture, permettant de créer une centrale de production d'électricité photovoltaïque de ${displayKwcStr}.
 Ce bâtiment sera ouvert et non clos. Les façades Est, Ouest, Nord et Sud seront ouvertes.
 Un terrassement sera réalisé pour la mise en oeuvre d'une plateforme en grave compactée.
 Des tranchées drainantes seront réalisées tout autour du bâtiment projet afin d'évacuer les eaux pluviales par infiltration dans le sol.
@@ -521,7 +522,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             PC3 — COUPE DE TERRAIN & DU BÂTIMENT (COUPE TRANSVERSALE AA')
                         </span>
                         <span style={{ fontSize: '7pt', color: '#64748b' }}>
-                            Dimensions : {largeur.toFixed(2)}m × {longueur}m{hasAuventRight ? ' (+ Auvent 4.00m)' : hasAppentisRight ? ` (+ Appentis ${extRightWidth.toFixed(2)}m)` : ''}{hasAuventLeft ? ' (+ Auvent 4.00m Gauche)' : hasAppentisLeft ? ` (+ Appentis ${extLeftWidth.toFixed(2)}m Gauche)` : ''} • Échelle indicative
+                            Dimensions : {largeur.toFixed(2)}m × {longueur}m{hasAuventRight ? ` (+ Auvent ${extRightWidth.toFixed(2)}m)` : hasAppentisRight ? ` (+ Appentis ${extRightWidth.toFixed(2)}m)` : ''}{hasAuventLeft ? ` (+ Auvent ${extLeftWidth.toFixed(2)}m Gauche)` : hasAppentisLeft ? ` (+ Appentis ${extLeftWidth.toFixed(2)}m Gauche)` : ''} • Échelle indicative
                         </span>
                     </div>
 
@@ -576,13 +577,9 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                                 {/* Traverse horizontale à hauteur libre */}
                                                 <line x1={tLeftX} y1={clearanceSvgY} x2={tRightX} y2={clearanceSvgY} stroke="#334155" strokeWidth="2.8" />
 
-                                                {/* Tirants croisés Saint-André */}
-                                                <line x1={footLeftX + 2} y1={mY - 2} x2={tRightX - 2} y2={clearanceSvgY + 1.5} stroke="#64748b" strokeWidth="1" strokeDasharray="3 1.5" />
-                                                <line x1={footRightX - 2} y1={mY - 2} x2={tLeftX + 2} y2={clearanceSvgY + 1.5} stroke="#64748b" strokeWidth="1" strokeDasharray="3 1.5" />
-
-                                                {/* Bracons supérieurs obliques */}
-                                                <line x1={tLeftX} y1={clearanceSvgY} x2={postRightTopX} y2={postLeftTopY + 5} stroke="#475569" strokeWidth="1.8" />
-                                                <line x1={tRightX} y1={clearanceSvgY} x2={postLeftTopX} y2={postRightTopY + 5} stroke="#475569" strokeWidth="1.8" />
+                                                {/* Croix de Saint-André supérieure allant d'un poteau oblique à l'autre */}
+                                                <line x1={tLeftX} y1={clearanceSvgY} x2={postRightTopX} y2={postRightTopY + 3} stroke="#475569" strokeWidth="2" />
+                                                <line x1={tRightX} y1={clearanceSvgY} x2={postLeftTopX} y2={postLeftTopY + 3} stroke="#475569" strokeWidth="2" />
 
                                                 {/* Arbalétrier métallique continu incliné (profil rouge/anthracite) */}
                                                 <line x1={mainLeftSvgX - 4} y1={leftEaveSvgY + 3} x2={mainRightSvgX + 4} y2={rightEaveSvgY + 3} stroke="#dc2626" strokeWidth="3.5" strokeLinecap="round" />
@@ -643,11 +640,10 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
                                                 {/* Traverse et croix Saint-André */}
                                                 <line x1={p1X} y1={clearanceSvgY} x2={p2X} y2={clearanceSvgY} stroke="#334155" strokeWidth="2.5" />
-                                                <line x1={p1X} y1={groundY - 6} x2={p2X} y2={clearanceSvgY} stroke="#64748b" strokeWidth="1" strokeDasharray="3 1.5" />
-                                                <line x1={p2X} y1={groundY - 6} x2={p1X} y2={clearanceSvgY} stroke="#64748b" strokeWidth="1" strokeDasharray="3 1.5" />
+                                                <line x1={p1X} y1={clearanceSvgY} x2={p2X} y2={p2TopY + 3} stroke="#475569" strokeWidth="2" />
+                                                <line x1={p2X} y1={clearanceSvgY} x2={p1X} y2={p1TopY + 3} stroke="#475569" strokeWidth="2" />
 
-                                                {/* Arbalétrier et Panneaux */}
-                                                <line x1={mainLeftSvgX - 4} y1={leftEaveSvgY + 3} x2={mainRightSvgX + 4} y2={rightEaveSvgY + 3} stroke="#dc2626" strokeWidth="3.5" />
+                                                {/* Panneaux */}
                                                 <polygon
                                                     points={`${mainLeftSvgX - 8},${leftEaveSvgY} ${mainRightSvgX + 8},${rightEaveSvgY} ${mainRightSvgX + 8},${rightEaveSvgY - 5} ${mainLeftSvgX - 8},${leftEaveSvgY - 5}`}
                                                     fill="#1d4ed8"
@@ -671,7 +667,6 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                     <g>
                                         <rect x={mainLeftSvgX + mainWidthSvg * 0.4} y={groundY - 6} width="20" height="6" fill="#cbd5e1" stroke="#64748b" strokeWidth="1" rx="1" />
                                         <line x1={mainLeftSvgX + mainWidthSvg * 0.5} y1={groundY - 6} x2={mainLeftSvgX + mainWidthSvg * 0.35} y2={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.35} stroke="#1e293b" strokeWidth="6" />
-                                        <line x1={mainLeftSvgX - 4} y1={leftEaveSvgY + 3} x2={mainRightSvgX + 4} y2={rightEaveSvgY + 3} stroke="#dc2626" strokeWidth="3" />
                                         <polygon points={`${mainLeftSvgX - 6},${leftEaveSvgY} ${mainRightSvgX + 6},${rightEaveSvgY} ${mainRightSvgX + 6},${rightEaveSvgY - 5} ${mainLeftSvgX - 6},${leftEaveSvgY - 5}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
                                     </g>
                                 )
@@ -690,37 +685,32 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                     )}
 
                                     {/* Poteaux Appentis */}
-                                    {hasAppentisRight && <rect x={extRightSvgX - 6} y={extRightSvgY} width="6" height={groundYRight - extRightSvgY} fill="#334155" />}
-                                    {hasAppentisLeft && <rect x={extLeftSvgX} y={extLeftSvgY} width="6" height={groundYLeft - extLeftSvgY} fill="#334155" />}
+                                    {hasAppentisRight && <rect x={extRightSvgX - 7} y={extRightSvgY} width="7" height={groundYRight - extRightSvgY} fill="#334155" />}
+                                    {hasAppentisLeft && <rect x={extLeftSvgX} y={extLeftSvgY} width="7" height={groundYLeft - extLeftSvgY} fill="#334155" />}
 
                                     {/* Versant Nord */}
-                                    <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="4.5" />
-                                    <polygon points={`${mainLeftSvgX - 4},${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 7} ${mainLeftSvgX - 4},${leftEaveSvgY - 7}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                    <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#1e293b" strokeWidth="4" />
+                                    <polygon points={`${mainLeftSvgX - 3},${leftEaveSvgY - 2} ${apexSvgX},${apexSvgY - 2} ${apexSvgX},${apexSvgY - 6} ${mainLeftSvgX - 3},${leftEaveSvgY - 6}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
 
                                     {/* Versant Sud */}
-                                    <line x1={apexSvgX} y1={apexSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="4.5" />
-                                    <polygon points={`${apexSvgX},${apexSvgY - 2} ${mainRightSvgX + 4},${rightEaveSvgY - 2} ${mainRightSvgX + 4},${rightEaveSvgY - 7} ${apexSvgX},${apexSvgY - 7}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
-                                    {[0.2, 0.4, 0.6, 0.8].map((ratio, idx) => {
-                                        const px = apexSvgX + (mainRightSvgX - apexSvgX) * ratio;
-                                        const py = apexSvgY + (rightEaveSvgY - apexSvgY) * ratio;
-                                        return <line key={idx} x1={px} y1={py - 7} x2={px} y2={py - 2} stroke="#93c5fd" strokeWidth="1" />;
-                                    })}
+                                    <line x1={apexSvgX} y1={apexSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#1e293b" strokeWidth="4" />
+                                    <polygon points={`${apexSvgX},${apexSvgY - 2} ${mainRightSvgX + 3},${rightEaveSvgY - 2} ${mainRightSvgX + 3},${rightEaveSvgY - 6} ${apexSvgX},${apexSvgY - 6}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
 
                                     {/* Extensions éventuelles */}
                                     {hasExtRight && (
                                         <>
-                                            <line x1={mainRightSvgX} y1={rightEaveSvgY} x2={extRightSvgX} y2={extRightSvgY} stroke="#1e293b" strokeWidth="3.5" />
-                                            <polygon points={`${mainRightSvgX},${rightEaveSvgY - 2} ${extRightSvgX + 4},${extRightSvgY - 2} ${extRightSvgX + 4},${extRightSvgY - 7} ${mainRightSvgX},${rightEaveSvgY - 7}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
-                                            <text x={(mainRightSvgX + extRightSvgX) / 2} y={Math.min(rightEaveSvgY, extRightSvgY) - 10} textAnchor="middle" fill="#0284c7" fontSize="6.5" fontWeight="bold">
+                                            <line x1={mainRightSvgX} y1={rightEaveSvgY} x2={extRightSvgX} y2={extRightSvgY} stroke="#1e293b" strokeWidth="3" />
+                                            <polygon points={`${mainRightSvgX},${rightEaveSvgY - 2} ${extRightSvgX + 3},${extRightSvgY - 2} ${extRightSvgX + 3},${extRightSvgY - 6} ${mainRightSvgX},${rightEaveSvgY - 6}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                            <text x={(mainRightSvgX + extRightSvgX) / 2} y={Math.min(rightEaveSvgY, extRightSvgY) - 9} textAnchor="middle" fill="#0284c7" fontSize="6.5" fontWeight="bold">
                                                 {hasAppentisRight ? `Appentis +${extRightWidth.toFixed(2)}m` : `Auvent +${extRightWidth.toFixed(2)}m`}
                                             </text>
                                         </>
                                     )}
                                     {hasExtLeft && (
                                         <>
-                                            <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={extLeftSvgX} y2={extLeftSvgY} stroke="#1e293b" strokeWidth="3.5" />
-                                            <polygon points={`${mainLeftSvgX},${leftEaveSvgY - 2} ${extLeftSvgX - 4},${extLeftSvgY - 2} ${extLeftSvgX - 4},${extLeftSvgY - 7} ${mainLeftSvgX},${leftEaveSvgY - 7}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
-                                            <text x={(mainLeftSvgX + extLeftSvgX) / 2} y={Math.min(leftEaveSvgY, extLeftSvgY) - 10} textAnchor="middle" fill="#0284c7" fontSize="6.5" fontWeight="bold">
+                                            <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={extLeftSvgX} y2={extLeftSvgY} stroke="#1e293b" strokeWidth="3" />
+                                            <polygon points={`${mainLeftSvgX},${leftEaveSvgY - 2} ${extLeftSvgX - 3},${extLeftSvgY - 2} ${extLeftSvgX - 3},${extLeftSvgY - 6} ${mainLeftSvgX},${leftEaveSvgY - 6}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
+                                            <text x={(mainLeftSvgX + extLeftSvgX) / 2} y={Math.min(leftEaveSvgY, extLeftSvgY) - 9} textAnchor="middle" fill="#0284c7" fontSize="6.5" fontWeight="bold">
                                                 {hasAppentisLeft ? `Appentis +${extLeftWidth.toFixed(2)}m` : `Auvent +${extLeftWidth.toFixed(2)}m`}
                                             </text>
                                         </>
@@ -791,24 +781,24 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
                                     {/* Cote Zone Gauche (ex: 13.10 m) */}
                                     <line x1={mainLeftSvgX} y1="150" x2={middleColSvgX} y2="150" stroke="#0284c7" strokeWidth="1.2" />
-                                    <line x1={mainLeftSvgX} y1="146" x2={mainLeftSvgX} y2="154" stroke="#0284c7" strokeWidth="1.2" />
-                                    <line x1={middleColSvgX} y1="146" x2={middleColSvgX} y2="154" stroke="#0284c7" strokeWidth="1.2" />
+                                    <line x1={mainLeftSvgX} y1={146} x2={mainLeftSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
+                                    <line x1={middleColSvgX} y1={146} x2={middleColSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
                                     <text x={(mainLeftSvgX + middleColSvgX) / 2} y="146" textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">
                                         {asym2LeftDist.toFixed(2)} m
                                     </text>
 
                                     {/* Cote Zone Droite (ex: 12.40 m) */}
                                     <line x1={middleColSvgX} y1="150" x2={mainRightSvgX} y2="150" stroke="#0284c7" strokeWidth="1.2" />
-                                    <line x1={mainRightSvgX} y1="146" x2={mainRightSvgX} y2="154" stroke="#0284c7" strokeWidth="1.2" />
+                                    <line x1={mainRightSvgX} y1={146} x2={mainRightSvgX} y2={154} stroke="#0284c7" strokeWidth="1.2" />
                                     <text x={(middleColSvgX + mainRightSvgX) / 2} y="146" textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">
                                         {asym2RightDist.toFixed(2)} m
                                     </text>
 
                                     {/* Cote Globale au sol */}
                                     <line x1={mainLeftSvgX} y1="162" x2={mainRightSvgX} y2="162" stroke="#0284c7" strokeWidth="1.2" />
-                                    <line x1={mainLeftSvgX} y1="158" x2={mainLeftSvgX} y2="166" stroke="#0284c7" strokeWidth="1.2" />
-                                    <line x1={mainRightSvgX} y1="158" x2={mainRightSvgX} y2="166" stroke="#0284c7" strokeWidth="1.2" />
-                                    <text x={centerX} y="171" textAnchor="middle" fill="#0284c7" fontSize="7.5" fontWeight="bold">
+                                    <line x1={mainLeftSvgX} y1={158} x2={mainLeftSvgX} y2={166} stroke="#0284c7" strokeWidth="1.2" />
+                                    <line x1={mainRightSvgX} y1={158} x2={mainRightSvgX} y2={166} stroke="#0284c7" strokeWidth="1.2" />
+                                    <text x={centerX} y={171} textAnchor="middle" fill="#0284c7" fontSize="7.5" fontWeight="bold">
                                         ▲ Largeur : {realGroundWidth.toFixed(2)} m (Emprise au sol)
                                     </text>
 
@@ -816,8 +806,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                     {hasExtRight && (
                                         <g>
                                             <line x1={mainRightSvgX} y1="162" x2={extRightSvgX} y2="162" stroke="#0284c7" strokeWidth="1.2" />
-                                            <line x1={extRightSvgX} y1="158" x2={extRightSvgX} y2="166" stroke="#0284c7" strokeWidth="1.2" />
-                                            <text x={(mainRightSvgX + extRightSvgX) / 2} y="171" textAnchor="middle" fill="#0284c7" fontSize="6.5" fontWeight="bold">+{extRightWidth.toFixed(2)}m</text>
+                                            <line x1={extRightSvgX} y1={158} x2={extRightSvgX} y2={166} stroke="#0284c7" strokeWidth="1.2" />
+                                            <text x={(mainRightSvgX + extRightSvgX) / 2} y={171} textAnchor="middle" fill="#0284c7" fontSize="6.5" fontWeight="bold">+{extRightWidth.toFixed(2)}m</text>
                                         </g>
                                     )}
 
@@ -825,8 +815,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                     {hasExtLeft && (
                                         <g>
                                             <line x1={extLeftSvgX} y1="162" x2={mainLeftSvgX} y2="162" stroke="#0284c7" strokeWidth="1.2" />
-                                            <line x1={extLeftSvgX} y1="158" x2={extLeftSvgX} y2="166" stroke="#0284c7" strokeWidth="1.2" />
-                                            <text x={(extLeftSvgX + mainLeftSvgX) / 2} y="171" textAnchor="middle" fill="#0284c7" fontSize="6.5" fontWeight="bold">+{extLeftWidth.toFixed(2)}m</text>
+                                            <line x1={extLeftSvgX} y1={158} x2={extLeftSvgX} y2={166} stroke="#0284c7" strokeWidth="1.2" />
+                                            <text x={(extLeftSvgX + mainLeftSvgX) / 2} y={171} textAnchor="middle" fill="#0284c7" fontSize="6.5" fontWeight="bold">+{extLeftWidth.toFixed(2)}m</text>
                                         </g>
                                     )}
                                 </g>
@@ -835,9 +825,9 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                     <line x1={mainLeftSvgX} y1={groundY} x2={mainLeftSvgX} y2="158" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
                                     <line x1={mainRightSvgX} y1={groundY} x2={mainRightSvgX} y2="158" stroke="#0284c7" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
                                     <line x1={mainLeftSvgX} y1="158" x2={mainRightSvgX} y2="158" stroke="#0284c7" strokeWidth="1.2" />
-                                    <line x1={mainLeftSvgX} y1="153" x2={mainLeftSvgX} y2="163" stroke="#0284c7" strokeWidth="1.2" />
-                                    <line x1={mainRightSvgX} y1="153" x2={mainRightSvgX} y2="163" stroke="#0284c7" strokeWidth="1.2" />
-                                    <text x={centerX} y="169" textAnchor="middle" fill="#0284c7" fontSize="8" fontWeight="bold">
+                                    <line x1={mainLeftSvgX} y1={153} x2={mainLeftSvgX} y2={163} stroke="#0284c7" strokeWidth="1.2" />
+                                    <line x1={mainRightSvgX} y1={153} x2={mainRightSvgX} y2={163} stroke="#0284c7" strokeWidth="1.2" />
+                                    <text x={centerX} y={169} textAnchor="middle" fill="#0284c7" fontSize="8" fontWeight="bold">
                                         ▲ Largeur : {realGroundWidth.toFixed(2)} m (Emprise au sol)
                                     </text>
 
@@ -845,8 +835,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                     {hasExtRight && (
                                         <g>
                                             <line x1={mainRightSvgX} y1="158" x2={extRightSvgX} y2="158" stroke="#0284c7" strokeWidth="1.2" />
-                                            <line x1={extRightSvgX} y1="153" x2={extRightSvgX} y2="163" stroke="#0284c7" strokeWidth="1.2" />
-                                            <text x={(mainRightSvgX + extRightSvgX) / 2} y="169" textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">+{extRightWidth.toFixed(2)}m</text>
+                                            <line x1={extRightSvgX} y1={153} x2={extRightSvgX} y2={163} stroke="#0284c7" strokeWidth="1.2" />
+                                            <text x={(mainRightSvgX + extRightSvgX) / 2} y={169} textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">+{extRightWidth.toFixed(2)}m</text>
                                         </g>
                                     )}
 
@@ -854,8 +844,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                     {hasExtLeft && (
                                         <g>
                                             <line x1={extLeftSvgX} y1="158" x2={mainLeftSvgX} y2="158" stroke="#0284c7" strokeWidth="1.2" />
-                                            <line x1={extLeftSvgX} y1="153" x2={extLeftSvgX} y2="163" stroke="#0284c7" strokeWidth="1.2" />
-                                            <text x={(extLeftSvgX + mainLeftSvgX) / 2} y="169" textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">+{extLeftWidth.toFixed(2)}m</text>
+                                            <line x1={extLeftSvgX} y1={153} x2={extLeftSvgX} y2={163} stroke="#0284c7" strokeWidth="1.2" />
+                                            <text x={(extLeftSvgX + mainLeftSvgX) / 2} y={169} textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">+{extLeftWidth.toFixed(2)}m</text>
                                         </g>
                                     )}
                                 </g>
@@ -904,11 +894,11 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                 </div>
                                 <div>
                                     <strong style={{ color: '#0f172a' }}>2- LE SITE</strong>
-                                    <div>Le projet se situe sur la commune de {projectCity} ({projectZip}) au {projectAddress}. Le terrain concerné par le projet est cadastré sous le numéro {projectCadastre} (surface : {projectSurface}). Le terrain est globalement plat et se trouve à une altitude de {projectAltitude} au-dessus du niveau de la mer. Le site s'inscrit dans un paysage à identité rurale. L'accès du site se fait par le Sud de la parcelle via la voie d'accès existante.</div>
+                                    <div>Le projet se situe sur la commune de {projectCity} (${projectZip}) au {projectAddress}. Le terrain concerné par le projet est cadastré sous le numéro ${projectCadastre} (surface : ${projectSurface}). Le terrain est globalement plat et se trouve à une altitude de ${projectAltitude} au-dessus du niveau de la mer. Le site s'inscrit dans un paysage à identité rurale. L'accès du site se fait par le Sud de la parcelle via la voie d'accès existante.</div>
                                 </div>
                                 <div>
                                     <strong style={{ color: '#0f172a' }}>3- LE PROJET</strong>
-                                    <div>Le projet a pour objet la construction d'un hangar de forme rectangulaire (longueur : {longueur}m, largeur : {largeur.toFixed(2)}m${hasAuvent ? ' + Auvent 4.00m' : ''}) en structure métallique (RAL 7016 / 7005), composé de ${bayCount} travées de ${baySpacing}m d'entraxe. La toiture sera constituée d'une double pente ${roofTypeLabel} (${pente}°) avec pour couverture un bac acier anti condensation sur les deux versants (RAL 7016). Des panneaux photovoltaïques (RAL 9005) viendront recouvrir le bac acier sur l'ensemble de la toiture${displayKwc ? `, permettant de créer une centrale de production d'électricité photovoltaïque de ${displayKwc} kWc` : ''}.</div>
+                                    <div>Le projet a pour objet la construction d'un hangar de forme rectangulaire (longueur : ${longueur}m, largeur : ${largeur.toFixed(2)}m${hasAuvent ? ' + Auvent 4.00m' : ''}) en structure métallique (RAL 7016 / 7005), composé de ${bayCount} travées de ${baySpacing}m d'entraxe. La toiture sera constituée d'une double pente ${roofTypeLabel} (${pente}°) avec pour couverture un bac acier anti condensation sur les deux versants (RAL 7016). Des panneaux photovoltaïques (RAL 9005) viendront recouvrir le bac acier sur l'ensemble de la toiture${displayKwc ? `, permettant de créer une centrale de production d'électricité photovoltaïque de ${displayKwc} kWc` : ''}.</div>
                                     <div>Ce bâtiment sera ouvert et non clos. Les façades Est, Ouest, Nord et Sud seront ouvertes. Un terrassement sera réalisé pour la mise en oeuvre d'une plateforme en grave compactée. Des tranchées drainantes seront réalisées tout autour du bâtiment projet afin d'évacuer les eaux pluviales par infiltration dans le sol.</div>
                                 </div>
                                 <div>
@@ -935,7 +925,6 @@ export const PlateNotice = (props) => <PlateSectionAndNotice {...props} />;
 
 /**
  * PLANCHE PC5 : PLAN DES FAÇADES ET TOITURES (5 VUES 3D)
- * Directive : Titres Pignon Gauche et Droit sur 2 lignes, hauteur de cadre Est et Ouest réduite, images à 90% hauteur
  */
 export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => {
     const sud = captures?.facade_sud || captures?.facades_projet;
@@ -944,21 +933,19 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
     const ouest = captures?.facade_ouest;
     const toiture = captures?.vue_couverture || captures?.toiture;
 
-    const compressedStyle = { transform: 'scaleY(0.9)', transformOrigin: 'center' };
-
     return (
         <div style={PAGE_STYLE} id="pc-plate-facades">
             <PlateHeader title="PC5 : PLAN DES FAÇADES ET TOITURES (5 VUES 3D)" project={project} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3.5mm', maxHeight: '135mm', marginBottom: '5mm' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3.5mm', maxHeight: '148mm', marginBottom: '4mm' }}>
                 
                 {/* Ligne 1 : Façades Longs Pans (Sud & Nord) */}
-                <div style={{ flex: 1, display: 'flex', gap: '4mm', minHeight: '52mm' }}>
+                <div style={{ flex: 1, display: 'flex', gap: '3.5mm', minHeight: '62mm' }}>
                     {/* Façade Sud */}
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
-                        <div style={{ padding: '1.8mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                        <div style={{ padding: '1.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
                             1. FAÇADE SUD (VUE AVANT / LONG PAN)
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '1mm' }}>
                             <ImageUploadZone 
                                 isInteractive={isInteractive} 
                                 photo={sud} 
@@ -971,10 +958,10 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
 
                     {/* Façade Nord */}
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
-                        <div style={{ padding: '1.8mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                        <div style={{ padding: '1.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
                             2. FAÇADE NORD (VUE ARRIÈRE)
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '1mm' }}>
                             <ImageUploadZone 
                                 isInteractive={isInteractive} 
                                 photo={nord || sud} 
@@ -986,57 +973,54 @@ export const PlateFacades = ({ project, captures, isInteractive, onUpload }) => 
                     </div>
                 </div>
 
-                {/* Ligne 2 : Pignons (Est & Ouest à hauteur de cadre réduite) et Vue Toiture avec hauteur d'image compressée de 10% */}
-                <div style={{ flex: 1.15, display: 'flex', gap: '4mm', minHeight: '54mm', alignItems: 'center' }}>
-                    {/* Façade Est : Cadre à hauteur réduite, sous-titre sur 2e ligne, image compressée de 10% */}
-                    <div style={{ flex: 0.95, height: '88%', border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+                {/* Ligne 2 : Pignons (Est & Ouest) et Vue Toiture */}
+                <div style={{ flex: 1.15, display: 'flex', gap: '3.5mm', minHeight: '64mm', alignItems: 'stretch' }}>
+                    {/* Façade Est */}
+                    <div style={{ flex: 1, height: '100%', border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
                         <div style={{ padding: '1.2mm 1mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a', lineHeight: '1.2' }}>
                             <div>3. FAÇADE EST</div>
                             <div style={{ fontSize: '6.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '0.5px' }}>(PIGNON GAUCHE)</div>
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '1mm' }}>
                             <ImageUploadZone 
                                 isInteractive={isInteractive} 
                                 photo={est || sud} 
                                 onUpload={(data) => onUpload && onUpload('facade_est', data)} 
                                 defaultText="Vue Façade Est" 
                                 label="Façade Est"
-                                imageStyle={compressedStyle}
                             />
                         </div>
                     </div>
 
-                    {/* Façade Ouest : Cadre à hauteur réduite, sous-titre sur 2e ligne, image compressée de 10% */}
-                    <div style={{ flex: 0.95, height: '88%', border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+                    {/* Façade Ouest */}
+                    <div style={{ flex: 1, height: '100%', border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
                         <div style={{ padding: '1.2mm 1mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a', lineHeight: '1.2' }}>
                             <div>4. FAÇADE OUEST</div>
                             <div style={{ fontSize: '6.5pt', fontWeight: 'normal', color: '#64748b', marginTop: '0.5px' }}>(PIGNON DROIT)</div>
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '1mm' }}>
                             <ImageUploadZone 
                                 isInteractive={isInteractive} 
                                 photo={ouest || sud} 
                                 onUpload={(data) => onUpload && onUpload('facade_ouest', data)} 
                                 defaultText="Vue Façade Ouest" 
                                 label="Façade Ouest"
-                                imageStyle={compressedStyle}
                             />
                         </div>
                     </div>
 
-                    {/* Vue Couverture : Cadre standard, image compressée de 10% */}
-                    <div style={{ flex: 1.5, height: '100%', border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
-                        <div style={{ padding: '1.8mm', background: '#dbeafe', borderBottom: '1px solid #93c5fd', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#1e40af' }}>
+                    {/* Vue Couverture */}
+                    <div style={{ flex: 1.6, height: '100%', border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+                        <div style={{ padding: '1.5mm', background: '#dbeafe', borderBottom: '1px solid #93c5fd', fontSize: '8.5pt', fontWeight: 'bold', textAlign: 'center', color: '#1e40af' }}>
                             5. VUE COUVERTURE (PLAN TOITURE PHOTOVOLTAÏQUE)
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff', padding: '1mm' }}>
                             <ImageUploadZone 
                                 isInteractive={isInteractive} 
                                 photo={toiture || sud} 
                                 onUpload={(data) => onUpload && onUpload('vue_couverture', data)} 
                                 defaultText="Vue Couverture Toiture (Format Paysage)" 
                                 label="Plan Toiture"
-                                imageStyle={compressedStyle}
                             />
                         </div>
                     </div>

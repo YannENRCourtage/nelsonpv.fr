@@ -247,15 +247,15 @@ export const PlateCoupe = ({ project }) => {
     const isAsym = !isOmbriere && !isMonopente && !isSym;
 
     // Détection des extensions (Auvent / Appentis)
-    const hasAuventLeft = Boolean(project?.leftSide === 'auvent');
-    const hasAppentisLeft = Boolean(project?.leftSide === 'appentis');
+    const hasAppentisLeft = project?.leftSide === 'appentis';
+    const hasAuventLeft = !hasAppentisLeft && project?.leftSide === 'auvent';
     const hasExtLeft = hasAuventLeft || hasAppentisLeft;
 
-    const hasAuventRight = Boolean(project?.rightSide === 'auvent' || (project?.auvent && project?.auvent !== 'none' && project?.auvent !== false));
-    const hasAppentisRight = Boolean(project?.rightSide === 'appentis' || (project?.appentis && project?.appentis !== 'none' && project?.appentis !== false));
+    const hasAppentisRight = project?.rightSide === 'appentis' || (!project?.rightSide && Boolean(project?.appentis && project?.appentis !== 'none' && project?.appentis !== false));
+    const hasAuventRight = !hasAppentisRight && (project?.rightSide === 'auvent' || (!project?.rightSide && Boolean(project?.auvent && project?.auvent !== 'none' && project?.auvent !== false)));
     const hasExtRight = hasAuventRight || hasAppentisRight;
 
-    // Dimensions extensions
+    // Dimensions extensions : Appentis par défaut à 9.30m, Auvent à 4.00m
     const extRightWidth = hasAppentisRight ? (Number(project?.rightWidth) || 9.3) : (hasAuventRight ? (Number(project?.rightWidth) || 4.0) : 0);
     const extLeftWidth = hasAppentisLeft ? (Number(project?.leftWidth) || 9.3) : (hasAuventLeft ? (Number(project?.leftWidth) || 4.0) : 0);
 
@@ -371,8 +371,9 @@ export const PlateCoupe = ({ project }) => {
     const extRightSvgY = rightEaveSvgY + (extRightSvgX - mainRightSvgX) * rightSlopeSvg;
     const extLeftSvgY = leftEaveSvgY + (mainLeftSvgX - extLeftSvgX) * leftSlopeSvg;
 
-    const extRightHeight = Math.max(2.4, rightEaveHeight - extRightWidth * Math.tan((effectivePitch * Math.PI) / 180));
-    const extLeftHeight = Math.max(2.4, leftEaveHeight - extLeftWidth * Math.tan((effectivePitch * Math.PI) / 180));
+    // Hauteur d'égout de l'extension : 3.90m pour Appentis, ou calculée pour Auvent
+    const extRightHeight = hasAppentisRight ? 3.90 : Math.max(2.4, rightEaveHeight - extRightWidth * Math.tan((effectivePitch * Math.PI) / 180));
+    const extLeftHeight = hasAppentisLeft ? 3.90 : Math.max(2.4, leftEaveHeight - extLeftWidth * Math.tan((effectivePitch * Math.PI) / 180));
 
     const scaleTotalWidth = 10 * pxPerM;
     const scaleSegWidth = 2 * pxPerM;
@@ -395,7 +396,7 @@ export const PlateCoupe = ({ project }) => {
                         Coupe transversale AA' — Bâtiment photovoltaïque & Terrain naturel
                     </span>
                     <span style={{ fontSize: '8pt', color: '#64748b' }}>
-                        Dimensions : {largeur.toFixed(2)}m × {longueur}m{hasAuventRight ? ' (+ Auvent 4.00m)' : hasAppentisRight ? ` (+ Appentis ${extRightWidth.toFixed(2)}m)` : ''}{hasAuventLeft ? ' (+ Auvent 4.00m Gauche)' : hasAppentisLeft ? ` (+ Appentis ${extLeftWidth.toFixed(2)}m Gauche)` : ''} • Échelle indicative
+                        Dimensions : {largeur.toFixed(2)}m × {longueur}m{hasAuventRight ? ` (+ Auvent ${extRightWidth.toFixed(2)}m)` : hasAppentisRight ? ` (+ Appentis ${extRightWidth.toFixed(2)}m)` : ''}{hasAuventLeft ? ` (+ Auvent ${extLeftWidth.toFixed(2)}m Gauche)` : hasAppentisLeft ? ` (+ Appentis ${extLeftWidth.toFixed(2)}m Gauche)` : ''} • Échelle indicative
                     </span>
                 </div>
 
@@ -448,13 +449,9 @@ export const PlateCoupe = ({ project }) => {
                                             {/* Traverse horizontale à hauteur libre */}
                                             <line x1={tLeftX} y1={clearanceSvgY} x2={tRightX} y2={clearanceSvgY} stroke="#334155" strokeWidth="2.8" />
 
-                                            {/* Tirants croisés Saint-André */}
-                                            <line x1={footLeftX + 2} y1={mY - 2} x2={tRightX - 2} y2={clearanceSvgY + 1.5} stroke="#64748b" strokeWidth="1" strokeDasharray="3 1.5" />
-                                            <line x1={footRightX - 2} y1={mY - 2} x2={tLeftX + 2} y2={clearanceSvgY + 1.5} stroke="#64748b" strokeWidth="1" strokeDasharray="3 1.5" />
-
-                                            {/* Bracons supérieurs obliques */}
-                                            <line x1={tLeftX} y1={clearanceSvgY} x2={postRightTopX} y2={postLeftTopY + 5} stroke="#475569" strokeWidth="1.8" />
-                                            <line x1={tRightX} y1={clearanceSvgY} x2={postLeftTopX} y2={postRightTopY + 5} stroke="#475569" strokeWidth="1.8" />
+                                            {/* Croix de Saint-André supérieure allant d'un poteau oblique à l'autre */}
+                                            <line x1={tLeftX} y1={clearanceSvgY} x2={postRightTopX} y2={postRightTopY + 3} stroke="#475569" strokeWidth="2" />
+                                            <line x1={tRightX} y1={clearanceSvgY} x2={postLeftTopX} y2={postLeftTopY + 3} stroke="#475569" strokeWidth="2" />
 
                                             {/* Arbalétrier métallique continu incliné */}
                                             <line x1={mainLeftSvgX - 4} y1={leftEaveSvgY + 3} x2={mainRightSvgX + 4} y2={rightEaveSvgY + 3} stroke="#dc2626" strokeWidth="3.5" strokeLinecap="round" />
@@ -512,10 +509,9 @@ export const PlateCoupe = ({ project }) => {
                                             <rect x={p2X - 4} y={p2TopY} width="8" height={groundY - p2TopY} fill="#1e293b" rx="0.5" />
 
                                             <line x1={p1X} y1={clearanceSvgY} x2={p2X} y2={clearanceSvgY} stroke="#334155" strokeWidth="2.5" />
-                                            <line x1={p1X} y1={groundY - 6} x2={p2X} y2={clearanceSvgY} stroke="#64748b" strokeWidth="1" strokeDasharray="3 1.5" />
-                                            <line x1={p2X} y1={groundY - 6} x2={p1X} y2={clearanceSvgY} stroke="#64748b" strokeWidth="1" strokeDasharray="3 1.5" />
+                                            <line x1={p1X} y1={clearanceSvgY} x2={p2X} y2={p2TopY + 3} stroke="#475569" strokeWidth="2" />
+                                            <line x1={p2X} y1={clearanceSvgY} x2={p1X} y2={p1TopY + 3} stroke="#475569" strokeWidth="2" />
 
-                                            <line x1={mainLeftSvgX - 4} y1={leftEaveSvgY + 3} x2={mainRightSvgX + 4} y2={rightEaveSvgY + 3} stroke="#dc2626" strokeWidth="3.5" />
                                             <polygon
                                                 points={`${mainLeftSvgX - 8},${leftEaveSvgY} ${mainRightSvgX + 8},${rightEaveSvgY} ${mainRightSvgX + 8},${rightEaveSvgY - 5} ${mainLeftSvgX - 8},${leftEaveSvgY - 5}`}
                                                 fill="#1d4ed8"
@@ -538,7 +534,6 @@ export const PlateCoupe = ({ project }) => {
                                 <g>
                                     <rect x={mainLeftSvgX + mainWidthSvg * 0.4} y={groundY - 6} width="20" height="6" fill="#cbd5e1" stroke="#64748b" strokeWidth="1" rx="1" />
                                     <line x1={mainLeftSvgX + mainWidthSvg * 0.5} y1={groundY - 6} x2={mainLeftSvgX + mainWidthSvg * 0.35} y2={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.35} stroke="#1e293b" strokeWidth="6" />
-                                    <line x1={mainLeftSvgX - 4} y1={leftEaveSvgY + 3} x2={mainRightSvgX + 4} y2={rightEaveSvgY + 3} stroke="#dc2626" strokeWidth="3" />
                                     <polygon points={`${mainLeftSvgX - 6},${leftEaveSvgY} ${mainRightSvgX + 6},${rightEaveSvgY} ${mainRightSvgX + 6},${rightEaveSvgY - 5} ${mainLeftSvgX - 6},${leftEaveSvgY - 5}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
                                 </g>
                             )
@@ -642,7 +637,7 @@ export const PlateCoupe = ({ project }) => {
 
                         {/* Faîtage / Sommet */}
                         <line x1={apexSvgX} y1={apexSvgY} x2={apexSvgX} y2={groundYLeft} stroke="#ef4444" strokeWidth="0.8" strokeDasharray="3 2" />
-                        <text x={apexSvgX + 6} y={apexSvgY + 18} fill="#ef4444" fontSize="8" fontWeight="bold">
+                        <text x={apexSvgX + 5} y={apexSvgY + 16} fill="#ef4444" fontSize="7.5" fontWeight="bold">
                             Faîtage : {ridgeHeight.toFixed(2)}m
                         </text>
 
@@ -763,48 +758,48 @@ export const PlateFacades = ({ project, captures }) => {
     return (
         <div style={PAGE_STYLE} id="dp-plate-facades">
             <PlateHeader title="DP4 — PLAN DES FAÇADES ET TOITURES / VUES 3D" project={project} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3mm', maxHeight: '135mm', marginBottom: '5mm' }}>
-                <div style={{ flex: 1, display: 'flex', gap: '3mm' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3.5mm', maxHeight: '148mm', marginBottom: '4mm' }}>
+                <div style={{ flex: 1, display: 'flex', gap: '3.5mm', minHeight: '62mm' }}>
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>1. FAÇADE SUD</div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
                             <img src={sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Sud" />
                         </div>
                     </div>
                     <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#f1f5f9', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>2. FAÇADE NORD</div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
                             <img src={nord || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Nord" />
                         </div>
                     </div>
                 </div>
 
-                <div style={{ flex: 1.15, display: 'flex', gap: '3mm', alignItems: 'center' }}>
-                    {/* Est : cadre à hauteur réduite avec titre sur 2 lignes */}
-                    <div style={{ flex: 0.85, height: '88%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                <div style={{ flex: 1.15, display: 'flex', gap: '3.5mm', minHeight: '64mm', alignItems: 'stretch' }}>
+                    {/* Est */}
+                    <div style={{ flex: 0.9, height: '100%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.2mm 1mm', background: '#f1f5f9', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center', lineHeight: '1.2' }}>
                             <div>3. FAÇADE EST</div>
                             <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON GAUCHE)</div>
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <img src={est || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scaleY(0.9)', transformOrigin: 'center' }} alt="Est" />
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
+                            <img src={est || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Est" />
                         </div>
                     </div>
-                    {/* Ouest : cadre à hauteur réduite avec titre sur 2 lignes */}
-                    <div style={{ flex: 0.85, height: '88%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                    {/* Ouest */}
+                    <div style={{ flex: 0.9, height: '100%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.2mm 1mm', background: '#f1f5f9', fontSize: '7.5pt', fontWeight: 'bold', textAlign: 'center', lineHeight: '1.2' }}>
                             <div>4. FAÇADE OUEST</div>
                             <div style={{ fontSize: '6pt', fontWeight: 'normal', color: '#64748b' }}>(PIGNON DROIT)</div>
                         </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <img src={ouest || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scaleY(0.9)', transformOrigin: 'center' }} alt="Ouest" />
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
+                            <img src={ouest || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Ouest" />
                         </div>
                     </div>
                     {/* Toiture */}
-                    <div style={{ flex: 1.8, height: '100%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+                    <div style={{ flex: 1.6, height: '100%', border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff' }}>
                         <div style={{ padding: '1.5mm', background: '#dbeafe', color: '#1e40af', fontSize: '8pt', fontWeight: 'bold', textAlign: 'center' }}>5. VUE COUVERTURE (PAYSAGE)</div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <img src={toiture || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scaleY(0.9)', transformOrigin: 'center' }} alt="Toiture" />
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '1mm' }}>
+                            <img src={toiture || sud || ''} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Toiture" />
                         </div>
                     </div>
                 </div>
