@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Car, Zap, Battery, Plug } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CONNECTEURS_IRVE_BASE64 } from '@/assets/irveImagesBase64';
 
 const translateVehicleType = (type) => {
   if (!type) return 'Véhicule';
@@ -359,12 +360,12 @@ export default function EvComparator() {
                     </div>
                   </div>
 
-                  <div className="shrink-0 flex flex-col items-center justify-center border-l border-slate-100 pl-4 ml-2">
-                    <ConnectorIcon type={connector} />
-                    <div className="text-center mt-1.5">
-                      <div className="text-slate-600 text-[10px] font-medium leading-none mb-0.5">Connecteur</div>
-                      <div className="font-bold text-xs uppercase text-slate-800 leading-none">{getConnectorDisplayName(connector)}</div>
-                    </div>
+                  <div className="shrink-0 flex flex-col items-center justify-center border-l border-slate-100 pl-3 ml-2">
+                    <img 
+                      src={CONNECTEURS_IRVE_BASE64} 
+                      alt="Standards de connecteurs IRVE" 
+                      className="h-28 max-w-[120px] object-contain"
+                    />
                   </div>
                 </div>
               </div>

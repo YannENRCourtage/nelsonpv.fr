@@ -2,6 +2,7 @@ import React from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { generateSatelliteSnapshot, generateBeforeAfterDualSnapshot } from '@/utils/satelliteSnapshot';
+import { BORNE_DOUBLE_BASE64, BORNE_7_4KW_BASE64 } from '@/assets/irveImagesBase64';
 
 // ─── Générateur de Graphique Financier Haute Résolution pour le PDF (30 ans) ──
 const generateFinancialChartImage = ({ sim, width = 800, height = 374 }) => {
@@ -246,6 +247,11 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
     edfOaTarifLabel = `Tarif EDF OA : ${sim.tarifEdfOaKwh} €/kWh`;
   }
 
+  // Photo et titre de borne IRVE selon puissance
+  const irvePower = Number(sim.power || (sim.selectedStation && sim.selectedStation.power) || 22);
+  const bornePhoto = irvePower <= 7.4 ? BORNE_7_4KW_BASE64 : BORNE_DOUBLE_BASE64;
+  const borneTitle = irvePower <= 7.4 ? 'Borne de Recharge IRVE (7.4 kW)' : `Borne de Recharge IRVE (${irvePower} kW)`;
+
   // HTML conditionnel selon la solution
   const resolveOrientationName = (simObj) => {
     if (simObj?.orientationLabel) {
@@ -452,6 +458,30 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; margin: 0; line-height: 1.2;">Surface : ${sim.floorArea || Math.round((sim.length || 30) * (sim.width || 20))} m²</div>
             </div>
           </div>
+        ` : isIrve ? `
+          <!-- 4. VISUELS IRVE : PHOTO DE LA BORNE (GAUCHE) + IMPLANTATION SATELLITE (DROITE) -->
+          <div style="display: grid; grid-template-columns: 1fr 1.35fr; gap: 8px; margin-bottom: 10px; height: 330px;">
+            <!-- 4a. VISUEL PHOTO DE LA BORNE DE RECHARGE -->
+            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #f8fafc; display: flex; flex-direction: column; position: relative; height: 100%;">
+              <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1.2;">${borneTitle}</div>
+              <img src="${bornePhoto}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Borne de recharge" />
+              <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; margin: 0; line-height: 1.2;">${sim.quantity || 1} unité(s) installée(s)</div>
+            </div>
+
+            <!-- 4b. IMPLANTATION SATELLITE SUR LE PARKING -->
+            <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; display: flex; flex-direction: column; position: relative; height: 100%;">
+              <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1.2;">Implantation Satellite sur le Parking</div>
+              ${finalMapScreenshot ? `
+                <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue satellite du parking" />
+              ` : `
+                <div style="color: #94a3b8; font-size: 8.5pt; text-align: center; margin: auto; padding: 15px;">
+                  <strong style="color: #ffffff;">Repérage Satellite</strong>
+                  <div style="font-size: 7.5pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
+                </div>
+              `}
+              <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; margin: 0; line-height: 1.2;">${sim.quantity || 1} borne(s) (${irvePower} kW)</div>
+            </div>
+          </div>
         ` : `
           <!-- 4. VISUEL SATELLITE / AVANT-APRÈS CÔTE À CÔTE (+10% HAUTEUR : 365px) -->
           <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 10px; height: 365px; display: flex; align-items: center; justify-content: center; position: relative;">
@@ -463,7 +493,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                 <div style="font-size: 8pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
               </div>
             `}
-            <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-top-left-radius: 6px; font-size: 7.5pt; font-weight: bold; margin: 0; line-height: 1.2;">${isIrve ? `Implantation : ${sim.quantity || 1} borne(s)` : `Surface : ${sim.roofSurface || sim.floorArea || 83} m²`}</div>
+            <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-top-left-radius: 6px; font-size: 7.5pt; font-weight: bold; margin: 0; line-height: 1.2;">Surface : ${sim.roofSurface || sim.floorArea || 83} m²</div>
           </div>
         `}
 

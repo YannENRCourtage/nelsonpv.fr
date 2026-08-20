@@ -59,7 +59,7 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
                 <>
                     <PerspectiveCamera
                         makeDefault
-                        position={[0, (config.eaveHeight + (config.ridgeHeight || 7.4)) * 0.45, Math.max(config.width * 1.35, 20)]}
+                        position={[0, (config.eaveHeight + (config.ridgeHeight || 7.4)) * 0.45, Math.max(config.width * 1.85, 30)]}
                         fov={45}
                         near={0.1}
                         far={2000}
@@ -75,7 +75,7 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
                 <>
                     <PerspectiveCamera
                         makeDefault
-                        position={[Math.max(config.width * 1.3, 25), config.eaveHeight * 0.55, -config.length / 2]}
+                        position={[Math.max(config.width * 1.85, 38), config.eaveHeight * 0.55, -config.length / 2]}
                         fov={45}
                         near={0.1}
                         far={2000}
@@ -89,13 +89,13 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
 
             {viewMode === '2D_FRONT' && (
                 <>
-                    {/* Technical Isometric View (Fake 2D) */}
+                    {/* Technical Isometric View (Fake 2D Dézoomée) */}
                     <OrthographicCamera
                         makeDefault
                         position={[100, 100, 100]}
                         near={-500}
                         far={1000}
-                        zoom={30}
+                        zoom={Math.min(18, Math.max(10, 420 / Math.max(config.length, config.width, 25)))}
                         onUpdate={c => c.lookAt(0, config.eaveHeight / 2, -config.length / 2)}
                     />
                     <OrbitControls
@@ -107,8 +107,8 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
             )}
 
             {/* Auto-Centering logic: Re-fits whenever config changes */}
-            {/* Capture: margin=0.58 (Zoomed in & tightly framed like Image 4). Normal: margin=1.1 */}
-            <Bounds fit clip observe margin={isCapturing ? 0.58 : 1.1}>
+            {/* Capture: margin=0.65 pour 3D, margin=1.25 pour dézoomer les vues 2D/Pignon/Façade. Normal: margin=1.1 */}
+            <Bounds fit clip observe margin={isCapturing ? (viewMode === '3D' ? 0.65 : 1.25) : 1.1}>
                 <Structure />
             </Bounds>
 

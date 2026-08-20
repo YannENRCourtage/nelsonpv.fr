@@ -254,14 +254,22 @@ export async function generateFicheTechniquePDF({
 
         // Tarif achat estimé selon puissance
         let tarifAchat = '0.011 € / kWh';
+        let tarifNum = 0.011;
         if (installedKwc < 100) {
             tarifAchat = '0.011 € / kWh';
+            tarifNum = 0.011;
         } else if (installedKwc <= 500) {
             tarifAchat = '0.082 € / kWh';
+            tarifNum = 0.082;
         } else {
             tarifAchat = '0.0829 € / kWh';
+            tarifNum = 0.0829;
         }
         drawRow('Tarif achat estimé :', tarifAchat, true, [251, 191, 36]);
+
+        // Gain estimé An 1 (Tarif achat x Production estimée)
+        const gainEstimeAn1 = tarifNum * estimatedProductionKwh;
+        drawRow('Gain estimé An 1 :', `${formatNumber(gainEstimeAn1.toFixed(2))} €`, true, [52, 211, 153]);
     } else {
         drawRow('Option solaire :', 'Non incluse (Sans PV)', false, [148, 163, 184]);
     }
@@ -305,7 +313,7 @@ export async function generateFicheTechniquePDF({
         loadImage(imgFacadeSud),
     ]);
 
-    const loadedFacadeSud = cropImageVertical(rawFacadeSud, 0.12, 0.12);
+    const loadedFacadeSud = cropImageVertical(rawFacadeSud, 0.10, 0.10);
 
     // --- LOGO NELSON EN BAS DU CADRE BLEU (CENTRE ET REDUIT) ---
     try {
@@ -386,18 +394,21 @@ export async function generateFicheTechniquePDF({
         }
     };
 
-    // VISUEL 1 (Haut) : Vue 3D configurée principale (Cadre agrandi à 114mm pour un rendu immersif)
-    drawImageCard('Vue 3D Principale du Bâtiment (Perspective)', mainX, 24, mainW, 114, loadedMain3D);
+    // VISUEL 1 (Haut) : Vue 3D configurée principale (Hauteur réduite de 20% à 91mm)
+    const topH = 91;
+    drawImageCard('Vue 3D Principale du Bâtiment (Perspective)', mainX, 24, mainW, topH, loadedMain3D);
 
-    // VISUELS 2 & 3 (Milieu) : Pignon Gauche + Visuel 2D côte à côte (Cadre réduit à 65mm)
-    const midY = 141;
-    const midH = 65;
+    // VISUELS 2 & 3 (Milieu) : Pignon Gauche + Visuel 2D côte à côte (Hauteur réduite de 20% à 52mm avec écart)
+    const midY = 24 + topH + 4.5; // 119.5 mm
+    const midH = 52;
     const halfW = (mainW - 3) / 2; // 67.5 mm chacun
     drawImageCard('Vue Pignon (Gauche)', mainX, midY, halfW, midH, loadedPignon);
     drawImageCard('Élévation 2D / Coupe Technique', mainX + halfW + 3, midY, halfW, midH, loaded2D);
 
-    // VISUEL 4 (Bas) : Vue Façade Sud (Cadre réduit à 72mm avec recadrage -1cm haut et -1cm bas)
-    drawImageCard('Vue Façade Sud (Long Pan Solaire)', mainX, 209, mainW, 72, loadedFacadeSud);
+    // VISUEL 4 (Bas) : Vue Façade Sud (avec écart)
+    const sudY = midY + midH + 4.5; // 176 mm
+    const sudH = 68;
+    drawImageCard('Vue Façade Sud (Long Pan Solaire)', mainX, sudY, mainW, sudH, loadedFacadeSud);
 
     // ==========================================
     // 4. PIED DE PAGE (FOOTER)
