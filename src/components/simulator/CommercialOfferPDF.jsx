@@ -1,7 +1,7 @@
 import React from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
+import { generateSatelliteSnapshot, generateBeforeAfterDualSnapshot } from '@/utils/satelliteSnapshot';
 
 // ─── Générateur de Graphique Financier Haute Résolution pour le PDF (30 ans) ──
 const generateFinancialChartImage = ({ sim, width = 800, height = 374 }) => {
@@ -140,11 +140,27 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
   const clientName = customClientName || sim.clientName || selectedProject?.name || selectedProject?.lastName || sim.cityName || 'Client NELSON';
   const clientAddress = sim.address || selectedProject?.address || (sim.cityName ? `${sim.cityName} (${sim.departmentCode || 'France'})` : 'Adresse du site');
 
-  // Vue satellite
-  let finalMapScreenshot = sim.mapScreenshot;
+  // Vue satellite ou Visuel Avant / Après (Côte à côte pour Toiture et Autoconso)
+  let finalMapScreenshot = null;
+  if (isAuto || isToiture) {
+    try {
+      finalMapScreenshot = await generateBeforeAfterDualSnapshot({
+        center: sim.mapCenter || [43.6047, 1.4442],
+        polygonPoints: sim.polygonPoints || [],
+        customKwc: sim.kwc || sim.installedKwc || sim.power || 6,
+        roofSurface: sim.roofSurface || 83,
+        width: 900,
+        height: 420,
+        zoom: 20
+      });
+    } catch (e) {
+      console.warn('Génération dual snapshot avant-après:', e);
+    }
+  }
+
   if (!finalMapScreenshot) {
     try {
-      finalMapScreenshot = await generateSatelliteSnapshot({
+      finalMapScreenshot = sim.mapScreenshot || await generateSatelliteSnapshot({
         center: sim.mapCenter || [43.6047, 1.4442],
         polygonPoints: sim.polygonPoints || [],
         width: 800,
@@ -214,7 +230,21 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
     ? `+${sim.annualRevenue.toLocaleString('fr-FR')} €`
     : `+${(Math.round((sim.annualProductionKwh || 11250) * 0.20)).toLocaleString('fr-FR')} €`;
 
-  const calculatedPower = sim.kwc ? `${sim.kwc} kWc` : (sim.power ? `${sim.power} kW` : (sim.annualProductionKwh ? `${(sim.annualProductionKwh / 1050).toFixed(2)} kWc` : '36 kWc'));
+  const calculatedPower = sim.kwc ? `${sim.kwc} kWc` : (sim.installedKwc ? `${sim.installedKwc} kWc` : (sim.power ? `${sim.power} kW` : (sim.annualProductionKwh ? `${(sim.annualProductionKwh / 1050).toFixed(2)} kWc` : '36 kWc')));
+
+  // Hypothèse de tarif EDF OA selon la puissance
+  const kwcNumber = Number(sim.kwc || sim.installedKwc || sim.power || (sim.annualProductionKwh ? sim.annualProductionKwh / 1050 : 100));
+  let edfOaTarifLabel = 'Tarif EDF OA : 0.082 €/kWh';
+  if (kwcNumber < 100) {
+    edfOaTarifLabel = 'Tarif EDF OA : 0.011 €/kWh';
+  } else if (kwcNumber <= 500) {
+    edfOaTarifLabel = 'Tarif EDF OA : 0.082 €/kWh';
+  } else {
+    edfOaTarifLabel = 'Tarif EDF OA : 0.0829 €/kWh';
+  }
+  if (sim.tarifEdfOaKwh) {
+    edfOaTarifLabel = `Tarif EDF OA : ${sim.tarifEdfOaKwh} €/kWh`;
+  }
 
   // HTML conditionnel selon la solution
   const resolveOrientationName = (simObj) => {
@@ -364,7 +394,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 8px; padding: 6px; text-align: center;">
             <div style="font-size: 6.5pt; font-weight: bold; color: #166534; text-transform: uppercase;">${isIrve ? 'Investissement net' : 'Gains / an (An 1)'}</div>
             <div style="font-size: 13pt; font-weight: 900; color: #16a34a; margin: 1px 0;">${isIrve ? `${(sim.totalInvestmentHT || sim.resteACharge || 3960).toLocaleString('fr-FR')} € HT` : annualGainFormatted}</div>
-            <div style="font-size: 6.5pt; color: #166534;">${isIrve ? `Coût ${sim.quantity || 1} borne(s)` : 'Bénéfice net annuel'}</div>
+            <div style="font-size: 6.5pt; color: #166534;">${isIrve ? `Coût ${sim.quantity || 1} borne(s)` : isStruct ? edfOaTarifLabel : isToiture ? `Tarif EDF OA : ${sim.tarifEdfOaKwh || '0.082'} €/kWh` : 'Bénéfice net annuel'}</div>
           </div>
 
           <div style="background: #faf5ff; border: 1.5px solid #e9d5ff; border-radius: 8px; padding: 6px; text-align: center;">
@@ -374,9 +404,9 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           </div>
         </div>
 
-        <!-- 4. VISUELS : VUE 3D CONFIGURATEUR ET/OU PLAN SATELLITE -->
+        <!-- 4. VISUELS : VUE 3D CONFIGURATEUR ET/OU PLAN SATELLITE (+10% HAUTEUR) -->
         ${isStruct ? `
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; ${sim.buildings && sim.buildings.length > 1 ? 'height: 280px;' : 'height: 260px;'}">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; ${sim.buildings && sim.buildings.length > 1 ? 'height: 310px;' : 'height: 290px;'}">
             <!-- 4a. VISUEL(S) 3D DU/DES BÂTIMENT(S) -->
             ${sim.buildings && sim.buildings.length > 1 ? `
               <div style="display: grid; grid-template-rows: 1fr 1fr; gap: 6px; height: 100%;">
@@ -408,7 +438,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </div>
             `}
 
-            <!-- 4b. IMPLANTATION SATELLITE SUR LE TERRAIN (SANS ESPACE AU-DESSUS DU TITRE) -->
+            <!-- 4b. IMPLANTATION SATELLITE SUR LE TERRAIN -->
             <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; display: flex; flex-direction: column; position: relative; height: 100%;">
               <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1.2;">Implantation Satellite sur la Parcelle</div>
               ${finalMapScreenshot ? `
@@ -423,8 +453,8 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
             </div>
           </div>
         ` : `
-          <!-- 4. VISUEL SATELLITE (+10% HAUTEUR : 330px) -->
-          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 10px; height: 330px; display: flex; align-items: center; justify-content: center; position: relative;">
+          <!-- 4. VISUEL SATELLITE / AVANT-APRÈS CÔTE À CÔTE (+10% HAUTEUR : 365px) -->
+          <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; margin-bottom: 10px; height: 365px; display: flex; align-items: center; justify-content: center; position: relative;">
             ${finalMapScreenshot ? `
               <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue satellite du site" />
             ` : `

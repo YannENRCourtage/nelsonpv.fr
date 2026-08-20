@@ -791,7 +791,7 @@ export default function SolarRoofSimulator({
               center={mapCenter}
               polygonPoints={polygonPoints}
               roofSurface={roofSurface}
-              customKwc={cappedPowerKwc}
+              customKwc={installedKwc}
               orientationInfo={orientationInfo}
               annualProductionKwh={annualProductionKwh}
             />

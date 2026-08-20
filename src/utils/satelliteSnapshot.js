@@ -257,3 +257,246 @@ export const generateSatelliteSnapshot = async ({
     return null;
   }
 };
+
+// ─── Générateur de capture AVANT / APRÈS CÔTE À CÔTE pour PDF ─────────────────
+export const generateBeforeAfterDualSnapshot = async ({
+  center,
+  polygonPoints,
+  customKwc = 6,
+  roofSurface = 83,
+  width = 900,
+  height = 420,
+  zoom = 20
+}) => {
+  try {
+    const safeZoom = Math.min(20, Math.max(16, zoom || 20));
+    const lat = center ? center[0] : (polygonPoints && polygonPoints[0] ? polygonPoints[0].lat : 43.6047);
+    const lng = center ? center[1] : (polygonPoints && polygonPoints[0] ? polygonPoints[0].lng : 1.4442);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+
+    // Fond sombre
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, width, height);
+
+    // Calcul des tuiles pour le centre
+    const n = Math.pow(2, safeZoom);
+    const xExact = ((lng + 180) / 360) * n;
+    const latRad = (lat * Math.PI) / 180;
+    const yExact = ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n;
+
+    const centerTileX = Math.floor(xExact);
+    const centerTileY = Math.floor(yExact);
+
+    const pixelOffsetX = (xExact - centerTileX) * 256;
+    const pixelOffsetY = (yExact - centerTileY) * 256;
+
+    const tilePromises = [];
+    const minTileX = centerTileX - 2;
+    const maxTileX = centerTileX + 2;
+    const minTileY = centerTileY - 1;
+    const maxTileY = centerTileY + 1;
+
+    for (let tx = minTileX; tx <= maxTileX; tx++) {
+      for (let ty = minTileY; ty <= maxTileY; ty++) {
+        const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${safeZoom}/${ty}/${tx}`;
+        const p = new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => resolve({ img, tx, ty, success: true });
+          img.onerror = () => resolve({ success: false });
+          img.src = url;
+        });
+        tilePromises.push(p);
+      }
+    }
+
+    const loadedTiles = await Promise.all(tilePromises);
+
+    const halfW = (width - 6) / 2;
+
+    // Helper pour dessiner le fond satellite sur une moitié (gauche ou droite)
+    const drawSatelliteHalf = (offsetX) => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(offsetX, 0, halfW, height);
+      ctx.clip();
+
+      const canvasCenterX = offsetX + halfW / 2;
+      const canvasCenterY = height / 2;
+
+      loadedTiles.forEach(({ img, tx, ty, success }) => {
+        if (success && img) {
+          const dx = canvasCenterX - pixelOffsetX + (tx - centerTileX) * 256;
+          const dy = canvasCenterY - pixelOffsetY + (ty - centerTileY) * 256;
+          ctx.drawImage(img, dx, dy, 256, 256);
+        }
+      });
+      ctx.restore();
+    };
+
+    // 1. Dessin des 2 moitiés satellites
+    drawSatelliteHalf(0);
+    drawSatelliteHalf(halfW + 6);
+
+    // Ligne de séparation centrale
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(halfW, 0, 6, height);
+
+    // Helper conversion pour une moitié donnée
+    const getCanvasPoint = (ptLat, ptLng, offsetX) => {
+      const canvasCenterX = offsetX + halfW / 2;
+      const canvasCenterY = height / 2;
+      const pX = ((ptLng + 180) / 360) * n;
+      const pLatRad = (ptLat * Math.PI) / 180;
+      const pY = ((1 - Math.log(Math.tan(pLatRad) + 1 / Math.cos(pLatRad)) / Math.PI) / 2) * n;
+      return {
+        x: canvasCenterX + (pX - xExact) * 256,
+        y: canvasCenterY + (pY - yExact) * 256
+      };
+    };
+
+    if (polygonPoints && polygonPoints.length >= 3) {
+      // ─── MOITIÉ GAUCHE (AVANT) ───
+      const ptsLeft = polygonPoints.map(p => getCanvasPoint(p.lat, p.lng, 0));
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(ptsLeft[0].x, ptsLeft[0].y);
+      for (let i = 1; i < ptsLeft.length; i++) ctx.lineTo(ptsLeft[i].x, ptsLeft[i].y);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.stroke();
+      ctx.restore();
+
+      // ─── MOITIÉ DROITE (APRÈS : PANNEAUX SOLAIRES EN PORTRAIT À LA CÔTE) ───
+      const ptsRight = polygonPoints.map(p => getCanvasPoint(p.lat, p.lng, halfW + 6));
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(ptsRight[0].x, ptsRight[0].y);
+      for (let i = 1; i < ptsRight.length; i++) ctx.lineTo(ptsRight[i].x, ptsRight[i].y);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.35)';
+      ctx.fill();
+      ctx.strokeStyle = '#0284c7';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      // Calcul des panneaux à la côte exacte (1.762m x 1.134m, gap 2cm)
+      const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, safeZoom + 8);
+      const pxPerM = 1 / metersPerPx;
+
+      const pW_px = 1.134 * pxPerM; // Largeur portrait (1.134m)
+      const pH_px = 1.762 * pxPerM; // Hauteur portrait (1.762m)
+      const gap_px = 0.02 * pxPerM; // 2 cm écart
+
+      // Orientation de la toiture (arête p0 -> p1)
+      const p0 = ptsRight[0];
+      const p1 = ptsRight[1];
+      const angleRoof = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+
+      // Barycentre de la toiture à droite
+      let cX = 0, cY = 0;
+      ptsRight.forEach(pt => { cX += pt.x; cY += pt.y; });
+      cX /= ptsRight.length;
+      cY /= ptsRight.length;
+
+      // Nombre de panneaux selon la puissance
+      const targetPanels = Math.max(1, Math.round((customKwc * 1000) / 440));
+      
+      // Disposition compacte en matrice (colonnes le long du faîtage, rangées le long de la pente)
+      const cols = Math.max(2, Math.min(12, Math.ceil(Math.sqrt(targetPanels * 1.6))));
+      const rows = Math.ceil(targetPanels / cols);
+
+      const totalFieldW = cols * (pW_px + gap_px) - gap_px;
+      const totalFieldH = rows * (pH_px + gap_px) - gap_px;
+
+      ctx.save();
+      ctx.translate(cX, cY);
+      ctx.rotate(angleRoof);
+
+      let placed = 0;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (placed >= targetPanels) break;
+
+          const panelX = -totalFieldW / 2 + c * (pW_px + gap_px);
+          const panelY = -totalFieldH / 2 + r * (pH_px + gap_px);
+
+          // Panneau Solaire Réaliste (Bleu Nuit Antireflet + Reflet Métallique)
+          ctx.fillStyle = '#0c192c';
+          ctx.fillRect(panelX, panelY, pW_px, pH_px);
+
+          // Cadre alu fin bleu ciel
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 0.9;
+          ctx.strokeRect(panelX, panelY, pW_px, pH_px);
+
+          // Grille de cellules photovoltaïques internes
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          // Ligne médiane verticale
+          ctx.moveTo(panelX + pW_px / 2, panelY);
+          ctx.lineTo(panelX + pW_px / 2, panelY + pH_px);
+          // 3 Lignes horizontales
+          ctx.moveTo(panelX, panelY + pH_px * 0.25);
+          ctx.lineTo(panelX + pW_px, panelY + pH_px * 0.25);
+          ctx.moveTo(panelX, panelY + pH_px * 0.5);
+          ctx.lineTo(panelX + pW_px, panelY + pH_px * 0.5);
+          ctx.moveTo(panelX, panelY + pH_px * 0.75);
+          ctx.lineTo(panelX + pW_px, panelY + pH_px * 0.75);
+          ctx.stroke();
+
+          placed++;
+        }
+      }
+      ctx.restore();
+    }
+
+    // ─── BADGES EN HAUT DE CHAQUE MOITIÉ ───
+    const panelCount = Math.max(1, Math.round((customKwc * 1000) / 440));
+
+    // Badge Gauche (AVANT)
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+    ctx.beginPath();
+    ctx.roundRect(14, 14, 230, 28, 6);
+    ctx.fill();
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(`AVANT : Toiture d'origine (${roofSurface} m²)`, 24, 32);
+
+    // Badge Droit (APRÈS)
+    ctx.fillStyle = 'rgba(6, 78, 59, 0.92)';
+    ctx.beginPath();
+    ctx.roundRect(halfW + 20, 14, 260, 28, 6);
+    ctx.fill();
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#6ee7b7';
+    ctx.font = 'bold 11px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(`APRÈS : ${customKwc} kWc (${panelCount} panneaux)`, halfW + 30, 32);
+
+    return canvas.toDataURL('image/jpeg', 0.92);
+  } catch (err) {
+    console.warn('Erreur génération dual snapshot avant-après:', err);
+    return null;
+  }
+};

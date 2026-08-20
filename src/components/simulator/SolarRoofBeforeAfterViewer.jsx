@@ -22,7 +22,7 @@ function AutoFitPolygon({ polygonPoints, center }) {
   return null;
 }
 
-// Couche de dessin réaliste des panneaux solaires sur le polygone
+// Couche de dessin réaliste des panneaux solaires sur le polygone à la côte exacte (Portrait 1.762m x 1.134m, 2cm gap)
 function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, orientationAngle = 0 }) {
   const map = useMap();
   const layerRef = useRef(null);
@@ -43,43 +43,60 @@ function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, orien
     // 1. Cadre de base toiture / rails de fixation
     L.polygon(latlngs, {
       color: '#0284c7',
-      weight: 2.5,
-      fillColor: '#0369a1',
-      fillOpacity: 0.15,
-      dashArray: '3, 3'
-    }).addTo(group);
-
-    // 2. Polygone avec calepinage photovoltaïque
-    L.polygon(latlngs, {
-      color: '#38bdf8',
       weight: 2,
       fillColor: '#0f172a',
-      fillOpacity: 0.88,
-      className: 'solar-roof-polygon'
+      fillOpacity: 0.25,
+      dashArray: '4, 3'
     }).addTo(group);
 
-    // 3. Calcul de la grille de panneaux orientés
+    // 2. Calcul métrique précis des panneaux solaires en portrait
     try {
-      const pointsPx = polygonPoints.map(p => map.latLngToLayerPoint([p.lat, p.lng]));
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      pointsPx.forEach(pt => {
-        minX = Math.min(minX, pt.x);
-        maxX = Math.max(maxX, pt.x);
-        minY = Math.min(minY, pt.y);
-        maxY = Math.max(maxY, pt.y);
-      });
+      const p0 = polygonPoints[0];
+      const p1 = polygonPoints[1];
 
-      const spanX = maxX - minX;
-      const spanY = maxY - minY;
+      // Centre du polygone
+      let cLat = 0, cLng = 0;
+      polygonPoints.forEach(p => { cLat += p.lat; cLng += p.lng; });
+      cLat /= polygonPoints.length;
+      cLng /= polygonPoints.length;
 
-      const targetPanels = panelCount || Math.round((customKwc * 1000) / 440);
-      const cols = Math.max(2, Math.round(Math.sqrt(targetPanels * (spanX / (spanY || 1)))));
-      const rows = Math.max(1, Math.ceil(targetPanels / cols));
+      const latRad = (cLat * Math.PI) / 180;
+      const metersPerDegLat = 111139;
+      const metersPerDegLng = 111139 * Math.cos(latRad);
 
-      const stepX = (spanX * 0.90) / cols;
-      const stepY = (spanY * 0.90) / rows;
-      const panelW = stepX * 0.88;
-      const panelH = stepY * 0.88;
+      // Vecteur directeur de l'arête principale (Faîtage / Longueur toiture)
+      const dx = (p1.lng - p0.lng) * metersPerDegLng;
+      const dy = (p1.lat - p0.lat) * metersPerDegLat;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const ux = dx / len;
+      const uy = dy / len;
+
+      // Vecteur perpendiculaire (Sens de la pente de toiture)
+      const vx = -uy;
+      const vy = ux;
+
+      // Dimensions réelles d'un panneau solaire standard (Portrait)
+      const pW = 1.134; // 1.134 m de large (le long du faîtage)
+      const pH = 1.762; // 1.762 m de haut (le long de la pente)
+      const pGap = 0.02; // 2 cm d'écartement entre panneaux
+
+      const targetPanels = panelCount || Math.max(1, Math.round((customKwc * 1000) / 440));
+
+      // Calcul des colonnes et rangées compactes
+      const cols = Math.max(2, Math.min(14, Math.ceil(Math.sqrt(targetPanels * 1.6))));
+      const rows = Math.ceil(targetPanels / cols);
+
+      const totalW = cols * (pW + pGap) - pGap;
+      const totalH = rows * (pH + pGap) - pGap;
+
+      const localToLatLng = (localX, localY) => {
+        const mx = localX * ux + localY * vx;
+        const my = localX * uy + localY * vy;
+        return [
+          cLat + (my / metersPerDegLat),
+          cLng + (mx / metersPerDegLng)
+        ];
+      };
 
       let placed = 0;
 
@@ -87,31 +104,28 @@ function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, orien
         for (let c = 0; c < cols; c++) {
           if (placed >= targetPanels) break;
 
-          const pCenterX = minX + spanX * 0.05 + c * stepX + stepX / 2;
-          const pCenterY = minY + spanY * 0.05 + r * stepY + stepY / 2;
+          const panelCenterX = -totalW / 2 + c * (pW + pGap) + pW / 2;
+          const panelCenterY = -totalH / 2 + r * (pH + pGap) + pH / 2;
 
-          const pTopLeft = map.layerPointToLatLng([pCenterX - panelW / 2, pCenterY - panelH / 2]);
-          const pBottomRight = map.layerPointToLatLng([pCenterX + panelW / 2, pCenterY + panelH / 2]);
+          const c1 = localToLatLng(panelCenterX - pW / 2, panelCenterY - pH / 2);
+          const c2 = localToLatLng(panelCenterX + pW / 2, panelCenterY - pH / 2);
+          const c3 = localToLatLng(panelCenterX + pW / 2, panelCenterY + pH / 2);
+          const c4 = localToLatLng(panelCenterX - pW / 2, panelCenterY + pH / 2);
 
-          const panelBounds = [
-            [pTopLeft.lat, pTopLeft.lng],
-            [pTopLeft.lat, pBottomRight.lng],
-            [pBottomRight.lat, pBottomRight.lng],
-            [pBottomRight.lat, pTopLeft.lng]
-          ];
-
-          L.polygon(panelBounds, {
+          // Panneau Solaire en Portrait (Bleu nuit antireflet + bordure alu)
+          L.polygon([c1, c2, c3, c4], {
             color: '#38bdf8',
-            weight: 1,
-            fillColor: '#0b192c',
+            weight: 1.2,
+            fillColor: '#0c192c',
             fillOpacity: 0.95,
+            className: 'solar-panel-portrait'
           }).addTo(group);
 
           placed++;
         }
       }
     } catch (e) {
-      console.warn('Erreur calepinage panneaux map:', e);
+      console.warn('Erreur calepinage portrait panneaux:', e);
     }
 
     return () => {
