@@ -2116,7 +2116,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                     </div>
 
                     {/* Colonne Droite : Objet des travaux prenant toute la hauteur cumulée */}
-                    <div className="bg-gray-50 rounded-2xl border border-gray-100 p-3.5 text-xs flex flex-col justify-between shadow-2xs">
+                    <div className="bg-gray-50 rounded-2xl border border-gray-100 p-3.5 text-xs flex flex-col shadow-2xs h-full">
                       <div className="flex items-center justify-between mb-2 flex-shrink-0">
                         <label className="font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5 text-[11px]">
                           <FileText className="w-3.5 h-3.5 text-blue-600" />
@@ -2136,11 +2136,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                           handleFieldChange('objet_travaux', val);
                         }}
                         placeholder="Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
-                        className="w-full flex-1 min-h-[140px] p-3 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-medium leading-relaxed resize-none outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
+                        className="w-full flex-1 min-h-[160px] p-3 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-medium leading-relaxed resize-none outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
                       />
-                      <p className="text-[10px] text-gray-400 mt-2 flex-shrink-0">
-                        Ce texte apparaîtra dans la zone "OBJET DES TRAVAUX" de la page de garde du dossier PDF.
-                      </p>
                     </div>
                   </div>
                 </motion.div>
