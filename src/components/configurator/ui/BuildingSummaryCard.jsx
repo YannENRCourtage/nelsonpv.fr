@@ -79,13 +79,12 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                         </div>
                     </div>
 
-                    {/* En haut à droite : Code du bâtiment (ex: H20 sans #) ou badge Sur-Mesure */}
+                    {/* En haut à droite : Code du bâtiment (ex: C10) */}
                     {!isCustom && buildingCode ? (
                         <div className="flex flex-col items-end">
                             <span className="text-xs sm:text-sm font-black bg-blue-600 text-white px-2.5 py-1 rounded-lg shadow-sm font-mono tracking-wide">
                                 {buildingCode}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-bold mt-0.5">{floorArea} m²</span>
                         </div>
                     ) : (
                         <span className="text-xs font-black bg-slate-800 text-white px-2.5 py-1 rounded-lg shadow-sm">
@@ -94,27 +93,27 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                     )}
                 </div>
 
-                {/* Juste en dessous : Équivalence (sans le mot Barconnière) + Badge Grille */}
-                <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                    {!isCustom && equivalenceCode && (
+                {/* Juste en dessous : Équivalence Barconnière à gauche + Surface en gras à droite */}
+                <div className="flex items-center justify-between gap-2 pt-0.5">
+                    {!isCustom && equivalenceCode ? (
                         <div className="flex items-center gap-1 bg-slate-100 text-slate-800 px-2.5 py-1 rounded-lg font-mono text-xs font-bold border border-slate-200">
                             <span>{equivalenceCode}</span>
                         </div>
-                    )}
-
-                    {isCustom ? (
+                    ) : isCustom ? (
                         <span className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200">
                             <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Grille sur-mesure
                         </span>
-                    ) : (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Grille Standard
+                    ) : <div />}
+
+                    {!isCustom && (
+                        <span className="text-slate-900 font-black text-xs sm:text-sm font-mono">
+                            {floorArea} m²
                         </span>
                     )}
                 </div>
             </div>
 
-            {/* Grid 1 : Dimensions & Structure (Police augmentée de 2pt) */}
+            {/* Grid 1 : Dimensions & Structure */}
             <div className="grid grid-cols-2 gap-2.5 bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <div className="space-y-1">
                     <span className="text-[11px] text-slate-400 font-bold uppercase flex items-center gap-1.5">
@@ -152,10 +151,10 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                             ⚡ {installedKwc.toFixed(1)} kWc
                         </p>
                         <p className="text-[11px] text-amber-800 font-medium">
-                            {panelCount} modules • ~{estimatedProductionKwh.toLocaleString('fr-FR')} kWh/an
+                            {panelCount} modules • ~{estimatedProductionKwh.toLocaleString('fr-FR')} kWh/an (Hypothèse 1150 kWh/kWc)
                         </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                         <span className="text-[11px] text-slate-500 block">Tarif Centrale PV</span>
                         <strong className="text-xs sm:text-sm font-black text-slate-900">
                             {pvInstallationCost.toLocaleString('fr-FR')} € HT
@@ -164,7 +163,7 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                 </div>
             )}
 
-            {/* Grid 3 : Chiffrage Structure & Ratios Officiels (Sans soulte ni reste à charge) */}
+            {/* Grid 3 : Chiffrage Structure & Ratios */}
             <div className="space-y-2.5 border-t border-slate-100 pt-2.5">
                 <div className="flex items-center justify-between bg-slate-100/80 p-2.5 rounded-xl border border-slate-200">
                     <span className="text-xs sm:text-sm font-extrabold text-slate-700 flex items-center gap-1.5">
@@ -175,9 +174,9 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                     </span>
                 </div>
 
-                {/* Ratios Tarif / Puissance et Tarif / Surface */}
+                {/* Ratios : Ligne 1 avec PV et Hors PV, Ligne 2 Ratio Surface */}
                 {config.hasSolar ? (
-                    <div className="space-y-2 bg-white p-2.5 rounded-xl border border-slate-100 text-xs">
+                    <div className="space-y-2.5 bg-white p-2.5 rounded-xl border border-slate-100 text-xs">
                         <div className="grid grid-cols-2 gap-2 text-slate-500">
                             <div>
                                 <span className="text-[10px] uppercase font-bold text-slate-400 block">Ratio Tarif / Puissance</span>
@@ -187,17 +186,17 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                                 </strong>
                             </div>
                             <div>
-                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Ratio Tarif / Surface</span>
-                                <strong className="text-slate-800 font-extrabold text-xs sm:text-sm block mt-0.5">
-                                    {ratioCostPerM2} € <span className="text-[10px] font-normal text-slate-500">/ m²</span>
+                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Ratio Tarif / Puissance (Hors PV)</span>
+                                <strong className="text-slate-700 font-extrabold text-xs sm:text-sm flex items-baseline gap-1 mt-0.5">
+                                    {ratioStructureCostPerWc.toFixed(2)} € <span className="text-[10px] font-normal text-slate-500">/ Wc</span>
+                                    <span className="text-[10px] font-normal text-slate-400">({ratioStructureCostPerKwc} €/kWc)</span>
                                 </strong>
                             </div>
                         </div>
                         <div className="border-t border-slate-100 pt-2 flex items-center justify-between text-slate-500">
-                            <span className="text-[10px] uppercase font-bold text-slate-400">Ratio Tarif / Puissance (Hors PV)</span>
-                            <strong className="text-slate-700 font-extrabold text-xs sm:text-sm flex items-baseline gap-1">
-                                {ratioStructureCostPerWc.toFixed(2)} € <span className="text-[10px] font-normal text-slate-500">/ Wc</span>
-                                <span className="text-[10px] font-normal text-slate-400">({ratioStructureCostPerKwc} €/kWc)</span>
+                            <span className="text-[10px] uppercase font-bold text-slate-400">Ratio Tarif / Surface</span>
+                            <strong className="text-slate-800 font-extrabold text-xs sm:text-sm">
+                                {ratioCostPerM2} € <span className="text-[10px] font-normal text-slate-500">/ m²</span>
                             </strong>
                         </div>
                     </div>

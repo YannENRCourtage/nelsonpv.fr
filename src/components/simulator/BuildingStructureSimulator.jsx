@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { ControlPanel } from '../configurator/ui/ControlPanel.jsx';
+import { BuildingSummaryCard } from '../configurator/ui/BuildingSummaryCard.jsx';
 import { useConfiguratorStore, useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
 import {
   Download, Maximize, X, Building2, MapPin, Search,
@@ -887,8 +888,9 @@ const crop3DCanvas = (sourceCanvas) => {
           <div className="w-full h-[580px] bg-gradient-to-b from-slate-50 to-slate-200 relative flex flex-col lg:flex-row overflow-hidden rounded-3xl border border-slate-200 shadow-xl">
             
             {/* Panneau de contrôle gauche */}
-            <div className="relative lg:absolute top-0 lg:top-4 left-0 lg:left-4 z-20 w-full lg:w-[420px] max-h-[40vh] lg:max-h-[calc(580px-2rem)] overflow-y-auto p-4 lg:p-0">
+            <div className="relative lg:absolute top-0 lg:top-4 left-0 lg:left-4 z-20 w-full lg:w-[420px] max-h-[40vh] lg:max-h-[calc(580px-2rem)] overflow-y-auto p-4 lg:p-0 space-y-3.5 pb-6">
               <ControlPanel isAcama={isAcama} selectedProject={selectedProject} />
+              <BuildingSummaryCard isAcama={isAcama} />
             </div>
 
             {/* Scène 3D */}

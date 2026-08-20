@@ -42,14 +42,13 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
             {viewMode === '3D' && (
                 <>
                     <PerspectiveCamera makeDefault position={[20, 15, 30]} fov={50} near={0.1} far={2000} />
-                    {/* Target optimization for PDF Capture: Center on the building mass */}
-                    {/* Normal mode: X=8 shifts building to the Left visually. Y=4 lowers building in view. */}
+                    {/* Target optimization for PDF Capture: Center tightly on the building mass */}
                     <OrbitControls
                         maxPolarAngle={Math.PI}
                         minDistance={2}
                         maxDistance={300}
                         target={isCapturing
-                            ? [0, config.eaveHeight / 2, -config.length / 2]
+                            ? [0, (config.eaveHeight + (config.ridgeHeight || 7.4)) * 0.35, -config.length / 2]
                             : [8, 4, 0]
                         }
                     />
@@ -60,7 +59,7 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
                 <>
                     <PerspectiveCamera
                         makeDefault
-                        position={[0, (config.eaveHeight + (config.ridgeHeight || 7.4)) * 0.45, Math.max(config.width * 1.5, 25)]}
+                        position={[0, (config.eaveHeight + (config.ridgeHeight || 7.4)) * 0.45, Math.max(config.width * 1.35, 20)]}
                         fov={45}
                         near={0.1}
                         far={2000}
@@ -76,14 +75,14 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
                 <>
                     <PerspectiveCamera
                         makeDefault
-                        position={[Math.max(config.length * 1.25, config.width * 1.25, 35), config.eaveHeight * 0.6, -config.length / 2]}
+                        position={[Math.max(config.width * 1.3, 25), config.eaveHeight * 0.55, -config.length / 2]}
                         fov={45}
                         near={0.1}
                         far={2000}
                     />
                     <OrbitControls
                         enableRotate={false}
-                        target={[0, config.eaveHeight * 0.6, -config.length / 2]}
+                        target={[0, config.eaveHeight * 0.55, -config.length / 2]}
                     />
                 </>
             )}
@@ -91,13 +90,12 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
             {viewMode === '2D_FRONT' && (
                 <>
                     {/* Technical Isometric View (Fake 2D) */}
-                    {/* Position at corner [100, 100, 100] gives standard Isometric angle */}
                     <OrthographicCamera
                         makeDefault
                         position={[100, 100, 100]}
                         near={-500}
                         far={1000}
-                        zoom={30} // Bounds will likely override this
+                        zoom={30}
                         onUpdate={c => c.lookAt(0, config.eaveHeight / 2, -config.length / 2)}
                     />
                     <OrbitControls
@@ -109,10 +107,9 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
             )}
 
             {/* Auto-Centering logic: Re-fits whenever config changes */}
-            {/* Capture: margin=0.8 (Zoomed in). Normal: margin=1.1 (Breathable) */}
-            <Bounds fit clip observe margin={isCapturing ? 0.8 : 1.1}>
+            {/* Capture: margin=0.72 (Zoomed in & tightly centered). Normal: margin=1.1 */}
+            <Bounds fit clip observe margin={isCapturing ? 0.72 : 1.1}>
                 <Structure />
-                {/* Add Cladding/Doors here later */}
             </Bounds>
 
             {/* Ground / Shadows */}

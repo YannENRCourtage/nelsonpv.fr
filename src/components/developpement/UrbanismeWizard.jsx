@@ -13,6 +13,7 @@ import { cadastreService } from '@/services/CadastreService';
 import { getOrGenerateProjectMaps, generateStaticMapImage } from '@/services/AutoMapService';
 import { useConfiguratorStore, useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
 import { ControlPanel } from '../configurator/ui/ControlPanel.jsx';
+import { BuildingSummaryCard } from '../configurator/ui/BuildingSummaryCard.jsx';
 import BuildingScene from '../configurator/BuildingScene.jsx';
 import ImageCropModal from './ImageCropModal';
 import DimensionsModal from './DimensionsModal';
@@ -1400,13 +1401,14 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                   {/* Scène & Panneau */}
                   <div className="flex-1 flex flex-col lg:flex-row gap-3.5 min-h-0 overflow-hidden">
                     {/* Panneau de contrôle gauche */}
-                    <div className="w-full lg:w-[410px] h-full overflow-y-auto pr-1">
+                    <div className="w-full lg:w-[410px] h-full overflow-y-auto pr-1 space-y-3.5 pb-6">
                       <ControlPanel 
                         isAcama={false} 
                         selectedProject={editedProject} 
                         activeBuilding={buildings[activeBuildingIndex]}
                         onUpdateBuilding={updateActiveBuilding}
                       />
+                      <BuildingSummaryCard isAcama={false} />
                     </div>
 
                     {/* Scène 3D droite */}
