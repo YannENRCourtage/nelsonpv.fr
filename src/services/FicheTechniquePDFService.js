@@ -141,7 +141,7 @@ export async function generateFicheTechniquePDF({
     pdf.setTextColor(100, 116, 139); // Slate 500
     const subHeader = isCustom 
         ? `Configuration Sur-Mesure • ${floorArea} m²` 
-        : `${gammeName} • ${buildingCode ? `Code ${buildingCode} • ` : ''}${floorArea} m²`;
+        : `${gammeName} • ${buildingCode ? `Modèle ${buildingCode} • ` : ''}${floorArea} m²`;
     pdf.text(subHeader, pageWidth - 8, 17, { align: 'right' });
 
     // ==========================================
@@ -170,38 +170,38 @@ export async function generateFicheTechniquePDF({
         pdf.setDrawColor(51, 65, 85);
         pdf.setLineWidth(0.25);
         pdf.line(padL, curY, padR, curY);
-        curY += 3.2;
+        curY += 3.0;
     };
 
     // Helper pour afficher une ligne clé-valeur
     const drawRow = (label, value, isHighlight = false, valColor = null) => {
         pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(6.8);
+        pdf.setFontSize(6.7);
         pdf.setTextColor(148, 163, 184); // Slate 400
         pdf.text(label, padL, curY);
 
         pdf.setFont('helvetica', isHighlight ? 'bold' : 'normal');
-        pdf.setFontSize(7.0);
+        pdf.setFontSize(6.9);
         if (valColor) {
             pdf.setTextColor(valColor[0], valColor[1], valColor[2]);
         } else {
             pdf.setTextColor(isHighlight ? 255 : 241, isHighlight ? 255 : 245, isHighlight ? 255 : 249);
         }
         pdf.text(String(value), padR, curY, { align: 'right' });
-        curY += 3.8;
+        curY += 3.6;
     };
 
     // --- BLOC 1 : IDENTIFICATION DU BÂTIMENT ---
     drawSectionTitle('1. Identification');
     if (!isCustom) {
         drawRow('Gamme :', gammeName, true, [255, 255, 255]);
-        if (buildingCode) drawRow('Code modèle :', buildingCode, true, [251, 191, 36]);
+        if (buildingCode) drawRow('Modèle :', buildingCode, true, [251, 191, 36]);
         if (equivalenceCode) drawRow('Équivalence :', equivalenceCode, false, [203, 213, 225]);
     } else {
         drawRow('Modèle :', 'Sur-Mesure', true, [251, 191, 36]);
         drawRow('Grille :', 'Sur-mesure', false, [167, 139, 250]);
     }
-    curY += 1.5;
+    curY += 1.2;
 
     // --- BLOC 2 : STRUCTURE & DIMENSIONS ---
     drawSectionTitle('2. Structure & Dimensions');
@@ -213,18 +213,18 @@ export async function generateFicheTechniquePDF({
     
     // Indication altitude sous travées
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(5.2);
+    pdf.setFontSize(5.0);
     pdf.setTextColor(148, 163, 184);
     pdf.text('(travées 7,5m jusqu’à 200m d’altitude,', padL, curY);
-    curY += 2.2;
+    curY += 2.0;
     pdf.text('et 6,00m de 200m à 500m d’altitude)', padL, curY);
-    curY += 3.2;
+    curY += 2.8;
 
     drawRow('Avants-toit :', 'environ 50 cm');
     drawRow('Niveau fondations :', '+/- 0.0 m');
     if (config.leftSide !== 'none') drawRow('Ext. Gauche :', `${config.leftSide === 'appentis' ? 'Appentis' : 'Auvent'} (${leftExt}m)`);
     if (config.rightSide !== 'none') drawRow('Ext. Droite :', `${config.rightSide === 'appentis' ? 'Appentis' : 'Auvent'} (${rightExt}m)`);
-    curY += 1.5;
+    curY += 1.2;
 
     // --- BLOC 3 : HAUTEURS & TOITURE ---
     drawSectionTitle('3. Hauteurs & Toiture');
@@ -234,7 +234,7 @@ export async function generateFicheTechniquePDF({
     drawRow('Couverture :', 'Bac acier (RAL 7016)');
     drawRow('Anti-condensation :', 'Feutre régulateur');
     drawRow('Peinture :', 'Anti-rouille');
-    curY += 1.5;
+    curY += 1.2;
 
     // --- BLOC 4 : CENTRALE PHOTOVOLTAÏQUE ---
     drawSectionTitle('4. Énergie Solaire', [251, 191, 36]);
@@ -247,14 +247,25 @@ export async function generateFicheTechniquePDF({
         
         // Sous-ligne hypothèse
         pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(5.4);
+        pdf.setFontSize(5.2);
         pdf.setTextColor(203, 213, 225);
         pdf.text('(hypothèse 1150 kWh/kWc)', padR, curY, { align: 'right' });
-        curY += 3.5;
+        curY += 3.2;
+
+        // Tarif achat estimé selon puissance
+        let tarifAchat = '0.011 € / kWh';
+        if (installedKwc < 100) {
+            tarifAchat = '0.011 € / kWh';
+        } else if (installedKwc <= 500) {
+            tarifAchat = '0.082 € / kWh';
+        } else {
+            tarifAchat = '0.0829 € / kWh';
+        }
+        drawRow('Tarif achat estimé :', tarifAchat, true, [251, 191, 36]);
     } else {
         drawRow('Option solaire :', 'Non incluse (Sans PV)', false, [148, 163, 184]);
     }
-    curY += 1.5;
+    curY += 1.2;
 
     // --- BLOC 5 : TARIFICATION & RATIOS ---
     drawSectionTitle('5. Chiffrage & Ratios', [52, 211, 153]);
@@ -269,13 +280,32 @@ export async function generateFicheTechniquePDF({
         drawRow('Ratio Struct. / Wc :', `${ratioStructureCostPerWc} € / Wc`);
     }
 
+    // Helper pour rogner une image verticalement (ex: -1cm haut et -1cm bas)
+    const cropImageVertical = (img, topRatio = 0.12, bottomRatio = 0.12) => {
+        if (!img || !img.width || !img.height) return img;
+        try {
+            const canvas = document.createElement('canvas');
+            const srcH = img.height * (1 - topRatio - bottomRatio);
+            const srcY = img.height * topRatio;
+            canvas.width = img.width;
+            canvas.height = srcH;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, srcY, img.width, srcH, 0, 0, img.width, srcH);
+            return canvas;
+        } catch {
+            return img;
+        }
+    };
+
     // --- PRÉ-CHARGEMENT DES IMAGES POUR UN RATIO & CADRAGE PARFAIT SANS DÉFORMATION ---
-    const [loadedMain3D, loadedPignon, loaded2D, loadedFacadeSud] = await Promise.all([
+    const [loadedMain3D, loadedPignon, loaded2D, rawFacadeSud] = await Promise.all([
         loadImage(imgMain3D),
         loadImage(imgPignon),
         loadImage(img2D),
         loadImage(imgFacadeSud),
     ]);
+
+    const loadedFacadeSud = cropImageVertical(rawFacadeSud, 0.12, 0.12);
 
     // --- LOGO NELSON EN BAS DU CADRE BLEU (CENTRE ET REDUIT) ---
     try {
@@ -356,18 +386,18 @@ export async function generateFicheTechniquePDF({
         }
     };
 
-    // VISUEL 1 (Haut) : Vue 3D configurée principale
-    drawImageCard('Vue 3D Principale du Bâtiment (Perspective)', mainX, 24, mainW, 82, loadedMain3D);
+    // VISUEL 1 (Haut) : Vue 3D configurée principale (Cadre agrandi à 114mm pour un rendu immersif)
+    drawImageCard('Vue 3D Principale du Bâtiment (Perspective)', mainX, 24, mainW, 114, loadedMain3D);
 
-    // VISUELS 2 & 3 (Milieu) : Pignon Gauche + Visuel 2D côte à côte
-    const midY = 109;
-    const midH = 82;
+    // VISUELS 2 & 3 (Milieu) : Pignon Gauche + Visuel 2D côte à côte (Cadre réduit à 65mm)
+    const midY = 141;
+    const midH = 65;
     const halfW = (mainW - 3) / 2; // 67.5 mm chacun
     drawImageCard('Vue Pignon (Gauche)', mainX, midY, halfW, midH, loadedPignon);
     drawImageCard('Élévation 2D / Coupe Technique', mainX + halfW + 3, midY, halfW, midH, loaded2D);
 
-    // VISUEL 4 (Bas) : Vue Façade Sud (Long Pan Solaire)
-    drawImageCard('Vue Façade Sud (Long Pan Solaire)', mainX, 194, mainW, 88, loadedFacadeSud);
+    // VISUEL 4 (Bas) : Vue Façade Sud (Cadre réduit à 72mm avec recadrage -1cm haut et -1cm bas)
+    drawImageCard('Vue Façade Sud (Long Pan Solaire)', mainX, 209, mainW, 72, loadedFacadeSud);
 
     // ==========================================
     // 4. PIED DE PAGE (FOOTER)

@@ -107,8 +107,8 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
             )}
 
             {/* Auto-Centering logic: Re-fits whenever config changes */}
-            {/* Capture: margin=0.72 (Zoomed in & tightly centered). Normal: margin=1.1 */}
-            <Bounds fit clip observe margin={isCapturing ? 0.72 : 1.1}>
+            {/* Capture: margin=0.58 (Zoomed in & tightly framed like Image 4). Normal: margin=1.1 */}
+            <Bounds fit clip observe margin={isCapturing ? 0.58 : 1.1}>
                 <Structure />
             </Bounds>
 

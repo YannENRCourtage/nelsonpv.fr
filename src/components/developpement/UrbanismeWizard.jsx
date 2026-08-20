@@ -1353,7 +1353,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
               {/* ÉTAPE 2 — Configurateur 2D/3D avec support Multi-Bâtiments / Ombrières */}
               {step === 2 && (
                 <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                  className="p-3 flex flex-col h-[64vh] overflow-hidden bg-slate-100/70 rounded-2xl gap-2">
+                  className="p-3 flex flex-col h-[78vh] min-h-[620px] overflow-hidden bg-slate-100/70 rounded-2xl gap-2">
                   
                   {/* Sélecteur multi-bâtiments / ombrières */}
                   <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 flex-shrink-0">

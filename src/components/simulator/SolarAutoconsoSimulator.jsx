@@ -9,6 +9,7 @@ import {
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceDot, ReferenceLine } from 'recharts';
 import { useSimulatorSettingsStore, getProductionForDepartment } from '@/stores/useSimulatorSettingsStore';
 import RoofMapPolygonSelector from './RoofMapPolygonSelector';
+import SolarRoofBeforeAfterViewer from './SolarRoofBeforeAfterViewer';
 import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
 
 export default function SolarAutoconsoSimulator({
@@ -924,6 +925,17 @@ export default function SolarAutoconsoSimulator({
                 </span>
               </div>
             </div>
+
+            {/* Visuel Avant / Après de l'implantation des panneaux sur la toiture */}
+            <SolarRoofBeforeAfterViewer
+              center={mapCenter}
+              polygonPoints={polygonPoints}
+              roofSurface={roofSurface}
+              customKwc={customKwc}
+              orientationInfo={orientationInfo}
+              consoKwh={consoKwh}
+              annualProductionKwh={annualProductionKwh}
+            />
 
             {/* Graphique Financier 30 ans */}
             <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-xl space-y-6">

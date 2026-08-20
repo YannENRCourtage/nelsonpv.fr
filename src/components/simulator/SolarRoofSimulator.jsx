@@ -9,6 +9,7 @@ import {
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Cell } from 'recharts';
 import { useSimulatorSettingsStore, getProductionForDepartment } from '@/stores/useSimulatorSettingsStore';
 import RoofMapPolygonSelector from './RoofMapPolygonSelector';
+import SolarRoofBeforeAfterViewer from './SolarRoofBeforeAfterViewer';
 import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
 
 export default function SolarRoofSimulator({
@@ -784,6 +785,16 @@ export default function SolarRoofSimulator({
             <p className="text-center text-[11px] text-slate-400 italic">
               La production et les revenus affichés sont limités à 500 kWc, conformément aux tarifs conventionnés.
             </p>
+
+            {/* Visuel Avant / Après de l'implantation des panneaux sur la toiture */}
+            <SolarRoofBeforeAfterViewer
+              center={mapCenter}
+              polygonPoints={polygonPoints}
+              roofSurface={roofSurface}
+              customKwc={cappedPowerKwc}
+              orientationInfo={orientationInfo}
+              annualProductionKwh={annualProductionKwh}
+            />
 
             {/* ─── SECTION REVENUS CUMULÉS SUR 30 ANS ───────────── */}
             <div className="bg-[#0e2b4d] text-white rounded-3xl p-6 shadow-xl space-y-6">
