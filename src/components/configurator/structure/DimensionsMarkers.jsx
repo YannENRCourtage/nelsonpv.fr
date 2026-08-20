@@ -187,9 +187,9 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
         if (buildingType === 'ombriere_vl_simple_droite' && !isCustom) h = 4.1; 
 
         if (buildingType === 'ombriere_pl' && !isCustom) {
-            if (Math.abs(width - 15.8) < 0.1) h = 7.86;
-            else if (Math.abs(width - 20.2) < 0.1) h = 9.29;
-            else if (Math.abs(width - 24.6) < 0.1) h = 9.35;
+            if (Math.abs(width - 15.8) < 0.1) h = 7.90;
+            else if (Math.abs(width - 20.2) < 0.1) h = 9.3;
+            else if (Math.abs(width - 24.6) < 0.1) h = 9.3;
         }
 
         // Pour EPONA, abaisser visuellement le top du marqueur faitage de 0.5m
@@ -594,11 +594,11 @@ export function DimensionsMarkers({ width, length, eaveHeight, ridgeHeight, roof
     }, [isEpona, gapSize, buildingType, length]);
 
     const getEaveText = () => {
-        if (buildingType === 'asymetrique_1') return '4 m';
+        if (buildingType === 'asymetrique_1' || buildingType === 'asymetrique_2') return '4 m';
         if (buildingType === 'ombriere_vl_double') return Math.abs(width - 9.1) < 0.1 ? '3 m' : '2.8 m';
         if (buildingType === 'ombriere_vl_simple_droite') return '2.9 m';
         if (buildingType === 'ombriere_vl_simple_gauche') return '3.7 m';
-        if (buildingType === 'ombriere_pl') return Math.abs(width - 15.8) < 0.1 ? '5.08 m' : (Math.abs(width - 20.2) < 0.1 ? '5.73 m' : '5.00 m');
+        if (buildingType === 'ombriere_pl') return Math.abs(width - 15.8) < 0.1 ? '5.1 m' : (Math.abs(width - 20.2) < 0.1 ? '5.7 m' : '5 m');
         if (isOmbriere) return '2.9 m';
         if (buildingType === 'monopente') {
             return `${parseFloat((isCustom ? cp.rightEaveHeight : eaveHeight).toFixed(2))} m`;

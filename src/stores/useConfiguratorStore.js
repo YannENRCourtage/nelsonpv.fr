@@ -30,8 +30,8 @@ const WIDTH_HEIGHT_MAP = {
     29.8: 8.1,
     33.5: 8.5,
     // Asymétrique 1 zone
-    16.4: 7.42,
-    20.0: 7.7,
+    16.4: 7.4,
+    20.0: 8.4,
     // Asymétrique 2 zones
     25.5: 8.9,  // User specified
     29.1: 9.8,  // User specified
@@ -39,15 +39,15 @@ const WIDTH_HEIGHT_MAP = {
     12.7: 6.6,
     16.4: 8.4,
     // Ombrière VL simple
-    6.0: 4.1,
-    6.9: 4.1,
+    6.0: 4.5,
+    6.9: 4.5,
     // Ombrière VL double
-    9.1: 4.6,
-    11.3: 4.7,
+    9.1: 3.0,
+    11.3: 2.8,
     // Ombrière PL (Sablière Haute / Faîtage)
-    15.8: 7.86,
-    20.2: 9.29,
-    24.6: 9.35
+    15.8: 7.9,
+    20.2: 9.3,
+    24.6: 9.3
 };
 
 const MONOPENTE_HEIGHTS = {
@@ -380,7 +380,7 @@ export const useConfiguratorStore = create(
                 updates.eaveHeight = 4.0;
                 updates.roofPitch = 15;
             } else if (type === 'asymetrique_2') {
-                updates.eaveHeight = 5.5;
+                updates.eaveHeight = 4.0;
                 updates.roofPitch = 15;
             } else if (type === 'ombriere_pl') {
                 updates.eaveHeight = 5.08;
