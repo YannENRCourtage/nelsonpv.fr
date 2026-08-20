@@ -87,10 +87,13 @@ function SceneCameraController({ activeSlot, onReady, controlsRef }) {
  * Building3DViewer — Visionneuse 3D officielle utilisant la même Structure que le configurateur
  */
 export default function Building3DViewer({
+  buildingConfig,
   onCaptureSnapshot,
   onCaptureAll5Views,
-  height = 360,
-  className = ''
+  height = 280,
+  className = '',
+  isDP = false,
+  docType = 'pc'
 }) {
   const [activeSlot, setActiveSlot] = useState('facade_sud');
   const [capturedSlots, setCapturedSlots] = useState({});
@@ -261,7 +264,7 @@ export default function Building3DViewer({
             className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95 disabled:opacity-60"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>{isCapturingAll ? 'Capture des 5 vues...' : '⚡ Capturer les 5 vues PC5'}</span>
+            <span>{isCapturingAll ? 'Capture des 5 vues...' : (isDP || docType === 'dp' || buildingConfig?.type === 'dp' || (buildingConfig?.buildingType || '').includes('ombriere')) ? '⚡ Capturer les 5 vues DP4' : '⚡ Capturer les 5 vues PC5'}</span>
           </button>
         </div>
       </div>

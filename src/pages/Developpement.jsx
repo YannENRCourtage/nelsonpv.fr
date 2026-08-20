@@ -32,6 +32,7 @@ import {
   PlateInsertion as DPPlateInsertion,
   PlateInsertionNotice,
   PlateEnvProche,
+  PlateEnvLointain,
 } from '@/components/editor/DPPlates';
 
 import {
@@ -286,8 +287,9 @@ export default function Developpement() {
           if (!selectedPages || selectedPages.section) plateIds.push(`dev-plate-section${suffix}`);
           if (!selectedPages || selectedPages.facades) plateIds.push(`dev-plate-facades${suffix}`);
           if (!selectedPages || selectedPages.insertion) plateIds.push(`dev-plate-insertion${suffix}`);
-          if (!selectedPages || selectedPages.env) plateIds.push(`dev-plate-env-proche${suffix}`);
-          if (!selectedPages || selectedPages.notice) plateIds.push(`dev-plate-notice${suffix}`);
+          if (!selectedPages || selectedPages.dp7 || selectedPages.env) plateIds.push(`dev-plate-env-proche${suffix}`);
+          if (selectedPages?.dp8 || selectedPages?.env_lointain) plateIds.push(`dev-plate-env-lointain${suffix}`);
+          if (selectedPages?.notice || selectedPages?.dp_notice) plateIds.push(`dev-plate-notice${suffix}`);
         }
       }
 
@@ -562,7 +564,7 @@ export default function Developpement() {
               rightSide: b.rightSide || selectedProject.rightSide || 'none',
               leftWidth: b.leftWidth || selectedProject.leftWidth,
               rightWidth: b.rightWidth || selectedProject.rightWidth,
-              buildingName: b.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/Principal/g, 'Principale') : `Ombrière ${bIdx + 1}`,
+              buildingName: b.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/Principalee+/gi, 'Principale').replace(/\bPrincipal\b/g, 'Principale') : `Ombrière ${bIdx + 1}`,
               urbanisme_captures: { ...(selectedProject.urbanisme_captures || {}), ...(b.captures || {}) },
               pc_photos: { ...(selectedProject.pc_photos || {}), ...(b.photos || {}) },
             };
@@ -573,7 +575,8 @@ export default function Developpement() {
                 <div id={`dev-plate-facades${suffix}`}><PlateFacades project={bProj} captures={bProj.urbanisme_captures || {}} /></div>
                 <div id={`dev-plate-insertion${suffix}`}><DPPlateInsertion project={bProj} captures={bProj.urbanisme_captures || {}} photos={bProj.pc_photos || {}} /></div>
                 <div id={`dev-plate-env-proche${suffix}`}><PlateEnvProche project={bProj} captures={bProj.urbanisme_captures || {}} photos={bProj.pc_photos || {}} /></div>
-                <div id={`dev-plate-notice${suffix}`}><PlateInsertionNotice project={bProj} /></div>
+                <div id={`dev-plate-env-lointain${suffix}`}><PlateEnvLointain project={bProj} captures={bProj.urbanisme_captures || {}} photos={bProj.pc_photos || {}} /></div>
+                <div id={`dev-plate-notice${suffix}`}><PlateInsertionNotice project={bProj} noticeText={selectedProject.noticeText || selectedProject.noticeAgricole || selectedProject.pc_notice || selectedProject.description} /></div>
               </React.Fragment>
             );
           })}

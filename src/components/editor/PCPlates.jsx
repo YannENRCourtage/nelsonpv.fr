@@ -329,8 +329,8 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const hasAppentis = hasAppentisLeft || hasAppentisRight;
 
     // Dimensions extensions : Appentis par défaut à 9.30m, Auvent à 4.00m
-    const extRightWidth = hasAppentisRight ? (Number(project?.rightWidth) || 9.3) : (hasAuventRight ? (Number(project?.rightWidth) || 4.0) : 0);
-    const extLeftWidth = hasAppentisLeft ? (Number(project?.leftWidth) || 9.3) : (hasAuventLeft ? (Number(project?.leftWidth) || 4.0) : 0);
+    const extRightWidth = hasAppentisRight ? ((Number(project?.rightWidth) && Number(project?.rightWidth) > 5) ? Number(project.rightWidth) : 9.3) : (hasAuventRight ? (Number(project?.rightWidth) || 4.0) : 0);
+    const extLeftWidth = hasAppentisLeft ? ((Number(project?.leftWidth) && Number(project?.leftWidth) > 5) ? Number(project.leftWidth) : 9.3) : (hasAuventLeft ? (Number(project?.leftWidth) || 4.0) : 0);
 
     // Calculs dimensionnels RÉELS & PROPORTIONNELS selon les fiches techniques constructeur
     let rightEaveHeight = 4.00;
@@ -580,9 +580,6 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                                 {/* Croix de Saint-André supérieure allant d'un poteau oblique à l'autre */}
                                                 <line x1={tLeftX} y1={clearanceSvgY} x2={postRightTopX} y2={postRightTopY + 3} stroke="#475569" strokeWidth="2" />
                                                 <line x1={tRightX} y1={clearanceSvgY} x2={postLeftTopX} y2={postLeftTopY + 3} stroke="#475569" strokeWidth="2" />
-
-                                                {/* Arbalétrier métallique continu incliné (profil rouge/anthracite) */}
-                                                <line x1={mainLeftSvgX - 4} y1={leftEaveSvgY + 3} x2={mainRightSvgX + 4} y2={rightEaveSvgY + 3} stroke="#dc2626" strokeWidth="3.5" strokeLinecap="round" />
 
                                                 {/* Pannes régulières IPE et Modules Solaires */}
                                                 <polygon

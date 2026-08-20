@@ -115,14 +115,20 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
     const handleLeftSideToggle = (side) => {
         setLeftSide(side);
         if (onUpdateBuilding) {
-            onUpdateBuilding({ leftSide: side });
+            onUpdateBuilding({ 
+                leftSide: side,
+                leftWidth: side === 'appentis' ? 9.3 : (side === 'auvent' ? 4.0 : 0)
+            });
         }
     };
 
     const handleRightSideToggle = (side) => {
         setRightSide(side);
         if (onUpdateBuilding) {
-            onUpdateBuilding({ rightSide: side });
+            onUpdateBuilding({ 
+                rightSide: side,
+                rightWidth: side === 'appentis' ? 9.3 : (side === 'auvent' ? 4.0 : 0)
+            });
         }
     };
 

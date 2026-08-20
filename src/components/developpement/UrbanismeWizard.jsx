@@ -197,7 +197,21 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     if (!b) return isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`;
     let name = b.name || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`);
     if (isDP) {
-      name = name.replace(/Bâtiment/gi, 'Ombrière').replace(/Principal/g, 'Principale');
+      name = name
+        .replace(/Bâtiment/gi, 'Ombrière')
+        .replace(/Principalee+/gi, 'Principale')
+        .replace(/\bPrincipal\b/g, 'Principale');
+      if (idx === 0 && !name.includes('Principale') && !name.includes('Secondaire')) {
+        name = 'Ombrière 1 (Principale)';
+      }
+    } else {
+      name = name
+        .replace(/Ombrière/gi, 'Bâtiment')
+        .replace(/Principalee+/gi, 'Principal')
+        .replace(/\bPrincipale\b/g, 'Principal');
+      if (idx === 0 && !name.includes('Principal') && !name.includes('Secondaire')) {
+        name = 'Bâtiment 1 (Principal)';
+      }
     }
     return name;
   }, [isDP]);
@@ -227,6 +241,76 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       photos: {}
     }
   ]);
+
+  // Initialisation synchronisée avec le projet existant
+  useEffect(() => {
+    if (project) {
+      const isOmbriere = isDP || (project.type || '').toLowerCase().includes('ombriere');
+      let initialBuildings = [];
+
+      if (project.buildings && Array.isArray(project.buildings) && project.buildings.length > 0) {
+        initialBuildings = project.buildings.map((b, idx) => ({
+          ...b,
+          id: b.id || `bat-${idx + 1}`,
+          name: b.name
+            ? (isDP ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/Principalee+/gi, 'Principale').replace(/\bPrincipal\b/g, 'Principale') : b.name)
+            : (isDP ? (idx === 0 ? 'Ombrière 1 (Principale)' : `Ombrière ${idx + 1} (Secondaire)`) : (idx === 0 ? 'Bâtiment 1 (Principal)' : `Bâtiment ${idx + 1} (Secondaire)`)),
+          length: Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || 30),
+          width: Number(b.width || 20),
+          eaveHeight: Number(b.eaveHeight || (isDP ? 3 : 4)),
+          roofPitch: Number(b.roofPitch || (isDP ? 10 : 15)),
+          buildingType: b.buildingType || (isDP ? 'ombriere_vl_double' : 'asymetrique_1'),
+          leftSide: b.leftSide || 'none',
+          rightSide: b.rightSide || 'none',
+          leftWidth: Number(b.leftWidth) || 9.3,
+          rightWidth: Number(b.rightWidth) || 9.3,
+          bayCount: Number(b.bayCount || 5),
+          baySpacing: Number(b.baySpacing || 7.5),
+          captures: b.captures || {},
+          photos: b.photos || {},
+          rotation: Number(b.rotation || 0)
+        }));
+      }
+
+      if (initialBuildings.length === 0) {
+        const pRightSide = project.rightSide || (project.appentis ? 'appentis' : project.auvent ? 'auvent' : 'none');
+        const pLeftSide = project.leftSide || 'none';
+        const pRightWidth = Number(project.rightWidth) || (pRightSide === 'appentis' ? 9.3 : 4.0);
+        const pLeftWidth = Number(project.leftWidth) || (pLeftSide === 'appentis' ? 9.3 : 4.0);
+
+        initialBuildings = [
+          {
+            id: 'bat-1',
+            name: isDP ? 'Ombrière 1 (Principale)' : 'Bâtiment 1 (Principal)',
+            length: Number(project.longueur || project.length || 30),
+            width: Number(project.largeur || project.width || 20),
+            eaveHeight: Number(project.hauteur_egout || project.eaveHeight || (isDP ? 3 : 4)),
+            roofPitch: Number(project.pente || project.roofPitch || (isDP ? 10 : 15)),
+            buildingType: project.buildingType || (isOmbriere ? 'ombriere_vl_double' : 'asymetrique_1'),
+            leftSide: pLeftSide,
+            rightSide: pRightSide,
+            leftWidth: pLeftWidth,
+            rightWidth: pRightWidth,
+            bayCount: Number(project.bayCount || 5),
+            baySpacing: Number(project.baySpacing || 6),
+            captures: project.urbanisme_captures || project.captures || {},
+            photos: project.pc_photos || project.photos || {},
+            rotation: Number(project.rotation || 0)
+          }
+        ];
+      }
+
+      setBuildings(initialBuildings);
+      setActiveBuildingIndex(0);
+
+      // Charger immédiatement le premier bâtiment dans le store 3D
+      const b1 = initialBuildings[0];
+      if (b1) {
+        useConfiguratorStore.getState().loadBuildingConfig(b1);
+      }
+    }
+  }, [project, isDP]);
+
   const [activeBuildingIndex, setActiveBuildingIndex] = useState(0);
 
   // Configuration additionnelle Toiture & Batterie
@@ -1433,9 +1517,9 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4 items-stretch">
                     {/* DP4 / PC5 — 5 Vues Façades & Toitures */}
-                    <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center flex flex-col">
+                    <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center flex flex-col justify-between min-h-[340px]">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
                           <Box className="w-4 h-4 text-blue-600" /> {isDP ? "DP4 — Plan des Façades & Toitures (5 Vues 3D)" : "PC5 — Plan des Façades & Toitures (5 Vues 3D)"}
@@ -1447,7 +1531,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                         )}
                       </div>
 
-                      <div className="flex-1 mb-2">
+                      <div className="flex-1 flex flex-col justify-center">
                         {(() => {
                           const activeB = buildings[activeBuildingIndex] || {};
                           return (
@@ -1460,11 +1544,13 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                                 buildingType: activeB.buildingType || config.buildingType || (isDP ? 'ombriere_vl_double' : 'asymetrique_1'),
                                 leftSide: activeB.leftSide || config.leftSide || 'none',
                                 rightSide: activeB.rightSide || config.rightSide || 'none',
-                                type: editedProject.type
+                                type: isDP ? 'dp' : editedProject.type
                               }}
                               onCaptureSnapshot={handleCaptureSnapshotPC5}
                               onCaptureAll5Views={handleCaptureAll5ViewsPC5}
-                              height={220}
+                              height={270}
+                              isDP={isDP}
+                              docType={type}
                             />
                           );
                         })()}
@@ -1472,7 +1558,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                     </div>
 
                     {/* DP6 / PC6 — Insertion paysagère 3D (Avant / Après) */}
-                    <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center flex flex-col">
+                    <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center flex flex-col justify-between min-h-[340px]">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
                           <Sparkles className="w-4 h-4 text-indigo-600" /> {isDP ? "DP6 — Insertion Paysagère 3D" : "PC6 — Insertion Paysagère 3D"} ({config.width}m × {config.length}m)
@@ -1484,14 +1570,14 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                         )}
                       </div>
 
-                      <div className="flex-1 flex flex-col justify-center">
+                      <div className="flex-1 flex flex-col justify-between min-h-[270px]">
                         {currentPhotos?.avant ? (
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-2 flex-1 flex flex-col justify-between">
+                            <div className="grid grid-cols-2 gap-2 flex-1 items-center">
                               {/* Photo Avant */}
-                              <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 group">
+                              <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 group h-[190px] bg-black/5">
                                 <img src={currentPhotos.avant} alt="Avant" className="w-full h-full object-cover" />
-                                <span className="absolute top-1 left-1 bg-black/60 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">Avant</span>
+                                <span className="absolute top-1.5 left-1.5 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded">Avant</span>
                                 
                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
                                   <label title="Remplacer la photo" className="cursor-pointer p-1.5 bg-white/90 hover:bg-white text-slate-800 rounded-lg shadow-sm transition-all hover:scale-105">
@@ -1526,11 +1612,11 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                               </div>
 
                               {/* Photo Après */}
-                              <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 bg-gray-100 flex items-center justify-center group">
+                              <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 bg-gray-100 flex items-center justify-center group h-[190px]">
                                 {currentPhotos?.apres ? (
                                   <>
                                     <img src={currentPhotos.apres} alt="Après" className="w-full h-full object-cover" />
-                                    <span className="absolute top-1 left-1 bg-emerald-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">Après (3D)</span>
+                                    <span className="absolute top-1.5 left-1.5 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded">Après (3D)</span>
                                     
                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
                                       <button
@@ -1560,7 +1646,7 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                                     </div>
                                   </>
                                 ) : (
-                                  <span className="text-[10px] text-gray-400 font-semibold">En attente d'incrustation</span>
+                                  <span className="text-xs text-gray-400 font-semibold">En attente d'incrustation</span>
                                 )}
                               </div>
                             </div>
@@ -1573,10 +1659,10 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                             </button>
                           </div>
                         ) : (
-                          <label className="aspect-video rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 bg-white transition-colors">
-                            <Upload className="w-6 h-6 text-gray-400 mb-1" />
-                            <span className="text-xs text-gray-600 font-bold">1. Charger photo de terrain (Avant)</span>
-                            <span className="text-[10px] text-gray-400">Puis ajustez la position du modèle 3D</span>
+                          <label className="w-full h-full min-h-[260px] rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 bg-white transition-colors">
+                            <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                            <span className="text-sm text-gray-700 font-bold">1. Charger photo de terrain (Avant)</span>
+                            <span className="text-xs text-gray-400 mt-0.5">Puis ajustez la position du modèle 3D</span>
                             <input type="file" accept="image/*" className="hidden" onChange={e => handleDirectPhotoUpload('photos', 'avant', e)} />
                           </label>
                         )}
@@ -1984,6 +2070,9 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                           facades: true,
                           insertion: true,
                           env: true,
+                          dp7: true,
+                          dp8: true,
+                          notice: true,
                           cerfa: true,
                         })}
                         className="px-2.5 py-1 bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-100 rounded-lg text-xs font-bold transition-all shadow-2xs"
@@ -2001,6 +2090,9 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                           facades: false,
                           insertion: false,
                           env: false,
+                          dp7: false,
+                          dp8: false,
+                          notice: false,
                           cerfa: false,
                         })}
                         className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all shadow-2xs"
@@ -2099,7 +2191,9 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                         { id: 'section', code: 'DP3', title: 'Plan en coupe', desc: "Coupe transversale de l'ombrière", badge: 'Obligatoire', color: 'indigo' },
                         { id: 'facades', code: 'DP4', title: 'Façades & Toitures', desc: "5 vues 3D de l'ombrière", badge: '3D', color: 'emerald' },
                         { id: 'insertion', code: 'DP6', title: 'Insertion paysagère', desc: 'Simulation d\'intégration paysagère', badge: 'Photo 3D', color: 'emerald' },
-                        { id: 'env', code: 'DP7+DP8', title: 'Env. Proche & Lointain', desc: 'Photographies d\'ambiance', badge: 'Optionnel', color: 'purple' },
+                        { id: 'dp7', code: 'DP7', title: 'Environnement proche', desc: 'Photographie dans le paysage proche', badge: 'Optionnel', color: 'purple' },
+                        { id: 'dp8', code: 'DP8', title: 'Environnement lointain', desc: 'Photographie dans le paysage lointain', badge: 'Optionnel', color: 'purple' },
+                        { id: 'notice', code: 'NOTICE', title: 'Notice descriptive (DP)', desc: 'Notice descriptive structurée du projet', badge: 'Optionnel', color: 'blue' },
                         { id: 'cerfa', code: 'CERFA', title: 'Formulaire CERFA DP', desc: 'Déclaration préalable officielle', badge: 'Administratif', color: 'amber' },
                       ] : [
                         { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte', badge: 'Recommandé', color: 'blue' },

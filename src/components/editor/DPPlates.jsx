@@ -178,7 +178,7 @@ export const PlateMasse = ({ project, captures }) => {
                             const bLen = Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || project?.longueur || 30);
                             const bW = Number(b.width || project?.largeur || 20);
                             const bArea = Math.round(bLen * bW);
-                            const bDisplayName = b.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/Principal/g, 'Principale') : `Ombrière ${idx + 1}`;
+                            const bDisplayName = b.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/Principalee+/gi, 'Principale').replace(/\bPrincipal\b/g, 'Principale') : `Ombrière ${idx + 1}`;
 
                             return (
                                 <div key={b.id || idx} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1', borderRadius: '3mm', background: '#f8fafc', padding: '2mm', overflow: 'hidden' }}>
@@ -203,7 +203,7 @@ export const PlateMasse = ({ project, captures }) => {
                     const bLen = Number(b?.length || (b?.bayCount || 5) * (b?.baySpacing || 7.5) || project?.longueur || 30);
                     const bW = Number(b?.width || project?.largeur || 20);
                     const bArea = Math.round(bLen * bW);
-                    const bDisplayName = b?.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/Principal/g, 'Principale') : 'Ombrière 1 (Principale)';
+                    const bDisplayName = b?.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/Principalee+/gi, 'Principale').replace(/\bPrincipal\b/g, 'Principale') : 'Ombrière 1 (Principale)';
 
                     return (
                         <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', padding: '2mm' }}>
@@ -258,8 +258,8 @@ export const PlateCoupe = ({ project }) => {
     const hasExtRight = hasAuventRight || hasAppentisRight;
 
     // Dimensions extensions : Appentis par défaut à 9.30m, Auvent à 4.00m
-    const extRightWidth = hasAppentisRight ? (Number(project?.rightWidth) || 9.3) : (hasAuventRight ? (Number(project?.rightWidth) || 4.0) : 0);
-    const extLeftWidth = hasAppentisLeft ? (Number(project?.leftWidth) || 9.3) : (hasAuventLeft ? (Number(project?.leftWidth) || 4.0) : 0);
+    const extRightWidth = hasAppentisRight ? ((Number(project?.rightWidth) && Number(project?.rightWidth) > 5) ? Number(project.rightWidth) : 9.3) : (hasAuventRight ? (Number(project?.rightWidth) || 4.0) : 0);
+    const extLeftWidth = hasAppentisLeft ? ((Number(project?.leftWidth) && Number(project?.leftWidth) > 5) ? Number(project.leftWidth) : 9.3) : (hasAuventLeft ? (Number(project?.leftWidth) || 4.0) : 0);
 
     // Calculs dimensionnels RÉELS & PROPORTIONNELS selon les fiches constructeur
     let rightEaveHeight = 4.00;
@@ -454,9 +454,6 @@ export const PlateCoupe = ({ project }) => {
                                             {/* Croix de Saint-André supérieure allant d'un poteau oblique à l'autre */}
                                             <line x1={tLeftX} y1={clearanceSvgY} x2={postRightTopX} y2={postRightTopY + 3} stroke="#475569" strokeWidth="2" />
                                             <line x1={tRightX} y1={clearanceSvgY} x2={postLeftTopX} y2={postLeftTopY + 3} stroke="#475569" strokeWidth="2" />
-
-                                            {/* Arbalétrier métallique continu incliné */}
-                                            <line x1={mainLeftSvgX - 4} y1={leftEaveSvgY + 3} x2={mainRightSvgX + 4} y2={rightEaveSvgY + 3} stroke="#dc2626" strokeWidth="3.5" strokeLinecap="round" />
 
                                             {/* Pannes régulières IPE et Modules Solaires */}
                                             <polygon
@@ -860,22 +857,17 @@ export const PlateEnvProche = ({ project, captures, photos }) => {
     );
 };
 
-export const PlateInsertionNotice = ({ project }) => {
+export const PlateInsertionNotice = ({ project, noticeText }) => {
+    const defaultDesc = `Installation d'une structure ombrière photovoltaïque recevant une centrale solaire intégrée en toiture d'une puissance de ${project?.kwc || 100} kWc.`;
+    const fullText = noticeText || project?.noticeText || project?.description || defaultDesc;
+
     return (
         <div style={PAGE_STYLE} id="dp-plate-notice-insertion">
             <PlateHeader title="DP11 — NOTICE DESCRIPTIVE DES TRAVAUX" project={project} showBranding={true} />
-            <div style={{ flex: 1, padding: '5mm 8mm', overflowY: 'hidden', fontSize: '9.5pt', lineHeight: '1.45', color: '#1e293b', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff', maxHeight: '135mm', marginBottom: '5mm' }}>
-                <h3 style={{ fontSize: '10.5pt', fontWeight: 'bold', color: '#00429d', marginBottom: '2mm' }}>Objet de la Déclaration Préalable</h3>
-                <p style={{ whiteSpace: 'pre-wrap' }}>
-                    {project?.description || `Installation d'une structure ombrière photovoltaïque recevant une centrale solaire intégrée en toiture d'une puissance de ${project?.kwc || 100} kWc.`}
-                </p>
-                <div style={{ marginTop: '4mm', padding: '3.5mm', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-                    <div style={{ fontWeight: 'bold', color: '#00429d', marginBottom: '1.5mm' }}>Caractéristiques de l'ouvrage :</div>
-                    <ul style={{ paddingLeft: '18px', margin: 0, fontSize: '9pt' }}>
-                        <li>Emprise et dimensions : {project?.largeur || '16.4'} m de large par {project?.longueur || '30.0'} m de long</li>
-                        <li>Hauteur à l'égout : {project?.hauteur_egout || '3.0'} m — Pente toiture : {project?.pente || '10'}°</li>
-                        <li>Destination : Abri pour véhicules et production d'énergie solaire photovoltaïque</li>
-                    </ul>
+            <div style={{ flex: 1, padding: '5mm 8mm', overflowY: 'hidden', fontSize: '9pt', lineHeight: '1.4', color: '#1e293b', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff', maxHeight: '135mm', marginBottom: '5mm', display: 'flex', flexDirection: 'column' }}>
+                <h3 style={{ fontSize: '10.5pt', fontWeight: 'bold', color: '#00429d', marginBottom: '2mm' }}>Objet & Notice descriptive du Projet</h3>
+                <div style={{ flex: 1, overflowY: 'auto', whiteSpace: 'pre-wrap', fontSize: '8.5pt', lineHeight: '1.45', color: '#334155' }}>
+                    {fullText}
                 </div>
             </div>
             <Footer project={project} />
