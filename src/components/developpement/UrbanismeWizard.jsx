@@ -190,7 +190,19 @@ const DOSSIER_INFO = {
 };
 
 export default function UrbanismeWizard({ isOpen, onClose, type, project, onGenerate }) {
-  const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes PC1/PC2, 2=Configurateur 2D/3D, 3=Photos/3D, 4=Notice Descriptive, 5=Validation
+  const isDP = type === 'dp';
+  const isPC = type === 'pc';
+
+  const getBuildingDisplayName = useCallback((b, idx) => {
+    if (!b) return isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`;
+    let name = b.name || (isDP ? `Ombrière ${idx + 1}` : `Bâtiment ${idx + 1}`);
+    if (isDP) {
+      name = name.replace(/Bâtiment/gi, 'Ombrière').replace(/Principal/g, 'Principale');
+    }
+    return name;
+  }, [isDP]);
+
+  const [step, setStep] = useState(0); // 0=Déclarant, 1=Cartes DP1/PC1, 2=Configurateur 2D/3D, 3=Photos/3D, 4=Notice Descriptive, 5=Validation
   const [viewMode, setViewMode] = useState('3D'); // '3D' | '2D_FRONT'
   
   // Zustand Store du Configurateur Nelson
@@ -201,12 +213,12 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   const [buildings, setBuildings] = useState([
     {
       id: 'bat-1',
-      name: 'Bâtiment 1 (Principal)',
+      name: isDP ? 'Ombrière 1 (Principale)' : 'Bâtiment 1 (Principal)',
       length: 37.5,
       width: 20,
       eaveHeight: 4,
       roofPitch: 15,
-      buildingType: 'asymetrique_1',
+      buildingType: isDP ? 'ombriere_vl_double' : 'asymetrique_1',
       leftSide: 'none',
       rightSide: 'none',
       bayCount: 5,
@@ -275,18 +287,18 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const projectSurface = editedProject?.surface_terrain ? `${editedProject.surface_terrain} m²` : (editedProject?.cadastre_surface ? `${editedProject.cadastre_surface} m²` : (project?.surface_terrain ? `${project.surface_terrain} m²` : '18 384 m²'));
     const projectAltitude = editedProject?.altitude || project?.altitude || '140.62 m';
     
-    // Bâtiment 1
+    // Bâtiment / Ombrière 1
     const b1 = buildings[0] || {};
     const longueur1 = Number(b1.length || config.length || 30);
     const largeur1 = Number(b1.width || config.width || 20);
     const totalSurface1 = (largeur1 * longueur1).toFixed(2);
-    const b1Type = b1.buildingType || config.buildingType || 'asymetrique_1';
-    const isB1Ombriere = b1Type.includes('ombriere');
+    const b1Type = b1.buildingType || config.buildingType || (isDP ? 'ombriere_vl_double' : 'asymetrique_1');
+    const isB1Ombriere = isDP || b1Type.includes('ombriere');
     const isB1Asym = b1Type.startsWith('asym');
     const isB1Sym = b1Type.startsWith('sym');
     const b1RoofLabel = isB1Ombriere ? 'monopente (10°)' : isB1Asym ? 'double pente asymétrique (15°)' : isB1Sym ? 'double pente symétrique (10°)' : 'photovoltaïque';
-    const b1Eave = Number(b1.eaveHeight || config.eaveHeight || 4.0);
-    const b1Pitch = Number(b1.roofPitch || config.roofPitch || 15);
+    const b1Eave = Number(b1.eaveHeight || config.eaveHeight || (isDP ? 3.0 : 4.0));
+    const b1Pitch = Number(b1.roofPitch || config.roofPitch || 10);
     const b1Bays = Number(b1.bayCount || config.bayCount || 5);
     const b1Spacing = Number(b1.baySpacing || config.baySpacing || 7.5);
     const b1Auvent = Boolean(b1.rightSide === 'auvent' || b1.leftSide === 'auvent' || config.rightSide === 'auvent' || config.leftSide === 'auvent');
@@ -295,29 +307,32 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const isValidKwc = rawKwc !== undefined && rawKwc !== null && rawKwc !== '' && rawKwc !== '0' && !isNaN(Number(rawKwc)) && Number(rawKwc) > 0;
     const displayKwc = isValidKwc ? String(Number(rawKwc)) : '';
 
-    // Bâtiments secondaires
+    // Structures secondaires
     const secondaryBuildings = buildings.slice(1);
     const hasMultiBuildings = secondaryBuildings.length > 0;
 
-    let batimentDesc = isB1Ombriere
-      ? `Le projet a pour objet l'implantation d'une ombrière de parking photovoltaïque${hasMultiBuildings ? ' (Bâtiment 1)' : ''} de dimensions ${longueur1}m × ${largeur1.toFixed(2)}m (surface couverte : ${totalSurface1} m²) à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à 10°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire.`
-      : `Le projet a pour objet la construction d'un bâtiment agricole à charpente métallique${hasMultiBuildings ? ' principal (Bâtiment 1)' : ''} de forme rectangulaire (longueur : ${longueur1}m, largeur : ${largeur1.toFixed(2)}m${b1Auvent ? ' + Auvent 4.00m' : ''}, hauteur sablière : ${b1Eave.toFixed(2)}m) en structure métallique (RAL 7016 / 7005), composé de ${b1Bays} travées de ${b1Spacing}m d'entraxe. La toiture sera constituée d'une couverture ${b1RoofLabel} avec bac acier anti-condensation (RAL 7016) et panneaux solaires photovoltaïques intégrés (RAL 9005)${displayKwc ? `, développant une puissance installée de ${displayKwc} kWc` : ''}.`;
+    let batimentDesc = isDP
+      ? `Le projet a pour objet l'implantation d'une ombrière photovoltaïque de parking${hasMultiBuildings ? ' (Ombrière 1)' : ''} de dimensions ${longueur1}m × ${largeur1.toFixed(2)}m (surface couverte : ${totalSurface1} m²) à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à ${b1Pitch}°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire${displayKwc ? `, développant une puissance installée de ${displayKwc} kWc` : ''}.`
+      : (isB1Ombriere
+        ? `Le projet a pour objet l'implantation d'une ombrière de parking photovoltaïque${hasMultiBuildings ? ' (Bâtiment 1)' : ''} de dimensions ${longueur1}m × ${largeur1.toFixed(2)}m (surface couverte : ${totalSurface1} m²) à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à 10°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire.`
+        : `Le projet a pour objet la construction d'un bâtiment agricole à charpente métallique${hasMultiBuildings ? ' principal (Bâtiment 1)' : ''} de forme rectangulaire (longueur : ${longueur1}m, largeur : ${largeur1.toFixed(2)}m${b1Auvent ? ' + Auvent 4.00m' : ''}, hauteur sablière : ${b1Eave.toFixed(2)}m) en structure métallique (RAL 7016 / 7005), composé de ${b1Bays} travées de ${b1Spacing}m d'entraxe. La toiture sera constituée d'une couverture ${b1RoofLabel} avec bac acier anti-condensation (RAL 7016) et panneaux solaires photovoltaïques intégrés (RAL 9005)${displayKwc ? `, développant une puissance installée de ${displayKwc} kWc` : ''}.`);
 
     if (hasMultiBuildings) {
       secondaryBuildings.forEach((b, idx) => {
         const bW = Number(b.width || 20);
         const bL = Number(b.length || 25);
         const bSurface = (bW * bL).toFixed(2);
-        const bType = (b.buildingType || 'asymetrique_1').toLowerCase();
-        const isOmb = bType.includes('ombriere');
+        const bType = (b.buildingType || (isDP ? 'ombriere_vl_double' : 'asymetrique_1')).toLowerCase();
+        const isOmb = isDP || bType.includes('ombriere');
         const bAuvent = b.rightSide === 'auvent' || b.leftSide === 'auvent';
-        const bEave = Number(b.eaveHeight || 4.0);
-        const bPitch = Number(b.roofPitch || (isOmb ? 10 : 15));
+        const bEave = Number(b.eaveHeight || (isDP ? 3.0 : 4.0));
+        const bPitch = Number(b.roofPitch || 10);
+        const displayName = getBuildingDisplayName(b, idx + 1);
 
         if (isOmb) {
-          batimentDesc += `\nIl comprend également l'implantation d'une ombrière photovoltaïque de parking (${b.name || `Bâtiment ${idx + 2}`}) de dimensions ${bL}m × ${bW.toFixed(2)}m (surface couverte : ${bSurface} m²) à structure métallique en Y/V avec toiture monopente inclinée à ${bPitch}°.`;
+          batimentDesc += `\nIl comprend également l'implantation d'une ombrière photovoltaïque de parking (${displayName}) de dimensions ${bL}m × ${bW.toFixed(2)}m (surface couverte : ${bSurface} m²) à structure métallique en Y/V avec toiture monopente inclinée à ${bPitch}°.`;
         } else {
-          batimentDesc += `\nIl comprend également la construction d'un second bâtiment (${b.name || `Bâtiment ${idx + 2}`}) de dimensions ${bL}m × ${bW.toFixed(2)}m${bAuvent ? ' (+ Auvent)' : ''} d'une emprise au sol de ${bSurface} m² (hauteur sablière : ${bEave.toFixed(2)}m, pente : ${bPitch}°) en structure métallique similaire.`;
+          batimentDesc += `\nIl comprend également la construction d'un second bâtiment (${displayName}) de dimensions ${bL}m × ${bW.toFixed(2)}m${bAuvent ? ' (+ Auvent)' : ''} d'une emprise au sol de ${bSurface} m² (hauteur sablière : ${bEave.toFixed(2)}m, pente : ${bPitch}°) en structure métallique similaire.`;
         }
       });
     }
@@ -336,7 +351,21 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     });
 
     const totalBuildingCount = buildings.length;
-    let objetDemande = `La demande de permis de construire porte sur la réalisation d'un projet comprenant ${totalBuildingCount} structure${totalBuildingCount > 1 ? 's' : ''} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${batteryStorage.enabled ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`;
+    let objetDemande = isDP
+      ? `La demande de déclaration préalable porte sur la réalisation d'un projet comprenant ${totalBuildingCount} ${totalBuildingCount > 1 ? 'ombrières photovoltaïques' : 'ombrière photovoltaïque'} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${batteryStorage.enabled ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`
+      : `La demande de permis de construire porte sur la réalisation d'un projet comprenant ${totalBuildingCount} structure${totalBuildingCount > 1 ? 's' : ''} (${totalGlobalSurface.toFixed(2)} m²)${additionalRoof.enabled ? ` et l'équipement d'une toiture existante de ${additionalRoof.surface} m²` : ''}${batteryStorage.enabled ? ` ainsi qu'un système de stockage batterie stationnaire de ${batteryStorage.capacityKwh} kWh` : ''}.`;
+
+    const p3Details = isDP
+      ? `Cette ombrière sera ouverte et non close. Les façades Est, Ouest, Nord et Sud seront ouvertes.\nUn terrassement sera réalisé pour la mise en oeuvre d'une plateforme en grave compactée.\nDes tranchées drainantes seront réalisées tout autour de l'ombrière projet afin d'évacuer les eaux pluviales par infiltration dans le sol.`
+      : `Ce bâtiment sera ouvert et non clos. Les façades Est, Ouest, Nord et Sud seront ouvertes.\nUn terrassement sera réalisé pour la mise en oeuvre d'une plateforme en grave compactée.\nDes tranchées drainantes seront réalisées tout autour du bâtiment projet afin d'évacuer les eaux pluviales par infiltration dans le sol.`;
+
+    const p4Details = isDP
+      ? `L'ombrière ne sera pas raccordée aux réseaux d'eau, ni d'assainissement, ni d'électricité. Il n'y a donc pas de besoins en alimentation à ces niveaux là.`
+      : `Le bâtiment ne sera pas raccordé aux réseaux d'eau, ni d'assainissement, ni d'électricité. Il n'y a donc pas de besoins en alimentation à ces niveaux là.`;
+
+    const p5Details = isDP
+      ? `Une bâche à eau de 120m³ sera installée à proximité immédiate de la future ombrière. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf DP 02 - Plan de masse).`
+      : `Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf PC 02 - Plan de masse).`;
 
     return `NOTICE D'INSERTION & DESCRIPTIVE DU PROJET
 
@@ -348,19 +377,17 @@ Le projet se situe sur la commune de ${projectCity} (${projectZip}) au ${project
 
 3- LE PROJET
 ${batimentDesc}
-Ce bâtiment sera ouvert et non clos. Les façades Est, Ouest, Nord et Sud seront ouvertes.
-Un terrassement sera réalisé pour la mise en oeuvre d'une plateforme en grave compactée.
-Des tranchées drainantes seront réalisées tout autour du bâtiment projet afin d'évacuer les eaux pluviales par infiltration dans le sol.
+${p3Details}
 
 4- RACCORDEMENT AUX RESEAUX
-Le bâtiment ne sera pas raccordé aux réseaux d'eau, ni d'assainissement, ni d'électricité. Il n'y a donc pas de besoins en alimentation à ces niveaux là.
+${p4Details}
 Seule l'électricité produite par la centrale photovoltaïque${batteryStorage.enabled ? ' et le système de stockage batterie' : ''} est renvoyée dans le réseau ENEDIS via un point de livraison situé sur la parcelle au Sud de la parcelle (PDL).
 L'emplacement du point de livraison indiqué dans les pièces graphiques de l'autorisation d'urbanisme n'apparaît qu'à titre indicatif.
 Le positionnement du point de livraison et d'un transformateur (le cas échéant) demeure à l'appréciation finale du gestionnaire de réseau en fonction du site et des équipements déjà existants.
 
 5- SECURITE INCENDIE
-Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du futur bâtiment. Une aire d'aspiration de 4x8m et une aire de retournement de 22m de diamètre seront aménagées (Cf PC 02 - Plan de masse).${batteryStorage.enabled ? `\nLe système de stockage batterie est équipé de ses dispositifs de sécurité autonomes conformes aux prescriptions SDIS (détection thermique, coupure automatique d'urgence, système d'extinction dédié et bac de rétention).` : ''}`;
-  }, [editedProject, project, config, buildings, additionalRoof, batteryStorage]);
+${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est équipé de ses dispositifs de sécurité autonomes conformes aux prescriptions SDIS (détection thermique, coupure automatique d'urgence, système d'extinction dédié et bac de rétention).` : ''}`;
+  }, [editedProject, project, config, buildings, additionalRoof, batteryStorage, isDP, getBuildingDisplayName]);
 
   // Mise à jour explicite du bâtiment actif (Single Source of Truth par onglet)
   const updateActiveBuilding = useCallback((updates) => {
@@ -387,14 +414,14 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     }
   }, [activeBuildingIndex]);
 
-  // Gestion des bâtiments multiples avec isolation stricte des onglets
+  // Gestion des bâtiments / ombrières multiples avec isolation stricte des onglets
   const handleAddBuilding = () => {
     const newIdx = buildings.length + 1;
     const newBuilding = {
       id: `bat-${newIdx}`,
-      name: `Bâtiment ${newIdx} (Secondaire)`,
+      name: isDP ? `Ombrière ${newIdx} (Secondaire)` : `Bâtiment ${newIdx} (Secondaire)`,
       length: 30,
-      width: 9.1,
+      width: isDP ? 11.3 : 9.1,
       eaveHeight: 3,
       roofPitch: 10,
       buildingType: 'ombriere_vl_double',
@@ -464,9 +491,9 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
         const pW = Number(project.largeur || 20.0);
         const pBc = Number(project.bayCount) || Math.max(1, Math.round(pLen / 7.5)) || 5;
         const pBs = Number(project.baySpacing) || 7.5;
-        const pType = project.buildingType || (isOmbriere ? 'ombriere_vl_double' : 'symetrique');
-        const pEave = Number(project.hauteur_egout) || (pType.startsWith('asymetrique') ? 4.0 : 5.5);
-        const pPitch = Number(project.pente) || (pType.startsWith('asymetrique') ? 15 : 10);
+        const pType = project.buildingType || (isDP ? 'ombriere_vl_double' : (isOmbriere ? 'ombriere_vl_double' : 'symetrique'));
+        const pEave = Number(project.hauteur_egout) || (isDP ? 3.0 : (pType.startsWith('asymetrique') ? 4.0 : 5.5));
+        const pPitch = Number(project.pente) || (isDP ? 10 : (pType.startsWith('asymetrique') ? 15 : 10));
         const pRightSide = project.rightSide || (project.appentis ? 'appentis' : project.auvent ? 'auvent' : 'none');
         const pLeftSide = project.leftSide || 'none';
         const pRightWidth = Number(project.rightWidth) || (pRightSide === 'appentis' ? 9.3 : 4.0);
@@ -475,7 +502,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
         initialBuildings = [
           {
             id: 'bat-1',
-            name: 'Bâtiment 1 (Principal)',
+            name: isDP ? 'Ombrière 1 (Principale)' : 'Bâtiment 1 (Principal)',
             length: pBc * pBs,
             width: pW,
             eaveHeight: pEave,
@@ -507,9 +534,11 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       const initialNotice = project?.noticeText || buildAutoNoticeText();
       setNoticeText(initialNotice);
       const clientKwc = project?.kwc || project?.puissance || project?.projectSize || '';
-      const shortObjet = (type === 'pc' || type === 'dp')
-        ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
-        : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque";
+      const shortObjet = isDP
+        ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
+        : (isPC
+          ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
+          : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque");
 
       const initProj = {
         ...project,
@@ -837,9 +866,11 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     setIsGenerating(true);
     
     // Objet synthétique pour Page 1
-    const defaultObjet = (type === 'pc' || type === 'dp')
-      ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
-      : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque";
+    const defaultObjet = isDP
+      ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
+      : (isPC
+        ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
+        : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque");
     const shortObjet = editedProject?.objet_travaux || defaultObjet;
 
     const effectiveNotice = noticeText || editedProject.noticeText || project?.noticeText || buildAutoNoticeText();
@@ -868,9 +899,11 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     });
 
     const isMultiOrOmbriere = updatedBuildings.length > 1 || updatedBuildings.some(b => (b.buildingType || '').includes('ombriere'));
-    const finalTypeLabel = isMultiOrOmbriere ? 'Bâtiment et Ombrière' : (editedProject.type || 'batiment_solaire');
+    const finalTypeLabel = isDP
+      ? (updatedBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque')
+      : (isMultiOrOmbriere ? 'Bâtiment et Ombrière' : (editedProject.type || 'batiment_solaire'));
 
-    // Régénérer les cartes PC1 et PC2 avec le dernier GPS et les bâtiments orientés
+    // Régénérer les cartes DP1/PC1 et DP2/PC2 avec le dernier GPS et les structures orientées
     const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
     const [lat, lng] = gps.split(',').map(Number);
     const ignMap = await generateStaticMapImage(lat, lng, 'map', 16);
@@ -902,13 +935,13 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       ...fieldValues,
       cerfaEmailChoice: editedProject?.cerfaEmailChoice || 'email1',
       email2: editedProject?.email2 || '',
-      buildingType: b1.buildingType || config.buildingType || 'asymetrique_1',
+      buildingType: b1.buildingType || config.buildingType || (isDP ? 'ombriere_vl_double' : 'asymetrique_1'),
       type: finalTypeLabel,
       installationType: finalTypeLabel,
       largeur: String(b1.width || config.width || 20.0),
       longueur: String(b1.length || config.length || 30.0),
-      hauteur_egout: String(b1.eaveHeight || (b1.buildingType?.startsWith('asymetrique') ? 4.0 : (config.eaveHeight || 4.0))),
-      pente: String(b1.roofPitch || (b1.buildingType?.startsWith('asymetrique') ? 15 : (config.roofPitch || 15))),
+      hauteur_egout: String(b1.eaveHeight || (b1.buildingType?.startsWith('asymetrique') ? 4.0 : (config.eaveHeight || (isDP ? 3.0 : 4.0)))),
+      pente: String(b1.roofPitch || (b1.buildingType?.startsWith('asymetrique') ? 15 : (config.roofPitch || 10))),
       leftSide: b1.leftSide || config.leftSide || 'none',
       rightSide: b1.rightSide || config.rightSide || 'none',
       leftWidth: b1.leftWidth || config.leftWidth,
@@ -940,8 +973,19 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
   if (!isOpen) return null;
 
-  const summary = buildCerfaDataSummary({ ...editedProject, ...fieldValues, puissance: '0', kwc: '0', type: 'Bâtiment et Ombrière', buildings }, editedProject.type || 'batiment_solaire');
-  const STEPS = ['Déclarant', 'Cartes PC1', 'Cotations & Côtes', 'Photos', 'Carte PC2', 'Notice Descriptive', 'Validation'];
+  const summary = buildCerfaDataSummary(
+    {
+      ...editedProject,
+      ...fieldValues,
+      puissance: '0',
+      kwc: '0',
+      type: isDP ? (buildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque') : 'Bâtiment et Ombrière',
+      docType: type,
+      buildings
+    },
+    editedProject.type || (isDP ? 'ombriere' : 'batiment_solaire')
+  );
+  const STEPS = ['Déclarant', isDP ? 'Cartes DP1' : 'Cartes PC1', 'Cotations & Côtes', 'Photos', isDP ? 'Carte DP2' : 'Carte PC2', 'Notice Descriptive', 'Validation'];
 
   return (
     <AnimatePresence>
@@ -1157,7 +1201,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                 </motion.div>
               )}
 
-              {/* ÉTAPE 1 — Cartes PC1 (PLEINE HAUTEUR) */}
+              {/* ÉTAPE 1 — Cartes DP1 / PC1 (PLEINE HAUTEUR) */}
               {step === 1 && (
                 <motion.div
                   key="step1"
@@ -1168,14 +1212,14 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                 >
                   <div className="flex items-center justify-between flex-shrink-0">
                     <div>
-                      <h3 className="text-sm font-bold text-gray-800">Étape 2 : Cartographie PC1 (Plan de Situation & Satellite)</h3>
+                      <h3 className="text-sm font-bold text-gray-800">Étape 2 : Cartographie {isDP ? 'DP1' : 'PC1'} (Plan de Situation & Satellite)</h3>
                       <p className="text-xs text-gray-500">Déplacez le marqueur sur une des cartes pour ajuster l'emplacement du projet.</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
                     <div className="border border-gray-200 rounded-2xl p-3.5 bg-gray-50 text-center flex flex-col min-h-0 shadow-xs">
-                      <span className="text-xs font-bold text-gray-700 block mb-2 flex-shrink-0">PC1 — Plan de Situation (IGN Cartographique)</span>
+                      <span className="text-xs font-bold text-gray-700 block mb-2 flex-shrink-0">{isDP ? 'DP1' : 'PC1'} — Plan de Situation (IGN Cartographique)</span>
                       <div className="relative rounded-xl overflow-hidden border border-gray-200 z-10 flex-1 min-h-0 w-full shadow-inner">
                         {(() => {
                           const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
@@ -1196,7 +1240,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                     </div>
 
                     <div className="border border-gray-200 rounded-2xl p-3.5 bg-gray-50 text-center flex flex-col min-h-0 shadow-xs">
-                      <span className="text-xs font-bold text-gray-700 block mb-2 flex-shrink-0">PC1 — Vue Aérienne Satellite</span>
+                      <span className="text-xs font-bold text-gray-700 block mb-2 flex-shrink-0">{isDP ? 'DP1' : 'PC1'} — Vue Aérienne Satellite</span>
                       <div className="relative rounded-xl overflow-hidden border border-gray-200 z-10 flex-1 min-h-0 w-full shadow-inner">
                         {(() => {
                           const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
@@ -1222,16 +1266,16 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                 </motion.div>
               )}
 
-              {/* ÉTAPE 2 — Configurateur 2D/3D avec support Multi-Bâtiments */}
+              {/* ÉTAPE 2 — Configurateur 2D/3D avec support Multi-Bâtiments / Ombrières */}
               {step === 2 && (
                 <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                   className="p-3 flex flex-col h-[64vh] overflow-hidden bg-slate-100/70 rounded-2xl gap-2">
                   
-                  {/* Sélecteur multi-bâtiments */}
+                  {/* Sélecteur multi-bâtiments / ombrières */}
                   <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 flex-shrink-0">
                     <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
                       <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1 flex items-center gap-1">
-                        <Building2 className="w-3.5 h-3.5 text-blue-600" /> Bâtiments :
+                        <Building2 className="w-3.5 h-3.5 text-blue-600" /> {isDP ? 'Ombrières :' : 'Bâtiments :'}
                       </span>
                       {buildings.map((b, idx) => (
                         <button
@@ -1244,7 +1288,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                               : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
                           }`}
                         >
-                          <span>{b.name || `Bâtiment ${idx + 1}`}</span>
+                          <span>{getBuildingDisplayName(b, idx)}</span>
                           <span className="text-[10px] opacity-75 font-normal">
                             ({(b.width || config.width).toFixed(1)}m × {(b.length || config.length).toFixed(1)}m)
                           </span>
@@ -1252,7 +1296,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                             <span
                               onClick={(e) => handleRemoveBuilding(idx, e)}
                               className="ml-1 p-0.5 hover:bg-red-500 hover:text-white rounded text-slate-400 transition-colors"
-                              title="Supprimer ce bâtiment secondaire"
+                              title={isDP ? "Supprimer cette ombrière secondaire" : "Supprimer ce bâtiment secondaire"}
                             >
                               <X className="w-3 h-3" />
                             </span>
@@ -1265,7 +1309,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                         className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-all flex items-center gap-1 shadow-2xs"
                       >
                         <Plus className="w-3.5 h-3.5 text-emerald-600" />
-                        Ajouter un bâtiment
+                        {isDP ? 'Ajouter une ombrière' : 'Ajouter un bâtiment'}
                       </button>
                     </div>
                   </div>
@@ -1358,7 +1402,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                 </motion.div>
               )}
 
-              {/* ÉTAPE 3 — Visionneuse 3D (PC5 5 VUES) & Insertion Paysagère 3D (PC6) */}
+              {/* ÉTAPE 3 — Visionneuse 3D (DP4/PC5 5 VUES) & Insertion Paysagère 3D (DP6/PC6) */}
               {step === 3 && (() => {
                 const currentPhotos = buildings[activeBuildingIndex]?.photos || {};
                 const currentCaptures = buildings[activeBuildingIndex]?.captures || {};
@@ -1368,7 +1412,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-bold text-gray-800">Étape 4 : Photos, Façades & Insertion Paysagère 3D</h3>
-                      <p className="text-xs text-gray-500">Capturez les 5 vues de façades pour la PC5 et positionnez le modèle 3D sur votre photo de terrain pour la PC6.</p>
+                      <p className="text-xs text-gray-500">{isDP ? "Capturez les 5 vues de façades pour la DP4 et positionnez le modèle 3D sur votre photo de terrain pour la DP6." : "Capturez les 5 vues de façades pour la PC5 et positionnez le modèle 3D sur votre photo de terrain pour la PC6."}</p>
                     </div>
 
                     {buildings.length > 1 && (
@@ -1382,7 +1426,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                               activeBuildingIndex === idx ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-white'
                             }`}
                           >
-                            {b.name || `Bâtiment ${idx + 1}`}
+                            {getBuildingDisplayName(b, idx)}
                           </button>
                         ))}
                       </div>
@@ -1390,11 +1434,11 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    {/* PC5 — 5 Vues Façades & Toitures */}
+                    {/* DP4 / PC5 — 5 Vues Façades & Toitures */}
                     <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center flex flex-col">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                          <Box className="w-4 h-4 text-blue-600" /> PC5 — Plan des Façades & Toitures (5 Vues 3D)
+                          <Box className="w-4 h-4 text-blue-600" /> {isDP ? "DP4 — Plan des Façades & Toitures (5 Vues 3D)" : "PC5 — Plan des Façades & Toitures (5 Vues 3D)"}
                         </span>
                         {currentCaptures?.facade_sud ? (
                           <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">✓ 5 Vues Prêtes</span>
@@ -1411,9 +1455,9 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                               buildingConfig={{
                                 longueur: Number(activeB.length || config.length || 30),
                                 largeur: Number(activeB.width || config.width || 20),
-                                hauteur_egout: Number(activeB.eaveHeight || config.eaveHeight || 4),
-                                pente: Number(activeB.roofPitch || config.roofPitch || 15),
-                                buildingType: activeB.buildingType || config.buildingType || 'asymetrique_1',
+                                hauteur_egout: Number(activeB.eaveHeight || config.eaveHeight || (isDP ? 3 : 4)),
+                                pente: Number(activeB.roofPitch || config.roofPitch || 10),
+                                buildingType: activeB.buildingType || config.buildingType || (isDP ? 'ombriere_vl_double' : 'asymetrique_1'),
                                 leftSide: activeB.leftSide || config.leftSide || 'none',
                                 rightSide: activeB.rightSide || config.rightSide || 'none',
                                 type: editedProject.type
@@ -1427,11 +1471,11 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                       </div>
                     </div>
 
-                    {/* PC6 — Insertion paysagère 3D (Avant / Après) */}
+                    {/* DP6 / PC6 — Insertion paysagère 3D (Avant / Après) */}
                     <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center flex flex-col">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                          <Sparkles className="w-4 h-4 text-indigo-600" /> PC6 — Insertion Paysagère 3D ({config.width}m × {config.length}m)
+                          <Sparkles className="w-4 h-4 text-indigo-600" /> {isDP ? "DP6 — Insertion Paysagère 3D" : "PC6 — Insertion Paysagère 3D"} ({config.width}m × {config.length}m)
                         </span>
                         {currentPhotos?.apres ? (
                           <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">✓ Simulation Prête</span>
@@ -1540,11 +1584,11 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                     </div>
                   </div>
 
-                  {/* PC7 & PC8 */}
+                  {/* DP7/PC7 & DP8/PC8 */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="border border-gray-200 rounded-2xl p-2.5 bg-gray-50 text-center">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-bold text-gray-700">PC7 — Environnement Proche</span>
+                        <span className="text-[11px] font-bold text-gray-700">{isDP ? 'DP7 — Environnement Proche' : 'PC7 — Environnement Proche'}</span>
                         {currentPhotos?.proche ? <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">✓ Chargée</span> : <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Optionnel</span>}
                       </div>
                       {currentPhotos?.proche ? (
@@ -1592,7 +1636,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
 
                     <div className="border border-gray-200 rounded-2xl p-2.5 bg-gray-50 text-center">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px] font-bold text-gray-700">PC8 — Environnement Lointain</span>
+                        <span className="text-[11px] font-bold text-gray-700">{isDP ? 'DP8 — Environnement Lointain' : 'PC8 — Environnement Lointain'}</span>
                         {currentPhotos?.lointain ? <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">✓ Chargée</span> : <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Optionnel</span>}
                       </div>
                       {currentPhotos?.lointain ? (
@@ -1642,10 +1686,10 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                 );
               })()}
 
-              {/* ÉTAPE 4 — Carte PC2 (Plan de masse dynamique par bâtiment — PLEINE HAUTEUR) */}
+              {/* ÉTAPE 4 — Carte DP2 / PC2 (Plan de masse dynamique par bâtiment / ombrière — PLEINE HAUTEUR) */}
               {step === 4 && (
                 <motion.div
-                  key="step4-pc2"
+                  key="step4-masse"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
@@ -1654,10 +1698,10 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                   <div className="flex items-center justify-between flex-shrink-0">
                     <div>
                       <h3 className="text-sm font-bold text-gray-800">
-                        Étape 5 : PC2 — Plan de Masse ({buildings.length} bâtiment{buildings.length > 1 ? 's' : ''})
+                        Étape 5 : {isDP ? 'DP2' : 'PC2'} — Plan de Masse ({buildings.length} {isDP ? 'ombrière' : 'bâtiment'}{buildings.length > 1 ? 's' : ''})
                       </h3>
                       <p className="text-xs text-gray-500">
-                        Visualisez et ajustez l'emprise au sol et l'orientation de chaque bâtiment à l'échelle sur le plan cadastral (OSM Zoom 19).
+                        Visualisez et ajustez l'emprise au sol et l'orientation de chaque {isDP ? 'ombrière' : 'bâtiment'} à l'échelle sur le plan cadastral (OSM Zoom 19).
                       </p>
                     </div>
 
@@ -1672,7 +1716,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                               activeBuildingIndex === idx ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-white'
                             }`}
                           >
-                            {b.name || `Bâtiment ${idx + 1}`}
+                            {getBuildingDisplayName(b, idx)}
                           </button>
                         ))}
                       </div>
@@ -1693,19 +1737,19 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                         <div className="flex items-center justify-between flex-shrink-0">
                           <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
                             <Building2 className="w-4 h-4 text-blue-600" />
-                            PC2 — Plan de Masse : {b.name || `Bâtiment ${bIdx + 1}`}
+                            {isDP ? 'DP2' : 'PC2'} — Plan de Masse : {getBuildingDisplayName(b, bIdx)}
                           </span>
                           <span className="text-[11px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
                             {bLength.toFixed(1)}m × {bWidth.toFixed(1)}m ({Math.round(bLength * bWidth)} m²)
                           </span>
                         </div>
 
-                        {/* Contrôle de Rotation du bâtiment */}
+                        {/* Contrôle de Rotation du bâtiment / de l'ombrière */}
                         <div className="bg-white px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs shadow-2xs space-y-2 flex-shrink-0">
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-slate-700 flex items-center gap-1.5">
                               <Compass className="w-4 h-4 text-blue-600" />
-                              Orientation ({b.name || `Bâtiment ${bIdx + 1}`})
+                              Orientation ({getBuildingDisplayName(b, bIdx)})
                             </span>
                             <span className="text-blue-600 font-black text-sm">
                               {currentRotation}°
@@ -1814,7 +1858,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                               bLength={bLength}
                               bWidth={bWidth}
                               rotation={currentRotation}
-                              label={`${b.name || `Bâtiment ${bIdx + 1}`} (${currentRotation}°)`}
+                              label={`${getBuildingDisplayName(b, bIdx)} (${currentRotation}°)`}
                             />
                             <PC2MapScaleBar />
                           </MapContainer>
@@ -1844,10 +1888,10 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                       </div>
                       <div>
                         <h4 className="font-extrabold text-sm text-slate-900">
-                          Étape 6 : Notice d'insertion & Descriptive du projet (PC4)
+                          Étape 6 : Notice d'insertion & Descriptive du projet ({isDP ? 'DP' : 'PC4'})
                         </h4>
                         <p className="text-xs text-slate-600 mt-0.5">
-                          Complétez et personnalisez les 5 points de la notice. Ce texte est injecté dans la planche PC4 et restera modifiable dans le PDF final.
+                          Complétez et personnalisez les 5 points de la notice. Ce texte est injecté dans {isDP ? 'le dossier DP' : 'la planche PC4'} et restera modifiable dans le PDF final.
                         </p>
                       </div>
                     </div>
@@ -1996,7 +2040,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
                       <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
                         <div className="flex items-center justify-between font-bold text-slate-800 mb-1">
-                          <span className="flex items-center gap-1 text-blue-600"><Building2 className="w-3.5 h-3.5" /> {buildings.length} Bâtiment(s)</span>
+                          <span className="flex items-center gap-1 text-blue-600"><Building2 className="w-3.5 h-3.5" /> {buildings.length} {isDP ? 'Ombrière(s)' : 'Bâtiment(s)'}</span>
                           <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">Configuré</span>
                         </div>
                         <p className="text-[11px] text-slate-500">
@@ -2052,8 +2096,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                         { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte & synthèse', badge: 'Recommandé', color: 'blue' },
                         { id: 'situation', code: 'DP1', title: 'Plan de situation', desc: 'IGN cartographique & Satellite', badge: 'Obligatoire', color: 'indigo' },
                         { id: 'masse', code: 'DP2', title: 'Plan de masse', desc: 'Plan de masse des constructions', badge: 'Obligatoire', color: 'indigo' },
-                        { id: 'section', code: 'DP3', title: 'Plan en coupe', desc: 'Coupe transversale du bâtiment', badge: 'Obligatoire', color: 'indigo' },
-                        { id: 'facades', code: 'DP4', title: 'Façades & Toitures', desc: 'Vues des élévations et toiture', badge: '3D', color: 'emerald' },
+                        { id: 'section', code: 'DP3', title: 'Plan en coupe', desc: "Coupe transversale de l'ombrière", badge: 'Obligatoire', color: 'indigo' },
+                        { id: 'facades', code: 'DP4', title: 'Façades & Toitures', desc: "5 vues 3D de l'ombrière", badge: '3D', color: 'emerald' },
                         { id: 'insertion', code: 'DP6', title: 'Insertion paysagère', desc: 'Simulation d\'intégration paysagère', badge: 'Photo 3D', color: 'emerald' },
                         { id: 'env', code: 'DP7+DP8', title: 'Env. Proche & Lointain', desc: 'Photographies d\'ambiance', badge: 'Optionnel', color: 'purple' },
                         { id: 'cerfa', code: 'CERFA', title: 'Formulaire CERFA DP', desc: 'Déclaration préalable officielle', badge: 'Administratif', color: 'amber' },
@@ -2126,16 +2170,18 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                       </div>
                       <textarea
                         value={editedProject?.objet_travaux !== undefined ? editedProject.objet_travaux : (
-                          (type === 'pc' || type === 'dp')
-                            ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
-                            : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque"
+                          isDP
+                            ? "Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire"
+                            : (isPC
+                              ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
+                              : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque")
                         )}
                         onChange={(e) => {
                           const val = e.target.value;
                           setEditedProject(prev => ({ ...prev, objet_travaux: val, description: val }));
                           handleFieldChange('objet_travaux', val);
                         }}
-                        placeholder="Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
+                        placeholder={isDP ? "Ex: Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire" : "Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"}
                         className="w-full flex-1 min-h-[160px] p-3 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-medium leading-relaxed resize-none outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
                       />
                     </div>

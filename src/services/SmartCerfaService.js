@@ -210,16 +210,27 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
       emailRight = parts[1] || '';
     }
 
+    const isDP = (type === 'dp' || installationType === 'dp' || project?.type === 'dp' || project?.docType === 'dp');
+
     const typeLabels = {
-      batiment_solaire: `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwcStr}.`,
-      batiment:         `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwcStr}.`,
-      construction:     `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwcStr}.`,
-      ombriere:         `Construction d'une structure ombrière photovoltaïque d'une puissance de ${kwcStr}.`,
+      batiment_solaire: isDP
+        ? `Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire d'une puissance de ${kwcStr}.`
+        : `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwcStr}.`,
+      batiment: isDP
+        ? `Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire d'une puissance de ${kwcStr}.`
+        : `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwcStr}.`,
+      construction: isDP
+        ? `Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire d'une puissance de ${kwcStr}.`
+        : `Construction d'un bâtiment agricole à charpente métallique avec centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${kwcStr}.`,
+      ombriere:         `Installation d'une structure ombrière photovoltaïque d'une puissance de ${kwcStr}.`,
       toiture:          `Installation de modules solaires photovoltaïques en toiture d'une puissance de ${kwcStr}.`,
       batterie:         `Installation d'un système de stockage d'énergie par batterie.`,
     };
 
-    let objet = project?.description || project?.projectDescription || typeLabels[installationType] || typeLabels['batiment_solaire'];
+    let objet = project?.objet_travaux || project?.objetTravaux || project?.description || project?.projectDescription || typeLabels[installationType] || typeLabels[isDP ? 'ombriere' : 'batiment_solaire'];
+    if (isDP && objet && typeof objet === 'string') {
+      objet = objet.replace(/bâtiment\s+agricole/gi, 'ombrière photovoltaïque').replace(/bâtiments/gi, 'ombrières').replace(/bâtiment/gi, 'ombrière').replace(/Bâtiment/g, 'Ombrière');
+    }
     if (rawKwc && !objet.includes(kwcStr)) {
       objet = objet.replace(/\d+\s*kWc/gi, kwcStr);
     }
@@ -366,9 +377,12 @@ export function buildCerfaDataSummary(project, installationType) {
   const fullAddress = addressParts.length > 0 ? addressParts.join(' ') : '—';
 
   // Détermination du type
-  let typeLabel = 'Bâtiment et Ombrière';
+  const isDP = (installationType === 'dp' || project?.type === 'dp' || project?.docType === 'dp' || project?.typeLabel === 'dp' || (project?.type || '').includes('Ombrière'));
+  let typeLabel = isDP ? 'Ombrière photovoltaïque' : 'Bâtiment et Ombrière';
   const bList = project?.buildings || [];
-  if (bList.length > 1) {
+  if (isDP) {
+    typeLabel = bList.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque';
+  } else if (bList.length > 1) {
     typeLabel = 'Bâtiment et Ombrière';
   } else if (installationType === 'ombriere' || (project?.type || '').includes('ombriere')) {
     typeLabel = 'Ombrière photovoltaïque';

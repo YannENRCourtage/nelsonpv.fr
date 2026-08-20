@@ -108,7 +108,7 @@ export const PlateCover = ({ project, installationType }) => {
                         <div>{project?.zip || project?.zipCode || ''} {project?.city || project?.commune || ''}</div>
                         <div style={{ marginTop: '2mm', fontWeight: 'bold', color: '#00429d' }}>DESCRIPTIF SOMMAIRE :</div>
                         <div style={{ fontSize: '8.5pt', color: '#334155' }}>
-                            {project?.description || `Construction d'un bâtiment agricole solaire photovoltaïque d'une puissance de ${project?.kwc || 100} kWc.`}
+                            {project?.description || `Installation d'une ombrière photovoltaïque en structure métallique d'une puissance de ${project?.kwc || 100} kWc.`}
                         </div>
                     </div>
                 </div>
@@ -159,7 +159,7 @@ export const PlateMasse = ({ project, captures }) => {
     const rawBuildings = project?.buildings && Array.isArray(project.buildings) && project.buildings.length > 0
         ? project.buildings
         : [{
-            name: 'Bâtiment 1 (Principal)',
+            name: 'Ombrière 1 (Principale)',
             length: Number(project?.longueur || 30),
             width: Number(project?.largeur || 20),
             masse_capture: captures?.masse_projet || captures?.satellite
@@ -178,12 +178,13 @@ export const PlateMasse = ({ project, captures }) => {
                             const bLen = Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || project?.longueur || 30);
                             const bW = Number(b.width || project?.largeur || 20);
                             const bArea = Math.round(bLen * bW);
+                            const bDisplayName = b.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/Principal/g, 'Principale') : `Ombrière ${idx + 1}`;
 
                             return (
                                 <div key={b.id || idx} style={{ display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1', borderRadius: '3mm', background: '#f8fafc', padding: '2mm', overflow: 'hidden' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm', padding: '0 1mm' }}>
                                         <span style={{ fontSize: '7.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                                            DP2 — Plan de Masse : {b.name || `Bâtiment ${idx + 1}`}
+                                            DP2 — Plan de Masse : {bDisplayName}
                                         </span>
                                         <span style={{ fontSize: '7pt', fontWeight: 'bold', color: '#1e40af', background: '#dbeafe', padding: '0.5mm 1.5mm', borderRadius: '2mm' }}>
                                             {bLen.toFixed(1)}m × {bW.toFixed(1)}m ({bArea} m²)
@@ -202,12 +203,13 @@ export const PlateMasse = ({ project, captures }) => {
                     const bLen = Number(b?.length || (b?.bayCount || 5) * (b?.baySpacing || 7.5) || project?.longueur || 30);
                     const bW = Number(b?.width || project?.largeur || 20);
                     const bArea = Math.round(bLen * bW);
+                    const bDisplayName = b?.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/Principal/g, 'Principale') : 'Ombrière 1 (Principale)';
 
                     return (
                         <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc', padding: '2mm' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm', padding: '0 1mm' }}>
                                 <span style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                                    DP2 — Plan de Masse : {b?.name || 'Bâtiment 1 (Principal)'} (OpenStreetMap Zoom 19)
+                                    DP2 — Plan de Masse : {bDisplayName} (OpenStreetMap Zoom 19)
                                 </span>
                                 <span style={{ fontSize: '7.5pt', fontWeight: 'bold', color: '#1e40af', background: '#dbeafe', padding: '0.5mm 2mm', borderRadius: '2mm' }}>
                                     {bLen.toFixed(1)}m × {bW.toFixed(1)}m ({bArea} m²)
@@ -393,7 +395,7 @@ export const PlateCoupe = ({ project }) => {
             <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', padding: '4mm 6mm', display: 'flex', flexDirection: 'column', background: '#f8fafc', maxHeight: '135mm', marginBottom: '5mm' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm' }}>
                     <span style={{ fontSize: '9.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                        Coupe transversale AA' — Bâtiment photovoltaïque & Terrain naturel
+                        Coupe transversale AA' — Ombrière photovoltaïque & Terrain naturel
                     </span>
                     <span style={{ fontSize: '8pt', color: '#64748b' }}>
                         Dimensions : {largeur.toFixed(2)}m × {longueur}m{hasAuventRight ? ` (+ Auvent ${extRightWidth.toFixed(2)}m)` : hasAppentisRight ? ` (+ Appentis ${extRightWidth.toFixed(2)}m)` : ''}{hasAuventLeft ? ` (+ Auvent ${extLeftWidth.toFixed(2)}m Gauche)` : hasAppentisLeft ? ` (+ Appentis ${extLeftWidth.toFixed(2)}m Gauche)` : ''} • Échelle indicative
@@ -865,14 +867,14 @@ export const PlateInsertionNotice = ({ project }) => {
             <div style={{ flex: 1, padding: '5mm 8mm', overflowY: 'hidden', fontSize: '9.5pt', lineHeight: '1.45', color: '#1e293b', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff', maxHeight: '135mm', marginBottom: '5mm' }}>
                 <h3 style={{ fontSize: '10.5pt', fontWeight: 'bold', color: '#00429d', marginBottom: '2mm' }}>Objet de la Déclaration Préalable</h3>
                 <p style={{ whiteSpace: 'pre-wrap' }}>
-                    {project?.description || `Construction d'un bâtiment agricole à charpente métallique recevant une centrale solaire photovoltaïque intégrée en toiture d'une puissance de ${project?.kwc || 100} kWc.`}
+                    {project?.description || `Installation d'une structure ombrière photovoltaïque recevant une centrale solaire intégrée en toiture d'une puissance de ${project?.kwc || 100} kWc.`}
                 </p>
                 <div style={{ marginTop: '4mm', padding: '3.5mm', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
                     <div style={{ fontWeight: 'bold', color: '#00429d', marginBottom: '1.5mm' }}>Caractéristiques de l'ouvrage :</div>
                     <ul style={{ paddingLeft: '18px', margin: 0, fontSize: '9pt' }}>
                         <li>Emprise et dimensions : {project?.largeur || '16.4'} m de large par {project?.longueur || '30.0'} m de long</li>
-                        <li>Hauteur à l'égout : {project?.hauteur_egout || '4.0'} m — Pente toiture : {project?.pente || '15'}°</li>
-                        <li>Destination : Activité agricole, stockage et production d'énergie solaire photovoltaïque</li>
+                        <li>Hauteur à l'égout : {project?.hauteur_egout || '3.0'} m — Pente toiture : {project?.pente || '10'}°</li>
+                        <li>Destination : Abri pour véhicules et production d'énergie solaire photovoltaïque</li>
                     </ul>
                 </div>
             </div>

@@ -562,7 +562,7 @@ export default function Developpement() {
               rightSide: b.rightSide || selectedProject.rightSide || 'none',
               leftWidth: b.leftWidth || selectedProject.leftWidth,
               rightWidth: b.rightWidth || selectedProject.rightWidth,
-              buildingName: b.name || `Bâtiment ${bIdx + 1}`,
+              buildingName: b.name ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/Principal/g, 'Principale') : `Ombrière ${bIdx + 1}`,
               urbanisme_captures: { ...(selectedProject.urbanisme_captures || {}), ...(b.captures || {}) },
               pc_photos: { ...(selectedProject.pc_photos || {}), ...(b.photos || {}) },
             };

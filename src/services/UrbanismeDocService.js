@@ -4,13 +4,11 @@ import { smartFillCerfa, resolveDemandeurNames } from './SmartCerfaService';
 
 // ─── Types d'installation ────────────────────────────────────────────────────
 
-export function getInstallationTypeInfo(type, projectSize) {
-  const isNumeric = projectSize && !isNaN(Number(projectSize)) && Number(projectSize) > 0;
-  const kwcVal = isNumeric ? `${projectSize} kWc` : '';
-  const kwcSuffix = kwcVal ? ` de ${kwcVal}` : '';
-  const kwcSubtitle = kwcVal ? `${kwcVal} — raccordement réseau ENEDIS` : 'Raccordement réseau ENEDIS';
+export function getInstallationTypeInfo(type, kwc) {
   const t = (type || '').toLowerCase();
-  
+  const kwcSubtitle = '';
+  const kwcSuffix = '';
+
   if (t.includes('batterie')) {
     return {
       title: 'Système de stockage par batterie',
@@ -20,11 +18,11 @@ export function getInstallationTypeInfo(type, projectSize) {
       isNewConstruction: true,
     };
   }
-  if (t.includes('ombriere') || t.includes('ombrière')) {
+  if (t === 'dp' || t.includes('dp') || t.includes('ombriere') || t.includes('ombrière')) {
     return {
-      title: 'Ombrière de parking photovoltaïque',
+      title: 'Ombrière photovoltaïque',
       subtitle: kwcSubtitle,
-      cerfaText: `Construction d'une ombrière de parking photovoltaïque${kwcSuffix}`,
+      cerfaText: `Installation d'une ombrière photovoltaïque en structure métallique avec toiture solaire${kwcSuffix}`,
       code: 'OMBRIERE',
       isNewConstruction: true,
     };
@@ -118,9 +116,12 @@ async function drawCoverPage(doc, project, type, installationType) {
   const surfaceVal = (project?.cadastre_surface || project?.surface) ? `${project.cadastre_surface || project.surface} m²` : '—';
   const puissanceVal = '0';
   // Dynamic type label based on configured buildings
-  let installCode = 'Bâtiment et Ombrière';
+  const isDP = type === 'dp';
+  let installCode = isDP ? 'Ombrière photovoltaïque' : 'Bâtiment et Ombrière';
   const projectBuildings = project?.buildings || [];
-  if (projectBuildings.length > 1) {
+  if (isDP) {
+    installCode = projectBuildings.length > 1 ? 'Ombrières photovoltaïques' : 'Ombrière photovoltaïque';
+  } else if (projectBuildings.length > 1) {
     installCode = 'Bâtiment et Ombrière';
   } else if ((project?.type || '').toLowerCase().includes('ombriere') || (installationType || '').toLowerCase().includes('ombriere')) {
     installCode = 'Ombrière photovoltaïque';
