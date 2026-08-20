@@ -472,174 +472,26 @@ L'ouvrage ne génère aucune nuisance sonore ni rejet dans l'environnement. Les 
                                 {/* Pannes et couverture photovoltaïque continue (bleu solaire) */}
                                 <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#1d4ed8" strokeWidth="6" strokeLinecap="round" />
                                 <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#38bdf8" strokeWidth="1.5" strokeDasharray="10 3" />
+
+                                {/* Cote de Hauteur Libre sous traverse */}
+                                <line x1={centerX} y1={clearanceSvgY} x2={centerX} y2={groundY} stroke="#059669" strokeWidth="1" strokeDasharray="2 1.5" />
+                                <line x1={centerX - 4} y1={clearanceSvgY} x2={centerX + 4} y2={clearanceSvgY} stroke="#059669" strokeWidth="1" />
+                                <line x1={centerX - 4} y1={groundY} x2={centerX + 4} y2={groundY} stroke="#059669" strokeWidth="1" />
+                                <text x={centerX + 6} y={clearanceSvgY + (groundY - clearanceSvgY) / 2 + 2.5} fill="#059669" fontSize="7" fontWeight="bold">
+                                    Passage libre : {clearanceHeight.toFixed(2)}m
+                                </text>
+
+                                {/* Cote Toiture supérieure */}
+                                <line x1={mainLeftSvgX - 8} y1={leftEaveSvgY - 9} x2={mainRightSvgX + 8} y2={rightEaveSvgY - 9} stroke="#2563eb" strokeWidth="1" />
+                                <line x1={mainLeftSvgX - 8} y1={leftEaveSvgY - 13} x2={mainLeftSvgX - 8} y2={leftEaveSvgY - 5} stroke="#2563eb" strokeWidth="1" />
+                                <line x1={mainRightSvgX + 8} y1={rightEaveSvgY - 13} x2={mainRightSvgX + 8} y2={rightEaveSvgY - 5} stroke="#2563eb" strokeWidth="1" />
+                                <text x={centerX} y={(leftEaveSvgY + rightEaveSvgY) / 2 - 12} textAnchor="middle" fill="#1e40af" fontSize="7.5" fontWeight="bold">
+                                    Toiture : {realRoofWidth.toFixed(2)}m
+                                </text>
                             </g>
                         );
                     })()
-                ) : (
-                    /* ── OMBRIÈRE SIMPLE VL / MONOPENTE (Poteau central ou déporté) ── */
-                    (() => {
-                        const mWidth = massifWidth * pxPerM;
-                        const mHeight = massifHeight * pxPerM;
-                        const mX = centerX - mWidth / 2;
-                        const mY = groundY - mHeight;
-
-                        return (
-                            <g>
-                                <rect x={mX} y={mY} width={mWidth} height={mHeight} fill="#e2e8f0" stroke="#475569" strokeWidth="1.2" />
-                                <text x={centerX} y={mY + mHeight / 2 + 3} textAnchor="middle" fill="#475569" fontSize="6.5" fontWeight="bold">Massif Béton</text>
-                                <line x1={centerX} y1={mY} x2={centerX} y2={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) / 2} stroke="#1e293b" strokeWidth="5" strokeLinecap="round" />
-                                <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#1d4ed8" strokeWidth="6" strokeLinecap="round" />
-                                <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#38bdf8" strokeWidth="1.5" strokeDasharray="10 3" />
-                            </g>
-                        );
-                    })()
-                )
-            ) : (
-                /* ── BÂTIMENT STANDARD (SYMÉTRIQUE / ASYMÉTRIQUE / MONOPENTE AVEC EXTENSIONS) ── */
-                <g>
-                    {/* Semelles / Massifs béton sous poteaux */}
-                    <rect x={mainLeftSvgX - 10} y={groundY - 10} width="20" height="10" fill="#e2e8f0" stroke="#64748b" strokeWidth="0.8" />
-                    <rect x={mainRightSvgX - 10} y={groundY - 10} width="20" height="10" fill="#e2e8f0" stroke="#64748b" strokeWidth="0.8" />
-
-                    {/* Poteaux principaux */}
-                    <line x1={mainLeftSvgX} y1={groundY} x2={mainLeftSvgX} y2={leftEaveSvgY} stroke="#0f172a" strokeWidth="4" strokeLinecap="round" />
-                    <line x1={mainRightSvgX} y1={groundY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#0f172a" strokeWidth="4" strokeLinecap="round" />
-
-                    {/* Poteau intermédiaire si Asymétrique 2 zones */}
-                    {isAsym2 && (
-                        <>
-                            <rect x={middleColSvgX - 8} y={groundY - 10} width="16" height="10" fill="#e2e8f0" stroke="#64748b" strokeWidth="0.8" />
-                            <line x1={middleColSvgX} y1={groundY} x2={middleColSvgX} y2={middleColTopY} stroke="#0f172a" strokeWidth="3.5" strokeLinecap="round" />
-                            {/* Flèche et côte de hauteur sous poteau intermédiaire */}
-                            <line x1={middleColSvgX + 10} y1={groundY} x2={middleColSvgX + 10} y2={middleColTopY} stroke="#2563eb" strokeWidth="1" />
-                            <text x={middleColSvgX + 14} y={(groundY + middleColTopY) / 2} fill="#2563eb" fontSize="7" fontWeight="bold">
-                                {((groundY - middleColTopY) / pxPerM).toFixed(2)}m
-                            </text>
-                        </>
-                    )}
-
-                    {/* Arbalétriers (Toiture) */}
-                    <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#0f172a" strokeWidth="3.5" strokeLinecap="round" />
-                    <line x1={apexSvgX} y1={apexSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#0f172a" strokeWidth="3.5" strokeLinecap="round" />
-
-                    {/* Couverture PV (Bleu) */}
-                    <line x1={mainLeftSvgX} y1={leftEaveSvgY - 2} x2={apexSvgX} y2={apexSvgY - 2} stroke="#2563eb" strokeWidth="3" />
-                    <line x1={apexSvgX} y1={apexSvgY - 2} x2={mainRightSvgX} y2={rightEaveSvgY - 2} stroke="#2563eb" strokeWidth="3" />
-
-                    {/* Extension Droite */}
-                    {hasExtRight && (
-                        <g>
-                            <rect x={extRightSvgX - 8} y={groundY - 10} width="16" height="10" fill="#e2e8f0" stroke="#64748b" strokeWidth="0.8" />
-                            <line x1={extRightSvgX} y1={groundY} x2={extRightSvgX} y2={extRightSvgY} stroke="#0f172a" strokeWidth="3.5" strokeLinecap="round" />
-                            <line x1={mainRightSvgX} y1={rightEaveSvgY} x2={extRightSvgX} y2={extRightSvgY} stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
-                            <line x1={mainRightSvgX} y1={rightEaveSvgY - 2} x2={extRightSvgX} y2={extRightSvgY - 2} stroke="#64748b" strokeWidth="2.5" />
-                        </g>
-                    )}
-
-                    {/* Extension Gauche */}
-                    {hasExtLeft && (
-                        <g>
-                            <rect x={extLeftSvgX - 8} y={groundY - 10} width="16" height="10" fill="#e2e8f0" stroke="#64748b" strokeWidth="0.8" />
-                            <line x1={extLeftSvgX} y1={groundY} x2={extLeftSvgX} y2={extLeftSvgY} stroke="#0f172a" strokeWidth="3.5" strokeLinecap="round" />
-                            <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={extLeftX} y2={extLeftSvgY} stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
-                            <line x1={mainLeftSvgX} y1={leftEaveSvgY - 2} x2={extLeftX} y2={extLeftSvgY - 2} stroke="#64748b" strokeWidth="2.5" />
-                        </g>
-                    )}
-                </g>
-            )}
-
-            {/* 3. Lignes de Côtes & Annotations */}
-            {/* Côte Largeur Totale */}
-            <g transform="translate(0, 160)">
-                <line x1={mainLeftSvgX} y1="0" x2={mainRightSvgX} y2="0" stroke="#0284c7" strokeWidth="1.2" />
-                <line x1={mainLeftSvgX} y1="-4" x2={mainLeftSvgX} y2="4" stroke="#0284c7" strokeWidth="1.2" />
-                <line x1={mainRightSvgX} y1="-4" x2={mainRightSvgX} y2="4" stroke="#0284c7" strokeWidth="1.2" />
-                <text x={centerX} y="-3" fill="#0284c7" fontSize="7.5" fontWeight="bold" textAnchor="middle">
-                    ▲ Largeur : {largeur.toFixed(2)} m (Emprise au sol)
-                </text>
-            </g>
-
-            {/* Côte Extension Droite */}
-            {hasExtRight && (
-                <g transform="translate(0, 160)">
-                    <line x1={mainRightSvgX} y1="0" x2={extRightSvgX} y2="0" stroke="#0284c7" strokeWidth="1.2" />
-                    <line x1={extRightSvgX} y1="-4" x2={extRightSvgX} y2="4" stroke="#0284c7" strokeWidth="1.2" />
-                    <text x={(mainRightSvgX + extRightSvgX) / 2} y="-3" fill="#0284c7" fontSize="7" fontWeight="bold" textAnchor="middle">
-                        +{extRightWidth.toFixed(2)}m
-                    </text>
-                </g>
-            )}
-
-            {/* Hauteur Égout / Sablière */}
-            <g transform={`translate(${mainLeftSvgX - 16}, 0)`}>
-                <line x1="0" y1={groundY} x2="0" y2={leftEaveSvgY} stroke="#dc2626" strokeWidth="1" />
-                <line x1="-3" y1={groundY} x2="3" y2={groundY} stroke="#dc2626" strokeWidth="1" />
-                <line x1="-3" y1={leftEaveSvgY} x2="3" y2={leftEaveSvgY} stroke="#dc2626" strokeWidth="1" />
-                <text x="-4" y={(groundY + leftEaveSvgY) / 2 + 2.5} fill="#dc2626" fontSize="7" fontWeight="bold" textAnchor="end">
-                    Sablière Nord : {leftEaveHeight.toFixed(2)}m
-                </text>
-            </g>
-
-            {/* Hauteur Faîtage */}
-            <g transform={`translate(${centerX - 4}, 0)`}>
-                <line x1="0" y1={groundY} x2="0" y2={apexSvgY} stroke="#dc2626" strokeWidth="1" strokeDasharray="3 2" />
-                <text x="5" y={(groundY + apexSvgY) / 2} fill="#dc2626" fontSize="7" fontWeight="bold">
-                    Faîtage : {ridgeHeight.toFixed(2)}m
-                </text>
-            </g>
-
-            {/* Échelle Graphique Métrique */}
-            <g transform={`translate(${scaleStartX}, ${scaleY})`}>
-                <rect x={0} y={0} width={scaleSegWidth} height={3} fill="#0f172a" />
-                <rect x={scaleSegWidth} y={0} width={scaleSegWidth} height={3} fill="#e2e8f0" stroke="#0f172a" strokeWidth={0.5} />
-                <rect x={scaleSegWidth * 2} y={0} width={scaleSegWidth} height={3} fill="#0f172a" />
-                <rect x={scaleSegWidth * 3} y={0} width={scaleSegWidth} height={3} fill="#e2e8f0" stroke="#0f172a" strokeWidth={0.5} />
-                <rect x={scaleSegWidth * 4} y={0} width={scaleSegWidth} height={3} fill="#0f172a" />
-                <text x={0} y={6.5} fill="#475569" fontSize="5.5" textAnchor="middle">0</text>
-                <text x={scaleSegWidth} y={6.5} fill="#475569" fontSize="5.5" textAnchor="middle">2</text>
-                <text x={scaleSegWidth * 2} y={6.5} fill="#475569" fontSize="5.5" textAnchor="middle">4</text>
-                <text x={scaleSegWidth * 3} y={6.5} fill="#475569" fontSize="5.5" textAnchor="middle">6</text>
-                <text x={scaleSegWidth * 4} y={6.5} fill="#475569" fontSize="5.5" textAnchor="middle">8</text>
-                <text x={scaleTotalWidth} y={6.5} fill="#0f172a" fontSize="6" fontWeight="bold" textAnchor="middle">10m</text>
-            </g>
-        </svg>
-    );
-
-    return (
-        <div style={PAGE_STYLE} id="dp-plate-coupe">
-                                                stroke="#60a5fa"
-                                                strokeWidth="1"
-                                            />
-                                            {[0.12, 0.32, 0.50, 0.68, 0.88].map((ratio, idx) => {
-                                                const px = (mainLeftSvgX - 8) + (mainWidthSvg + 16) * ratio;
-                                                const py = leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * ratio;
-                                                return (
-                                                    <g key={idx}>
-                                                        <line x1={px} y1={py + 1} x2={px} y2={py + 4} stroke="#1e293b" strokeWidth="2" />
-                                                        <line x1={px} y1={py - 5} x2={px} y2={py} stroke="#93c5fd" strokeWidth="1" />
-                                                    </g>
-                                                );
-                                            })}
-
-                                            {/* Cote de Hauteur Libre sous traverse */}
-                                            <line x1={centerX} y1={clearanceSvgY} x2={centerX} y2={groundY} stroke="#059669" strokeWidth="1" strokeDasharray="2 1.5" />
-                                            <line x1={centerX - 4} y1={clearanceSvgY} x2={centerX + 4} y2={clearanceSvgY} stroke="#059669" strokeWidth="1" />
-                                            <line x1={centerX - 4} y1={groundY} x2={centerX + 4} y2={groundY} stroke="#059669" strokeWidth="1" />
-                                            <text x={centerX + 6} y={clearanceSvgY + (groundY - clearanceSvgY) / 2 + 2.5} fill="#059669" fontSize="7" fontWeight="bold">
-                                                Passage libre : {clearanceHeight.toFixed(2)}m
-                                            </text>
-
-                                            {/* Cote Toiture supérieure */}
-                                            <line x1={mainLeftSvgX - 8} y1={leftEaveSvgY - 9} x2={mainRightSvgX + 8} y2={rightEaveSvgY - 9} stroke="#2563eb" strokeWidth="1" />
-                                            <line x1={mainLeftSvgX - 8} y1={leftEaveSvgY - 13} x2={mainLeftSvgX - 8} y2={leftEaveSvgY - 5} stroke="#2563eb" strokeWidth="1" />
-                                            <line x1={mainRightSvgX + 8} y1={rightEaveSvgY - 13} x2={mainRightSvgX + 8} y2={rightEaveSvgY - 5} stroke="#2563eb" strokeWidth="1" />
-                                            <text x={centerX} y={(leftEaveSvgY + rightEaveSvgY) / 2 - 12} textAnchor="middle" fill="#1e40af" fontSize="7.5" fontWeight="bold">
-                                                Toiture : {realRoofWidth.toFixed(2)}m
-                                            </text>
-                                        </g>
-                                    );
-                                })()
-                            ) : isPL ? (
+                ) : isPL ? (
                                 /* ── OMBRIÈRE PL (Multi-poteaux verticaux avec contreventements) ── */
                                 (() => {
                                     const p1X = mainLeftSvgX + mainWidthSvg * 0.25;
