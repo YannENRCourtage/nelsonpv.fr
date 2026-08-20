@@ -36,6 +36,7 @@ export default function SolarAutoconsoSimulator({
   const [cityName, setCityName] = useState('Auch');
 
   const [mapCenter, setMapCenter] = useState([43.646, 0.585]);
+  const [mapZoom, setMapZoom] = useState(19);
 
   // Étape 3 : Polygone & Surface
   const [polygonPoints, setPolygonPoints] = useState([]);

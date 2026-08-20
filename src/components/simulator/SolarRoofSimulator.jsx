@@ -37,6 +37,7 @@ export default function SolarRoofSimulator({
   const [cityName, setCityName] = useState('Lille');
 
   const [mapCenter, setMapCenter] = useState([50.6292, 3.0573]);
+  const [mapZoom, setMapZoom] = useState(19);
   const [polygonPoints, setPolygonPoints] = useState([]);
   const [roofSurface, setRoofSurface] = useState(1179);
 

@@ -201,7 +201,7 @@ export async function generateFicheTechniquePDF({
         drawRow('Modèle :', 'Sur-Mesure', true, [251, 191, 36]);
         drawRow('Grille :', 'Sur-mesure', false, [167, 139, 250]);
     }
-    curY += 1.2;
+    curY += 2.8;
 
     // --- BLOC 2 : STRUCTURE & DIMENSIONS ---
     drawSectionTitle('2. Structure & Dimensions');
@@ -224,7 +224,7 @@ export async function generateFicheTechniquePDF({
     drawRow('Niveau fondations :', '+/- 0.0 m');
     if (config.leftSide !== 'none') drawRow('Ext. Gauche :', `${config.leftSide === 'appentis' ? 'Appentis' : 'Auvent'} (${leftExt}m)`);
     if (config.rightSide !== 'none') drawRow('Ext. Droite :', `${config.rightSide === 'appentis' ? 'Appentis' : 'Auvent'} (${rightExt}m)`);
-    curY += 1.2;
+    curY += 2.8;
 
     // --- BLOC 3 : HAUTEURS & TOITURE ---
     drawSectionTitle('3. Hauteurs & Toiture');
@@ -234,7 +234,7 @@ export async function generateFicheTechniquePDF({
     drawRow('Couverture :', 'Bac acier (RAL 7016)');
     drawRow('Anti-condensation :', 'Feutre régulateur');
     drawRow('Peinture :', 'Anti-rouille');
-    curY += 1.2;
+    curY += 2.8;
 
     // --- BLOC 4 : CENTRALE PHOTOVOLTAÏQUE ---
     drawSectionTitle('4. Énergie Solaire', [251, 191, 36]);
@@ -273,7 +273,7 @@ export async function generateFicheTechniquePDF({
     } else {
         drawRow('Option solaire :', 'Non incluse (Sans PV)', false, [148, 163, 184]);
     }
-    curY += 1.2;
+    curY += 2.8;
 
     // --- BLOC 5 : TARIFICATION & RATIOS ---
     drawSectionTitle('5. Chiffrage & Ratios', [52, 211, 153]);
@@ -394,20 +394,20 @@ export async function generateFicheTechniquePDF({
         }
     };
 
-    // VISUEL 1 (Haut) : Vue 3D configurée principale (Hauteur réduite de 20% à 91mm)
-    const topH = 91;
+    // VISUEL 1 (Haut) : Vue 3D configurée principale (88mm)
+    const topH = 88;
     drawImageCard('Vue 3D Principale du Bâtiment (Perspective)', mainX, 24, mainW, topH, loadedMain3D);
 
-    // VISUELS 2 & 3 (Milieu) : Pignon Gauche + Visuel 2D côte à côte (Hauteur réduite de 20% à 52mm avec écart)
-    const midY = 24 + topH + 4.5; // 119.5 mm
-    const midH = 52;
+    // VISUELS 2 & 3 (Milieu) : Pignon Gauche + Visuel 2D côte à côte (48mm avec écart de 6mm)
+    const midY = 24 + topH + 6.0; // 118.0 mm
+    const midH = 48;
     const halfW = (mainW - 3) / 2; // 67.5 mm chacun
     drawImageCard('Vue Pignon (Gauche)', mainX, midY, halfW, midH, loadedPignon);
     drawImageCard('Élévation 2D / Coupe Technique', mainX + halfW + 3, midY, halfW, midH, loaded2D);
 
-    // VISUEL 4 (Bas) : Vue Façade Sud (avec écart)
-    const sudY = midY + midH + 4.5; // 176 mm
-    const sudH = 68;
+    // VISUEL 4 (Bas) : Vue Façade Sud (avec écart de 6mm)
+    const sudY = midY + midH + 6.0; // 172.0 mm
+    const sudH = 70;
     drawImageCard('Vue Façade Sud (Long Pan Solaire)', mainX, sudY, mainW, sudH, loadedFacadeSud);
 
     // ==========================================

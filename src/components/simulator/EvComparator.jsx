@@ -361,7 +361,7 @@ export default function EvComparator() {
 
           {/* Côté droit : Graphique des temps de charge */}
           <div className="bg-[#f0f9ff] rounded-xl p-6 border border-[#bae6fd] flex flex-col h-full">
-            <h4 className="text-sm font-semibold text-slate-800 mb-6 text-center">Comparatif des temps de recharge de 0 à 100%</h4>
+            <h4 className="text-base sm:text-lg font-black text-slate-900 mb-6 text-center">Comparatif des temps de recharge de 0 à 100%</h4>
             
             <div className="flex-1 flex items-end justify-between gap-2 sm:gap-4 mt-auto">
               {chargingStats.map((stat, index) => {
@@ -420,8 +420,8 @@ export default function EvComparator() {
                     </div>
                     
                     <div className="mt-4 text-center">
-                      <p className={cn("text-[11px] sm:text-xs font-semibold leading-tight", stat.isRecommended ? "text-blue-700" : "text-slate-700")}>{stat.name}</p>
-                      <p className={cn("text-[10px] sm:text-xs", stat.isRecommended ? "text-blue-600 font-medium" : "text-slate-500")}>{stat.power} kW</p>
+                      <p className={cn("text-xs sm:text-sm font-black leading-tight", stat.isRecommended ? "text-blue-700" : "text-slate-800")}>{stat.name}</p>
+                      <p className={cn("text-xs sm:text-sm font-black mt-0.5", stat.isRecommended ? "text-blue-600" : "text-slate-700")}>{stat.power} kW</p>
                     </div>
                   </div>
                 );

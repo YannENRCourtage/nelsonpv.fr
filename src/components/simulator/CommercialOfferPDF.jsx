@@ -463,14 +463,14 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           <div style="display: grid; grid-template-columns: 1fr 1.35fr; gap: 8px; margin-bottom: 10px; height: 330px;">
             <!-- 4a. VISUEL PHOTO DE LA BORNE DE RECHARGE -->
             <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #f8fafc; display: flex; flex-direction: column; position: relative; height: 100%;">
-              <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1.2;">${borneTitle}</div>
+              <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 6px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1; display: flex; align-items: center;">${borneTitle}</div>
               <img src="${bornePhoto}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Borne de recharge" />
-              <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; margin: 0; line-height: 1.2;">${sim.quantity || 1} unité(s) installée(s)</div>
+              <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 6px; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; margin: 0; line-height: 1; display: flex; align-items: center;">${sim.quantity || 1} unité(s) installée(s)</div>
             </div>
 
             <!-- 4b. IMPLANTATION SATELLITE SUR LE PARKING -->
             <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; display: flex; flex-direction: column; position: relative; height: 100%;">
-              <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1.2;">Implantation Satellite sur le Parking</div>
+              <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 6px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1; display: flex; align-items: center;">Implantation Satellite sur le Parking</div>
               ${finalMapScreenshot ? `
                 <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue satellite du parking" />
               ` : `
@@ -479,7 +479,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                   <div style="font-size: 7.5pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
                 </div>
               `}
-              <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; margin: 0; line-height: 1.2;">${sim.quantity || 1} borne(s) (${irvePower} kW)</div>
+              <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 6px; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; margin: 0; line-height: 1; display: flex; align-items: center;">${sim.quantity || 1} borne(s) (${irvePower} kW)</div>
             </div>
           </div>
         ` : `
