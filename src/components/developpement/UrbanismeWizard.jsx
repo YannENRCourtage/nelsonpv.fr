@@ -507,10 +507,9 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
       const initialNotice = project?.noticeText || buildAutoNoticeText();
       setNoticeText(initialNotice);
 
-      const clientKwc = project?.kwc || project?.puissance || project?.projectSize || '';
       const shortObjet = (type === 'pc' || type === 'dp')
-        ? `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque${clientKwc ? ` de ${clientKwc} kWc` : ''}`
-        : `Certificat d'urbanisme opérationnel pour centrale photovoltaïque${clientKwc ? ` de ${clientKwc} kWc` : ''}`;
+        ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
+        : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque";
 
       const initProj = {
         ...project,
@@ -520,6 +519,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
         firstName: names.firstName || '',
         demandeur: cleanDemandeur,
         email: projEmail,
+        email2: project.email2 || '',
+        cerfaEmailChoice: project.cerfaEmailChoice || 'email1',
         address: projAddress,
         zip: projZip,
         city: projCity,
@@ -530,8 +531,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
         kwc: clientKwc,
         projectSize: clientKwc,
         puissance: clientKwc,
-        objet_travaux: shortObjet,
-        description: shortObjet,
+        objet_travaux: project.objet_travaux || project.objetTravaux || shortObjet,
+        description: project.objet_travaux || project.objetTravaux || shortObjet,
         noticeText: initialNotice,
         longueur: String(b1?.length || 37.5),
         largeur: String(b1?.width || 20.0),
@@ -834,12 +835,12 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
   const handleGenerate = async () => {
     if (!onGenerate) return;
     setIsGenerating(true);
-    const clientKwc = project?.kwc || project?.puissance || project?.projectSize || editedProject?.kwc || '';
     
     // Objet synthétique pour Page 1
-    const shortObjet = (type === 'pc' || type === 'dp')
-      ? `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque${clientKwc ? ` de ${clientKwc} kWc` : ''}`
-      : `Certificat d'urbanisme opérationnel pour centrale photovoltaïque${clientKwc ? ` de ${clientKwc} kWc` : ''}`;
+    const defaultObjet = (type === 'pc' || type === 'dp')
+      ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
+      : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque";
+    const shortObjet = editedProject?.objet_travaux || defaultObjet;
 
     const effectiveNotice = noticeText || editedProject.noticeText || project?.noticeText || buildAutoNoticeText();
 
@@ -899,6 +900,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
     const finalProject = {
       ...editedProject,
       ...fieldValues,
+      cerfaEmailChoice: editedProject?.cerfaEmailChoice || 'email1',
+      email2: editedProject?.email2 || '',
       buildingType: b1.buildingType || config.buildingType || 'asymetrique_1',
       type: finalTypeLabel,
       installationType: finalTypeLabel,
@@ -1029,14 +1032,63 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                       </div>
 
                       <div>
-                        <label className="text-gray-600 font-semibold block mb-1">Adresse email *</label>
-                        <input
-                          type="email"
-                          value={editedProject?.email || ''}
-                          onChange={e => handleFieldChange('email', e.target.value)}
-                          placeholder="Ex: isabelle.dupond@gmail.com"
-                          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-white outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-gray-600 font-semibold truncate">Adresse email *</label>
+                              {editedProject?.email2 && (
+                                <label className="flex items-center gap-1 text-[10px] text-blue-700 font-bold cursor-pointer select-none" title="Faire apparaître cet email dans le CERFA (page 2/15)">
+                                  <input
+                                    type="radio"
+                                    name="cerfaEmailSelection"
+                                    checked={!editedProject?.cerfaEmailChoice || editedProject?.cerfaEmailChoice === 'email1'}
+                                    onChange={() => handleFieldChange('cerfaEmailChoice', 'email1')}
+                                    className="accent-blue-600 cursor-pointer w-3 h-3"
+                                  />
+                                  <span>CERFA</span>
+                                </label>
+                              )}
+                            </div>
+                            <input
+                              type="email"
+                              value={editedProject?.email || ''}
+                              onChange={e => handleFieldChange('email', e.target.value)}
+                              placeholder="Ex: isabelle.dupond@gmail.com"
+                              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-gray-600 font-semibold truncate">Email 2 <span className="text-gray-400 font-normal">(facultatif)</span></label>
+                              {editedProject?.email2 && (
+                                <label className="flex items-center gap-1 text-[10px] text-blue-700 font-bold cursor-pointer select-none" title="Faire apparaître cet email dans le CERFA (page 2/15)">
+                                  <input
+                                    type="radio"
+                                    name="cerfaEmailSelection"
+                                    checked={editedProject?.cerfaEmailChoice === 'email2'}
+                                    onChange={() => handleFieldChange('cerfaEmailChoice', 'email2')}
+                                    className="accent-blue-600 cursor-pointer w-3 h-3"
+                                  />
+                                  <span>CERFA</span>
+                                </label>
+                              )}
+                            </div>
+                            <input
+                              type="email"
+                              value={editedProject?.email2 || ''}
+                              onChange={e => handleFieldChange('email2', e.target.value)}
+                              placeholder="Ex: contact.societe@gmail.com"
+                              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+                        {editedProject?.email2 && (
+                          <div className="flex items-center gap-1.5 mt-1 text-[10px] text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                            <span className="font-bold">Email CERFA (page 2/15) :</span>
+                            <span className="font-semibold">{editedProject?.cerfaEmailChoice === 'email2' ? (editedProject.email2 || 'Email 2') : (editedProject.email || 'Email 1')}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div>
@@ -1105,26 +1157,31 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                 </motion.div>
               )}
 
-              {/* ÉTAPE 1 — Cartes PC1 */}
+              {/* ÉTAPE 1 — Cartes PC1 (PLEINE HAUTEUR) */}
               {step === 1 && (
-                <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                  className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
-                  <div className="flex items-center justify-between">
+                <motion.div
+                  key="step1"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="p-5 h-full flex flex-col gap-3 overflow-hidden"
+                >
+                  <div className="flex items-center justify-between flex-shrink-0">
                     <div>
                       <h3 className="text-sm font-bold text-gray-800">Étape 2 : Cartographie PC1 (Plan de Situation & Satellite)</h3>
                       <p className="text-xs text-gray-500">Déplacez le marqueur sur une des cartes pour ajuster l'emplacement du projet.</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center flex flex-col">
-                      <span className="text-xs font-bold text-gray-700 block mb-2">PC1 — Plan de Situation (IGN Cartographique)</span>
-                      <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 z-10 flex-1 min-h-[260px]">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
+                    <div className="border border-gray-200 rounded-2xl p-3.5 bg-gray-50 text-center flex flex-col min-h-0 shadow-xs">
+                      <span className="text-xs font-bold text-gray-700 block mb-2 flex-shrink-0">PC1 — Plan de Situation (IGN Cartographique)</span>
+                      <div className="relative rounded-xl overflow-hidden border border-gray-200 z-10 flex-1 min-h-0 w-full shadow-inner">
                         {(() => {
                           const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
                           const [lat, lng] = gps.split(',').map(Number);
                           return (
-                            <MapContainer center={[lat, lng]} zoom={16} scrollWheelZoom={true} style={{ height: '100%', minHeight: '260px', width: '100%' }}>
+                            <MapContainer center={[lat, lng]} zoom={16} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
                               <TileLayer
                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                 attribution="&copy; OpenStreetMap contributors"
@@ -1138,14 +1195,14 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                       </div>
                     </div>
 
-                    <div className="border border-gray-200 rounded-2xl p-3 bg-gray-50 text-center flex flex-col">
-                      <span className="text-xs font-bold text-gray-700 block mb-2">PC1 — Vue Aérienne Satellite</span>
-                      <div className="relative rounded-xl overflow-hidden aspect-video border border-gray-200 z-10 flex-1 min-h-[260px]">
+                    <div className="border border-gray-200 rounded-2xl p-3.5 bg-gray-50 text-center flex flex-col min-h-0 shadow-xs">
+                      <span className="text-xs font-bold text-gray-700 block mb-2 flex-shrink-0">PC1 — Vue Aérienne Satellite</span>
+                      <div className="relative rounded-xl overflow-hidden border border-gray-200 z-10 flex-1 min-h-0 w-full shadow-inner">
                         {(() => {
                           const gps = editedProject?.gps || `${editedProject?.lat || 43.5612},${editedProject?.lng || 0.9168}`;
                           const [lat, lng] = gps.split(',').map(Number);
                           return (
-                            <MapContainer center={[lat, lng]} zoom={17} scrollWheelZoom={true} style={{ height: '100%', minHeight: '260px', width: '100%' }}>
+                            <MapContainer center={[lat, lng]} zoom={17} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }}>
                               <TileLayer
                                 url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                                 attribution="Tiles &copy; Esri"
@@ -1159,6 +1216,9 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                       </div>
                     </div>
                   </div>
+                  <p className="text-[10px] text-gray-500 text-center flex-shrink-0">
+                    Déplacez le repère sur la carte cadastrale ou satellite pour synchroniser la position exacte du terrain.
+                  </p>
                 </motion.div>
               )}
 
@@ -2043,14 +2103,45 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                     </div>
                   </div>
 
-                  {/* Synthèse */}
-                  <div className="bg-gray-50 rounded-2xl border border-gray-100 divide-y divide-gray-100 text-xs">
-                    {Object.entries(summary).map(([k, val]) => (
-                      <div key={k} className="flex items-start gap-3 px-4 py-2">
-                        <span className="text-gray-400 w-36 flex-shrink-0 pt-0.5 capitalize">{k}</span>
-                        <span className="font-semibold text-gray-800 flex-1">{val}</span>
+                  {/* Synthèse et Objet des travaux (2 colonnes 50% / 50%) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+                    {/* Colonne Gauche : Lignes Demandeur à Type */}
+                    <div className="bg-gray-50 rounded-2xl border border-gray-100 divide-y divide-gray-100 text-xs flex flex-col justify-between">
+                      {['demandeur', 'email', 'adresse', 'cadastre', 'commune', 'puissance', 'type'].map((k) => (
+                        <div key={k} className="flex items-start gap-3 px-4 py-2">
+                          <span className="text-gray-400 w-28 flex-shrink-0 pt-0.5 capitalize">{k}</span>
+                          <span className="font-semibold text-gray-800 flex-1">{summary[k] || '—'}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Colonne Droite : Objet des travaux prenant toute la hauteur cumulée */}
+                    <div className="bg-gray-50 rounded-2xl border border-gray-100 p-3.5 text-xs flex flex-col justify-between shadow-2xs">
+                      <div className="flex items-center justify-between mb-2 flex-shrink-0">
+                        <label className="font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5 text-[11px]">
+                          <FileText className="w-3.5 h-3.5 text-blue-600" />
+                          Objet des travaux (Page de garde PDF)
+                        </label>
+                        <span className="text-[10px] text-gray-400 font-medium">Modifiable</span>
                       </div>
-                    ))}
+                      <textarea
+                        value={editedProject?.objet_travaux !== undefined ? editedProject.objet_travaux : (
+                          (type === 'pc' || type === 'dp')
+                            ? "Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
+                            : "Certificat d'urbanisme opérationnel pour centrale photovoltaïque"
+                        )}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditedProject(prev => ({ ...prev, objet_travaux: val, description: val }));
+                          handleFieldChange('objet_travaux', val);
+                        }}
+                        placeholder="Ex: Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque"
+                        className="w-full flex-1 min-h-[140px] p-3 rounded-xl border border-gray-200 bg-white text-xs text-gray-800 font-medium leading-relaxed resize-none outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner"
+                      />
+                      <p className="text-[10px] text-gray-400 mt-2 flex-shrink-0">
+                        Ce texte apparaîtra dans la zone "OBJET DES TRAVAUX" de la page de garde du dossier PDF.
+                      </p>
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -2309,7 +2400,7 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                 {isGenerating ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Génération du PDF...</>
                 ) : (
-                  <><FileCheck className="w-4 h-4" /> Générer le dossier PDF (Interactif)</>
+                  <><FileCheck className="w-4 h-4" /> Générer le dossier PDF</>
                 )}
               </button>
             )}

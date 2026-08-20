@@ -195,7 +195,9 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
     const surface   = project?.cadastre_surface ? `${project.cadastre_surface} m²` : '';
     const rawKwc    = project?.kwc || project?.projectSize || project?.power || (project?.solarStats?.power ? Math.round(project.solarStats.power) : '');
     const kwcStr    = rawKwc ? (String(rawKwc).includes('kWc') ? String(rawKwc).trim() : `${rawKwc} kWc`) : '100 kWc';
-    const email     = project?.email || project?.clientEmail || 'isabelle.dupond@gmail.com';
+    const email     = (project?.cerfaEmailChoice === 'email2' && project?.email2)
+      ? project.email2
+      : (project?.email || project?.clientEmail || 'isabelle.dupond@gmail.com');
     const tel       = project?.phone || project?.clientPhone || '06 47 92 34 24';
     const dateStr   = new Date().toLocaleDateString('fr-FR');
     const lieuStr   = city || 'Mairie';
@@ -352,7 +354,9 @@ export async function smartFillCerfa(pdfUrl, project, type = 'dp', installationT
 export function buildCerfaDataSummary(project, installationType) {
   const names = resolveDemandeurNames(project);
   const fullName = `${names.firstName} ${names.lastName}`.trim() || names.lastName || project?.demandeur || project?.name || '—';
-  const email = project?.email || project?.clientEmail || '—';
+  const email = (project?.cerfaEmailChoice === 'email2' && project?.email2)
+    ? project.email2
+    : (project?.email || project?.clientEmail || '—');
 
   const rawAddress = project?.address || project?.clientAddress || '';
   const rawZip = project?.zip || project?.postalCode || '';

@@ -5,13 +5,16 @@ import { smartFillCerfa, resolveDemandeurNames } from './SmartCerfaService';
 // ─── Types d'installation ────────────────────────────────────────────────────
 
 export function getInstallationTypeInfo(type, projectSize) {
-  const kwcVal = projectSize ? `${projectSize} kWc` : 'Centrale Solaire';
+  const isNumeric = projectSize && !isNaN(Number(projectSize)) && Number(projectSize) > 0;
+  const kwcVal = isNumeric ? `${projectSize} kWc` : '';
+  const kwcSuffix = kwcVal ? ` de ${kwcVal}` : '';
+  const kwcSubtitle = kwcVal ? `${kwcVal} — raccordement réseau ENEDIS` : 'Raccordement réseau ENEDIS';
   const t = (type || '').toLowerCase();
   
   if (t.includes('batterie')) {
     return {
       title: 'Système de stockage par batterie',
-      subtitle: `${kwcVal} — Raccordement réseau ENEDIS`,
+      subtitle: kwcSubtitle,
       cerfaText: `Installation d'un système de stockage d'énergie par batterie`,
       code: 'BATTERIE',
       isNewConstruction: true,
@@ -20,8 +23,8 @@ export function getInstallationTypeInfo(type, projectSize) {
   if (t.includes('ombriere') || t.includes('ombrière')) {
     return {
       title: 'Ombrière de parking photovoltaïque',
-      subtitle: `${kwcVal} — raccordement réseau ENEDIS`,
-      cerfaText: `Construction d'une ombrière de parking photovoltaïque de ${kwcVal}`,
+      subtitle: kwcSubtitle,
+      cerfaText: `Construction d'une ombrière de parking photovoltaïque${kwcSuffix}`,
       code: 'OMBRIERE',
       isNewConstruction: true,
     };
@@ -29,8 +32,8 @@ export function getInstallationTypeInfo(type, projectSize) {
   if (t.includes('toiture')) {
     return {
       title: 'Centrale photovoltaïque en toiture existante',
-      subtitle: `${kwcVal} — raccordement réseau ENEDIS`,
-      cerfaText: `Installation de panneaux photovoltaïques en toiture de ${kwcVal}`,
+      subtitle: kwcSubtitle,
+      cerfaText: `Installation de panneaux photovoltaïques en toiture${kwcSuffix}`,
       code: 'TOITURE',
       isNewConstruction: false,
     };
@@ -38,8 +41,8 @@ export function getInstallationTypeInfo(type, projectSize) {
   // Par défaut : Bâtiment agricole solaire
   return {
     title: "Bâtiment à charpente métallique équipé d'une centrale photovoltaïque",
-    subtitle: `${kwcVal} — raccordement réseau ENEDIS`,
-    cerfaText: `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque de ${kwcVal}`,
+    subtitle: kwcSubtitle,
+    cerfaText: `Construction d'un bâtiment agricole à charpente métallique avec toiture photovoltaïque${kwcSuffix}`,
     code: 'BAT_SOLAIRE',
     isNewConstruction: true,
   };
