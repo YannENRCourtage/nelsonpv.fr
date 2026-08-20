@@ -421,6 +421,7 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const pxPerMeterX = availableDrawingWidth / Math.max(8, totalRealWidth);
     const pxPerMeterY = availableDrawingHeight / Math.max(4.0, maxRealHeight);
     const pxPerMeter = Math.min(pxPerMeterX, pxPerMeterY, 22);
+    const pxPerM = pxPerMeter;
 
     const mainWidthSvg = (isOmbriere ? realRoofWidth : largeur) * pxPerMeter;
     const extLeftSvgWidth = (hasExtLeft ? extLeftWidth : 0) * pxPerMeter;
@@ -623,8 +624,8 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                         const postSpacingM = largeur > 22.0 ? 12.00 : (largeur > 18.0 ? 10.00 : 8.00);
                                         const overhangM = (realGroundWidth - postSpacingM) / 2;
 
-                                        const p1X = mainLeftSvgX + overhangM * pxPerM;
-                                        const p2X = mainLeftSvgX + (overhangM + postSpacingM) * pxPerM;
+                                        const p1X = mainLeftSvgX + overhangM * pxPerMeter;
+                                        const p2X = mainLeftSvgX + (overhangM + postSpacingM) * pxPerMeter;
 
                                         const p1Ratio = overhangM / realGroundWidth;
                                         const p2Ratio = (overhangM + postSpacingM) / realGroundWidth;
