@@ -16,6 +16,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
 import { useSimulatorSettingsStore, getProductionForDepartment } from '@/stores/useSimulatorSettingsStore';
+import { findBarconniereBuilding } from '@/data/barconniereCatalog.js';
 
 // ─── Contrôles de Zoom Flottants Leaflet ─────────────────────────────────────
 function CustomMapZoom() {
@@ -565,17 +566,25 @@ const crop3DCanvas = (sourceCanvas) => {
     return Math.round(installedKwc * regionalBaseYield);
   }, [installedKwc, regionalBaseYield]);
 
-  // Modèle économique Gros-Œuvre & PV multi-bâtiments
-  const charpenteCost = Math.round(floorArea * (structSettings.charpenteCostM2 || 75));
-  const couvertureCost = Math.round(roofArea * (structSettings.couvertureBacAcierM2 || 28));
-  const fondationsCost = Math.round(floorArea * (structSettings.fondationsCostM2 || 25));
-  const totalBuildingCost = charpenteCost + couvertureCost + fondationsCost;
+  // Modèle économique Gros-Œuvre & PV multi-bâtiments issu du catalogue officiel Barconnière / Acama
+  const isCustomBuilding = config.configMode === 'custom' || (!isAcama && config.buildingType === 'custom');
+  const barcMatch = findBarconniereBuilding({
+    length: buildingLength,
+    width: buildingWidth,
+    buildingType: config.buildingType || 'symetrique',
+    leftSide: config.leftSide || 'none',
+    rightSide: config.rightSide || 'none',
+    leftWidth: config.leftWidth || 0,
+    rightWidth: config.rightWidth || 0,
+    isAcama: Boolean(isAcama),
+  });
+
+  const totalBuildingCost = isCustomBuilding ? Math.round(floorArea * 128) : barcMatch.tarif;
+  const ratioCostPerWc = installedKwc > 0 ? Number((totalBuildingCost / (installedKwc * 1000)).toFixed(2)) : barcMatch.ratioKwc;
+  const ratioCostPerM2 = floorArea > 0 ? Math.round(totalBuildingCost / floorArea) : barcMatch.ratioM2;
 
   const pvInstallationCost = Math.round(installedKwc * 1000 * (structSettings.pvIntegrationPerWc || 0.55) + 15000);
   const totalProjectInvestment = totalBuildingCost + pvInstallationCost;
-
-  const soulteInvestisseur = Math.round(installedKwc * 180);
-  const resteACharge = Math.max(0, totalBuildingCost - soulteInvestisseur);
 
   const tarifAchatKwh = 0.1141; // Tarif EDF OA standard 100-500 kWc
   const annualGrossRevenue = Math.round(annualProductionKwh * tarifAchatKwh);
@@ -724,8 +733,8 @@ const crop3DCanvas = (sourceCanvas) => {
         annualProductionKwh,
         totalBuildingCost,
         totalInvestmentHT: totalProjectInvestment,
-        soulteInvestisseur,
-        resteACharge,
+        ratioCostPerWc,
+        ratioCostPerM2,
         annualBenefitYear1: annualNetRevenue,
         paybackYear: financialProjection30Years.paybackYears,
         totalGains30Years: financialProjection30Years.cumul30,
@@ -742,7 +751,7 @@ const crop3DCanvas = (sourceCanvas) => {
   }, [
     buildingLength, buildingWidth, totalFloorArea, totalRoofArea, installedKwc,
     annualProductionKwh, totalBuildingCost, totalProjectInvestment,
-    soulteInvestisseur, resteACharge, annualNetRevenue,
+    ratioCostPerWc, ratioCostPerM2, annualNetRevenue,
     financialProjection30Years, clientNameInput, addressInput, cityName,
     departmentCode, building3dSnapshot, mapScreenshotDataUrl, simBuildings, activeBuildingIdx, onStateUpdate
   ]);
@@ -985,7 +994,7 @@ const crop3DCanvas = (sourceCanvas) => {
                 </button>
               </div>
 
-              {/* Encart flottant "Synthèse de la structure" en bas à droite de la visionneuse 3D (agrandi de 15% avec typographie renforcée) */}
+              {/* Encart flottant "Synthèse de la structure" en bas à droite de la visionneuse 3D (agrandi avec typographie renforcée) */}
               <div className="absolute bottom-4 right-4 z-20 bg-slate-900/95 backdrop-blur-md text-white p-6 rounded-3xl border border-white/20 shadow-2xl w-96 max-w-md pointer-events-auto space-y-3 text-sm">
                 <div className="flex items-center justify-between border-b border-white/20 pb-2.5">
                   <span className="font-black text-amber-400 uppercase text-xs tracking-wider">Synthèse Structure &amp; PV</span>
@@ -998,15 +1007,15 @@ const crop3DCanvas = (sourceCanvas) => {
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[11px] font-semibold uppercase">Centrale PV</span>
-                    <strong className="text-blue-400 font-black text-base">{installedKwc} kWc</strong>
+                    <strong className="text-amber-400 font-black text-base">{installedKwc} kWc</strong>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[11px] font-semibold uppercase">Budget Gros-Œuvre</span>
-                    <strong className="text-white font-black text-base">{totalBuildingCost.toLocaleString('fr-FR')} €</strong>
+                    <span className="text-slate-400 block text-[11px] font-semibold uppercase">Tarif Structure</span>
+                    <strong className="text-white font-black text-base">{totalBuildingCost.toLocaleString('fr-FR')} € HT</strong>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[11px] font-semibold uppercase">Reste à charge</span>
-                    <strong className="text-purple-300 font-black text-base">{resteACharge.toLocaleString('fr-FR')} €</strong>
+                    <span className="text-slate-400 block text-[11px] font-semibold uppercase">Production Solaire</span>
+                    <strong className="text-emerald-400 font-black text-base">~{annualProductionKwh.toLocaleString('fr-FR')} kWh/an</strong>
                   </div>
                 </div>
               </div>
@@ -1052,22 +1061,22 @@ const crop3DCanvas = (sourceCanvas) => {
 
               <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
                 <span className="text-xs font-bold text-slate-500 uppercase block">Puissance Solaire</span>
-                <strong className="text-base font-black text-blue-600">{installedKwc} kWc</strong>
+                <strong className="text-base font-black text-amber-600">{installedKwc} kWc</strong>
+              </div>
+
+              <div className="bg-blue-50/70 rounded-2xl p-4 border border-blue-200">
+                <span className="text-xs font-bold text-blue-800 uppercase block">Tarif Structure Métallique</span>
+                <strong className="text-base font-black text-blue-900">{totalBuildingCost.toLocaleString('fr-FR')} € HT</strong>
               </div>
 
               <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
-                <span className="text-xs font-bold text-slate-500 uppercase block">Budget Gros-Œuvre</span>
-                <strong className="text-base font-black text-slate-900">{totalBuildingCost.toLocaleString('fr-FR')} € HT</strong>
+                <span className="text-xs font-bold text-slate-500 uppercase block">Ratio Tarif / Puissance</span>
+                <strong className="text-base font-black text-slate-900">{ratioCostPerWc.toFixed(2)} € / Wc</strong>
               </div>
 
-              <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200">
-                <span className="text-xs font-bold text-emerald-800 uppercase block">Soulte Tiers-Invest.</span>
-                <strong className="text-base font-black text-emerald-700">+{soulteInvestisseur.toLocaleString('fr-FR')} €</strong>
-              </div>
-
-              <div className="bg-purple-50 rounded-2xl p-4 border border-purple-200">
-                <span className="text-xs font-bold text-purple-800 uppercase block">Reste à Charge</span>
-                <strong className="text-base font-black text-purple-700">{resteACharge.toLocaleString('fr-FR')} € HT</strong>
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+                <span className="text-xs font-bold text-slate-500 uppercase block">Ratio Tarif / Surface</span>
+                <strong className="text-base font-black text-slate-900">{ratioCostPerM2} € / m²</strong>
               </div>
             </div>
           </div>
