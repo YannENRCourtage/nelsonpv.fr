@@ -748,12 +748,6 @@ export const PlateCoupe = ({ project }) => {
     );
 };
 
-export const PlateSection = PlateCoupe;/div>
-            <Footer project={project} />
-        </div>
-    );
-};
-
 export const PlateSection = PlateCoupe;
 
 /**
