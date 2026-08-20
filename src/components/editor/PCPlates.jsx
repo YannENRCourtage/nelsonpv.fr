@@ -466,6 +466,8 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     const scaleStartX = 660 - scaleTotalWidth;
     const scaleY = 172;
 
+    const roofTypeLabel = isOmbriere ? 'monopente (ombrière VL/PL)' : isAsym ? (isAsym2 ? 'double pente asymétrique 2 zones' : 'double pente asymétrique') : isSym ? 'double pente symétrique' : 'photovoltaïque';
+
     const asym2LeftDist = 13.1;
     const asym2RightDist = (Math.abs(largeur - 25.5) < 0.8) ? 12.4 : (Math.abs(largeur - 29.1) < 0.8 ? 16.0 : (largeur - 13.1));
     const middleColSvgX = mainLeftSvgX + asym2LeftDist * pxPerMeter;
