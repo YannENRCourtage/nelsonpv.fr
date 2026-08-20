@@ -270,7 +270,6 @@ export const generateBeforeAfterDualSnapshot = async ({
   zoom = 19
 }) => {
   try {
-    const safeZoom = Math.min(19, Math.max(14, zoom || 19));
     let lat = center ? center[0] : 43.6047;
     let lng = center ? center[1] : 1.4442;
     if (polygonPoints && polygonPoints.length >= 3) {
@@ -279,6 +278,30 @@ export const generateBeforeAfterDualSnapshot = async ({
       lat = sumLat / polygonPoints.length;
       lng = sumLng / polygonPoints.length;
     }
+
+    const halfW = (width - 6) / 2;
+
+    // Calcul automatique du niveau de zoom pour que la toiture entière tienne parfaitement dans la vue
+    let computedZoom = zoom || 19;
+    if (polygonPoints && polygonPoints.length >= 3) {
+      let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+      polygonPoints.forEach(p => {
+        minLat = Math.min(minLat, p.lat);
+        maxLat = Math.max(maxLat, p.lat);
+        minLng = Math.min(minLng, p.lng);
+        maxLng = Math.max(maxLng, p.lng);
+      });
+      
+      const latSpanM = (maxLat - minLat) * 111320;
+      const lngSpanM = (maxLng - minLng) * 111320 * Math.cos((lat * Math.PI) / 180);
+      const maxSpanM = Math.max(latSpanM, lngSpanM, 15);
+
+      const targetPx = Math.min(halfW * 0.70, height * 0.70);
+      const cosLat = Math.cos((lat * Math.PI) / 180);
+      const calculatedZ = Math.log2((targetPx * 156543 * cosLat) / maxSpanM);
+      computedZoom = Math.min(19, Math.max(14, Math.floor(calculatedZ)));
+    }
+    const safeZoom = computedZoom;
 
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -302,10 +325,10 @@ export const generateBeforeAfterDualSnapshot = async ({
     const pixelOffsetY = (yExact - centerTileY) * 256;
 
     const tilePromises = [];
-    const minTileX = centerTileX - 2;
-    const maxTileX = centerTileX + 2;
-    const minTileY = centerTileY - 1;
-    const maxTileY = centerTileY + 1;
+    const minTileX = centerTileX - 3;
+    const maxTileX = centerTileX + 3;
+    const minTileY = centerTileY - 2;
+    const maxTileY = centerTileY + 2;
 
     for (let tx = minTileX; tx <= maxTileX; tx++) {
       for (let ty = minTileY; ty <= maxTileY; ty++) {
@@ -322,8 +345,6 @@ export const generateBeforeAfterDualSnapshot = async ({
     }
 
     const loadedTiles = await Promise.all(tilePromises);
-
-    const halfW = (width - 6) / 2;
 
     // Helper pour dessiner le fond satellite sur une moitié (gauche ou droite)
     const drawSatelliteHalf = (offsetX) => {
@@ -368,15 +389,19 @@ export const generateBeforeAfterDualSnapshot = async ({
 
     let placedCount = 0;
 
+    // 2. Dessin du Polygone Délimité & des Panneaux
     if (polygonPoints && polygonPoints.length >= 3) {
-      // ─── MOITIÉ GAUCHE (AVANT) ───
+      // ─── MOITIÉ GAUCHE (AVANT : TOITURE BRUTE AVEC CADRE POINTILLÉ BLANC) ───
       const ptsLeft = polygonPoints.map(p => getCanvasPoint(p.lat, p.lng, 0));
       ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, halfW, height);
+      ctx.clip();
       ctx.beginPath();
       ctx.moveTo(ptsLeft[0].x, ptsLeft[0].y);
       for (let i = 1; i < ptsLeft.length; i++) ctx.lineTo(ptsLeft[i].x, ptsLeft[i].y);
       ctx.closePath();
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.25)';
       ctx.fill();
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2;
@@ -388,6 +413,10 @@ export const generateBeforeAfterDualSnapshot = async ({
       const ptsRight = polygonPoints.map(p => getCanvasPoint(p.lat, p.lng, halfW + 6));
       ctx.save();
       ctx.beginPath();
+      ctx.rect(halfW + 6, 0, halfW, height);
+      ctx.clip();
+
+      ctx.beginPath();
       ctx.moveTo(ptsRight[0].x, ptsRight[0].y);
       for (let i = 1; i < ptsRight.length; i++) ctx.lineTo(ptsRight[i].x, ptsRight[i].y);
       ctx.closePath();
@@ -398,11 +427,10 @@ export const generateBeforeAfterDualSnapshot = async ({
       ctx.setLineDash([3, 3]);
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.restore();
 
       // Calcul des emplacements géométriquement valides (Ligne par ligne)
       const { slots, maxPanels } = computeValidSolarSlots(polygonPoints);
-      const targetPanels = Math.max(1, Math.round((customKwc * 1000) / 440));
+      const targetPanels = Math.max(1, Math.round((customKwc * 1000) / 465));
       const countToPlace = Math.min(targetPanels, maxPanels);
       placedCount = countToPlace;
 
@@ -434,10 +462,11 @@ export const generateBeforeAfterDualSnapshot = async ({
         ctx.stroke();
         ctx.restore();
       }
+      ctx.restore();
     }
 
     // ─── BADGES EN HAUT DE CHAQUE MOITIÉ ───
-    const panelCount = placedCount || Math.max(1, Math.round((customKwc * 1000) / 440));
+    const panelCount = placedCount || Math.max(1, Math.round((customKwc * 1000) / 465));
 
     // Badge Gauche (AVANT)
     ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';

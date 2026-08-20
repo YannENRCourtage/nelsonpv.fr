@@ -153,7 +153,7 @@ export default function SolarAutoconsoSimulator({
     else target = 36;
 
     const availablePowers = [3, 6, 9, 15, 22, 36].filter(kw => {
-      const neededPanels = Math.round((kw * 1000) / 440);
+      const neededPanels = Math.round((kw * 1000) / 465);
       return neededPanels <= maxInstallableRoof.maxPanels;
     });
 
@@ -290,6 +290,8 @@ export default function SolarAutoconsoSimulator({
         autoconsoRate: customAutoconsoRate,
         autoconsoKwh,
         surplusKwh,
+        annualSavingsAutoconso,
+        annualRevenueSurplus,
         annualBenefitYear1: totalAnnualBenefitYear1,
         totalInvestmentHT,
         paybackYear,
@@ -302,7 +304,7 @@ export default function SolarAutoconsoSimulator({
     customKwc, cityName, clientNameInput, addressInput, departmentCode, mapCenter, mapZoom, polygonPoints,
     roofSurface, selectedPitch, orientationInfo, consoKwh, annualBillEuro, evCount, recommendedKwc,
     regionalBaseYield, annualProductionKwh, customAutoconsoRate, autoconsoKwh,
-    surplusKwh, totalAnnualBenefitYear1, totalInvestmentHT, paybackYear,
+    surplusKwh, annualSavingsAutoconso, annualRevenueSurplus, totalAnnualBenefitYear1, totalInvestmentHT, paybackYear,
     totalGains30Years, mapScreenshotDataUrl, onStateUpdate
   ]);
 
@@ -875,7 +877,7 @@ export default function SolarAutoconsoSimulator({
 
               <div className="flex flex-wrap items-center gap-1.5 bg-white px-3 py-1.5 rounded-2xl border border-slate-200 shadow-2xs">
                 {[3, 6, 9, 15, 22, 36].map((kw) => {
-                  const neededPanels = Math.round((kw * 1000) / 440);
+                  const neededPanels = Math.round((kw * 1000) / 465);
                   const isAllowed = neededPanels <= maxInstallableRoof.maxPanels;
 
                   if (!isAllowed) {

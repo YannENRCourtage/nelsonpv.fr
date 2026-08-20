@@ -56,7 +56,7 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
                 <>
                     <PerspectiveCamera
                         makeDefault
-                        position={[0, (config.eaveHeight + (config.ridgeHeight || 7.4)) * 0.45, Math.max(config.width * 1.45, 22)]}
+                        position={[0, (config.eaveHeight + (config.ridgeHeight || 7.4)) * 0.45, Math.max(config.width * 1.30, 18)]}
                         fov={45}
                         near={0.1}
                         far={2000}
@@ -72,7 +72,7 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
                 <>
                     <PerspectiveCamera
                         makeDefault
-                        position={[Math.max(config.width * 1.45, 28), config.eaveHeight * 0.55, -config.length / 2]}
+                        position={[Math.max(config.width * 1.30, 22), config.eaveHeight * 0.55, -config.length / 2]}
                         fov={45}
                         near={0.1}
                         far={2000}
@@ -86,13 +86,13 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
 
             {viewMode === '2D_FRONT' && (
                 <>
-                    {/* Technical Isometric View (+1 zoom point) */}
+                    {/* Technical Isometric View (+1 zoom point supplémentaire) */}
                     <OrthographicCamera
                         makeDefault
                         position={[100, 100, 100]}
                         near={-500}
                         far={1000}
-                        zoom={Math.min(24, Math.max(14, 520 / Math.max(config.length, config.width, 25)))}
+                        zoom={Math.min(26, Math.max(15, 580 / Math.max(config.length, config.width, 25)))}
                         onUpdate={c => c.lookAt(0, config.eaveHeight / 2, -config.length / 2)}
                     />
                     <OrbitControls
@@ -104,8 +104,8 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
             )}
 
             {/* Auto-Centering logic: Re-fits whenever config changes */}
-            {/* Capture: margin=0.72 pour centrer la 3D, margin=0.92 pour +1 zoom point sur les 3 vues Pignon/2D/Façade. Normal: margin=1.1 */}
-            <Bounds fit clip observe margin={isCapturing ? (viewMode === '3D' ? 0.72 : 0.92) : 1.1}>
+            {/* Capture: margin=0.72 pour centrer la 3D, margin=0.82 pour +1 zoom point sur les 3 vues Pignon/2D/Façade. Normal: margin=1.1 */}
+            <Bounds fit clip observe margin={isCapturing ? (viewMode === '3D' ? 0.72 : 0.82) : 1.1}>
                 <Structure />
             </Bounds>
 

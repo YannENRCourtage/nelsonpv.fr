@@ -11,6 +11,7 @@ import { useSimulatorSettingsStore, getProductionForDepartment } from '@/stores/
 import RoofMapPolygonSelector from './RoofMapPolygonSelector';
 import SolarRoofBeforeAfterViewer from './SolarRoofBeforeAfterViewer';
 import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
+import { computeValidSolarSlots } from '@/utils/solarCalepinage';
 
 export default function SolarRoofSimulator({
   selectedProject,
@@ -52,8 +53,44 @@ export default function SolarRoofSimulator({
   });
   const [selectedPitch, setSelectedPitch] = useState(30);
 
+  const [userSelectedKwc, setUserSelectedKwc] = useState(null);
+
   const mapContainerRef = useRef(null);
   const [mapScreenshotDataUrl, setMapScreenshotDataUrl] = useState(null);
+
+  // Capacité maximale installable selon calepinage géométrique strict (panneaux 465 Wc portrait)
+  const maxInstallableRoof = useMemo(() => {
+    if (!polygonPoints || polygonPoints.length < 3) {
+      const p = Math.max(1, Math.round(roofSurface / 2.05));
+      const kw = Math.round(p * 0.465 * 10) / 10;
+      return { maxPanels: p, maxKwc: kw };
+    }
+    try {
+      const { maxPanels } = computeValidSolarSlots(polygonPoints);
+      const kw = Math.round(maxPanels * 0.465 * 10) / 10;
+      return { maxPanels: Math.max(1, maxPanels), maxKwc: kw };
+    } catch {
+      const p = Math.max(1, Math.round(roofSurface / 2.05));
+      return { maxPanels: p, maxKwc: Math.round(p * 0.465 * 10) / 10 };
+    }
+  }, [polygonPoints, roofSurface]);
+
+  // Puissance installée effective (par défaut: puissance maximale optimisée)
+  const installedKwc = useMemo(() => {
+    const maxK = maxInstallableRoof.maxKwc || 100;
+    if (userSelectedKwc !== null && userSelectedKwc <= maxK && userSelectedKwc > 0) {
+      return userSelectedKwc;
+    }
+    return maxK;
+  }, [maxInstallableRoof, userSelectedKwc]);
+
+  const panelCount = useMemo(() => {
+    return Math.max(1, Math.round((installedKwc * 1000) / 465));
+  }, [installedKwc]);
+
+  const installedSurfaceM2 = useMemo(() => {
+    return Math.round(panelCount * 1.762 * 1.134);
+  }, [panelCount]);
 
   useEffect(() => {
     if (selectedProject) {
@@ -107,13 +144,6 @@ export default function SolarRoofSimulator({
     if (city) setCityName(city);
     setSuggestions([]);
   };
-
-  // Calcul Puissance
-  const installedKwc = useMemo(() => {
-    const ratio = toitureSettings.surfaceToPowerRatio || 6.0;
-    const kwc = Math.round((roofSurface / ratio) * 10) / 10;
-    return Math.min(500, Math.max(36, kwc));
-  }, [roofSurface, toitureSettings]);
 
   const regionalBaseYield = useMemo(() => {
     return getProductionForDepartment(departmentCode);
@@ -786,9 +816,42 @@ export default function SolarRoofSimulator({
 
             </div>
 
-            <p className="text-center text-[11px] text-slate-400 italic">
-              La production et les revenus affichés sont limités à 500 kWc, conformément aux tarifs conventionnés.
-            </p>
+            {/* Sélecteur & Ajustement de la Puissance Installée */}
+            <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-slate-900">Optimisation de la centrale photovoltaïque</h4>
+                  <p className="text-xs text-slate-500">
+                    Toiture de <strong>{roofSurface} m²</strong> : Capacité max de <strong className="text-emerald-700">{maxInstallableRoof.maxKwc} kWc</strong> ({maxInstallableRoof.maxPanels} panneaux de 465 Wc)
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-slate-500 mr-1">Choisir la puissance :</span>
+                {[1, 0.75, 0.5, 0.25].map((ratio) => {
+                  const kw = Math.round(maxInstallableRoof.maxKwc * ratio * 10) / 10;
+                  const isSelected = Math.abs(installedKwc - kw) < 0.2;
+                  return (
+                    <button
+                      key={ratio}
+                      type="button"
+                      onClick={() => setUserSelectedKwc(kw)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                        isSelected
+                          ? 'bg-[#0e2b4d] text-white shadow-md shadow-blue-900/20 ring-2 ring-[#0e2b4d]'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {ratio === 1 ? `Max (${kw} kWc)` : `${kw} kWc (${Math.round(ratio * 100)}%)`}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* Visuel Avant / Après de l'implantation des panneaux sur la toiture */}
             <SolarRoofBeforeAfterViewer
@@ -796,6 +859,7 @@ export default function SolarRoofSimulator({
               polygonPoints={polygonPoints}
               roofSurface={roofSurface}
               customKwc={installedKwc}
+              panelCount={panelCount}
               orientationInfo={orientationInfo}
               annualProductionKwh={annualProductionKwh}
             />

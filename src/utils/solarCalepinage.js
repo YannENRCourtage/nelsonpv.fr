@@ -3,7 +3,7 @@
 export const PANEL_WIDTH_M = 1.134;   // Largeur panneau standard en portrait (1.134 m)
 export const PANEL_HEIGHT_M = 1.762;  // Hauteur panneau standard en portrait (1.762 m)
 export const PANEL_GAP_M = 0.02;      // Espacement inter-panneaux (2 cm)
-export const PANEL_POWER_W = 440;     // Puissance unitaire d'un panneau (440 Wc)
+export const PANEL_POWER_W = 465;     // Puissance unitaire d'un panneau (465 Wc)
 
 /**
  * Test d'inclusion d'un point géographique (lat, lng) dans un polygone (Ray-Casting Algorithm)

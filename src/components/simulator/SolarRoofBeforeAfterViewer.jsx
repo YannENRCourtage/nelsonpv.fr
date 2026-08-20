@@ -55,7 +55,7 @@ function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, orien
     // 2. Calcul des emplacements géométriquement valides (Ligne par ligne)
     try {
       const { slots, maxPanels } = computeValidSolarSlots(polygonPoints);
-      const targetPanels = panelCount || Math.max(1, Math.round((customKwc * 1000) / 440));
+      const targetPanels = panelCount || Math.max(1, Math.round((customKwc * 1000) / 465));
       const countToPlace = Math.min(targetPanels, maxPanels);
 
       for (let i = 0; i < countToPlace; i++) {
@@ -88,13 +88,14 @@ function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, orien
 }
 
 /**
- * Composant Avant / Après interactif pour la simulation d'Autoconsommation
+ * Composant Avant / Après interactif pour la simulation d'Autoconsommation / Toiture Photovoltaïque
  */
 export default function SolarRoofBeforeAfterViewer({
   center = [43.6047, 1.4442],
   polygonPoints = [],
   roofSurface = 75,
   customKwc = 6,
+  panelCount: propPanelCount,
   orientationInfo = { orientationLabel: 'Plein Sud (0°)', angle: 0 },
   consoKwh = 10000,
   annualProductionKwh = 7500
@@ -105,8 +106,8 @@ export default function SolarRoofBeforeAfterViewer({
   const containerRef = useRef(null);
 
   const panelCount = useMemo(() => {
-    return Math.max(1, Math.round((customKwc * 1000) / 440));
-  }, [customKwc]);
+    return propPanelCount || Math.max(1, Math.round((customKwc * 1000) / 465));
+  }, [propPanelCount, customKwc]);
 
   const coveredSurface = useMemo(() => {
     return Math.min(roofSurface, Math.round(panelCount * 1.95));

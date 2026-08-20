@@ -336,7 +336,7 @@ export async function generateFicheTechniquePDF({
     const mainW = 138;
 
     // Helper pour dessiner un cadre visuel élégant avec centrage H/V parfait sans débordement
-    const drawImageCard = (title, x, y, w, h, imgObj) => {
+    const drawImageCard = (title, x, y, w, h, imgObj, shiftX = 0) => {
         // Fond blanc du cadre avec bordure grise
         pdf.setFillColor(255, 255, 255);
         pdf.roundedRect(x, y, w, h, 2, 2, 'FD');
@@ -367,7 +367,7 @@ export async function generateFicheTechniquePDF({
 
                 let imgW = containerW;
                 let imgH = containerH;
-                let imgX = containerX;
+                let imgX = containerX + shiftX;
                 let imgY = containerY;
 
                 if (imgObj.width && imgObj.height) {
@@ -379,11 +379,12 @@ export async function generateFicheTechniquePDF({
                         imgW = containerW;
                         imgH = containerW / imgAspect;
                         imgY = containerY + (containerH - imgH) / 2;
+                        imgX = containerX + shiftX;
                     } else {
                         // Image plus haute : ajuste à la hauteur et centre horizontalement
                         imgH = containerH;
                         imgW = containerH * imgAspect;
-                        imgX = containerX + (containerW - imgW) / 2;
+                        imgX = containerX + (containerW - imgW) / 2 + shiftX;
                     }
                 }
 
@@ -394,21 +395,21 @@ export async function generateFicheTechniquePDF({
         }
     };
 
-    // VISUEL 1 (Haut) : Vue 3D configurée principale (88mm)
-    const topH = 88;
+    // VISUEL 1 (Haut) : Vue 3D configurée principale (80mm)
+    const topH = 80;
     drawImageCard('Vue 3D Principale du Bâtiment (Perspective)', mainX, 24, mainW, topH, loadedMain3D);
 
-    // VISUELS 2 & 3 (Milieu) : Pignon Gauche + Visuel 2D côte à côte (48mm avec écart de 6mm)
-    const midY = 24 + topH + 6.0; // 118.0 mm
-    const midH = 48;
+    // VISUELS 2 & 3 (Milieu) : Pignon Gauche + Visuel 2D côte à côte (44mm avec écart de 8mm)
+    const midY = 24 + topH + 8.0; // 112.0 mm
+    const midH = 44;
     const halfW = (mainW - 3) / 2; // 67.5 mm chacun
     drawImageCard('Vue Pignon (Gauche)', mainX, midY, halfW, midH, loadedPignon);
     drawImageCard('Élévation 2D / Coupe Technique', mainX + halfW + 3, midY, halfW, midH, loaded2D);
 
-    // VISUEL 4 (Bas) : Vue Façade Sud (avec écart de 6mm)
-    const sudY = midY + midH + 6.0; // 172.0 mm
-    const sudH = 70;
-    drawImageCard('Vue Façade Sud (Long Pan Solaire)', mainX, sudY, mainW, sudH, loadedFacadeSud);
+    // VISUEL 4 (Bas) : Vue Façade Sud (avec écart de 8mm et décalage gauche de centrage)
+    const sudY = midY + midH + 8.0; // 164.0 mm
+    const sudH = 76;
+    drawImageCard('Vue Façade Sud (Long Pan Solaire)', mainX, sudY, mainW, sudH, loadedFacadeSud, -3.5);
 
     // ==========================================
     // 4. PIED DE PAGE (FOOTER)

@@ -36,57 +36,72 @@ const formatTime = (hoursFloat) => {
   return `${h.toString().padStart(2, '0')}h${m.toString().padStart(2, '0')}`;
 };
 
-// Composant affichant UNIQUEMENT la prise correspondant au véhicule choisi (extrait fidèle de l'image de référence)
-const EvSpecificConnectorVisual = ({ connector, acPower }) => {
-  const connStr = (connector || '').toLowerCase();
+const ConnectorIcon = ({ type }) => {
+  const t = (type || '').toLowerCase();
   
-  // 0: CCS1 150 (Type 1)
-  // 1: CCS2 150 (Type 2 Combo)
-  // 2: CHA125 (CHAdeMO)
-  // 3: AC 22 kW / Type 2 (Standard Européen)
-  let index = 3;
-  let title = "AC 22 kW";
-  let desc = "Prise Type 2 avec obturateurs";
-
-  if (connStr.includes('ccs2') || connStr.includes('combo') || connStr.includes('ccs_2')) {
-    index = 1;
-    title = "CCS2 150";
-    desc = "CCS Type 2 150 A";
-  } else if (connStr.includes('ccs1') || connStr.includes('type1') || connStr.includes('j1772')) {
-    index = 0;
-    title = "CCS1 150";
-    desc = "CCS Type 1 150 A";
-  } else if (connStr.includes('chademo') || connStr.includes('cha125')) {
-    index = 2;
-    title = "CHA125";
-    desc = "CHAdeMO 125 A";
+  if (t.includes('ccs')) {
+    // CCS2
+    return (
+      <svg width="34" height="42" viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 15,20 Q 50,-5 85,20 A 45,45 0 0,1 85,60 C 85,75 75,85 50,85 C 25,85 15,75 15,60 Z" fill="black" />
+        <circle cx="35" cy="30" r="6" fill="white" />
+        <circle cx="65" cy="30" r="6" fill="white" />
+        <circle cx="20" cy="50" r="6" fill="white" />
+        <circle cx="50" cy="50" r="6" fill="white" />
+        <circle cx="80" cy="50" r="6" fill="white" />
+        <circle cx="35" cy="70" r="6" fill="white" />
+        <circle cx="65" cy="70" r="6" fill="white" />
+        <path d="M 25,80 A 30,25 0 0,0 75,80 A 30,30 0 0,1 75,115 A 30,25 0 0,1 25,115 A 30,30 0 0,1 25,80 Z" fill="black" />
+        <circle cx="35" cy="98" r="10" fill="white" />
+        <circle cx="65" cy="98" r="10" fill="white" />
+      </svg>
+    );
+  } else if (t.includes('type1') || t.includes('j1772')) {
+    // Type 1
+    return (
+      <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="45" fill="black" />
+        <circle cx="50" cy="25" r="8" fill="white" />
+        <circle cx="25" cy="45" r="8" fill="white" />
+        <circle cx="75" cy="45" r="8" fill="white" />
+        <circle cx="35" cy="70" r="6" fill="white" />
+        <circle cx="65" cy="70" r="6" fill="white" />
+      </svg>
+    );
+  } else if (t.includes('chademo')) {
+    // CHAdeMO
+    return (
+      <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="45" fill="black" />
+        <circle cx="50" cy="25" r="9" fill="white" />
+        <circle cx="25" cy="50" r="9" fill="white" />
+        <circle cx="75" cy="50" r="9" fill="white" />
+        <circle cx="50" cy="75" r="9" fill="white" />
+      </svg>
+    );
   } else {
-    index = 3;
-    title = acPower ? `AC ${acPower} kW` : "AC 22 kW";
-    desc = "Prise Type 2 avec obturateurs";
+    // Type 2 (default)
+    return (
+      <svg width="34" height="34" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 15,20 Q 50,-5 85,20 A 45,45 0 1,1 15,20 Z" fill="black" />
+        <circle cx="35" cy="35" r="7" fill="white" />
+        <circle cx="65" cy="35" r="7" fill="white" />
+        <circle cx="20" cy="55" r="7" fill="white" />
+        <circle cx="50" cy="55" r="7" fill="white" />
+        <circle cx="80" cy="55" r="7" fill="white" />
+        <circle cx="35" cy="75" r="7" fill="white" />
+        <circle cx="65" cy="75" r="7" fill="white" />
+      </svg>
+    );
   }
+};
 
-  return (
-    <div className="flex flex-col items-center justify-center gap-1">
-      <div 
-        className="w-[120px] h-[64px] overflow-hidden relative rounded-lg border border-slate-200 bg-white shadow-2xs"
-        title={`${title} : ${desc}`}
-      >
-        <img 
-          src={CONNECTEURS_IRVE_BASE64} 
-          alt={title}
-          style={{
-            position: 'absolute',
-            width: '100%',
-            height: '400%',
-            top: `-${index * 100}%`,
-            left: 0,
-            objectFit: 'contain'
-          }}
-        />
-      </div>
-    </div>
-  );
+const getConnectorDisplayName = (type) => {
+  const t = (type || '').toLowerCase();
+  if (t.includes('ccs')) return 'CCS';
+  if (t.includes('type1') || t.includes('j1772')) return 'Type 1';
+  if (t.includes('chademo')) return 'CHAdeMO';
+  return 'Type 2';
 };
 
 // Mapping des noms de marques vers les slugs du CDN car-logos-dataset
@@ -345,8 +360,12 @@ export default function EvComparator() {
                     </div>
                   </div>
 
-                  <div className="shrink-0 flex flex-col items-center justify-center border-l border-slate-100 pl-3 ml-2">
-                    <EvSpecificConnectorVisual connector={connector} acPower={acPower} />
+                  <div className="shrink-0 flex flex-col items-center justify-center border-l border-slate-100 pl-4 ml-2">
+                    <ConnectorIcon type={connector} />
+                    <div className="text-center mt-1.5">
+                      <div className="text-slate-600 text-[10px] font-medium leading-none mb-0.5">Connecteur</div>
+                      <div className="font-bold text-xs uppercase text-slate-800 leading-none">{getConnectorDisplayName(connector)}</div>
+                    </div>
                   </div>
                 </div>
               </div>

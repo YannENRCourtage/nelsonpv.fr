@@ -400,7 +400,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
           <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 8px; padding: 6px; text-align: center;">
             <div style="font-size: 6.5pt; font-weight: bold; color: #166534; text-transform: uppercase;">${isIrve ? 'Investissement net' : 'Gains / an (An 1)'}</div>
             <div style="font-size: 13pt; font-weight: 900; color: #16a34a; margin: 1px 0;">${isIrve ? `${(sim.totalInvestmentHT || sim.resteACharge || 3960).toLocaleString('fr-FR')} € HT` : annualGainFormatted}</div>
-            <div style="font-size: 6.5pt; color: #166534;">${isIrve ? `Coût ${sim.quantity || 1} borne(s)` : isStruct ? edfOaTarifLabel : isToiture ? `Tarif EDF OA : ${sim.tarifEdfOaKwh || '0.082'} €/kWh` : 'Bénéfice net annuel'}</div>
+            <div style="font-size: 6.5pt; color: #166534;">${isIrve ? `Coût ${sim.quantity || 1} borne(s)` : isStruct ? edfOaTarifLabel : isToiture ? `Tarif EDF OA : ${sim.tarifEdfOaKwh || '0.082'} €/kWh` : `${Math.round(sim.annualSavingsAutoconso || ((sim.annualBenefitYear1 || 1462) * 0.88)).toLocaleString('fr-FR')} € écon. + ${Math.round(sim.annualRevenueSurplus || ((sim.annualBenefitYear1 || 1462) * 0.12)).toLocaleString('fr-FR')} € surplus`}</div>
           </div>
 
           <div style="background: #faf5ff; border: 1.5px solid #e9d5ff; border-radius: 8px; padding: 6px; text-align: center;">
