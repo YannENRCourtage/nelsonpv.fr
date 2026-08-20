@@ -269,14 +269,22 @@ export async function generateFicheTechniquePDF({
         drawRow('Ratio Struct. / Wc :', `${ratioStructureCostPerWc} € / Wc`);
     }
 
-    // --- LOGO NELSON EN BAS DU CADRE BLEU (CENTRE) ---
+    // --- PRÉ-CHARGEMENT DES IMAGES POUR UN RATIO & CADRAGE PARFAIT SANS DÉFORMATION ---
+    const [loadedMain3D, loadedPignon, loaded2D, loadedFacadeSud] = await Promise.all([
+        loadImage(imgMain3D),
+        loadImage(imgPignon),
+        loadImage(img2D),
+        loadImage(imgFacadeSud),
+    ]);
+
+    // --- LOGO NELSON EN BAS DU CADRE BLEU (CENTRE ET REDUIT) ---
     try {
         const logoNelson = await loadImage('/logo-nelson.png');
         if (logoNelson) {
-            const nelsonW = 24;
-            const nelsonH = 9;
+            const nelsonW = 15;
+            const nelsonH = 5.8;
             const nelsonX = sideX + (sideW - nelsonW) / 2;
-            const nelsonY = sideY + sideH - 13;
+            const nelsonY = sideY + sideH - 9.5;
             pdf.addImage(logoNelson, 'PNG', nelsonX, nelsonY, nelsonW, nelsonH, undefined, 'FAST');
         }
     } catch (e) {
@@ -289,8 +297,8 @@ export async function generateFicheTechniquePDF({
     const mainX = 66;
     const mainW = 138;
 
-    // Helper pour dessiner un cadre visuel élégant sans déformation d'image
-    const drawImageCard = (title, x, y, w, h, imgData) => {
+    // Helper pour dessiner un cadre visuel élégant avec centrage H/V parfait sans débordement
+    const drawImageCard = (title, x, y, w, h, imgObj) => {
         // Fond blanc du cadre avec bordure grise
         pdf.setFillColor(255, 255, 255);
         pdf.roundedRect(x, y, w, h, 2, 2, 'FD');
@@ -310,16 +318,38 @@ export async function generateFicheTechniquePDF({
         pdf.setTextColor(71, 85, 105);
         pdf.text(title.toUpperCase(), x + 3, y + 4.0);
 
-        // Insertion Image avec respect strict de l'aspect ratio (pas de compression horizontale)
-        if (imgData) {
+        // Insertion Image parfaitement centrée horizontalement et verticalement sans déformation
+        if (imgObj) {
             try {
-                const imgMargin = 1.0;
-                const boxX = x + imgMargin;
-                const boxY = y + 5.5 + imgMargin;
-                const boxW = w - (imgMargin * 2);
-                const boxH = h - 5.5 - (imgMargin * 2);
+                const imgMargin = 1.5;
+                const containerX = x + imgMargin;
+                const containerY = y + 5.5 + imgMargin;
+                const containerW = w - (imgMargin * 2);
+                const containerH = h - 5.5 - (imgMargin * 2);
 
-                pdf.addImage(imgData, 'PNG', boxX, boxY, boxW, boxH, undefined, 'FAST');
+                let imgW = containerW;
+                let imgH = containerH;
+                let imgX = containerX;
+                let imgY = containerY;
+
+                if (imgObj.width && imgObj.height) {
+                    const imgAspect = imgObj.width / imgObj.height;
+                    const containerAspect = containerW / containerH;
+
+                    if (imgAspect > containerAspect) {
+                        // Image plus large : ajuste à la largeur et centre verticalement
+                        imgW = containerW;
+                        imgH = containerW / imgAspect;
+                        imgY = containerY + (containerH - imgH) / 2;
+                    } else {
+                        // Image plus haute : ajuste à la hauteur et centre horizontalement
+                        imgH = containerH;
+                        imgW = containerH * imgAspect;
+                        imgX = containerX + (containerW - imgW) / 2;
+                    }
+                }
+
+                pdf.addImage(imgObj, 'PNG', imgX, imgY, imgW, imgH, undefined, 'FAST');
             } catch (err) {
                 console.warn('Erreur rendu image:', title, err);
             }
@@ -327,17 +357,17 @@ export async function generateFicheTechniquePDF({
     };
 
     // VISUEL 1 (Haut) : Vue 3D configurée principale
-    drawImageCard('Vue 3D Principale du Bâtiment (Perspective)', mainX, 24, mainW, 83, imgMain3D);
+    drawImageCard('Vue 3D Principale du Bâtiment (Perspective)', mainX, 24, mainW, 82, loadedMain3D);
 
     // VISUELS 2 & 3 (Milieu) : Pignon Gauche + Visuel 2D côte à côte
-    const midY = 110;
-    const midH = 81;
+    const midY = 109;
+    const midH = 82;
     const halfW = (mainW - 3) / 2; // 67.5 mm chacun
-    drawImageCard('Vue Pignon (Gauche)', mainX, midY, halfW, midH, imgPignon);
-    drawImageCard('Élévation 2D / Coupe Technique', mainX + halfW + 3, midY, halfW, midH, img2D);
+    drawImageCard('Vue Pignon (Gauche)', mainX, midY, halfW, midH, loadedPignon);
+    drawImageCard('Élévation 2D / Coupe Technique', mainX + halfW + 3, midY, halfW, midH, loaded2D);
 
     // VISUEL 4 (Bas) : Vue Façade Sud (Long Pan Solaire)
-    drawImageCard('Vue Façade Sud (Long Pan Solaire)', mainX, 194, mainW, 88, imgFacadeSud);
+    drawImageCard('Vue Façade Sud (Long Pan Solaire)', mainX, 194, mainW, 88, loadedFacadeSud);
 
     // ==========================================
     // 4. PIED DE PAGE (FOOTER)

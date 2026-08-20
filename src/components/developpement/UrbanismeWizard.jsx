@@ -396,9 +396,9 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
     const hasMultiBuildings = secondaryBuildings.length > 0;
 
     let batimentDesc = isDP
-      ? `Le projet a pour objet l'implantation d'une ombrière photovoltaïque de parking${hasMultiBuildings ? ' (Ombrière 1)' : ''} de dimensions ${longueur1}m × ${largeur1.toFixed(2)}m (surface couverte : ${totalSurface1} m²) à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à ${b1Pitch}°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire${displayKwc ? `, développant une puissance installée de ${displayKwc} kWc` : ''}.`
+      ? `Le projet a pour objet l'implantation d'une ombrière photovoltaïque${hasMultiBuildings ? ' (Ombrière 1)' : ''} de dimensions ${longueur1}m × ${largeur1.toFixed(2)}m (surface couverte : ${totalSurface1} m²) à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à ${b1Pitch}°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire${displayKwc ? `, développant une puissance installée de ${displayKwc} kWc` : ''}.`
       : (isB1Ombriere
-        ? `Le projet a pour objet l'implantation d'une ombrière de parking photovoltaïque${hasMultiBuildings ? ' (Bâtiment 1)' : ''} de dimensions ${longueur1}m × ${largeur1.toFixed(2)}m (surface couverte : ${totalSurface1} m²) à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à 10°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire.`
+        ? `Le projet a pour objet l'implantation d'une ombrière photovoltaïque${hasMultiBuildings ? ' (Bâtiment 1)' : ''} de dimensions ${longueur1}m × ${largeur1.toFixed(2)}m (surface couverte : ${totalSurface1} m²) à structure métallique autoportante en Y/V (RAL 7016) avec toiture monopente inclinée à 10°, permettant d'abriter les véhicules tout en produisant de l'électricité solaire.`
         : `Le projet a pour objet la construction d'un bâtiment agricole à charpente métallique${hasMultiBuildings ? ' principal (Bâtiment 1)' : ''} de forme rectangulaire (longueur : ${longueur1}m, largeur : ${largeur1.toFixed(2)}m${b1Auvent ? ' + Auvent 4.00m' : ''}, hauteur sablière : ${b1Eave.toFixed(2)}m) en structure métallique (RAL 7016 / 7005), composé de ${b1Bays} travées de ${b1Spacing}m d'entraxe. La toiture sera constituée d'une couverture ${b1RoofLabel} avec bac acier anti-condensation (RAL 7016) et panneaux solaires photovoltaïques intégrés (RAL 9005)${displayKwc ? `, développant une puissance installée de ${displayKwc} kWc` : ''}.`);
 
     if (hasMultiBuildings) {
@@ -414,7 +414,7 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
         const displayName = getBuildingDisplayName(b, idx + 1);
 
         if (isOmb) {
-          batimentDesc += `\nIl comprend également l'implantation d'une ombrière photovoltaïque de parking (${displayName}) de dimensions ${bL}m × ${bW.toFixed(2)}m (surface couverte : ${bSurface} m²) à structure métallique en Y/V avec toiture monopente inclinée à ${bPitch}°.`;
+          batimentDesc += `\nIl comprend également l'implantation d'une ombrière photovoltaïque (${displayName}) de dimensions ${bL}m × ${bW.toFixed(2)}m (surface couverte : ${bSurface} m²) à structure métallique en Y/V avec toiture monopente inclinée à ${bPitch}°.`;
         } else {
           batimentDesc += `\nIl comprend également la construction d'un second bâtiment (${displayName}) de dimensions ${bL}m × ${bW.toFixed(2)}m${bAuvent ? ' (+ Auvent)' : ''} d'une emprise au sol de ${bSurface} m² (hauteur sablière : ${bEave.toFixed(2)}m, pente : ${bPitch}°) en structure métallique similaire.`;
         }

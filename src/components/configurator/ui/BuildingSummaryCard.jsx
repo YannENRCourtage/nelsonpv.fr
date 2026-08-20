@@ -70,9 +70,6 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                             <Building2 className="w-5 h-5" />
                         </div>
                         <div>
-                            <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider block">
-                                {isCustom ? 'Configuration Personnalisée' : 'Gamme & Modèle Officiel'}
-                            </span>
                             <h3 className="font-black text-slate-900 text-sm sm:text-base tracking-tight">
                                 {isCustom ? 'Bâtiment Sur-Mesure' : gammeName}
                             </h3>
@@ -106,9 +103,9 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                     ) : <div />}
 
                     {!isCustom && (
-                        <span className="text-slate-900 font-black text-xs sm:text-sm font-mono">
-                            {floorArea} m²
-                        </span>
+                        <p className="font-extrabold text-slate-900 text-xs sm:text-sm">
+                            Surface : {floorArea} m²
+                        </p>
                     )}
                 </div>
             </div>
@@ -143,7 +140,7 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
             {/* Grid 2 : Centrale Solaire & Puissance */}
             {config.hasSolar && (
                 <div className="bg-amber-50/90 p-3 rounded-xl border border-amber-200 flex items-center justify-between">
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                         <span className="text-[11px] text-amber-800 font-bold uppercase flex items-center gap-1.5">
                             <Sun className="w-4 h-4 text-amber-600" /> Centrale Photovoltaïque
                         </span>
@@ -151,7 +148,10 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
                             ⚡ {installedKwc.toFixed(1)} kWc
                         </p>
                         <p className="text-[11px] text-amber-800 font-medium">
-                            {panelCount} modules • ~{estimatedProductionKwh.toLocaleString('fr-FR')} kWh/an (Hypothèse 1150 kWh/kWc)
+                            {panelCount} modules • ~{estimatedProductionKwh.toLocaleString('fr-FR')} kWh/an
+                        </p>
+                        <p className="text-[10px] text-amber-700 font-medium">
+                            (Hypothèse 1150 kWh/kWc)
                         </p>
                     </div>
                     <div className="text-right shrink-0">
@@ -164,7 +164,7 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
             )}
 
             {/* Grid 3 : Chiffrage Structure & Ratios */}
-            <div className="space-y-2.5 border-t border-slate-100 pt-2.5">
+            <div className="space-y-2 border-t border-slate-100 pt-2">
                 <div className="flex items-center justify-between bg-slate-100/80 p-2.5 rounded-xl border border-slate-200">
                     <span className="text-xs sm:text-sm font-extrabold text-slate-700 flex items-center gap-1.5">
                         <Coins className="w-4 h-4 text-slate-600" /> Tarif Structure Métallique :
@@ -176,24 +176,24 @@ export const BuildingSummaryCard = ({ isAcama = false, className = '' }) => {
 
                 {/* Ratios : Ligne 1 avec PV et Hors PV, Ligne 2 Ratio Surface */}
                 {config.hasSolar ? (
-                    <div className="space-y-2.5 bg-white p-2.5 rounded-xl border border-slate-100 text-xs">
-                        <div className="grid grid-cols-2 gap-2 text-slate-500">
+                    <div className="space-y-2 bg-white p-2.5 rounded-xl border border-slate-100 text-xs">
+                        <div className="grid grid-cols-2 gap-1.5 text-slate-500">
                             <div>
-                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Ratio Tarif / Puissance</span>
+                                <span className="text-[9.5px] uppercase font-bold text-slate-400 block whitespace-nowrap">Ratio Tarif / Puissance</span>
                                 <strong className="text-slate-800 font-extrabold text-xs sm:text-sm flex items-baseline gap-1 mt-0.5">
                                     {ratioTotalCostPerWc.toFixed(2)} € <span className="text-[10px] font-normal text-slate-500">/ Wc</span>
-                                    <span className="text-[10px] font-semibold text-slate-400">({ratioTotalCostPerKwc} €/kWc)</span>
+                                    <span className="text-[9.5px] font-semibold text-slate-400">({ratioTotalCostPerKwc} €/kWc)</span>
                                 </strong>
                             </div>
                             <div>
-                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Ratio Tarif / Puissance (Hors PV)</span>
+                                <span className="text-[9.5px] uppercase font-bold text-slate-400 block whitespace-nowrap">Ratio Tarif / Puissance (Hors PV)</span>
                                 <strong className="text-slate-700 font-extrabold text-xs sm:text-sm flex items-baseline gap-1 mt-0.5">
                                     {ratioStructureCostPerWc.toFixed(2)} € <span className="text-[10px] font-normal text-slate-500">/ Wc</span>
-                                    <span className="text-[10px] font-normal text-slate-400">({ratioStructureCostPerKwc} €/kWc)</span>
+                                    <span className="text-[9.5px] font-normal text-slate-400">({ratioStructureCostPerKwc} €/kWc)</span>
                                 </strong>
                             </div>
                         </div>
-                        <div className="border-t border-slate-100 pt-2 flex items-center justify-between text-slate-500">
+                        <div className="border-t border-slate-100 pt-1.5 flex items-center justify-between text-slate-500">
                             <span className="text-[10px] uppercase font-bold text-slate-400">Ratio Tarif / Surface</span>
                             <strong className="text-slate-800 font-extrabold text-xs sm:text-sm">
                                 {ratioCostPerM2} € <span className="text-[10px] font-normal text-slate-500">/ m²</span>

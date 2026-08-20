@@ -308,8 +308,8 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
     // Détection stricte du type d'ouvrage
     const rawType = (project?.buildingType || project?.installationType || project?.type || 'asymetrique_1').toLowerCase();
     const isOmbriere = rawType.includes('ombriere');
-    const isPL = isOmbriere && (rawType.includes('pl') || largeur >= 14.5);
-    const isSimple = isOmbriere && !isPL && (rawType.includes('simple') || largeur <= 6.5);
+    const isPL = isOmbriere && (rawType.includes('ombriere_pl') || (rawType.includes('pl') && !rawType.includes('simple')) || largeur >= 13.0);
+    const isSimple = isOmbriere && !isPL && (rawType.includes('simple') || largeur <= 7.5);
     const isDouble = isOmbriere && !isPL && !isSimple;
     const isMonopente = !isOmbriere && rawType.includes('monopente');
     const isSym = !isOmbriere && rawType.includes('symetrique') && !rawType.includes('asym');
@@ -365,10 +365,14 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
             }
         } else if (isSimple) {
             // Ombrière Simple VL
-            realRoofWidth = largeur > 5.2 ? 5.80 : 5.00;
-            realGroundWidth = largeur;
-            leftEaveHeight = 4.10; ridgeHeight = 4.35; rightEaveHeight = 2.93;
-            clearanceHeight = 2.40; massifWidth = 1.20;
+            realRoofWidth = (largeur >= 6.0 || Math.abs(largeur - 6.9) < 0.5) ? 6.90 : (largeur > 0 ? largeur : 5.20);
+            realGroundWidth = realRoofWidth;
+            leftEaveHeight = Number(project?.ridgeHeight || 4.10);
+            ridgeHeight = leftEaveHeight;
+            rightEaveHeight = Number(project?.eaveHeight || 2.90);
+            clearanceHeight = 2.40;
+            massifWidth = 1.30;
+            massifHeight = 0.35;
         } else {
             // Ombrière Double VL (O4 / O5)
             if (largeur > 10.0 || Math.abs(largeur - 11.3) < 1.0) {
@@ -696,12 +700,85 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                         );
                                     })()
                                 ) : (
-                                    /* ── OMBRIÈRE SIMPLE VL ── */
-                                    <g>
-                                        <rect x={mainLeftSvgX + mainWidthSvg * 0.4} y={groundY - 6} width="20" height="6" fill="#cbd5e1" stroke="#64748b" strokeWidth="1" rx="1" />
-                                        <line x1={mainLeftSvgX + mainWidthSvg * 0.5} y1={groundY - 6} x2={mainLeftSvgX + mainWidthSvg * 0.35} y2={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.35} stroke="#1e293b" strokeWidth="6" />
-                                        <polygon points={`${mainLeftSvgX - 6},${leftEaveSvgY} ${mainRightSvgX + 6},${rightEaveSvgY} ${mainRightSvgX + 6},${rightEaveSvgY - 5} ${mainLeftSvgX - 6},${leftEaveSvgY - 5}`} fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1" />
-                                    </g>
+                                    /* ── OMBRIÈRE SIMPLE VL (Poteau avec bracons obliques et toiture solaire) ── */
+                                    (() => {
+                                        const mWidth = massifWidth * pxPerM;
+                                        const mHeight = massifHeight * pxPerM;
+                                        const postBaseX = mainLeftSvgX + mainWidthSvg * 0.45;
+                                        const mX = postBaseX - mWidth / 2;
+                                        const mY = groundY - mHeight;
+
+                                        const postTopRatio = 0.45;
+                                        const postTopY = leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * postTopRatio;
+
+                                        const strutLeftRatio = 0.15;
+                                        const strutRightRatio = 0.78;
+                                        const strutLeftRoofX = mainLeftSvgX + mainWidthSvg * strutLeftRatio;
+                                        const strutLeftRoofY = leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * strutLeftRatio;
+                                        const strutRightRoofX = mainLeftSvgX + mainWidthSvg * strutRightRatio;
+                                        const strutRightRoofY = leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * strutRightRatio;
+
+                                        const strutMidPostY = postTopY + (mY - postTopY) * 0.45;
+
+                                        return (
+                                            <g>
+                                                {/* Massif béton */}
+                                                <rect x={mX} y={mY} width={mWidth} height={mHeight} fill="#cbd5e1" stroke="#475569" strokeWidth="1.2" rx="0.5" />
+                                                <text x={postBaseX} y={mY + mHeight / 2 + 3} textAnchor="middle" fill="#475569" fontSize="6" fontWeight="bold">Massif Béton</text>
+
+                                                {/* Poteau métallique principal */}
+                                                <line x1={postBaseX} y1={mY} x2={postBaseX} y2={postTopY} stroke="#1e293b" strokeWidth="5" strokeLinecap="round" />
+
+                                                {/* Bracons inclinés de renfort */}
+                                                <line x1={postBaseX} y1={strutMidPostY} x2={strutLeftRoofX} y2={strutLeftRoofY} stroke="#334155" strokeWidth="3" strokeLinecap="round" />
+                                                <line x1={postBaseX} y1={strutMidPostY} x2={strutRightRoofX} y2={strutRightRoofY} stroke="#334155" strokeWidth="3" strokeLinecap="round" />
+
+                                                {/* Toiture solaire inclinée continue */}
+                                                <line x1={mainLeftSvgX - 4} y1={leftEaveSvgY} x2={mainRightSvgX + 4} y2={rightEaveSvgY} stroke="#1d4ed8" strokeWidth="6" strokeLinecap="round" />
+                                                <line x1={mainLeftSvgX - 4} y1={leftEaveSvgY} x2={mainRightSvgX + 4} y2={rightEaveSvgY} stroke="#38bdf8" strokeWidth="1.5" strokeDasharray="8 2.5" />
+
+                                                {/* Cote Hauteur Sablière Haute (Gauche) */}
+                                                <line x1={mainLeftSvgX - 16} y1={leftEaveSvgY} x2={mainLeftSvgX - 16} y2={groundY} stroke="#dc2626" strokeWidth="1" />
+                                                <line x1={mainLeftSvgX - 20} y1={leftEaveSvgY} x2={mainLeftSvgX - 12} y2={leftEaveSvgY} stroke="#dc2626" strokeWidth="1" />
+                                                <line x1={mainLeftSvgX - 20} y1={groundY} x2={mainLeftSvgX - 12} y2={groundY} stroke="#dc2626" strokeWidth="1" />
+                                                <text x={mainLeftSvgX - 24} y={(leftEaveSvgY + groundY) / 2 + 2} textAnchor="end" fill="#dc2626" fontSize="7" fontWeight="bold">
+                                                    Sablière Haute : {leftEaveHeight.toFixed(2)}m
+                                                </text>
+
+                                                {/* Cote Hauteur Sablière Basse (Droite) */}
+                                                <line x1={mainRightSvgX + 16} y1={rightEaveSvgY} x2={mainRightSvgX + 16} y2={groundY} stroke="#dc2626" strokeWidth="1" />
+                                                <line x1={mainRightSvgX + 12} y1={rightEaveSvgY} x2={mainRightSvgX + 20} y2={rightEaveSvgY} stroke="#dc2626" strokeWidth="1" />
+                                                <line x1={mainRightSvgX + 12} y1={groundY} x2={mainRightSvgX + 20} y2={groundY} stroke="#dc2626" strokeWidth="1" />
+                                                <text x={mainRightSvgX + 24} y={(rightEaveSvgY + groundY) / 2 + 2} fill="#dc2626" fontSize="7" fontWeight="bold">
+                                                    Sablière Basse : {rightEaveHeight.toFixed(2)}m
+                                                </text>
+
+                                                {/* Cote Passage Libre sous bracon */}
+                                                <line x1={postBaseX + 18} y1={clearanceSvgY} x2={postBaseX + 18} y2={groundY} stroke="#059669" strokeWidth="1" strokeDasharray="2 1.5" />
+                                                <line x1={postBaseX + 14} y1={clearanceSvgY} x2={postBaseX + 22} y2={clearanceSvgY} stroke="#059669" strokeWidth="1" />
+                                                <line x1={postBaseX + 14} y1={groundY} x2={postBaseX + 22} y2={groundY} stroke="#059669" strokeWidth="1" />
+                                                <text x={postBaseX + 26} y={clearanceSvgY + (groundY - clearanceSvgY) / 2 + 2.5} fill="#059669" fontSize="6.5" fontWeight="bold">
+                                                    Passage libre : {clearanceHeight.toFixed(2)}m
+                                                </text>
+
+                                                {/* Cote Largeur totale au sol */}
+                                                <line x1={mainLeftSvgX} y1={groundY + 14} x2={mainRightSvgX} y2={groundY + 14} stroke="#0284c7" strokeWidth="1.2" />
+                                                <line x1={mainLeftSvgX} y1={groundY + 10} x2={mainLeftSvgX} y2={groundY + 18} stroke="#0284c7" strokeWidth="1.2" />
+                                                <line x1={mainRightSvgX} y1={groundY + 10} x2={mainRightSvgX} y2={groundY + 18} stroke="#0284c7" strokeWidth="1.2" />
+                                                <text x={centerX} y={groundY + 23} textAnchor="middle" fill="#0284c7" fontSize="7" fontWeight="bold">
+                                                    ▲ Largeur : {realGroundWidth.toFixed(2)}m (Emprise au sol)
+                                                </text>
+
+                                                {/* Cote Toiture supérieure */}
+                                                <line x1={mainLeftSvgX - 4} y1={leftEaveSvgY - 9} x2={mainRightSvgX + 4} y2={rightEaveSvgY - 9} stroke="#2563eb" strokeWidth="1" />
+                                                <line x1={mainLeftSvgX - 4} y1={leftEaveSvgY - 13} x2={mainLeftSvgX - 4} y2={leftEaveSvgY - 5} stroke="#2563eb" strokeWidth="1" />
+                                                <line x1={mainRightSvgX + 4} y1={rightEaveSvgY - 13} x2={mainRightSvgX + 4} y2={rightEaveSvgY - 5} stroke="#2563eb" strokeWidth="1" />
+                                                <text x={centerX} y={(leftEaveSvgY + rightEaveSvgY) / 2 - 12} textAnchor="middle" fill="#1e40af" fontSize="7.5" fontWeight="bold">
+                                                    Toiture : {realRoofWidth.toFixed(2)}m
+                                                </text>
+                                            </g>
+                                        );
+                                    })()
                                 )
                             ) : (
                                 /* ── BÂTIMENT AGRICOLE CLASSIQUE (Symétrique / Asymétrique / Monopente) ── */
