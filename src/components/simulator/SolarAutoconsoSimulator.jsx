@@ -135,11 +135,11 @@ export default function SolarAutoconsoSimulator({
     setSuggestions([]);
   };
 
-  // Capacité géométrique maximale d'accueil de la toiture
+  // Capacité géométrique maximale d'accueil de la toiture (Panneaux en paysage parallèles à la sablière)
   const maxInstallableRoof = useMemo(() => {
     if (!polygonPoints || polygonPoints.length < 3) return { slots: [], maxPanels: 999, maxKwc: 999 };
-    return computeValidSolarSlots(polygonPoints);
-  }, [polygonPoints]);
+    return computeValidSolarSlots(polygonPoints, selectedRidgeIndex, true);
+  }, [polygonPoints, selectedRidgeIndex]);
 
   // Recommandation intelligente de puissance basée sur la consommation + VE (plafonnée par la toiture)
   const recommendedKwc = useMemo(() => {
@@ -277,6 +277,8 @@ export default function SolarAutoconsoSimulator({
         mapCenter,
         mapZoom,
         polygonPoints,
+        ridgeIndex: selectedRidgeIndex,
+        isLandscape: true,
         kwc: customKwc,
         roofSurface,
         pitch: selectedPitch,
@@ -301,7 +303,7 @@ export default function SolarAutoconsoSimulator({
       });
     }
   }, [
-    customKwc, cityName, clientNameInput, addressInput, departmentCode, mapCenter, mapZoom, polygonPoints,
+    customKwc, cityName, clientNameInput, addressInput, departmentCode, mapCenter, mapZoom, polygonPoints, selectedRidgeIndex,
     roofSurface, selectedPitch, orientationInfo, consoKwh, annualBillEuro, evCount, recommendedKwc,
     regionalBaseYield, annualProductionKwh, customAutoconsoRate, autoconsoKwh,
     surplusKwh, annualSavingsAutoconso, annualRevenueSurplus, totalAnnualBenefitYear1, totalInvestmentHT, paybackYear,
@@ -976,6 +978,8 @@ export default function SolarAutoconsoSimulator({
               polygonPoints={polygonPoints}
               roofSurface={roofSurface}
               customKwc={customKwc}
+              ridgeIndex={selectedRidgeIndex}
+              isLandscape={true}
               orientationInfo={orientationInfo}
               consoKwh={consoKwh}
               annualProductionKwh={annualProductionKwh}

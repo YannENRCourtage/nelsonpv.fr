@@ -24,9 +24,8 @@ function AutoFitPolygon({ polygonPoints, center }) {
   return null;
 }
 
-// Couche de dessin réaliste des panneaux solaires sur le polygone à la côte exacte (Portrait 1.762m x 1.134m, 2cm gap)
-// Remplissage prioritaire ligne par ligne strictly inside polygon
-function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, orientationAngle = 0 }) {
+// Couche de dessin réaliste des panneaux solaires sur le polygone à la côte exacte (parallèle à la sablière)
+function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, ridgeIndex = 0, isLandscape = false }) {
   const map = useMap();
   const layerRef = useRef(null);
 
@@ -52,9 +51,9 @@ function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, orien
       dashArray: '4, 3'
     }).addTo(group);
 
-    // 2. Calcul des emplacements géométriquement valides (Ligne par ligne)
+    // 2. Calcul des emplacements géométriquement valides (strictement parallèle à la sablière)
     try {
-      const { slots, maxPanels } = computeValidSolarSlots(polygonPoints);
+      const { slots, maxPanels } = computeValidSolarSlots(polygonPoints, ridgeIndex, isLandscape);
       const targetPanels = panelCount || Math.max(1, Math.round((customKwc * 1000) / 465));
       const countToPlace = Math.min(targetPanels, maxPanels);
 
@@ -64,7 +63,7 @@ function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, orien
 
         const cornersLatLng = slot.corners.map(c => [c.lat, c.lng]);
 
-        // Panneau Solaire en Portrait (Bleu nuit antireflet + bordure alu)
+        // Panneau Solaire (Bleu nuit antireflet + bordure cyan/alu)
         L.polygon(cornersLatLng, {
           color: '#38bdf8',
           weight: 1.2,
@@ -74,7 +73,7 @@ function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, orien
         }).addTo(group);
       }
     } catch (e) {
-      console.warn('Erreur calepinage portrait panneaux:', e);
+      console.warn('Erreur calepinage panneaux:', e);
     }
 
     return () => {
@@ -82,7 +81,7 @@ function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, orien
         map.removeLayer(layerRef.current);
       }
     };
-  }, [map, polygonPoints, customKwc, panelCount, orientationAngle]);
+  }, [map, polygonPoints, customKwc, panelCount, ridgeIndex, isLandscape]);
 
   return null;
 }
@@ -96,6 +95,8 @@ export default function SolarRoofBeforeAfterViewer({
   roofSurface = 75,
   customKwc = 6,
   panelCount: propPanelCount,
+  ridgeIndex = 0,
+  isLandscape = false,
   orientationInfo = { orientationLabel: 'Plein Sud (0°)', angle: 0 },
   consoKwh = 10000,
   annualProductionKwh = 7500
@@ -247,7 +248,8 @@ export default function SolarRoofBeforeAfterViewer({
                 polygonPoints={polygonPoints}
                 customKwc={customKwc}
                 panelCount={panelCount}
-                orientationAngle={orientationInfo?.angle || 0}
+                ridgeIndex={ridgeIndex}
+                isLandscape={isLandscape}
               />
             </MapContainer>
 
@@ -392,7 +394,8 @@ export default function SolarRoofBeforeAfterViewer({
                 polygonPoints={polygonPoints}
                 customKwc={customKwc}
                 panelCount={panelCount}
-                orientationAngle={orientationInfo?.angle || 0}
+                ridgeIndex={ridgeIndex}
+                isLandscape={isLandscape}
               />
             </MapContainer>
             <div className="absolute top-3 left-3 z-[1000] bg-emerald-950/90 backdrop-blur text-emerald-300 px-3 py-1.5 rounded-xl text-xs font-black border border-emerald-500/50 flex items-center gap-1.5 shadow-md">
@@ -427,7 +430,8 @@ export default function SolarRoofBeforeAfterViewer({
                 polygonPoints={polygonPoints}
                 customKwc={customKwc}
                 panelCount={panelCount}
-                orientationAngle={orientationInfo?.angle || 0}
+                ridgeIndex={ridgeIndex}
+                isLandscape={isLandscape}
               />
             ) : (
               polygonPoints && polygonPoints.length >= 3 && (

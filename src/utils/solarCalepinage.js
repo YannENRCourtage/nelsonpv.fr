@@ -23,13 +23,17 @@ export function isPointInPolygon(lat, lng, polygon) {
 
 /**
  * Calcule tous les emplacements de panneaux valides strictement à l'intérieur du polygone.
- * Les lignes de panneaux sont toujours parallèles au trait de la sablière (bas de pente).
- * Remplissage strict ligne par ligne du bas vers le haut (vers le faîtage).
+ * Les lignes de panneaux sont toujours strictement parallèles au trait de la sablière (arête opposée au faîtage).
+ * Remplissage strict ligne par ligne du bas (sablière) vers le haut (faîtage).
  */
-export function computeValidSolarSlots(polygonPoints) {
+export function computeValidSolarSlots(polygonPoints, ridgeIndex = 0, isLandscape = false) {
   if (!polygonPoints || polygonPoints.length < 3) {
     return { slots: [], maxPanels: 0, maxKwc: 0 };
   }
+
+  const pW = isLandscape ? PANEL_HEIGHT_M : PANEL_WIDTH_M; // 1.762 en paysage, 1.134 en portrait
+  const pH = isLandscape ? PANEL_WIDTH_M : PANEL_HEIGHT_M;  // 1.134 en paysage, 1.762 en portrait
+  const pGap = PANEL_GAP_M;
 
   // 1. Calcul du centre de gravité
   let cLat = 0, cLng = 0;
@@ -49,55 +53,47 @@ export function computeValidSolarSlots(polygonPoints) {
     lng: p.lng
   }));
 
-  // 2. Identification de la sablière (arête la plus basse / orientée vers le sud)
   const n = ptsM.length;
-  let bestEdge = null;
-  let minAvgY = Infinity;
 
-  for (let i = 0; i < n; i++) {
-    const pA = ptsM[i];
-    const pB = ptsM[(i + 1) % n];
-    const avgY = (pA.y + pB.y) / 2;
-    const edgeDx = pB.x - pA.x;
-    const edgeDy = pB.y - pA.y;
-    const edgeLen = Math.sqrt(edgeDx * edgeDx + edgeDy * edgeDy);
+  // 2. Identification exacte de la sablière à partir du faîtage sélectionné (arête opposée)
+  const safeRidge = typeof ridgeIndex === 'number' && ridgeIndex >= 0 ? ridgeIndex % n : 0;
+  const sabliereIndex = (safeRidge + Math.floor(n / 2)) % n;
 
-    // Privilégie les arêtes basses et significativement longues
-    if (edgeLen > 2 && avgY < minAvgY) {
-      minAvgY = avgY;
-      bestEdge = { pA, pB, edgeDx, edgeDy, edgeLen };
-    }
-  }
+  const pA = ptsM[sabliereIndex];
+  const pB = ptsM[(sabliereIndex + 1) % n];
 
-  // Si non trouvée, fallback sur le premier segment
-  if (!bestEdge) {
-    const pA = ptsM[0];
-    const pB = ptsM[1];
-    const edgeDx = pB.x - pA.x;
-    const edgeDy = pB.y - pA.y;
-    bestEdge = { pA, pB, edgeDx, edgeDy, edgeLen: Math.sqrt(edgeDx * edgeDx + edgeDy * edgeDy) || 1 };
-  }
+  const edgeDx = pB.x - pA.x;
+  const edgeDy = pB.y - pA.y;
+  const edgeLen = Math.sqrt(edgeDx * edgeDx + edgeDy * edgeDy) || 1;
 
-  // Vecteur unitaire u le long de la sablière (orienté de gauche à droite)
-  let ux = bestEdge.edgeDx / bestEdge.edgeLen;
-  let uy = bestEdge.edgeDy / bestEdge.edgeLen;
-  if (ux < 0) {
-    ux = -ux;
-    uy = -uy;
-  }
+  // Vecteur unitaire u le long de la sablière (parallèle au bas de pente)
+  let ux = edgeDx / edgeLen;
+  let uy = edgeDy / edgeLen;
 
-  // Vecteur unitaire v perpendiculaire vers le haut de la toiture (vers le faîtage)
+  // Point milieu du faîtage pour orienter le vecteur v de la sablière vers le faîtage
+  const rA = ptsM[safeRidge];
+  const rB = ptsM[(safeRidge + 1) % n];
+  const ridgeMidX = (rA.x + rB.x) / 2;
+  const ridgeMidY = (rA.y + rB.y) / 2;
+  const sabMidX = (pA.x + pB.x) / 2;
+  const sabMidY = (pA.y + pB.y) / 2;
+
+  const toRidgeX = ridgeMidX - sabMidX;
+  const toRidgeY = ridgeMidY - sabMidY;
+
+  // Vecteur unitaire v perpendiculaire à u
   let vx = -uy;
   let vy = ux;
-  // Vérifie que v pointe bien vers l'intérieur / vers les Y plus élevés (le faîtage)
-  if (vy < 0) {
+
+  // Vérifie que v pointe bien vers le faîtage (produit scalaire positif)
+  if (vx * toRidgeX + vy * toRidgeY < 0) {
     vx = -vx;
     vy = -vy;
   }
 
   // 3. Projection de tous les points dans le repère local (u, v)
   const polyLocal = ptsM.map(p => ({
-    u: p.x * ux + p.y * uy,
+    u: p.x * ux + p.y * vy ? (p.x * ux + p.y * uy) : 0,
     v: p.x * vx + p.y * vy
   }));
 
@@ -109,8 +105,8 @@ export function computeValidSolarSlots(polygonPoints) {
     maxV = Math.max(maxV, pt.v);
   });
 
-  const stepU = PANEL_WIDTH_M + PANEL_GAP_M;
-  const stepV = PANEL_HEIGHT_M + PANEL_GAP_M;
+  const stepU = pW + pGap;
+  const stepV = pH + pGap;
 
   const localToLatLng = (u, v) => {
     const mx = u * ux + v * vx;
@@ -122,24 +118,24 @@ export function computeValidSolarSlots(polygonPoints) {
   };
 
   const rows = [];
-  const totalRows = Math.ceil((maxV - minV) / stepV) + 2;
-  const totalCols = Math.ceil((maxU - minU) / stepU) + 4;
+  const totalRows = Math.ceil((maxV - minV) / stepV) + 4;
+  const totalCols = Math.ceil((maxU - minU) / stepU) + 6;
 
   // 4. Balayage Ligne par Ligne du bas (sablière) vers le haut (faîtage)
   for (let r = 0; r < totalRows; r++) {
-    // Marge de décalage depuis la sablière (12 cm pour les crochets de gouttière)
-    const curV = minV + 0.12 + (r * stepV);
+    // Marge de sécurité depuis la sablière (10 cm)
+    const curV = minV + 0.10 + (r * stepV);
     const rowSlots = [];
 
-    for (let c = -2; c < totalCols; c++) {
+    for (let c = -3; c < totalCols; c++) {
       const curU = minU + (c * stepU);
 
       // Coordonnées des 4 coins et du centre
       const c1Loc = { u: curU, v: curV };
-      const c2Loc = { u: curU + PANEL_WIDTH_M, v: curV };
-      const c3Loc = { u: curU + PANEL_WIDTH_M, v: curV + PANEL_HEIGHT_M };
-      const c4Loc = { u: curU, v: curV + PANEL_HEIGHT_M };
-      const midLoc = { u: curU + PANEL_WIDTH_M / 2, v: curV + PANEL_HEIGHT_M / 2 };
+      const c2Loc = { u: curU + pW, v: curV };
+      const c3Loc = { u: curU + pW, v: curV + pH };
+      const c4Loc = { u: curU, v: curV + pH };
+      const midLoc = { u: curU + pW / 2, v: curV + pH / 2 };
 
       const c1 = localToLatLng(c1Loc.u, c1Loc.v);
       const c2 = localToLatLng(c2Loc.u, c2Loc.v);

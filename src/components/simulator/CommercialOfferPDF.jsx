@@ -150,9 +150,11 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         polygonPoints: sim.polygonPoints || [],
         customKwc: sim.kwc || sim.installedKwc || sim.power || 6,
         roofSurface: sim.roofSurface || 83,
+        ridgeIndex: sim.ridgeIndex || 0,
+        isLandscape: sim.isLandscape ?? (isAuto ? true : false),
         width: 900,
         height: 420,
-        zoom: 20
+        zoom: 19
       });
     } catch (e) {
       console.warn('Génération dual snapshot avant-après:', e);

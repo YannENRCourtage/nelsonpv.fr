@@ -58,7 +58,7 @@ export default function SolarRoofSimulator({
   const mapContainerRef = useRef(null);
   const [mapScreenshotDataUrl, setMapScreenshotDataUrl] = useState(null);
 
-  // Capacité maximale installable selon calepinage géométrique strict (panneaux 465 Wc portrait)
+  // Capacité maximale installable selon calepinage géométrique strict (panneaux 465 Wc portrait parallèle à la sablière)
   const maxInstallableRoof = useMemo(() => {
     if (!polygonPoints || polygonPoints.length < 3) {
       const p = Math.max(1, Math.round(roofSurface / 2.05));
@@ -66,14 +66,14 @@ export default function SolarRoofSimulator({
       return { maxPanels: p, maxKwc: kw };
     }
     try {
-      const { maxPanels } = computeValidSolarSlots(polygonPoints);
+      const { maxPanels } = computeValidSolarSlots(polygonPoints, selectedRidgeIndex, false);
       const kw = Math.round(maxPanels * 0.465 * 10) / 10;
       return { maxPanels: Math.max(1, maxPanels), maxKwc: kw };
     } catch {
       const p = Math.max(1, Math.round(roofSurface / 2.05));
       return { maxPanels: p, maxKwc: Math.round(p * 0.465 * 10) / 10 };
     }
-  }, [polygonPoints, roofSurface]);
+  }, [polygonPoints, roofSurface, selectedRidgeIndex]);
 
   // Puissance installée effective (par défaut: puissance maximale optimisée)
   const installedKwc = useMemo(() => {
@@ -255,6 +255,8 @@ export default function SolarRoofSimulator({
         mapCenter,
         mapZoom,
         polygonPoints,
+        ridgeIndex: selectedRidgeIndex,
+        isLandscape: false,
         kwc: installedKwc,
         roofSurface,
         pitch: selectedPitch,
@@ -274,7 +276,7 @@ export default function SolarRoofSimulator({
     }
   }, [
     installedKwc, roofSurface, clientNameInput, cityName, addressInput, departmentCode,
-    mapCenter, mapZoom, polygonPoints, selectedPitch, orientationInfo, annualProductionKwh, tarifEdfOaKwh, annualRevenueReventeTotale,
+    mapCenter, mapZoom, polygonPoints, selectedRidgeIndex, selectedPitch, orientationInfo, annualProductionKwh, tarifEdfOaKwh, annualRevenueReventeTotale,
     totalInvestmentHT, paybackReventeYear, financialProjection30Years, mapScreenshotDataUrl, onStateUpdate
   ]);
 
@@ -860,6 +862,8 @@ export default function SolarRoofSimulator({
               roofSurface={roofSurface}
               customKwc={installedKwc}
               panelCount={panelCount}
+              ridgeIndex={selectedRidgeIndex}
+              isLandscape={false}
               orientationInfo={orientationInfo}
               annualProductionKwh={annualProductionKwh}
             />
