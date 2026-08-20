@@ -221,6 +221,9 @@ export default function SolarRoofSimulator({
         address: addressInput,
         cityName,
         departmentCode,
+        mapCenter,
+        mapZoom,
+        polygonPoints,
         kwc: installedKwc,
         roofSurface,
         pitch: selectedPitch,
@@ -240,7 +243,7 @@ export default function SolarRoofSimulator({
     }
   }, [
     installedKwc, roofSurface, clientNameInput, cityName, addressInput, departmentCode,
-    selectedPitch, orientationInfo, annualProductionKwh, tarifEdfOaKwh, annualRevenueReventeTotale,
+    mapCenter, mapZoom, polygonPoints, selectedPitch, orientationInfo, annualProductionKwh, tarifEdfOaKwh, annualRevenueReventeTotale,
     totalInvestmentHT, paybackReventeYear, financialProjection30Years, mapScreenshotDataUrl, onStateUpdate
   ]);
 

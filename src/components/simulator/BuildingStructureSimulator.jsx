@@ -742,6 +742,7 @@ const crop3DCanvas = (sourceCanvas) => {
         cumul10: financialProjection30Years.cumul10,
         cumul20: financialProjection30Years.cumul20,
         cumul30: financialProjection30Years.cumul30,
+        mapCenter,
         building3dScreenshot: building3dSnapshot,
         mapScreenshot: mapScreenshotDataUrl,
         buildings: simBuildings,
@@ -754,7 +755,7 @@ const crop3DCanvas = (sourceCanvas) => {
     annualProductionKwh, totalBuildingCost, totalProjectInvestment,
     ratioCostPerWc, ratioCostPerM2, annualNetRevenue,
     financialProjection30Years, clientNameInput, addressInput, cityName,
-    departmentCode, building3dSnapshot, mapScreenshotDataUrl, simBuildings, activeBuildingIdx, onStateUpdate
+    departmentCode, mapCenter, building3dSnapshot, mapScreenshotDataUrl, simBuildings, activeBuildingIdx, onStateUpdate
   ]);
 
   return (

@@ -271,8 +271,14 @@ export const generateBeforeAfterDualSnapshot = async ({
 }) => {
   try {
     const safeZoom = Math.min(19, Math.max(14, zoom || 19));
-    const lat = center ? center[0] : (polygonPoints && polygonPoints[0] ? polygonPoints[0].lat : 43.6047);
-    const lng = center ? center[1] : (polygonPoints && polygonPoints[0] ? polygonPoints[0].lng : 1.4442);
+    let lat = center ? center[0] : 43.6047;
+    let lng = center ? center[1] : 1.4442;
+    if (polygonPoints && polygonPoints.length >= 3) {
+      let sumLat = 0, sumLng = 0;
+      polygonPoints.forEach(p => { sumLat += p.lat; sumLng += p.lng; });
+      lat = sumLat / polygonPoints.length;
+      lng = sumLng / polygonPoints.length;
+    }
 
     const canvas = document.createElement('canvas');
     canvas.width = width;

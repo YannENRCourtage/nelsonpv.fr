@@ -273,6 +273,9 @@ export default function SolarAutoconsoSimulator({
         address: addressInput,
         cityName,
         departmentCode,
+        mapCenter,
+        mapZoom,
+        polygonPoints,
         kwc: customKwc,
         roofSurface,
         pitch: selectedPitch,
@@ -295,8 +298,8 @@ export default function SolarAutoconsoSimulator({
       });
     }
   }, [
-    customKwc, cityName, clientNameInput, addressInput, departmentCode, roofSurface, selectedPitch,
-    orientationInfo, consoKwh, annualBillEuro, evCount, recommendedKwc,
+    customKwc, cityName, clientNameInput, addressInput, departmentCode, mapCenter, mapZoom, polygonPoints,
+    roofSurface, selectedPitch, orientationInfo, consoKwh, annualBillEuro, evCount, recommendedKwc,
     regionalBaseYield, annualProductionKwh, customAutoconsoRate, autoconsoKwh,
     surplusKwh, totalAnnualBenefitYear1, totalInvestmentHT, paybackYear,
     totalGains30Years, mapScreenshotDataUrl, onStateUpdate
