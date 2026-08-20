@@ -29,24 +29,25 @@ const WIDTH_HEIGHT_MAP = {
     26.0: 7.8,
     29.8: 8.1,
     33.5: 8.5,
-    // Asymétrique 1 zone (Approx calc: 5.5 + w/2 * tan(10))
-    16.4: 6.9,
-    20.0: 7.3,
+    // Asymétrique 1 zone
+    16.4: 7.42,
+    20.0: 7.7,
     // Asymétrique 2 zones
     25.5: 8.9,  // User specified
     29.1: 9.8,  // User specified
     // Monopente
     12.7: 6.6,
-    // Ombrière VL simple (Low pitch?)
-    6.0: 4.5, // Legacy
-    6.9: 4.5, // New Width
-    // Ombrière VL double (Hauteur Basse / Egout)
-    9.1: 3.0,
-    11.3: 2.8,
-    // Ombrière PL
-    15.8: 6.0,
-    20.2: 6.5,
-    24.6: 7.0
+    16.4: 8.4,
+    // Ombrière VL simple
+    6.0: 4.1,
+    6.9: 4.1,
+    // Ombrière VL double
+    9.1: 4.6,
+    11.3: 4.7,
+    // Ombrière PL (Sablière Haute / Faîtage)
+    15.8: 7.86,
+    20.2: 9.29,
+    24.6: 9.35
 };
 
 const MONOPENTE_HEIGHTS = {
@@ -312,12 +313,12 @@ export const useConfiguratorStore = create(
     persist(
         (set, get) => ({
     // ... (existing constants and params)
-    roofPitch: 10,
-    eaveHeight: 5.5,
-    width: 18.6,
-    buildingType: 'symetrique', // Default
+    roofPitch: 15,
+    eaveHeight: 4.0,
+    width: 16.4,
+    buildingType: 'asymetrique_1', // Default
     baySpacing: 7.5,
-    bayCount: 4,
+    bayCount: 5,
     showDimensions: true,
     isAcama: false, // NEW: Interface isolation flag
 

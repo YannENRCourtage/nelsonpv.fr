@@ -229,10 +229,10 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
       id: 'bat-1',
       name: isDP ? 'Ombrière 1 (Principale)' : 'Bâtiment 1 (Principal)',
       length: 37.5,
-      width: 20,
+      width: 16.4,
       eaveHeight: 4,
       roofPitch: 15,
-      buildingType: isDP ? 'ombriere_vl_double' : 'asymetrique_1',
+      buildingType: 'asymetrique_1',
       leftSide: 'none',
       rightSide: 'none',
       bayCount: 5,
@@ -245,7 +245,6 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
   // Initialisation synchronisée avec le projet existant
   useEffect(() => {
     if (project) {
-      const isOmbriere = isDP || (project.type || '').toLowerCase().includes('ombriere');
       let initialBuildings = [];
 
       if (project.buildings && Array.isArray(project.buildings) && project.buildings.length > 0) {
@@ -255,11 +254,11 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
           name: b.name
             ? (isDP ? b.name.replace(/Bâtiment/gi, 'Ombrière').replace(/Principalee+/gi, 'Principale').replace(/\bPrincipal\b/g, 'Principale') : b.name)
             : (isDP ? (idx === 0 ? 'Ombrière 1 (Principale)' : `Ombrière ${idx + 1} (Secondaire)`) : (idx === 0 ? 'Bâtiment 1 (Principal)' : `Bâtiment ${idx + 1} (Secondaire)`)),
-          length: Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || 30),
-          width: Number(b.width || 20),
-          eaveHeight: Number(b.eaveHeight || (isDP ? 3 : 4)),
-          roofPitch: Number(b.roofPitch || (isDP ? 10 : 15)),
-          buildingType: b.buildingType || (isDP ? 'ombriere_vl_double' : 'asymetrique_1'),
+          length: Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || 37.5),
+          width: Number(b.width || 16.4),
+          eaveHeight: Number(b.eaveHeight || 4),
+          roofPitch: Number(b.roofPitch || 15),
+          buildingType: b.buildingType || 'asymetrique_1',
           leftSide: b.leftSide || 'none',
           rightSide: b.rightSide || 'none',
           leftWidth: Number(b.leftWidth) || 9.3,
@@ -282,17 +281,17 @@ export default function UrbanismeWizard({ isOpen, onClose, type, project, onGene
           {
             id: 'bat-1',
             name: isDP ? 'Ombrière 1 (Principale)' : 'Bâtiment 1 (Principal)',
-            length: Number(project.longueur || project.length || 30),
-            width: Number(project.largeur || project.width || 20),
-            eaveHeight: Number(project.hauteur_egout || project.eaveHeight || (isDP ? 3 : 4)),
-            roofPitch: Number(project.pente || project.roofPitch || (isDP ? 10 : 15)),
-            buildingType: project.buildingType || (isOmbriere ? 'ombriere_vl_double' : 'asymetrique_1'),
+            length: Number(project.longueur || project.length || 37.5),
+            width: Number(project.largeur || project.width || 16.4),
+            eaveHeight: Number(project.hauteur_egout || project.eaveHeight || 4),
+            roofPitch: Number(project.pente || project.roofPitch || 15),
+            buildingType: project.buildingType || 'asymetrique_1',
             leftSide: pLeftSide,
             rightSide: pRightSide,
             leftWidth: pLeftWidth,
             rightWidth: pRightWidth,
             bayCount: Number(project.bayCount || 5),
-            baySpacing: Number(project.baySpacing || 6),
+            baySpacing: Number(project.baySpacing || 7.5),
             captures: project.urbanisme_captures || project.captures || {},
             photos: project.pc_photos || project.photos || {},
             rotation: Number(project.rotation || 0)
@@ -505,10 +504,10 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
       id: `bat-${newIdx}`,
       name: isDP ? `Ombrière ${newIdx} (Secondaire)` : `Bâtiment ${newIdx} (Secondaire)`,
       length: 30,
-      width: isDP ? 11.3 : 9.1,
-      eaveHeight: 3,
-      roofPitch: 10,
-      buildingType: 'ombriere_vl_double',
+      width: isDP ? 15.8 : 16.4,
+      eaveHeight: isDP ? 5.08 : 4.0,
+      roofPitch: isDP ? 10 : 15,
+      buildingType: isDP ? 'ombriere_pl' : 'asymetrique_1',
       leftSide: 'none',
       rightSide: 'none',
       bayCount: 4,

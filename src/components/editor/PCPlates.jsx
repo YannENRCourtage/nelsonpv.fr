@@ -350,17 +350,17 @@ export const PlateSectionAndNotice = ({ project, noticeText, onNoticeChange, isI
             if (largeur > 22.0) {
                 // O11
                 realRoofWidth = 25.03; realGroundWidth = 24.65;
-                leftEaveHeight = 9.35; ridgeHeight = 9.65; rightEaveHeight = 5.00;
+                leftEaveHeight = 9.35; ridgeHeight = 9.35; rightEaveHeight = 5.00;
                 clearanceHeight = 3.38;
             } else if (largeur > 18.0) {
                 // O9
                 realRoofWidth = 20.53; realGroundWidth = 20.22;
-                leftEaveHeight = 9.29; ridgeHeight = 9.60; rightEaveHeight = 5.73;
+                leftEaveHeight = 9.29; ridgeHeight = 9.29; rightEaveHeight = 5.73;
                 clearanceHeight = 3.38;
             } else {
                 // O7
                 realRoofWidth = 16.03; realGroundWidth = 15.79;
-                leftEaveHeight = 7.86; ridgeHeight = 8.16; rightEaveHeight = 5.08;
+                leftEaveHeight = 7.86; ridgeHeight = 7.86; rightEaveHeight = 5.08;
                 clearanceHeight = 3.38;
             }
         } else if (isSimple) {
@@ -618,43 +618,78 @@ Une bâche à eau de 120m³ sera installée à proximité immédiate au Nord du 
                                         );
                                     })()
                                 ) : isPL ? (
-                                    /* ── OMBRIÈRE PL (Multi-poteaux verticaux avec contreventements) ── */
+                                    /* ── OMBRIÈRE PL (Structure avec 2 poteaux verticaux et Croix de Saint-André complète - Modèles O7 / O9 / O11) ── */
                                     (() => {
-                                        const p1X = mainLeftSvgX + mainWidthSvg * 0.25;
-                                        const p2X = mainLeftSvgX + mainWidthSvg * 0.75;
-                                        const p1TopY = leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.25;
-                                        const p2TopY = leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.75;
+                                        const postSpacingM = largeur > 22.0 ? 12.00 : (largeur > 18.0 ? 10.00 : 8.00);
+                                        const overhangM = (realGroundWidth - postSpacingM) / 2;
+
+                                        const p1X = mainLeftSvgX + overhangM * pxPerM;
+                                        const p2X = mainLeftSvgX + (overhangM + postSpacingM) * pxPerM;
+
+                                        const p1Ratio = overhangM / realGroundWidth;
+                                        const p2Ratio = (overhangM + postSpacingM) / realGroundWidth;
+
+                                        const p1TopY = leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * p1Ratio;
+                                        const p2TopY = leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * p2Ratio;
+
+                                        const midPostsX = (p1X + p2X) / 2;
 
                                         return (
                                             <g>
-                                                {/* Massifs béton */}
-                                                <rect x={p1X - 12} y={groundY - 6} width="24" height="6" fill="#cbd5e1" stroke="#64748b" strokeWidth="1" rx="1" />
-                                                <rect x={p2X - 12} y={groundY - 6} width="24" height="6" fill="#cbd5e1" stroke="#64748b" strokeWidth="1" rx="1" />
+                                                {/* Massifs / Semelles béton sous chaque poteau */}
+                                                <rect x={p1X - 10} y={groundY - 5} width="20" height="5" fill="#cbd5e1" stroke="#475569" strokeWidth="1" rx="0.5" />
+                                                <rect x={p2X - 10} y={groundY - 5} width="20" height="5" fill="#cbd5e1" stroke="#475569" strokeWidth="1" rx="0.5" />
 
                                                 {/* Poteaux verticaux */}
-                                                <rect x={p1X - 4} y={p1TopY} width="8" height={groundY - p1TopY} fill="#1e293b" rx="0.5" />
-                                                <rect x={p2X - 4} y={p2TopY} width="8" height={groundY - p2TopY} fill="#1e293b" rx="0.5" />
+                                                <line x1={p1X} y1={groundY - 5} x2={p1X} y2={p1TopY} stroke="#1e293b" strokeWidth="4.5" strokeLinecap="round" />
+                                                <line x1={p2X} y1={groundY - 5} x2={p2X} y2={p2TopY} stroke="#1e293b" strokeWidth="4.5" strokeLinecap="round" />
 
-                                                {/* Traverse et croix Saint-André */}
-                                                <line x1={p1X} y1={clearanceSvgY} x2={p2X} y2={clearanceSvgY} stroke="#334155" strokeWidth="2.5" />
-                                                <line x1={p1X} y1={clearanceSvgY} x2={p2X} y2={p2TopY + 3} stroke="#475569" strokeWidth="2" />
-                                                <line x1={p2X} y1={clearanceSvgY} x2={p1X} y2={p1TopY + 3} stroke="#475569" strokeWidth="2" />
+                                                {/* Traverse horizontale à 3.38m de passage libre */}
+                                                <line x1={p1X} y1={clearanceSvgY} x2={p2X} y2={clearanceSvgY} stroke="#334155" strokeWidth="3" />
 
-                                                {/* Panneaux */}
-                                                <polygon
-                                                    points={`${mainLeftSvgX - 8},${leftEaveSvgY} ${mainRightSvgX + 8},${rightEaveSvgY} ${mainRightSvgX + 8},${rightEaveSvgY - 5} ${mainLeftSvgX - 8},${leftEaveSvgY - 5}`}
-                                                    fill="#1d4ed8"
-                                                    stroke="#60a5fa"
-                                                    strokeWidth="1"
-                                                />
-                                                {[0.15, 0.35, 0.55, 0.75, 0.95].map((r, i) => (
-                                                    <line key={i} x1={mainLeftSvgX + mainWidthSvg * r} y1={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * r - 5} x2={mainLeftSvgX + mainWidthSvg * r} y2={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * r} stroke="#93c5fd" strokeWidth="1" />
-                                                ))}
+                                                {/* Croix de Saint-André d'un poteau à l'autre */}
+                                                <line x1={p1X} y1={groundY - 5} x2={p2X} y2={p2TopY} stroke="#475569" strokeWidth="1.8" />
+                                                <line x1={p2X} y1={groundY - 5} x2={p1X} y2={p1TopY} stroke="#475569" strokeWidth="1.8" />
+                                                <circle cx={midPostsX} cy={clearanceSvgY} r="3" fill="#1e293b" stroke="#64748b" strokeWidth="0.8" />
 
-                                                {/* Cote Toiture */}
+                                                {/* Couverture photovoltaïque continue (bleu solaire) */}
+                                                <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#1d4ed8" strokeWidth="6" strokeLinecap="round" />
+                                                <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#38bdf8" strokeWidth="1.5" strokeDasharray="10 3" />
+
+                                                {/* Passage libre (3.38m) */}
+                                                <line x1={midPostsX} y1={clearanceSvgY} x2={midPostsX} y2={groundY} stroke="#059669" strokeWidth="1" strokeDasharray="2 1.5" />
+                                                <line x1={midPostsX - 4} y1={clearanceSvgY} x2={midPostsX + 4} y2={clearanceSvgY} stroke="#059669" strokeWidth="1" />
+                                                <line x1={midPostsX - 4} y1={groundY} x2={midPostsX + 4} y2={groundY} stroke="#059669" strokeWidth="1" />
+                                                <text x={midPostsX + 6} y={clearanceSvgY + (groundY - clearanceSvgY) / 2 + 2.5} fill="#059669" fontSize="7" fontWeight="bold">
+                                                    Passage libre : {clearanceHeight.toFixed(2)}m
+                                                </text>
+
+                                                {/* Cotes de répartition au sol : Porte-à-faux G / Entraxe / Porte-à-faux D */}
+                                                <line x1={mainLeftSvgX} y1={groundY + 11} x2={p1X} y2={groundY + 11} stroke="#0284c7" strokeWidth="0.8" />
+                                                <line x1={mainLeftSvgX} y1={groundY + 8} x2={mainLeftSvgX} y2={groundY + 14} stroke="#0284c7" strokeWidth="0.8" />
+                                                <line x1={p1X} y1={groundY + 8} x2={p1X} y2={groundY + 14} stroke="#0284c7" strokeWidth="0.8" />
+                                                <text x={(mainLeftSvgX + p1X) / 2} y={groundY + 9} textAnchor="middle" fill="#0284c7" fontSize="5.8" fontWeight="bold">
+                                                    {overhangM.toFixed(2)}m
+                                                </text>
+
+                                                <line x1={p1X} y1={groundY + 11} x2={p2X} y2={groundY + 11} stroke="#0284c7" strokeWidth="0.8" />
+                                                <line x1={p2X} y1={groundY + 8} x2={p2X} y2={groundY + 14} stroke="#0284c7" strokeWidth="0.8" />
+                                                <text x={midPostsX} y={groundY + 9} textAnchor="middle" fill="#0284c7" fontSize="6.2" fontWeight="bold">
+                                                    {postSpacingM.toFixed(2)}m
+                                                </text>
+
+                                                <line x1={p2X} y1={groundY + 11} x2={mainRightSvgX} y2={groundY + 11} stroke="#0284c7" strokeWidth="0.8" />
+                                                <line x1={mainRightSvgX} y1={groundY + 8} x2={mainRightSvgX} y2={groundY + 14} stroke="#0284c7" strokeWidth="0.8" />
+                                                <text x={(p2X + mainRightSvgX) / 2} y={groundY + 9} textAnchor="middle" fill="#0284c7" fontSize="5.8" fontWeight="bold">
+                                                    {overhangM.toFixed(2)}m
+                                                </text>
+
+                                                {/* Cote Toiture supérieure */}
                                                 <line x1={mainLeftSvgX - 8} y1={leftEaveSvgY - 9} x2={mainRightSvgX + 8} y2={rightEaveSvgY - 9} stroke="#2563eb" strokeWidth="1" />
-                                                <text x={centerX} y={(leftEaveSvgY + rightEaveSvgY) / 2 - 12} textAnchor="middle" fill="#1e40af" fontSize="7" fontWeight="bold">
-                                                    Toiture PL : {realRoofWidth.toFixed(2)}m
+                                                <line x1={mainLeftSvgX - 8} y1={leftEaveSvgY - 13} x2={mainLeftSvgX - 8} y2={leftEaveSvgY - 5} stroke="#2563eb" strokeWidth="1" />
+                                                <line x1={mainRightSvgX + 8} y1={rightEaveSvgY - 13} x2={mainRightSvgX + 8} y2={rightEaveSvgY - 5} stroke="#2563eb" strokeWidth="1" />
+                                                <text x={centerX} y={(leftEaveSvgY + rightEaveSvgY) / 2 - 12} textAnchor="middle" fill="#1e40af" fontSize="7.5" fontWeight="bold">
+                                                    Toiture : {realRoofWidth.toFixed(2)}m
                                                 </text>
                                             </g>
                                         );
