@@ -272,6 +272,21 @@ export const PlateCoupe = ({ project, captures, noticeText, includeNotice = fals
     const displayKwc = project?.kwc || Math.round(totalSurface * 0.20);
     const cleanNoticeText = noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.description;
 
+    const default5PointsNoticeDP = `1- OBJET DE LA DEMANDE
+La présente déclaration préalable porte sur l'implantation d'une structure photovoltaïque (${totalSurface}m²).
+
+2- LE SITE
+Le projet se situe sur la commune de ${projectCity} (${projectZip}) au ${projectAddress}. Le terrain est cadastré sous le numéro ${projectCadastre} (surface : ${projectSurface}).
+
+3- LE PROJET
+Le projet a pour objet l'implantation d'une structure en ossature métallique (longueur : ${longueur}m, largeur : ${largeur.toFixed(2)}m) avec une centrale solaire photovoltaïque de ${displayKwc} kWc.
+
+4- RACCORDEMENT AUX RESEAUX
+L'électricité produite par la centrale photovoltaïque sera injectée sur le réseau public de distribution.
+
+5- INTEGRATION PAYSAGERE
+Le projet s'intègre harmonieusement dans son environnement immédiat et préserve la topographie naturelle du terrain.`;
+
     // Calculs dimensionnels RÉELS & PROPORTIONNELS selon les fiches constructeur
     let rightEaveHeight = 4.00;
     let ridgeHeight = 7.40;

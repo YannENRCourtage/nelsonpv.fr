@@ -1,4 +1,5 @@
 // ─── Générateur de capture satellite haute résolution pour PDF ───────────────
+import { computeValidSolarSlots } from './solarCalepinage';
 
 export const generateSatelliteSnapshot = async ({
   center,
@@ -266,10 +267,10 @@ export const generateBeforeAfterDualSnapshot = async ({
   roofSurface = 83,
   width = 900,
   height = 420,
-  zoom = 20
+  zoom = 19
 }) => {
   try {
-    const safeZoom = Math.min(20, Math.max(16, zoom || 20));
+    const safeZoom = Math.min(19, Math.max(14, zoom || 19));
     const lat = center ? center[0] : (polygonPoints && polygonPoints[0] ? polygonPoints[0].lat : 43.6047);
     const lng = center ? center[1] : (polygonPoints && polygonPoints[0] ? polygonPoints[0].lng : 1.4442);
 
@@ -359,6 +360,8 @@ export const generateBeforeAfterDualSnapshot = async ({
       };
     };
 
+    let placedCount = 0;
+
     if (polygonPoints && polygonPoints.length >= 3) {
       // ─── MOITIÉ GAUCHE (AVANT) ───
       const ptsLeft = polygonPoints.map(p => getCanvasPoint(p.lat, p.lng, 0));
@@ -375,7 +378,7 @@ export const generateBeforeAfterDualSnapshot = async ({
       ctx.stroke();
       ctx.restore();
 
-      // ─── MOITIÉ DROITE (APRÈS : PANNEAUX SOLAIRES EN PORTRAIT À LA CÔTE) ───
+      // ─── MOITIÉ DROITE (APRÈS : PANNEAUX SOLAIRES EN PORTRAIT STRICTEMENT DANS LA ZONE) ───
       const ptsRight = polygonPoints.map(p => getCanvasPoint(p.lat, p.lng, halfW + 6));
       ctx.save();
       ctx.beginPath();
@@ -391,80 +394,44 @@ export const generateBeforeAfterDualSnapshot = async ({
       ctx.setLineDash([]);
       ctx.restore();
 
-      // Calcul des panneaux à la côte exacte (1.762m x 1.134m, gap 2cm)
-      const metersPerPx = (40075016.686 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, safeZoom + 8);
-      const pxPerM = 1 / metersPerPx;
-
-      const pW_px = 1.134 * pxPerM; // Largeur portrait (1.134m)
-      const pH_px = 1.762 * pxPerM; // Hauteur portrait (1.762m)
-      const gap_px = 0.02 * pxPerM; // 2 cm écart
-
-      // Orientation de la toiture (arête p0 -> p1)
-      const p0 = ptsRight[0];
-      const p1 = ptsRight[1];
-      const angleRoof = Math.atan2(p1.y - p0.y, p1.x - p0.x);
-
-      // Barycentre de la toiture à droite
-      let cX = 0, cY = 0;
-      ptsRight.forEach(pt => { cX += pt.x; cY += pt.y; });
-      cX /= ptsRight.length;
-      cY /= ptsRight.length;
-
-      // Nombre de panneaux selon la puissance
+      // Calcul des emplacements géométriquement valides (Ligne par ligne)
+      const { slots, maxPanels } = computeValidSolarSlots(polygonPoints);
       const targetPanels = Math.max(1, Math.round((customKwc * 1000) / 440));
-      
-      // Disposition compacte en matrice (colonnes le long du faîtage, rangées le long de la pente)
-      const cols = Math.max(2, Math.min(12, Math.ceil(Math.sqrt(targetPanels * 1.6))));
-      const rows = Math.ceil(targetPanels / cols);
+      const countToPlace = Math.min(targetPanels, maxPanels);
+      placedCount = countToPlace;
 
-      const totalFieldW = cols * (pW_px + gap_px) - gap_px;
-      const totalFieldH = rows * (pH_px + gap_px) - gap_px;
+      for (let i = 0; i < countToPlace; i++) {
+        const slot = slots[i];
+        if (!slot) break;
 
-      ctx.save();
-      ctx.translate(cX, cY);
-      ctx.rotate(angleRoof);
+        const corners = slot.corners.map(c => getCanvasPoint(c.lat, c.lng, halfW + 6));
 
-      let placed = 0;
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          if (placed >= targetPanels) break;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(corners[0].x, corners[0].y);
+        for (let k = 1; k < corners.length; k++) ctx.lineTo(corners[k].x, corners[k].y);
+        ctx.closePath();
 
-          const panelX = -totalFieldW / 2 + c * (pW_px + gap_px);
-          const panelY = -totalFieldH / 2 + r * (pH_px + gap_px);
+        // Panneau Solaire Réaliste (Bleu Nuit Antireflet + Cadre alu)
+        ctx.fillStyle = '#0c192c';
+        ctx.fill();
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1;
+        ctx.stroke();
 
-          // Panneau Solaire Réaliste (Bleu Nuit Antireflet + Reflet Métallique)
-          ctx.fillStyle = '#0c192c';
-          ctx.fillRect(panelX, panelY, pW_px, pH_px);
-
-          // Cadre alu fin bleu ciel
-          ctx.strokeStyle = '#38bdf8';
-          ctx.lineWidth = 0.9;
-          ctx.strokeRect(panelX, panelY, pW_px, pH_px);
-
-          // Grille de cellules photovoltaïques internes
-          ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
-          ctx.lineWidth = 0.5;
-          ctx.beginPath();
-          // Ligne médiane verticale
-          ctx.moveTo(panelX + pW_px / 2, panelY);
-          ctx.lineTo(panelX + pW_px / 2, panelY + pH_px);
-          // 3 Lignes horizontales
-          ctx.moveTo(panelX, panelY + pH_px * 0.25);
-          ctx.lineTo(panelX + pW_px, panelY + pH_px * 0.25);
-          ctx.moveTo(panelX, panelY + pH_px * 0.5);
-          ctx.lineTo(panelX + pW_px, panelY + pH_px * 0.5);
-          ctx.moveTo(panelX, panelY + pH_px * 0.75);
-          ctx.lineTo(panelX + pW_px, panelY + pH_px * 0.75);
-          ctx.stroke();
-
-          placed++;
-        }
+        // Cellules photovoltaïques internes
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo((corners[0].x + corners[1].x) / 2, (corners[0].y + corners[1].y) / 2);
+        ctx.lineTo((corners[3].x + corners[2].x) / 2, (corners[3].y + corners[2].y) / 2);
+        ctx.stroke();
+        ctx.restore();
       }
-      ctx.restore();
     }
 
     // ─── BADGES EN HAUT DE CHAQUE MOITIÉ ───
-    const panelCount = Math.max(1, Math.round((customKwc * 1000) / 440));
+    const panelCount = placedCount || Math.max(1, Math.round((customKwc * 1000) / 440));
 
     // Badge Gauche (AVANT)
     ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';

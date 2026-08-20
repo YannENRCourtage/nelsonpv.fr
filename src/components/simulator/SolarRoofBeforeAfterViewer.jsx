@@ -7,6 +7,8 @@ import {
   RotateCw, ArrowRightLeft, Maximize2, ShieldCheck, Compass
 } from 'lucide-react';
 
+import { computeValidSolarSlots } from '@/utils/solarCalepinage';
+
 // Ajustement automatique de la vue sur le polygone
 function AutoFitPolygon({ polygonPoints, center }) {
   const map = useMap();
@@ -23,6 +25,7 @@ function AutoFitPolygon({ polygonPoints, center }) {
 }
 
 // Couche de dessin réaliste des panneaux solaires sur le polygone à la côte exacte (Portrait 1.762m x 1.134m, 2cm gap)
+// Remplissage prioritaire ligne par ligne strictly inside polygon
 function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, orientationAngle = 0 }) {
   const map = useMap();
   const layerRef = useRef(null);
@@ -49,80 +52,26 @@ function SolarPanelsLayer({ polygonPoints, customKwc = 6, panelCount = 14, orien
       dashArray: '4, 3'
     }).addTo(group);
 
-    // 2. Calcul métrique précis des panneaux solaires en portrait
+    // 2. Calcul des emplacements géométriquement valides (Ligne par ligne)
     try {
-      const p0 = polygonPoints[0];
-      const p1 = polygonPoints[1];
-
-      // Centre du polygone
-      let cLat = 0, cLng = 0;
-      polygonPoints.forEach(p => { cLat += p.lat; cLng += p.lng; });
-      cLat /= polygonPoints.length;
-      cLng /= polygonPoints.length;
-
-      const latRad = (cLat * Math.PI) / 180;
-      const metersPerDegLat = 111139;
-      const metersPerDegLng = 111139 * Math.cos(latRad);
-
-      // Vecteur directeur de l'arête principale (Faîtage / Longueur toiture)
-      const dx = (p1.lng - p0.lng) * metersPerDegLng;
-      const dy = (p1.lat - p0.lat) * metersPerDegLat;
-      const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      const ux = dx / len;
-      const uy = dy / len;
-
-      // Vecteur perpendiculaire (Sens de la pente de toiture)
-      const vx = -uy;
-      const vy = ux;
-
-      // Dimensions réelles d'un panneau solaire standard (Portrait)
-      const pW = 1.134; // 1.134 m de large (le long du faîtage)
-      const pH = 1.762; // 1.762 m de haut (le long de la pente)
-      const pGap = 0.02; // 2 cm d'écartement entre panneaux
-
+      const { slots, maxPanels } = computeValidSolarSlots(polygonPoints);
       const targetPanels = panelCount || Math.max(1, Math.round((customKwc * 1000) / 440));
+      const countToPlace = Math.min(targetPanels, maxPanels);
 
-      // Calcul des colonnes et rangées compactes
-      const cols = Math.max(2, Math.min(14, Math.ceil(Math.sqrt(targetPanels * 1.6))));
-      const rows = Math.ceil(targetPanels / cols);
+      for (let i = 0; i < countToPlace; i++) {
+        const slot = slots[i];
+        if (!slot) break;
 
-      const totalW = cols * (pW + pGap) - pGap;
-      const totalH = rows * (pH + pGap) - pGap;
+        const cornersLatLng = slot.corners.map(c => [c.lat, c.lng]);
 
-      const localToLatLng = (localX, localY) => {
-        const mx = localX * ux + localY * vx;
-        const my = localX * uy + localY * vy;
-        return [
-          cLat + (my / metersPerDegLat),
-          cLng + (mx / metersPerDegLng)
-        ];
-      };
-
-      let placed = 0;
-
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          if (placed >= targetPanels) break;
-
-          const panelCenterX = -totalW / 2 + c * (pW + pGap) + pW / 2;
-          const panelCenterY = -totalH / 2 + r * (pH + pGap) + pH / 2;
-
-          const c1 = localToLatLng(panelCenterX - pW / 2, panelCenterY - pH / 2);
-          const c2 = localToLatLng(panelCenterX + pW / 2, panelCenterY - pH / 2);
-          const c3 = localToLatLng(panelCenterX + pW / 2, panelCenterY + pH / 2);
-          const c4 = localToLatLng(panelCenterX - pW / 2, panelCenterY + pH / 2);
-
-          // Panneau Solaire en Portrait (Bleu nuit antireflet + bordure alu)
-          L.polygon([c1, c2, c3, c4], {
-            color: '#38bdf8',
-            weight: 1.2,
-            fillColor: '#0c192c',
-            fillOpacity: 0.95,
-            className: 'solar-panel-portrait'
-          }).addTo(group);
-
-          placed++;
-        }
+        // Panneau Solaire en Portrait (Bleu nuit antireflet + bordure alu)
+        L.polygon(cornersLatLng, {
+          color: '#38bdf8',
+          weight: 1.2,
+          fillColor: '#0c192c',
+          fillOpacity: 0.95,
+          className: 'solar-panel-portrait'
+        }).addTo(group);
       }
     } catch (e) {
       console.warn('Erreur calepinage portrait panneaux:', e);

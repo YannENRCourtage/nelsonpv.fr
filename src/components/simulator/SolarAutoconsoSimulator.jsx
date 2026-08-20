@@ -11,6 +11,7 @@ import { useSimulatorSettingsStore, getProductionForDepartment } from '@/stores/
 import RoofMapPolygonSelector from './RoofMapPolygonSelector';
 import SolarRoofBeforeAfterViewer from './SolarRoofBeforeAfterViewer';
 import { generateSatelliteSnapshot } from '@/utils/satelliteSnapshot';
+import { computeValidSolarSlots } from '@/utils/solarCalepinage';
 
 export default function SolarAutoconsoSimulator({
   selectedProject,
@@ -133,16 +134,34 @@ export default function SolarAutoconsoSimulator({
     setSuggestions([]);
   };
 
-  // Recommandation intelligente de puissance basée sur la consommation + VE
+  // Capacité géométrique maximale d'accueil de la toiture
+  const maxInstallableRoof = useMemo(() => {
+    if (!polygonPoints || polygonPoints.length < 3) return { slots: [], maxPanels: 999, maxKwc: 999 };
+    return computeValidSolarSlots(polygonPoints);
+  }, [polygonPoints]);
+
+  // Recommandation intelligente de puissance basée sur la consommation + VE (plafonnée par la toiture)
   const recommendedKwc = useMemo(() => {
     const totalNeedKwh = consoKwh + (evCount * 2200);
-    if (totalNeedKwh <= 4000) return 3;
-    if (totalNeedKwh <= 7500) return 6;
-    if (totalNeedKwh <= 12000) return 9;
-    if (totalNeedKwh <= 20000) return 15;
-    if (totalNeedKwh <= 32000) return 22;
-    return 36;
-  }, [consoKwh, evCount]);
+    let target = 3;
+    if (totalNeedKwh <= 4000) target = 3;
+    else if (totalNeedKwh <= 7500) target = 6;
+    else if (totalNeedKwh <= 12000) target = 9;
+    else if (totalNeedKwh <= 20000) target = 15;
+    else if (totalNeedKwh <= 32000) target = 22;
+    else target = 36;
+
+    const availablePowers = [3, 6, 9, 15, 22, 36].filter(kw => {
+      const neededPanels = Math.round((kw * 1000) / 440);
+      return neededPanels <= maxInstallableRoof.maxPanels;
+    });
+
+    if (availablePowers.length === 0) return 3;
+    if (availablePowers.includes(target)) return target;
+    const validLower = availablePowers.filter(p => p <= target);
+    if (validLower.length > 0) return validLower[validLower.length - 1];
+    return availablePowers[0];
+  }, [consoKwh, evCount, maxInstallableRoof]);
 
   useEffect(() => {
     setCustomKwc(recommendedKwc);
@@ -850,24 +869,43 @@ export default function SolarAutoconsoSimulator({
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-2xl border border-slate-200 shadow-2xs">
-                {[3, 6, 9, 15, 22, 36].map((kw) => (
-                  <button
-                    key={kw}
-                    type="button"
-                    onClick={() => {
-                      setCustomKwc(kw);
-                      setCustomAutoconsoRate(getDefaultAutoconsoRate(kw));
-                    }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                      customKwc === kw
-                        ? 'bg-emerald-600 text-white shadow-sm scale-105'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {kw} kWc {kw === recommendedKwc ? '⭐' : ''}
-                  </button>
-                ))}
+              <div className="flex flex-wrap items-center gap-1.5 bg-white px-3 py-1.5 rounded-2xl border border-slate-200 shadow-2xs">
+                {[3, 6, 9, 15, 22, 36].map((kw) => {
+                  const neededPanels = Math.round((kw * 1000) / 440);
+                  const isAllowed = neededPanels <= maxInstallableRoof.maxPanels;
+
+                  if (!isAllowed) {
+                    return (
+                      <button
+                        key={kw}
+                        type="button"
+                        disabled={true}
+                        title={`Surface de toiture insuffisante pour ${kw} kWc (Capacité max : ${maxInstallableRoof.maxKwc} kWc)`}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100/70 text-slate-300 cursor-not-allowed border border-dashed border-slate-200"
+                      >
+                        {kw} kWc
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={kw}
+                      type="button"
+                      onClick={() => {
+                        setCustomKwc(kw);
+                        setCustomAutoconsoRate(getDefaultAutoconsoRate(kw));
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                        customKwc === kw
+                          ? 'bg-emerald-600 text-white shadow-sm scale-105'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {kw} kWc {kw === recommendedKwc ? '⭐' : ''}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
