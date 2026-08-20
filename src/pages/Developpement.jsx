@@ -31,6 +31,7 @@ import {
   PlateFacades,
   PlateInsertion as DPPlateInsertion,
   PlateInsertionNotice,
+  PlateEnv,
   PlateEnvProche,
   PlateEnvLointain,
 } from '@/components/editor/DPPlates';
@@ -280,16 +281,14 @@ export default function Developpement() {
         if (!selectedPages || selectedPages.situation) plateIds.push(`dev-plate-situation`);
         if (!selectedPages || selectedPages.masse) plateIds.push(`dev-plate-masse`);
       } else {
-        if (!selectedPages || selectedPages.situation) plateIds.push(`dev-plate-situation`);
-        if (!selectedPages || selectedPages.masse) plateIds.push(`dev-plate-masse`);
+        if (!selectedPages || selectedPages.situation !== false) plateIds.push(`dev-plate-situation`);
+        if (!selectedPages || selectedPages.masse !== false) plateIds.push(`dev-plate-masse`);
         for (let bIdx = 0; bIdx < bList.length; bIdx++) {
           const suffix = bIdx === 0 ? '' : `-${bIdx}`;
-          if (!selectedPages || selectedPages.section) plateIds.push(`dev-plate-section${suffix}`);
-          if (!selectedPages || selectedPages.facades) plateIds.push(`dev-plate-facades${suffix}`);
-          if (!selectedPages || selectedPages.insertion) plateIds.push(`dev-plate-insertion${suffix}`);
-          if (!selectedPages || selectedPages.dp7 || selectedPages.env) plateIds.push(`dev-plate-env-proche${suffix}`);
-          if (selectedPages?.dp8 || selectedPages?.env_lointain) plateIds.push(`dev-plate-env-lointain${suffix}`);
-          if (selectedPages?.notice || selectedPages?.dp_notice) plateIds.push(`dev-plate-notice${suffix}`);
+          if (!selectedPages || selectedPages.section !== false) plateIds.push(`dev-plate-section${suffix}`);
+          if (!selectedPages || selectedPages.facades !== false) plateIds.push(`dev-plate-facades${suffix}`);
+          if (!selectedPages || selectedPages.insertion !== false) plateIds.push(`dev-plate-insertion${suffix}`);
+          if (!selectedPages || selectedPages.env !== false) plateIds.push(`dev-plate-env${suffix}`);
         }
       }
 
@@ -571,9 +570,24 @@ export default function Developpement() {
             const suffix = bIdx === 0 ? '' : `-${bIdx}`;
             return (
               <React.Fragment key={`dp-b-${b.id || bIdx}`}>
-                <div id={`dev-plate-section${suffix}`}><PlateSection project={bProj} captures={bProj.urbanisme_captures || {}} /></div>
+                <div id={`dev-plate-section${suffix}`}>
+                  <PlateSection 
+                    project={bProj} 
+                    captures={bProj.urbanisme_captures || {}} 
+                    includeNotice={selectedProject?.selectedPages?.dp_notice !== false}
+                    noticeText={selectedProject.noticeText || selectedProject.noticeAgricole || selectedProject.pc_notice || selectedProject.description}
+                  />
+                </div>
                 <div id={`dev-plate-facades${suffix}`}><PlateFacades project={bProj} captures={bProj.urbanisme_captures || {}} /></div>
                 <div id={`dev-plate-insertion${suffix}`}><DPPlateInsertion project={bProj} captures={bProj.urbanisme_captures || {}} photos={bProj.pc_photos || {}} /></div>
+                <div id={`dev-plate-env${suffix}`}>
+                  <PlateEnv 
+                    project={bProj} 
+                    captures={bProj.urbanisme_captures || {}} 
+                    photos={bProj.pc_photos || {}} 
+                    includeLointain={selectedProject?.selectedPages?.dp8 !== false}
+                  />
+                </div>
                 <div id={`dev-plate-env-proche${suffix}`}><PlateEnvProche project={bProj} captures={bProj.urbanisme_captures || {}} photos={bProj.pc_photos || {}} /></div>
                 <div id={`dev-plate-env-lointain${suffix}`}><PlateEnvLointain project={bProj} captures={bProj.urbanisme_captures || {}} photos={bProj.pc_photos || {}} /></div>
                 <div id={`dev-plate-notice${suffix}`}><PlateInsertionNotice project={bProj} noticeText={selectedProject.noticeText || selectedProject.noticeAgricole || selectedProject.pc_notice || selectedProject.description} /></div>

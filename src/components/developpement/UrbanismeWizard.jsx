@@ -2070,9 +2070,8 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                           facades: true,
                           insertion: true,
                           env: true,
-                          dp7: true,
+                          dp_notice: true,
                           dp8: true,
-                          notice: true,
                           cerfa: true,
                         })}
                         className="px-2.5 py-1 bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-100 rounded-lg text-xs font-bold transition-all shadow-2xs"
@@ -2090,9 +2089,8 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                           facades: false,
                           insertion: false,
                           env: false,
-                          dp7: false,
+                          dp_notice: false,
                           dp8: false,
-                          notice: false,
                           cerfa: false,
                         })}
                         className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all shadow-2xs"
@@ -2188,12 +2186,34 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                         { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte & synthèse', badge: 'Recommandé', color: 'blue' },
                         { id: 'situation', code: 'DP1', title: 'Plan de situation', desc: 'IGN cartographique & Satellite', badge: 'Obligatoire', color: 'indigo' },
                         { id: 'masse', code: 'DP2', title: 'Plan de masse', desc: 'Plan de masse des constructions', badge: 'Obligatoire', color: 'indigo' },
-                        { id: 'section', code: 'DP3', title: 'Plan en coupe', desc: "Coupe transversale de l'ombrière", badge: 'Obligatoire', color: 'indigo' },
+                        { 
+                          id: 'section', 
+                          code: selectedPages.dp_notice !== false ? 'DP3+NOTICE' : 'DP3', 
+                          title: 'Plan en coupe', 
+                          desc: selectedPages.dp_notice !== false ? "Coupe transversale & notice descriptive" : "Coupe transversale de l'ombrière", 
+                          badge: 'Obligatoire', 
+                          color: 'indigo',
+                          subOption: {
+                            key: 'dp_notice',
+                            label: '+ Notice descriptive sous la coupe',
+                            checked: selectedPages.dp_notice !== false
+                          }
+                        },
                         { id: 'facades', code: 'DP4', title: 'Façades & Toitures', desc: "5 vues 3D de l'ombrière", badge: '3D', color: 'emerald' },
-                        { id: 'insertion', code: 'DP6', title: 'Insertion paysagère', desc: 'Simulation d\'intégration paysagère', badge: 'Photo 3D', color: 'emerald' },
-                        { id: 'dp7', code: 'DP7', title: 'Environnement proche', desc: 'Photographie dans le paysage proche', badge: 'Optionnel', color: 'purple' },
-                        { id: 'dp8', code: 'DP8', title: 'Environnement lointain', desc: 'Photographie dans le paysage lointain', badge: 'Optionnel', color: 'purple' },
-                        { id: 'notice', code: 'NOTICE', title: 'Notice descriptive (DP)', desc: 'Notice descriptive structurée du projet', badge: 'Optionnel', color: 'blue' },
+                        { id: 'insertion', code: 'DP6', title: 'Insertion paysagère', desc: 'Simulation d\'intégration paysagère', badge: (photos?.avant || photos?.apres) ? 'Prêt' : 'Photo 3D', color: 'emerald' },
+                        { 
+                          id: 'env', 
+                          code: selectedPages.dp8 !== false ? 'DP7+DP8' : 'DP7', 
+                          title: 'Environnement proche', 
+                          desc: selectedPages.dp8 !== false ? "Photographies dans le paysage proche et lointain" : "Photographie dans le paysage proche", 
+                          badge: (photos?.proche || photos?.lointain) ? 'Prêt' : 'Optionnel', 
+                          color: 'purple',
+                          subOption: {
+                            key: 'dp8',
+                            label: '+ Photo paysage lointain (DP8)',
+                            checked: selectedPages.dp8 !== false
+                          }
+                        },
                         { id: 'cerfa', code: 'CERFA', title: 'Formulaire CERFA DP', desc: 'Déclaration préalable officielle', badge: 'Administratif', color: 'amber' },
                       ] : [
                         { id: 'cover', code: 'GARDE', title: 'Page de Garde', desc: 'Présentation architecte', badge: 'Recommandé', color: 'blue' },
@@ -2228,6 +2248,27 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
                               </div>
                               <h6 className="text-xs font-black text-slate-900 leading-tight">{item.title}</h6>
                               <p className="text-[10.5px] text-slate-500 mt-1 leading-snug">{item.desc}</p>
+                              
+                              {/* Sous-option facultative intégrée dans la carte */}
+                              {item.subOption && isChecked && (
+                                <div 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedPages(prev => ({ ...prev, [item.subOption.key]: !item.subOption.checked }));
+                                  }}
+                                  className="mt-2 pt-1.5 border-t border-slate-200/80 flex items-center justify-between gap-1.5 bg-blue-50/70 -mx-1 px-2 py-1 rounded-lg cursor-pointer hover:bg-blue-100/80 transition-colors"
+                                >
+                                  <span className="text-[10px] font-bold text-blue-900 leading-tight">
+                                    {item.subOption.label}
+                                  </span>
+                                  <input
+                                    type="checkbox"
+                                    checked={item.subOption.checked}
+                                    onChange={() => {}}
+                                    className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer pointer-events-none"
+                                  />
+                                </div>
+                              )}
                             </div>
                             <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
                               <span className="text-[9.5px] font-bold text-slate-400">{item.badge}</span>

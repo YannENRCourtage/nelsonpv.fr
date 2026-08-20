@@ -228,9 +228,9 @@ export const PlateMasse = ({ project, captures }) => {
 };
 
 /**
- * PLANCHE DP3 : PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION
+ * PLANCHE DP3 : PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION (& NOTICE DESCRIPTIVE OPTIONNELLE)
  */
-export const PlateCoupe = ({ project }) => {
+export const PlateCoupe = ({ project, captures, noticeText, includeNotice = false }) => {
     const longueur = project?.longueur || '30.0';
     const largeur = parseFloat(project?.largeur || 20.0);
     const hauteurEgout = parseFloat(project?.hauteur_egout || 4.0);
@@ -260,6 +260,32 @@ export const PlateCoupe = ({ project }) => {
     // Dimensions extensions : Appentis par défaut à 9.30m, Auvent à 4.00m
     const extRightWidth = hasAppentisRight ? ((Number(project?.rightWidth) && Number(project?.rightWidth) > 5) ? Number(project.rightWidth) : 9.3) : (hasAuventRight ? (Number(project?.rightWidth) || 4.0) : 0);
     const extLeftWidth = hasAppentisLeft ? ((Number(project?.leftWidth) && Number(project?.leftWidth) > 5) ? Number(project.leftWidth) : 9.3) : (hasAuventLeft ? (Number(project?.leftWidth) || 4.0) : 0);
+
+    // Données pour la notice descriptive
+    const hasNotice = Boolean(includeNotice || project?.includeNotice || project?.hasNotice);
+    const projectAddress = project?.address || project?.clientAddress || project?.location || 'Lieu-dit Le Projet';
+    const projectCity = project?.city || project?.clientCity || 'Commune du projet';
+    const projectZip = project?.zip || project?.postalCode || '00000';
+    const projectCadastre = project?.cadastre || project?.parcelle || 'Section A n° 001';
+    const projectSurface = project?.parcelleSurface ? `${project.parcelleSurface} m²` : '3 500 m²';
+    const totalSurface = Math.round((largeur + (hasExtLeft ? extLeftWidth : 0) + (hasExtRight ? extRightWidth : 0)) * longueur);
+    const displayKwc = project?.kwc || Math.round(totalSurface * 0.20);
+    const cleanNoticeText = noticeText || project?.noticeText || project?.noticeAgricole || project?.pc_notice || project?.description;
+
+    const default5PointsNoticeDP = `1- OBJET DE LA DÉCLARATION PRÉALABLE
+La présente déclaration préalable a pour objet l'installation d'une structure ombrière photovoltaïque en toiture d'une puissance de ${displayKwc} kWc (${totalSurface}m²).
+
+2- LE SITE
+Le projet se situe sur la commune de ${projectCity} (${projectZip}) au ${projectAddress}. Le terrain concerné par le projet est cadastré sous le numéro ${projectCadastre} (surface : ${projectSurface}). Le terrain est plat et l'accès se fait directement depuis la voirie existante.
+
+3- LE PROJET
+Le projet consiste en l'implantation d'une structure ombrière photovoltaïque en charpente métallique (RAL 7016) de dimensions ${largeur.toFixed(2)}m de large par ${longueur}m de long, avec une toiture supportant des modules solaires monocristallins noirs. La hauteur libre sous structure et la pente respectent l'intégration paysagère.
+
+4- RACCORDEMENT AUX RÉSEAUX
+La production électrique de la centrale photovoltaïque sera injectée sur le réseau public de distribution d'électricité (ENEDIS) via un point de livraison situé sur la parcelle.
+
+5- SÉCURITÉ & ENVIRONNEMENT
+L'ouvrage ne génère aucune nuisance sonore ni rejet dans l'environnement. Les eaux de pluie s'écoulent naturellement sur le terrain.`;
 
     // Calculs dimensionnels RÉELS & PROPORTIONNELS selon les fiches constructeur
     let rightEaveHeight = 4.00;
@@ -389,76 +415,198 @@ export const PlateCoupe = ({ project }) => {
 
     const roofTypeLabel = isOmbriere ? 'monopente (ombrière VL/PL)' : isAsym ? (isAsym2 ? 'double pente asymétrique 2 zones' : 'double pente asymétrique') : isSym ? 'double pente symétrique' : 'photovoltaïque';
 
+    const coupeSvgContent = (
+        <svg width="680" height="186" viewBox="0 0 680 186" style={{ width: '100%', height: '100%', maxHeight: hasNotice ? '54mm' : '85mm' }}>
+            {/* Badges d'Orientation NORD / SUD */}
+            <rect x="70" y="6" width="44" height="14" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.2" />
+            <text x="92" y="16" textAnchor="middle" fill="#2563eb" fontSize="7.5" fontWeight="bold">NORD</text>
+
+            <rect x="585" y="6" width="38" height="14" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.2" />
+            <text x="604" y="16" textAnchor="middle" fill="#2563eb" fontSize="7.5" fontWeight="bold">SUD</text>
+
+            {/* 1. Ligne de Terrain Naturel (TN) */}
+            <line x1="20" y1={groundYLeft} x2="660" y2={groundYRight} stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="6 3" />
+            <text x="35" y={groundYLeft + 11} fill="#64748b" fontSize="7.5" fontStyle="italic">Terrain naturel conservé (TN Aval) ±0.00</text>
+            <text x="655" y={groundYRight - 4} textAnchor="end" fill="#64748b" fontSize="7.5" fontStyle="italic">TN Amont</text>
+
+            {/* 2. Dessin selon la typologie */}
+            {isOmbriere ? (
+                isDouble ? (
+                    /* ── OMBRIÈRE DOUBLE VL (Structure en V - Modèles O4 / O5) ── */
+                    (() => {
+                        const mWidth = massifWidth * pxPerM;
+                        const mHeight = massifHeight * pxPerM;
+                        const mX = centerX - mWidth / 2;
+                        const mY = groundY - mHeight;
+                        const footLeftX = centerX - mWidth * 0.36;
+                        const footRightX = centerX + mWidth * 0.36;
+                        const postLeftTopX = centerX - mainWidthSvg * 0.22;
+                        const postLeftTopY = leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.28;
+                        const postRightTopX = centerX + mainWidthSvg * 0.22;
+                        const postRightTopY = leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.72;
+                        
+                        const tLeftX = footLeftX + (postLeftTopX - footLeftX) * ((mY - clearanceSvgY) / (mY - postLeftTopY));
+                        const tRightX = footRightX + (postRightTopX - footRightX) * ((mY - clearanceSvgY) / (mY - postRightTopY));
+
+                        return (
+                            <g>
+                                {/* Massif béton et semelle */}
+                                <rect x={mX} y={mY} width={mWidth} height={mHeight} fill="#e2e8f0" stroke="#475569" strokeWidth="1.2" />
+                                <pattern id="dp-beton-pattern" width="6" height="6" patternUnits="userSpaceOnUse">
+                                    <path d="M 0 6 L 6 0 M 0 0 L 6 6" fill="none" stroke="#94a3b8" strokeWidth="0.5" />
+                                </pattern>
+                                <rect x={mX} y={mY} width={mWidth} height={mHeight} fill="url(#dp-beton-pattern)" opacity="0.4" />
+                                <text x={centerX} y={mY + mHeight / 2 + 3} textAnchor="middle" fill="#475569" fontSize="6.5" fontWeight="bold">Massif Béton Armé</text>
+
+                                {/* Poteaux obliques en V (profils IPE / HEA acier galvanisé) */}
+                                <line x1={footLeftX} y1={mY} x2={postLeftTopX} y2={postLeftTopY} stroke="#1e293b" strokeWidth="4.5" strokeLinecap="round" />
+                                <line x1={footRightX} y1={mY} x2={postRightTopX} y2={postRightTopY} stroke="#1e293b" strokeWidth="4.5" strokeLinecap="round" />
+
+                                {/* Traverse horizontale métallique */}
+                                <line x1={tLeftX} y1={clearanceSvgY} x2={tRightX} y2={clearanceSvgY} stroke="#334155" strokeWidth="3" />
+
+                                {/* Croix de Saint-André entre poteaux obliques */}
+                                <line x1={footLeftX} y1={mY} x2={tRightX} y2={clearanceSvgY} stroke="#64748b" strokeWidth="1.5" />
+                                <line x1={footRightX} y1={mY} x2={tLeftX} y2={clearanceSvgY} stroke="#64748b" strokeWidth="1.5" />
+
+                                {/* Pannes et couverture photovoltaïque continue (bleu solaire) */}
+                                <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#1d4ed8" strokeWidth="6" strokeLinecap="round" />
+                                <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#38bdf8" strokeWidth="1.5" strokeDasharray="10 3" />
+                            </g>
+                        );
+                    })()
+                ) : (
+                    /* ── OMBRIÈRE SIMPLE VL / MONOPENTE (Poteau central ou déporté) ── */
+                    (() => {
+                        const mWidth = massifWidth * pxPerM;
+                        const mHeight = massifHeight * pxPerM;
+                        const mX = centerX - mWidth / 2;
+                        const mY = groundY - mHeight;
+
+                        return (
+                            <g>
+                                <rect x={mX} y={mY} width={mWidth} height={mHeight} fill="#e2e8f0" stroke="#475569" strokeWidth="1.2" />
+                                <text x={centerX} y={mY + mHeight / 2 + 3} textAnchor="middle" fill="#475569" fontSize="6.5" fontWeight="bold">Massif Béton</text>
+                                <line x1={centerX} y1={mY} x2={centerX} y2={leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) / 2} stroke="#1e293b" strokeWidth="5" strokeLinecap="round" />
+                                <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#1d4ed8" strokeWidth="6" strokeLinecap="round" />
+                                <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#38bdf8" strokeWidth="1.5" strokeDasharray="10 3" />
+                            </g>
+                        );
+                    })()
+                )
+            ) : (
+                /* ── BÂTIMENT STANDARD (SYMÉTRIQUE / ASYMÉTRIQUE / MONOPENTE AVEC EXTENSIONS) ── */
+                <g>
+                    {/* Semelles / Massifs béton sous poteaux */}
+                    <rect x={mainLeftSvgX - 10} y={groundY - 10} width="20" height="10" fill="#e2e8f0" stroke="#64748b" strokeWidth="0.8" />
+                    <rect x={mainRightSvgX - 10} y={groundY - 10} width="20" height="10" fill="#e2e8f0" stroke="#64748b" strokeWidth="0.8" />
+
+                    {/* Poteaux principaux */}
+                    <line x1={mainLeftSvgX} y1={groundY} x2={mainLeftSvgX} y2={leftEaveSvgY} stroke="#0f172a" strokeWidth="4" strokeLinecap="round" />
+                    <line x1={mainRightSvgX} y1={groundY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#0f172a" strokeWidth="4" strokeLinecap="round" />
+
+                    {/* Poteau intermédiaire si Asymétrique 2 zones */}
+                    {isAsym2 && (
+                        <>
+                            <rect x={middleColSvgX - 8} y={groundY - 10} width="16" height="10" fill="#e2e8f0" stroke="#64748b" strokeWidth="0.8" />
+                            <line x1={middleColSvgX} y1={groundY} x2={middleColSvgX} y2={middleColTopY} stroke="#0f172a" strokeWidth="3.5" strokeLinecap="round" />
+                            {/* Flèche et côte de hauteur sous poteau intermédiaire */}
+                            <line x1={middleColSvgX + 10} y1={groundY} x2={middleColSvgX + 10} y2={middleColTopY} stroke="#2563eb" strokeWidth="1" />
+                            <text x={middleColSvgX + 14} y={(groundY + middleColTopY) / 2} fill="#2563eb" fontSize="7" fontWeight="bold">
+                                {((groundY - middleColTopY) / pxPerM).toFixed(2)}m
+                            </text>
+                        </>
+                    )}
+
+                    {/* Arbalétriers (Toiture) */}
+                    <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={apexSvgX} y2={apexSvgY} stroke="#0f172a" strokeWidth="3.5" strokeLinecap="round" />
+                    <line x1={apexSvgX} y1={apexSvgY} x2={mainRightSvgX} y2={rightEaveSvgY} stroke="#0f172a" strokeWidth="3.5" strokeLinecap="round" />
+
+                    {/* Couverture PV (Bleu) */}
+                    <line x1={mainLeftSvgX} y1={leftEaveSvgY - 2} x2={apexSvgX} y2={apexSvgY - 2} stroke="#2563eb" strokeWidth="3" />
+                    <line x1={apexSvgX} y1={apexSvgY - 2} x2={mainRightSvgX} y2={rightEaveSvgY - 2} stroke="#2563eb" strokeWidth="3" />
+
+                    {/* Extension Droite */}
+                    {hasExtRight && (
+                        <g>
+                            <rect x={extRightSvgX - 8} y={groundY - 10} width="16" height="10" fill="#e2e8f0" stroke="#64748b" strokeWidth="0.8" />
+                            <line x1={extRightSvgX} y1={groundY} x2={extRightSvgX} y2={extRightSvgY} stroke="#0f172a" strokeWidth="3.5" strokeLinecap="round" />
+                            <line x1={mainRightSvgX} y1={rightEaveSvgY} x2={extRightSvgX} y2={extRightSvgY} stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
+                            <line x1={mainRightSvgX} y1={rightEaveSvgY - 2} x2={extRightSvgX} y2={extRightSvgY - 2} stroke="#64748b" strokeWidth="2.5" />
+                        </g>
+                    )}
+
+                    {/* Extension Gauche */}
+                    {hasExtLeft && (
+                        <g>
+                            <rect x={extLeftSvgX - 8} y={groundY - 10} width="16" height="10" fill="#e2e8f0" stroke="#64748b" strokeWidth="0.8" />
+                            <line x1={extLeftSvgX} y1={groundY} x2={extLeftSvgX} y2={extLeftSvgY} stroke="#0f172a" strokeWidth="3.5" strokeLinecap="round" />
+                            <line x1={mainLeftSvgX} y1={leftEaveSvgY} x2={extLeftX} y2={extLeftSvgY} stroke="#0f172a" strokeWidth="3" strokeLinecap="round" />
+                            <line x1={mainLeftSvgX} y1={leftEaveSvgY - 2} x2={extLeftX} y2={extLeftSvgY - 2} stroke="#64748b" strokeWidth="2.5" />
+                        </g>
+                    )}
+                </g>
+            )}
+
+            {/* 3. Lignes de Côtes & Annotations */}
+            {/* Côte Largeur Totale */}
+            <g transform="translate(0, 160)">
+                <line x1={mainLeftSvgX} y1="0" x2={mainRightSvgX} y2="0" stroke="#0284c7" strokeWidth="1.2" />
+                <line x1={mainLeftSvgX} y1="-4" x2={mainLeftSvgX} y2="4" stroke="#0284c7" strokeWidth="1.2" />
+                <line x1={mainRightSvgX} y1="-4" x2={mainRightSvgX} y2="4" stroke="#0284c7" strokeWidth="1.2" />
+                <text x={centerX} y="-3" fill="#0284c7" fontSize="7.5" fontWeight="bold" textAnchor="middle">
+                    ▲ Largeur : {largeur.toFixed(2)} m (Emprise au sol)
+                </text>
+            </g>
+
+            {/* Côte Extension Droite */}
+            {hasExtRight && (
+                <g transform="translate(0, 160)">
+                    <line x1={mainRightSvgX} y1="0" x2={extRightSvgX} y2="0" stroke="#0284c7" strokeWidth="1.2" />
+                    <line x1={extRightSvgX} y1="-4" x2={extRightSvgX} y2="4" stroke="#0284c7" strokeWidth="1.2" />
+                    <text x={(mainRightSvgX + extRightSvgX) / 2} y="-3" fill="#0284c7" fontSize="7" fontWeight="bold" textAnchor="middle">
+                        +{extRightWidth.toFixed(2)}m
+                    </text>
+                </g>
+            )}
+
+            {/* Hauteur Égout / Sablière */}
+            <g transform={`translate(${mainLeftSvgX - 16}, 0)`}>
+                <line x1="0" y1={groundY} x2="0" y2={leftEaveSvgY} stroke="#dc2626" strokeWidth="1" />
+                <line x1="-3" y1={groundY} x2="3" y2={groundY} stroke="#dc2626" strokeWidth="1" />
+                <line x1="-3" y1={leftEaveSvgY} x2="3" y2={leftEaveSvgY} stroke="#dc2626" strokeWidth="1" />
+                <text x="-4" y={(groundY + leftEaveSvgY) / 2 + 2.5} fill="#dc2626" fontSize="7" fontWeight="bold" textAnchor="end">
+                    Sablière Nord : {leftEaveHeight.toFixed(2)}m
+                </text>
+            </g>
+
+            {/* Hauteur Faîtage */}
+            <g transform={`translate(${centerX - 4}, 0)`}>
+                <line x1="0" y1={groundY} x2="0" y2={apexSvgY} stroke="#dc2626" strokeWidth="1" strokeDasharray="3 2" />
+                <text x="5" y={(groundY + apexSvgY) / 2} fill="#dc2626" fontSize="7" fontWeight="bold">
+                    Faîtage : {ridgeHeight.toFixed(2)}m
+                </text>
+            </g>
+
+            {/* Échelle Graphique Métrique */}
+            <g transform={`translate(${scaleStartX}, ${scaleY})`}>
+                <rect x={0} y={0} width={scaleSegWidth} height={3} fill="#0f172a" />
+                <rect x={scaleSegWidth} y={0} width={scaleSegWidth} height={3} fill="#e2e8f0" stroke="#0f172a" strokeWidth={0.5} />
+                <rect x={scaleSegWidth * 2} y={0} width={scaleSegWidth} height={3} fill="#0f172a" />
+                <rect x={scaleSegWidth * 3} y={0} width={scaleSegWidth} height={3} fill="#e2e8f0" stroke="#0f172a" strokeWidth={0.5} />
+                <rect x={scaleSegWidth * 4} y={0} width={scaleSegWidth} height={3} fill="#0f172a" />
+                <text x={0} y={6.5} fill="#475569" fontSize="5.5" textAnchor="middle">0</text>
+                <text x={scaleSegWidth} y={6.5} fill="#475569" fontSize="5.5" textAnchor="middle">2</text>
+                <text x={scaleSegWidth * 2} y={6.5} fill="#475569" fontSize="5.5" textAnchor="middle">4</text>
+                <text x={scaleSegWidth * 3} y={6.5} fill="#475569" fontSize="5.5" textAnchor="middle">6</text>
+                <text x={scaleSegWidth * 4} y={6.5} fill="#475569" fontSize="5.5" textAnchor="middle">8</text>
+                <text x={scaleTotalWidth} y={6.5} fill="#0f172a" fontSize="6" fontWeight="bold" textAnchor="middle">10m</text>
+            </g>
+        </svg>
+    );
+
     return (
         <div style={PAGE_STYLE} id="dp-plate-coupe">
-            <PlateHeader title="DP3 — PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION" project={project} />
-            <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', padding: '4mm 6mm', display: 'flex', flexDirection: 'column', background: '#f8fafc', maxHeight: '135mm', marginBottom: '5mm' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm' }}>
-                    <span style={{ fontSize: '9.5pt', fontWeight: 'bold', color: '#0f172a' }}>
-                        Coupe transversale AA' — Ombrière photovoltaïque & Terrain naturel
-                    </span>
-                    <span style={{ fontSize: '8pt', color: '#64748b' }}>
-                        Dimensions : {largeur.toFixed(2)}m × {longueur}m{hasAuventRight ? ` (+ Auvent ${extRightWidth.toFixed(2)}m)` : hasAppentisRight ? ` (+ Appentis ${extRightWidth.toFixed(2)}m)` : ''}{hasAuventLeft ? ` (+ Auvent ${extLeftWidth.toFixed(2)}m Gauche)` : hasAppentisLeft ? ` (+ Appentis ${extLeftWidth.toFixed(2)}m Gauche)` : ''} • Échelle indicative
-                    </span>
-                </div>
-
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="680" height="186" viewBox="0 0 680 186" style={{ width: '100%', height: '100%', maxHeight: '85mm' }}>
-                        {/* Badges d'Orientation NORD / SUD */}
-                        <rect x="70" y="6" width="44" height="14" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.2" />
-                        <text x="92" y="16" textAnchor="middle" fill="#2563eb" fontSize="7.5" fontWeight="bold">NORD</text>
-
-                        <rect x="585" y="6" width="38" height="14" rx="3" fill="#ffffff" stroke="#2563eb" strokeWidth="1.2" />
-                        <text x="604" y="16" textAnchor="middle" fill="#2563eb" fontSize="7.5" fontWeight="bold">SUD</text>
-
-                        {/* 1. Ligne de Terrain Naturel (TN) */}
-                        <line x1="20" y1={groundYLeft} x2="660" y2={groundYRight} stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="6 3" />
-                        <text x="35" y={groundYLeft + 11} fill="#64748b" fontSize="7.5" fontStyle="italic">Terrain naturel conservé (TN Aval) ±0.00</text>
-                        <text x="655" y={groundYRight - 4} textAnchor="end" fill="#64748b" fontSize="7.5" fontStyle="italic">TN Amont</text>
-
-                        {/* 2. Dessin selon la typologie */}
-                        {isOmbriere ? (
-                            isDouble ? (
-                                /* ── OMBRIÈRE DOUBLE VL (Structure en V - Modèles O4 / O5) ── */
-                                (() => {
-                                    const mWidth = massifWidth * pxPerM;
-                                    const mHeight = massifHeight * pxPerM;
-                                    const mX = centerX - mWidth / 2;
-                                    const mY = groundY - mHeight;
-                                    const footLeftX = centerX - mWidth * 0.36;
-                                    const footRightX = centerX + mWidth * 0.36;
-                                    const postLeftTopX = centerX - mainWidthSvg * 0.22;
-                                    const postLeftTopY = leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.28;
-                                    const postRightTopX = centerX + mainWidthSvg * 0.22;
-                                    const postRightTopY = leftEaveSvgY + (rightEaveSvgY - leftEaveSvgY) * 0.72;
-                                    
-                                    const tLeftX = footLeftX + (postLeftTopX - footLeftX) * ((mY - clearanceSvgY) / (mY - postLeftTopY));
-                                    const tRightX = footRightX + (postRightTopX - footRightX) * ((mY - clearanceSvgY) / (mY - postRightTopY));
-
-                                    return (
-                                        <g>
-                                            {/* Massif béton et semelle */}
-                                            <rect x={mX - 4} y={groundY - 2} width={mWidth + 8} height={4} fill="#94a3b8" rx="1" />
-                                            <rect x={mX} y={mY} width={mWidth} height={mHeight} fill="#cbd5e1" stroke="#64748b" strokeWidth="1.2" rx="1.5" />
-                                            <rect x={footLeftX - 5} y={mY - 2} width="10" height="2.5" fill="#334155" />
-                                            <rect x={footRightX - 5} y={mY - 2} width="10" height="2.5" fill="#334155" />
-                                            <text x={centerX} y={groundY + 8} textAnchor="middle" fill="#64748b" fontSize="6.5" fontStyle="italic">Massif béton ({massifWidth.toFixed(2)}m)</text>
-
-                                            {/* Poteaux inclinés en V */}
-                                            <line x1={footLeftX} y1={mY} x2={postLeftTopX} y2={postLeftTopY + 3} stroke="#1e293b" strokeWidth="5.5" strokeLinecap="round" />
-                                            <line x1={footRightX} y1={mY} x2={postRightTopX} y2={postRightTopY + 3} stroke="#1e293b" strokeWidth="5.5" strokeLinecap="round" />
-
-                                            {/* Traverse horizontale à hauteur libre */}
-                                            <line x1={tLeftX} y1={clearanceSvgY} x2={tRightX} y2={clearanceSvgY} stroke="#334155" strokeWidth="2.8" />
-
-                                            {/* Croix de Saint-André supérieure allant d'un poteau oblique à l'autre */}
-                                            <line x1={tLeftX} y1={clearanceSvgY} x2={postRightTopX} y2={postRightTopY + 3} stroke="#475569" strokeWidth="2" />
-                                            <line x1={tRightX} y1={clearanceSvgY} x2={postLeftTopX} y2={postLeftTopY + 3} stroke="#475569" strokeWidth="2" />
-
-                                            {/* Pannes régulières IPE et Modules Solaires */}
-                                            <polygon
-                                                points={`${mainLeftSvgX - 8},${leftEaveSvgY} ${mainRightSvgX + 8},${rightEaveSvgY} ${mainRightSvgX + 8},${rightEaveSvgY - 5} ${mainLeftSvgX - 8},${leftEaveSvgY - 5}`}
-                                                fill="#1d4ed8"
                                                 stroke="#60a5fa"
                                                 strokeWidth="1"
                                             />
@@ -735,13 +883,65 @@ export const PlateCoupe = ({ project }) => {
                             <text x={scaleTotalWidth} y={6.5} fill="#0f172a" fontSize="6" fontWeight="bold" textAnchor="middle">10m</text>
                         </g>
                     </svg>
+    );
+
+    return (
+        <div style={PAGE_STYLE} id="dp-plate-coupe">
+            <PlateHeader 
+                title={hasNotice ? "DP3 : PLAN EN COUPE & NOTICE DESCRIPTIVE" : "DP3 — PLAN EN COUPE DU TERRAIN ET DE LA CONSTRUCTION"} 
+                project={project} 
+            />
+            {hasNotice ? (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2.5mm', marginBottom: '8mm' }}>
+                    {/* HAUT : DP3 PLAN EN COUPE TRANSVERSALE */}
+                    <div style={{ height: '62mm', border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '1.5mm 4mm', background: '#f8fafc', display: 'flex', flexDirection: 'column', position: 'relative', flexShrink: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5mm' }}>
+                            <span style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#0f172a' }}>
+                                DP3 — COUPE DE TERRAIN & DU BÂTIMENT (COUPE TRANSVERSALE AA')
+                            </span>
+                            <span style={{ fontSize: '7pt', color: '#64748b' }}>
+                                Dimensions : {largeur.toFixed(2)}m × {longueur}m{hasAuventRight ? ` (+ Auvent ${extRightWidth.toFixed(2)}m)` : hasAppentisRight ? ` (+ Appentis ${extRightWidth.toFixed(2)}m)` : ''}{hasAuventLeft ? ` (+ Auvent ${extLeftWidth.toFixed(2)}m Gauche)` : hasAppentisLeft ? ` (+ Appentis ${extLeftWidth.toFixed(2)}m Gauche)` : ''} • Échelle indicative
+                            </span>
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {coupeSvgContent}
+                        </div>
+                    </div>
+
+                    {/* BAS : NOTICE DESCRIPTIVE DU PROJET */}
+                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', padding: '2.5mm 4.5mm', background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        <div style={{ fontSize: '8pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '1.5mm', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            NOTICE D'INSERTION & DESCRIPTIVE DU PROJET
+                        </div>
+                        <div style={{ flex: 1, overflow: 'hidden', fontSize: '6.5pt', lineHeight: '1.3', color: '#334155' }}>
+                            <div style={{ whiteSpace: 'pre-line', fontSize: '6.5pt', lineHeight: '1.3', color: '#334155' }}>
+                                {cleanNoticeText || default5PointsNoticeDP}
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            ) : (
+                <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '6px', padding: '4mm 6mm', display: 'flex', flexDirection: 'column', background: '#f8fafc', maxHeight: '135mm', marginBottom: '5mm' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5mm' }}>
+                        <span style={{ fontSize: '9.5pt', fontWeight: 'bold', color: '#0f172a' }}>
+                            Coupe transversale AA' — Ombrière photovoltaïque & Terrain naturel
+                        </span>
+                        <span style={{ fontSize: '8pt', color: '#64748b' }}>
+                            Dimensions : {largeur.toFixed(2)}m × {longueur}m{hasAuventRight ? ` (+ Auvent ${extRightWidth.toFixed(2)}m)` : hasAppentisRight ? ` (+ Appentis ${extRightWidth.toFixed(2)}m)` : ''}{hasAuventLeft ? ` (+ Auvent ${extLeftWidth.toFixed(2)}m Gauche)` : hasAppentisLeft ? ` (+ Appentis ${extLeftWidth.toFixed(2)}m Gauche)` : ''} • Échelle indicative
+                        </span>
+                    </div>
+
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {coupeSvgContent}
+                    </div>
+                </div>
+            )}
             <Footer project={project} />
         </div>
     );
 };
 
+export const PlateSectionAndNotice = (props) => <PlateCoupe {...props} includeNotice={true} />;
 export const PlateSection = PlateCoupe;
 
 /**
@@ -838,6 +1038,43 @@ export const PlateInsertion = ({ project, captures, photos }) => {
                         <img src={photoApres} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Après" crossOrigin="anonymous" />
                     </div>
                 </div>
+            </div>
+            <Footer project={project} />
+        </div>
+    );
+};
+
+export const PlateEnv = ({ project, captures, photos, includeLointain = true }) => {
+    const photoProche = photos?.proche || captures?.env_proche || captures?.satellite || '';
+    const photoLointain = photos?.lointain || captures?.env_lointain || captures?.satellite || '';
+    const showBoth = Boolean(includeLointain && (photoLointain || photos?.lointain || project?.hasLointain));
+
+    return (
+        <div style={PAGE_STYLE} id="dp-plate-env">
+            <PlateHeader 
+                title={showBoth ? "DP7 & DP8 : ENVIRONNEMENT PROCHE ET LOINTAIN" : "DP7 — PHOTOGRAPHIE DE L'ENVIRONNEMENT PROCHE"} 
+                project={project} 
+            />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'row', gap: '8mm', maxHeight: '135mm', marginBottom: '5mm' }}>
+                <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+                    <div style={{ padding: '2.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                        DP7 — Photographie dans l'environnement proche
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
+                        <img src={photoProche} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Proche" crossOrigin="anonymous" />
+                    </div>
+                </div>
+
+                {showBoth && (
+                    <div style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: '3mm', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#f8fafc' }}>
+                        <div style={{ padding: '2.5mm', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9pt', fontWeight: 'bold', textAlign: 'center', color: '#0f172a' }}>
+                            DP8 — Photographie dans le paysage lointain
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#ffffff' }}>
+                            <img src={photoLointain} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Env Lointain" crossOrigin="anonymous" />
+                        </div>
+                    </div>
+                )}
             </div>
             <Footer project={project} />
         </div>

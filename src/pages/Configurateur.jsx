@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { ControlPanel } from '../components/configurator/ui/ControlPanel.jsx';
+import { BuildingSummaryCard } from '../components/configurator/ui/BuildingSummaryCard.jsx';
 import { useConfiguratorValues, useConfiguratorActions } from '@/stores/useConfiguratorStore.js';
 import { useProjects } from '@/contexts/ProjectContext';
 import { Download, Share2, Info, Search, Minimize2, ChevronRight, FileText, Maximize, X } from 'lucide-react';
@@ -331,8 +332,9 @@ export default function Configurateur() {
         <div className="h-screen w-full bg-gradient-to-b from-slate-50 to-slate-200 relative flex flex-col lg:flex-row overflow-hidden">
 
             {/* ========== CONTROL PANEL (LEFT) ========== */}
-            <div className="relative lg:absolute top-0 lg:top-4 left-0 lg:left-4 z-20 w-full lg:w-[420px] max-h-[40vh] lg:max-h-[calc(100vh-2rem)] overflow-y-auto p-4 lg:p-0">
+            <div className="relative lg:absolute top-0 lg:top-4 left-0 lg:left-4 z-20 w-full lg:w-[420px] max-h-[40vh] lg:max-h-[calc(100vh-2rem)] overflow-y-auto p-4 lg:p-0 space-y-3.5 pb-6">
                 <ControlPanel isAcama={isAcama} selectedProject={selectedProject} />
+                <BuildingSummaryCard isAcama={isAcama} />
             </div>
 
             {/* ========== VISUALISATION BÂTIMENT (CENTER) ========== */}
