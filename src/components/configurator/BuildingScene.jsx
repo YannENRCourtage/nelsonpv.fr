@@ -40,7 +40,7 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
 
             {/* Camera Handling */}
             {viewMode === '3D' && (
-        <>
+                <>
                     <PerspectiveCamera makeDefault position={[20, 15, 30]} fov={50} near={0.1} far={2000} />
                     {/* Target optimization for PDF Capture: Center on the building mass */}
                     {/* Normal mode: X=8 shifts building to the Left visually. Y=4 lowers building in view. */}
@@ -52,6 +52,38 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
                             ? [0, config.eaveHeight / 2, -config.length / 2]
                             : [8, 4, 0]
                         }
+                    />
+                </>
+            )}
+
+            {viewMode === 'PIGNON' && (
+                <>
+                    <PerspectiveCamera
+                        makeDefault
+                        position={[0, (config.eaveHeight + (config.ridgeHeight || 7.4)) * 0.45, Math.max(config.width * 1.5, 25)]}
+                        fov={45}
+                        near={0.1}
+                        far={2000}
+                    />
+                    <OrbitControls
+                        enableRotate={false}
+                        target={[0, (config.eaveHeight + (config.ridgeHeight || 7.4)) * 0.45, 0]}
+                    />
+                </>
+            )}
+
+            {viewMode === 'FACADE_SUD' && (
+                <>
+                    <PerspectiveCamera
+                        makeDefault
+                        position={[Math.max(config.length * 1.25, config.width * 1.25, 35), config.eaveHeight * 0.6, -config.length / 2]}
+                        fov={45}
+                        near={0.1}
+                        far={2000}
+                    />
+                    <OrbitControls
+                        enableRotate={false}
+                        target={[0, config.eaveHeight * 0.6, -config.length / 2]}
                     />
                 </>
             )}

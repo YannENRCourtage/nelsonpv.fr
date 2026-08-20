@@ -12,6 +12,7 @@ import BuildingScene from '../components/configurator/BuildingScene.jsx';
 import { ref, getDownloadURL } from "firebase/storage";
 import { storage } from "@/config/firebase.js";
 import { OfferGenerationModal } from '../components/configurator/ui/OfferGenerationModal.jsx';
+import { generateFicheTechniquePDF } from '@/services/FicheTechniquePDFService.js';
 
 export default function Configurateur() {
     const { user, activeTenantId } = useAuth();
@@ -98,6 +99,54 @@ export default function Configurateur() {
             }
         }
         return null;
+    };
+
+    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
+    // Génération Fiche Technique Bâtiment (A4 Portrait)
+    const handleGenerateFicheTechnique = async () => {
+        if (!canvasRef.current || isGeneratingPDF) return;
+        setIsGeneratingPDF(true);
+        setIsCapturing(true);
+        const originalView = viewMode;
+
+        try {
+            // 1. Capture du visuel actuel affiché à l'écran
+            await wait(200);
+            const imgMain3D = canvasRef.current.toDataURL('image/png', 1.0);
+
+            // 2. Capture du Pignon (gauche)
+            setViewMode('PIGNON');
+            await wait(350);
+            const imgPignon = canvasRef.current.toDataURL('image/png', 1.0);
+
+            // 3. Capture du visuel 2D (Élévation / Coupe)
+            setViewMode('2D_FRONT');
+            await wait(350);
+            const img2D = canvasRef.current.toDataURL('image/png', 1.0);
+
+            // 4. Capture de la Façade Sud (Long Pan Solaire)
+            setViewMode('FACADE_SUD');
+            await wait(350);
+            const imgFacadeSud = canvasRef.current.toDataURL('image/png', 1.0);
+
+            // 5. Génération du document PDF A4 Portrait
+            await generateFicheTechniquePDF({
+                config,
+                isAcama,
+                imgMain3D,
+                imgPignon,
+                img2D,
+                imgFacadeSud,
+            });
+        } catch (err) {
+            console.error("Erreur génération Fiche Technique:", err);
+            alert("Une erreur est survenue lors de la génération de la Fiche Technique : " + err.message);
+        } finally {
+            setViewMode(originalView);
+            setIsCapturing(false);
+            setIsGeneratingPDF(false);
+        }
     };
 
     // Génération PDF Complète (OFFRE)
@@ -349,6 +398,17 @@ export default function Configurateur() {
                     />
                 </div>
 
+                {/* Progress Overlay for Fiche Technique */}
+                {isGeneratingPDF && (
+                    <div className="absolute inset-0 z-[150] bg-slate-900/60 backdrop-blur-xs flex flex-col items-center justify-center text-white gap-3 select-none pointer-events-auto">
+                        <div className="w-10 h-10 border-4 border-white/20 border-t-blue-500 rounded-full animate-spin" />
+                        <div className="text-center">
+                            <h4 className="text-sm font-black tracking-tight">Génération de la Fiche Technique</h4>
+                            <p className="text-xs text-slate-300 mt-0.5">Captures 3D & 2D en haute définition en cours...</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Close Fullscreen Button (Only in Fullscreen) */}
                 {document.fullscreenElement && (
                     <button
@@ -422,24 +482,25 @@ export default function Configurateur() {
                         </button>
                     </div>
 
-                    {/* PDF Generation Button */}
+                    {/* Fiche Technique PDF Generation Button */}
                     <button
-                        onClick={async () => {
-                            // ... capture logic
-                            let img3D = null;
-                            if (canvasRef.current) img3D = canvasRef.current.toDataURL('image/png', 1.0);
-                            let mapImg = null;
-                            if (selectedProject?.captures?.length > 0) {
-                                const captureUrl = selectedProject.captures[0];
-                                mapImg = await fetchImageViaProxy(captureUrl);
-                            }
-                            setGeneratedImages({ img3D, mapImg });
-                            setShowPDFModal(true);
-                        }}
-                        className="hidden lg:flex w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all hover:scale-[1.02] items-center justify-center gap-2 text-sm"
+                        type="button"
+                        onClick={handleGenerateFicheTechnique}
+                        disabled={isGeneratingPDF}
+                        className="hidden lg:flex w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] items-center justify-center gap-2 text-sm disabled:opacity-75 disabled:cursor-not-allowed"
+                        title="Générer la Fiche Technique PDF (A4 Portrait)"
                     >
-                        <span>📄</span>
-                        <span>Générer l'Offre</span>
+                        {isGeneratingPDF ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                <span>Génération...</span>
+                            </>
+                        ) : (
+                            <>
+                                <FileText className="w-4 h-4" />
+                                <span>Fiche technique</span>
+                            </>
+                        )}
                     </button>
 
                     {/* Download Image Button */}

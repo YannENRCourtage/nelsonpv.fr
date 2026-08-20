@@ -29,25 +29,24 @@ const WIDTH_HEIGHT_MAP = {
     26.0: 7.8,
     29.8: 8.1,
     33.5: 8.5,
-    // Asymétrique 1 zone
-    16.4: 7.4,
-    20.0: 8.4,
+    // Asymétrique 1 zone (Approx calc: 5.5 + w/2 * tan(10))
+    16.4: 6.9,
+    20.0: 7.3,
     // Asymétrique 2 zones
     25.5: 8.9,  // User specified
     29.1: 9.8,  // User specified
     // Monopente
     12.7: 6.6,
-    16.4: 8.4,
-    // Ombrière VL simple
-    6.0: 4.5,
-    6.9: 4.5,
-    // Ombrière VL double
+    // Ombrière VL simple (Low pitch?)
+    6.0: 4.5, // Legacy
+    6.9: 4.5, // New Width
+    // Ombrière VL double (Hauteur Basse / Egout)
     9.1: 3.0,
     11.3: 2.8,
-    // Ombrière PL (Sablière Haute / Faîtage)
-    15.8: 7.9,
-    20.2: 9.3,
-    24.6: 9.3
+    // Ombrière PL
+    15.8: 6.0,
+    20.2: 6.5,
+    24.6: 7.0
 };
 
 const MONOPENTE_HEIGHTS = {
@@ -312,13 +311,12 @@ export const TALIAN_5_MODELS = {
 export const useConfiguratorStore = create(
     persist(
         (set, get) => ({
-    // ... (existing constants and params)
-    roofPitch: 15,
-    eaveHeight: 4.0,
-    width: 16.4,
-    buildingType: 'asymetrique_1', // Default
+    roofPitch: 10,
+    eaveHeight: 5.5,
+    width: 18.6,
+    buildingType: 'symetrique', // Default
     baySpacing: 7.5,
-    bayCount: 5,
+    bayCount: 4,
     showDimensions: true,
     isAcama: false, // NEW: Interface isolation flag
 
@@ -355,54 +353,43 @@ export const useConfiguratorStore = create(
         leftExtWidth: 4.0,
         leftExtHeight: 3.0,
         rightExtWidth: 4.0,
-        rightExtHeight: 3.0,
+        rightExtensionWidth: 4.0,
+        bayCount: 4,
+        baySpacing: 7.5,
+        buildingType: 'symetrique',
     },
 
-    get availableWidths() {
-        const type = get().buildingType;
-        return TYPE_WIDTHS_MAP[type] || TYPE_WIDTHS_MAP['symetrique'];
-    },
-
-    // ACTIONS
+    // Actions
     setBuildingType: (type) => {
         if (TYPE_WIDTHS_MAP[type]) {
             const defaultWidth = TYPE_WIDTHS_MAP[type][0];
             const updates = { buildingType: type, width: defaultWidth, fixedLength: null };
 
-            // Forcer la hauteur de sablière et pente par typologie
+            // Forcer la hauteur de sablière pour Monopente + Pente 15°
             if (type === 'monopente') {
                 updates.eaveHeight = 4.0;
                 updates.roofPitch = 15; // FORCE 15°
+
+                // Disable Appentis if selected
                 const state = get();
                 if (state.leftSide === 'appentis') updates.leftSide = 'none';
                 if (state.rightSide === 'appentis') updates.rightSide = 'none';
-            } else if (type === 'asymetrique_1') {
-                updates.eaveHeight = 4.0;
-                updates.roofPitch = 15;
-            } else if (type === 'asymetrique_2') {
-                updates.eaveHeight = 4.0;
-                updates.roofPitch = 15;
-            } else if (type === 'ombriere_pl') {
-                updates.eaveHeight = 5.08;
-                updates.roofPitch = 10;
-                updates.hasSolar = true;
-                updates.leftSide = 'none';
-                updates.rightSide = 'none';
             } else if (type === 'ombriere_vl_simple_gauche' || type === 'ombriere_vl_simple_droite') {
                 updates.eaveHeight = 2.93;
                 updates.roofPitch = 10;
-                updates.hasSolar = true;
+                updates.hasSolar = true; // Auto solar
                 updates.leftSide = 'none';
                 updates.rightSide = 'none';
             } else if (type === 'ombriere_vl_double') {
-                updates.eaveHeight = WIDTH_HEIGHT_MAP[defaultWidth] || 3.0;
+                // Set default height based on default width (9.1m -> 3.0m)
+                updates.eaveHeight = WIDTH_HEIGHT_MAP[defaultWidth];
                 updates.roofPitch = 10;
                 updates.hasSolar = true;
                 updates.leftSide = 'none';
                 updates.rightSide = 'none';
             } else {
                 updates.eaveHeight = 5.5;
-                updates.roofPitch = 10;
+                updates.roofPitch = 10; // Reset to 10° for Symmetrical/Asymmetrical
             }
 
             set(updates);
