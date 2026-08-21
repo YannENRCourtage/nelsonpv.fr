@@ -341,12 +341,26 @@ export async function generateFicheTechniquePDF({
         (rawType.includes('asym') && (rawType.includes('2') || rawTypo.includes('2')));
 
     // Ombrières Simples (Gauche et Droite)
-    const isOmbriereSimple = 
-        rawType.includes('simple') || 
-        rawType.includes('gauche') || 
+    const isOmbriereSimpleDroite = 
         rawType.includes('droite') || 
-        rawGamme.includes('simple') || 
-        rawTypo.includes('simple');
+        rawGamme.includes('droite') || 
+        rawTypo.includes('droite') || 
+        buildingCode.includes('O3D') || 
+        equivalenceCode.includes('OD3');
+
+    const isOmbriereSimpleGauche = 
+        !isOmbriereSimpleDroite && (
+            rawType.includes('gauche') || 
+            rawGamme.includes('gauche') || 
+            rawTypo.includes('gauche') || 
+            rawType.includes('simple') || 
+            rawGamme.includes('simple') || 
+            rawTypo.includes('simple') ||
+            buildingCode.includes('O3M') || 
+            equivalenceCode.includes('OM3')
+        );
+
+    const isOmbriereSimple = isOmbriereSimpleDroite || isOmbriereSimpleGauche;
 
     // Ombrières PL (16m vs 20m/25m) - strictement exclure les ombrières simples et doubles
     const isOmbrierePL = !isOmbriereSimple && !rawType.includes('double') && (
@@ -409,7 +423,9 @@ export async function generateFicheTechniquePDF({
         photoUrlToLoad = '/ombriere_vl_double_plus.png';
     } else if (isOmbriereDoubleStd) {
         photoUrlToLoad = '/ombriere_vl_double.png';
-    } else if (isOmbriereSimple || isOmbriere) {
+    } else if (isOmbriereSimpleDroite) {
+        photoUrlToLoad = '/ombriere_vl_simple_droite.png';
+    } else if (isOmbriereSimpleGauche || isOmbriere) {
         photoUrlToLoad = '/ombriere_vl_simple_gauche.png';
     } else if (isSymetrique) {
         photoUrlToLoad = '/hangar_symetrique.png';

@@ -598,6 +598,9 @@ export function FicheTechniqueModal({
                                                                 if (!isSimple && bType.includes('double')) {
                                                                     return "/ombriere_vl_double.png";
                                                                 }
+                                                                if (bType.includes('droite') || g.includes('droite')) {
+                                                                    return "/ombriere_vl_simple_droite.png";
+                                                                }
                                                                 return "/ombriere_vl_simple_gauche.png";
                                                             })()} 
                                                             alt="Rendu 3D Réaliste Ombrière" 
