@@ -200,7 +200,7 @@ export async function generateFicheTechniquePDF({
         pdf.setDrawColor(51, 65, 85);
         pdf.setLineWidth(0.25);
         pdf.line(padL, curY, padR, curY);
-        curY += 3.0;
+        curY += 3.8; // Très léger espace en dessous du trait (+0.8mm)
     };
 
     // Helper pour afficher une ligne clé-valeur
@@ -567,11 +567,67 @@ export async function generateFicheTechniquePDF({
     const drawSeamlessImage = (imgObj, x, y, maxW, maxH, alignLeft = false) => {
         if (!imgObj) return;
         try {
+            let renderImg = imgObj;
+            let srcW = imgObj.width;
+            let srcH = imgObj.height;
+
+            // Auto-trimming des marges blanches ou transparentes pour un centrage horizontal et vertical parfait du bâtiment
+            if (imgObj.width && imgObj.height) {
+                try {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = imgObj.width;
+                    tempCanvas.height = imgObj.height;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.drawImage(imgObj, 0, 0);
+
+                    const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                    const data = imgData.data;
+                    let minX = tempCanvas.width, maxX = 0, minY = tempCanvas.height, maxY = 0;
+                    let found = false;
+
+                    for (let py = 0; py < tempCanvas.height; py++) {
+                        for (let px = 0; px < tempCanvas.width; px++) {
+                            const idx = (py * tempCanvas.width + px) * 4;
+                            const r = data[idx], g = data[idx + 1], b = data[idx + 2], a = data[idx + 3];
+                            // Détection des pixels du bâtiment (non transparents et non blancs purs)
+                            const isNotWhite = a > 20 && !(r > 248 && g > 248 && b > 248);
+                            if (isNotWhite) {
+                                if (px < minX) minX = px;
+                                if (px > maxX) maxX = px;
+                                if (py < minY) minY = py;
+                                if (py > maxY) maxY = py;
+                                found = true;
+                            }
+                        }
+                    }
+
+                    if (found && maxX > minX && maxY > minY) {
+                        const pad = 4;
+                        const cropX = Math.max(0, minX - pad);
+                        const cropY = Math.max(0, minY - pad);
+                        const cropW = Math.min(tempCanvas.width - cropX, (maxX - minX) + pad * 2);
+                        const cropH = Math.min(tempCanvas.height - cropY, (maxY - minY) + pad * 2);
+
+                        const cropCanvas = document.createElement('canvas');
+                        cropCanvas.width = cropW;
+                        cropCanvas.height = cropH;
+                        const cropCtx = cropCanvas.getContext('2d');
+                        cropCtx.drawImage(tempCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+                        renderImg = cropCanvas;
+                        srcW = cropW;
+                        srcH = cropH;
+                    }
+                } catch (e) {
+                    console.warn('Erreur auto-trim:', e);
+                }
+            }
+
             let imgW = maxW;
             let imgH = maxH;
 
-            if (imgObj.width && imgObj.height) {
-                const imgAspect = imgObj.width / imgObj.height;
+            if (srcW && srcH) {
+                const imgAspect = srcW / srcH;
                 const containerAspect = maxW / maxH;
 
                 if (imgAspect > containerAspect) {
@@ -596,7 +652,7 @@ export async function generateFicheTechniquePDF({
             const imgX = alignLeft ? x : x + (maxW - imgW) / 2;
             const imgY = y + (maxH - imgH) / 2;
 
-            pdf.addImage(imgObj, 'PNG', imgX, imgY, imgW, imgH, undefined, 'FAST');
+            pdf.addImage(renderImg, 'PNG', imgX, imgY, imgW, imgH, undefined, 'FAST');
         } catch (err) {
             console.warn('Erreur rendu image épurée:', err);
         }
@@ -635,7 +691,7 @@ export async function generateFicheTechniquePDF({
     itemLines.forEach((lines, idx) => {
         totalTextH += (lines.length * 2.7) + (idx < itemLines.length - 1 ? 1.0 : 0);
     });
-    const chargeH = Math.max(midH, totalTextH + 2.5); // S'aligne parfaitement avec la hauteur du pignon
+    const chargeH = totalTextH + 2.0; // Réduit l'espace après la dernière phrase (ERP)
 
     // Fond élégant bleu très doux avec bordure moderne
     pdf.setFillColor(239, 246, 255); // Bleu très doux (Blue 50)
@@ -659,7 +715,7 @@ export async function generateFicheTechniquePDF({
         textCursorY += (lines.length * 2.7) + (idx < itemLines.length - 1 ? 1.0 : 0);
     });
 
-    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (Cadre agrandi pour visuel plus gros)
+    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (Cadre agrandi pour visuel plus gros, parfaitement centré au-dessus de la photo)
     const sudY = hasExtraPhoto ? 160.0 : 176.0;
     const sudH = hasExtraPhoto ? 52.0 : 64.0; // Cadre agrandi
     drawSeamlessImage(loadedFacadeSud, mainX, sudY, mainW, sudH, false);
