@@ -149,25 +149,25 @@ export async function generateFicheTechniquePDF({
             pdf.addImage(logoHeader, 'PNG', 8, 7.5, targetW, targetH, undefined, 'FAST');
         } else {
             pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(15);
+            pdf.setFontSize(17); // +2pt
             pdf.setTextColor(30, 58, 138);
             pdf.text('ENR COURTAGE', 8, 17);
         }
     } catch {
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(15);
+        pdf.setFontSize(17); // +2pt
         pdf.setTextColor(30, 58, 138);
         pdf.text('ENR COURTAGE', 8, 17);
     }
 
     // Titre "FICHE TECHNIQUE" (droite, descendu en conséquence)
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(14.5);
+    pdf.setFontSize(16.5); // +2pt
     pdf.setTextColor(15, 23, 42); // Slate 900
     pdf.text('FICHE TECHNIQUE', pageWidth - 8, 14.5, { align: 'right' });
 
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(8.5);
+    pdf.setFontSize(10.5); // +2pt
     pdf.setTextColor(100, 116, 139); // Slate 500
     const subHeader = isCustom 
         ? `Configuration Sur-Mesure • ${floorArea} m²` 
@@ -193,32 +193,32 @@ export async function generateFicheTechniquePDF({
     // Helper pour dessiner un titre de section dans la sidebar
     const drawSectionTitle = (title, color = [56, 189, 248]) => {
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(7.2);
+        pdf.setFontSize(9.2); // +2pt
         pdf.setTextColor(color[0], color[1], color[2]);
         pdf.text(title.toUpperCase(), padL, curY);
-        curY += 1.6;
+        curY += 1.8;
         pdf.setDrawColor(51, 65, 85);
         pdf.setLineWidth(0.25);
         pdf.line(padL, curY, padR, curY);
-        curY += 2.6;
+        curY += 3.0;
     };
 
     // Helper pour afficher une ligne clé-valeur
     const drawRow = (label, value, isHighlight = false, valColor = null) => {
         pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(6.7);
+        pdf.setFontSize(8.7); // +2pt
         pdf.setTextColor(148, 163, 184); // Slate 400
         pdf.text(label, padL, curY);
 
         pdf.setFont('helvetica', isHighlight ? 'bold' : 'normal');
-        pdf.setFontSize(6.9);
+        pdf.setFontSize(8.9); // +2pt
         if (valColor) {
             pdf.setTextColor(valColor[0], valColor[1], valColor[2]);
         } else {
             pdf.setTextColor(isHighlight ? 255 : 241, isHighlight ? 255 : 245, isHighlight ? 255 : 249);
         }
         pdf.text(String(value), padR, curY, { align: 'right' });
-        curY += 3.4;
+        curY += 3.8;
     };
 
     // --- BLOC 1 : IDENTIFICATION DU BÂTIMENT ---
@@ -243,10 +243,10 @@ export async function generateFicheTechniquePDF({
     
     // Indication altitude sous travées
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(5.0);
+    pdf.setFontSize(7.0); // +2pt
     pdf.setTextColor(148, 163, 184);
     pdf.text('(travées 7,5m jusqu’à 200m d’altitude,', padL, curY);
-    curY += 1.8;
+    curY += 2.0;
     pdf.text('et 6,00m de 200m à 500m d’altitude)', padL, curY);
     curY += 2.2;
 
@@ -277,10 +277,10 @@ export async function generateFicheTechniquePDF({
         
         // Sous-ligne hypothèse
         pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(5.2);
+        pdf.setFontSize(7.2); // +2pt
         pdf.setTextColor(203, 213, 225);
         pdf.text('(hypothèse 1150 kWh/kWc)', padR, curY, { align: 'right' });
-        curY += 2.8;
+        curY += 3.0;
 
         // Tarif achat estimé selon puissance
         let tarifAchat = '0.011 € / kWh';
@@ -394,13 +394,13 @@ export async function generateFicheTechniquePDF({
     // --- EN-TÊTE : PLAN DE STRUCTURE (Avec espace aéré supplémentaire au-dessus, descendu avec le header) ---
     const titleY = 36.0; // Espace ajouté avant les mots "Plan de structure"
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(13);
+    pdf.setFontSize(15); // +2pt (was 13)
     pdf.setTextColor(15, 23, 42); // Slate 900
     pdf.text('Plan de structure', mainCenterX, titleY, { align: 'center' });
 
     const subtitleDim = `${length.toFixed(2)}m × ${totalWidth.toFixed(2)}m - ${floorArea} m²${config.hasSolar ? ` - ${installedKwc.toFixed(1)} kWc` : ''}`;
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(9.5);
+    pdf.setFontSize(11.5); // +2pt (was 9.5)
     pdf.setTextColor(0, 66, 157); // Bleu NELSON
     pdf.text(subtitleDim, mainCenterX, titleY + 5.5, { align: 'center' });
 
@@ -467,12 +467,12 @@ export async function generateFicheTechniquePDF({
     pdf.roundedRect(chargeX, chargeY, chargeW, chargeH, 2, 2, 'S');
 
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(6.8);
+    pdf.setFontSize(8.8); // +2pt (was 6.8)
     pdf.setTextColor(15, 23, 42); // Slate 900
     pdf.text('À votre charge :', chargeX + 3.5, chargeY + 5.5);
 
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(5.5);
+    pdf.setFontSize(7.5); // +2pt (was 5.5)
     pdf.setTextColor(51, 65, 85); // Slate 700
 
     const chargeItems = [
@@ -487,7 +487,7 @@ export async function generateFicheTechniquePDF({
     chargeItems.forEach((item) => {
         const lines = pdf.splitTextToSize(item, maxTextW);
         pdf.text(lines, chargeX + 3.5, textCursorY);
-        textCursorY += (lines.length * 2.7) + 1.4;
+        textCursorY += (lines.length * 3.2) + 1.2;
     });
 
     // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (Descendue vers le bas)
@@ -520,7 +520,7 @@ export async function generateFicheTechniquePDF({
 
     // Phrase centrée horizontalement par rapport à la zone des images (mainCenterX)
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(6.2);
+    pdf.setFontSize(8.2); // +2pt (was 6.2)
     pdf.setTextColor(148, 163, 184); // Slate 400
     const disclaimerText = "Des modifications mineures pourront être apportées en fonction de l’évolution des panneaux photovoltaïques";
     pdf.text(disclaimerText, mainCenterX, footerY - 2.5, { align: 'center' });
@@ -530,12 +530,13 @@ export async function generateFicheTechniquePDF({
     pdf.line(sideX, footerY, pageWidth - sideX, footerY);
 
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(6.3);
+    pdf.setFontSize(8.3); // +2pt (was 6.3)
     pdf.setTextColor(100, 116, 139);
     const legalNotice = "Les droits d'exploitation et de propriété intellectuelle appartiennent à ENR COURTAGE. Document confidentiel et non contractuel.";
     pdf.text(legalNotice, sideX, footerY + 4.5);
 
     pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(8.5); // +2pt (was 6.5)
     pdf.setTextColor(30, 58, 138); // Bleu Marine
     const contactInfo = "contact@enr-courtage.fr   •   enr-courtage.fr";
     pdf.text(contactInfo, pageWidth - sideX, footerY + 4.5, { align: 'right' });
@@ -544,9 +545,9 @@ export async function generateFicheTechniquePDF({
     const now = new Date();
     const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(5.8);
+    pdf.setFontSize(7.8); // +2pt (was 5.8)
     pdf.setTextColor(148, 163, 184);
-    pdf.text(`Document généré le ${dateStr}`, sideX, footerY + 8);
+    pdf.text(`Document généré le ${dateStr}`, sideX, footerY + 8.5);
 
     // Téléchargement du fichier
     const cleanName = (gammeName || 'Batiment').replace(/[^a-zA-Z0-9_-]/g, '_');

@@ -78,14 +78,15 @@ export default function SolarRoofSimulator({
   // Puissance installée effective (par défaut: puissance maximale optimisée)
   const installedKwc = useMemo(() => {
     const maxK = maxInstallableRoof.maxKwc || 100;
-    if (userSelectedKwc !== null && userSelectedKwc <= maxK && userSelectedKwc > 0) {
-      return userSelectedKwc;
+    if (userSelectedKwc !== null && userSelectedKwc <= maxK && userSelectedKwc >= 0) {
+      return Math.round(userSelectedKwc * 10) / 10;
     }
     return maxK;
   }, [maxInstallableRoof, userSelectedKwc]);
 
   const panelCount = useMemo(() => {
-    return Math.max(1, Math.round((installedKwc * 1000) / 465));
+    if (installedKwc <= 0) return 0;
+    return Math.max(0, Math.round((installedKwc * 1000) / 465));
   }, [installedKwc]);
 
   const installedSurfaceM2 = useMemo(() => {
@@ -818,40 +819,74 @@ export default function SolarRoofSimulator({
 
             </div>
 
-            {/* Sélecteur & Ajustement de la Puissance Installée */}
-            <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                  <Zap className="w-5 h-5" />
+            {/* Sélecteur & Ajustement de la Puissance Installée (Curseur interactif + Boutons Presets) */}
+            <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-4">
+              {/* Ligne 1 : Titre / Infos Toiture + 4 Boutons de raccourci */}
+              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 shadow-2xs">
+                    <Zap className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-slate-900">Optimisation de la centrale photovoltaïque</h4>
+                    <p className="text-xs text-slate-500">
+                      Toiture de <strong>{roofSurface} m²</strong> : Capacité max de <strong className="text-emerald-700">{maxInstallableRoof.maxKwc} kWc</strong> ({maxInstallableRoof.maxPanels} panneaux de 465 Wc)
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-black text-slate-900">Optimisation de la centrale photovoltaïque</h4>
-                  <p className="text-xs text-slate-500">
-                    Toiture de <strong>{roofSurface} m²</strong> : Capacité max de <strong className="text-emerald-700">{maxInstallableRoof.maxKwc} kWc</strong> ({maxInstallableRoof.maxPanels} panneaux de 465 Wc)
-                  </p>
+
+                {/* 4 Boutons de sélection rapide */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500 mr-1">Choisir la puissance :</span>
+                  {[1, 0.75, 0.5, 0.25].map((ratio) => {
+                    const kw = Math.round(maxInstallableRoof.maxKwc * ratio * 10) / 10;
+                    const isSelected = Math.abs(installedKwc - kw) < 0.2;
+                    return (
+                      <button
+                        key={ratio}
+                        type="button"
+                        onClick={() => setUserSelectedKwc(kw)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                          isSelected
+                            ? 'bg-[#0e2b4d] text-white shadow-md shadow-blue-900/20 ring-2 ring-[#0e2b4d]'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        {ratio === 1 ? `Max (${kw} kWc)` : `${kw} kWc (${Math.round(ratio * 100)}%)`}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold text-slate-500 mr-1">Choisir la puissance :</span>
-                {[1, 0.75, 0.5, 0.25].map((ratio) => {
-                  const kw = Math.round(maxInstallableRoof.maxKwc * ratio * 10) / 10;
-                  const isSelected = Math.abs(installedKwc - kw) < 0.2;
-                  return (
-                    <button
-                      key={ratio}
-                      type="button"
-                      onClick={() => setUserSelectedKwc(kw)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                        isSelected
-                          ? 'bg-[#0e2b4d] text-white shadow-md shadow-blue-900/20 ring-2 ring-[#0e2b4d]'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                      }`}
-                    >
-                      {ratio === 1 ? `Max (${kw} kWc)` : `${kw} kWc (${Math.round(ratio * 100)}%)`}
-                    </button>
-                  );
-                })}
+              {/* Ligne 2 : Curseur déplaçable (Slider) de 0 à la puissance Max */}
+              <div className="pt-3 border-t border-slate-100 flex flex-col md:flex-row items-stretch md:items-center gap-4 bg-slate-50/70 p-3 rounded-2xl">
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs font-extrabold text-slate-700">Puissance réglable :</span>
+                  <span className="px-3 py-1 rounded-xl text-xs font-black bg-emerald-600 text-white flex items-center gap-1.5 shadow-2xs">
+                    <Zap className="w-3.5 h-3.5 fill-white text-white" />
+                    {installedKwc} kWc
+                  </span>
+                  <span className="text-xs font-bold text-slate-500">
+                    ({panelCount} panneaux • {Math.round(maxInstallableRoof.maxKwc > 0 ? (installedKwc / maxInstallableRoof.maxKwc) * 100 : 0)}%)
+                  </span>
+                </div>
+
+                <div className="flex-1 flex items-center gap-3 w-full">
+                  <span className="text-[11px] font-extrabold text-slate-400 shrink-0">0 kWc</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={maxInstallableRoof.maxKwc || 100}
+                    step={0.1}
+                    value={installedKwc}
+                    onChange={(e) => setUserSelectedKwc(parseFloat(e.target.value))}
+                    className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0e2b4d] focus:outline-none"
+                  />
+                  <span className="text-[11px] font-black text-[#0e2b4d] shrink-0">
+                    {maxInstallableRoof.maxKwc} kWc
+                  </span>
+                </div>
               </div>
             </div>
 
