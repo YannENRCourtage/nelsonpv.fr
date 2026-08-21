@@ -15,7 +15,11 @@ import {
     Layers,
     Tag,
     List,
-    LayoutGrid
+    LayoutGrid,
+    Flame,
+    PhoneCall,
+    Briefcase,
+    AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -83,7 +87,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
     const [hoveredAppt, setHoveredAppt] = useState(null);
     const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
-    // Synchronisation des rendez-vous de l'utilisateur
+    // Synchronisation temps réel des rendez-vous
     useEffect(() => {
         const unsubscribe = subscribeToUserAppointments(userId, activeTenantId, (list) => {
             if (list) {
@@ -99,7 +103,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
         return appointments.filter(a => a.type === selectedCategory);
     }, [appointments, selectedCategory]);
 
-    // Indexation des RDVs par date normalisée pour accès rapide
+    // Indexation des RDVs par date normalisée (YYYY-MM-DD) pour accès immédiat
     const appointmentsByDate = useMemo(() => {
         const map = {};
         filteredAppointments.forEach(appt => {
@@ -134,10 +138,9 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
         setCurrentDate(new Date());
     };
 
-    // Gestionnaires de changement de vue avec calage sur la date appropriée
+    // Gestionnaires de changement de vue
     const handleSwitchView = (newView) => {
         setViewMode(newView);
-        // Se positionne sur aujourd'hui / semaine / mois / année actuelle
         setCurrentDate(new Date());
     };
 
@@ -167,16 +170,33 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
         setShowModal(true);
     };
 
+    // Sauvegarde immédiate et synchrone du RDV pour affichage instantané
     const handleSaveAppointment = async (data) => {
+        const normalizedDate = formatDateKey(data.date) || formatDateKey(new Date());
+        const cleanedData = {
+            ...data,
+            date: normalizedDate,
+        };
+
         try {
-            if (data.id && appointments.some(a => a.id === data.id)) {
-                const updated = await updateAppointment(data.id, data, userId);
-                setAppointments(prev => prev.map(a => a.id === data.id ? { ...a, ...data } : a));
+            if (cleanedData.id && appointments.some(a => a.id === cleanedData.id)) {
+                // Mise à jour optimiste immédiate dans le state React
+                setAppointments(prev => prev.map(a => a.id === cleanedData.id ? { ...a, ...cleanedData } : a));
+                await updateAppointment(cleanedData.id, cleanedData, userId);
             } else {
-                const created = await createAppointment(data, userId, activeTenantId);
-                if (created) {
-                    setAppointments(prev => [created, ...prev.filter(a => a.id !== created.id)]);
-                }
+                const tempId = cleanedData.id || `rdv_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+                const newAppt = {
+                    ...cleanedData,
+                    id: tempId,
+                    userId,
+                    tenantId: activeTenantId,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                };
+                
+                // Ajout optimiste immédiat dans le state React
+                setAppointments(prev => [newAppt, ...prev.filter(a => a.id !== tempId)]);
+                await createAppointment(newAppt, userId, activeTenantId);
             }
         } catch (err) {
             console.error('Erreur sauvegarde RDV:', err);
@@ -185,8 +205,9 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
 
     const handleDeleteAppointment = async (apptId) => {
         try {
-            await deleteAppointment(apptId, userId);
+            // Suppression optimiste immédiate
             setAppointments(prev => prev.filter(a => a.id !== apptId));
+            await deleteAppointment(apptId, userId);
         } catch (err) {
             console.error('Erreur suppression RDV:', err);
         }
@@ -272,16 +293,18 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
         const todayStr = formatDateKey(new Date());
 
         return (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                {/* En-tête des jours (Lun -> Dim) */}
-                <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/80">
+            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+                {/* En-tête des jours (Lun -> Dim) avec dégradé subtil */}
+                <div className="grid grid-cols-7 border-b border-slate-200 bg-gradient-to-r from-slate-100 via-blue-50/40 to-amber-50/50">
                     {DAY_NAMES_SHORT.map((name, idx) => {
                         const isWeekend = idx >= 5;
                         return (
                             <div 
                                 key={name} 
-                                className={`py-3 text-center text-xs font-bold uppercase tracking-wider ${
-                                    isWeekend ? 'text-amber-700 bg-amber-50/40' : 'text-slate-700'
+                                className={`py-3.5 text-center text-xs font-black uppercase tracking-wider ${
+                                    isWeekend 
+                                        ? 'text-amber-800 bg-amber-100/50 border-l border-amber-200/50' 
+                                        : 'text-slate-700'
                                 }`}
                             >
                                 {name}
@@ -300,20 +323,20 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                             <div
                                 key={idx}
                                 onClick={() => handleOpenCreateModal(cell.dateStr)}
-                                className={`min-h-[110px] p-2 transition-all cursor-pointer group flex flex-col justify-between ${
+                                className={`min-h-[118px] p-2 transition-all cursor-pointer group flex flex-col justify-between ${
                                     !cell.isCurrentMonth 
-                                        ? 'bg-slate-50/40 opacity-45' 
+                                        ? 'bg-slate-50/40 opacity-40' 
                                         : cell.isWeekend 
-                                            ? 'bg-slate-50/70 hover:bg-amber-50/30' 
-                                            : 'bg-white hover:bg-blue-50/30'
+                                            ? 'bg-amber-50/30 hover:bg-amber-100/40' 
+                                            : 'bg-white hover:bg-blue-50/40'
                                 }`}
                             >
                                 <div className="flex items-center justify-between">
-                                    <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full transition-colors ${
+                                    <span className={`text-xs font-black w-6 h-6 flex items-center justify-center rounded-full transition-all ${
                                         isToday 
-                                            ? 'bg-blue-600 text-white font-black shadow-sm' 
+                                            ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black shadow-md shadow-blue-500/30 ring-2 ring-blue-300' 
                                             : cell.isWeekend 
-                                                ? 'text-amber-800' 
+                                                ? 'text-amber-900 font-extrabold' 
                                                 : cell.isCurrentMonth 
                                                     ? 'text-slate-800' 
                                                     : 'text-slate-400'
@@ -321,32 +344,35 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                                         {cell.day}
                                     </span>
                                     {dayAppts.length > 0 && (
-                                        <span className="text-[10px] font-bold text-slate-400">
-                                            {dayAppts.length} {dayAppts.length > 1 ? 'RDVs' : 'RDV'}
+                                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                                            {dayAppts.length}
                                         </span>
                                     )}
                                 </div>
 
-                                {/* Liste des badges de rendez-vous */}
-                                <div className="space-y-1 mt-1 flex-1 overflow-y-auto max-h-[75px] scrollbar-none">
+                                {/* Liste des badges de rendez-vous avec couleurs riches */}
+                                <div className="space-y-1.5 mt-1.5 flex-1 overflow-y-auto max-h-[82px] scrollbar-none">
                                     {dayAppts.slice(0, 3).map((appt) => (
                                         <div
                                             key={appt.id}
                                             onClick={(e) => handleOpenEditModal(appt, e)}
                                             onMouseEnter={(e) => handleMouseEnterAppt(appt, e)}
                                             onMouseLeave={handleMouseLeaveAppt}
-                                            className="px-2 py-1 rounded-md text-[11px] font-semibold truncate flex items-center gap-1.5 shadow-xs transition-transform hover:scale-[1.02] text-white"
-                                            style={{ backgroundColor: appt.color || '#2563eb' }}
+                                            className="px-2 py-1.5 rounded-lg text-[11px] font-bold truncate flex items-center gap-1.5 shadow-sm transition-all hover:scale-[1.03] text-white border border-white/20"
+                                            style={{ 
+                                                backgroundColor: appt.color || '#2563eb',
+                                                boxShadow: `0 2px 6px ${appt.color ? `${appt.color}40` : 'rgba(37,99,235,0.25)'}`
+                                            }}
                                         >
-                                            <span className="text-[9px] opacity-90 shrink-0">
-                                                {appt.isAllDay ? 'Journée' : appt.startTime}
+                                            <span className="text-[9px] font-extrabold bg-black/25 px-1 py-0.5 rounded shrink-0">
+                                                {appt.isAllDay ? 'Jour' : appt.startTime}
                                             </span>
                                             <span className="truncate">{appt.title}</span>
                                         </div>
                                     ))}
                                     {dayAppts.length > 3 && (
-                                        <div className="text-[10px] text-slate-500 font-semibold px-1">
-                                            +{dayAppts.length - 3} de plus...
+                                        <div className="text-[10px] text-blue-600 font-bold px-1 py-0.5 rounded bg-blue-50 text-center">
+                                            +{dayAppts.length - 3} de plus
                                         </div>
                                     )}
                                 </div>
@@ -373,28 +399,33 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
         });
 
         return (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                {/* Header Semaine */}
-                <div className="grid grid-cols-8 border-b border-slate-200 bg-slate-50/90 sticky top-0 z-10">
-                    <div className="p-3 text-center text-xs font-bold text-slate-400 border-r border-slate-200">
-                        Heure
+            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden flex flex-col">
+                {/* Header Semaine avec puces colorées */}
+                <div className="grid grid-cols-8 border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
+                    <div className="p-3 text-center text-xs font-black text-slate-400 border-r border-slate-200 flex items-center justify-center">
+                        <Clock className="w-4 h-4 text-slate-400 mr-1" />
+                        <span>Heure</span>
                     </div>
-                    {weekDays.map((col) => (
+                    {weekDays.map((col, idx) => (
                         <div
                             key={col.dateStr}
                             className={`p-3 text-center border-r border-slate-200 last:border-r-0 ${
                                 col.isToday 
-                                    ? 'bg-blue-50/80 border-b-2 border-b-blue-600' 
+                                    ? 'bg-blue-50/90 border-b-2 border-b-blue-600 ring-1 ring-blue-200' 
                                     : col.isWeekend 
-                                        ? 'bg-amber-50/40' 
-                                        : 'bg-slate-50/50'
+                                        ? 'bg-amber-50/60' 
+                                        : 'bg-slate-50/60'
                             }`}
                         >
-                            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                            <div className="text-xs font-black uppercase tracking-wider text-slate-500">
                                 {col.name}
                             </div>
-                            <div className={`text-sm font-black mt-0.5 inline-flex w-7 h-7 items-center justify-center rounded-full ${
-                                col.isToday ? 'bg-blue-600 text-white shadow-sm' : col.isWeekend ? 'text-amber-900' : 'text-slate-900'
+                            <div className={`text-sm font-black mt-1 inline-flex w-8 h-8 items-center justify-center rounded-full transition-all ${
+                                col.isToday 
+                                    ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/30 ring-2 ring-blue-300' 
+                                    : col.isWeekend 
+                                        ? 'bg-amber-100 text-amber-900 font-extrabold' 
+                                        : 'text-slate-900'
                             }`}>
                                 {col.date.getDate()}
                             </div>
@@ -403,13 +434,13 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                 </div>
 
                 {/* Corps de la grille horaire */}
-                <div className="overflow-y-auto max-h-[620px] divide-y divide-slate-100">
+                <div className="overflow-y-auto max-h-[640px] divide-y divide-slate-100">
                     {HOURS.map((hour) => {
                         const timeStr = `${String(hour).padStart(2, '0')}:00`;
                         return (
-                            <div key={hour} className="grid grid-cols-8 min-h-[52px]">
+                            <div key={hour} className="grid grid-cols-8 min-h-[58px]">
                                 {/* Colonne Horaire */}
-                                <div className="p-2 text-right pr-3 text-xs font-bold text-slate-400 border-r border-slate-200 bg-slate-50/30 select-none">
+                                <div className="p-2 text-right pr-3 text-xs font-extrabold text-slate-400 border-r border-slate-200 bg-slate-50/40 select-none flex items-center justify-end">
                                     {timeStr}
                                 </div>
 
@@ -425,10 +456,10 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                                         <div
                                             key={col.dateStr}
                                             onClick={() => handleOpenCreateModal(col.dateStr, timeStr)}
-                                            className={`p-1 border-r border-slate-100 last:border-r-0 relative transition-colors cursor-pointer group ${
+                                            className={`p-1.5 border-r border-slate-100 last:border-r-0 relative transition-colors cursor-pointer group ${
                                                 col.isWeekend 
-                                                    ? 'bg-slate-50/60 hover:bg-amber-50/40' 
-                                                    : 'bg-white hover:bg-blue-50/30'
+                                                    ? 'bg-amber-50/20 hover:bg-amber-100/30' 
+                                                    : 'bg-white hover:bg-blue-50/40'
                                             }`}
                                         >
                                             {dayAppts.map((appt) => (
@@ -437,14 +468,17 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                                                     onClick={(e) => handleOpenEditModal(appt, e)}
                                                     onMouseEnter={(e) => handleMouseEnterAppt(appt, e)}
                                                     onMouseLeave={handleMouseLeaveAppt}
-                                                    className="p-1.5 rounded-lg text-xs font-semibold text-white shadow-sm transition-all hover:scale-[1.02] cursor-pointer mb-1"
-                                                    style={{ backgroundColor: appt.color || '#2563eb' }}
+                                                    className="p-2 rounded-xl text-xs font-bold text-white shadow-md transition-all hover:scale-[1.03] cursor-pointer mb-1 border border-white/20"
+                                                    style={{ 
+                                                        backgroundColor: appt.color || '#2563eb',
+                                                        boxShadow: `0 3px 8px ${appt.color ? `${appt.color}45` : 'rgba(37,99,235,0.3)'}`
+                                                    }}
                                                 >
-                                                    <div className="text-[10px] font-bold opacity-90 truncate">
+                                                    <div className="text-[10px] font-black bg-black/20 px-1.5 py-0.5 rounded inline-block mb-0.5">
                                                         {appt.isAllDay ? 'Journée' : `${appt.startTime} - ${appt.endTime}`}
                                                     </div>
-                                                    <div className="font-bold truncate text-[11px]">{appt.title}</div>
-                                                    {appt.contact && <div className="text-[9px] opacity-85 truncate">👤 {appt.contact}</div>}
+                                                    <div className="font-extrabold truncate text-[11px] leading-tight">{appt.title}</div>
+                                                    {appt.contact && <div className="text-[10px] opacity-90 truncate mt-0.5">👤 {appt.contact}</div>}
                                                 </div>
                                             ))}
                                         </div>
@@ -459,7 +493,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
     };
 
     // =========================================================================
-    // RENDU 3 : VUE JOUR (Détail de la journée)
+    // RENDU 3 : VUE JOUR (Détail de la journée avec bandeau héro coloré)
     // =========================================================================
     const renderDayView = () => {
         const dateStr = formatDateKey(currentDate);
@@ -467,25 +501,34 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
         const isToday = dateStr === formatDateKey(new Date());
 
         return (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                <div className={`p-4 border-b border-slate-200 flex items-center justify-between ${isToday ? 'bg-blue-50/60' : 'bg-slate-50'}`}>
+            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden flex flex-col">
+                {/* Hero Header coloré */}
+                <div className="p-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white flex items-center justify-between shadow-md">
                     <div>
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                            Planning de la journée
-                        </span>
-                        <h3 className="text-xl font-bold text-slate-900">{headerTitle}</h3>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-black uppercase tracking-wider bg-white/20 px-2.5 py-1 rounded-full text-white backdrop-blur-sm">
+                                {isToday ? "Aujourd'hui" : 'Planning de la journée'}
+                            </span>
+                            <span className="text-xs font-bold bg-black/20 px-2 py-1 rounded-full text-white/90">
+                                {dayAppts.length} {dayAppts.length > 1 ? 'rendez-vous' : 'rendez-vous'}
+                            </span>
+                        </div>
+                        <h3 className="text-2xl lg:text-3xl font-black text-white mt-1 capitalize tracking-tight">
+                            {headerTitle}
+                        </h3>
                     </div>
                     <Button
                         size="sm"
                         onClick={() => handleOpenCreateModal(dateStr)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold gap-1.5 shadow-sm"
+                        className="bg-white hover:bg-slate-100 text-blue-700 text-xs font-black gap-1.5 shadow-lg rounded-xl h-10 px-4"
                     >
-                        <Plus className="w-4 h-4" />
-                        <span>Ajouter un RDV</span>
+                        <Plus className="w-4 h-4 text-blue-600" />
+                        <span>Nouveau RDV</span>
                     </Button>
                 </div>
 
-                <div className="overflow-y-auto max-h-[620px] divide-y divide-slate-100">
+                {/* Corps de la journée */}
+                <div className="overflow-y-auto max-h-[640px] divide-y divide-slate-100">
                     {HOURS.map((hour) => {
                         const timeStr = `${String(hour).padStart(2, '0')}:00`;
                         const hourAppts = dayAppts.filter(appt => {
@@ -498,40 +541,50 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                             <div 
                                 key={hour} 
                                 onClick={() => handleOpenCreateModal(dateStr, timeStr)}
-                                className="grid grid-cols-12 min-h-[60px] hover:bg-blue-50/20 cursor-pointer transition-colors"
+                                className="grid grid-cols-12 min-h-[66px] hover:bg-blue-50/30 cursor-pointer transition-colors"
                             >
-                                <div className="col-span-2 p-3 text-right pr-4 text-xs font-bold text-slate-400 border-r border-slate-200 bg-slate-50/40 select-none">
+                                <div className="col-span-2 p-3 text-right pr-4 text-xs font-black text-slate-400 border-r border-slate-200 bg-slate-50/50 select-none flex items-center justify-end">
                                     {timeStr}
                                 </div>
-                                <div className="col-span-10 p-2 space-y-2">
+                                <div className="col-span-10 p-2.5 space-y-2">
                                     {hourAppts.map((appt) => (
                                         <div
                                             key={appt.id}
                                             onClick={(e) => handleOpenEditModal(appt, e)}
                                             onMouseEnter={(e) => handleMouseEnterAppt(appt, e)}
                                             onMouseLeave={handleMouseLeaveAppt}
-                                            className="p-3 rounded-xl text-white shadow-md flex items-center justify-between transition-all hover:scale-[1.01]"
-                                            style={{ backgroundColor: appt.color || '#2563eb' }}
+                                            className="p-3.5 rounded-2xl text-white shadow-md flex items-center justify-between transition-all hover:scale-[1.01] border border-white/20"
+                                            style={{ 
+                                                backgroundColor: appt.color || '#2563eb',
+                                                boxShadow: `0 4px 12px ${appt.color ? `${appt.color}40` : 'rgba(37,99,235,0.3)'}`
+                                            }}
                                         >
-                                            <div className="space-y-0.5">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-bold bg-black/20 px-2 py-0.5 rounded-md">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2.5">
+                                                    <span className="text-xs font-black bg-black/25 px-2.5 py-0.5 rounded-lg">
                                                         {appt.isAllDay ? 'Journée' : `${appt.startTime} - ${appt.endTime}`}
                                                     </span>
-                                                    <span className="font-bold text-sm">{appt.title}</span>
+                                                    <span className="font-black text-base">{appt.title}</span>
                                                 </div>
                                                 {appt.contact && (
-                                                    <div className="text-xs opacity-90 flex items-center gap-1.5 pt-0.5">
-                                                        <User className="w-3.5 h-3.5" />
-                                                        <span>{appt.contact}</span>
-                                                        {appt.location && <span>• 📍 {appt.location}</span>}
+                                                    <div className="text-xs opacity-95 flex items-center gap-2 pt-0.5">
+                                                        <span className="bg-white/20 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                            <User className="w-3.5 h-3.5" />
+                                                            <span>{appt.contact}</span>
+                                                        </span>
+                                                        {appt.location && (
+                                                            <span className="bg-white/20 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                                <MapPin className="w-3.5 h-3.5" />
+                                                                <span>{appt.location}</span>
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
 
                                             {appt.reminder && appt.reminder !== 'none' && (
-                                                <div className="flex items-center gap-1 text-[11px] bg-black/20 px-2 py-1 rounded-lg">
-                                                    <Bell className="w-3.5 h-3.5" />
+                                                <div className="flex items-center gap-1.5 text-xs font-bold bg-black/25 px-3 py-1.5 rounded-xl">
+                                                    <Bell className="w-4 h-4 text-amber-300" />
                                                     <span>Rappel {REMINDER_OPTIONS.find(r => r.id === appt.reminder)?.label.split(' ')[0]}</span>
                                                 </div>
                                             )}
@@ -567,18 +620,18 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                     return (
                         <div 
                             key={monthName} 
-                            className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
+                            className="bg-white rounded-2xl p-4 border border-slate-200 shadow-md hover:shadow-xl transition-all"
                         >
-                            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
-                                <span className="font-bold text-xs text-slate-800 uppercase tracking-wide">
+                            <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-slate-100">
+                                <span className="font-black text-xs text-blue-950 uppercase tracking-wide">
                                     {monthName}
                                 </span>
-                                <span className="text-[10px] text-slate-400 font-bold">{year}</span>
+                                <span className="text-[10px] text-blue-600 font-black bg-blue-50 px-2 py-0.5 rounded-full">{year}</span>
                             </div>
 
                             <div className="grid grid-cols-7 gap-1 text-center">
                                 {DAY_NAMES_SHORT.map((d, i) => (
-                                    <span key={d} className={`text-[9px] font-bold ${i >= 5 ? 'text-amber-700' : 'text-slate-400'}`}>
+                                    <span key={d} className={`text-[9px] font-black ${i >= 5 ? 'text-amber-800' : 'text-slate-400'}`}>
                                         {d[0]}
                                     </span>
                                 ))}
@@ -597,12 +650,12 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                                                 setCurrentDate(new Date(year, mIdx, dayNum));
                                                 setViewMode('day');
                                             }}
-                                            className={`h-6 text-[10px] font-medium rounded-md flex flex-col items-center justify-center relative transition-all ${
+                                            className={`h-6 text-[10px] font-bold rounded-lg flex flex-col items-center justify-center relative transition-all ${
                                                 hasAppts 
-                                                    ? 'bg-blue-600 text-white font-bold shadow-xs' 
+                                                    ? 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black shadow-sm ring-1 ring-blue-300' 
                                                     : isWeekend 
-                                                        ? 'bg-slate-50 text-amber-800 hover:bg-amber-100' 
-                                                        : 'text-slate-700 hover:bg-slate-100'
+                                                        ? 'bg-amber-50 text-amber-900 hover:bg-amber-200' 
+                                                        : 'text-slate-700 hover:bg-blue-50'
                                             }`}
                                         >
                                             <span>{dayNum}</span>
@@ -623,10 +676,10 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
     return (
         <div className="space-y-6">
             
-            {/* Top Bar : Navigation & Sélecteur de vues */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col lg:flex-row items-center justify-between gap-4">
+            {/* Top Bar : Navigation & Sélecteur de vues avec design moderne et coloré */}
+            <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-4 flex flex-col lg:flex-row items-center justify-between gap-4">
                 
-                {/* Navigation Gauche (Précédent, Suivant, Aujourd'hui, Titre) */}
+                {/* Navigation Gauche */}
                 <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-start">
                     <div className="flex items-center gap-1.5">
                         <Button
@@ -651,28 +704,29 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                             variant="outline"
                             size="sm"
                             onClick={handleToday}
-                            className="h-9 text-xs font-bold text-slate-700 rounded-xl px-3 hover:bg-slate-100"
+                            className="h-9 text-xs font-black text-blue-700 bg-blue-50 border-blue-200 rounded-xl px-3.5 hover:bg-blue-100"
                         >
                             Aujourd'hui
                         </Button>
                     </div>
 
-                    <h2 className="text-lg lg:text-xl font-black text-slate-900 capitalize tracking-tight ml-1">
-                        {headerTitle}
+                    <h2 className="text-lg lg:text-xl font-black text-slate-900 capitalize tracking-tight ml-1 flex items-center gap-2">
+                        <CalendarIcon className="w-5 h-5 text-blue-600" />
+                        <span>{headerTitle}</span>
                     </h2>
                 </div>
 
-                {/* Actions Droite : 4 Boutons de Vue (Jour, Semaine, Mois, Année) + Nouveau RDV */}
+                {/* Actions Droite : 4 Boutons de Vue + Nouveau RDV */}
                 <div className="flex items-center gap-2.5 w-full lg:w-auto justify-end flex-wrap">
                     
-                    {/* Les 4 boutons de vue demandés */}
+                    {/* Les 4 boutons de vue avec fond et sélecteur coloré */}
                     <div className="bg-slate-100 p-1 rounded-xl flex gap-1 border border-slate-200">
                         <button
                             type="button"
                             onClick={() => handleSwitchView('day')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${
                                 viewMode === 'day'
-                                    ? 'bg-white text-slate-900 shadow-sm'
+                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
                                     : 'text-slate-600 hover:text-slate-900'
                             }`}
                         >
@@ -681,9 +735,9 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                         <button
                             type="button"
                             onClick={() => handleSwitchView('week')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${
                                 viewMode === 'week'
-                                    ? 'bg-white text-slate-900 shadow-sm'
+                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
                                     : 'text-slate-600 hover:text-slate-900'
                             }`}
                         >
@@ -692,9 +746,9 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                         <button
                             type="button"
                             onClick={() => handleSwitchView('month')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${
                                 viewMode === 'month'
-                                    ? 'bg-white text-slate-900 shadow-sm'
+                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
                                     : 'text-slate-600 hover:text-slate-900'
                             }`}
                         >
@@ -703,9 +757,9 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                         <button
                             type="button"
                             onClick={() => handleSwitchView('year')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${
                                 viewMode === 'year'
-                                    ? 'bg-white text-slate-900 shadow-sm'
+                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
                                     : 'text-slate-600 hover:text-slate-900'
                             }`}
                         >
@@ -713,10 +767,10 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                         </button>
                     </div>
 
-                    {/* Bouton Nouveau Rendez-vous */}
+                    {/* Bouton Nouveau Rendez-vous avec dégradé vif */}
                     <Button
                         onClick={() => handleOpenCreateModal()}
-                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl h-9 px-3.5 gap-1.5 shadow-sm"
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-black rounded-xl h-9 px-4 gap-1.5 shadow-md shadow-blue-500/25"
                     >
                         <Plus className="w-4 h-4" />
                         <span>Nouveau RDV</span>
@@ -724,16 +778,19 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                 </div>
             </div>
 
-            {/* Légende / Filtre rapide par catégorie de couleur */}
+            {/* Légende / Filtre coloré par catégorie */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
-                <span className="text-slate-400 font-semibold text-[11px] shrink-0">Catégories :</span>
+                <span className="text-slate-400 font-bold text-[11px] shrink-0 flex items-center gap-1">
+                    <Filter className="w-3 h-3" />
+                    <span>Catégories :</span>
+                </span>
                 <button
                     type="button"
                     onClick={() => setSelectedCategory('all')}
-                    className={`px-2.5 py-1 rounded-lg font-semibold shrink-0 transition-all ${
+                    className={`px-3 py-1.5 rounded-xl font-bold shrink-0 transition-all ${
                         selectedCategory === 'all' 
-                            ? 'bg-slate-900 text-white' 
-                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                            ? 'bg-slate-900 text-white shadow-sm' 
+                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
                     }`}
                 >
                     Tous ({appointments.length})
@@ -746,15 +803,24 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                             key={type.id}
                             type="button"
                             onClick={() => setSelectedCategory(isSelected ? 'all' : type.id)}
-                            className={`px-2.5 py-1 rounded-lg font-semibold shrink-0 flex items-center gap-1.5 transition-all border ${
+                            className={`px-3 py-1.5 rounded-xl font-bold shrink-0 flex items-center gap-2 transition-all border shadow-xs ${
                                 isSelected 
-                                    ? 'bg-slate-900 text-white border-slate-900' 
-                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                    ? 'bg-slate-900 text-white border-slate-900 ring-2 ring-slate-300' 
+                                    : 'bg-white text-slate-800 border-slate-200 hover:bg-slate-50'
                             }`}
                         >
-                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: type.color }} />
+                            <span 
+                                className="w-2.5 h-2.5 rounded-full shadow-xs" 
+                                style={{ backgroundColor: type.color }} 
+                            />
                             <span>{type.label.split('/')[0]}</span>
-                            {count > 0 && <span className="opacity-75 text-[10px]">({count})</span>}
+                            {count > 0 && (
+                                <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+                                    isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
+                                }`}>
+                                    {count}
+                                </span>
+                            )}
                         </button>
                     );
                 })}
@@ -769,7 +835,7 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
             {/* Hover Tooltip Flottant résumant le RDV */}
             {hoveredAppt && (
                 <div
-                    className="fixed z-[999] pointer-events-none bg-slate-900 text-white rounded-xl p-3.5 shadow-2xl border border-slate-700 max-w-xs space-y-1.5 animate-in fade-in zoom-in-95 duration-100"
+                    className="fixed z-[999] pointer-events-none bg-slate-900 text-white rounded-2xl p-4 shadow-2xl border border-slate-700 max-w-xs space-y-2 animate-in fade-in zoom-in-95 duration-100"
                     style={{
                         left: `${tooltipPos.x}px`,
                         top: `${tooltipPos.y}px`,
@@ -777,36 +843,36 @@ export default function AgendaView({ user, activeTenantId = 'green-invest', cont
                     }}
                 >
                     <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: hoveredAppt.color || '#2563eb' }} />
-                        <h4 className="font-bold text-xs text-white leading-tight truncate">{hoveredAppt.title}</h4>
+                        <div className="w-3 h-3 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: hoveredAppt.color || '#2563eb' }} />
+                        <h4 className="font-black text-xs text-white leading-tight truncate">{hoveredAppt.title}</h4>
                     </div>
 
-                    <div className="text-[11px] text-slate-300 space-y-0.5 pt-0.5">
-                        <div className="flex items-center gap-1 text-slate-400">
-                            <Clock className="w-3 h-3 text-blue-400" />
+                    <div className="text-[11px] text-slate-300 space-y-1 pt-0.5">
+                        <div className="flex items-center gap-1.5 text-slate-300 font-semibold">
+                            <Clock className="w-3.5 h-3.5 text-blue-400" />
                             <span>{hoveredAppt.date} • {hoveredAppt.isAllDay ? 'Journée entière' : `${hoveredAppt.startTime} - ${hoveredAppt.endTime}`}</span>
                         </div>
                         {hoveredAppt.contact && (
-                            <div className="flex items-center gap-1 text-slate-300">
-                                <User className="w-3 h-3 text-emerald-400" />
+                            <div className="flex items-center gap-1.5 text-slate-200">
+                                <User className="w-3.5 h-3.5 text-emerald-400" />
                                 <span>{hoveredAppt.contact}</span>
                             </div>
                         )}
                         {hoveredAppt.location && (
-                            <div className="flex items-center gap-1 text-slate-300 truncate">
-                                <MapPin className="w-3 h-3 text-rose-400" />
+                            <div className="flex items-center gap-1.5 text-slate-200 truncate">
+                                <MapPin className="w-3.5 h-3.5 text-rose-400" />
                                 <span>{hoveredAppt.location}</span>
                             </div>
                         )}
                         {hoveredAppt.reminder && hoveredAppt.reminder !== 'none' && (
-                            <div className="flex items-center gap-1 text-amber-400 text-[10px] pt-0.5">
-                                <Bell className="w-3 h-3" />
+                            <div className="flex items-center gap-1.5 text-amber-300 text-[10px] font-bold pt-0.5">
+                                <Bell className="w-3.5 h-3.5" />
                                 <span>Rappel : {REMINDER_OPTIONS.find(r => r.id === hoveredAppt.reminder)?.label}</span>
                             </div>
                         )}
                     </div>
 
-                    <div className="text-[10px] text-slate-400 italic pt-1 border-t border-slate-800">
+                    <div className="text-[10px] text-blue-300 font-bold pt-1.5 border-t border-slate-800">
                         Cliquez pour modifier les détails
                     </div>
                 </div>

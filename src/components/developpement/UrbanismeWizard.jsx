@@ -673,7 +673,6 @@ ${p5Details}${batteryStorage.enabled ? `\nLe système de stockage batterie est �
         }));
         setGeneratingMaps(false);
       }).catch(() => setGeneratingMaps(false));
-    }
   }, [project, isOpen]);
 
   // Synchronisation continue des valeurs du configurateur vers le projet (sans écraser le kWc du client)

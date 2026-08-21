@@ -361,20 +361,20 @@ export async function generateFicheTechniquePDF({
         }
     };
 
-    // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc (emplacement d'origine)
-    const topY = 38.0;
-    const topH = 65.0;
+    // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc (cadre agrandi)
+    const topY = 35.0;
+    const topH = 72.0; // Cadre agrandi (anciennement 65.0)
     drawSeamlessImage(loadedMain3D, mainX, topY, mainW, topH);
 
-    // VISUEL 2 (Milieu) : Vue Pignon épurée sur fond blanc (emplacement d'origine gauche)
-    const midY = 107.0;
-    const midH = 43.0;
-    const halfW = (mainW - 3) / 2; // 67.5 mm
-    drawSeamlessImage(loadedPignon, mainX, midY, halfW, midH);
+    // VISUEL 2 (Milieu) : Vue Pignon épurée sur fond blanc (cadre élargi et agrandi à gauche)
+    const midY = 108.0;
+    const midH = 48.0; // Cadre agrandi en hauteur (anciennement 43.0)
+    const pignonW = 92.0; // Cadre élargi en largeur (anciennement 67.5)
+    drawSeamlessImage(loadedPignon, mainX, midY, pignonW, midH);
 
     // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (emplacement d'origine bas)
-    const sudY = 154.5;
-    const sudH = 59.0;
+    const sudY = 157.5;
+    const sudH = 58.0;
     drawSeamlessImage(loadedFacadeSud, mainX, sudY, mainW, sudH);
 
     // --- CADRE : À VOTRE CHARGE ---

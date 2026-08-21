@@ -473,8 +473,8 @@ export function FicheTechniqueModal({
 
                                 {/* Disposition exacte des 3 visuels sur fond blanc */}
                                 <div className="space-y-4">
-                                    {/* 1. Vue 3D Principale (Haut, Pleine largeur, emplacement d'origine) */}
-                                    <div className="flex justify-center items-center w-full h-[180px]">
+                                    {/* 1. Vue 3D Principale (Haut, Pleine largeur, cadre agrandi) */}
+                                    <div className="flex justify-center items-center w-full h-[200px]">
                                         {images.main3D ? (
                                             <div 
                                                 className="w-full h-full flex items-center justify-center overflow-hidden"
@@ -492,9 +492,9 @@ export function FicheTechniqueModal({
                                         ) : null}
                                     </div>
 
-                                    {/* 2. Vue Pignon (Milieu, Emplacement d'origine à gauche) */}
-                                    <div className="flex items-center w-full h-[120px]">
-                                        <div className="w-1/2 h-full flex items-center justify-center">
+                                    {/* 2. Vue Pignon (Milieu, Cadre élargi à gauche) */}
+                                    <div className="flex items-center w-full h-[135px]">
+                                        <div className="w-[70%] h-full flex items-center justify-start">
                                             {images.pignon ? (
                                                 <div 
                                                     className="w-full h-full flex items-center justify-center overflow-hidden"
