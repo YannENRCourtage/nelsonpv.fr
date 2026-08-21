@@ -527,9 +527,10 @@ export function FicheTechniqueModal({
                                         const bType = (config?.buildingType || '').toLowerCase();
                                         const isAsym1 = bType.includes('asymetrique_1') || (bType.includes('asym') && !bType.includes('2'));
                                         const isAsym2 = bType.includes('asymetrique_2') || (bType.includes('asym') && bType.includes('2'));
+                                        const isMonopente = bType.includes('monopente') || bType.includes('mono');
                                         const isOmbriere = bType.includes('ombriere');
-                                        const isSym = !isAsym1 && !isAsym2 && !isOmbriere && ((bType.includes('symetrique') && !bType.includes('asym')) || bType.includes('bipente') || bType === 'epona');
-                                        const hasPhoto = isSym || isAsym1 || isAsym2 || isOmbriere;
+                                        const isSym = !isAsym1 && !isAsym2 && !isMonopente && !isOmbriere && ((bType.includes('symetrique') && !bType.includes('asym')) || bType.includes('bipente') || bType === 'epona');
+                                        const hasPhoto = isSym || isAsym1 || isAsym2 || isMonopente || isOmbriere;
 
                                         return (
                                             <>
@@ -575,6 +576,15 @@ export function FicheTechniqueModal({
                                                         <img 
                                                             src="/hangar_asymetrique_2_zones.png" 
                                                             alt="Rendu 3D Réaliste Asymétrique 2 zones" 
+                                                            className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
+                                                        />
+                                                    </div>
+                                                )}
+                                                {isMonopente && (
+                                                    <div className="flex justify-center items-center w-full pt-1 pb-1">
+                                                        <img 
+                                                            src="/hangar_monopente.png" 
+                                                            alt="Rendu 3D Réaliste Monopente Atlas" 
                                                             className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
                                                         />
                                                     </div>

@@ -413,6 +413,13 @@ export async function generateFicheTechniquePDF({
         rawTypo.includes('asymetrique 2') ||
         (rawType.includes('asym') && (rawType.includes('2') || rawTypo.includes('2')));
 
+    // Bâtiments Monopente (ATLAS 12 & 16)
+    const isMonopente = 
+        rawType.includes('monopente') || 
+        rawType.includes('mono') || 
+        rawGamme.includes('atlas') || 
+        rawTypo.includes('monopente');
+
     // Ombrières Simples (Gauche et Droite)
     const isOmbriereSimpleDroite = 
         rawType.includes('droite') || 
@@ -472,7 +479,7 @@ export async function generateFicheTechniquePDF({
         rawTypo.includes('ombriere');
 
     const isSymetrique = 
-        !isAsym1 && !isAsym2 && !isOmbriere && (
+        !isAsym1 && !isAsym2 && !isMonopente && !isOmbriere && (
             (rawType.includes('symetrique') && !rawType.includes('asym')) || 
             rawType.includes('bipente') || 
             rawType === 'epona' || 
@@ -481,13 +488,15 @@ export async function generateFicheTechniquePDF({
             (rawTypo.includes('symetrique') && !rawTypo.includes('asym'))
         );
 
-    const hasExtraPhoto = isSymetrique || isAsym1 || isAsym2 || isOmbriere;
+    const hasExtraPhoto = isSymetrique || isAsym1 || isAsym2 || isMonopente || isOmbriere;
 
     let photoUrlToLoad = null;
     if (isAsym1) {
         photoUrlToLoad = '/hangar_asymetrique_1_zone.png';
     } else if (isAsym2) {
         photoUrlToLoad = '/hangar_asymetrique_2_zones.png';
+    } else if (isMonopente) {
+        photoUrlToLoad = '/hangar_monopente.png';
     } else if (isOmbrierePLLarge) {
         photoUrlToLoad = '/ombriere_pl_large.png';
     } else if (isOmbrierePL16) {
