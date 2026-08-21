@@ -420,7 +420,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               <div style="display: grid; grid-template-rows: 1fr 1fr; gap: 6px; height: 100%;">
                 ${sim.buildings.slice(0, 2).map((b, bIdx) => `
                   <div style="border: 2px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #f8fafc; display: flex; flex-direction: column; position: relative; height: 100%;">
-                    <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 6px; border-bottom-right-radius: 4px; font-size: 6.5pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1.2;">Vue 3D — ${b.name || `Bâtiment ${bIdx + 1}`} (${Number(b.length || 30).toFixed(1)}m × ${Number(b.width || 20).toFixed(1)}m)</div>
+                    <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 6px; border-bottom-right-radius: 4px; font-size: 6.5pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1; display: flex; align-items: center;">Vue 3D — ${b.name || `Bâtiment ${bIdx + 1}`} (${Number(b.length || 30).toFixed(1)}m × ${Number(b.width || 20).toFixed(1)}m)</div>
                     ${(b.screenshot3d || sim.building3dScreenshot) ? `
                       <img src="${b.screenshot3d || sim.building3dScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue 3D ${b.name || `Bâtiment ${bIdx + 1}`}" />
                     ` : `
@@ -434,7 +434,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
               </div>
             ` : `
               <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #f8fafc; display: flex; flex-direction: column; position: relative; height: 100%;">
-                <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1.2;">Vue 3D — Bâtiment ${sim.length ? Number(sim.length).toFixed(1) : '30.0'}m × ${sim.width ? Number(sim.width).toFixed(1) : '20.0'}m</div>
+                <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1; display: flex; align-items: center;">Vue 3D — Bâtiment ${sim.length ? Number(sim.length).toFixed(1) : '30.0'}m × ${sim.width ? Number(sim.width).toFixed(1) : '20.0'}m</div>
                 ${sim.building3dScreenshot ? `
                   <img src="${sim.building3dScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue 3D du Bâtiment" />
                 ` : `
@@ -448,7 +448,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
 
             <!-- 4b. IMPLANTATION SATELLITE SUR LE TERRAIN -->
             <div style="border: 2px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #0f172a; display: flex; flex-direction: column; position: relative; height: 100%;">
-              <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1.2;">Implantation Satellite sur la Parcelle</div>
+              <div style="position: absolute; top: 0; left: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-bottom-right-radius: 6px; font-size: 7pt; font-weight: bold; z-index: 2; margin: 0; line-height: 1; display: flex; align-items: center;">Implantation Satellite sur la Parcelle</div>
               ${finalMapScreenshot ? `
                 <img src="${finalMapScreenshot}" style="width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;" alt="Vue satellite du site" />
               ` : `
@@ -457,7 +457,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                   <div style="font-size: 7.5pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
                 </div>
               `}
-              <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; margin: 0; line-height: 1.2;">Surface : ${sim.floorArea || Math.round((sim.length || 30) * (sim.width || 20))} m²</div>
+              <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-top-left-radius: 6px; font-size: 7pt; font-weight: bold; margin: 0; line-height: 1; display: flex; align-items: center;">Surface : ${sim.floorArea || Math.round((sim.length || 30) * (sim.width || 20))} m²</div>
             </div>
           </div>
         ` : isIrve ? `
@@ -495,7 +495,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
                 <div style="font-size: 8pt; margin-top: 3px; color: #94a3b8;">${clientAddress}</div>
               </div>
             `}
-            <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 2px 7px; border-top-left-radius: 6px; font-size: 7.5pt; font-weight: bold; margin: 0; line-height: 1.2;">Surface : ${sim.roofSurface || sim.floorArea || 83} m²</div>
+            <div style="position: absolute; bottom: 0; right: 0; background: rgba(15,23,42,0.85); color: #ffffff; padding: 3px 7px; border-top-left-radius: 6px; font-size: 7.5pt; font-weight: bold; margin: 0; line-height: 1; display: flex; align-items: center;">Surface : ${sim.roofSurface || sim.floorArea || 83} m²</div>
           </div>
         `}
 

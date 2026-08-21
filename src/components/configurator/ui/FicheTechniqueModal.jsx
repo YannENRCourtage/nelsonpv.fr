@@ -8,43 +8,40 @@ import {
     Camera, 
     ZoomIn, 
     Scissors, 
-    Maximize2, 
     Eye, 
     Layers,
     Sparkles
 } from 'lucide-react';
 import { generateFicheTechniquePDF } from '@/services/FicheTechniquePDFService.js';
 
+// Réglages par défaut optimisés et personnalisés
 const DEFAULT_SETTINGS = {
     main3D: {
-        cropTop: 0,
-        cropBottom: 0,
-        cropLeft: 0,
-        cropRight: 0,
-        zoom: 1.0,
-        offsetX: 0,
-        offsetY: 0,
-        heightMm: 62,
+        cropTop: 7,
+        cropBottom: 8,
+        cropLeft: 7,
+        cropRight: 8,
+        zoom: 1.55,
+        offsetX: 22,
+        offsetY: -42,
     },
     pignon: {
-        cropTop: 0,
-        cropBottom: 0,
-        cropLeft: 0,
-        cropRight: 0,
-        zoom: 1.0,
+        cropTop: 13,
+        cropBottom: 12,
+        cropLeft: 8,
+        cropRight: 9,
+        zoom: 1.05,
         offsetX: 0,
         offsetY: 0,
-        heightMm: 54,
     },
     facadeSud: {
-        cropTop: 8,
-        cropBottom: 8,
+        cropTop: 4,
+        cropBottom: 4,
         cropLeft: 0,
         cropRight: 0,
         zoom: 1.0,
         offsetX: 0,
         offsetY: 0,
-        heightMm: 54,
     },
 };
 
@@ -161,7 +158,7 @@ export function FicheTechniqueModal({
     const handleGenerateAndDownload = async () => {
         setIsGenerating(true);
         try {
-            // Traitement et recadrage des 3 images
+            // Traitement et recadrage des 3 images avec les réglages
             const [proc3D, procPignon, procFacade] = await Promise.all([
                 processCroppedImage(images.main3D, settings.main3D),
                 processCroppedImage(images.pignon, settings.pignon),
@@ -174,11 +171,6 @@ export function FicheTechniqueModal({
                 imgMain3D: proc3D,
                 imgPignon: procPignon,
                 imgFacadeSud: procFacade,
-                imageSettings: {
-                    main3DHeight: settings.main3D.heightMm,
-                    pignonHeight: settings.pignon.heightMm,
-                    facadeSudHeight: settings.facadeSud.heightMm,
-                },
             });
 
             onClose();
@@ -215,7 +207,7 @@ export function FicheTechniqueModal({
                                 Recadrage & Aperçu de la Fiche Technique
                             </DialogTitle>
                             <p className="text-xs text-slate-400">
-                                Ajustez le cadrage, le zoom et la hauteur de chaque visuel avant de générer le PDF.
+                                Ajustez le cadrage, le zoom et la position de chaque visuel avant de générer le PDF.
                             </p>
                         </div>
                     </div>
@@ -275,9 +267,6 @@ export function FicheTechniqueModal({
                             <div className="lg:col-span-7 flex flex-col gap-3">
                                 <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
                                     <span>Aperçu de la vue (Rendu fond blanc pur)</span>
-                                    <span className="text-blue-400">
-                                        Hauteur PDF : {currentSettings.heightMm} mm
-                                    </span>
                                 </div>
 
                                 {/* White Canvas Container */}
@@ -337,7 +326,7 @@ export function FicheTechniqueModal({
                                 <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
                                         <Scissors className="w-3.5 h-3.5 text-blue-400" />
-                                        <span>Réglages de la vue</span>
+                                        <span>Réglages de cadrage</span>
                                     </h4>
                                     <Button
                                         size="xs"
@@ -348,25 +337,6 @@ export function FicheTechniqueModal({
                                         <RotateCcw className="w-3 h-3" />
                                         <span>Réinitialiser</span>
                                     </Button>
-                                </div>
-
-                                {/* Hauteur du cadre sur le PDF */}
-                                <div className="space-y-1.5">
-                                    <div className="flex justify-between text-xs">
-                                        <span className="text-slate-300 font-medium flex items-center gap-1">
-                                            <Maximize2 className="w-3.5 h-3.5 text-indigo-400" />
-                                            Hauteur sur le PDF
-                                        </span>
-                                        <span className="font-mono text-indigo-400 font-bold">{currentSettings.heightMm} mm</span>
-                                    </div>
-                                    <Slider
-                                        value={[currentSettings.heightMm]}
-                                        min={30}
-                                        max={85}
-                                        step={1}
-                                        onValueChange={([val]) => updateSetting(currentKey, 'heightMm', val)}
-                                        className="py-1"
-                                    />
                                 </div>
 
                                 {/* Zoom / Échelle */}
@@ -488,23 +458,23 @@ export function FicheTechniqueModal({
                             </div>
                         </div>
                     ) : (
-                        /* APERÇU GLOBAL DU PDF */
+                        /* APERÇU GLOBAL DU PDF (FIDÈLE À LA MISE EN PAGE RÉELLE) */
                         <div className="flex flex-col items-center">
-                            <div className="w-full max-w-xl bg-white text-slate-900 rounded-xl p-8 shadow-2xl border border-slate-200">
+                            <div className="w-full max-w-xl bg-white text-slate-900 rounded-xl p-6 shadow-2xl border border-slate-200">
                                 
                                 {/* Header simulé avec espacement ajouté */}
-                                <div className="text-center pt-3 pb-5">
-                                    <h2 className="text-xl font-bold text-slate-900 tracking-tight">Plan de structure</h2>
-                                    <p className="text-sm font-bold text-blue-700 mt-1">
+                                <div className="text-center pt-2 pb-4">
+                                    <h2 className="text-lg font-bold text-slate-900 tracking-tight">Plan de structure</h2>
+                                    <p className="text-xs font-bold text-blue-700 mt-0.5">
                                         {Number(config.length || 30).toFixed(2)}m × {Number(config.width || 25.5).toFixed(2)}m - {Math.round((config.length || 30) * (config.width || 25.5))} m²
                                         {config.hasSolar && ` - ${Number(config.solarStats?.power || 148.8).toFixed(1)} kWc`}
                                     </p>
                                 </div>
 
-                                {/* 3 Visuels épurés empilés sur fond blanc */}
-                                <div className="space-y-6">
-                                    {/* 1. 3D */}
-                                    <div className="flex justify-center items-center w-full" style={{ height: `${settings.main3D.heightMm * 2.2}px` }}>
+                                {/* Disposition exacte des 3 visuels sur fond blanc */}
+                                <div className="space-y-4">
+                                    {/* 1. Vue 3D Principale (Haut, Pleine largeur, emplacement d'origine) */}
+                                    <div className="flex justify-center items-center w-full h-[180px]">
                                         {images.main3D ? (
                                             <div 
                                                 className="w-full h-full flex items-center justify-center overflow-hidden"
@@ -514,7 +484,7 @@ export function FicheTechniqueModal({
                                             >
                                                 <img 
                                                     src={images.main3D} 
-                                                    alt="3D" 
+                                                    alt="Vue 3D Principale" 
                                                     className="max-h-full max-w-full object-contain"
                                                     style={{ transform: `scale(${settings.main3D.zoom}) translate(${settings.main3D.offsetX}px, ${settings.main3D.offsetY}px)` }}
                                                 />
@@ -522,27 +492,29 @@ export function FicheTechniqueModal({
                                         ) : null}
                                     </div>
 
-                                    {/* 2. Pignon */}
-                                    <div className="flex justify-center items-center w-full" style={{ height: `${settings.pignon.heightMm * 2.2}px` }}>
-                                        {images.pignon ? (
-                                            <div 
-                                                className="w-full h-full flex items-center justify-center overflow-hidden"
-                                                style={{
-                                                    clipPath: `inset(${settings.pignon.cropTop}% ${settings.pignon.cropRight}% ${settings.pignon.cropBottom}% ${settings.pignon.cropLeft}%)`,
-                                                }}
-                                            >
-                                                <img 
-                                                    src={images.pignon} 
-                                                    alt="Pignon" 
-                                                    className="max-h-full max-w-full object-contain"
-                                                    style={{ transform: `scale(${settings.pignon.zoom}) translate(${settings.pignon.offsetX}px, ${settings.pignon.offsetY}px)` }}
-                                                />
-                                            </div>
-                                        ) : null}
+                                    {/* 2. Vue Pignon (Milieu, Emplacement d'origine à gauche) */}
+                                    <div className="flex items-center w-full h-[120px]">
+                                        <div className="w-1/2 h-full flex items-center justify-center">
+                                            {images.pignon ? (
+                                                <div 
+                                                    className="w-full h-full flex items-center justify-center overflow-hidden"
+                                                    style={{
+                                                        clipPath: `inset(${settings.pignon.cropTop}% ${settings.pignon.cropRight}% ${settings.pignon.cropBottom}% ${settings.pignon.cropLeft}%)`,
+                                                    }}
+                                                >
+                                                    <img 
+                                                        src={images.pignon} 
+                                                        alt="Vue Pignon" 
+                                                        className="max-h-full max-w-full object-contain"
+                                                        style={{ transform: `scale(${settings.pignon.zoom}) translate(${settings.pignon.offsetX}px, ${settings.pignon.offsetY}px)` }}
+                                                    />
+                                                </div>
+                                            ) : null}
+                                        </div>
                                     </div>
 
-                                    {/* 3. Façade Sud */}
-                                    <div className="flex justify-center items-center w-full" style={{ height: `${settings.facadeSud.heightMm * 2.2}px` }}>
+                                    {/* 3. Vue Façade Sud (Bas, Pleine largeur, emplacement d'origine) */}
+                                    <div className="flex justify-center items-center w-full h-[160px]">
                                         {images.facadeSud ? (
                                             <div 
                                                 className="w-full h-full flex items-center justify-center overflow-hidden"
@@ -561,8 +533,8 @@ export function FicheTechniqueModal({
                                     </div>
 
                                     {/* Bloc À votre charge simulé */}
-                                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[11px] text-slate-700">
-                                        <p className="font-bold text-slate-900 mb-1">À votre charge :</p>
+                                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[10px] text-slate-700">
+                                        <p className="font-bold text-slate-900 mb-0.5">À votre charge :</p>
                                         <p>• Terrassement / empièrement (si nécessaire)</p>
                                         <p>• Tranchée du bâtiment jusqu'au point de livraison (compteur)</p>
                                         <p>• Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres..</p>

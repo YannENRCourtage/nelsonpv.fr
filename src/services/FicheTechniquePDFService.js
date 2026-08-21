@@ -361,26 +361,25 @@ export async function generateFicheTechniquePDF({
         }
     };
 
-    // Hauteurs personnalisables ou valeurs par défaut idéales pour les 3 vues
-    const h3D = Number(imageSettings?.main3DHeight || 62);
-    const hPignon = Number(imageSettings?.pignonHeight || 54);
-    const hFacade = Number(imageSettings?.facadeSudHeight || 54);
+    // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc (emplacement d'origine)
+    const topY = 38.0;
+    const topH = 65.0;
+    drawSeamlessImage(loadedMain3D, mainX, topY, mainW, topH);
 
-    // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc
-    const topY = titleY + 10.0; // 40.5 mm
-    drawSeamlessImage(loadedMain3D, mainX, topY, mainW, h3D);
+    // VISUEL 2 (Milieu) : Vue Pignon épurée sur fond blanc (emplacement d'origine gauche)
+    const midY = 107.0;
+    const midH = 43.0;
+    const halfW = (mainW - 3) / 2; // 67.5 mm
+    drawSeamlessImage(loadedPignon, mainX, midY, halfW, midH);
 
-    // VISUEL 2 (Milieu) : Vue Pignon épurée sur fond blanc (Plein format horizontal)
-    const midY = topY + h3D + 4.0;
-    drawSeamlessImage(loadedPignon, mainX, midY, mainW, hPignon);
-
-    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc
-    const sudY = midY + hPignon + 4.0;
-    drawSeamlessImage(loadedFacadeSud, mainX, sudY, mainW, hFacade);
+    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (emplacement d'origine bas)
+    const sudY = 154.5;
+    const sudH = 59.0;
+    drawSeamlessImage(loadedFacadeSud, mainX, sudY, mainW, sudH);
 
     // --- CADRE : À VOTRE CHARGE ---
-    const chargeY = Math.max(sudY + hFacade + 5.0, 222.0);
-    const chargeH = 24;
+    const chargeY = 219.0;
+    const chargeH = 24.0;
     pdf.setFillColor(248, 250, 252);
     pdf.roundedRect(mainX, chargeY, mainW, chargeH, 2, 2, 'FD');
     pdf.setDrawColor(226, 232, 240);
