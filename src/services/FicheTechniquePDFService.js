@@ -226,7 +226,7 @@ export async function generateFicheTechniquePDF({
     if (!isCustom) {
         drawRow('Gamme :', gammeName, true, [255, 255, 255]);
         if (buildingCode) drawRow('Modèle :', buildingCode, true, [251, 191, 36]);
-        if (equivalenceCode) drawRow('Équivalence :', equivalenceCode, false, [203, 213, 225]);
+        if (equivalenceCode) drawRow('', equivalenceCode, false, [203, 213, 225]); // Mot "Équivalence :" supprimé, code conservé à droite
     } else {
         drawRow('Modèle :', 'Sur-Mesure', true, [251, 191, 36]);
         drawRow('Grille :', 'Sur-mesure', false, [167, 139, 250]);
@@ -241,14 +241,14 @@ export async function generateFicheTechniquePDF({
     drawRow('Surface au sol :', `${floorArea} m²`, true, [56, 189, 248]);
     drawRow('Travées :', barcMatch.travees || `${config.bayCount} × ${config.baySpacing} m`);
     
-    // Indication altitude sous travées avec écart aéré après
+    // Indication altitude sous travées avec police augmentée (+1pt -> 7.5) et bel écart aéré
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(6.5);
+    pdf.setFontSize(7.5); // Augmenté d'un point
     pdf.setTextColor(148, 163, 184);
     pdf.text('(travées 7,5m jusqu’à 200m d’altitude,', padL, curY);
-    curY += 2.8;
+    curY += 3.0;
     pdf.text('et 6,00m de 200m à 500m d’altitude)', padL, curY);
-    curY += 4.2; // Écart ajouté après la phrase d'altitude
+    curY += 4.5; // Écart ajouté après la phrase d'altitude
 
     drawRow('Avants-toit :', 'environ 50 cm');
     drawRow('Niveau fondations :', '+/- 0.0 m');
@@ -443,36 +443,37 @@ export async function generateFicheTechniquePDF({
         }
     };
 
-    // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc (Centrée horizontalement et bornée strictement)
-    const topY = 48.0;
-    const topH = hasExtraPhoto ? 64.0 : 78.0;
+    // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc (Agrandie et centrée)
+    const topY = 46.0;
+    const topH = hasExtraPhoto ? 68.0 : 84.0; // Cadre agrandi
     drawSeamlessImage(loadedMain3D, mainX, topY, mainW, topH, false); // Centrée et contenue dans mainW
 
-    // VISUEL 2 (Milieu Gauche) : Vue Pignon épurée sur fond blanc (abaissée en conséquence, alignée à gauche)
-    const midY = hasExtraPhoto ? 118.0 : 134.0;
-    const midH = 38.0;
-    const pignonW = 75.0;
-    drawSeamlessImage(loadedPignon, mainX, midY, pignonW, midH, true); // Cadre laissé à sa place à gauche
+    // VISUEL 2 (Milieu Gauche) : Vue Pignon épurée sur fond blanc (Cadre élargi à 84mm et midH à 42mm)
+    const midY = hasExtraPhoto ? 116.0 : 132.0;
+    const midH = 42.0; // Cadre agrandi
+    const pignonW = 84.0; // Cadre élargi
+    drawSeamlessImage(loadedPignon, mainX, midY, pignonW, midH, true);
 
-    // --- CADRE : À VOTRE CHARGE (Positionné à droite de l'image du pignon, abaissé au même niveau) ---
-    const chargeX = 145.0;
+    // --- CADRE : À VOTRE CHARGE (Nouvelle couleur de fond douce & moderne, positionné à droite du pignon) ---
+    const chargeX = 152.0;
     const chargeY = midY;
-    const chargeW = 59.0;
+    const chargeW = 52.0;
     const chargeH = midH;
 
-    pdf.setFillColor(248, 250, 252);
-    pdf.roundedRect(chargeX, chargeY, chargeW, chargeH, 2, 2, 'FD');
-    pdf.setDrawColor(226, 232, 240);
+    // Nouveau fond élégant bleu-ciel / slate doux avec bordure moderne
+    pdf.setFillColor(239, 246, 255); // Bleu très doux (Blue 50)
+    pdf.roundedRect(chargeX, chargeY, chargeW, chargeH, 2.5, 2.5, 'FD');
+    pdf.setDrawColor(191, 219, 254); // Bleu 200
     pdf.setLineWidth(0.4);
-    pdf.roundedRect(chargeX, chargeY, chargeW, chargeH, 2, 2, 'S');
+    pdf.roundedRect(chargeX, chargeY, chargeW, chargeH, 2.5, 2.5, 'S');
 
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(8.8); // +2pt (was 6.8)
-    pdf.setTextColor(15, 23, 42); // Slate 900
+    pdf.setFontSize(8.8);
+    pdf.setTextColor(30, 58, 138); // Bleu Marine Élégant
     pdf.text('À votre charge :', chargeX + 3.5, chargeY + 5.5);
 
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(7.5); // +2pt (was 5.5)
+    pdf.setFontSize(7.2);
     pdf.setTextColor(51, 65, 85); // Slate 700
 
     const chargeItems = [
@@ -481,18 +482,18 @@ export async function generateFicheTechniquePDF({
         "•  Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres.."
     ];
 
-    const maxTextW = chargeW - 6.5; // ~48.5mm
+    const maxTextW = chargeW - 6.0;
     let textCursorY = chargeY + 10.0;
 
     chargeItems.forEach((item) => {
         const lines = pdf.splitTextToSize(item, maxTextW);
         pdf.text(lines, chargeX + 3.5, textCursorY);
-        textCursorY += (lines.length * 3.2) + 1.2;
+        textCursorY += (lines.length * 3.0) + 1.2;
     });
 
-    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (Descendue vers le bas)
-    const sudY = hasExtraPhoto ? 162.0 : 178.0;
-    const sudH = hasExtraPhoto ? 42.0 : 52.0;
+    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (Cadre agrandi pour visuel plus gros)
+    const sudY = hasExtraPhoto ? 160.0 : 176.0;
+    const sudH = hasExtraPhoto ? 52.0 : 64.0; // Cadre agrandi
     drawSeamlessImage(loadedFacadeSud, mainX, sudY, mainW, sudH, false);
 
     // ==========================================
@@ -543,15 +544,15 @@ export async function generateFicheTechniquePDF({
     const contactInfo = "contact@enr-courtage.fr   •   enr-courtage.fr";
     pdf.text(contactInfo, pageWidth - sideX, footerY + 5.0, { align: 'right' });
 
-    // Ligne 2 sous le trait de séparation : Mention confidentiel & Date de génération sur la droite
+    // Ligne 2 sous le trait de séparation : Document confidentiel à gauche & Date de génération à droite (sans puce)
     const now = new Date();
     const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(7.6);
     pdf.setTextColor(148, 163, 184);
-    const rightFooterText = `Document confidentiel et non contractuel.   •   Document généré le ${dateStr}`;
-    pdf.text(rightFooterText, pageWidth - sideX, footerY + 9.5, { align: 'right' });
+    pdf.text('Document confidentiel et non contractuel.', sideX, footerY + 9.5); // Aligné à gauche
+    pdf.text(`Document généré le ${dateStr}`, pageWidth - sideX, footerY + 9.5, { align: 'right' }); // Aligné à droite
 
     // Téléchargement du fichier
     const cleanName = (gammeName || 'Batiment').replace(/[^a-zA-Z0-9_-]/g, '_');
