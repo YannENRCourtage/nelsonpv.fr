@@ -257,9 +257,16 @@ export async function generateFicheTechniquePDF({
     curY += 2.0;
 
     // --- BLOC 3 : HAUTEURS & TOITURE ---
+    const formatDimUnit = (val, defaultVal) => {
+        if (!val && val !== 0) return `${Number(defaultVal).toFixed(2)}m`;
+        const str = String(val).trim();
+        if (str.endsWith('m') || str.endsWith('m²') || str.endsWith('cm')) return str;
+        return `${str}m`;
+    };
+
     drawSectionTitle('3. Hauteurs & Toiture');
-    drawRow('Hauteur Sablière :', barcMatch.sabliere || `${Number(config.eaveHeight || 4).toFixed(2)} m`);
-    drawRow('Hauteur Faîtage :', barcMatch.faitage || `${Number(config.ridgeHeight || 7.4).toFixed(2)} m`);
+    drawRow('Hauteur Sablière :', formatDimUnit(barcMatch.sabliere, config.eaveHeight || 4));
+    drawRow('Hauteur Faîtage :', formatDimUnit(barcMatch.faitage, config.ridgeHeight || 7.4));
     drawRow('Pente de toit :', pitchLabel);
     drawRow('Couverture :', 'Bac acier (RAL 7016)');
     drawRow('Anti-condensation :', 'Feutre régulateur');
@@ -267,6 +274,9 @@ export async function generateFicheTechniquePDF({
     curY += 2.0;
 
     // --- BLOC 4 : CENTRALE PHOTOVOLTAÏQUE ---
+    let paybackYears = '—';
+    let performanceFinanciere = '—';
+
     drawSectionTitle('4. Énergie Solaire', [251, 191, 36]);
     if (config.hasSolar) {
         drawRow('Statut PV :', 'Activée', true, [251, 191, 36]);
@@ -300,6 +310,66 @@ export async function generateFicheTechniquePDF({
         // Gain estimé An 1 (Tarif achat x Production estimée)
         const gainEstimeAn1 = tarifNum * estimatedProductionKwh;
         drawRow('Gain estimé An 1 :', `${formatNumber(gainEstimeAn1.toFixed(2))} €`, true, [52, 211, 153]);
+
+        // Calcul Amortissement & Performance Financière (identique au Simulateur Structure Métallique)
+        if (totalProjectCost > 0 && estimatedProductionKwh > 0) {
+            const tarifAchatNum = installedKwc < 100 ? 0.1141 : (installedKwc <= 500 ? 0.082 : 0.0829);
+            const annualGrossRevenue = estimatedProductionKwh * tarifAchatNum;
+            const annualOperatingCost = installedKwc * 22; // TURPE + maintenance
+            const annualNetRevenue = annualGrossRevenue - annualOperatingCost;
+
+            let cumul = -totalProjectCost;
+            let foundPayback = null;
+            const cashFlows = [-totalProjectCost];
+
+            for (let yr = 1; yr <= 30; yr++) {
+                const panelEff = Math.pow(0.99, yr - 1);
+                const tariffIdx = Math.pow(1.02, yr - 1);
+                const netYr = Math.round((annualGrossRevenue * panelEff * tariffIdx) - annualOperatingCost);
+                cumul += netYr;
+                cashFlows.push(netYr);
+
+                if (cumul >= 0 && foundPayback === null) {
+                    const prevCumul = cumul - netYr;
+                    const frac = netYr > 0 ? (-prevCumul) / netYr : 0;
+                    foundPayback = Math.round(yr - 1 + Math.max(0, Math.min(1, frac)));
+                }
+            }
+
+            if (foundPayback !== null) {
+                paybackYears = `${Math.max(1, foundPayback)} ans`;
+            } else if (annualNetRevenue > 0) {
+                paybackYears = `${Math.max(1, Math.round(totalProjectCost / annualNetRevenue))} ans`;
+            } else {
+                paybackYears = '> 30 ans';
+            }
+
+            // Calcul TRI (Taux de Rendement Interne 30 ans)
+            let rate = 0.059;
+            for (let iter = 0; iter < 50; iter++) {
+                let npv = 0;
+                let dnpv = 0;
+                for (let t = 0; t <= 30; t++) {
+                    const cf = cashFlows[t] || 0;
+                    const denom = Math.pow(1 + rate, t);
+                    npv += cf / denom;
+                    if (t > 0) {
+                        dnpv -= (t * cf) / Math.pow(1 + rate, t + 1);
+                    }
+                }
+                if (Math.abs(npv) < 0.01 || Math.abs(dnpv) < 1e-7) break;
+                const newRate = rate - npv / dnpv;
+                if (isNaN(newRate) || newRate < -0.5 || newRate > 1.0) break;
+                rate = newRate;
+            }
+
+            if (!isNaN(rate) && rate > 0) {
+                performanceFinanciere = `${(rate * 100).toFixed(1)} % / an`;
+            } else {
+                const simpleYield = (annualNetRevenue / totalProjectCost) * 100;
+                performanceFinanciere = `${Math.max(1, simpleYield).toFixed(1)} % / an`;
+            }
+        }
     } else {
         drawRow('Option solaire :', 'Non incluse (Sans PV)', false, [148, 163, 184]);
     }
@@ -311,7 +381,10 @@ export async function generateFicheTechniquePDF({
     if (config.hasSolar) {
         drawRow('Centrale PV :', `${formatNumber(pvInstallationCost)} € HT`);
         drawRow('Total Projet :', `${formatNumber(totalProjectCost)} € HT`, true, [52, 211, 153]);
+        drawRow('Amortissement :', paybackYears, true, [52, 211, 153]);
+        drawRow('Performance Financière :', performanceFinanciere, true, [251, 191, 36]);
     }
+    curY += 2.2; // Petit espace au-dessus des 3 lignes de ratio
     drawRow('Ratio / Surface :', `${formatNumber(ratioCostPerM2)} € / m²`, true, [56, 189, 248]);
     if (config.hasSolar && installedKwc > 0) {
         drawRow('Ratio Total / Wc :', `${ratioTotalCostPerWc} € / Wc`);
