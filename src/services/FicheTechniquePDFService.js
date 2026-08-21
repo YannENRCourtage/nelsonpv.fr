@@ -409,74 +409,40 @@ export async function generateFicheTechniquePDF({
     const rawGamme = (gammeName || '').toLowerCase();
     const rawTypo = (typologyLabel || '').toLowerCase();
 
-    // Détection stricte et prioritaire des typologies de bâtiments
-    const isAsym1 = 
-        rawType.includes('asymetrique_1') || 
-        rawType.includes('asymetrique 1') || 
-        rawGamme.includes('orion') || 
-        rawTypo.includes('asymétrique 1') || 
-        rawTypo.includes('asymetrique 1') ||
-        (rawType.includes('asym') && !rawType.includes('2') && !rawTypo.includes('2'));
-
-    const isAsym2 = 
-        rawType.includes('asymetrique_2') || 
-        rawType.includes('asymetrique 2') || 
-        rawGamme.includes('cyrus') || 
-        rawTypo.includes('asymétrique 2') || 
-        rawTypo.includes('asymetrique 2') ||
-        (rawType.includes('asym') && (rawType.includes('2') || rawTypo.includes('2')));
-
-    // Bâtiments Monopente (ATLAS 12 & 16)
-    const isMonopente = 
-        rawType.includes('monopente') || 
-        rawType.includes('mono') || 
-        rawGamme.includes('atlas') || 
-        rawTypo.includes('monopente');
+    // 1. Ombrières
+    const isOmbriere = 
+        rawType.includes('ombriere') || 
+        rawGamme.includes('ombriere') || 
+        rawTypo.includes('ombrière') || 
+        rawTypo.includes('ombriere') ||
+        rawType.startsWith('o_') ||
+        rawType.startsWith('omb_');
 
     // Ombrières Simples (Gauche et Droite)
-    const isOmbriereSimpleDroite = 
+    const isOmbriereSimpleDroite = isOmbriere && (
         rawType.includes('droite') || 
         rawGamme.includes('droite') || 
         rawTypo.includes('droite') || 
         buildingCode.includes('O3D') || 
-        equivalenceCode.includes('OD3');
+        equivalenceCode.includes('OD3')
+    );
 
-    const isOmbriereSimpleGauche = 
-        !isOmbriereSimpleDroite && (
-            rawType.includes('gauche') || 
-            rawGamme.includes('gauche') || 
-            rawTypo.includes('gauche') || 
-            rawType.includes('simple') || 
-            rawGamme.includes('simple') || 
-            rawTypo.includes('simple') ||
-            buildingCode.includes('O3M') || 
-            equivalenceCode.includes('OM3')
-        );
+    const isOmbriereSimpleGauche = isOmbriere && !isOmbriereSimpleDroite && (
+        rawType.includes('gauche') || 
+        rawGamme.includes('gauche') || 
+        rawTypo.includes('gauche') || 
+        rawType.includes('simple') || 
+        rawGamme.includes('simple') || 
+        rawTypo.includes('simple') ||
+        buildingCode.includes('O3M') || 
+        equivalenceCode.includes('OM3')
+    );
 
     const isOmbriereSimple = isOmbriereSimpleDroite || isOmbriereSimpleGauche;
 
-    // Ombrières PL (16m vs 20m/25m) - strictement exclure les ombrières simples et doubles
-    const isOmbrierePL = !isOmbriereSimple && !rawType.includes('double') && (
-        rawType.includes('ombriere_pl') || 
-        rawType.includes('_pl') || 
-        rawGamme.includes('pl ') || 
-        rawGamme.includes('pl 16') || 
-        rawGamme.includes('pl 20') || 
-        rawGamme.includes('pl 25') || 
-        rawTypo.includes('poids lourds') || 
-        rawTypo.includes('(pl)') ||
-        (totalWidth >= 14.0 && !rawType.includes('vl'))
-    );
-
-    const isOmbrierePLLarge = isOmbrierePL && (
-        totalWidth >= 18.0 || rawType.includes('20') || rawType.includes('25') || rawGamme.includes('20') || rawGamme.includes('25')
-    );
-
-    const isOmbrierePL16 = isOmbrierePL && !isOmbrierePLLarge;
-
     // Ombrières VL Double (9.1m) et Double+ (11.3m)
-    const isOmbriereDouble = !isOmbriereSimple && !isOmbrierePL && (
-        rawType.includes('double') || rawGamme.includes('double') || rawTypo.includes('double')
+    const isOmbriereDouble = isOmbriere && !isOmbriereSimple && (
+        rawType.includes('double') || rawGamme.includes('double') || rawTypo.includes('double') || rawType.includes('o4') || rawGamme.includes('o4')
     );
 
     const isOmbriereDoublePlus = isOmbriereDouble && (
@@ -485,45 +451,75 @@ export async function generateFicheTechniquePDF({
 
     const isOmbriereDoubleStd = isOmbriereDouble && !isOmbriereDoublePlus;
 
-    const isOmbriere = 
-        rawType.includes('ombriere') || 
-        rawGamme.includes('ombriere') || 
-        rawTypo.includes('ombrière') || 
-        rawTypo.includes('ombriere');
+    // Ombrières PL (16m vs 20m vs 25m)
+    const isOmbrierePL = isOmbriere && !isOmbriereSimple && !isOmbriereDouble;
 
-    const isSymetrique = 
-        !isAsym1 && !isAsym2 && !isMonopente && !isOmbriere && (
-            (rawType.includes('symetrique') && !rawType.includes('asym')) || 
-            rawType.includes('bipente') || 
-            rawType === 'epona' || 
-            rawGamme.includes('helios') || 
-            (rawTypo.includes('symétrique') && !rawTypo.includes('asym')) || 
-            (rawTypo.includes('symetrique') && !rawTypo.includes('asym'))
-        );
+    const isOmbrierePL25 = isOmbrierePL && (
+        rawType.includes('25') || rawGamme.includes('25') || totalWidth >= 22.0
+    );
 
-    const hasExtraPhoto = isSymetrique || isAsym1 || isAsym2 || isMonopente || isOmbriere;
+    const isOmbrierePL20 = isOmbrierePL && !isOmbrierePL25 && (
+        rawType.includes('20') || rawGamme.includes('20') || (totalWidth >= 18.0 && totalWidth < 22.0)
+    );
+
+    const isOmbrierePL16 = isOmbrierePL && !isOmbrierePL20 && !isOmbrierePL25;
+
+    // 2. Bâtiments Monopente (ATLAS 12 & 16)
+    const isMonopente = !isOmbriere && (
+        rawType.includes('monopente') || 
+        rawType.includes('mono') || 
+        rawGamme.includes('atlas') || 
+        rawTypo.includes('monopente')
+    );
+
+    // 3. Bâtiments Asymétriques 1 zone (ORION)
+    const isAsym1 = !isOmbriere && !isMonopente && (
+        rawType.includes('asymetrique_1') || 
+        rawType.includes('asymetrique 1') || 
+        rawGamme.includes('orion') || 
+        rawTypo.includes('asymétrique 1') || 
+        rawTypo.includes('asymetrique 1') ||
+        (rawType.includes('asym') && !rawType.includes('2') && !rawTypo.includes('2'))
+    );
+
+    // 4. Bâtiments Asymétriques 2 zones (CYRUS)
+    const isAsym2 = !isOmbriere && !isMonopente && (
+        rawType.includes('asymetrique_2') || 
+        rawType.includes('asymetrique 2') || 
+        rawGamme.includes('cyrus') || 
+        rawTypo.includes('asymétrique 2') || 
+        rawTypo.includes('asymetrique 2') ||
+        (rawType.includes('asym') && (rawType.includes('2') || rawTypo.includes('2')))
+    );
+
+    // 5. Bâtiments Symétriques (HELIOS / EPONA / Standard)
+    const isSymetrique = !isOmbriere && !isMonopente && !isAsym1 && !isAsym2;
+
+    const hasExtraPhoto = true; // Tous les types ont une photo dédiée
 
     let photoUrlToLoad = null;
-    if (isAsym1) {
-        photoUrlToLoad = '/hangar_asymetrique_1_zone.png';
+    if (isSymetrique) {
+        photoUrlToLoad = '/hangar_symetrique.jpg';
+    } else if (isAsym1) {
+        photoUrlToLoad = '/hangar_asymetrique_1_zone.jpg';
     } else if (isAsym2) {
-        photoUrlToLoad = '/hangar_asymetrique_2_zones.png';
+        photoUrlToLoad = '/hangar_asymetrique_2_zones.jpg';
     } else if (isMonopente) {
-        photoUrlToLoad = '/hangar_monopente.png';
-    } else if (isOmbrierePLLarge) {
-        photoUrlToLoad = '/ombriere_pl_large.png';
+        photoUrlToLoad = '/hangar_monopente.jpg';
+    } else if (isOmbrierePL25) {
+        photoUrlToLoad = '/OMBRIERE PL 25m.jpg';
+    } else if (isOmbrierePL20) {
+        photoUrlToLoad = '/OMBRIERE PL 20m.jpg';
     } else if (isOmbrierePL16) {
-        photoUrlToLoad = '/ombriere_pl.png';
+        photoUrlToLoad = '/OMBRIERE PL 16m.jpg';
     } else if (isOmbriereDoublePlus) {
-        photoUrlToLoad = '/ombriere_vl_double_plus.png';
+        photoUrlToLoad = '/OMBRIERE VL DOUBLE+.jpg';
     } else if (isOmbriereDoubleStd) {
-        photoUrlToLoad = '/ombriere_vl_double.png';
+        photoUrlToLoad = '/OMBRIERE VL DOUBLE.jpg';
     } else if (isOmbriereSimpleDroite) {
-        photoUrlToLoad = '/ombriere_vl_simple_droite.png';
-    } else if (isOmbriereSimpleGauche || isOmbriere) {
-        photoUrlToLoad = '/ombriere_vl_simple_gauche.png';
-    } else if (isSymetrique) {
-        photoUrlToLoad = '/hangar_symetrique.png';
+        photoUrlToLoad = '/OMBRIERE VL SIMPLE DROITE.jpg';
+    } else if (isOmbriereSimpleGauche) {
+        photoUrlToLoad = '/OMBRIERE VL SIMPLE GAUCHE.jpg';
     }
 
     const [loadedMain3D, loadedPignon, loadedFacadeSud, loadedHangarPhoto] = await Promise.all([
@@ -550,74 +546,34 @@ export async function generateFicheTechniquePDF({
     // ==========================================
     // 3. ZONE CENTRALE & DROITE : TITRE + 3 VISUELS ÉPURÉS (SANS CADRE NI TITRE) + À VOTRE CHARGE
     // ==========================================
-    const mainX = 66;
-    const mainW = 138;
-    const mainCenterX = mainX + (mainW / 2);
+    const mainX = 66.0;
+    const mainW = pageWidth - mainX - 6.0; // 138mm
 
-    // --- EN-TÊTE : PLAN DE STRUCTURE (Avec espace aéré supplémentaire au-dessus, descendu avec le header) ---
-    const titleY = 36.0; // Espace ajouté avant les mots "Plan de structure"
+    // Titre "Plan de structure" centré
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(15); // +2pt (was 13)
+    pdf.setFontSize(14.0);
     pdf.setTextColor(15, 23, 42); // Slate 900
-    pdf.text('Plan de structure', mainCenterX, titleY, { align: 'center' });
+    pdf.text('Plan de structure', mainX + (mainW / 2), 34.0, { align: 'center' });
 
-    const subtitleDim = `${length.toFixed(2)}m × ${totalWidth.toFixed(2)}m - ${floorArea} m²${config.hasSolar ? ` - ${installedKwc.toFixed(1)} kWc` : ''}`;
+    // Sous-titre centré : Dimensions - Surface - Puissance kWc
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(11.5); // +2pt (was 9.5)
-    pdf.setTextColor(0, 66, 157); // Bleu NELSON
-    pdf.text(subtitleDim, mainCenterX, titleY + 5.5, { align: 'center' });
+    pdf.setFontSize(10.0);
+    pdf.setTextColor(30, 58, 138); // Bleu Marine Royal
+    const titleDetails = `${length.toFixed(2)}m × ${totalWidth.toFixed(2)}m - ${floorArea} m²${config.hasSolar ? ` - ${installedKwc.toFixed(1)} kWc` : ''}`;
+    pdf.text(titleDetails, mainX + (mainW / 2), 39.5, { align: 'center' });
 
-    // Helper pour dessiner une image épurée directement sur fond blanc en restant strictement dans son cadre
-    const drawSeamlessImage = (imgObj, x, y, maxW, maxH, alignLeft = false) => {
-        if (!imgObj) return;
-        try {
-            let imgW = maxW;
-            let imgH = maxH;
-
-            if (imgObj.width && imgObj.height) {
-                const imgAspect = imgObj.width / imgObj.height;
-                const containerAspect = maxW / maxH;
-
-                if (imgAspect > containerAspect) {
-                    imgW = maxW;
-                    imgH = maxW / imgAspect;
-                } else {
-                    imgH = maxH;
-                    imgW = maxH * imgAspect;
-                }
-
-                // Sécurité stricte pour ne jamais déborder du cadre prévu
-                if (imgW > maxW) {
-                    imgW = maxW;
-                    imgH = maxW / imgAspect;
-                }
-                if (imgH > maxH) {
-                    imgH = maxH;
-                    imgW = imgH * imgAspect;
-                }
-            }
-
-            const imgX = alignLeft ? x : x + (maxW - imgW) / 2;
-            const imgY = y + (maxH - imgH) / 2;
-
-            pdf.addImage(imgObj, 'PNG', imgX, imgY, imgW, imgH, undefined, 'FAST');
-        } catch (err) {
-            console.warn('Erreur rendu image épurée:', err);
-        }
-    };
-
-    // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc (Agrandie et centrée)
+    // VISUEL 1 (Haut) : Vue 3D Principale épurée sur fond blanc (Cadre agrandi pour visuel plus gros)
     const topY = 46.0;
     const topH = hasExtraPhoto ? 68.0 : 84.0; // Cadre agrandi
     drawSeamlessImage(loadedMain3D, mainX, topY, mainW, topH, false); // Centrée et contenue dans mainW
 
-    // VISUEL 2 (Milieu Gauche) : Vue Pignon épurée sur fond blanc (Cadre élargi à 84mm et midH à 42mm)
+    // VISUEL 2 (Milieu Gauche) : Vue Pignon épurée sur fond blanc (Cadre élargi à 84mm et midH à 44mm)
     const midY = hasExtraPhoto ? 116.0 : 132.0;
-    const midH = 42.0; // Cadre agrandi
+    const midH = 44.0; // Cadre agrandi
     const pignonW = 84.0; // Cadre élargi
     drawSeamlessImage(loadedPignon, mainX, midY, pignonW, midH, true);
 
-    // --- CADRE : À VOTRE CHARGE (Ajusté pour supprimer l'espace sous la dernière phrase) ---
+    // --- CADRE : À VOTRE CHARGE (Avec les 5 points d'équipements & aménagements) ---
     const chargeX = 152.0;
     const chargeY = midY;
     const chargeW = 52.0;
@@ -625,19 +581,21 @@ export async function generateFicheTechniquePDF({
     const chargeItems = [
         "•  Terrassement / empièrement (si nécessaire)",
         "•  Tranchée du bâtiment jusqu'au point de livraison (compteur)",
-        "•  Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres.."
+        "•  Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres..",
+        "•  Aménagement SDIS si inexistant",
+        "•  Équipement ERP : extincteurs / accès handicapés / autres.."
     ];
 
     const maxTextW = chargeW - 7.0;
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(7.2);
+    pdf.setFontSize(6.8);
     const itemLines = chargeItems.map(item => pdf.splitTextToSize(item, maxTextW));
 
-    let totalTextH = 6.0 + 3.8; // Espace titre 'À votre charge :'
+    let totalTextH = 5.2 + 3.2; // Espace titre 'À votre charge :'
     itemLines.forEach((lines, idx) => {
-        totalTextH += (lines.length * 3.0) + (idx < itemLines.length - 1 ? 1.4 : 0);
+        totalTextH += (lines.length * 2.7) + (idx < itemLines.length - 1 ? 1.0 : 0);
     });
-    const chargeH = totalTextH + 2.5; // S'arrête juste après la dernière ligne
+    const chargeH = Math.max(midH, totalTextH + 2.5); // S'aligne parfaitement avec la hauteur du pignon
 
     // Fond élégant bleu très doux avec bordure moderne
     pdf.setFillColor(239, 246, 255); // Bleu très doux (Blue 50)
@@ -647,18 +605,18 @@ export async function generateFicheTechniquePDF({
     pdf.roundedRect(chargeX, chargeY, chargeW, chargeH, 2.5, 2.5, 'S');
 
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(8.8);
+    pdf.setFontSize(8.6);
     pdf.setTextColor(30, 58, 138); // Bleu Marine Élégant
-    pdf.text('À votre charge :', chargeX + 3.5, chargeY + 5.5);
+    pdf.text('À votre charge :', chargeX + 3.5, chargeY + 5.2);
 
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(7.2);
+    pdf.setFontSize(6.8);
     pdf.setTextColor(51, 65, 85); // Slate 700
 
-    let textCursorY = chargeY + 9.5;
+    let textCursorY = chargeY + 8.8;
     itemLines.forEach((lines, idx) => {
         pdf.text(lines, chargeX + 3.5, textCursorY);
-        textCursorY += (lines.length * 3.0) + (idx < itemLines.length - 1 ? 1.4 : 0);
+        textCursorY += (lines.length * 2.7) + (idx < itemLines.length - 1 ? 1.0 : 0);
     });
 
     // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (Cadre agrandi pour visuel plus gros)

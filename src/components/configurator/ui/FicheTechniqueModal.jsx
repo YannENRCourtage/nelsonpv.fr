@@ -514,23 +514,26 @@ export function FicheTechniqueModal({
                                         </div>
 
                                         {/* Cadre À votre charge (Droite, 40%) */}
-                                        <div className="w-[40%] self-start bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[9px] text-slate-700 flex flex-col justify-start space-y-1">
+                                        <div className="w-[40%] self-start bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[8.5px] text-slate-700 flex flex-col justify-start space-y-1">
                                             <p className="font-bold text-slate-900 text-[9.5px]">À votre charge :</p>
                                             <p className="leading-tight">• Terrassement / empièrement (si nécessaire)</p>
                                             <p className="leading-tight">• Tranchée du bâtiment jusqu'au point de livraison (compteur)</p>
                                             <p className="leading-tight">• Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres..</p>
+                                            <p className="leading-tight">• Aménagement SDIS si inexistant</p>
+                                            <p className="leading-tight">• Équipement ERP : extincteurs / accès handicapés / autres..</p>
                                         </div>
                                     </div>
 
                                     {/* 3. Vue Façade Sud (Descendue vers le bas) */}
                                     {(() => {
                                         const bType = (config?.buildingType || '').toLowerCase();
-                                        const isAsym1 = bType.includes('asymetrique_1') || (bType.includes('asym') && !bType.includes('2'));
-                                        const isAsym2 = bType.includes('asymetrique_2') || (bType.includes('asym') && bType.includes('2'));
-                                        const isMonopente = bType.includes('monopente') || bType.includes('mono');
-                                        const isOmbriere = bType.includes('ombriere');
-                                        const isSym = !isAsym1 && !isAsym2 && !isMonopente && !isOmbriere && ((bType.includes('symetrique') && !bType.includes('asym')) || bType.includes('bipente') || bType === 'epona');
-                                        const hasPhoto = isSym || isAsym1 || isAsym2 || isMonopente || isOmbriere;
+                                        const gName = (config?.gamme || '').toLowerCase();
+                                        const isOmbriere = bType.includes('ombriere') || gName.includes('ombriere') || bType.startsWith('o_') || bType.startsWith('omb_');
+                                        const isAsym1 = !isOmbriere && (bType.includes('asymetrique_1') || (bType.includes('asym') && !bType.includes('2')));
+                                        const isAsym2 = !isOmbriere && (bType.includes('asymetrique_2') || (bType.includes('asym') && bType.includes('2')));
+                                        const isMonopente = !isOmbriere && (bType.includes('monopente') || bType.includes('mono') || gName.includes('atlas'));
+                                        const isSym = !isOmbriere && !isAsym1 && !isAsym2 && !isMonopente;
+                                        const hasPhoto = true;
 
                                         return (
                                             <>
