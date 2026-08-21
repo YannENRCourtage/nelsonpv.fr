@@ -18,30 +18,39 @@ const loadImage = async (src) => {
         });
     }
 
-    // Chargement par fetch pour garantir l'accès sans faille aux assets publics
+    const tryLoad = (url) => new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = url;
+    });
+
+    // 1. Tentative par fetch Blob
     try {
         const res = await fetch(src);
         if (res.ok) {
             const blob = await res.blob();
             const objectUrl = URL.createObjectURL(blob);
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = () => resolve(null);
-                img.src = objectUrl;
-            });
+            const loaded = await tryLoad(objectUrl);
+            if (loaded) return loaded;
         }
-    } catch (e) {
-        // Fallback standard
-    }
+    } catch (e) {}
 
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => resolve(img);
-        img.onerror = () => resolve(null);
-        img.src = src;
-    });
+    // 2. Tentative par Image direct
+    const direct = await tryLoad(src);
+    if (direct) return direct;
+
+    // 3. Tentative avec URL encodée
+    try {
+        const encoded = encodeURI(src);
+        if (encoded !== src) {
+            const loadedEncoded = await tryLoad(encoded);
+            if (loadedEncoded) return loadedEncoded;
+        }
+    } catch (e) {}
+
+    return null;
 };
 
 /**
@@ -506,20 +515,18 @@ export async function generateFicheTechniquePDF({
         photoUrlToLoad = '/hangar_asymetrique_2_zones.jpg';
     } else if (isMonopente) {
         photoUrlToLoad = '/hangar_monopente.jpg';
-    } else if (isOmbrierePL25) {
-        photoUrlToLoad = '/OMBRIERE PL 25m.jpg';
-    } else if (isOmbrierePL20) {
-        photoUrlToLoad = '/OMBRIERE PL 20m.jpg';
+    } else if (isOmbrierePL25 || isOmbrierePL20) {
+        photoUrlToLoad = '/ombriere_pl_large.jpg';
     } else if (isOmbrierePL16) {
-        photoUrlToLoad = '/OMBRIERE PL 16m.jpg';
+        photoUrlToLoad = '/ombriere_pl.jpg';
     } else if (isOmbriereDoublePlus) {
-        photoUrlToLoad = '/OMBRIERE VL DOUBLE+.jpg';
+        photoUrlToLoad = '/ombriere_vl_double_plus.jpg';
     } else if (isOmbriereDoubleStd) {
-        photoUrlToLoad = '/OMBRIERE VL DOUBLE.jpg';
+        photoUrlToLoad = '/ombriere_vl_double.jpg';
     } else if (isOmbriereSimpleDroite) {
-        photoUrlToLoad = '/OMBRIERE VL SIMPLE DROITE.jpg';
+        photoUrlToLoad = '/ombriere_vl_simple_droite.jpg';
     } else if (isOmbriereSimpleGauche) {
-        photoUrlToLoad = '/OMBRIERE VL SIMPLE GAUCHE.jpg';
+        photoUrlToLoad = '/ombriere_vl_simple_gauche.jpg';
     }
 
     const [loadedMain3D, loadedPignon, loadedFacadeSud, loadedHangarPhoto] = await Promise.all([
