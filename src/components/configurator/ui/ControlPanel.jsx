@@ -64,18 +64,20 @@ export function ControlPanel({ isAcama = false, selectedProject = null, activeBu
         updateCustomParams,
     } = useConfiguratorActions();
 
-    // Handlers with per-building isolation callback
     const handleTypeSelection = (newType) => {
         setBuildingType(newType);
         if (onUpdateBuilding) {
             const defW = (TYPE_WIDTHS_MAP[newType] && TYPE_WIDTHS_MAP[newType][0]) || 20.0;
             const isOmb = newType.startsWith('ombriere');
             const isMono = newType === 'monopente';
+            const isAsym = newType.startsWith('asymetrique');
+            const defEave = (isAsym || isMono) ? 4.0 : (newType === 'ombriere_pl' ? 5.08 : (isOmb ? 3.0 : 5.5));
+            const defPitch = (isAsym || isMono) ? 15 : 10;
             onUpdateBuilding({
                 buildingType: newType,
                 width: defW,
-                roofPitch: isMono ? 15 : 10,
-                eaveHeight: isMono ? 4.0 : (isOmb ? 3.0 : 5.5),
+                roofPitch: defPitch,
+                eaveHeight: defEave,
                 leftSide: isOmb ? 'none' : (activeBuilding?.leftSide || leftSide),
                 rightSide: isOmb ? 'none' : (activeBuilding?.rightSide || rightSide)
             });

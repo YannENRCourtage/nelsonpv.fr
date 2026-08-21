@@ -289,10 +289,12 @@ export async function generateFicheTechniquePDF({
     }
 
     // --- PRÉ-CHARGEMENT DES IMAGES ---
-    const [loadedMain3D, loadedPignon, loadedFacadeSud] = await Promise.all([
+    const isAsym1 = config?.buildingType === 'asymetrique_1';
+    const [loadedMain3D, loadedPignon, loadedFacadeSud, loadedHangarPhoto] = await Promise.all([
         loadImage(imgMain3D),
         loadImage(imgPignon),
         loadImage(imgFacadeSud),
+        isAsym1 ? loadImage('/hangar_asymetrique_1_zone.png') : Promise.resolve(null),
     ]);
 
     // --- LOGO NELSON EN BAS DU CADRE BLEU (CENTRE ET REDUIT) ---
@@ -317,7 +319,7 @@ export async function generateFicheTechniquePDF({
     const mainCenterX = mainX + (mainW / 2);
 
     // --- EN-TÊTE : PLAN DE STRUCTURE (Positionné en haut avec espace aéré) ---
-    const titleY = 28.0;
+    const titleY = isAsym1 ? 26.5 : 28.0;
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(13);
     pdf.setTextColor(15, 23, 42); // Slate 900
@@ -361,22 +363,22 @@ export async function generateFicheTechniquePDF({
         }
     };
 
-    // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc (descendue de 2cm à topY = 55.0mm)
-    const topY = 55.0; // Descendu de 2cm (anciennement 35.0) pour ne pas être en surimposition du titre
-    const topH = 58.0;
+    // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc
+    const topY = isAsym1 ? 42.0 : 55.0;
+    const topH = isAsym1 ? 44.0 : 58.0;
     drawSeamlessImage(loadedMain3D, mainX, topY, mainW, topH, true);
 
     // VISUEL 2 (Milieu Gauche) : Vue Pignon épurée sur fond blanc (alignée à gauche avec la 3D)
-    const midY = 120.0;
-    const midH = 46.0;
-    const pignonW = 80.0;
+    const midY = isAsym1 ? 89.0 : 120.0;
+    const midH = isAsym1 ? 38.0 : 46.0;
+    const pignonW = isAsym1 ? 75.0 : 80.0;
     drawSeamlessImage(loadedPignon, mainX, midY, pignonW, midH, true);
 
     // --- CADRE : À VOTRE CHARGE (Positionné à droite de l'image du pignon) ---
-    const chargeX = 149.0;
-    const chargeY = 120.0; // Même niveau vertical que le pignon
-    const chargeW = 55.0;  // Remplit l'espace jusqu'à la marge droite (204mm)
-    const chargeH = 46.0;  // Même hauteur que le pignon
+    const chargeX = isAsym1 ? 145.0 : 149.0;
+    const chargeY = midY;
+    const chargeW = isAsym1 ? 59.0 : 55.0;
+    const chargeH = midH;
 
     pdf.setFillColor(248, 250, 252);
     pdf.roundedRect(chargeX, chargeY, chargeW, chargeH, 2, 2, 'FD');
@@ -390,7 +392,7 @@ export async function generateFicheTechniquePDF({
     pdf.text('À votre charge :', chargeX + 3.5, chargeY + 5.5);
 
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(5.6);
+    pdf.setFontSize(5.5);
     pdf.setTextColor(51, 65, 85); // Slate 700
 
     const chargeItems = [
@@ -400,25 +402,43 @@ export async function generateFicheTechniquePDF({
     ];
 
     const maxTextW = chargeW - 6.5; // ~48.5mm
-    let textCursorY = chargeY + 10.5;
+    let textCursorY = chargeY + 10.0;
 
     chargeItems.forEach((item) => {
         const lines = pdf.splitTextToSize(item, maxTextW);
         pdf.text(lines, chargeX + 3.5, textCursorY);
-        textCursorY += (lines.length * 2.8) + 1.6;
+        textCursorY += (lines.length * 2.7) + 1.4;
     });
 
-    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (redescendue plus bas sous le pignon et à votre charge)
-    const sudY = 176.0;
-    const sudH = 70.0;
+    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc
+    const sudY = isAsym1 ? 130.0 : 176.0;
+    const sudH = isAsym1 ? 46.0 : 70.0;
     drawSeamlessImage(loadedFacadeSud, mainX, sudY, mainW, sudH, true);
 
     // ==========================================
-    // 4. PIED DE PAGE (FOOTER)
+    // 4. PIED DE PAGE (FOOTER) & PHOTO ASYMÉTRIQUE 1 ZONE
     // ==========================================
     const footerY = 285;
 
-    // Phrase centrée horizontalement par rapport au cadre "À votre charge" (mainCenterX)
+    // Rendu de l'image 3D réaliste (Image 1 en pièce jointe) si asymétrique 1 zone
+    if (isAsym1 && loadedHangarPhoto && loadedHangarPhoto.width && loadedHangarPhoto.height) {
+        const maxPhotoW = mainW; // 138mm
+        const maxPhotoH = 58; // max 58mm height
+        const photoAspect = loadedHangarPhoto.width / loadedHangarPhoto.height;
+
+        let photoW = maxPhotoW;
+        let photoH = photoW / photoAspect;
+        if (photoH > maxPhotoH) {
+            photoH = maxPhotoH;
+            photoW = photoH * photoAspect;
+        }
+
+        const photoX = mainCenterX - (photoW / 2);
+        const photoY = (footerY - 4.5) - photoH; // Juste au dessus de la phrase disclaimer
+        pdf.addImage(loadedHangarPhoto, 'PNG', photoX, photoY, photoW, photoH, undefined, 'FAST');
+    }
+
+    // Phrase centrée horizontalement par rapport à la zone des images (mainCenterX)
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(6.2);
     pdf.setTextColor(148, 163, 184); // Slate 400

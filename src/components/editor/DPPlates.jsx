@@ -355,7 +355,7 @@ Le projet s'intègre harmonieusement dans son environnement immédiat et préser
         realGroundWidth = largeur;
     } else if (isAsym2) {
         effectivePitch = pente || 10;
-        rightEaveHeight = hauteurEgout || 4.00;
+        rightEaveHeight = (hauteurEgout && hauteurEgout <= 4.5) ? hauteurEgout : 4.00;
         ridgeHeight = (Math.abs(largeur - 25.5) < 0.8) ? 8.90 : (Math.abs(largeur - 29.1) < 0.8 ? 9.80 : (rightEaveHeight + (largeur * 0.75 * Math.tan(effectivePitch * Math.PI / 180))));
         leftEaveHeight = (Math.abs(largeur - 25.5) < 0.8) ? 6.90 : (Math.abs(largeur - 29.1) < 0.8 ? 7.90 : (ridgeHeight - (largeur * 0.25 * Math.tan(effectivePitch * Math.PI / 180))));
         realRoofWidth = largeur;
@@ -363,7 +363,7 @@ Le projet s'intègre harmonieusement dans son environnement immédiat et préser
     } else {
         // Asymétrique 1 zone (16.4m, 20m, etc.)
         effectivePitch = pente || 15;
-        rightEaveHeight = hauteurEgout || 4.00;
+        rightEaveHeight = (hauteurEgout && hauteurEgout <= 4.5) ? hauteurEgout : 4.00;
         ridgeHeight = rightEaveHeight + (largeur * 0.75 * Math.tan(effectivePitch * Math.PI / 180));
         leftEaveHeight = ridgeHeight - (largeur * 0.25 * Math.tan(effectivePitch * Math.PI / 180));
         realRoofWidth = largeur;

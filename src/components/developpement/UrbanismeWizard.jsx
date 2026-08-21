@@ -527,6 +527,14 @@ ${p5Details}${batteryStorage.enabled ? `\nLe syst√®me de stockage batterie est √
         const bLat = Number(b.lat || (b.gps ? b.gps.split(',')[0] : null) || defLat);
         const bLng = Number(b.lng || (b.gps ? b.gps.split(',')[1] : null) || defLng);
 
+        const bType = b.buildingType || 'asymetrique_1';
+        const bIsAsym = bType.startsWith('asymetrique');
+        const bIsMono = bType === 'monopente';
+        const bIsPL = bType === 'ombriere_pl';
+        const bIsVL = bType.startsWith('ombriere');
+        const defEave = (bIsAsym || bIsMono) ? 4.0 : (bIsPL ? 5.08 : (bIsVL ? 3.0 : 5.5));
+        const defPitch = (bIsAsym || bIsMono) ? 15 : 10;
+
         return {
           ...b,
           id: b.id || `bat-${idx + 1}`,
@@ -536,14 +544,14 @@ ${p5Details}${batteryStorage.enabled ? `\nLe syst√®me de stockage batterie est √
           gps: `${bLat},${bLng}`,
           rotation: Number(b.rotation || 0),
           length: Number(b.length || (b.bayCount || 5) * (b.baySpacing || 7.5) || 37.5),
-          width: Number(b.width || 16.4),
-          eaveHeight: Number(b.eaveHeight || 4),
-          roofPitch: Number(b.roofPitch || 15),
-          buildingType: b.buildingType || 'asymetrique_1',
+          width: Number(b.width || (bIsAsym ? 20.0 : 16.4)),
+          eaveHeight: Number(b.eaveHeight !== undefined && !isNaN(Number(b.eaveHeight)) ? b.eaveHeight : defEave),
+          roofPitch: Number(b.roofPitch !== undefined && !isNaN(Number(b.roofPitch)) ? b.roofPitch : defPitch),
+          buildingType: bType,
           leftSide: b.leftSide || 'none',
           rightSide: b.rightSide || 'none',
-          leftWidth: Number(b.leftWidth) || 9.3,
-          rightWidth: Number(b.rightWidth) || 9.3,
+          leftWidth: b.leftWidth !== undefined ? Number(b.leftWidth) : (b.leftSide === 'appentis' ? 9.3 : (b.leftSide === 'auvent' ? 4.0 : 0)),
+          rightWidth: b.rightWidth !== undefined ? Number(b.rightWidth) : (b.rightSide === 'appentis' ? 9.3 : (b.rightSide === 'auvent' ? 4.0 : 0)),
           bayCount: Number(b.bayCount || 5),
           baySpacing: Number(b.baySpacing || 7.5),
           captures: b.captures || {},

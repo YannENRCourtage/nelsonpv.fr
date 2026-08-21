@@ -522,8 +522,8 @@ export function FicheTechniqueModal({
                                         </div>
                                     </div>
 
-                                    {/* 3. Vue Façade Sud (Bas, Pleine largeur, redescendue plus bas) */}
-                                    <div className="flex justify-start items-center w-full h-[180px] pt-1">
+                                    {/* 3. Vue Façade Sud */}
+                                    <div className={`flex justify-start items-center w-full ${config?.buildingType === 'asymetrique_1' ? 'h-[130px]' : 'h-[170px]'} pt-1`}>
                                         {images.facadeSud ? (
                                             <div 
                                                 className="w-full h-full flex items-center justify-start overflow-hidden"
@@ -540,6 +540,17 @@ export function FicheTechniqueModal({
                                             </div>
                                         ) : null}
                                     </div>
+
+                                    {/* 4. Visuel Réaliste 3D (Uniquement Asymétrique 1 zone) */}
+                                    {config?.buildingType === 'asymetrique_1' && (
+                                        <div className="flex justify-center items-center w-full pt-1 pb-1">
+                                            <img 
+                                                src="/hangar_asymetrique_1_zone.png" 
+                                                alt="Rendu 3D Réaliste Asymétrique 1 zone" 
+                                                className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
