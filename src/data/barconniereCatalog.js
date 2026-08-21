@@ -5469,7 +5469,25 @@ export function findBarconniereBuilding({
   let candidateGammes = [];
 
   if (bType.includes('ombriere') || bType.includes('parking')) {
-    candidateGammes = ['OMBRIERE VL SIMPLE GAUCHE', 'OMBRIERE VL SIMPLE DROITE', 'OMBRIERE VL DOUBLE', 'OMBRIERE VL DOUBLE+', 'OMBRIERE PL 16m', 'OMBRIERE PL 20m', 'OMBRIERE PL 25m'];
+    if (bType.includes('droite')) {
+      candidateGammes = ['OMBRIERE VL SIMPLE DROITE'];
+    } else if (bType.includes('gauche') || (bType.includes('simple') && !bType.includes('double') && !bType.includes('pl'))) {
+      candidateGammes = ['OMBRIERE VL SIMPLE GAUCHE'];
+    } else if (bType.includes('double+') || bType.includes('double_plus') || (bType.includes('double') && totalWidth >= 10.5)) {
+      candidateGammes = ['OMBRIERE VL DOUBLE+'];
+    } else if (bType.includes('double')) {
+      candidateGammes = ['OMBRIERE VL DOUBLE'];
+    } else if (bType.includes('pl') || totalWidth >= 14.0) {
+      if (totalWidth >= 23.0 || bType.includes('25')) {
+        candidateGammes = ['OMBRIERE PL 25m'];
+      } else if (totalWidth >= 18.0 || bType.includes('20')) {
+        candidateGammes = ['OMBRIERE PL 20m'];
+      } else {
+        candidateGammes = ['OMBRIERE PL 16m'];
+      }
+    } else {
+      candidateGammes = ['OMBRIERE VL SIMPLE GAUCHE', 'OMBRIERE VL SIMPLE DROITE', 'OMBRIERE VL DOUBLE', 'OMBRIERE VL DOUBLE+', 'OMBRIERE PL 16m', 'OMBRIERE PL 20m', 'OMBRIERE PL 25m'];
+    }
   } else if (bType.startsWith('mono')) {
     candidateGammes = ['ATLAS 12', 'ATLAS 16'];
   } else if (bType.startsWith('asym')) {

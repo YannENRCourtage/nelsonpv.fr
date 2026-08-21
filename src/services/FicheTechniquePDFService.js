@@ -340,26 +340,43 @@ export async function generateFicheTechniquePDF({
         rawTypo.includes('asymetrique 2') ||
         (rawType.includes('asym') && (rawType.includes('2') || rawTypo.includes('2')));
 
-    // Ombrières PL (16m vs 20m/25m)
-    const isOmbrierePLLarge = 
-        (rawType.includes('ombriere') || rawGamme.includes('ombriere') || rawTypo.includes('ombrière') || rawTypo.includes('ombriere')) &&
-        (totalWidth >= 18.0 || rawType.includes('20') || rawType.includes('25') || rawGamme.includes('20') || rawGamme.includes('25'));
+    // Ombrières Simples (Gauche et Droite)
+    const isOmbriereSimple = 
+        rawType.includes('simple') || 
+        rawType.includes('gauche') || 
+        rawType.includes('droite') || 
+        rawGamme.includes('simple') || 
+        rawTypo.includes('simple');
 
-    const isOmbrierePL16 = 
-        !isOmbrierePLLarge &&
-        (rawType.includes('ombriere') || rawGamme.includes('ombriere') || rawTypo.includes('ombrière') || rawTypo.includes('ombriere')) &&
-        (rawType.includes('pl') || rawGamme.includes('pl') || rawTypo.includes('pl') || (totalWidth >= 14.0 && totalWidth < 18.0) || Math.abs(totalWidth - 15.8) < 0.6);
+    // Ombrières PL (16m vs 20m/25m) - strictement exclure les ombrières simples et doubles
+    const isOmbrierePL = !isOmbriereSimple && !rawType.includes('double') && (
+        rawType.includes('ombriere_pl') || 
+        rawType.includes('_pl') || 
+        rawGamme.includes('pl ') || 
+        rawGamme.includes('pl 16') || 
+        rawGamme.includes('pl 20') || 
+        rawGamme.includes('pl 25') || 
+        rawTypo.includes('poids lourds') || 
+        rawTypo.includes('(pl)') ||
+        (totalWidth >= 14.0 && !rawType.includes('vl'))
+    );
+
+    const isOmbrierePLLarge = isOmbrierePL && (
+        totalWidth >= 18.0 || rawType.includes('20') || rawType.includes('25') || rawGamme.includes('20') || rawGamme.includes('25')
+    );
+
+    const isOmbrierePL16 = isOmbrierePL && !isOmbrierePLLarge;
 
     // Ombrières VL Double (9.1m) et Double+ (11.3m)
-    const isOmbriereDoublePlus = 
-        !isOmbrierePLLarge && !isOmbrierePL16 &&
-        (rawType.includes('ombriere') || rawGamme.includes('ombriere') || rawTypo.includes('ombrière') || rawTypo.includes('ombriere')) &&
-        (rawType.includes('double+') || rawType.includes('double_plus') || rawType.includes('plus') || rawGamme.includes('double+') || rawGamme.includes('double_plus') || rawGamme.includes('+') || (totalWidth >= 10.5 && totalWidth <= 13.5));
+    const isOmbriereDouble = !isOmbriereSimple && !isOmbrierePL && (
+        rawType.includes('double') || rawGamme.includes('double') || rawTypo.includes('double')
+    );
 
-    const isOmbriereDouble = 
-        !isOmbrierePLLarge && !isOmbrierePL16 && !isOmbriereDoublePlus &&
-        (rawType.includes('ombriere') || rawGamme.includes('ombriere') || rawTypo.includes('ombrière') || rawTypo.includes('ombriere')) &&
-        (rawType.includes('double') || rawGamme.includes('double') || rawTypo.includes('double'));
+    const isOmbriereDoublePlus = isOmbriereDouble && (
+        rawType.includes('double+') || rawType.includes('double_plus') || rawType.includes('plus') || rawGamme.includes('double+') || rawGamme.includes('double_plus') || rawGamme.includes('+') || (totalWidth >= 10.5 && totalWidth <= 13.5)
+    );
+
+    const isOmbriereDoubleStd = isOmbriereDouble && !isOmbriereDoublePlus;
 
     const isOmbriere = 
         rawType.includes('ombriere') || 
@@ -390,9 +407,9 @@ export async function generateFicheTechniquePDF({
         photoUrlToLoad = '/ombriere_pl.png';
     } else if (isOmbriereDoublePlus) {
         photoUrlToLoad = '/ombriere_vl_double_plus.png';
-    } else if (isOmbriereDouble) {
+    } else if (isOmbriereDoubleStd) {
         photoUrlToLoad = '/ombriere_vl_double.png';
-    } else if (isOmbriere) {
+    } else if (isOmbriereSimple || isOmbriere) {
         photoUrlToLoad = '/ombriere_vl_simple_gauche.png';
     } else if (isSymetrique) {
         photoUrlToLoad = '/hangar_symetrique.png';
