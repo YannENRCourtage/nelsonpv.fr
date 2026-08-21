@@ -135,10 +135,10 @@ export default function SolarAutoconsoSimulator({
     setSuggestions([]);
   };
 
-  // Capacité géométrique maximale d'accueil de la toiture (Panneaux en paysage parallèles à la sablière)
+  // Capacité géométrique maximale d'accueil de la toiture (Panneaux en portrait parallèles à la sablière)
   const maxInstallableRoof = useMemo(() => {
     if (!polygonPoints || polygonPoints.length < 3) return { slots: [], maxPanels: 999, maxKwc: 999 };
-    return computeValidSolarSlots(polygonPoints, selectedRidgeIndex, true);
+    return computeValidSolarSlots(polygonPoints, selectedRidgeIndex, false);
   }, [polygonPoints, selectedRidgeIndex]);
 
   // Recommandation intelligente de puissance basée sur la consommation + VE (plafonnée par la toiture)
@@ -278,7 +278,7 @@ export default function SolarAutoconsoSimulator({
         mapZoom,
         polygonPoints,
         ridgeIndex: selectedRidgeIndex,
-        isLandscape: true,
+        isLandscape: false,
         kwc: customKwc,
         roofSurface,
         pitch: selectedPitch,
@@ -979,7 +979,7 @@ export default function SolarAutoconsoSimulator({
               roofSurface={roofSurface}
               customKwc={customKwc}
               ridgeIndex={selectedRidgeIndex}
-              isLandscape={true}
+              isLandscape={false}
               orientationInfo={orientationInfo}
               consoKwh={consoKwh}
               annualProductionKwh={annualProductionKwh}

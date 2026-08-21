@@ -72,7 +72,7 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
                 <>
                     <PerspectiveCamera
                         makeDefault
-                        position={[Math.max(config.width * 1.30, 22), config.eaveHeight * 0.55, -config.length / 2]}
+                        position={[Math.max(config.width * 1.05, 16), config.eaveHeight * 0.55, -config.length / 2]}
                         fov={45}
                         near={0.1}
                         far={2000}
@@ -104,8 +104,8 @@ const BuildingScene = forwardRef(({ viewMode = '3D', isCapturing = false, transp
             )}
 
             {/* Auto-Centering logic: Re-fits whenever config changes */}
-            {/* Capture: margin=0.72 pour centrer la 3D, margin=0.82 pour +1 zoom point sur les 3 vues Pignon/2D/Façade. Normal: margin=1.1 */}
-            <Bounds fit clip observe margin={isCapturing ? (viewMode === '3D' ? 0.72 : 0.82) : 1.1}>
+            {/* Capture: margin=0.70 pour Façade Sud élargie, 0.72 pour 3D, 0.82 pour Pignon/2D */}
+            <Bounds fit clip observe margin={isCapturing ? (viewMode === 'FACADE_SUD' ? 0.70 : (viewMode === '3D' ? 0.72 : 0.82)) : 1.1}>
                 <Structure />
             </Bounds>
 

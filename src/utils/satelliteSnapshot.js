@@ -265,6 +265,8 @@ export const generateBeforeAfterDualSnapshot = async ({
   polygonPoints,
   customKwc = 6,
   roofSurface = 83,
+  ridgeIndex = 0,
+  isLandscape = false,
   width = 900,
   height = 420,
   zoom = 19
@@ -358,9 +360,9 @@ export const generateBeforeAfterDualSnapshot = async ({
 
       loadedTiles.forEach(({ img, tx, ty, success }) => {
         if (success && img) {
-          const dx = canvasCenterX - pixelOffsetX + (tx - centerTileX) * 256;
-          const dy = canvasCenterY - pixelOffsetY + (ty - centerTileY) * 256;
-          ctx.drawImage(img, dx, dy, 256, 256);
+          const tilePosX = canvasCenterX + (tx - centerTileX) * 256 - pixelOffsetX;
+          const tilePosY = canvasCenterY + (ty - centerTileY) * 256 - pixelOffsetY;
+          ctx.drawImage(img, tilePosX, tilePosY, 256, 256);
         }
       });
       ctx.restore();
@@ -371,7 +373,7 @@ export const generateBeforeAfterDualSnapshot = async ({
     drawSatelliteHalf(halfW + 6);
 
     // Ligne de séparation centrale
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#0f172a';
     ctx.fillRect(halfW, 0, 6, height);
 
     // Helper conversion pour une moitié donnée
@@ -420,16 +422,16 @@ export const generateBeforeAfterDualSnapshot = async ({
       ctx.moveTo(ptsRight[0].x, ptsRight[0].y);
       for (let i = 1; i < ptsRight.length; i++) ctx.lineTo(ptsRight[i].x, ptsRight[i].y);
       ctx.closePath();
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.35)';
+      ctx.fillStyle = 'rgba(10, 25, 47, 0.35)';
       ctx.fill();
       ctx.strokeStyle = '#0284c7';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5;
       ctx.setLineDash([3, 3]);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Calcul des emplacements géométriquement valides (Ligne par ligne)
-      const { slots, maxPanels } = computeValidSolarSlots(polygonPoints);
+      // Calcul des emplacements géométriquement valides (Ligne par ligne le long de la sablière)
+      const { slots, maxPanels } = computeValidSolarSlots(polygonPoints, ridgeIndex, isLandscape);
       const targetPanels = Math.max(1, Math.round((customKwc * 1000) / 465));
       const countToPlace = Math.min(targetPanels, maxPanels);
       placedCount = countToPlace;
@@ -446,19 +448,11 @@ export const generateBeforeAfterDualSnapshot = async ({
         for (let k = 1; k < corners.length; k++) ctx.lineTo(corners[k].x, corners[k].y);
         ctx.closePath();
 
-        // Panneau Solaire Réaliste (Bleu Nuit Antireflet + Cadre alu)
+        // Panneau Solaire Réaliste (Bleu Nuit Sombre #0c192c / #0a192f + bordure bleu sombre)
         ctx.fillStyle = '#0c192c';
         ctx.fill();
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        // Cellules photovoltaïques internes
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+        ctx.strokeStyle = '#1e3a8a';
         ctx.lineWidth = 0.5;
-        ctx.beginPath();
-        ctx.moveTo((corners[0].x + corners[1].x) / 2, (corners[0].y + corners[1].y) / 2);
-        ctx.lineTo((corners[3].x + corners[2].x) / 2, (corners[3].y + corners[2].y) / 2);
         ctx.stroke();
         ctx.restore();
       }

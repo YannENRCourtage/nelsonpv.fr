@@ -336,17 +336,17 @@ export async function generateFicheTechniquePDF({
     const mainW = 138;
     const mainCenterX = mainX + (mainW / 2);
 
-    // --- EN-TÊTE SANS CONTOUR : PLAN DE STRUCTURE ---
+    // --- EN-TÊTE SANS CONTOUR : PLAN DE STRUCTURE (avec espace aéré au-dessus et en-dessous) ---
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(12.5);
     pdf.setTextColor(15, 23, 42); // Slate 900
-    pdf.text('Plan de structure', mainCenterX, 24.5, { align: 'center' });
+    pdf.text('Plan de structure', mainCenterX, 26.5, { align: 'center' });
 
     const subtitleDim = `${length.toFixed(2)}m × ${totalWidth.toFixed(2)}m - ${floorArea} m²${config.hasSolar ? ` - ${installedKwc.toFixed(1)} kWc` : ''}`;
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(9.5);
     pdf.setTextColor(0, 66, 157); // Bleu NELSON
-    pdf.text(subtitleDim, mainCenterX, 29.5, { align: 'center' });
+    pdf.text(subtitleDim, mainCenterX, 31.8, { align: 'center' });
 
     // Helper pour dessiner un cadre visuel élégant avec centrage H/V parfait sans débordement
     const drawImageCard = (title, x, y, w, h, imgObj, shiftX = 0) => {
@@ -408,26 +408,26 @@ export async function generateFicheTechniquePDF({
         }
     };
 
-    // VISUEL 1 (Haut) : Vue 3D configurée principale (68mm, commence à 33.5mm après le titre)
-    const topY = 33.5;
-    const topH = 68;
+    // VISUEL 1 (Haut) : Vue 3D configurée principale (65mm, commence à 37mm avec bel écart)
+    const topY = 37.0;
+    const topH = 65;
     drawImageCard('Vue 3D Principale du Bâtiment (Perspective)', mainX, topY, mainW, topH, loadedMain3D);
 
-    // VISUELS 2 & 3 (Milieu) : Pignon Gauche + Visuel 2D côte à côte (42mm avec écart de 6.5mm)
-    const midY = topY + topH + 6.5; // 108.0 mm
-    const midH = 42;
+    // VISUELS 2 & 3 (Milieu) : Pignon Gauche + Visuel 2D côte à côte (41mm avec écart de 6.5mm)
+    const midY = topY + topH + 6.5; // 108.5 mm
+    const midH = 41;
     const halfW = (mainW - 3) / 2; // 67.5 mm chacun
     drawImageCard('Vue Pignon (Gauche)', mainX, midY, halfW, midH, loadedPignon);
     drawImageCard('Élévation 2D / Coupe Technique', mainX + halfW + 3, midY, halfW, midH, loaded2D);
 
     // VISUEL 4 (Bas) : Vue Façade Sud (avec écart de 6.5mm)
-    const sudY = midY + midH + 6.5; // 156.5 mm
-    const sudH = 58;
-    drawImageCard('Vue Façade Sud (Long Pan Solaire)', mainX, sudY, mainW, sudH, loadedFacadeSud, -3.5);
+    const sudY = midY + midH + 6.5; // 156.0 mm
+    const sudH = 59;
+    drawImageCard('Vue Façade Sud (Long Pan Solaire)', mainX, sudY, mainW, sudH, loadedFacadeSud, -2.0);
 
     // --- CADRE : À VOTRE CHARGE ---
-    const chargeY = sudY + sudH + 5.5; // 220.0 mm
-    const chargeH = 25;
+    const chargeY = sudY + sudH + 5.5; // 220.5 mm
+    const chargeH = 24;
     pdf.setFillColor(248, 250, 252);
     pdf.roundedRect(mainX, chargeY, mainW, chargeH, 2, 2, 'FD');
     pdf.setDrawColor(226, 232, 240);
@@ -443,20 +443,20 @@ export async function generateFicheTechniquePDF({
     pdf.setFontSize(6.5);
     pdf.setTextColor(51, 65, 85); // Slate 700
     pdf.text('•  Terrassement / empièrement (si nécessaire)', mainX + 5.5, chargeY + 10.5);
-    pdf.text('•  Tranchée du bâtiment jusqu’au point de livraison (compteur)', mainX + 5.5, chargeY + 15.2);
-    pdf.text('•  Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres..', mainX + 5.5, chargeY + 19.8);
+    pdf.text('•  Tranchée du bâtiment jusqu’au point de livraison (compteur)', mainX + 5.5, chargeY + 15.0);
+    pdf.text('•  Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres..', mainX + 5.5, chargeY + 19.5);
 
     // ==========================================
     // 4. PIED DE PAGE (FOOTER)
     // ==========================================
     const footerY = 285;
 
-    // Phrase centrée juste au-dessus de la ligne horizontale
+    // Phrase centrée horizontalement par rapport au cadre "À votre charge" (mainCenterX)
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(6.2);
     pdf.setTextColor(148, 163, 184); // Slate 400
     const disclaimerText = "Des modifications mineures pourront être apportées en fonction de l’évolution des panneaux photovoltaïques";
-    pdf.text(disclaimerText, pageWidth / 2, footerY - 2.5, { align: 'center' });
+    pdf.text(disclaimerText, mainCenterX, footerY - 2.5, { align: 'center' });
 
     pdf.setDrawColor(203, 213, 225);
     pdf.setLineWidth(0.4);

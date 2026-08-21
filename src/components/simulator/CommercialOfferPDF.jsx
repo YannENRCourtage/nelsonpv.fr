@@ -151,7 +151,7 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
         customKwc: sim.kwc || sim.installedKwc || sim.power || 6,
         roofSurface: sim.roofSurface || 83,
         ridgeIndex: sim.ridgeIndex || 0,
-        isLandscape: sim.isLandscape ?? (isAuto ? true : false),
+        isLandscape: sim.isLandscape ?? false,
         width: 900,
         height: 420,
         zoom: 19
