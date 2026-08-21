@@ -514,7 +514,7 @@ export function FicheTechniqueModal({
                                         </div>
 
                                         {/* Cadre À votre charge (Droite, 40%) */}
-                                        <div className="w-[40%] bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[9px] text-slate-700 flex flex-col justify-center space-y-1">
+                                        <div className="w-[40%] self-start bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[9px] text-slate-700 flex flex-col justify-start space-y-1">
                                             <p className="font-bold text-slate-900 text-[9.5px]">À votre charge :</p>
                                             <p className="leading-tight">• Terrassement / empièrement (si nécessaire)</p>
                                             <p className="leading-tight">• Tranchée du bâtiment jusqu'au point de livraison (compteur)</p>

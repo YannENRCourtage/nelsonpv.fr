@@ -617,13 +617,29 @@ export async function generateFicheTechniquePDF({
     const pignonW = 84.0; // Cadre élargi
     drawSeamlessImage(loadedPignon, mainX, midY, pignonW, midH, true);
 
-    // --- CADRE : À VOTRE CHARGE (Nouvelle couleur de fond douce & moderne, positionné à droite du pignon) ---
+    // --- CADRE : À VOTRE CHARGE (Ajusté pour supprimer l'espace sous la dernière phrase) ---
     const chargeX = 152.0;
     const chargeY = midY;
     const chargeW = 52.0;
-    const chargeH = midH;
 
-    // Nouveau fond élégant bleu-ciel / slate doux avec bordure moderne
+    const chargeItems = [
+        "•  Terrassement / empièrement (si nécessaire)",
+        "•  Tranchée du bâtiment jusqu'au point de livraison (compteur)",
+        "•  Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres.."
+    ];
+
+    const maxTextW = chargeW - 7.0;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(7.2);
+    const itemLines = chargeItems.map(item => pdf.splitTextToSize(item, maxTextW));
+
+    let totalTextH = 6.0 + 3.8; // Espace titre 'À votre charge :'
+    itemLines.forEach((lines, idx) => {
+        totalTextH += (lines.length * 3.0) + (idx < itemLines.length - 1 ? 1.4 : 0);
+    });
+    const chargeH = totalTextH + 2.5; // S'arrête juste après la dernière ligne
+
+    // Fond élégant bleu très doux avec bordure moderne
     pdf.setFillColor(239, 246, 255); // Bleu très doux (Blue 50)
     pdf.roundedRect(chargeX, chargeY, chargeW, chargeH, 2.5, 2.5, 'FD');
     pdf.setDrawColor(191, 219, 254); // Bleu 200
@@ -639,19 +655,10 @@ export async function generateFicheTechniquePDF({
     pdf.setFontSize(7.2);
     pdf.setTextColor(51, 65, 85); // Slate 700
 
-    const chargeItems = [
-        "•  Terrassement / empièrement (si nécessaire)",
-        "•  Tranchée du bâtiment jusqu'au point de livraison (compteur)",
-        "•  Équipements optionnels : chéneaux / bardage / évacuation des eaux pluviales / portails / autres.."
-    ];
-
-    const maxTextW = chargeW - 6.0;
-    let textCursorY = chargeY + 10.0;
-
-    chargeItems.forEach((item) => {
-        const lines = pdf.splitTextToSize(item, maxTextW);
+    let textCursorY = chargeY + 9.5;
+    itemLines.forEach((lines, idx) => {
         pdf.text(lines, chargeX + 3.5, textCursorY);
-        textCursorY += (lines.length * 3.0) + 1.2;
+        textCursorY += (lines.length * 3.0) + (idx < itemLines.length - 1 ? 1.4 : 0);
     });
 
     // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (Cadre agrandi pour visuel plus gros)
