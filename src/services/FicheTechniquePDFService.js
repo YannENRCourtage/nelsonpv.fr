@@ -127,15 +127,16 @@ export async function generateFicheTechniquePDF({
     const pitchLabel = `${pitchDeg}° (${pitchPct}%)`;
 
     // ==========================================
-    // 1. BANDE SUPÉRIEURE (HEADER)
+    // 1. BANDE SUPÉRIEURE (HEADER AVEC ÉCART SUPÉRIEUR)
     // ==========================================
+    const headerLineY = 27.0; // Écart ajouté au-dessus de la ligne (descendue de 22mm à 27mm)
     pdf.setFillColor(255, 255, 255);
-    pdf.rect(0, 0, pageWidth, 22, 'F');
+    pdf.rect(0, 0, pageWidth, headerLineY, 'F');
     pdf.setDrawColor(226, 232, 240);
     pdf.setLineWidth(0.5);
-    pdf.line(6, 22, pageWidth - 6, 22);
+    pdf.line(6, headerLineY, pageWidth - 6, headerLineY);
 
-    // Logo "Logo fond blanc inline.png" (gauche)
+    // Logo "Logo fond blanc inline.png" (gauche, descendu en conséquence)
     try {
         let logoHeader = await loadImage('/logo-enr-courtage-inline.png');
         if (!logoHeader) logoHeader = await loadImage('/Logo fond blanc inline.png');
@@ -143,27 +144,27 @@ export async function generateFicheTechniquePDF({
 
         if (logoHeader) {
             const aspect = (logoHeader.width || 200) / (logoHeader.height || 50);
-            const targetH = 13;
-            const targetW = Math.min(targetH * aspect, 50);
-            pdf.addImage(logoHeader, 'PNG', 8, 4.5, targetW, targetH, undefined, 'FAST');
+            const targetH = 14;
+            const targetW = Math.min(targetH * aspect, 52);
+            pdf.addImage(logoHeader, 'PNG', 8, 7.5, targetW, targetH, undefined, 'FAST');
         } else {
             pdf.setFont('helvetica', 'bold');
             pdf.setFontSize(15);
             pdf.setTextColor(30, 58, 138);
-            pdf.text('ENR COURTAGE', 8, 14);
+            pdf.text('ENR COURTAGE', 8, 17);
         }
     } catch {
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(15);
         pdf.setTextColor(30, 58, 138);
-        pdf.text('ENR COURTAGE', 8, 14);
+        pdf.text('ENR COURTAGE', 8, 17);
     }
 
-    // Titre "FICHE TECHNIQUE" (droite)
+    // Titre "FICHE TECHNIQUE" (droite, descendu en conséquence)
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(14.5);
     pdf.setTextColor(15, 23, 42); // Slate 900
-    pdf.text('FICHE TECHNIQUE', pageWidth - 8, 11, { align: 'right' });
+    pdf.text('FICHE TECHNIQUE', pageWidth - 8, 14.5, { align: 'right' });
 
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(8.5);
@@ -171,21 +172,21 @@ export async function generateFicheTechniquePDF({
     const subHeader = isCustom 
         ? `Configuration Sur-Mesure • ${floorArea} m²` 
         : `${gammeName} • ${buildingCode ? `Modèle ${buildingCode} • ` : ''}${floorArea} m²`;
-    pdf.text(subHeader, pageWidth - 8, 17, { align: 'right' });
+    pdf.text(subHeader, pageWidth - 8, 21.0, { align: 'right' });
 
     // ==========================================
-    // 2. BANDE VERTICALE GAUCHE (SIDEBAR SYNTHÈSE)
+    // 2. BANDE VERTICALE GAUCHE (SIDEBAR SYNTHÈSE - HAUTEUR RÉDUITE)
     // ==========================================
     const sideX = 6;
-    const sideY = 24;
+    const sideY = 29.5; // Démarre sous le nouveau header
     const sideW = 56;
-    const sideH = 258;
+    const sideH = 252.0; // Hauteur réduite en conséquence (s'arrête proprement au-dessus du footer)
 
     // Fond sombre élégant de la sidebar (Bleu Ardoise Nuit #0f172a)
     pdf.setFillColor(15, 23, 42);
     pdf.roundedRect(sideX, sideY, sideW, sideH, 2.5, 2.5, 'F');
 
-    let curY = sideY + 5;
+    let curY = sideY + 4.5;
     const padL = sideX + 3.5;
     const padR = sideX + sideW - 3.5;
 
@@ -195,11 +196,11 @@ export async function generateFicheTechniquePDF({
         pdf.setFontSize(7.2);
         pdf.setTextColor(color[0], color[1], color[2]);
         pdf.text(title.toUpperCase(), padL, curY);
-        curY += 1.8;
+        curY += 1.6;
         pdf.setDrawColor(51, 65, 85);
         pdf.setLineWidth(0.25);
         pdf.line(padL, curY, padR, curY);
-        curY += 3.0;
+        curY += 2.6;
     };
 
     // Helper pour afficher une ligne clé-valeur
@@ -217,7 +218,7 @@ export async function generateFicheTechniquePDF({
             pdf.setTextColor(isHighlight ? 255 : 241, isHighlight ? 255 : 245, isHighlight ? 255 : 249);
         }
         pdf.text(String(value), padR, curY, { align: 'right' });
-        curY += 3.6;
+        curY += 3.4;
     };
 
     // --- BLOC 1 : IDENTIFICATION DU BÂTIMENT ---
@@ -230,7 +231,7 @@ export async function generateFicheTechniquePDF({
         drawRow('Modèle :', 'Sur-Mesure', true, [251, 191, 36]);
         drawRow('Grille :', 'Sur-mesure', false, [167, 139, 250]);
     }
-    curY += 2.8;
+    curY += 2.0;
 
     // --- BLOC 2 : STRUCTURE & DIMENSIONS ---
     drawSectionTitle('2. Structure & Dimensions');
@@ -245,15 +246,15 @@ export async function generateFicheTechniquePDF({
     pdf.setFontSize(5.0);
     pdf.setTextColor(148, 163, 184);
     pdf.text('(travées 7,5m jusqu’à 200m d’altitude,', padL, curY);
-    curY += 2.0;
+    curY += 1.8;
     pdf.text('et 6,00m de 200m à 500m d’altitude)', padL, curY);
-    curY += 2.8;
+    curY += 2.2;
 
     drawRow('Avants-toit :', 'environ 50 cm');
     drawRow('Niveau fondations :', '+/- 0.0 m');
     if (config.leftSide !== 'none') drawRow('Ext. Gauche :', `${config.leftSide === 'appentis' ? 'Appentis' : 'Auvent'} (${leftExt}m)`);
     if (config.rightSide !== 'none') drawRow('Ext. Droite :', `${config.rightSide === 'appentis' ? 'Appentis' : 'Auvent'} (${rightExt}m)`);
-    curY += 2.8;
+    curY += 2.0;
 
     // --- BLOC 3 : HAUTEURS & TOITURE ---
     drawSectionTitle('3. Hauteurs & Toiture');
@@ -263,7 +264,7 @@ export async function generateFicheTechniquePDF({
     drawRow('Couverture :', 'Bac acier (RAL 7016)');
     drawRow('Anti-condensation :', 'Feutre régulateur');
     drawRow('Peinture :', 'Anti-rouille');
-    curY += 2.8;
+    curY += 2.0;
 
     // --- BLOC 4 : CENTRALE PHOTOVOLTAÏQUE ---
     drawSectionTitle('4. Énergie Solaire', [251, 191, 36]);
@@ -279,7 +280,7 @@ export async function generateFicheTechniquePDF({
         pdf.setFontSize(5.2);
         pdf.setTextColor(203, 213, 225);
         pdf.text('(hypothèse 1150 kWh/kWc)', padR, curY, { align: 'right' });
-        curY += 3.2;
+        curY += 2.8;
 
         // Tarif achat estimé selon puissance
         let tarifAchat = '0.011 € / kWh';
@@ -302,7 +303,7 @@ export async function generateFicheTechniquePDF({
     } else {
         drawRow('Option solaire :', 'Non incluse (Sans PV)', false, [148, 163, 184]);
     }
-    curY += 2.8;
+    curY += 2.0;
 
     // --- BLOC 5 : TARIFICATION & RATIOS ---
     drawSectionTitle('5. Chiffrage & Ratios', [52, 211, 153]);
@@ -337,13 +338,30 @@ export async function generateFicheTechniquePDF({
         rawTypo.includes('asymétrique 1') || 
         rawTypo.includes('asymetrique 1');
 
-    const hasExtraPhoto = isSymetrique || isAsym1;
+    const isAsym2 = 
+        rawType.includes('asymetrique_2') || 
+        rawGamme.includes('cyrus') || 
+        rawTypo.includes('asymétrique 2') || 
+        rawTypo.includes('asymetrique 2');
+
+    const isOmbriereVLSimpleGauche = 
+        rawType.includes('ombriere_vl_simple_gauche') || 
+        rawGamme.includes('ombriere_vl_simple_gauche') || 
+        rawTypo.includes('simple (gauche)') || 
+        rawTypo.includes('simple gauche') || 
+        (rawType.includes('ombriere') && rawType.includes('simple') && rawType.includes('gauche'));
+
+    const hasExtraPhoto = isSymetrique || isAsym1 || isAsym2 || isOmbriereVLSimpleGauche;
 
     let photoUrlToLoad = null;
     if (isSymetrique) {
         photoUrlToLoad = '/hangar_symetrique.png';
     } else if (isAsym1) {
         photoUrlToLoad = '/hangar_asymetrique_1_zone.png';
+    } else if (isAsym2) {
+        photoUrlToLoad = '/hangar_asymetrique_2_zones.png';
+    } else if (isOmbriereVLSimpleGauche) {
+        photoUrlToLoad = '/ombriere_vl_simple_gauche.png';
     }
 
     const [loadedMain3D, loadedPignon, loadedFacadeSud, loadedHangarPhoto] = await Promise.all([
@@ -374,8 +392,8 @@ export async function generateFicheTechniquePDF({
     const mainW = 138;
     const mainCenterX = mainX + (mainW / 2);
 
-    // --- EN-TÊTE : PLAN DE STRUCTURE (Avec espace aéré supplémentaire au-dessus) ---
-    const titleY = 32.0; // Espace ajouté avant les mots "Plan de structure"
+    // --- EN-TÊTE : PLAN DE STRUCTURE (Avec espace aéré supplémentaire au-dessus, descendu avec le header) ---
+    const titleY = 36.0; // Espace ajouté avant les mots "Plan de structure"
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(13);
     pdf.setTextColor(15, 23, 42); // Slate 900
@@ -420,12 +438,12 @@ export async function generateFicheTechniquePDF({
     };
 
     // VISUEL 1 (Haut) : Vue 3D Perspective épurée sur fond blanc (Agrandie x2 et centrée horizontalement)
-    const topY = 46.0;
-    const topH = hasExtraPhoto ? 68.0 : 82.0; // Agrandie x2
+    const topY = 48.0;
+    const topH = hasExtraPhoto ? 66.0 : 80.0; // Agrandie x2
     drawSeamlessImage(loadedMain3D, mainX, topY, mainW, topH, false); // Centrée horizontalement
 
     // VISUEL 2 (Milieu Gauche) : Vue Pignon épurée sur fond blanc (abaissée en conséquence, alignée à gauche)
-    const midY = hasExtraPhoto ? 118.0 : 134.0;
+    const midY = hasExtraPhoto ? 120.0 : 136.0;
     const midH = 38.0;
     const pignonW = 75.0;
     drawSeamlessImage(loadedPignon, mainX, midY, pignonW, midH, true); // Cadre laissé à sa place à gauche
@@ -466,17 +484,17 @@ export async function generateFicheTechniquePDF({
         textCursorY += (lines.length * 2.7) + 1.4;
     });
 
-    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (Descendue de 3cm supplémentaires vers le bas)
-    const sudY = hasExtraPhoto ? 162.0 : 178.0; // Descendue de 3cm (30mm) supplémentaires
+    // VISUEL 3 (Bas) : Vue Façade Sud épurée sur fond blanc (Descendue vers le bas)
+    const sudY = hasExtraPhoto ? 164.0 : 180.0;
     const sudH = hasExtraPhoto ? 44.0 : 54.0;
     drawSeamlessImage(loadedFacadeSud, mainX, sudY, mainW, sudH, false);
 
     // ==========================================
-    // 4. PIED DE PAGE (FOOTER) & PHOTO 3D RÉALISTE (SYMÉTRIQUE / ASYMÉTRIQUE 1 ZONE)
+    // 4. PIED DE PAGE (FOOTER) & PHOTO 3D RÉALISTE (SYMÉTRIQUE / ASYMÉTRIQUE 1&2 / OMBRIÈRE VL SIMPLE)
     // ==========================================
     const footerY = 285;
 
-    // Rendu de l'image 3D réaliste (Image 1 en pièce jointe) si symétrique ou asymétrique 1 zone
+    // Rendu de l'image 3D réaliste (Image en pièce jointe) si symétrique, asymétrique 1 ou 2 zones, ou ombrière VL simple gauche
     if (hasExtraPhoto && loadedHangarPhoto && loadedHangarPhoto.width && loadedHangarPhoto.height) {
         const maxPhotoW = mainW; // 138mm
         const maxPhotoH = 58; // max 58mm height

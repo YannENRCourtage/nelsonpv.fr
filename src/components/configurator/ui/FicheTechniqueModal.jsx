@@ -526,8 +526,10 @@ export function FicheTechniqueModal({
                                     {(() => {
                                         const bType = (config?.buildingType || '').toLowerCase();
                                         const isSym = bType.includes('symetrique') || bType.includes('bipente') || bType === 'epona';
-                                        const isAsym = bType.includes('asymetrique_1');
-                                        const hasPhoto = isSym || isAsym;
+                                        const isAsym1 = bType.includes('asymetrique_1');
+                                        const isAsym2 = bType.includes('asymetrique_2');
+                                        const isOmbriereVLSimpleGauche = bType.includes('ombriere_vl_simple_gauche') || (bType.includes('ombriere') && bType.includes('simple') && bType.includes('gauche'));
+                                        const hasPhoto = isSym || isAsym1 || isAsym2 || isOmbriereVLSimpleGauche;
 
                                         return (
                                             <>
@@ -549,7 +551,7 @@ export function FicheTechniqueModal({
                                                     ) : null}
                                                 </div>
 
-                                                {/* 4. Visuel Réaliste 3D (Symétrique ou Asymétrique 1 zone) */}
+                                                {/* 4. Visuel Réaliste 3D */}
                                                 {isSym && (
                                                     <div className="flex justify-center items-center w-full pt-1 pb-1">
                                                         <img 
@@ -559,11 +561,29 @@ export function FicheTechniqueModal({
                                                         />
                                                     </div>
                                                 )}
-                                                {isAsym && (
+                                                {isAsym1 && (
                                                     <div className="flex justify-center items-center w-full pt-1 pb-1">
                                                         <img 
                                                             src="/hangar_asymetrique_1_zone.png" 
                                                             alt="Rendu 3D Réaliste Asymétrique 1 zone" 
+                                                            className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
+                                                        />
+                                                    </div>
+                                                )}
+                                                {isAsym2 && (
+                                                    <div className="flex justify-center items-center w-full pt-1 pb-1">
+                                                        <img 
+                                                            src="/hangar_asymetrique_2_zones.png" 
+                                                            alt="Rendu 3D Réaliste Asymétrique 2 zones" 
+                                                            className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
+                                                        />
+                                                    </div>
+                                                )}
+                                                {isOmbriereVLSimpleGauche && (
+                                                    <div className="flex justify-center items-center w-full pt-1 pb-1">
+                                                        <img 
+                                                            src="/ombriere_vl_simple_gauche.png" 
+                                                            alt="Rendu 3D Réaliste Ombrière VL Simple Gauche" 
                                                             className="max-w-full max-h-[140px] rounded-lg shadow-sm object-contain"
                                                         />
                                                     </div>
