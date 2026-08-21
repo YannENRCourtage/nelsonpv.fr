@@ -256,18 +256,35 @@ export const generateCommercialOfferPDF = async ({ simulation, selectedProject, 
 
   // HTML conditionnel selon la solution
   const resolveOrientationName = (simObj) => {
+    let ori = '';
     if (simObj?.orientationLabel) {
-      return simObj.orientationLabel;
+      ori = simObj.orientationLabel;
+    } else {
+      const r = Number(simObj?.rotation !== undefined ? simObj.rotation : (simObj?.buildings && simObj.buildings[0] && simObj.buildings[0].rotation !== undefined ? simObj.buildings[0].rotation : 0));
+      const norm = ((((Number(r) + 180) % 360) + 360) % 360) - 180;
+      if (norm === 0) ori = 'Plein Sud (0°)';
+      else if (Math.abs(norm) >= 135) ori = `Nord (${r > 0 ? `+${r}` : r}°)`;
+      else if (norm > 45) ori = `Ouest (+${r}°)`;
+      else if (norm > 0 && norm <= 45) ori = `Sud-Ouest (+${r}°)`;
+      else if (norm < -45) ori = `Est (${r}°)`;
+      else if (norm < 0 && norm >= -45) ori = `Sud-Est (${r}°)`;
+      else ori = 'Plein Sud (0°)';
     }
-    const r = Number(simObj?.rotation !== undefined ? simObj.rotation : (simObj?.buildings && simObj.buildings[0] && simObj.buildings[0].rotation !== undefined ? simObj.buildings[0].rotation : 0));
-    const norm = ((((Number(r) + 180) % 360) + 360) % 360) - 180;
-    if (norm === 0) return 'Plein Sud (0°)';
-    if (Math.abs(norm) >= 135) return `Nord (${r > 0 ? `+${r}` : r}°)`;
-    if (norm > 45) return `Ouest (+${r}°)`;
-    if (norm > 0 && norm <= 45) return `Sud-Ouest (+${r}°)`;
-    if (norm < -45) return `Est (${r}°)`;
-    if (norm < 0 && norm >= -45) return `Sud-Est (${r}°)`;
-    return 'Plein Sud (0°)';
+
+    // Si ori contient déjà une inclinaison avec "/"
+    if (ori.includes('/')) return ori;
+
+    // Détermination de l'inclinaison de la toiture
+    const tiltVal = Number(
+      simObj?.tilt !== undefined ? simObj.tilt :
+      simObj?.roofPitch !== undefined ? simObj.roofPitch :
+      simObj?.pitch !== undefined ? simObj.pitch :
+      simObj?.slope !== undefined ? simObj.slope :
+      (simObj?.buildings && simObj.buildings[0] && (simObj.buildings[0].tilt || simObj.buildings[0].roofPitch || simObj.buildings[0].pitch)) ||
+      30
+    );
+
+    return `${ori} / ${Math.round(tiltVal)}°`;
   };
 
   let technicalHypothesesHtml = '';

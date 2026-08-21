@@ -323,26 +323,22 @@ export async function generateFicheTechniquePDF({
     const rawGamme = (gammeName || '').toLowerCase();
     const rawTypo = (typologyLabel || '').toLowerCase();
 
-    // Modèle symétrique avec ou sans appentis ou auvent
-    const isSymetrique = 
-        rawType.includes('symetrique') || 
-        rawType.includes('bipente') || 
-        rawType === 'epona' || 
-        rawGamme.includes('helios') || 
-        rawTypo.includes('symétrique') || 
-        rawTypo.includes('symetrique');
-
+    // Détection stricte et prioritaire des typologies de bâtiments
     const isAsym1 = 
         rawType.includes('asymetrique_1') || 
+        rawType.includes('asymetrique 1') || 
         rawGamme.includes('orion') || 
         rawTypo.includes('asymétrique 1') || 
-        rawTypo.includes('asymetrique 1');
+        rawTypo.includes('asymetrique 1') ||
+        (rawType.includes('asym') && !rawType.includes('2') && !rawTypo.includes('2'));
 
     const isAsym2 = 
         rawType.includes('asymetrique_2') || 
+        rawType.includes('asymetrique 2') || 
         rawGamme.includes('cyrus') || 
         rawTypo.includes('asymétrique 2') || 
-        rawTypo.includes('asymetrique 2');
+        rawTypo.includes('asymetrique 2') ||
+        (rawType.includes('asym') && (rawType.includes('2') || rawTypo.includes('2')));
 
     const isOmbrierePL = 
         (rawType.includes('ombriere') || rawGamme.includes('ombriere') || rawTypo.includes('ombrière') || rawTypo.includes('ombriere')) &&
@@ -359,12 +355,20 @@ export async function generateFicheTechniquePDF({
         rawTypo.includes('ombrière') || 
         rawTypo.includes('ombriere');
 
+    const isSymetrique = 
+        !isAsym1 && !isAsym2 && !isOmbriere && (
+            (rawType.includes('symetrique') && !rawType.includes('asym')) || 
+            rawType.includes('bipente') || 
+            rawType === 'epona' || 
+            rawGamme.includes('helios') || 
+            (rawTypo.includes('symétrique') && !rawTypo.includes('asym')) || 
+            (rawTypo.includes('symetrique') && !rawTypo.includes('asym'))
+        );
+
     const hasExtraPhoto = isSymetrique || isAsym1 || isAsym2 || isOmbriere;
 
     let photoUrlToLoad = null;
-    if (isSymetrique) {
-        photoUrlToLoad = '/hangar_symetrique.png';
-    } else if (isAsym1) {
+    if (isAsym1) {
         photoUrlToLoad = '/hangar_asymetrique_1_zone.png';
     } else if (isAsym2) {
         photoUrlToLoad = '/hangar_asymetrique_2_zones.png';
@@ -374,6 +378,8 @@ export async function generateFicheTechniquePDF({
         photoUrlToLoad = '/ombriere_vl_double.png';
     } else if (isOmbriere) {
         photoUrlToLoad = '/ombriere_vl_simple_gauche.png';
+    } else if (isSymetrique) {
+        photoUrlToLoad = '/hangar_symetrique.png';
     }
 
     const [loadedMain3D, loadedPignon, loadedFacadeSud, loadedHangarPhoto] = await Promise.all([

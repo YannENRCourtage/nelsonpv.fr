@@ -525,10 +525,10 @@ export function FicheTechniqueModal({
                                     {/* 3. Vue Façade Sud (Descendue vers le bas) */}
                                     {(() => {
                                         const bType = (config?.buildingType || '').toLowerCase();
-                                        const isSym = bType.includes('symetrique') || bType.includes('bipente') || bType === 'epona';
-                                        const isAsym1 = bType.includes('asymetrique_1');
-                                        const isAsym2 = bType.includes('asymetrique_2');
+                                        const isAsym1 = bType.includes('asymetrique_1') || (bType.includes('asym') && !bType.includes('2'));
+                                        const isAsym2 = bType.includes('asymetrique_2') || (bType.includes('asym') && bType.includes('2'));
                                         const isOmbriere = bType.includes('ombriere');
+                                        const isSym = !isAsym1 && !isAsym2 && !isOmbriere && ((bType.includes('symetrique') && !bType.includes('asym')) || bType.includes('bipente') || bType === 'epona');
                                         const hasPhoto = isSym || isAsym1 || isAsym2 || isOmbriere;
 
                                         return (
